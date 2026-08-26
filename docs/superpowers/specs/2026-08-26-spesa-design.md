@@ -157,16 +157,16 @@ Risolve già il problema dichiarato.
 | Unità di misura (pz vs g vs confezione) | Pantano classico che rende la lista inutilizzabile | `unita_base` per ingrediente, conversioni esplicite, niente inferenza |
 | Sync offline delle spunte | Doppioni o spunte perse | Coda locale con id idempotenti |
 
-## Assunzioni da confermare
+## Assunzioni — tutte confermate il 2026-08-26
 
-Quattro fatti che non sono inventabili. Ognuno ha un default dichiarato, così la spec resta eseguibile anche senza risposta — ma vanno confermati prima del design della schermata lista, perché tre su quattro si vedono a schermo.
+Quattro fatti non inventabili, chiusi con l'utente. Restano qui perché il piano di implementazione ci si appoggia.
 
 | # | Domanda | Default assunto |
 |---|---|---|
 | 1 | ~~Porzioni~~ **Chiuso.** La porzione è la quantità scritta nel piano; il residuo si deriva da porzione vs formato confezione | Moltiplicatore globale, valore iniziale **1**, usato solo per cucinare per più persone |
-| 2 | Quali slot pasto contano? | **Tutti e quattro** (colazione, pranzo, cena, spuntino), ciascuno marcabile come "abitualmente fuori" così sparisce dal check-in invece di essere negato ogni settimana |
+| 2 | ~~Slot pasto~~ **Chiuso.** | **Tutti e quattro** (colazione, pranzo, cena, spuntino), ciascuno marcabile come "abitualmente fuori" così sparisce dal check-in invece di essere negato ogni settimana |
 | 3 | ~~Ordine reparti~~ **Chiuso.** Solo alimentari: casa, igiene e detergenza sono fuori scope | Ordine **e nomi** dei reparti interamente customizzabili dall'utente. Default: ortofrutta → macelleria/pescheria → latticini e uova → salumi e formaggi → pasta, riso e cereali → scatolame e conserve → surgelati → bevande |
-| 4 | Repertorio in Fase 1: manuale o import AI? | **Manuale.** ~20 piatti sono circa 40 minuti una tantum e tengono la Fase 1 a zero AI. Se è l'attrito che blocca la partenza, l'import (foto/PDF → piatti strutturati) è mezza giornata e va anticipato a Fase 1.5 |
+| 4 | ~~Repertorio Fase 1~~ **Chiuso.** | **Manuale.** ~20 piatti sono circa 40 minuti una tantum e tengono la Fase 1 a zero AI. Se è l'attrito che blocca la partenza, l'import (foto/PDF → piatti strutturati) è mezza giornata e va anticipato a Fase 1.5 |
 
 ## Scope del piano di implementazione
 
