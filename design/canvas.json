@@ -2,7 +2,7 @@
   "pages": [
     {
       "id": "page-1",
-      "name": "Rail — versioni"
+      "name": "Confronto"
     },
     {
       "id": "page-2",
@@ -16,7 +16,7 @@
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "1 — Quantita protagonista",
+      "title": "NUOVA 1 — Quantita protagonista",
       "is_interactive": true
     },
     {
@@ -25,7 +25,7 @@
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "2 — Quantita a destra",
+      "title": "NUOVA 2 — Quantita a destra",
       "is_interactive": true
     },
     {
@@ -34,7 +34,7 @@
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "3 — Colonna singola",
+      "title": "NUOVA 3 — Colonna singola",
       "is_interactive": true
     },
     {
@@ -43,7 +43,7 @@
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "4 — Etichetta in alto",
+      "title": "NUOVA 4 — Etichetta in alto",
       "is_interactive": true
     },
     {
@@ -52,16 +52,79 @@
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "5 — Le prese collassano",
+      "title": "NUOVA 5 — Le prese collassano",
       "is_interactive": true
     },
     {
-      "file": "MagRail.dc.html",
+      "file": "MagBanda.dc.html",
       "x": 0,
       "y": 1060,
       "w": 393,
       "h": 852,
-      "title": "Rail — versione precedente",
+      "title": "PRIMA 1 — Banda colorata",
+      "is_interactive": true
+    },
+    {
+      "file": "MagTinte.dc.html",
+      "x": 493,
+      "y": 1060,
+      "w": 393,
+      "h": 852,
+      "title": "PRIMA 2 — Tessere tinte",
+      "is_interactive": true
+    },
+    {
+      "file": "MagRail.dc.html",
+      "x": 986,
+      "y": 1060,
+      "w": 393,
+      "h": 852,
+      "title": "PRIMA 3 — Rail  ← la scelta",
+      "is_interactive": true
+    },
+    {
+      "file": "MagPillole.dc.html",
+      "x": 1479,
+      "y": 1060,
+      "w": 393,
+      "h": 852,
+      "title": "PRIMA 4 — Tutto a pillole",
+      "is_interactive": true
+    },
+    {
+      "file": "MagHero.dc.html",
+      "x": 1972,
+      "y": 1060,
+      "w": 393,
+      "h": 852,
+      "title": "PRIMA 5 — Protagonista pieno",
+      "is_interactive": true
+    },
+    {
+      "file": "DirMagazine.dc.html",
+      "x": 0,
+      "y": 2120,
+      "w": 393,
+      "h": 852,
+      "title": "ORIGINE — Magazine I",
+      "is_interactive": true
+    },
+    {
+      "file": "MagBosco.dc.html",
+      "x": 493,
+      "y": 2120,
+      "w": 393,
+      "h": 852,
+      "title": "ORIGINE — I.2 Bosco",
+      "is_interactive": true
+    },
+    {
+      "file": "MagScansione.dc.html",
+      "x": 986,
+      "y": 2120,
+      "w": 393,
+      "h": 852,
+      "title": "ORIGINE — I.1 Colonna singola",
       "is_interactive": true
     },
     {
@@ -175,39 +238,9 @@
       "page": "page-2"
     },
     {
-      "file": "DirMagazine.dc.html",
-      "x": 986,
-      "y": 3180,
-      "w": 393,
-      "h": 852,
-      "title": "I — Magazine originale",
-      "is_interactive": true,
-      "page": "page-2"
-    },
-    {
-      "file": "MagScansione.dc.html",
-      "x": 0,
-      "y": 4240,
-      "w": 393,
-      "h": 852,
-      "title": "I.1 — Colonna singola",
-      "is_interactive": true,
-      "page": "page-2"
-    },
-    {
-      "file": "MagBosco.dc.html",
-      "x": 493,
-      "y": 4240,
-      "w": 393,
-      "h": 852,
-      "title": "I.2 — Bosco",
-      "is_interactive": true,
-      "page": "page-2"
-    },
-    {
       "file": "MagGhiaccio.dc.html",
       "x": 986,
-      "y": 4240,
+      "y": 3180,
       "w": 393,
       "h": 852,
       "title": "I.3 — Ghiaccio",
@@ -217,103 +250,49 @@
     {
       "file": "MagNotte.dc.html",
       "x": 1479,
-      "y": 4240,
+      "y": 3180,
       "w": 393,
       "h": 852,
       "title": "I.4 — Notte e ambra",
-      "is_interactive": true,
-      "page": "page-2"
-    },
-    {
-      "file": "MagBanda.dc.html",
-      "x": 0,
-      "y": 5300,
-      "w": 393,
-      "h": 852,
-      "title": "Colore: banda",
-      "is_interactive": true,
-      "page": "page-2"
-    },
-    {
-      "file": "MagTinte.dc.html",
-      "x": 493,
-      "y": 5300,
-      "w": 393,
-      "h": 852,
-      "title": "Colore: tessere tinte",
-      "is_interactive": true,
-      "page": "page-2"
-    },
-    {
-      "file": "MagPillole.dc.html",
-      "x": 986,
-      "y": 5300,
-      "w": 393,
-      "h": 852,
-      "title": "Colore: pillole",
-      "is_interactive": true,
-      "page": "page-2"
-    },
-    {
-      "file": "MagHero.dc.html",
-      "x": 1479,
-      "y": 5300,
-      "w": 393,
-      "h": 852,
-      "title": "Colore: protagonista pieno",
       "is_interactive": true,
       "page": "page-2"
     }
   ],
   "annotations": [
     {
-      "id": "regola-stato",
+      "id": "riga1",
       "x": 0,
-      "y": -300,
+      "y": -330,
       "w": 393,
-      "text": "NUOVA REGOLA DI STATO, uguale in tutte e cinque. Niente pallino. La tessera ACCESA — bianca, bordo nel colore del reparto, ombra minima — significa DA PRENDERE. La tessera SPENTA — piatta, grigia, nome depennato — significa PRESA. Il tap sulla tessera fa da interruttore. Due voci partono gia prese cosi vedi entrambi gli stati."
+      "text": "RIGA 1 — IL BATCH NUOVO, senza pallino. Tessera accesa = da prendere, tessera spenta e depennata = presa, tap come interruttore. Cambia solo l uso dello spazio liberato e il selettore in basso."
     },
     {
-      "id": "v1",
+      "id": "drift",
       "x": 493,
-      "y": -300,
+      "y": -330,
       "w": 393,
-      "text": "1 — QUANTITA PROTAGONISTA. Lo spazio del pallino va al numero: 1 conf sale a 19px e diventa la seconda cosa che leggi dopo il nome. Sotto resta la riga del residuo. Selettore: due blocchi con barra di avanzamento per lista, cosi vedi a colpo d occhio quanto manca in ciascuna."
+      "text": "IL DRIFT, da guardare prima di scegliere. Rifacendo questo batch e sparita da TUTTE E CINQUE la voce protagonista a tutta larghezza: nel magazine ogni reparto apriva con una voce piu grande delle altre, qui tutte le tessere pesano uguale. E la ragione per cui le nuove sembrano una lista normale e non piu la direzione che avevi scelto. Non e voluto, e una perdita."
     },
     {
-      "id": "v2",
+      "id": "drift5",
       "x": 986,
-      "y": -300,
+      "y": -330,
       "w": 393,
-      "text": "2 — QUANTITA A DESTRA. Le tessere diventano righe basse: nome a sinistra, quantita allineata a destra. Ci stanno molte piu voci per schermata, ed e la piu vicina a una lista della spesa vera. Prezzo: sparisce la riga del residuo, che qui non entra. Selettore: due pillole, l attiva dice quante ne restano a parole."
+      "text": "COSA CAMBIA IN PIU NELLA 5. Oltre alla perdita sopra: la tessera presa cambia forma e altezza invece di restare uguale, e il selettore diventa asimmetrico, un blocco grande piu un chip. Sono due scostamenti veri dalla PRIMA 3. L idea della lista che si accorcia resta ottima: si puo tenere quella e riportare dentro il protagonista e un selettore simmetrico."
     },
     {
-      "id": "v3",
-      "x": 1479,
-      "y": -300,
-      "w": 393,
-      "text": "3 — COLONNA SINGOLA. Una voce per riga a tutta larghezza, nome a 17px e quantita a destra. La piu scandibile di tutte in corsia. Selettore: un unico controllo bordato dove il segmento attivo ha l avanzamento disegnato dentro il bordo inferiore — il selettore E la barra di progresso."
-    },
-    {
-      "id": "v4",
-      "x": 1972,
-      "y": -300,
-      "w": 393,
-      "text": "4 — ETICHETTA IN ALTO. La quantita sale in cima alla tessera come pillola tinta nel colore del reparto, e il nome sotto cresce a 19px. Il colore entra anche dentro la tessera senza tingerla tutta. Selettore: due schede stile cartellina, l attiva ha il bordo inferiore spesso, e il numero grande e quanto MANCA."
-    },
-    {
-      "id": "v5",
+      "id": "riga2",
       "x": 0,
-      "y": -600,
+      "y": 905,
       "w": 393,
-      "text": "5 — LE PRESE COLLASSANO. La piu radicale: una voce presa non resta della stessa dimensione, si accorcia a una striscia bassa a tutta larghezza. La lista si accorcia fisicamente mentre fai la spesa e quello che resta da prendere occupa sempre piu spazio relativo. Selettore: la lista attiva diventa un blocco grande con quante ne mancano scritto accanto, l altra si riduce a un chip per scambiare."
+      "text": "RIGA 2 — QUELLE DI PRIMA, il batch da cui avevi scelto. Hanno ancora il pallino e la voce protagonista. La terza e quella che avevi indicato: e il metro di paragone."
     },
     {
-      "id": "precedente",
-      "x": 493,
-      "y": -600,
+      "id": "riga3",
+      "x": 0,
+      "y": 1965,
       "w": 393,
-      "text": "Sotto a sinistra e rimasta la versione precedente del rail, quella con il pallino, per il confronto diretto. La testata in cima e ancora quella vecchia in tutte: la rivediamo dopo, come hai detto."
+      "text": "RIGA 3 — LA GENEALOGIA, per vedere da dove viene la direzione: il magazine originale con l arancio bruciato, la palette bosco che hai scelto, e la versione a colonna singola."
     }
   ],
   "launch": {
