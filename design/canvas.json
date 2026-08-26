@@ -105,7 +105,43 @@
       "y": 3180,
       "w": 393,
       "h": 852,
-      "title": "I — Magazine asimmetrico",
+      "title": "I — Magazine (originale)",
+      "is_interactive": true
+    },
+    {
+      "file": "MagScansione.dc.html",
+      "x": 0,
+      "y": 4240,
+      "w": 393,
+      "h": 852,
+      "title": "I.1 — Colonna singola",
+      "is_interactive": true
+    },
+    {
+      "file": "MagBosco.dc.html",
+      "x": 493,
+      "y": 4240,
+      "w": 393,
+      "h": 852,
+      "title": "I.2 — Bosco su crema",
+      "is_interactive": true
+    },
+    {
+      "file": "MagGhiaccio.dc.html",
+      "x": 986,
+      "y": 4240,
+      "w": 393,
+      "h": 852,
+      "title": "I.3 — Inchiostro su ghiaccio",
+      "is_interactive": true
+    },
+    {
+      "file": "MagNotte.dc.html",
+      "x": 1479,
+      "y": 4240,
+      "w": 393,
+      "h": 852,
+      "title": "I.4 — Notte e ambra",
       "is_interactive": true
     }
   ],
@@ -115,42 +151,28 @@
       "x": 0,
       "y": -215,
       "w": 393,
-      "text": "RIGA 1 — Le tre schermate nella direzione tattile approvata all inizio. La lista a sinistra e il termine di paragone per tutte le varianti sotto."
+      "text": "RIGA 1 — Le tre schermate nella direzione tattile approvata all inizio."
     },
     {
       "id": "zona-pollice",
       "x": 493,
       "y": -215,
       "w": 393,
-      "text": "Tab BASE / TOP-UP in basso, non in alto: su 852px il pollice non arriva al bordo superiore mentre spingi un carrello."
+      "text": "Tab in basso, non in alto: su 852px il pollice non arriva al bordo superiore mentre spingi un carrello."
     },
     {
       "id": "metafora-premuto",
       "x": 986,
       "y": -215,
       "w": 393,
-      "text": "Nel check-in la profondita porta il significato: rilievo = a casa, premuto = fuori. Con una direzione piatta questa metafora va sostituita."
+      "text": "Nel check-in la profondita porta il significato: rilievo = a casa, premuto = fuori."
     },
     {
       "id": "riga-moderne",
       "x": 0,
       "y": 905,
       "w": 393,
-      "text": "RIGA 2 — LE SICURE. Tre risposte diverse a moderno, tutte dentro i vincoli che avevamo fissato."
-    },
-    {
-      "id": "dir-calma",
-      "x": 493,
-      "y": 905,
-      "w": 393,
-      "text": "B — MINIMALE CALMO. Beige caldo, verde salvia come segnale, titolo serif. Rischio: il contrasto basso e proprio cio che sotto i neon ti penalizza."
-    },
-    {
-      "id": "dir-paper",
-      "x": 986,
-      "y": 905,
-      "w": 393,
-      "text": "C — PAPER SAAS ARANCIO. Crema, schede bianche, arancio come colore di azione. Il piu moderno-consumer. Rischio: un accento forte stanca su una schermata quotidiana."
+      "text": "RIGA 2 — LE SICURE. Tre risposte a moderno, dentro i vincoli fissati."
     },
     {
       "id": "riga-alternative",
@@ -160,39 +182,39 @@
       "text": "RIGA 3 — LE ALTERNATIVE. D punta sulla tipografia, E sulla struttura, F riapre la scelta light/dark."
     },
     {
-      "id": "dir-annidato",
-      "x": 493,
-      "y": 1965,
-      "w": 393,
-      "text": "E — CONTENITORI ANNIDATI. Cornici dentro cornici, rail ai bordi, blu come unico segnale. Il linguaggio dei prodotti 2025. Rischio: il piu anonimo del gruppo."
-    },
-    {
-      "id": "dir-notte",
-      "x": 986,
-      "y": 1965,
-      "w": 393,
-      "text": "F — NOTTE BLU. Riapre di proposito la scelta del light: punta sul contrasto puro invece che su vetri e sfocature."
-    },
-    {
       "id": "riga-ambiziose",
       "x": 0,
       "y": 3025,
       "w": 393,
-      "text": "RIGA 4 — LE AMBIZIOSE. Qui ogni direzione rompe di proposito un vincolo che avevamo fissato, e ci va fino in fondo invece di mediare. G — BRUTALISTA: rompe il sobrio. Solo nero e bianco puri, zero grigi, zero raggi, tipografia billboard. La riga spuntata si inverte tutta in nero. Paradosso utile: e la piu estrema del gruppo ED e anche la piu leggibile sotto i neon, perche il contrasto e il massimo fisicamente possibile."
+      "text": "RIGA 4 — LE AMBIZIOSE. Ognuna rompe di proposito un vincolo e ci va fino in fondo."
     },
     {
-      "id": "dir-dither",
+      "id": "riga-varianti",
+      "x": 0,
+      "y": 4085,
+      "w": 393,
+      "text": "RIGA 5 — VARIANTI DELLA I. I.1 cambia la struttura per riparare il difetto di scansione: una colonna sola, si legge dall alto in basso come una lista vera, ma tiene numerazione di sezione, metadati mono e la voce protagonista piu grande. Se la I ti convince ma vuoi usarla davvero, questa e la versione da guardare per prima."
+    },
+    {
+      "id": "var-bosco",
       "x": 493,
-      "y": 3025,
+      "y": 4085,
       "w": 393,
-      "text": "H — DITHER LASER. Rompe il light E la sobrieta. Quasi-nero con texture dither, un laser orizzontale dietro la testata, verde acido come unico segnale, tutto in mono. Non e una app di cucina: e una console. Rischio dichiarato: il verde acido su nero e affascinante di sera e faticoso su uno schermo al 40 percento di luminosita in un reparto illuminato."
+      "text": "I.2 — BOSCO SU CREMA. Verde bosco profondo su crema calda. E la palette che c entra di piu col cibo senza scadere nel biologico-naturale. Contrasto alto quanto l originale, tono meno urgente: l arancio bruciato dice adesso, il verde bosco dice con calma."
     },
     {
-      "id": "dir-magazine",
+      "id": "var-ghiaccio",
       "x": 986,
-      "y": 3025,
+      "y": 4085,
       "w": 393,
-      "text": "I — MAGAZINE ASIMMETRICO. Rompe il vincolo piu profondo di tutti: non e piu una lista di righe. Ogni reparto e una griglia a due colonne dove una voce per blocco diventa protagonista a tutta larghezza. Rischio serio: in corsia si scandisce una lista dall alto verso il basso, e una griglia asimmetrica costringe l occhio a saltare. E la piu bella da guardare e la piu discutibile da usare."
+      "text": "I.3 — INCHIOSTRO SU GHIACCIO. Blu notte su bianco freddo, accento cobalto. La piu neutra e la piu da strumento: sembra un prodotto, non un magazine di cucina. E anche la piu leggibile delle quattro sotto luce forte."
+    },
+    {
+      "id": "var-notte",
+      "x": 1479,
+      "y": 4085,
+      "w": 393,
+      "text": "I.4 — NOTTE E AMBRA. La griglia magazine ribaltata su fondo quasi nero, con l ambra come unico accento. La fascia scura del controllo diventa chiara e taglia la pagina: e il gesto piu editoriale del gruppo. Resta il problema del dark in corsia, ma qui il contrasto e tenuto alto apposta."
     }
   ],
   "launch": {
