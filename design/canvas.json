@@ -2,7 +2,7 @@
   "pages": [
     {
       "id": "page-1",
-      "name": "Logo 2x3"
+      "name": "Lista — definitiva"
     },
     {
       "id": "page-2",
@@ -11,48 +11,21 @@
   ],
   "artboards": [
     {
-      "file": "GridMedia.dc.html",
+      "file": "Lista.dc.html",
       "x": 0,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "1 — 16px  (allineata al titolo)",
+      "title": "LISTA — testata chiusa",
       "is_interactive": true
     },
     {
-      "file": "GridGrande.dc.html",
+      "file": "GridMedia.dc.html",
       "x": 493,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "2 — 20px  (sporge sopra e sotto)",
-      "is_interactive": true
-    },
-    {
-      "file": "GridTonda.dc.html",
-      "x": 986,
-      "y": 0,
-      "w": 393,
-      "h": 852,
-      "title": "3 — 16px, angoli morbidi",
-      "is_interactive": true
-    },
-    {
-      "file": "LogoContorno.dc.html",
-      "x": 1479,
-      "y": 0,
-      "w": 393,
-      "h": 852,
-      "title": "Colonna 1x6 di prima",
-      "is_interactive": true
-    },
-    {
-      "file": "LogoGraduale.dc.html",
-      "x": 1972,
-      "y": 0,
-      "w": 393,
-      "h": 852,
-      "title": "La 3 di prima, per la posizione",
+      "title": "Versione precedente, con account e ingranaggio",
       "is_interactive": true
     },
     {
@@ -416,51 +389,70 @@
       "page": "page-2"
     },
     {
-      "file": "LogoBarra.dc.html",
+      "file": "LogoContorno.dc.html",
       "x": 493,
+      "y": 7420,
+      "w": 393,
+      "h": 852,
+      "title": "LogoContorno",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "LogoGraduale.dc.html",
+      "x": 986,
+      "y": 7420,
+      "w": 393,
+      "h": 852,
+      "title": "LogoGraduale",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "LogoBarra.dc.html",
+      "x": 1479,
       "y": 7420,
       "w": 393,
       "h": 852,
       "title": "LogoBarra",
       "is_interactive": true,
       "page": "page-2"
+    },
+    {
+      "file": "GridGrande.dc.html",
+      "x": 1972,
+      "y": 7420,
+      "w": 393,
+      "h": 852,
+      "title": "GridGrande",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "GridTonda.dc.html",
+      "x": 0,
+      "y": 8480,
+      "w": 393,
+      "h": 852,
+      "title": "GridTonda",
+      "is_interactive": true,
+      "page": "page-2"
     }
   ],
   "annotations": [
     {
-      "id": "cosa",
+      "id": "chiusa",
       "x": 0,
-      "y": -360,
+      "y": -330,
       "w": 393,
-      "text": "GRIGLIA 2x3 VERTICALE, a sinistra del titolo come nella 3 di prima, quadrati piu grandi, spento a contorno. La logica non cambia: quadratino acceso finche in quel reparto resta qualcosa da prendere, spento quando lo hai finito o quando quel reparto non e in questa spesa. Ordine per righe: giallo pasta e arancio scatolame, poi lilla bevande e verde ortofrutta, poi azzurro latticini e corallo macelleria. Spunta le voci di un reparto e guarda il quadratino svuotarsi."
+      "text": "TESTATA CHIUSA. Logo a griglia 2x3 da 16px allineato in altezza al titolo su due righe, spento a contorno, a sinistra. Account e ingranaggio via, al loro posto il burger a tre lineette nello stesso blu-notte del titolo. Sotto resta la pillola scura della settimana. Il logo continua a fare il suo lavoro: spunta le voci di un reparto e il quadratino corrispondente si svuota."
     },
     {
-      "id": "g1",
+      "id": "scelta",
       "x": 493,
-      "y": -360,
+      "y": -330,
       "w": 393,
-      "text": "1 — 16px, colonna alta 58px. E la misura che si allinea in altezza al titolo su due righe: marchio e testo finiscono alla stessa quota, sopra e sotto. E la piu equilibrata delle tre e quella che rispetta di piu la testata editoriale della D."
-    },
-    {
-      "id": "g2",
-      "x": 986,
-      "y": -360,
-      "w": 393,
-      "text": "2 — 20px, colonna alta 72px. Decisamente piu grande: sporge sopra e sotto rispetto al titolo, quindi il marchio smette di accompagnare il testo e diventa lui il primo elemento della schermata. Il contorno dello spento si legge molto meglio a questa taglia. Rischio: ruba spazio orizzontale al titolo e sbilancia la fascia verso sinistra."
-    },
-    {
-      "id": "g3",
-      "x": 1479,
-      "y": -360,
-      "w": 393,
-      "text": "3 — 16px con angoli molto morbidi, raggio 8 su 16. Stessa misura della 1 ma i quadrati diventano quasi pastiglie e il marchio dialoga con le pillole della quantita e del selettore settimana. Piu coerente col resto dell interfaccia, meno affilato come segno."
-    },
-    {
-      "id": "prima",
-      "x": 1972,
-      "y": -360,
-      "w": 393,
-      "text": "Alla fine della riga: la colonna 1x6 a contorno e la 3 di prima, quella da cui viene la posizione a sinistra del titolo."
+      "text": "Una scelta di impaginazione che ho preso io: il burger e allineato in alto, alla stessa quota della prima riga del titolo, non centrato verticalmente sul blocco. Centrandolo scendeva a meta fra le due righe e sembrava fuori asse rispetto alla griglia del logo. Il tocco resta 44px anche se il segno ne misura 25. Accanto e rimasta la versione precedente per il confronto."
     }
   ],
   "launch": {
