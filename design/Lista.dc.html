@@ -19,9 +19,9 @@
 <div style="width: 393px; height: 852px; display: flex; flex-direction: column; overflow: hidden; background: #F1F0EE;">
 
   <div style="padding: 20px 18px 12px; display: flex; flex-direction: column; gap: 15px;">
-    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 14px;">
-      <div style="display: flex; align-items: center; gap: 14px; min-width: 0;"><div style="display: grid; grid-template-columns: repeat(2, 16px); gap: 5px; flex: none;"><div style="{{sq0}}"></div><div style="{{sq1}}"></div><div style="{{sq2}}"></div><div style="{{sq3}}"></div><div style="{{sq4}}"></div><div style="{{sq5}}"></div></div><span style="font-size: 32px; font-weight: 800; letter-spacing: -0.05em; line-height: 0.95; color: #14163A;">Spesa<br>settimanale</span></div>
-      <button style="width: 44px; height: 44px; margin: -6px -10px 0 0; flex: none; display: flex; align-items: center; justify-content: center;">
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
+      <div style="display: flex; align-items: flex-start; gap: 13px; min-width: 0;"><div style="display: grid; grid-template-columns: repeat(3, 16px); gap: 4px; flex: none; margin-top: 8px;"><div style="{{sq0}}"></div><div style="{{sq1}}"></div><div style="{{sq2}}"></div><div style="{{sq3}}"></div><div style="{{sq4}}"></div><div style="{{sq5}}"></div></div><span style="font-size: 52px; font-weight: 800; letter-spacing: -0.05em; line-height: 1; color: #14163A;">Spesa</span></div>
+      <button style="width: 44px; height: 44px; margin: -4px -10px 0 0; flex: none; display: flex; align-items: center; justify-content: center;">
         <svg width="25" height="25" viewBox="0 0 25 25" fill="none"><path d="M3.5 7.2h18M3.5 12.5h18M3.5 17.8h18" stroke="#14163A" stroke-width="2.1" stroke-linecap="round"/></svg>
       </button>
     </div>
@@ -114,18 +114,20 @@ class Component extends DCLogic {
   data() {
     return {
       base: [
-        { rep: 'PASTA E CEREALI', col: '#F5CE5B', items: [
+        { rep: 'PASTA, RISO E CEREALI', col: '#F5CE5B', items: [
           { id: 'riso', nome: 'Riso Carnaroli', conf: '1 conf', qty: '1000 g', sub: 'serve 820 g · in casa 0 g', big: true },
           { id: 'avena', nome: "Fiocchi d'avena", conf: '1 conf', qty: '500 g', sub: 'serve 350 g · in casa 90 g' },
           { id: 'pasta', nome: 'Pasta integrale', conf: '2 conf', qty: '1000 g', sub: '' }
         ], controls: [] },
-        { rep: 'SCATOLAME', col: '#F2A465', items: [
+        { rep: 'DISPENSA E CONSERVE', col: '#F2A465', items: [
           { id: 'passata', nome: 'Passata di pomodoro', conf: '1 conf', qty: '700 g', sub: '', big: true },
           { id: 'tonno', nome: 'Tonno al naturale', conf: '3 conf', qty: '240 g', sub: '' },
-          { id: 'ceci', nome: 'Ceci lessati', conf: '2 conf', qty: '800 g', sub: '' }
-        ], controls: [ { id: 'olio', nome: 'Olio: ne hai ancora?', hint: '54 GIORNI DALL ULTIMO ACQUISTO' } ] },
-        { rep: 'BEVANDE', col: '#B9AEF5', items: [
-          { id: 'caffe', nome: 'Caffè macinato', conf: '1 conf', qty: '250 g', sub: '', big: true }
+          { id: 'ceci', nome: 'Ceci lessati', conf: '2 conf', qty: '800 g', sub: '' },
+          { id: 'caffe', nome: 'Caffè macinato', conf: '1 conf', qty: '250 g', sub: '' }
+        ], controls: [ { id: 'olio', nome: 'Olio: ne hai ancora?', hint: 'CONTROLLO OGNI 90 GIORNI · SCADUTO' } ] },
+        { rep: 'SURGELATI', col: '#B9AEF5', items: [
+          { id: 'piselli', nome: 'Piselli surgelati', conf: '2 conf', qty: '900 g', sub: '', big: true },
+          { id: 'merluzzo', nome: 'Filetti di merluzzo', conf: '1 conf', qty: '400 g', sub: '' }
         ], controls: [] }
       ],
       topup: [
@@ -134,11 +136,11 @@ class Component extends DCLogic {
           { id: 'mele', nome: 'Mele', conf: '6 pz', qty: '6 pz', sub: '' },
           { id: 'limoni', nome: 'Limoni', conf: '3 pz', qty: '3 pz', sub: '' }
         ], controls: [] },
-        { rep: 'LATTICINI E UOVA', col: '#9CC7F2', items: [
+        { rep: 'LATTICINI, UOVA E SALUMI', col: '#9CC7F2', items: [
           { id: 'yogurt', nome: 'Yogurt greco', conf: '2 conf', qty: '1000 g', sub: 'serve 750 g · in casa 50 g', big: true },
           { id: 'uova', nome: 'Uova', conf: '6 pz', qty: '6 pz', sub: '' }
         ], controls: [] },
-        { rep: 'MACELLERIA', col: '#F29B9B', items: [
+        { rep: 'MACELLERIA E PESCHERIA', col: '#F29B9B', items: [
           { id: 'pollo', nome: 'Petto di pollo', conf: '1 conf', qty: '700 g', sub: 'serve 640 g · in casa 0 g', big: true },
           { id: 'salmone', nome: 'Salmone', conf: '2 conf', qty: '300 g', sub: '' }
         ], controls: [] }
@@ -264,7 +266,9 @@ class Component extends DCLogic {
                dotStyle: 'width: 10px; height: 10px; border-radius: 4px; flex: none; background: ' + s.col + ';' };
     });
 
-      var REPCOL = [['PASTA E CEREALI','#F5CE5B'],['SCATOLAME','#F2A465'],['BEVANDE','#B9AEF5'],['ORTOFRUTTA','#A8D96A'],['LATTICINI E UOVA','#9CC7F2'],['MACELLERIA','#F29B9B']];
+      var AREE = [['ORTOFRUTTA','#A8D96A'],['MACELLERIA E PESCHERIA','#F29B9B'],['LATTICINI, UOVA E SALUMI','#9CC7F2'],['PASTA, RISO E CEREALI','#F5CE5B'],['DISPENSA E CONSERVE','#F2A465'],['SURGELATI','#B9AEF5']];
+      var ROT = [4, 2, 0, 5, 3, 1];
+      var REPCOL = ROT.map(function (i) { return AREE[i]; });
       var stat = {};
       [d.base, d.topup].forEach(function (list) {
         list.forEach(function (s) {

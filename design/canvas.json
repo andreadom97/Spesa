@@ -2,7 +2,7 @@
   "pages": [
     {
       "id": "page-1",
-      "name": "Logo orizzontale"
+      "name": "Lista v1"
     },
     {
       "id": "page-2",
@@ -11,39 +11,21 @@
   ],
   "artboards": [
     {
-      "file": "HdrA.dc.html",
+      "file": "Lista.dc.html",
       "x": 0,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "A — titolo 52 / quadrato 16",
+      "title": "LISTA — chiusa",
       "is_interactive": true
     },
     {
-      "file": "HdrB.dc.html",
+      "file": "HdrA.dc.html",
       "x": 493,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "B — titolo 60 / quadrato 19",
-      "is_interactive": true
-    },
-    {
-      "file": "HdrC.dc.html",
-      "x": 986,
-      "y": 0,
-      "w": 393,
-      "h": 852,
-      "title": "C — titolo 68 / quadrato 22",
-      "is_interactive": true
-    },
-    {
-      "file": "Lista.dc.html",
-      "x": 1479,
-      "y": 0,
-      "w": 393,
-      "h": 852,
-      "title": "Verticale di prima",
+      "title": "Con le bevande, versione precedente",
       "is_interactive": true
     },
     {
@@ -465,36 +447,42 @@
       "title": "GridTonda",
       "is_interactive": true,
       "page": "page-2"
+    },
+    {
+      "file": "HdrB.dc.html",
+      "x": 986,
+      "y": 8480,
+      "w": 393,
+      "h": 852,
+      "title": "HdrB",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "HdrC.dc.html",
+      "x": 1479,
+      "y": 8480,
+      "w": 393,
+      "h": 852,
+      "title": "HdrC",
+      "is_interactive": true,
+      "page": "page-2"
     }
   ],
   "annotations": [
     {
-      "id": "logo",
+      "id": "chiusa",
       "x": 0,
       "y": -390,
       "w": 393,
-      "text": "LOGO RUOTATO DI 90 IN SENSO ORARIO. La griglia 2x3 verticale diventa 3x2 orizzontale e l ordine segue la rotazione vera, non un riordino a occhio. Prima leggeva in colonna ortofrutta e macelleria, poi latticini e pasta, poi dispensa e bevande. Adesso la prima riga e ARANCIO dispensa, AZZURRO latticini, VERDE ortofrutta e la seconda e LILLA bevande, GIALLO pasta, CORALLO macelleria. Ordine fisso per sempre: il marchio non cambia mai, cambia solo quali caselle sono accese."
+      "text": "SCHERMATA LISTA CHIUSA. Scala A: titolo Spesa a 52px, quadrati da 16, colonna del logo alta 36px come la S. Le sei aree fisse sono ortofrutta verde, macelleria e pescheria corallo, latticini uova e salumi azzurro, pasta riso e cereali giallo, dispensa e conserve arancio, surgelati lilla. Le bevande sono uscite: acqua vino birra e succhi in v1 non hanno corsia, il caffe e passato in dispensa. I surgelati stanno nella lista base perche in freezer durano mesi, quindi non sono roba da top-up."
     },
     {
-      "id": "aree",
+      "id": "controllo",
       "x": 493,
       "y": -390,
       "w": 393,
-      "text": "LE SEI AREE FISSE, con dentro anche cio che a sei caselle restava senza casa: ortofrutta verde, macelleria e pescheria corallo che include i surgelati di carne e pesce, latticini uova e salumi azzurro per tutto il banco frigo, pasta riso e cereali giallo che include pane e farine, dispensa e conserve arancio per scatolame olio sale e spezie, bevande lilla. Non si possono aggiungere o rinominare: si puo cambiare solo l ordine in cui compaiono nella lista, per seguire il tuo percorso nel supermercato."
-    },
-    {
-      "id": "misure",
-      "x": 986,
-      "y": -390,
-      "w": 393,
-      "text": "LE TRE MISURE. Il vincolo che hai dato: la colonna da due quadrati deve essere alta quanto la S di Spesa. Vale in tutte e tre, cambia la scala. A titolo 52 e colonna 36. B titolo 60 e colonna 42. C titolo 68 e colonna 48, il massimo prima che il marchio piu la parola piu il burger tocchino i bordi. Il testo e solo Spesa: settimanale e sparito, la data resta nella pillola sotto."
-    },
-    {
-      "id": "verifica",
-      "x": 1479,
-      "y": -390,
-      "w": 393,
-      "text": "DA VERIFICARE CON L OCCHIO. L allineamento fra la colonna del logo e la S e calcolato sulle proporzioni tipiche del carattere, non misurato: il bordo superiore dei quadrati dovrebbe cadere sulla cima della S e quello inferiore sulla sua base. Se vedi uno scarto di uno o due pixel dimmelo e lo correggo, non e una cosa che posso misurare da qui. Accanto e rimasta la versione verticale per il confronto."
+      "text": "La riga di controllo dell olio adesso dice CONTROLLO OGNI 90 GIORNI invece di fingere una stima: e un promemoria a intervallo fisso, non una previsione. Nel frattempo la v1 registra in silenzio cosa compri e quando, cosi il giorno che vorrai affinarlo lo storico c e gia. Accanto e rimasta la versione con le bevande per il confronto."
     }
   ],
   "launch": {

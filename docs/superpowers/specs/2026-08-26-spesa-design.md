@@ -168,6 +168,20 @@ Quattro fatti non inventabili, chiusi con l'utente. Restano qui perché il piano
 | 3 | ~~Ordine reparti~~ **Chiuso.** Solo alimentari: casa, igiene e detergenza sono fuori scope | Ordine **e nomi** dei reparti interamente customizzabili dall'utente. Default: ortofrutta → macelleria/pescheria → latticini e uova → salumi e formaggi → pasta, riso e cereali → scatolame e conserve → surgelati → bevande |
 | 4 | ~~Repertorio Fase 1~~ **Chiuso.** | **Manuale.** ~20 piatti sono circa 40 minuti una tantum e tengono la Fase 1 a zero AI. Se è l'attrito che blocca la partenza, l'import (foto/PDF → piatti strutturati) è mezza giornata e va anticipato a Fase 1.5 |
 
+## Decisioni di design chiuse il 2026-08-26
+
+Prese dopo il ciclo di design; hanno precedenza sulle assunzioni della sezione precedente dove divergono.
+
+**Le sei aree sono fisse e non personalizzabili.** Ortofrutta (verde), macelleria e pescheria (corallo), latticini/uova/salumi (azzurro), pasta/riso/cereali (giallo), dispensa e conserve (arancio), surgelati (lilla). Sostituiscono l'elenco a otto della sezione Assunzioni. È personalizzabile **solo l'ordine di apparizione** nella lista, per seguire il percorso fisico nel supermercato. Il marchio dell'app è una griglia 3×2 dei sei colori in ordine fisso, dove ogni casella è accesa finché quell'area ha qualcosa da prendere: quindi il set di aree non può variare senza rompere il marchio.
+
+**Conseguenza accettata:** le bevande non hanno un'area in v1 — acqua, vino, birra e succhi restano scoperti; il caffè sta in dispensa. Se serviranno, si passa a otto aree in griglia 4×2 senza rifare il marchio.
+
+**Il controllo degli staple è a intervallo fisso di 90 giorni, non una stima.** La classe `stima` in Fase 1 non impara i ritmi: chiede conferma ogni 90 giorni dall'ultimo acquisto. `giorni_stimati` resta nel modello ma è costante. **La v1 registra comunque ogni acquisto** (cosa e quando) alla chiusura di una lista: serve ad alimentare lo storico su cui la Fase 4 potrà imparare davvero, altrimenti quella fase ripartirebbe da zero.
+
+**Il selettore settimana in testata non naviga.** La freccia è presente ma inerte: la v1 conosce solo la settimana corrente. Le settimane passate vanno comunque **salvate**, non scartate — servono allo storico acquisti e ad accendere la navigazione in seguito senza migrazioni. Debito consapevole: l'affordance promette più di quanto l'app faccia.
+
+**Stato delle voci senza checkbox.** Nessun pallino: la tessera accesa significa da prendere, la tessera spenta e depennata significa presa, il tap sulla tessera è l'interruttore. Sulla voce protagonista di ogni area la regola è letterale — accesa ha il colore pieno dell'area, presa il colore si svuota.
+
 ## Scope del piano di implementazione
 
 Il piano che segue questa spec copre **la sola Fase 1**. Le fasi 2-4 restano descritte qui come direzione, non come lavoro pianificato: si pianificano dopo il gate delle tre settimane.
