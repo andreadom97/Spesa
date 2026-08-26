@@ -1,0 +1,130 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Plus Jakarta Sans', 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #14163A; } a:hover { opacity: 0.7; }
+    * { box-sizing: border-box; }
+    button { font-family: inherit; border: 0; background: none; padding: 0; cursor: pointer; text-align: left; }
+    .sc::-webkit-scrollbar { width: 0; height: 0; }
+  </style>
+</helmet>
+<div style="width: 393px; height: 852px; display: flex; flex-direction: column; overflow: hidden; background: #F1F0EE;">
+  <div style="padding: 20px 18px 12px; display: flex; flex-direction: column; gap: 15px;">
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
+      <div style="display: flex; align-items: flex-start; gap: 13px; min-width: 0;"><div style="display: grid; grid-template-columns: repeat(3, 16px); gap: 4px; flex: none; margin-top: 8px;"><div style="width: 16px; height: 16px; border-radius: 4.5px; box-sizing: border-box; background: #F2A465; border: 2px solid #F2A465;"></div><div style="width: 16px; height: 16px; border-radius: 4.5px; box-sizing: border-box; background: #9CC7F2; border: 2px solid #9CC7F2;"></div><div style="width: 16px; height: 16px; border-radius: 4.5px; box-sizing: border-box; background: #A8D96A; border: 2px solid #A8D96A;"></div><div style="width: 16px; height: 16px; border-radius: 4.5px; box-sizing: border-box; background: #B9AEF5; border: 2px solid #B9AEF5;"></div><div style="width: 16px; height: 16px; border-radius: 4.5px; box-sizing: border-box; background: #F5CE5B; border: 2px solid #F5CE5B;"></div><div style="width: 16px; height: 16px; border-radius: 4.5px; box-sizing: border-box; background: #F29B9B; border: 2px solid #F29B9B;"></div></div><span style="font-size: 52px; font-weight: 800; letter-spacing: -0.05em; line-height: 1; color: #14163A;">Settimana</span></div>
+      <button style="width: 44px; height: 44px; margin: -4px -10px 0 0; flex: none; display: flex; align-items: center; justify-content: center;">
+        <svg width="25" height="25" viewBox="0 0 25 25" fill="none"><path d="M3.5 7.2h18M3.5 12.5h18M3.5 17.8h18" stroke="#14163A" stroke-width="2.1" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div style="display: flex; align-items: center; gap: 7px; align-self: flex-start; height: 34px; padding: 0 14px; border-radius: 999px; background: #14163A;">
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 700; letter-spacing: 0.13em; color: #FFFFFF;">31 AGO — 6 SET</span>
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 6.2 8 10.2 12 6.2" stroke="#FFFFFF" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+  </div>
+
+  <div class="sc" style="flex: 1; overflow-y: auto; padding: 4px 16px 12px;">
+    <div style="background: #FFFFFF; border-radius: 22px; border: 1px solid rgba(20,22,58,0.07); padding: 14px 12px 15px;">
+      <div style="display: grid; grid-template-columns: 50px repeat(4, minmax(0, 1fr)); gap: 6px; margin-bottom: 8px;">
+        <div></div>
+        <sc-for list="{{slots}}" as="s" hint-placeholder-count="4">
+          <div style="text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; letter-spacing: 0.11em; color: #8A8A96;">{{s}}</div>
+        </sc-for>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <sc-for list="{{rows}}" as="row" hint-placeholder-count="7">
+          <div style="display: grid; grid-template-columns: 50px repeat(4, minmax(0, 1fr)); gap: 6px; align-items: center;">
+            <div style="display: flex; flex-direction: column;">
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 700; letter-spacing: 0.07em; color: #14163A;">{{row.day}}</span>
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: #A6A6B2;">{{row.num}}</span>
+            </div>
+            <sc-for list="{{row.cells}}" as="c" hint-placeholder-count="4">
+              <button onClick="{{c.tap}}" style="{{c.style}}">
+                <sc-if value="{{c.home}}" hint-placeholder-val="{{true}}">
+                  <div style="width: 11px; height: 11px; border-radius: 3px; background: #14163A;"></div>
+                </sc-if>
+              </button>
+            </sc-for>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="margin-top: 12px; padding: 0 4px; display: flex; flex-direction: column; gap: 5px;">
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.09em; color: #8A8A96;">CELLA ACCESA = MANGI A CASA</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.09em; color: #8A8A96;">CELLA SPENTA = FUORI &middot; TRATTEGGIO = ABITUALE</span>
+    </div>
+  </div>
+
+  <div style="padding: 6px 16px 0; display: flex; flex-direction: column; gap: 9px;">
+    <div style="display: flex; align-items: baseline; justify-content: space-between; padding: 0 4px;">
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.11em; color: #14163A;">{{countLabel}}</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.09em; color: #A6A6B2;">SU 28</span>
+    </div>
+    <button onClick="{{confirm}}" style="{{confirmStyle}}">{{confirmLabel}}</button>
+  </div>
+
+  <div style="display: flex; padding: 10px 16px 20px; gap: 4px;"><div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 8px 0;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M4 6.5h16M4 12h16M4 17.5h11" stroke="#9A9AA6" stroke-width="1.9" stroke-linecap="round"/></svg><span style="font-family: 'JetBrains Mono', monospace; font-size: 8.5px; font-weight: 500; letter-spacing: 0.12em; color: #9A9AA6;">LISTA</span></div><div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 8px 0; border-radius: 14px; background: rgba(20,22,58,0.06);"><svg width="21" height="21" viewBox="0 0 24 24" fill="none"><rect x="3.6" y="5" width="16.8" height="15" rx="3" stroke="#14163A" stroke-width="1.8"/><path d="M3.6 10h16.8M9 3.4v3.2M15 3.4v3.2" stroke="#14163A" stroke-width="1.8" stroke-linecap="round"/></svg><span style="font-family: 'JetBrains Mono', monospace; font-size: 8.5px; font-weight: 700; letter-spacing: 0.12em; color: #14163A;">SETTIMANA</span></div><div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 8px 0;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M5 4.6h9.5a4 4 0 0 1 4 4V20H9a4 4 0 0 1-4-4V4.6Z" stroke="#9A9AA6" stroke-width="1.8" stroke-linejoin="round"/><path d="M8.6 9.2h6.4M8.6 13h4.6" stroke="#9A9AA6" stroke-width="1.8" stroke-linecap="round"/></svg><span style="font-family: 'JetBrains Mono', monospace; font-size: 8.5px; font-weight: 500; letter-spacing: 0.12em; color: #9A9AA6;">PIATTI</span></div></div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":393,"height":852}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    var cells = {}, hab = {};
+    for (var d = 0; d < 7; d++) {
+      for (var s = 0; s < 4; s++) {
+        var k = d + '-' + s;
+        cells[k] = 'casa';
+        if (s === 1 && d < 5) { cells[k] = 'fuori'; hab[k] = true; }
+        if (s === 0 && d === 2) { cells[k] = 'fuori'; hab[k] = true; }
+        if (s === 2 && (d === 3 || d === 4)) { cells[k] = 'fuori'; }
+      }
+    }
+    this.state = { cells: cells, hab: hab, confirmed: false };
+  }
+  renderVals() {
+    var self = this;
+    var days = [['LUN','1'],['MAR','2'],['MER','3'],['GIO','4'],['VEN','5'],['SAB','6'],['DOM','7']];
+    var on = 'height: 58px; border-radius: 13px; display: flex; align-items: center; justify-content: center; background: #FFFFFF; border: 1px solid rgba(20,22,58,0.16);';
+    var off = 'height: 58px; border-radius: 13px; display: flex; align-items: center; justify-content: center; background: rgba(20,22,58,0.035); border: 1px solid transparent;';
+    var offH = 'height: 58px; border-radius: 13px; display: flex; align-items: center; justify-content: center; background: rgba(20,22,58,0.035); border: 1px dashed rgba(20,22,58,0.20);';
+    var count = 0;
+    var rows = days.map(function (dd, di) {
+      var cells = [0,1,2,3].map(function (si) {
+        var k = di + '-' + si;
+        var v = self.state.cells[k];
+        if (v === 'casa') { count += 1; }
+        return {
+          home: v === 'casa',
+          style: v === 'casa' ? on : (self.state.hab[k] ? offH : off),
+          tap: function () {
+            var nc = Object.assign({}, self.state.cells);
+            nc[k] = (nc[k] === 'casa') ? 'fuori' : 'casa';
+            self.setState({ cells: nc, confirmed: false });
+          }
+        };
+      });
+      return { day: dd[0], num: dd[1], cells: cells };
+    });
+    var b = "width: 100%; height: 54px; border-radius: 18px; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; letter-spacing: 0.09em;";
+    return {
+      slots: ['COL','PRA','CEN','SPU'], rows: rows,
+      countLabel: count + ' PASTI A CASA',
+      confirmLabel: this.state.confirmed ? 'LISTA CREATA' : 'CONFERMA E CREA LA LISTA',
+      confirmStyle: this.state.confirmed
+        ? b + ' background: rgba(20,22,58,0.06); color: #8A8A96;'
+        : b + ' background: #14163A; color: #FFFFFF;',
+      confirm: function () { self.setState({ confirmed: !self.state.confirmed }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

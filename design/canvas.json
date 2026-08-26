@@ -2,7 +2,7 @@
   "pages": [
     {
       "id": "page-1",
-      "name": "Lista v1"
+      "name": "v1 — spina dorsale"
     },
     {
       "id": "page-2",
@@ -16,16 +16,34 @@
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "LISTA — chiusa",
+      "title": "1 — LISTA",
       "is_interactive": true
     },
     {
-      "file": "HdrA.dc.html",
+      "file": "Settimana.dc.html",
       "x": 493,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "Con le bevande, versione precedente",
+      "title": "2 — SETTIMANA",
+      "is_interactive": true
+    },
+    {
+      "file": "Piatti.dc.html",
+      "x": 986,
+      "y": 0,
+      "w": 393,
+      "h": 852,
+      "title": "3 — PIATTI",
+      "is_interactive": true
+    },
+    {
+      "file": "Piatto.dc.html",
+      "x": 1479,
+      "y": 0,
+      "w": 393,
+      "h": 852,
+      "title": "4 — PIATTO (dettaglio)",
       "is_interactive": true
     },
     {
@@ -449,8 +467,18 @@
       "page": "page-2"
     },
     {
-      "file": "HdrB.dc.html",
+      "file": "HdrA.dc.html",
       "x": 986,
+      "y": 8480,
+      "w": 393,
+      "h": 852,
+      "title": "HdrA",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "HdrB.dc.html",
+      "x": 1479,
       "y": 8480,
       "w": 393,
       "h": 852,
@@ -460,7 +488,7 @@
     },
     {
       "file": "HdrC.dc.html",
-      "x": 1479,
+      "x": 1972,
       "y": 8480,
       "w": 393,
       "h": 852,
@@ -471,18 +499,32 @@
   ],
   "annotations": [
     {
-      "id": "chiusa",
+      "id": "flusso",
       "x": 0,
-      "y": -390,
+      "y": -330,
       "w": 393,
-      "text": "SCHERMATA LISTA CHIUSA. Scala A: titolo Spesa a 52px, quadrati da 16, colonna del logo alta 36px come la S. Le sei aree fisse sono ortofrutta verde, macelleria e pescheria corallo, latticini uova e salumi azzurro, pasta riso e cereali giallo, dispensa e conserve arancio, surgelati lilla. Le bevande sono uscite: acqua vino birra e succhi in v1 non hanno corsia, il caffe e passato in dispensa. I surgelati stanno nella lista base perche in freezer durano mesi, quindi non sono roba da top-up."
+      "text": "IL FLUSSO. Da destra a sinistra si costruisce, da sinistra a destra si usa. In PIATTO definisci cosa mangi e con quali grammature, in PIATTI li tieni tutti, in SETTIMANA dici quali pasti farai a casa, e da li nasce la LISTA. I tre tab in basso sono Lista, Settimana, Piatti; PIATTO e una schermata di dettaglio quindi non ha i tab ma ha la freccia indietro e i due pulsanti in fondo."
     },
     {
-      "id": "controllo",
+      "id": "settimana",
       "x": 493,
-      "y": -390,
+      "y": -330,
       "w": 393,
-      "text": "La riga di controllo dell olio adesso dice CONTROLLO OGNI 90 GIORNI invece di fingere una stima: e un promemoria a intervallo fisso, non una previsione. Nel frattempo la v1 registra in silenzio cosa compri e quando, cosi il giorno che vorrai affinarlo lo storico c e gia. Accanto e rimasta la versione con le bevande per il confronto."
+      "text": "2 — SETTIMANA. Stessa regola di stato della lista, coerente: cella ACCESA bianca col quadratino scuro significa mangi a casa, cella SPENTA piatta significa fuori. Il tratteggio marca gli slot abitualmente fuori, cioe il pranzo in ufficio dal lunedi al venerdi e la colazione del mercoledi al bar: li vedi ma non li rinneghi ogni settimana. Tocca le celle e guarda il contatore. Il pulsante scuro in fondo e quello che genera la lista. Nota: la metafora rilievo contro incasso che avevamo nella prima versione qui non c e piu, perche il design e diventato piatto: al suo posto acceso contro spento, la stessa dei tessere della lista."
+    },
+    {
+      "id": "piatti",
+      "x": 986,
+      "y": -330,
+      "w": 393,
+      "text": "3 — PIATTI. I filtri per slot funzionano, provali. Ogni scheda porta i puntini colorati delle aree che quel piatto tocca: e un modo per capire a colpo d occhio se un piatto ti fa girare mezzo supermercato o se sta tutto in due corsie. Se filtri su Spuntino compare lo stato vuoto, che e uno dei quattro da disegnare."
+    },
+    {
+      "id": "piatto",
+      "x": 1479,
+      "y": -330,
+      "w": 393,
+      "text": "4 — PIATTO. Il selettore dello slot funziona. Le grammature sono per una porzione: la moltiplicazione per il numero di persone sta nelle impostazioni, non qui, cosi il piatto resta una ricetta e non una quantita. Ogni ingrediente porta il puntino della sua area e si apre sulla schermata Ingrediente, che e nel prossimo blocco. In fondo la riga IN QUESTA SETTIMANA mostra dove finisce davvero il piatto: e la connessione visibile fra repertorio e piano, ed e li che capisci perche una voce entra in lista sei volte e non sette."
     }
   ],
   "launch": {

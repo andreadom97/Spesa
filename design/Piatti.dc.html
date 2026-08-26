@@ -1,0 +1,103 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Plus Jakarta Sans', 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #14163A; } a:hover { opacity: 0.7; }
+    * { box-sizing: border-box; }
+    button { font-family: inherit; border: 0; background: none; padding: 0; cursor: pointer; text-align: left; }
+    .sc::-webkit-scrollbar { width: 0; height: 0; }
+  </style>
+</helmet>
+<div style="width: 393px; height: 852px; display: flex; flex-direction: column; overflow: hidden; background: #F1F0EE;">
+  <div style="padding: 20px 18px 14px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
+    <div style="display: flex; align-items: flex-start; gap: 13px; min-width: 0;"><div style="display: grid; grid-template-columns: repeat(3, 16px); gap: 4px; flex: none; margin-top: 8px;"><div style="width: 16px; height: 16px; border-radius: 4.5px; box-sizing: border-box; background: #F2A465; border: 2px solid #F2A465;"></div><div style="width: 16px; height: 16px; border-radius: 4.5px; box-sizing: border-box; background: #9CC7F2; border: 2px solid #9CC7F2;"></div><div style="width: 16px; height: 16px; border-radius: 4.5px; box-sizing: border-box; background: #A8D96A; border: 2px solid #A8D96A;"></div><div style="width: 16px; height: 16px; border-radius: 4.5px; box-sizing: border-box; background: #B9AEF5; border: 2px solid #B9AEF5;"></div><div style="width: 16px; height: 16px; border-radius: 4.5px; box-sizing: border-box; background: #F5CE5B; border: 2px solid #F5CE5B;"></div><div style="width: 16px; height: 16px; border-radius: 4.5px; box-sizing: border-box; background: #F29B9B; border: 2px solid #F29B9B;"></div></div><span style="font-size: 52px; font-weight: 800; letter-spacing: -0.05em; line-height: 1; color: #14163A;">Piatti</span></div>
+    <button style="width: 44px; height: 44px; margin: -4px -10px 0 0; flex: none; display: flex; align-items: center; justify-content: center;">
+        <svg width="25" height="25" viewBox="0 0 25 25" fill="none"><path d="M3.5 7.2h18M3.5 12.5h18M3.5 17.8h18" stroke="#14163A" stroke-width="2.1" stroke-linecap="round"/></svg>
+      </button>
+  </div>
+
+  <div class="sc" style="padding: 0 16px 12px; overflow-x: auto;">
+    <div style="display: flex; gap: 6px; width: max-content;">
+      <sc-for list="{{filters}}" as="f" hint-placeholder-count="5">
+        <button onClick="{{f.tap}}" style="{{f.style}}">{{f.label}}</button>
+      </sc-for>
+    </div>
+  </div>
+
+  <div class="sc" style="flex: 1; overflow-y: auto; padding: 2px 16px 14px; display: flex; flex-direction: column; gap: 10px;">
+    <sc-for list="{{dishes}}" as="d" hint-placeholder-count="5">
+      <button onClick="{{d.tap}}" style="width: 100%; background: #FFFFFF; border-radius: 20px; border: 1px solid rgba(20,22,58,0.07); padding: 15px 16px; display: flex; align-items: center; gap: 12px;">
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 9px;">
+          <span style="font-size: 19px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.15; color: #14163A;">{{d.nome}}</span>
+          <div style="display: flex; align-items: center; gap: 9px;">
+            <span style="{{d.slotChip}}">{{d.slot}}</span>
+            <div style="display: flex; gap: 3px;">
+              <sc-for list="{{d.aree}}" as="a" hint-placeholder-count="3">
+                <span style="{{a}}"></span>
+              </sc-for>
+            </div>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.09em; color: #A6A6B2;">{{d.meta}}</span>
+          </div>
+        </div>
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M6 3.2 10.4 8 6 12.8" stroke="#A6A6B2" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </sc-for>
+    <sc-if value="{{empty}}" hint-placeholder-val="{{false}}">
+      <div style="padding: 44px 20px; text-align: center;">
+        <div style="font-size: 17px; font-weight: 700; color: #14163A; margin-bottom: 6px;">Nessun piatto qui</div>
+        <div style="font-size: 14px; color: #8A8A96;">Cambia filtro, oppure aggiungine uno.</div>
+      </div>
+    </sc-if>
+  </div>
+
+  <div style="padding: 4px 16px 0;">
+    <button style="width: 100%; height: 54px; border-radius: 18px; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; letter-spacing: 0.09em; background: #14163A; color: #FFFFFF;">+ NUOVO PIATTO</button>
+  </div>
+
+  <div style="display: flex; padding: 10px 16px 20px; gap: 4px;"><div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 8px 0;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M4 6.5h16M4 12h16M4 17.5h11" stroke="#9A9AA6" stroke-width="1.9" stroke-linecap="round"/></svg><span style="font-family: 'JetBrains Mono', monospace; font-size: 8.5px; font-weight: 500; letter-spacing: 0.12em; color: #9A9AA6;">LISTA</span></div><div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 8px 0;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none"><rect x="3.6" y="5" width="16.8" height="15" rx="3" stroke="#9A9AA6" stroke-width="1.8"/><path d="M3.6 10h16.8M9 3.4v3.2M15 3.4v3.2" stroke="#9A9AA6" stroke-width="1.8" stroke-linecap="round"/></svg><span style="font-family: 'JetBrains Mono', monospace; font-size: 8.5px; font-weight: 500; letter-spacing: 0.12em; color: #9A9AA6;">SETTIMANA</span></div><div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 8px 0; border-radius: 14px; background: rgba(20,22,58,0.06);"><svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M5 4.6h9.5a4 4 0 0 1 4 4V20H9a4 4 0 0 1-4-4V4.6Z" stroke="#14163A" stroke-width="1.8" stroke-linejoin="round"/><path d="M8.6 9.2h6.4M8.6 13h4.6" stroke="#14163A" stroke-width="1.8" stroke-linecap="round"/></svg><span style="font-family: 'JetBrains Mono', monospace; font-size: 8.5px; font-weight: 700; letter-spacing: 0.12em; color: #14163A;">PIATTI</span></div></div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":393,"height":852}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { filter: 'TUTTI' }; }
+  data() {
+    return [
+      { nome: 'Yogurt, avena e frutti rossi', slot: 'COLAZIONE', fonte: 'NUTRIZIONISTA', n: 4, aree: ['#9CC7F2','#F5CE5B','#A8D96A','#F2A465'] },
+      { nome: 'Pollo, riso e spinaci', slot: 'CENA', fonte: 'NUTRIZIONISTA', n: 4, aree: ['#F29B9B','#F5CE5B','#A8D96A','#F2A465'] },
+      { nome: 'Pasta al tonno', slot: 'PRANZO', fonte: 'PROPRIO', n: 3, aree: ['#F5CE5B','#F2A465'] },
+      { nome: 'Merluzzo e piselli', slot: 'CENA', fonte: 'PROPRIO', n: 3, aree: ['#B9AEF5','#F2A465'] },
+      { nome: 'Uova e pane integrale', slot: 'COLAZIONE', fonte: 'PROPRIO', n: 2, aree: ['#9CC7F2','#F5CE5B'] }
+    ];
+  }
+  renderVals() {
+    var self = this, f = this.state.filter;
+    var shown = this.data().filter(function (d) { return f === 'TUTTI' || d.slot === f; });
+    var on = "height: 38px; padding: 0 15px; border-radius: 999px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 700; letter-spacing: 0.09em; color: #FFFFFF; background: #14163A;";
+    var off = "height: 38px; padding: 0 15px; border-radius: 999px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 500; letter-spacing: 0.09em; color: #8A8A96; background: #FFFFFF; border: 1px solid rgba(20,22,58,0.09);";
+    return {
+      filters: ['TUTTI','COLAZIONE','PRANZO','CENA','SPUNTINO'].map(function (l) {
+        return { label: l, style: f === l ? on : off, tap: function () { self.setState({ filter: l }); } };
+      }),
+      empty: shown.length === 0,
+      dishes: shown.map(function (d) {
+        return {
+          nome: d.nome, slot: d.slot, meta: d.n + ' INGR. · ' + d.fonte,
+          slotChip: "font-family: 'JetBrains Mono', monospace; font-size: 8.5px; font-weight: 700; letter-spacing: 0.1em; color: #14163A; border: 1px solid rgba(20,22,58,0.18); border-radius: 999px; padding: 4px 8px;",
+          aree: d.aree.map(function (c) { return 'width: 8px; height: 8px; border-radius: 2.6px; display: inline-block; background: ' + c + ';'; }),
+          tap: function () {}
+        };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

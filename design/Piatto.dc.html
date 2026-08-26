@@ -1,0 +1,117 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Plus Jakarta Sans', 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #14163A; } a:hover { opacity: 0.7; }
+    * { box-sizing: border-box; }
+    button { font-family: inherit; border: 0; background: none; padding: 0; cursor: pointer; text-align: left; }
+    .sc::-webkit-scrollbar { width: 0; height: 0; }
+  </style>
+</helmet>
+<div style="width: 393px; height: 852px; display: flex; flex-direction: column; overflow: hidden; background: #F1F0EE;">
+
+  <div style="padding: 18px 16px 6px; display: flex; align-items: center; justify-content: space-between;">
+    <button style="width: 44px; height: 44px; margin-left: -10px; display: flex; align-items: center; justify-content: center;">
+      <svg width="23" height="23" viewBox="0 0 24 24" fill="none"><path d="M14.5 5 7.8 12l6.7 7" stroke="#14163A" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.16em; color: #8A8A96;">PIATTO</span>
+    <button style="width: 44px; height: 44px; margin-right: -10px; display: flex; align-items: center; justify-content: center;">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M4.6 6.6h14.8M9.6 6.6V4.4h4.8v2.2M6.6 6.6l.9 12.2a1.4 1.4 0 0 0 1.4 1.3h6.2a1.4 1.4 0 0 0 1.4-1.3l.9-12.2" stroke="#14163A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </div>
+
+  <div class="sc" style="flex: 1; overflow-y: auto; padding: 6px 16px 14px;">
+    <div style="font-size: 34px; font-weight: 800; letter-spacing: -0.045em; line-height: 1.02; color: #14163A; padding: 0 2px 4px; border-bottom: 1.5px solid rgba(20,22,58,0.14);">Yogurt, avena<br>e frutti rossi</div>
+
+    <div style="display: flex; gap: 6px; margin-top: 16px; flex-wrap: wrap;">
+      <sc-for list="{{slots}}" as="s" hint-placeholder-count="4">
+        <button onClick="{{s.tap}}" style="{{s.style}}">{{s.label}}</button>
+      </sc-for>
+    </div>
+
+    <div style="display: flex; align-items: center; justify-content: space-between; margin: 22px 4px 9px;">
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.16em; color: #14163A;">INGREDIENTI</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #8A8A96;">PER 1 PORZIONE</span>
+    </div>
+
+    <div style="background: #FFFFFF; border-radius: 20px; border: 1px solid rgba(20,22,58,0.07); overflow: hidden;">
+      <sc-for list="{{ingredienti}}" as="i" hint-placeholder-count="4">
+        <button style="{{i.rowStyle}}">
+          <span style="{{i.dot}}"></span>
+          <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-size: 16px; font-weight: 600; letter-spacing: -0.015em; color: #14163A;">{{i.nome}}</span>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 8.5px; letter-spacing: 0.09em; color: #A6A6B2;">{{i.area}}</span>
+          </div>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; color: #14163A;">{{i.qta}}</span>
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M6 3.2 10.4 8 6 12.8" stroke="#C4C4CE" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </sc-for>
+      <button style="width: 100%; display: flex; align-items: center; gap: 11px; padding: 15px 16px; border-top: 1px dashed rgba(20,22,58,0.16);">
+        <span style="width: 22px; height: 22px; border-radius: 7px; border: 1.5px dashed rgba(20,22,58,0.30); display: flex; align-items: center; justify-content: center; flex: none;">
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M6 2v8M2 6h8" stroke="#8A8A96" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </span>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; color: #8A8A96;">AGGIUNGI INGREDIENTE</span>
+      </button>
+    </div>
+
+    <div style="margin: 22px 4px 9px; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.16em; color: #14163A;">IN QUESTA SETTIMANA</div>
+    <div style="display: flex; gap: 5px;">
+      <sc-for list="{{giorni}}" as="g" hint-placeholder-count="7">
+        <span style="{{g.style}}">{{g.label}}</span>
+      </sc-for>
+    </div>
+    <div style="margin: 10px 4px 0; font-size: 13px; line-height: 1.45; color: #8A8A96;">{{riepilogo}}</div>
+  </div>
+
+  <div style="padding: 8px 16px 22px; display: flex; gap: 9px;">
+    <button style="flex: none; width: 104px; height: 54px; border-radius: 18px; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; font-weight: 700; letter-spacing: 0.09em; color: #8A8A96; background: rgba(20,22,58,0.05);">ANNULLA</button>
+    <button style="flex: 1; height: 54px; border-radius: 18px; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; letter-spacing: 0.09em; background: #14163A; color: #FFFFFF;">SALVA PIATTO</button>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":393,"height":852}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { slot: 'COLAZIONE' }; }
+  renderVals() {
+    var self = this;
+    var ing = [
+      { nome: 'Yogurt greco', area: 'LATTICINI, UOVA E SALUMI', col: '#9CC7F2', qta: '150 g' },
+      { nome: "Fiocchi d'avena", area: 'PASTA, RISO E CEREALI', col: '#F5CE5B', qta: '50 g' },
+      { nome: 'Frutti rossi', area: 'ORTOFRUTTA', col: '#A8D96A', qta: '80 g' },
+      { nome: 'Miele', area: 'DISPENSA E CONSERVE', col: '#F2A465', qta: '10 g' }
+    ];
+    var on = "height: 40px; padding: 0 15px; border-radius: 999px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 700; letter-spacing: 0.09em; color: #FFFFFF; background: #14163A;";
+    var off = "height: 40px; padding: 0 15px; border-radius: 999px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 500; letter-spacing: 0.09em; color: #8A8A96; background: #FFFFFF; border: 1px solid rgba(20,22,58,0.09);";
+    var att = [1, 1, 0, 1, 1, 1, 1];
+    var dOn = "width: 100%; text-align: center; padding: 11px 0; border-radius: 12px; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.07em; color: #FFFFFF; background: #14163A;";
+    var dOff = "width: 100%; text-align: center; padding: 11px 0; border-radius: 12px; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.07em; color: #A6A6B2; background: rgba(20,22,58,0.045);";
+    return {
+      slots: ['COLAZIONE','PRANZO','CENA','SPUNTINO'].map(function (l) {
+        return { label: l, style: self.state.slot === l ? on : off, tap: function () { self.setState({ slot: l }); } };
+      }),
+      ingredienti: ing.map(function (i, n) {
+        return {
+          nome: i.nome, area: i.area, qta: i.qta,
+          dot: 'width: 10px; height: 10px; border-radius: 3px; flex: none; background: ' + i.col + ';',
+          rowStyle: 'width: 100%; display: flex; align-items: center; gap: 11px; padding: 14px 16px;' + (n > 0 ? ' border-top: 1px solid rgba(20,22,58,0.06);' : '')
+        };
+      }),
+      giorni: ['LUN','MAR','MER','GIO','VEN','SAB','DOM'].map(function (g, i) {
+        return { label: g, style: att[i] ? dOn : dOff };
+      }),
+      riepilogo: 'Sei colazioni a casa questa settimana, mercoledì sei al bar. Il piatto entra sei volte nella lista.'
+    };
+  }
+}
+</script>
+</body>
+</html>
