@@ -1,0 +1,148 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Plus Jakarta Sans', 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #14163A; } a:hover { opacity: 0.7; }
+    * { box-sizing: border-box; }
+    button { font-family: inherit; border: 0; background: none; padding: 0; cursor: pointer; text-align: left; }
+    .sc::-webkit-scrollbar { width: 0; height: 0; }
+  </style>
+</helmet>
+<div style="width:393px;height:852px;display:flex;flex-direction:column;overflow:hidden;background:#F1F0EE;">
+  <div style="padding:18px 16px 6px;display:flex;align-items:center;justify-content:space-between;">
+    <button style="width:44px;height:44px;margin-left:-10px;display:flex;align-items:center;justify-content:center;">
+      <svg width="23" height="23" viewBox="0 0 24 24" fill="none"><path d="M14.5 5 7.8 12l6.7 7" stroke="#14163A" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.16em;color:#8A8A96;">IMPOSTAZIONI</span>
+    <div style="width:44px;height:44px;"></div>
+  </div>
+
+  <div class="sc" style="flex:1;overflow-y:auto;padding:6px 16px 18px;">
+    <div style="font-size:32px;font-weight:800;letter-spacing:-0.045em;line-height:1;color:#14163A;padding:0 2px 14px;">Impostazioni</div>
+
+    <div style="margin:6px 4px 10px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.16em;color:#14163A;">PORZIONI</div>
+    <div style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:18px;background:#FFFFFF;border:1px solid rgba(20,22,58,0.09);">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:16px;font-weight:700;letter-spacing:-0.02em;color:#14163A;">Per quante persone cucini</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.1em;color:#8A8A96;margin-top:5px;">MOLTIPLICA TUTTE LE GRAMMATURE</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px;flex:none;">
+        <button onClick="{{meno}}" style="width:38px;height:38px;border-radius:12px;background:rgba(20,22,58,0.06);display:flex;align-items:center;justify-content:center;"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3.4 8h9.2" stroke="#14163A" stroke-width="2" stroke-linecap="round"/></svg></button>
+        <span style="width:34px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:19px;font-weight:700;color:#14163A;">{{porzioni}}</span>
+        <button onClick="{{piu}}" style="width:38px;height:38px;border-radius:12px;background:rgba(20,22,58,0.06);display:flex;align-items:center;justify-content:center;"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 3.4v9.2M3.4 8h9.2" stroke="#14163A" stroke-width="2" stroke-linecap="round"/></svg></button>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin:26px 4px 10px;">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.16em;color:#14163A;">I TUOI PASTI</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:0.1em;color:#A6A6B2;">{{npasti}} DI 5</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <sc-for list="{{pasti}}" as="p" hint-placeholder-count="4">
+        <div style="background:#FFFFFF;border-radius:18px;border:1px solid rgba(20,22,58,0.09);overflow:hidden;">
+          <div style="display:flex;align-items:center;gap:11px;padding:13px 14px 11px;">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none"><path d="M6.6 6h6.8M6.6 10h6.8M6.6 14h6.8" stroke="#C4C4CE" stroke-width="1.9" stroke-linecap="round"/></svg>
+            <span style="flex:1;min-width:0;font-size:16px;font-weight:700;letter-spacing:-0.02em;color:#14163A;">{{p.nome}}</span>
+            <button onClick="{{p.su}}" style="width:34px;height:34px;border-radius:11px;background:rgba(20,22,58,0.05);display:flex;align-items:center;justify-content:center;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3.6 10 8 5.6 12.4 10" stroke="#14163A" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            <button onClick="{{p.giu}}" style="width:34px;height:34px;border-radius:11px;background:rgba(20,22,58,0.05);display:flex;align-items:center;justify-content:center;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3.6 6 8 10.4 12.4 6" stroke="#14163A" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          </div>
+          <div style="padding:0 14px 13px;">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:8.5px;letter-spacing:0.11em;color:#A6A6B2;margin-bottom:7px;">ABITUALMENTE FUORI CASA</div>
+            <div style="display:flex;gap:4px;">
+              <sc-for list="{{p.giorni}}" as="g" hint-placeholder-count="7">
+                <button onClick="{{g.tap}}" style="{{g.style}}">{{g.label}}</button>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+      <button style="min-height:52px;display:flex;align-items:center;justify-content:center;gap:9px;border-radius:18px;background:transparent;border:1.5px dashed rgba(20,22,58,0.28);">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="#8A8A96" stroke-width="2.1" stroke-linecap="round"/></svg>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.11em;color:#8A8A96;">AGGIUNGI PASTO</span>
+      </button>
+    </div>
+    <div style="font-size:12.5px;line-height:1.45;color:#8A8A96;margin-top:8px;">Da tre a cinque pasti, nell’ordine in cui li fai. I giorni segnati qui vengono già spenti quando si apre una settimana nuova: nella Settimana correggi solo le eccezioni.</div>
+
+    <div style="margin:26px 4px 10px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.16em;color:#14163A;">SUPERMERCATO</div>
+    <button style="width:100%;display:flex;align-items:center;gap:12px;padding:16px;border-radius:18px;background:#FFFFFF;border:1px solid rgba(20,22,58,0.09);">
+      <div style="display:grid;grid-template-columns:repeat(3,9px);gap:3px;flex:none;">
+        <sc-for list="{{miniAree}}" as="m" hint-placeholder-count="6"><span style="{{m}}"></span></sc-for>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:16px;font-weight:700;letter-spacing:-0.02em;color:#14163A;">Ordine dei reparti</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.1em;color:#8A8A96;margin-top:5px;">{{ordineBreve}}</div>
+      </div>
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M6 3.2 10.4 8 6 12.8" stroke="#C4C4CE" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":393,"height":852}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      porzioni: 1,
+      pasti: [
+        { nome: 'Colazione', fuori: [0,0,1,0,0,0,0] },
+        { nome: 'Spuntino', fuori: [0,0,0,0,0,1,1] },
+        { nome: 'Pranzo', fuori: [1,1,1,1,1,0,0] },
+        { nome: 'Cena', fuori: [0,0,0,0,0,0,0] }
+      ]
+    };
+  }
+  renderVals() {
+    var self = this;
+    var G = ['L','M','M','G','V','S','D'];
+    var AREE = ['#A8D96A','#F29B9B','#9CC7F2','#F5CE5B','#F2A465','#B9AEF5'];
+    var move = function (i, d) {
+      var a = self.state.pasti.slice();
+      var j = i + d;
+      if (j < 0 || j >= a.length) { return; }
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+      self.setState({ pasti: a });
+    };
+    return {
+      porzioni: this.state.porzioni,
+      npasti: this.state.pasti.length,
+      meno: function () { self.setState({ porzioni: Math.max(1, self.state.porzioni - 1) }); },
+      piu: function () { self.setState({ porzioni: Math.min(6, self.state.porzioni + 1) }); },
+      pasti: this.state.pasti.map(function (p, i) {
+        return {
+          nome: p.nome,
+          su: function () { move(i, -1); },
+          giu: function () { move(i, 1); },
+          giorni: p.fuori.map(function (v, gi) {
+            return {
+              label: G[gi],
+              style: "flex:1;height:36px;border-radius:11px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;"
+                + (v ? 'background:#14163A;color:#FFFFFF;' : 'background:rgba(20,22,58,0.05);color:#A6A6B2;'),
+              tap: function () {
+                var a = self.state.pasti.map(function (x, xi) {
+                  if (xi !== i) { return x; }
+                  var f = x.fuori.slice(); f[gi] = f[gi] ? 0 : 1;
+                  return { nome: x.nome, fuori: f };
+                });
+                self.setState({ pasti: a });
+              }
+            };
+          })
+        };
+      }),
+      miniAree: AREE.map(function (c) { return 'width:9px;height:9px;border-radius:2.6px;display:inline-block;background:' + c + ';'; }),
+      ordineBreve: 'ORTOFRUTTA · MACELLERIA · LATTICINI · …'
+    };
+  }
+}
+</script>
+</body>
+</html>

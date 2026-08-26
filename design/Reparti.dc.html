@@ -1,0 +1,103 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Plus Jakarta Sans', 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #14163A; } a:hover { opacity: 0.7; }
+    * { box-sizing: border-box; }
+    button { font-family: inherit; border: 0; background: none; padding: 0; cursor: pointer; text-align: left; }
+    .sc::-webkit-scrollbar { width: 0; height: 0; }
+  </style>
+</helmet>
+<div style="width:393px;height:852px;display:flex;flex-direction:column;overflow:hidden;background:#F1F0EE;">
+  <div style="padding:18px 16px 6px;display:flex;align-items:center;justify-content:space-between;">
+    <button style="width:44px;height:44px;margin-left:-10px;display:flex;align-items:center;justify-content:center;">
+      <svg width="23" height="23" viewBox="0 0 24 24" fill="none"><path d="M14.5 5 7.8 12l6.7 7" stroke="#14163A" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.16em;color:#8A8A96;">IMPOSTAZIONI</span>
+    <div style="width:44px;height:44px;"></div>
+  </div>
+
+  <div class="sc" style="flex:1;overflow-y:auto;padding:6px 16px 18px;">
+    <div style="font-size:32px;font-weight:800;letter-spacing:-0.045em;line-height:1.05;color:#14163A;padding:0 2px;">Ordine<br>dei reparti</div>
+    <div style="font-size:12.5px;line-height:1.45;color:#8A8A96;margin-top:8px; margin:12px 2px 20px;">Mettili nell’ordine in cui li incontri camminando nel tuo supermercato. La lista della spesa comparirà in quest’ordine, così non torni indietro fra le corsie. Le sei aree sono fisse: si cambia solo la sequenza.</div>
+
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <sc-for list="{{reparti}}" as="r" hint-placeholder-count="6">
+        <div style="{{r.rowStyle}}">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:0.06em;color:#A6A6B2;width:16px;flex:none;">{{r.idx}}</span>
+          <svg width="17" height="17" viewBox="0 0 20 20" fill="none"><path d="M6.6 6h6.8M6.6 10h6.8M6.6 14h6.8" stroke="#C4C4CE" stroke-width="1.9" stroke-linecap="round"/></svg>
+          <span style="{{r.dot}}"></span>
+          <span style="flex:1;min-width:0;font-size:15.5px;font-weight:700;letter-spacing:-0.02em;line-height:1.2;color:#14163A;">{{r.nome}}</span>
+          <button onClick="{{r.su}}" style="{{r.suStyle}}"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3.6 10 8 5.6 12.4 10" stroke="#14163A" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button onClick="{{r.giu}}" style="{{r.giuStyle}}"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3.6 6 8 10.4 12.4 6" stroke="#14163A" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="margin:26px 4px 10px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.16em;color:#14163A;">ANTEPRIMA DELLA LISTA</div>
+    <div style="display:flex;gap:5px;align-items:center;padding:15px 16px;border-radius:18px;background:#FFFFFF;border:1px solid rgba(20,22,58,0.09);">
+      <sc-for list="{{anteprima}}" as="a" hint-placeholder-count="6">
+        <span style="{{a}}"></span>
+      </sc-for>
+      <span style="flex:1;"></span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.1em;color:#A6A6B2;">DALL’ALTO IN BASSO</span>
+    </div>
+  </div>
+
+  <div style="padding:8px 16px 22px;">
+    <button style="width:100%;height:54px;border-radius:18px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:0.09em;background:#14163A;box-shadow:0 3px 10px rgba(20,22,58,0.24);color:#FFFFFF;">SALVA ORDINE</button>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":393,"height":852}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { ord: [
+      ['ORTOFRUTTA','#A8D96A'], ['MACELLERIA E PESCHERIA','#F29B9B'], ['LATTICINI, UOVA E SALUMI','#9CC7F2'],
+      ['PASTA, RISO E CEREALI','#F5CE5B'], ['DISPENSA E CONSERVE','#F2A465'], ['SURGELATI','#B9AEF5']
+    ] };
+  }
+  renderVals() {
+    var self = this;
+    var n = this.state.ord.length;
+    var move = function (i, d) {
+      var a = self.state.ord.slice(), j = i + d;
+      if (j < 0 || j >= a.length) { return; }
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+      self.setState({ ord: a });
+    };
+    var btn = function (attivo) {
+      return 'width:34px;height:34px;flex:none;border-radius:11px;display:flex;align-items:center;justify-content:center;'
+        + (attivo ? 'background:rgba(20,22,58,0.06);' : 'background:rgba(20,22,58,0.02);opacity:0.35;');
+    };
+    return {
+      reparti: this.state.ord.map(function (r, i) {
+        return {
+          nome: r[0], idx: (i + 1),
+          rowStyle: 'display:flex;align-items:center;gap:10px;padding:13px 14px;border-radius:16px;background:#FFFFFF;border:1px solid rgba(20,22,58,0.09);',
+          dot: 'width:12px;height:12px;border-radius:4px;flex:none;background:' + r[1] + ';',
+          su: function () { move(i, -1); },
+          giu: function () { move(i, 1); },
+          suStyle: btn(i > 0),
+          giuStyle: btn(i < n - 1)
+        };
+      }),
+      anteprima: this.state.ord.map(function (r) {
+        return 'width:26px;height:11px;border-radius:4px;display:inline-block;background:' + r[1] + ';';
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

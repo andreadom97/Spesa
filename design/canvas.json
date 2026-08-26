@@ -2,7 +2,7 @@
   "pages": [
     {
       "id": "page-1",
-      "name": "v1 — quattro schermate"
+      "name": "v1 completa"
     },
     {
       "id": "page-2",
@@ -25,7 +25,7 @@
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "2 — SETTIMANA  (chiusa)",
+      "title": "2 — SETTIMANA",
       "is_interactive": true
     },
     {
@@ -47,12 +47,30 @@
       "is_interactive": true
     },
     {
-      "file": "CasaBordo.dc.html",
-      "x": 1972,
-      "y": 0,
+      "file": "Ingrediente.dc.html",
+      "x": 0,
+      "y": 1060,
       "w": 393,
       "h": 852,
-      "title": "Prima del fix sul bordo di oggi",
+      "title": "5 — INGREDIENTE",
+      "is_interactive": true
+    },
+    {
+      "file": "Impostazioni.dc.html",
+      "x": 493,
+      "y": 1060,
+      "w": 393,
+      "h": 852,
+      "title": "6 — IMPOSTAZIONI",
+      "is_interactive": true
+    },
+    {
+      "file": "Reparti.dc.html",
+      "x": 986,
+      "y": 1060,
+      "w": 393,
+      "h": 852,
+      "title": "7 — ORDINE DEI REPARTI",
       "is_interactive": true
     },
     {
@@ -604,43 +622,53 @@
       "title": "CasaNuda",
       "is_interactive": true,
       "page": "page-2"
+    },
+    {
+      "file": "CasaBordo.dc.html",
+      "x": 0,
+      "y": 11660,
+      "w": 393,
+      "h": 852,
+      "title": "CasaBordo",
+      "is_interactive": true,
+      "page": "page-2"
     }
   ],
   "annotations": [
     {
-      "id": "chiusa",
+      "id": "v1",
       "x": 0,
-      "y": -420,
+      "y": -330,
       "w": 393,
-      "text": "SETTIMANA CHIUSA. Il segno di OGGI e passato da un contorno disegnato fuori dal riquadro al BORDO del riquadro stesso, 3px nel blu-notte dell app: e esattamente l elemento che l hover ti mostrava tratteggiato. Il contatore 2 su 4 A CASA accanto al nome del giorno e sparito. Resta solo il totale settimanale in fondo, accanto al pulsante. Nel campione oggi e mercoledi ed e selezionato giovedi, cosi vedi il bordo blu su un chip non selezionato."
+      "text": "LA V1 COMPLETA, sette schermate. Sopra i tre tab piu il dettaglio del piatto, sotto le tre di supporto. Tutte con i controlli vivi: prova a cambiare area e classe sull ingrediente, a riordinare i pasti nelle impostazioni e a spostare i reparti."
     },
     {
-      "id": "nota",
+      "id": "ing",
       "x": 493,
-      "y": -420,
+      "y": -330,
       "w": 393,
-      "text": "UN CASO LIMITE, per trasparenza: quando oggi coincide col giorno selezionato, il bordo blu finisce su uno sfondo blu e non si distingue. Non l ho risolto perche quando un giorno e selezionato lo sai gia che ci sei dentro, e aggiungere un secondo segno la dentro voleva dire un anello bianco interno che sporcava. Tocca mercoledi per vederlo e dimmi se ti da fastidio."
+      "text": "5 — INGREDIENTE. E la schermata che spiega il modello del residuo, quindi ogni scelta porta la sua conseguenza scritta sotto invece di lasciarti indovinare. COME SI CONSUMA cambia la spiegazione quando tocchi PORZIONABILE, INTERO o A STIMA: sono i tre comportamenti che avevamo definito. DEPERIBILE non dice solo si o no ma dice dove finisce, in lista BASE o in lista TOP-UP. FORMATO DELLA CONFEZIONE ha la nota che serve: non e quanto ne usi, e quanto ne vendono, ed e il numero da cui nasce tutto il calcolo dei resti."
     },
     {
-      "id": "stato",
+      "id": "imp",
       "x": 986,
-      "y": -420,
+      "y": -330,
       "w": 393,
-      "text": "Le altre scelte sono chiuse cosi: casa blu piena quando mangi a casa, casa bianca col filo di contorno quando mangi fuori, nessun cerchietto, nessun gradiente da nessuna parte, solo ombre. Icona della sezione Piatti: posate. Non me l avevi detta e ho deciso io per non tenerti fermo, si cambia in una riga se preferisci la carota, che trovi in archivio."
+      "text": "6 — IMPOSTAZIONI. I pasti si riordinano con le frecce, da tre a cinque, e sotto ciascuno ci sono i sette giorni per marcare quando quel pasto e ABITUALMENTE fuori: il pranzo e gia acceso da lunedi a venerdi, la colazione solo il mercoledi. E da qui che la Settimana si precompila, cosi ogni lunedi correggi solo le eccezioni invece di rifare tutto. In fondo la voce che porta all ordine dei reparti, con i sei colori in miniatura. Le frecce ci sono anche perche il trascinamento non si puo mostrare in un mockup: nel prodotto vero il trascinamento fara la stessa cosa."
     },
     {
-      "id": "piatto-tessere",
+      "id": "rep",
       "x": 1479,
-      "y": -420,
+      "y": -330,
       "w": 393,
-      "text": "PIATTO RIFATTO A TESSERE. Gli ingredienti non sono piu righe di una lista ma riquadri come nella lista della spesa: due per riga, quantita come pillola tinta nel colore dell area in alto, nome sotto, nome dell area in mono in fondo. Il bordo di ogni tessera porta il colore della sua area, che e la stessa regola della lista. Toccando una tessera si va al dettaglio dell ingrediente. AGGIUNGI INGREDIENTE e diventato una tessera come le altre, stessa altezza, solo tratteggiata fuori e col piu al centro."
+      "text": "7 — ORDINE DEI REPARTI. Sei righe fisse, si sposta solo la sequenza. Sotto c e l anteprima: le sei barrette colorate nell ordine corrente, che e l ordine in cui vedrai i blocchi nella lista della spesa. Sposta un reparto e guarda l anteprima cambiare. E la schermata piu noiosa da costruire e quella che ti fa risparmiare piu tempo in corsia, perche e l unica cosa che adatta l app al TUO supermercato."
     },
     {
-      "id": "mancano",
-      "x": 1972,
-      "y": -420,
+      "id": "resta",
+      "x": 0,
+      "y": -630,
       "w": 393,
-      "text": "MANCANO TRE SCHERMATE alla v1. INGREDIENTE, dove si definiscono unita di misura, area, deperibile, classe del residuo e formato della confezione: e la schermata che si apre toccando una tessera qui. IMPOSTAZIONI, con i pasti da tre a cinque riordinabili, gli slot abitualmente fuori e il moltiplicatore delle porzioni. ORDINE DEI REPARTI, dove si trascinano le sei aree. Piu l azione per sostituire il piatto assegnato a un pasto, che partira dalla Settimana."
+      "text": "COSA RESTA FUORI, per essere espliciti. Gli stati vuoti non sono ancora disegnati: repertorio vuoto al primo avvio, settimana non confermata, lista completata, piatto senza ingredienti. E manca l azione per sostituire il piatto assegnato a un pasto, che parte dalla Settimana e ha bisogno di una schermata di scelta dal repertorio. Nessuna delle due e una sorpresa: erano gia annotate come da fare."
     }
   ],
   "launch": {

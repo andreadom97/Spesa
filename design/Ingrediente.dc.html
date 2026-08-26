@@ -1,0 +1,134 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Plus Jakarta Sans', 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #14163A; } a:hover { opacity: 0.7; }
+    * { box-sizing: border-box; }
+    button { font-family: inherit; border: 0; background: none; padding: 0; cursor: pointer; text-align: left; }
+    .sc::-webkit-scrollbar { width: 0; height: 0; }
+  </style>
+</helmet>
+<div style="width:393px;height:852px;display:flex;flex-direction:column;overflow:hidden;background:#F1F0EE;">
+  <div style="padding:18px 16px 6px;display:flex;align-items:center;justify-content:space-between;">
+    <button style="width:44px;height:44px;margin-left:-10px;display:flex;align-items:center;justify-content:center;">
+      <svg width="23" height="23" viewBox="0 0 24 24" fill="none"><path d="M14.5 5 7.8 12l6.7 7" stroke="#14163A" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.16em;color:#8A8A96;">INGREDIENTE</span>
+    <button style="width:44px;height:44px;margin-right:-10px;display:flex;align-items:center;justify-content:center;">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M4.6 6.6h14.8M9.6 6.6V4.4h4.8v2.2M6.6 6.6l.9 12.2a1.4 1.4 0 0 0 1.4 1.3h6.2a1.4 1.4 0 0 0 1.4-1.3l.9-12.2" stroke="#14163A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </div>
+
+  <div class="sc" style="flex:1;overflow-y:auto;padding:6px 16px 16px;">
+    <div style="font-size:32px;font-weight:800;letter-spacing:-0.045em;line-height:1.05;color:#14163A;padding:0 2px 8px;border-bottom:1.5px solid rgba(20,22,58,0.14);">Yogurt greco</div>
+
+    <div style="margin:22px 4px 10px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.16em;color:#14163A;">AREA DEL SUPERMERCATO</div>
+    <div style="display:grid;grid-template-columns:repeat(2, minmax(0,1fr));gap:8px;">
+      <sc-for list="{{aree}}" as="a" hint-placeholder-count="6">
+        <button onClick="{{a.tap}}" style="{{a.style}}">
+          <span style="{{a.dot}}"></span>
+          <span style="{{a.txt}}">{{a.nome}}</span>
+        </button>
+      </sc-for>
+    </div>
+
+    <div style="margin:24px 4px 10px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.16em;color:#14163A;">UNITÀ DI MISURA</div>
+    <div style="display:flex;gap:7px;">
+      <sc-for list="{{unita}}" as="u" hint-placeholder-count="3">
+        <button onClick="{{u.tap}}" style="{{u.style}}">{{u.label}}</button>
+      </sc-for>
+    </div>
+
+    <div style="margin:24px 4px 10px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.16em;color:#14163A;">FORMATO DELLA CONFEZIONE</div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="flex:1;height:56px;border-radius:16px;background:#FFFFFF;border:1px solid rgba(20,22,58,0.12);display:flex;align-items:center;padding:0 16px;">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:#14163A;">500</span>
+      </div>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:#8A8A96;width:34px;">{{unitaSel}}</span>
+    </div>
+    <div style="font-size:12.5px;line-height:1.45;color:#8A8A96;margin-top:8px;">Quanto ne vendono in una confezione. Serve a sapere quante confezioni comprare, non quanti grammi.</div>
+
+    <div style="margin:24px 4px 10px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.16em;color:#14163A;">COME SI CONSUMA</div>
+    <div style="display:flex;gap:7px;">
+      <sc-for list="{{classi}}" as="c" hint-placeholder-count="3">
+        <button onClick="{{c.tap}}" style="{{c.style}}">{{c.label}}</button>
+      </sc-for>
+    </div>
+    <div style="font-size:12.5px;line-height:1.45;color:#8A8A96;margin-top:8px;">{{spiegaClasse}}</div>
+
+    <div style="margin:24px 4px 10px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.16em;color:#14163A;">DEPERIBILE</div>
+    <button onClick="{{togglePer}}" style="width:100%;display:flex;align-items:center;gap:14px;padding:15px 16px;border-radius:18px;background:#FFFFFF;border:1px solid rgba(20,22,58,0.09);">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:16px;font-weight:700;letter-spacing:-0.02em;color:#14163A;">{{perLabel}}</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.1em;color:#8A8A96;margin-top:5px;">{{perDove}}</div>
+      </div>
+      <span style="{{perTrack}}"><span style="{{perKnob}}"></span></span>
+    </button>
+  </div>
+
+  <div style="padding:8px 16px 22px;display:flex;gap:9px;">
+    <button style="flex:none;width:104px;height:54px;border-radius:18px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;letter-spacing:0.09em;color:#8A8A96;background:rgba(20,22,58,0.05);">ANNULLA</button>
+    <button style="flex:1;height:54px;border-radius:18px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:0.09em;background:#14163A;box-shadow:0 3px 10px rgba(20,22,58,0.24);color:#FFFFFF;">SALVA INGREDIENTE</button>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":393,"height":852}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { area: 2, unita: 'g', classe: 'porzionabile', deper: true }; }
+  rgba(hex, a) {
+    var r = parseInt(hex.substr(1,2),16), g = parseInt(hex.substr(3,2),16), b = parseInt(hex.substr(5,2),16);
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+  }
+  renderVals() {
+    var self = this, rgba = this.rgba.bind(this);
+    var AREE = [['ORTOFRUTTA','#A8D96A'],['MACELLERIA E PESCHERIA','#F29B9B'],['LATTICINI, UOVA E SALUMI','#9CC7F2'],
+                ['PASTA, RISO E CEREALI','#F5CE5B'],['DISPENSA E CONSERVE','#F2A465'],['SURGELATI','#B9AEF5']];
+    var seg = "flex:1;height:46px;border-radius:14px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:0.08em;";
+    var segOn = seg + ' background:#14163A;color:#FFFFFF;';
+    var segOff = seg + ' background:#FFFFFF;border:1px solid rgba(20,22,58,0.09);color:#8A8A96;';
+    var SPIEGA = {
+      porzionabile: 'La confezione copre più pasti. L’app calcola quanto ne resta dopo ogni porzione e lo riporta alla settimana dopo.',
+      intero: 'Si conta a pezzi e non lascia resti frazionari: sei uova sono sei uova.',
+      stima: 'Non vale la pena contarlo a grammi. Ogni 90 giorni dall’ultimo acquisto la lista ti chiede se ne hai ancora.'
+    };
+    return {
+      aree: AREE.map(function (a, i) {
+        var on = self.state.area === i;
+        return {
+          nome: a[0],
+          style: 'display:flex;align-items:center;gap:9px;min-height:52px;padding:11px 12px;border-radius:15px;'
+            + (on ? 'background:' + rgba(a[1], 0.22) + ';border:1.5px solid ' + a[1] + ';' : 'background:#FFFFFF;border:1px solid rgba(20,22,58,0.09);'),
+          dot: 'width:11px;height:11px;border-radius:3.5px;flex:none;background:' + a[1] + ';',
+          txt: "font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:700;letter-spacing:0.09em;line-height:1.45;color:" + (on ? '#14163A' : '#8A8A96') + ';',
+          tap: function () { self.setState({ area: i }); }
+        };
+      }),
+      unita: ['g','ml','pz'].map(function (u) {
+        return { label: u.toUpperCase(), style: self.state.unita === u ? segOn : segOff, tap: function () { self.setState({ unita: u }); } };
+      }),
+      unitaSel: this.state.unita,
+      classi: [['porzionabile','PORZIONABILE'],['intero','INTERO'],['stima','A STIMA']].map(function (c) {
+        return { label: c[1], style: self.state.classe === c[0] ? segOn : segOff, tap: function () { self.setState({ classe: c[0] }); } };
+      }),
+      spiegaClasse: SPIEGA[this.state.classe],
+      perLabel: this.state.deper ? 'Sì, va comprato fresco' : 'No, si conserva a lungo',
+      perDove: this.state.deper ? 'FINISCE NELLA LISTA TOP-UP' : 'FINISCE NELLA LISTA BASE',
+      perTrack: 'width:52px;height:31px;border-radius:999px;flex:none;display:flex;align-items:center;padding:3px;'
+        + (this.state.deper ? 'background:#14163A;justify-content:flex-end;' : 'background:rgba(20,22,58,0.14);justify-content:flex-start;'),
+      perKnob: 'width:25px;height:25px;border-radius:999px;background:#FFFFFF;box-shadow:0 1px 3px rgba(20,22,58,0.28);',
+      togglePer: function () { self.setState({ deper: !self.state.deper }); }
+    };
+  }
+}
+</script>
+</body>
+</html>
