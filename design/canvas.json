@@ -2,7 +2,7 @@
   "pages": [
     {
       "id": "page-1",
-      "name": "Testata B+C+D"
+      "name": "Logo 2x3"
     },
     {
       "id": "page-2",
@@ -11,57 +11,48 @@
   ],
   "artboards": [
     {
-      "file": "LogoPieno.dc.html",
+      "file": "GridMedia.dc.html",
       "x": 0,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "1 — Spenti pieni",
+      "title": "1 — 16px  (allineata al titolo)",
       "is_interactive": true
     },
     {
-      "file": "LogoContorno.dc.html",
+      "file": "GridGrande.dc.html",
       "x": 493,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "2 — Spenti a contorno",
+      "title": "2 — 20px  (sporge sopra e sotto)",
       "is_interactive": true
     },
     {
-      "file": "LogoGraduale.dc.html",
+      "file": "GridTonda.dc.html",
       "x": 986,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "3 — Intensita graduale",
+      "title": "3 — 16px, angoli morbidi",
       "is_interactive": true
     },
     {
-      "file": "LogoBarra.dc.html",
+      "file": "LogoContorno.dc.html",
       "x": 1479,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "4 — Barra continua, a destra",
+      "title": "Colonna 1x6 di prima",
       "is_interactive": true
     },
     {
-      "file": "HdrGriglia.dc.html",
+      "file": "LogoGraduale.dc.html",
       "x": 1972,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "B di prima",
-      "is_interactive": true
-    },
-    {
-      "file": "HdrMono.dc.html",
-      "x": 2465,
-      "y": 0,
-      "w": 393,
-      "h": 852,
-      "title": "D di prima",
+      "title": "La 3 di prima, per la posizione",
       "is_interactive": true
     },
     {
@@ -385,58 +376,91 @@
       "page": "page-2"
     },
     {
-      "file": "HdrAnello.dc.html",
+      "file": "HdrGriglia.dc.html",
       "x": 986,
+      "y": 6360,
+      "w": 393,
+      "h": 852,
+      "title": "HdrGriglia",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "HdrAnello.dc.html",
+      "x": 1479,
       "y": 6360,
       "w": 393,
       "h": 852,
       "title": "HdrAnello",
       "is_interactive": true,
       "page": "page-2"
+    },
+    {
+      "file": "HdrMono.dc.html",
+      "x": 1972,
+      "y": 6360,
+      "w": 393,
+      "h": 852,
+      "title": "HdrMono",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "LogoPieno.dc.html",
+      "x": 0,
+      "y": 7420,
+      "w": 393,
+      "h": 852,
+      "title": "LogoPieno",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "LogoBarra.dc.html",
+      "x": 493,
+      "y": 7420,
+      "w": 393,
+      "h": 852,
+      "title": "LogoBarra",
+      "is_interactive": true,
+      "page": "page-2"
     }
   ],
   "annotations": [
     {
-      "id": "logica",
+      "id": "cosa",
       "x": 0,
       "y": -360,
       "w": 393,
-      "text": "LA LOGICA, uguale in tutte e quattro. Sei quadratini in colonna, uno per reparto, nell ordine fisso giallo pasta, arancio scatolame, lilla bevande, verde ortofrutta, azzurro latticini, corallo macelleria. Un quadratino e ACCESO finche in quel reparto resta qualcosa da prendere, SPENTO quando lo hai finito o quando quel reparto non e in questa spesa. Spento vuol dire li non devi andare. Il conto e su Base e Top-up insieme, cosi il marchio non cambia quando cambi lista: rappresenta tutto il giro. Provalo: spunta le tre voci di un reparto e guarda il quadratino corrispondente spegnersi."
+      "text": "GRIGLIA 2x3 VERTICALE, a sinistra del titolo come nella 3 di prima, quadrati piu grandi, spento a contorno. La logica non cambia: quadratino acceso finche in quel reparto resta qualcosa da prendere, spento quando lo hai finito o quando quel reparto non e in questa spesa. Ordine per righe: giallo pasta e arancio scatolame, poi lilla bevande e verde ortofrutta, poi azzurro latticini e corallo macelleria. Spunta le voci di un reparto e guarda il quadratino svuotarsi."
     },
     {
-      "id": "v1",
+      "id": "g1",
       "x": 493,
       "y": -360,
       "w": 393,
-      "text": "1 — SPENTI PIENI. Il quadratino spento diventa grigio chiaro pieno. E il piu solido come marchio: la colonna resta sempre una colonna compatta di sei blocchi, cambia solo il colore. Rischio: il grigio pieno pesa quanto il colore, quindi lo spegnimento si legge meno da lontano."
+      "text": "1 — 16px, colonna alta 58px. E la misura che si allinea in altezza al titolo su due righe: marchio e testo finiscono alla stessa quota, sopra e sotto. E la piu equilibrata delle tre e quella che rispetta di piu la testata editoriale della D."
     },
     {
-      "id": "v2",
+      "id": "g2",
       "x": 986,
       "y": -360,
       "w": 393,
-      "text": "2 — SPENTI A CONTORNO. Il quadratino spento si svuota e resta solo il contorno sottile. Lo spegnimento si vede molto meglio perche cambia la massa, non solo la tinta: la colonna si alleggerisce mentre fai la spesa. E la piu leggibile delle quattro come indicatore."
+      "text": "2 — 20px, colonna alta 72px. Decisamente piu grande: sporge sopra e sotto rispetto al titolo, quindi il marchio smette di accompagnare il testo e diventa lui il primo elemento della schermata. Il contorno dello spento si legge molto meglio a questa taglia. Rischio: ruba spazio orizzontale al titolo e sbilancia la fascia verso sinistra."
     },
     {
-      "id": "v3",
+      "id": "g3",
       "x": 1479,
       "y": -360,
       "w": 393,
-      "text": "3 — INTENSITA GRADUALE. Non binario: il quadratino sbiadisce in proporzione a quanto resta nel reparto, quindi a meta strada e a meta opacita. Da piu informazione ma e anche la piu difficile da leggere a colpo d occhio, perche distinguere due livelli di opacita e piu lento che distinguere pieno da vuoto."
+      "text": "3 — 16px con angoli molto morbidi, raggio 8 su 16. Stessa misura della 1 ma i quadrati diventano quasi pastiglie e il marchio dialoga con le pillole della quantita e del selettore settimana. Piu coerente col resto dell interfaccia, meno affilato come segno."
     },
     {
-      "id": "v4",
+      "id": "prima",
       "x": 1972,
       "y": -360,
       "w": 393,
-      "text": "4 — BARRA CONTINUA, A DESTRA. I sei quadratini si toccano e formano una colonna unica segmentata, spostata a destra del titolo. Legge piu come marchio e meno come indicatore, e bilancia meglio la testata perche il titolo parte a filo del bordo sinistro. Rischio: segmenti attaccati significa confini meno netti fra reparti."
-    },
-    {
-      "id": "confronto",
-      "x": 2465,
-      "y": -360,
-      "w": 393,
-      "text": "Alla fine della riga sono rimaste la B e la D di prima, da cui viene questa: la griglia sei colori della B, l animazione della C, l impaginazione editoriale della D."
+      "text": "Alla fine della riga: la colonna 1x6 a contorno e la 3 di prima, quella da cui viene la posizione a sinistra del titolo."
     }
   ],
   "launch": {
