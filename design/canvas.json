@@ -2,129 +2,75 @@
   "pages": [
     {
       "id": "page-1",
-      "name": "Confronto"
+      "name": "Protagonista — versioni"
     },
     {
       "id": "page-2",
-      "name": "Archivio direzioni"
+      "name": "Archivio"
     }
   ],
   "artboards": [
     {
-      "file": "RailNumero.dc.html",
+      "file": "HeroNumero.dc.html",
       "x": 0,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "NUOVA 1 — Quantita protagonista",
+      "title": "1 — Numero grande sull eroe",
       "is_interactive": true
     },
     {
-      "file": "RailDestra.dc.html",
+      "file": "HeroDestra.dc.html",
       "x": 493,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "NUOVA 2 — Quantita a destra",
+      "title": "2 — Quantita a destra",
       "is_interactive": true
     },
     {
-      "file": "RailColonna.dc.html",
+      "file": "HeroColonna.dc.html",
       "x": 986,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "NUOVA 3 — Colonna singola",
+      "title": "3 — Eroe piu colonna",
       "is_interactive": true
     },
     {
-      "file": "RailEtichetta.dc.html",
+      "file": "HeroPillola.dc.html",
       "x": 1479,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "NUOVA 4 — Etichetta in alto",
+      "title": "4 — Pillola bianca sul colore",
       "is_interactive": true
     },
     {
-      "file": "RailCollasso.dc.html",
+      "file": "HeroCollasso.dc.html",
       "x": 1972,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "NUOVA 5 — Le prese collassano",
-      "is_interactive": true
-    },
-    {
-      "file": "MagBanda.dc.html",
-      "x": 0,
-      "y": 1060,
-      "w": 393,
-      "h": 852,
-      "title": "PRIMA 1 — Banda colorata",
-      "is_interactive": true
-    },
-    {
-      "file": "MagTinte.dc.html",
-      "x": 493,
-      "y": 1060,
-      "w": 393,
-      "h": 852,
-      "title": "PRIMA 2 — Tessere tinte",
-      "is_interactive": true
-    },
-    {
-      "file": "MagRail.dc.html",
-      "x": 986,
-      "y": 1060,
-      "w": 393,
-      "h": 852,
-      "title": "PRIMA 3 — Rail  ← la scelta",
-      "is_interactive": true
-    },
-    {
-      "file": "MagPillole.dc.html",
-      "x": 1479,
-      "y": 1060,
-      "w": 393,
-      "h": 852,
-      "title": "PRIMA 4 — Tutto a pillole",
+      "title": "5 — Le prese collassano",
       "is_interactive": true
     },
     {
       "file": "MagHero.dc.html",
-      "x": 1972,
+      "x": 0,
       "y": 1060,
       "w": 393,
       "h": 852,
-      "title": "PRIMA 5 — Protagonista pieno",
+      "title": "PARTENZA — Protagonista pieno (col pallino)",
       "is_interactive": true
     },
     {
-      "file": "DirMagazine.dc.html",
-      "x": 0,
-      "y": 2120,
-      "w": 393,
-      "h": 852,
-      "title": "ORIGINE — Magazine I",
-      "is_interactive": true
-    },
-    {
-      "file": "MagBosco.dc.html",
+      "file": "RailCollasso.dc.html",
       "x": 493,
-      "y": 2120,
+      "y": 1060,
       "w": 393,
       "h": 852,
-      "title": "ORIGINE — I.2 Bosco",
-      "is_interactive": true
-    },
-    {
-      "file": "MagScansione.dc.html",
-      "x": 986,
-      "y": 2120,
-      "w": 393,
-      "h": 852,
-      "title": "ORIGINE — I.1 Colonna singola",
+      "title": "Da qui viene il selettore in basso",
       "is_interactive": true
     },
     {
@@ -133,7 +79,7 @@
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "Lista — Tattile",
+      "title": "Main",
       "is_interactive": true,
       "page": "page-2"
     },
@@ -143,7 +89,7 @@
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "Check-in settimanale",
+      "title": "Checkin",
       "is_interactive": true,
       "page": "page-2"
     },
@@ -153,146 +99,277 @@
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "Repertorio piatti",
+      "title": "Repertorio",
       "is_interactive": true,
       "page": "page-2"
     },
     {
       "file": "DirFramed.dc.html",
-      "x": 0,
-      "y": 1060,
+      "x": 1479,
+      "y": 0,
       "w": 393,
       "h": 852,
-      "title": "A — Tecnico incorniciato",
+      "title": "DirFramed",
       "is_interactive": true,
       "page": "page-2"
     },
     {
       "file": "DirCalma.dc.html",
-      "x": 493,
-      "y": 1060,
+      "x": 1972,
+      "y": 0,
       "w": 393,
       "h": 852,
-      "title": "B — Minimale calmo",
+      "title": "DirCalma",
       "is_interactive": true,
       "page": "page-2"
     },
     {
       "file": "DirPaper.dc.html",
-      "x": 986,
+      "x": 0,
       "y": 1060,
       "w": 393,
       "h": 852,
-      "title": "C — Paper SaaS arancio",
+      "title": "DirPaper",
       "is_interactive": true,
       "page": "page-2"
     },
     {
       "file": "DirEditoriale.dc.html",
-      "x": 0,
-      "y": 2120,
+      "x": 493,
+      "y": 1060,
       "w": 393,
       "h": 852,
-      "title": "D — Editoriale oversize",
+      "title": "DirEditoriale",
       "is_interactive": true,
       "page": "page-2"
     },
     {
       "file": "DirAnnidato.dc.html",
-      "x": 493,
-      "y": 2120,
+      "x": 986,
+      "y": 1060,
       "w": 393,
       "h": 852,
-      "title": "E — Contenitori annidati",
+      "title": "DirAnnidato",
       "is_interactive": true,
       "page": "page-2"
     },
     {
       "file": "DirNotte.dc.html",
-      "x": 986,
-      "y": 2120,
+      "x": 1479,
+      "y": 1060,
       "w": 393,
       "h": 852,
-      "title": "F — Notte blu",
+      "title": "DirNotte",
       "is_interactive": true,
       "page": "page-2"
     },
     {
       "file": "DirBrutale.dc.html",
-      "x": 0,
-      "y": 3180,
+      "x": 1972,
+      "y": 1060,
       "w": 393,
       "h": 852,
-      "title": "G — Brutalista",
+      "title": "DirBrutale",
       "is_interactive": true,
       "page": "page-2"
     },
     {
       "file": "DirDither.dc.html",
-      "x": 493,
-      "y": 3180,
+      "x": 0,
+      "y": 2120,
       "w": 393,
       "h": 852,
-      "title": "H — Dither laser",
+      "title": "DirDither",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "DirMagazine.dc.html",
+      "x": 493,
+      "y": 2120,
+      "w": 393,
+      "h": 852,
+      "title": "DirMagazine",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "MagScansione.dc.html",
+      "x": 986,
+      "y": 2120,
+      "w": 393,
+      "h": 852,
+      "title": "MagScansione",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "MagBosco.dc.html",
+      "x": 1479,
+      "y": 2120,
+      "w": 393,
+      "h": 852,
+      "title": "MagBosco",
       "is_interactive": true,
       "page": "page-2"
     },
     {
       "file": "MagGhiaccio.dc.html",
-      "x": 986,
-      "y": 3180,
+      "x": 1972,
+      "y": 2120,
       "w": 393,
       "h": 852,
-      "title": "I.3 — Ghiaccio",
+      "title": "MagGhiaccio",
       "is_interactive": true,
       "page": "page-2"
     },
     {
       "file": "MagNotte.dc.html",
+      "x": 0,
+      "y": 3180,
+      "w": 393,
+      "h": 852,
+      "title": "MagNotte",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "MagBanda.dc.html",
+      "x": 493,
+      "y": 3180,
+      "w": 393,
+      "h": 852,
+      "title": "MagBanda",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "MagTinte.dc.html",
+      "x": 986,
+      "y": 3180,
+      "w": 393,
+      "h": 852,
+      "title": "MagTinte",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "MagRail.dc.html",
       "x": 1479,
       "y": 3180,
       "w": 393,
       "h": 852,
-      "title": "I.4 — Notte e ambra",
+      "title": "MagRail",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "MagPillole.dc.html",
+      "x": 1972,
+      "y": 3180,
+      "w": 393,
+      "h": 852,
+      "title": "MagPillole",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "RailNumero.dc.html",
+      "x": 0,
+      "y": 4240,
+      "w": 393,
+      "h": 852,
+      "title": "RailNumero",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "RailDestra.dc.html",
+      "x": 493,
+      "y": 4240,
+      "w": 393,
+      "h": 852,
+      "title": "RailDestra",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "RailColonna.dc.html",
+      "x": 986,
+      "y": 4240,
+      "w": 393,
+      "h": 852,
+      "title": "RailColonna",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "RailEtichetta.dc.html",
+      "x": 1479,
+      "y": 4240,
+      "w": 393,
+      "h": 852,
+      "title": "RailEtichetta",
       "is_interactive": true,
       "page": "page-2"
     }
   ],
   "annotations": [
     {
-      "id": "riga1",
+      "id": "stato",
       "x": 0,
       "y": -330,
       "w": 393,
-      "text": "RIGA 1 — IL BATCH NUOVO, senza pallino. Tessera accesa = da prendere, tessera spenta e depennata = presa, tap come interruttore. Cambia solo l uso dello spazio liberato e il selettore in basso."
+      "text": "REGOLA DI STATO. Niente pallino. Tessera ACCESA = da prendere, tessera SPENTA e depennata = presa, tap come interruttore. Sulla voce protagonista la regola e letterale: accesa ha il colore pieno del reparto, presa il colore si SVUOTA e resta una tessera grigia depennata. Due voci partono gia prese, una normale e una protagonista, cosi vedi entrambe le transizioni."
     },
     {
-      "id": "drift",
+      "id": "selettore",
       "x": 493,
       "y": -330,
       "w": 393,
-      "text": "IL DRIFT, da guardare prima di scegliere. Rifacendo questo batch e sparita da TUTTE E CINQUE la voce protagonista a tutta larghezza: nel magazine ogni reparto apriva con una voce piu grande delle altre, qui tutte le tessere pesano uguale. E la ragione per cui le nuove sembrano una lista normale e non piu la direzione che avevi scelto. Non e voluto, e una perdita."
+      "text": "SELETTORE IN BASSO, uguale in tutte e cinque: quello della NUOVA 5 che hai indicato. La lista attiva e un blocco scuro largo con quante voci restano DA PRENDERE, l altra si riduce a un chip col solo numero. Asimmetrico di proposito: dice dove sei e quanto manca."
     },
     {
-      "id": "drift5",
+      "id": "v1",
       "x": 986,
       "y": -330,
       "w": 393,
-      "text": "COSA CAMBIA IN PIU NELLA 5. Oltre alla perdita sopra: la tessera presa cambia forma e altezza invece di restare uguale, e il selettore diventa asimmetrico, un blocco grande piu un chip. Sono due scostamenti veri dalla PRIMA 3. L idea della lista che si accorcia resta ottima: si puo tenere quella e riportare dentro il protagonista e un selettore simmetrico."
+      "text": "1 — NUMERO GRANDE SULL EROE. Lo spazio del pallino va al numero. Sulla voce protagonista 1 conf sale a 22px in blu-notte sul colore pieno: e il contrasto piu forte della schermata. Sulle tessere piccole resta a 15px. La riga del residuo sopravvive ovunque."
     },
     {
-      "id": "riga2",
-      "x": 0,
-      "y": 905,
+      "id": "v2",
+      "x": 1479,
+      "y": -330,
       "w": 393,
-      "text": "RIGA 2 — QUELLE DI PRIMA, il batch da cui avevi scelto. Hanno ancora il pallino e la voce protagonista. La terza e quella che avevi indicato: e il metro di paragone."
+      "text": "2 — QUANTITA A DESTRA. Tutto diventa riga: nome a sinistra, quantita a destra, anche la protagonista che resta a colore pieno ma bassa e larga. La piu compatta. Prezzo dichiarato: sparisce la riga del residuo, qui non entra. Se il residuo conta, questa e la piu debole."
     },
     {
-      "id": "riga3",
-      "x": 0,
-      "y": 1965,
+      "id": "v3",
+      "x": 1972,
+      "y": -330,
       "w": 393,
-      "text": "RIGA 3 — LA GENEALOGIA, per vedere da dove viene la direzione: il magazine originale con l arancio bruciato, la palette bosco che hai scelto, e la versione a colonna singola."
+      "text": "3 — EROE PIU COLONNA. Ritmo misto: la protagonista resta un blocco alto a colore pieno col nome a 27px, tutte le altre diventano righe a tutta larghezza sotto di lei. La piu vicina allo spirito del magazine e insieme la piu scandibile, perche sotto l eroe si legge dall alto in basso."
+    },
+    {
+      "id": "v4",
+      "x": 0,
+      "y": -630,
+      "w": 393,
+      "text": "4 — PILLOLA BIANCA SUL COLORE. La quantita sale in cima come pillola: bianca sulla protagonista a colore pieno, tinta nel colore del reparto sulle altre. Il nome sotto cresce. La piu vicina al linguaggio a componenti del riferimento, e la piu ordinata: la quantita si legge sempre nello stesso punto."
+    },
+    {
+      "id": "v5",
+      "x": 493,
+      "y": -630,
+      "w": 393,
+      "text": "5 — LE PRESE COLLASSANO. La versione che avevi indicato, riportata su questa direzione. Una voce presa si accorcia a una striscia bassa a tutta larghezza, protagonista compresa. La lista si accorcia mentre fai la spesa. Rispetto alla NUOVA 5 di prima qui la voce protagonista c e: era la cosa che si era persa."
+    },
+    {
+      "id": "partenza",
+      "x": 986,
+      "y": -630,
+      "w": 393,
+      "text": "Sotto: a sinistra la versione di partenza col pallino per il confronto diretto, accanto la NUOVA 5 da cui viene il selettore. La testata in cima e ancora quella vecchia in tutte, come d accordo."
     }
   ],
   "launch": {
