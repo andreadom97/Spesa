@@ -2,7 +2,7 @@
   "pages": [
     {
       "id": "page-1",
-      "name": "v1 — tutto"
+      "name": "Logo — logica"
     },
     {
       "id": "page-2",
@@ -16,106 +16,115 @@
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "1 — LISTA",
+      "title": "1 — Inversione (come chiesto)",
       "is_interactive": true
     },
     {
-      "file": "Settimana.dc.html",
+      "file": "ListaPiena.dc.html",
       "x": 493,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "2 — SETTIMANA",
-      "is_interactive": true
-    },
-    {
-      "file": "Piatti.dc.html",
-      "x": 986,
-      "y": 0,
-      "w": 393,
-      "h": 852,
-      "title": "3 — PIATTI",
-      "is_interactive": true
-    },
-    {
-      "file": "Piatto.dc.html",
-      "x": 1479,
-      "y": 0,
-      "w": 393,
-      "h": 852,
-      "title": "4 — PIATTO",
-      "is_interactive": true
-    },
-    {
-      "file": "Ingrediente.dc.html",
-      "x": 1972,
-      "y": 0,
-      "w": 393,
-      "h": 852,
-      "title": "5 — INGREDIENTE",
-      "is_interactive": true
-    },
-    {
-      "file": "Impostazioni.dc.html",
-      "x": 0,
-      "y": 1060,
-      "w": 393,
-      "h": 852,
-      "title": "6 — IMPOSTAZIONI",
-      "is_interactive": true
-    },
-    {
-      "file": "Reparti.dc.html",
-      "x": 493,
-      "y": 1060,
-      "w": 393,
-      "h": 852,
-      "title": "7 — ORDINE REPARTI",
-      "is_interactive": true
-    },
-    {
-      "file": "Scegli.dc.html",
-      "x": 986,
-      "y": 1060,
-      "w": 393,
-      "h": 852,
-      "title": "8 — SCEGLI IL PIATTO",
-      "is_interactive": true
-    },
-    {
-      "file": "VuotoPiatti.dc.html",
-      "x": 0,
-      "y": 2120,
-      "w": 393,
-      "h": 852,
-      "title": "Vuoto — primo avvio",
-      "is_interactive": true
-    },
-    {
-      "file": "VuotoLista.dc.html",
-      "x": 493,
-      "y": 2120,
-      "w": 393,
-      "h": 852,
-      "title": "Vuoto — settimana non confermata",
+      "title": "2 — Mai vuoto",
       "is_interactive": true
     },
     {
       "file": "VuotoFatta.dc.html",
       "x": 986,
-      "y": 2120,
+      "y": 0,
       "w": 393,
       "h": 852,
-      "title": "Vuoto — spesa finita",
+      "title": "Spesa finita, con la 1",
       "is_interactive": true
     },
     {
-      "file": "VuotoPiatto.dc.html",
+      "file": "VuotoLista.dc.html",
+      "x": 1479,
+      "y": 0,
+      "w": 393,
+      "h": 852,
+      "title": "Nessuna lista",
+      "is_interactive": true
+    },
+    {
+      "file": "Settimana.dc.html",
+      "x": 0,
+      "y": 1060,
+      "w": 393,
+      "h": 852,
+      "title": "SETTIMANA",
+      "is_interactive": true
+    },
+    {
+      "file": "Piatti.dc.html",
+      "x": 493,
+      "y": 1060,
+      "w": 393,
+      "h": 852,
+      "title": "PIATTI",
+      "is_interactive": true
+    },
+    {
+      "file": "Piatto.dc.html",
+      "x": 986,
+      "y": 1060,
+      "w": 393,
+      "h": 852,
+      "title": "PIATTO",
+      "is_interactive": true
+    },
+    {
+      "file": "Ingrediente.dc.html",
+      "x": 1479,
+      "y": 1060,
+      "w": 393,
+      "h": 852,
+      "title": "INGREDIENTE",
+      "is_interactive": true
+    },
+    {
+      "file": "Impostazioni.dc.html",
+      "x": 0,
+      "y": 2120,
+      "w": 393,
+      "h": 852,
+      "title": "IMPOSTAZIONI",
+      "is_interactive": true
+    },
+    {
+      "file": "Reparti.dc.html",
+      "x": 493,
+      "y": 2120,
+      "w": 393,
+      "h": 852,
+      "title": "ORDINE REPARTI",
+      "is_interactive": true
+    },
+    {
+      "file": "Scegli.dc.html",
+      "x": 986,
+      "y": 2120,
+      "w": 393,
+      "h": 852,
+      "title": "SCEGLI IL PIATTO",
+      "is_interactive": true
+    },
+    {
+      "file": "VuotoPiatti.dc.html",
       "x": 1479,
       "y": 2120,
       "w": 393,
       "h": 852,
-      "title": "Vuoto — piatto nuovo",
+      "title": "Primo avvio",
+      "is_interactive": true
+    },
+    {
+      "file": "VuotoPiatto.dc.html",
+      "x": 1972,
+      "y": 2120,
+      "w": 393,
+      "h": 852,
+      "title": "Piatto nuovo",
       "is_interactive": true
     },
     {
@@ -681,53 +690,39 @@
   ],
   "annotations": [
     {
-      "id": "riga1",
+      "id": "prova",
       "x": 0,
-      "y": -330,
+      "y": -420,
       "w": 393,
-      "text": "RIGA 1 e 2 — LE OTTO SCHERMATE. Le sette di prima piu la nuova SCEGLI IL PIATTO. Tutte con i controlli vivi."
+      "text": "PROVALE SPUNTANDO. Su entrambe: spunta tutte e quattro le voci di PASTA RISO E CEREALI e guarda il quadratino GIALLO in alto. Poi passa al TOP-UP e finisci un altra area. Sulla 1 il quadrato si accende quando finisci; sulla 2 cambia colore."
     },
     {
-      "id": "scegli",
-      "x": 986,
-      "y": -330,
-      "w": 393,
-      "text": "8 — SCEGLI IL PIATTO. Correzione rispetto a quanto avevo detto io: mandare la freccia della Settimana sul dettaglio del piatto era sbagliato, perche quella schermata e l editor della ricetta e non sa nulla del giovedi. Questa invece e agganciata al pasto: in testa GIOVEDI 4 CENA, il piatto attuale marcato ORA IN PROGRAMMA, e sotto solo i piatti da cena del repertorio. Il pulsante resta spento finche non scegli qualcosa di diverso. La nota in fondo dice la cosa che si teme di piu quando si sostituisce: vale solo per quel giorno, non tocca il repertorio."
-    },
-    {
-      "id": "vuoti",
-      "x": 0,
-      "y": 1790,
-      "w": 393,
-      "text": "RIGA 3 — I QUATTRO STATI VUOTI. Non sono schermate di errore ma i primi momenti dell app, quindi ognuno spiega e propone una sola azione. Dettaglio che li tiene insieme: in tre di questi il marchio in alto e tutto SPENTO, sei caselle a contorno. Coerente con la regola: casella accesa vuol dire che in quell area ti resta qualcosa da prendere, e qui non c e niente da prendere."
-    },
-    {
-      "id": "v-piatti",
+      "id": "v1",
       "x": 493,
-      "y": 1790,
+      "y": -420,
       "w": 393,
-      "text": "PRIMO AVVIO. E la prima cosa che vedi installando l app, quindi non e un vuoto ma un onboarding: spiega cosa e un piatto, mostra il giro in tre passi — piatti, settimana, lista — e dichiara il costo invece di nasconderlo, una ventina di minuti per i primi piatti. Un unica azione: crea il primo piatto."
+      "text": "1 — INVERSIONE, quella che hai chiesto. Quadrato COLORATO uguale area completata, contorno uguale ti manca ancora qualcosa. Il logo si riempie mentre fai la spesa e a fine giro e tutto acceso: la metafora e quella della barra di progresso, che si riempie invece di svuotarsi, ed e la ragione per cui la tua intuizione regge. Il costo, dichiarato: quando apri l app PRIMA di andare a fare la spesa il marchio e tutto vuoto, e quello e il momento in cui apri l app piu spesso. Il vuoto non e sparito, si e spostato."
     },
     {
-      "id": "v-lista",
+      "id": "v2",
       "x": 986,
-      "y": 1790,
+      "y": -420,
       "w": 393,
-      "text": "SETTIMANA NON CONFERMATA. La lista non esiste finche non dici dove mangi. Invece di mostrare una lista vuota, spiega la dipendenza e manda dove serve. SPESA FINITA: e qui che vive CHIUDI LA SPESA, l azione che registra cosa hai comprato e quando. Il riquadro grigio spiega a cosa serve quel dato, cioe al controllo dei 90 giorni, e chiarisce che non finisce da nessun altra parte."
+      "text": "2 — MAI VUOTO. Tre stati invece di due. Quadrato nel colore dell area uguale c e qualcosa da prendere li. Quadrato BLU-NOTTE uguale area finita. Contorno uguale quell area non e in questa spesa, che e l unico caso in cui davvero non c e niente da dire. Cosi il marchio non e mai tutto vuoto finche esiste una lista: parte colorato, e a fine spesa diventa sei quadrati blu, che si legge come tutto fatto. Costo: uno stato in piu da imparare, e il blu-notte non e un colore delle aree quindi va capito che significa finito."
     },
     {
-      "id": "v-piatto",
+      "id": "finita",
       "x": 1479,
-      "y": 1790,
+      "y": -420,
       "w": 393,
-      "text": "PIATTO NUOVO. Il titolo e un segnaposto grigio, nessuno slot e selezionato e il pulsante SALVA e spento: non si salva un piatto senza nome e senza ingredienti. La griglia ha solo la tessera tratteggiata dell aggiungi, con accanto un posto vuoto appena accennato per far capire che ne stanno due per riga. In fondo, al posto dei giorni della settimana, la spiegazione del perche quella sezione e ancora vuota."
+      "text": "SPESA FINITA, aggiornata alla logica 1: il marchio in alto e tutto pieno e il riquadro al centro mostra le sei aree colorate. E il punto in cui la tua inversione da il meglio, perche l app ti si presenta al massimo proprio quando hai finito. Accanto, NESSUNA LISTA resta a contorno in tutte e due le logiche: li non c e nessuna spesa, quindi non c e niente da riempire ne da confermare."
     },
     {
-      "id": "resta",
-      "x": 1972,
-      "y": 1790,
+      "id": "nota",
+      "x": 0,
+      "y": -720,
       "w": 393,
-      "text": "RESTA UNA COSA SOLA, gia annotata e rinviata di proposito: l avviso di conflitto in dispensa quando sostituisci un piatto, del tipo se usi lo yogurt qui non ti resta per la colazione di sabato. Andrebbe sotto la nota della schermata 8. E calcolabile con i dati che abbiamo ma richiede di simulare il residuo in avanti su tutta la settimana: e Fase 3, non v1."
+      "text": "Se scegli la 2, la spesa finita va rifatta col blu-notte al posto dei colori. Se scegli la 1 e tutto gia allineato: Lista, spesa finita e gli altri stati vuoti sono gia coerenti."
     }
   ],
   "launch": {
