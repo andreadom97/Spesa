@@ -1,0 +1,214 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Archivo', 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #2E7D4F; } a:hover { color: #20613B; }
+    * { box-sizing: border-box; }
+    button { font-family: inherit; border: 0; background: none; padding: 0; cursor: pointer; }
+    .scroll::-webkit-scrollbar { width: 0; }
+  </style>
+</helmet>
+<div style="width: 393px; height: 852px; background: #DAD6CE; display: flex; flex-direction: column; overflow: hidden;">
+
+  <div style="padding: 20px 16px 12px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <div style="font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.13em; color: #8A8375;">SETT. 31 AGO — 6 SET</div>
+      <div style="font-size: 27px; font-weight: 700; letter-spacing: -0.025em; color: #17150F;">Spesa</div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 8px; background: linear-gradient(180deg, #E6E2DA, #D5D0C6); border: 1px solid #C2BCB1; box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);">
+      <svg width="9" height="9" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4" stroke="#7C7566" stroke-width="1.6"/></svg>
+      <span style="font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 9.5px; font-weight: 500; letter-spacing: 0.09em; color: #6B6558;">OFFLINE · 3 IN CODA</span>
+    </div>
+  </div>
+
+  <div class="scroll" style="flex: 1; overflow-y: auto; padding: 4px 14px 18px; display: flex; flex-direction: column; gap: 13px;">
+    <sc-for list="{{sections}}" as="sec" hint-placeholder-count="3">
+      <div style="border-radius: 15px; background: linear-gradient(180deg, #FEFDFB, #F5F2EC); border: 1px solid #C9C4B9; box-shadow: inset 0 1px 0 #FFFFFF, 0 1px 2px rgba(40,36,30,0.10), 0 5px 14px rgba(40,36,30,0.07); overflow: hidden;">
+        <div style="padding: 13px 15px 9px; font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.11em; color: #8A8375;">{{sec.rep}}</div>
+
+        <sc-for list="{{sec.items}}" as="item" hint-placeholder-count="3">
+          <div style="{{item.rowStyle}}">
+            <button onClick="{{item.toggle}}" style="{{item.boxStyle}}">
+              <sc-if value="{{item.done}}" hint-placeholder-val="{{true}}">
+                <svg width="17" height="17" viewBox="0 0 20 20" fill="none"><path d="M4.5 10.5 L8.2 14 L15.5 6.4" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </sc-if>
+            </button>
+            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+              <div style="{{item.nameStyle}}">{{item.nome}}</div>
+              <sc-if value="{{item.showSub}}" hint-placeholder-val="{{true}}">
+                <div style="font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 9.5px; letter-spacing: 0.02em; color: #9A9384;">{{item.sub}}</div>
+              </sc-if>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 1px;">
+              <div style="{{item.confStyle}}">{{item.conf}}</div>
+              <div style="font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 10.5px; color: #9A9384;">{{item.qty}}</div>
+            </div>
+          </div>
+        </sc-for>
+
+        <sc-for list="{{sec.controls}}" as="ctl" hint-placeholder-count="1">
+          <div style="{{ctl.wrapStyle}}">
+            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px;">
+              <div style="font-size: 15px; font-weight: 500; color: #17150F;">{{ctl.nome}}</div>
+              <div style="font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 9.5px; letter-spacing: 0.06em; color: #9A9384;">{{ctl.hint}}</div>
+            </div>
+            <div style="display: flex; gap: 7px;">
+              <button onClick="{{ctl.yes}}" style="{{ctl.yesStyle}}">SÌ</button>
+              <button onClick="{{ctl.no}}" style="{{ctl.noStyle}}">NO</button>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="padding: 11px 14px 20px; background: #DAD6CE; border-top: 1px solid #C6C0B5; box-shadow: 0 -6px 16px rgba(40,36,30,0.07);">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px;">
+      <span style="font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.1em; color: #6B6558;">{{progressLabel}}</span>
+      <div style="width: 132px; height: 5px; border-radius: 3px; background: #C6C0B5; box-shadow: inset 0 1px 2px rgba(40,36,30,0.18); overflow: hidden;">
+        <div style="{{progressBar}}"></div>
+      </div>
+    </div>
+    <div style="display: flex; gap: 4px; padding: 4px; border-radius: 14px; background: #CFC9BF; box-shadow: inset 0 2px 4px rgba(40,36,30,0.16), inset 0 -1px 0 rgba(255,255,255,0.45);">
+      <button onClick="{{goBase}}" style="{{baseTabStyle}}">BASE · {{baseCount}}</button>
+      <button onClick="{{goTopup}}" style="{{topupTabStyle}}">TOP-UP · {{topupCount}}</button>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"accent":{"editor":"color","default":"#2E7D4F","options":["#2E7D4F","#1F5F7A","#8A4B1F","#17150F"],"section":"Tema"},"residuo":{"editor":"boolean","default":true,"section":"Contenuto"},"$preview":{"width":393,"height":852}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { tab: 'base', done: { tonno: true, ceci: true }, ctl: {} };
+  }
+
+  data() {
+    return {
+      base: [
+        { rep: 'PASTA, RISO E CEREALI', items: [
+          { id: 'riso', nome: 'Riso Carnaroli', conf: '1 conf', qty: '1000 g', sub: 'serve 820 g · in casa 0 g' },
+          { id: 'avena', nome: "Fiocchi d'avena", conf: '1 conf', qty: '500 g', sub: 'serve 350 g · in casa 90 g' },
+          { id: 'pasta', nome: 'Pasta integrale', conf: '2 conf', qty: '1000 g', sub: '' }
+        ], controls: [] },
+        { rep: 'SCATOLAME E CONSERVE', items: [
+          { id: 'tonno', nome: 'Tonno al naturale', conf: '3 conf', qty: '240 g', sub: '' },
+          { id: 'ceci', nome: 'Ceci lessati', conf: '2 conf', qty: '800 g', sub: '' },
+          { id: 'passata', nome: 'Passata di pomodoro', conf: '1 conf', qty: '700 g', sub: '' }
+        ], controls: [
+          { id: 'olio', nome: "Olio extravergine", hint: 'ULTIMO ACQUISTO 54 GIORNI FA' }
+        ] },
+        { rep: 'BEVANDE', items: [
+          { id: 'caffe', nome: 'Caffè macinato', conf: '1 conf', qty: '250 g', sub: '' }
+        ], controls: [] }
+      ],
+      topup: [
+        { rep: 'LATTICINI E UOVA', items: [
+          { id: 'yogurt', nome: 'Yogurt greco', conf: '2 conf', qty: '1000 g', sub: 'serve 750 g · in casa 50 g' },
+          { id: 'uova', nome: 'Uova', conf: '6 pz', qty: '6 pz', sub: '' }
+        ], controls: [] },
+        { rep: 'MACELLERIA E PESCHERIA', items: [
+          { id: 'pollo', nome: 'Petto di pollo', conf: '1 conf', qty: '700 g', sub: 'serve 640 g · in casa 0 g' },
+          { id: 'salmone', nome: 'Salmone', conf: '2 conf', qty: '300 g', sub: '' }
+        ], controls: [] },
+        { rep: 'ORTOFRUTTA', items: [
+          { id: 'spinaci', nome: 'Spinaci', conf: '2 conf', qty: '400 g', sub: '' },
+          { id: 'mele', nome: 'Mele', conf: '6 pz', qty: '6 pz', sub: '' },
+          { id: 'limoni', nome: 'Limoni', conf: '3 pz', qty: '3 pz', sub: '' }
+        ], controls: [] }
+      ]
+    };
+  }
+
+  countOf(secs) {
+    var n = 0;
+    for (var i = 0; i < secs.length; i++) { n += secs[i].items.length; }
+    return n;
+  }
+
+  renderVals() {
+    var self = this;
+    var accent = this.props.accent || '#2E7D4F';
+    var showRes = this.props.residuo !== false;
+    var d = this.data();
+    var secs = (this.state.tab === 'base') ? d.base : d.topup;
+
+    var rowBase = 'display: flex; align-items: center; gap: 12px; padding: 0 15px; height: 62px; border-top: 1px solid #E7E3DA;';
+    var boxOff = 'width: 31px; height: 31px; flex: none; border-radius: 10px; display: flex; align-items: center; justify-content: center; border: 1px solid #B7B1A4; background: linear-gradient(180deg, #FFFFFF, #EBE7DF); box-shadow: inset 0 1px 0 #FFFFFF, 0 1px 2px rgba(40,36,30,0.14);';
+    var boxOn = 'width: 31px; height: 31px; flex: none; border-radius: 10px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(0,0,0,0.22); background: ' + accent + '; box-shadow: inset 0 1px 0 rgba(255,255,255,0.34), 0 1px 2px rgba(40,36,30,0.20);';
+
+    var total = 0, done = 0;
+    var sections = secs.map(function (s) {
+      var items = s.items.map(function (it) {
+        var isDone = !!self.state.done[it.id];
+        total += 1;
+        if (isDone) { done += 1; }
+        return {
+          nome: it.nome, conf: it.conf, qty: it.qty, sub: it.sub,
+          done: isDone,
+          showSub: showRes && !!it.sub && !isDone,
+          rowStyle: rowBase + (isDone ? ' background: rgba(231,227,218,0.42);' : ''),
+          boxStyle: isDone ? boxOn : boxOff,
+          nameStyle: isDone
+            ? 'font-size: 17px; font-weight: 500; color: #A29B8B; text-decoration: line-through; text-decoration-thickness: 1.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'
+            : 'font-size: 17px; font-weight: 500; color: #17150F; letter-spacing: -0.008em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;',
+          confStyle: isDone
+            ? "font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 13px; font-weight: 500; color: #A29B8B;"
+            : "font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 13px; font-weight: 700; color: #17150F;",
+          toggle: function () {
+            var nd = Object.assign({}, self.state.done);
+            if (nd[it.id]) { delete nd[it.id]; } else { nd[it.id] = true; }
+            self.setState({ done: nd });
+          }
+        };
+      });
+
+      var controls = (s.controls || []).map(function (c) {
+        var ans = self.state.ctl[c.id] || null;
+        var btn = 'width: 62px; height: 46px; border-radius: 11px; font-family: JetBrains Mono, ui-monospace, Menlo, monospace; font-size: 12px; font-weight: 700; letter-spacing: 0.06em;';
+        var btnOff = btn + ' border: 1px solid #B7B1A4; background: linear-gradient(180deg, #FFFFFF, #EBE7DF); box-shadow: inset 0 1px 0 #FFFFFF, 0 1px 2px rgba(40,36,30,0.14); color: #3D392F;';
+        var btnOn = btn + ' border: 1px solid rgba(0,0,0,0.22); background: ' + accent + '; box-shadow: inset 0 1px 0 rgba(255,255,255,0.34), 0 1px 2px rgba(40,36,30,0.20); color: #FFFFFF;';
+        var btnPressed = btn + ' border: 1px solid #BDB7AB; background: #D9D4CA; box-shadow: inset 0 2px 4px rgba(40,36,30,0.20); color: #8A8375;';
+        return {
+          nome: c.nome + ' — ne hai ancora?',
+          hint: c.hint,
+          wrapStyle: 'display: flex; align-items: center; gap: 12px; padding: 13px 15px 15px; border-top: 1px dashed #C9C4B9; background: linear-gradient(180deg, #F0ECE4, #EAE5DC); box-shadow: inset 0 2px 5px rgba(40,36,30,0.09);',
+          yesStyle: ans === 'si' ? btnOn : (ans === 'no' ? btnPressed : btnOff),
+          noStyle: ans === 'no' ? btnOn : (ans === 'si' ? btnPressed : btnOff),
+          yes: function () { var c2 = Object.assign({}, self.state.ctl); c2[c.id] = 'si'; self.setState({ ctl: c2 }); },
+          no: function () { var c2 = Object.assign({}, self.state.ctl); c2[c.id] = 'no'; self.setState({ ctl: c2 }); }
+        };
+      });
+
+      return { rep: s.rep, items: items, controls: controls };
+    });
+
+    var pct = total ? Math.round((done / total) * 100) : 0;
+    var tabOn = "flex: 1; height: 46px; border-radius: 11px; font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 12px; font-weight: 700; letter-spacing: 0.07em; color: #17150F; background: linear-gradient(180deg, #FEFDFB, #F1EDE5); border: 1px solid #C2BCB1; box-shadow: inset 0 1px 0 #FFFFFF, 0 2px 4px rgba(40,36,30,0.16);";
+    var tabOff = "flex: 1; height: 46px; border-radius: 11px; font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 12px; font-weight: 500; letter-spacing: 0.07em; color: #7C7566; background: transparent; border: 1px solid transparent;";
+
+    return {
+      sections: sections,
+      baseCount: this.countOf(d.base),
+      topupCount: this.countOf(d.topup),
+      progressLabel: done + ' / ' + total + ' PRESI',
+      progressBar: 'height: 100%; width: ' + pct + '%; background: ' + accent + '; border-radius: 3px;',
+      baseTabStyle: this.state.tab === 'base' ? tabOn : tabOff,
+      topupTabStyle: this.state.tab === 'topup' ? tabOn : tabOff,
+      goBase: function () { self.setState({ tab: 'base' }); },
+      goTopup: function () { self.setState({ tab: 'topup' }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

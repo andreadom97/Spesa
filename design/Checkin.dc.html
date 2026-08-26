@@ -1,0 +1,144 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Archivo', 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #2E7D4F; } a:hover { color: #20613B; }
+    * { box-sizing: border-box; }
+    button { font-family: inherit; border: 0; background: none; padding: 0; cursor: pointer; }
+  </style>
+</helmet>
+<div style="width: 393px; height: 852px; background: #DAD6CE; display: flex; flex-direction: column; overflow: hidden;">
+
+  <div style="padding: 20px 16px 14px; display: flex; flex-direction: column; gap: 2px;">
+    <div style="font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.13em; color: #8A8375;">31 AGO — 6 SET</div>
+    <div style="font-size: 27px; font-weight: 700; letter-spacing: -0.025em; color: #17150F;">Dove mangi</div>
+    <div style="font-size: 14px; color: #6B6558; margin-top: 3px;">Tocca i pasti che <strong style="font-weight: 600; color: #17150F;">non</strong> farai a casa.</div>
+  </div>
+
+  <div style="flex: 1; padding: 0 14px; overflow-y: auto;">
+    <div style="border-radius: 15px; background: linear-gradient(180deg, #FEFDFB, #F5F2EC); border: 1px solid #C9C4B9; box-shadow: inset 0 1px 0 #FFFFFF, 0 1px 2px rgba(40,36,30,0.10), 0 5px 14px rgba(40,36,30,0.07); padding: 12px 12px 14px;">
+
+      <div style="display: grid; grid-template-columns: 52px repeat(4, minmax(0, 1fr)); gap: 6px; margin-bottom: 7px;">
+        <div></div>
+        <sc-for list="{{slots}}" as="s" hint-placeholder-count="4">
+          <div style="text-align: center; font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 9.5px; font-weight: 700; letter-spacing: 0.09em; color: #8A8375;">{{s}}</div>
+        </sc-for>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <sc-for list="{{rows}}" as="row" hint-placeholder-count="7">
+          <div style="display: grid; grid-template-columns: 52px repeat(4, minmax(0, 1fr)); gap: 6px; align-items: center;">
+            <div style="display: flex; flex-direction: column; gap: 0px;">
+              <span style="font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: #3D392F;">{{row.day}}</span>
+              <span style="font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 10px; color: #A29B8B;">{{row.num}}</span>
+            </div>
+            <sc-for list="{{row.cells}}" as="c" hint-placeholder-count="4">
+              <button onClick="{{c.tap}}" style="{{c.style}}">
+                <sc-if value="{{c.home}}" hint-placeholder-val="{{true}}">
+                  <svg width="17" height="17" viewBox="0 0 20 20" fill="none"><path d="M3.4 8.6 L10 3.4 L16.6 8.6 V16.2 A0.9 0.9 0 0 1 15.7 17.1 H4.3 A0.9 0.9 0 0 1 3.4 16.2 Z" stroke="#17150F" stroke-width="1.7" stroke-linejoin="round"/></svg>
+                </sc-if>
+                <sc-if value="{{c.away}}" hint-placeholder-val="{{true}}">
+                  <div style="{{c.dashStyle}}"></div>
+                </sc-if>
+              </button>
+            </sc-for>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="margin-top: 12px; padding: 0 3px; display: flex; flex-direction: column; gap: 5px;">
+      <div style="font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 9.5px; letter-spacing: 0.07em; color: #8A8375;">CELLA IN RILIEVO = MANGI A CASA</div>
+      <div style="font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 9.5px; letter-spacing: 0.07em; color: #8A8375;">CELLA PREMUTA = FUORI · TRATTEGGIO = ABITUALE</div>
+    </div>
+  </div>
+
+  <div style="padding: 12px 14px 20px; background: #DAD6CE; border-top: 1px solid #C6C0B5; box-shadow: 0 -6px 16px rgba(40,36,30,0.07); display: flex; flex-direction: column; gap: 10px;">
+    <div style="display: flex; align-items: baseline; justify-content: space-between;">
+      <span style="font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.1em; color: #6B6558;">{{countLabel}}</span>
+      <span style="font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 10px; letter-spacing: 0.08em; color: #9A9384;">SU 28</span>
+    </div>
+    <button onClick="{{confirm}}" style="{{confirmStyle}}">{{confirmLabel}}</button>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"accent":{"editor":"color","default":"#2E7D4F","options":["#2E7D4F","#1F5F7A","#8A4B1F","#17150F"],"section":"Tema"},"$preview":{"width":393,"height":852}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    var days = [
+      { day: 'LUN', num: '1' }, { day: 'MAR', num: '2' }, { day: 'MER', num: '3' },
+      { day: 'GIO', num: '4' }, { day: 'VEN', num: '5' }, { day: 'SAB', num: '6' }, { day: 'DOM', num: '7' }
+    ];
+    var cells = {}, habitual = {};
+    for (var d = 0; d < 7; d++) {
+      for (var s = 0; s < 4; s++) {
+        var k = d + '-' + s;
+        cells[k] = 'casa';
+        if (s === 1 && d < 5) { cells[k] = 'fuori'; habitual[k] = true; }
+        if (s === 0 && d === 2) { cells[k] = 'fuori'; habitual[k] = true; }
+        if (s === 2 && (d === 3 || d === 4)) { cells[k] = 'fuori'; }
+      }
+    }
+    this.state = { cells: cells, habitual: habitual, confirmed: false };
+  }
+
+  renderVals() {
+    var self = this;
+    var accent = this.props.accent || '#2E7D4F';
+    var days = [
+      { day: 'LUN', num: '1' }, { day: 'MAR', num: '2' }, { day: 'MER', num: '3' },
+      { day: 'GIO', num: '4' }, { day: 'VEN', num: '5' }, { day: 'SAB', num: '6' }, { day: 'DOM', num: '7' }
+    ];
+
+    var home = 'height: 64px; border-radius: 12px; display: flex; align-items: center; justify-content: center; border: 1px solid #C2BCB1; background: linear-gradient(180deg, #FFFFFF, #F0ECE4); box-shadow: inset 0 1px 0 #FFFFFF, 0 2px 4px rgba(40,36,30,0.15);';
+    var away = 'height: 64px; border-radius: 12px; display: flex; align-items: center; justify-content: center; border: 1px solid #C6C0B5; background: #D5D0C6; box-shadow: inset 0 2px 5px rgba(40,36,30,0.20);';
+    var awayHab = 'height: 64px; border-radius: 12px; display: flex; align-items: center; justify-content: center; border: 1px dashed #B5AEA1; background: #D9D4CB; box-shadow: inset 0 2px 5px rgba(40,36,30,0.13);';
+
+    var count = 0;
+    var rows = days.map(function (dd, di) {
+      var cells = [0, 1, 2, 3].map(function (si) {
+        var k = di + '-' + si;
+        var v = self.state.cells[k];
+        var hab = !!self.state.habitual[k];
+        if (v === 'casa') { count += 1; }
+        return {
+          home: v === 'casa',
+          away: v !== 'casa',
+          style: v === 'casa' ? home : (hab ? awayHab : away),
+          dashStyle: 'width: 15px; height: 2px; border-radius: 2px; background: ' + (hab ? '#B5AEA1' : '#A29B8B') + ';',
+          tap: function () {
+            var nc = Object.assign({}, self.state.cells);
+            nc[k] = (nc[k] === 'casa') ? 'fuori' : 'casa';
+            self.setState({ cells: nc, confirmed: false });
+          }
+        };
+      });
+      return { day: dd.day, num: dd.num, cells: cells };
+    });
+
+    var btn = "width: 100%; height: 54px; border-radius: 14px; font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 12.5px; font-weight: 700; letter-spacing: 0.08em;";
+    return {
+      slots: ['COL', 'PRA', 'CEN', 'SPU'],
+      rows: rows,
+      countLabel: count + ' PASTI A CASA',
+      confirmLabel: this.state.confirmed ? 'SETTIMANA CONFERMATA' : 'CONFERMA E CREA LA LISTA',
+      confirmStyle: this.state.confirmed
+        ? btn + ' border: 1px solid #BDB7AB; background: #D9D4CA; box-shadow: inset 0 2px 4px rgba(40,36,30,0.18); color: #8A8375;'
+        : btn + ' border: 1px solid rgba(0,0,0,0.24); background: ' + accent + '; box-shadow: inset 0 1px 0 rgba(255,255,255,0.30), 0 3px 8px rgba(40,36,30,0.22); color: #FFFFFF;',
+      confirm: function () { self.setState({ confirmed: !self.state.confirmed }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

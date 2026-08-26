@@ -1,0 +1,13 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 393, "h": 852, "title": "Lista della spesa", "is_interactive": true },
+    { "file": "Checkin.dc.html", "x": 493, "y": 0, "w": 393, "h": 852, "title": "Check-in settimanale", "is_interactive": true },
+    { "file": "Repertorio.dc.html", "x": 986, "y": 0, "w": 393, "h": 852, "title": "Repertorio piatti", "is_interactive": true }
+  ],
+  "annotations": [
+    { "id": "zona-pollice", "x": 0, "y": -150, "w": 393, "text": "Tab BASE / TOP-UP in basso, non in alto: su uno schermo da 852px il pollice non arriva al bordo superiore mentre cammini con il carrello. In alto restano solo le informazioni da leggere, in basso tutto quello che si tocca." },
+    { "id": "metafora-premuto", "x": 493, "y": -150, "w": 393, "text": "La metafora fisica porta il significato: cella in rilievo = mangi a casa, cella premuta dentro = pasto fuori. Il tratteggio marca gli slot abitualmente fuori (pranzo in ufficio, colazione al bar del mercoledi) senza doverli rinnegare ogni settimana." },
+    { "id": "residuo-visibile", "x": 986, "y": -150, "w": 393, "text": "La riga piccola sotto il nome sull'artboard Lista (serve 750 g - in casa 50 g) e il modello del residuo reso visibile: e li che si vede se il calcolo porzione-contro-confezione sta dicendo la verita. Si spegne con il tweak Contenuto." }
+  ],
+  "launch": { "view": "canvas" }
+}

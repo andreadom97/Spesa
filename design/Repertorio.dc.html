@@ -1,0 +1,159 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Archivo', 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #2E7D4F; } a:hover { color: #20613B; }
+    * { box-sizing: border-box; }
+    button { font-family: inherit; border: 0; background: none; padding: 0; cursor: pointer; text-align: left; }
+    .noscroll::-webkit-scrollbar { height: 0; width: 0; }
+  </style>
+</helmet>
+<div style="width: 393px; height: 852px; background: #DAD6CE; display: flex; flex-direction: column; overflow: hidden;">
+
+  <div style="padding: 20px 16px 12px; display: flex; align-items: flex-end; justify-content: space-between;">
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <div style="font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.13em; color: #8A8375;">{{headCount}}</div>
+      <div style="font-size: 27px; font-weight: 700; letter-spacing: -0.025em; color: #17150F;">Repertorio</div>
+    </div>
+  </div>
+
+  <div class="noscroll" style="padding: 0 14px 12px; overflow-x: auto;">
+    <div style="display: flex; gap: 6px; padding: 3px; border-radius: 13px; background: #CFC9BF; box-shadow: inset 0 2px 4px rgba(40,36,30,0.16), inset 0 -1px 0 rgba(255,255,255,0.45); width: max-content;">
+      <sc-for list="{{filters}}" as="f" hint-placeholder-count="5">
+        <button onClick="{{f.tap}}" style="{{f.style}}">{{f.label}}</button>
+      </sc-for>
+    </div>
+  </div>
+
+  <div class="noscroll" style="flex: 1; overflow-y: auto; padding: 2px 14px 18px; display: flex; flex-direction: column; gap: 11px;">
+    <sc-for list="{{dishes}}" as="d" hint-placeholder-count="4">
+      <div style="border-radius: 15px; background: linear-gradient(180deg, #FEFDFB, #F5F2EC); border: 1px solid #C9C4B9; box-shadow: inset 0 1px 0 #FFFFFF, 0 1px 2px rgba(40,36,30,0.10), 0 5px 14px rgba(40,36,30,0.07); overflow: hidden;">
+        <button onClick="{{d.tap}}" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 15px;">
+          <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px;">
+            <div style="font-size: 17px; font-weight: 600; color: #17150F; letter-spacing: -0.01em;">{{d.nome}}</div>
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <span style="{{d.slotChip}}">{{d.slot}}</span>
+              <span style="font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 9.5px; letter-spacing: 0.07em; color: #9A9384;">{{d.meta}}</span>
+            </div>
+          </div>
+          <div style="{{d.caretStyle}}">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M4 6.2 L8 10.2 L12 6.2" stroke="#6B6558" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </button>
+
+        <sc-if value="{{d.open}}" hint-placeholder-val="{{true}}">
+          <div style="padding: 3px 15px 15px; background: linear-gradient(180deg, #F1EDE5, #EDE9E0); box-shadow: inset 0 2px 5px rgba(40,36,30,0.09); border-top: 1px dashed #C9C4B9;">
+            <sc-for list="{{d.ingredienti}}" as="ing" hint-placeholder-count="4">
+              <div style="display: flex; align-items: center; gap: 10px; height: 40px; border-bottom: 1px solid rgba(201,196,185,0.55);">
+                <span style="flex: 1; min-width: 0; font-size: 15px; color: #3D392F; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ing.nome}}</span>
+                <span style="{{ing.classChip}}">{{ing.cls}}</span>
+                <span style="font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 13px; font-weight: 700; color: #17150F; min-width: 52px; text-align: right;">{{ing.qta}}</span>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="padding: 12px 14px 20px; background: #DAD6CE; border-top: 1px solid #C6C0B5; box-shadow: 0 -6px 16px rgba(40,36,30,0.07);">
+    <button style="{{addStyle}}">+ NUOVO PIATTO</button>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"accent":{"editor":"color","default":"#2E7D4F","options":["#2E7D4F","#1F5F7A","#8A4B1F","#17150F"],"section":"Tema"},"$preview":{"width":393,"height":852}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { filter: 'TUTTI', open: { d1: true } };
+  }
+
+  data() {
+    return [
+      { id: 'd1', nome: 'Yogurt, avena e frutti rossi', slot: 'COLAZIONE', fonte: 'NUTRIZIONISTA', ing: [
+        { nome: 'Yogurt greco', qta: '150 g', cls: 'PORZ' },
+        { nome: "Fiocchi d'avena", qta: '50 g', cls: 'PORZ' },
+        { nome: 'Frutti rossi', qta: '80 g', cls: 'PORZ' },
+        { nome: 'Miele', qta: '10 g', cls: 'STIMA' }
+      ] },
+      { id: 'd2', nome: 'Pollo, riso e spinaci', slot: 'CENA', fonte: 'NUTRIZIONISTA', ing: [
+        { nome: 'Petto di pollo', qta: '160 g', cls: 'PORZ' },
+        { nome: 'Riso Carnaroli', qta: '80 g', cls: 'PORZ' },
+        { nome: 'Spinaci', qta: '200 g', cls: 'PORZ' },
+        { nome: 'Olio extravergine', qta: '10 g', cls: 'STIMA' }
+      ] },
+      { id: 'd3', nome: 'Pasta al tonno', slot: 'PRANZO', fonte: 'PROPRIO', ing: [
+        { nome: 'Pasta integrale', qta: '90 g', cls: 'PORZ' },
+        { nome: 'Tonno al naturale', qta: '80 g', cls: 'PORZ' },
+        { nome: 'Passata di pomodoro', qta: '100 g', cls: 'PORZ' }
+      ] },
+      { id: 'd4', nome: 'Salmone e patate', slot: 'CENA', fonte: 'PROPRIO', ing: [
+        { nome: 'Salmone', qta: '150 g', cls: 'PORZ' },
+        { nome: 'Patate', qta: '250 g', cls: 'PORZ' },
+        { nome: 'Limone', qta: '1 pz', cls: 'INT' }
+      ] },
+      { id: 'd5', nome: 'Uova e pane integrale', slot: 'COLAZIONE', fonte: 'PROPRIO', ing: [
+        { nome: 'Uova', qta: '2 pz', cls: 'INT' },
+        { nome: 'Pane integrale', qta: '60 g', cls: 'PORZ' }
+      ] }
+    ];
+  }
+
+  renderVals() {
+    var self = this;
+    var accent = this.props.accent || '#2E7D4F';
+    var all = this.data();
+    var f = this.state.filter;
+    var shown = all.filter(function (d) { return f === 'TUTTI' || d.slot === f; });
+
+    var chipOn = "height: 38px; padding: 0 14px; border-radius: 10px; font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 10.5px; font-weight: 700; letter-spacing: 0.07em; color: #17150F; background: linear-gradient(180deg, #FEFDFB, #F1EDE5); border: 1px solid #C2BCB1; box-shadow: inset 0 1px 0 #FFFFFF, 0 2px 4px rgba(40,36,30,0.16);";
+    var chipOff = "height: 38px; padding: 0 14px; border-radius: 10px; font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 10.5px; font-weight: 500; letter-spacing: 0.07em; color: #7C7566; background: transparent; border: 1px solid transparent;";
+
+    var filters = ['TUTTI', 'COLAZIONE', 'PRANZO', 'CENA', 'SPUNTINO'].map(function (label) {
+      return {
+        label: label,
+        style: f === label ? chipOn : chipOff,
+        tap: function () { self.setState({ filter: label }); }
+      };
+    });
+
+    var clsChip = "font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 8.5px; font-weight: 700; letter-spacing: 0.08em; color: #8A8375; border: 1px solid #C9C4B9; border-radius: 5px; padding: 3px 5px;";
+
+    var dishes = shown.map(function (d) {
+      var isOpen = !!self.state.open[d.id];
+      return {
+        nome: d.nome,
+        slot: d.slot,
+        meta: d.fonte + ' · ' + d.ing.length + ' INGR.',
+        open: isOpen,
+        slotChip: "font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 8.5px; font-weight: 700; letter-spacing: 0.09em; color: #FFFFFF; background: " + accent + "; border-radius: 5px; padding: 3px 6px;",
+        caretStyle: 'width: 30px; height: 30px; flex: none; border-radius: 9px; display: flex; align-items: center; justify-content: center; border: 1px solid #C2BCB1; background: linear-gradient(180deg, #FFFFFF, #EDE9E1); box-shadow: inset 0 1px 0 #FFFFFF, 0 1px 2px rgba(40,36,30,0.12); transform: rotate(' + (isOpen ? '180deg' : '0deg') + ');',
+        ingredienti: d.ing.map(function (i) { return { nome: i.nome, qta: i.qta, cls: i.cls, classChip: clsChip }; }),
+        tap: function () {
+          var o = Object.assign({}, self.state.open);
+          if (o[d.id]) { delete o[d.id]; } else { o[d.id] = true; }
+          self.setState({ open: o });
+        }
+      };
+    });
+
+    return {
+      headCount: all.length + ' PIATTI · 23 INGREDIENTI',
+      filters: filters,
+      dishes: dishes,
+      addStyle: "width: 100%; height: 54px; border-radius: 14px; text-align: center; font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 12.5px; font-weight: 700; letter-spacing: 0.08em; color: #3D392F; border: 1px solid #B7B1A4; background: linear-gradient(180deg, #FFFFFF, #EBE7DF); box-shadow: inset 0 1px 0 #FFFFFF, 0 2px 5px rgba(40,36,30,0.15);"
+    };
+  }
+}
+</script>
+</body>
+</html>
