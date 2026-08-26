@@ -2,7 +2,7 @@
   "pages": [
     {
       "id": "page-1",
-      "name": "Settimana — 3 vie"
+      "name": "Settimana — interazione"
     },
     {
       "id": "page-2",
@@ -11,39 +11,39 @@
   ],
   "artboards": [
     {
-      "file": "SetGriglia.dc.html",
+      "file": "IntPillola.dc.html",
       "x": 0,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "A — Griglia densa",
+      "title": "1 — Pillola A CASA / FUORI",
       "is_interactive": true
     },
     {
-      "file": "SetLista.dc.html",
+      "file": "IntIcona.dc.html",
       "x": 493,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "B — Lista per giorno",
+      "title": "2 — Icona di stato a sinistra",
       "is_interactive": true
     },
     {
-      "file": "SetIbrida.dc.html",
+      "file": "IntModalita.dc.html",
       "x": 986,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "C — Striscia + giorno",
+      "title": "3 — Modalita check-in",
       "is_interactive": true
     },
     {
-      "file": "Settimana.dc.html",
+      "file": "SetIbrida.dc.html",
       "x": 1479,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "La versione che hai criticato",
+      "title": "La C di prima (tap = spegne)",
       "is_interactive": true
     },
     {
@@ -522,50 +522,80 @@
       "title": "HdrC",
       "is_interactive": true,
       "page": "page-2"
+    },
+    {
+      "file": "Settimana.dc.html",
+      "x": 0,
+      "y": 9540,
+      "w": 393,
+      "h": 852,
+      "title": "Settimana",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "SetGriglia.dc.html",
+      "x": 493,
+      "y": 9540,
+      "w": 393,
+      "h": 852,
+      "title": "SetGriglia",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "SetLista.dc.html",
+      "x": 986,
+      "y": 9540,
+      "w": 393,
+      "h": 852,
+      "title": "SetLista",
+      "is_interactive": true,
+      "page": "page-2"
     }
   ],
   "annotations": [
     {
       "id": "comune",
       "x": 0,
-      "y": -390,
+      "y": -420,
       "w": 393,
-      "text": "COSA CAMBIA IN TUTTE E TRE. Uno stato spento solo, niente piu tratteggio: abitualmente fuori e un impostazione, non uno stato della settimana, e va nella schermata impostazioni invece di ripetersi a schermo. Il quadratino blu senza significato e sparito. I pasti sono quattro ma NON sono l elenco fisso di prima: sono una lista ordinata dall utente, da tre a cinque, e infatti qui lo SPUNTINO sta fra colazione e pranzo come avevi detto tu. E soprattutto adesso si vede COSA mangi: Settimana non e piu solo un check-in, e il piano alimentare."
+      "text": "COMUNE A TUTTE E TRE. Il tap sul corpo della scheda adesso APRE il piatto, come ti aspettavi: non spegne piu. E sono arrivate le frecce accanto al nome del giorno, perche lo swipe da solo non lo scopre nessuno. Nel prodotto vero lo scorrimento orizzontale sul contenuto fara la stessa cosa delle frecce; qui funzionano le frecce. Nota che i chip dei giorni restano: frecce e chip sono due strade allo stesso posto, una per andare al giorno dopo e una per saltare al sabato."
     },
     {
-      "id": "a",
+      "id": "v1",
       "x": 493,
-      "y": -390,
+      "y": -420,
       "w": 393,
-      "text": "A — GRIGLIA DENSA. Tiene la settimana intera a colpo d occhio. I nomi dei giorni sono cresciuti a 14px in grassetto col numero sotto, quindi non sono piu schiacciati dai quadratoni. Nella cella accesa ci sono i puntini delle aree del piatto: non il nome, perche in 73px non ci sta. Limite dichiarato: sai che colori tocchi ma non che piatto e, e con cinque pasti le celle si stringono ancora."
+      "text": "1 — PILLOLA A CASA / FUORI. A destra di ogni scheda una pillola che dice lo stato corrente e lo ribalta al tocco, con la freccia sotto per aprire il piatto. Due bersagli distinti, un tap ciascuno, e lo stato e scritto a parole invece che dedotto da un colore. E la piu esplicita: nessuno deve indovinare niente. Costo: la pillola ruba larghezza al nome del piatto, che si tronca prima."
     },
     {
-      "id": "b",
+      "id": "v2",
       "x": 986,
-      "y": -390,
+      "y": -420,
       "w": 393,
-      "text": "B — LISTA PER GIORNO. Sette schede, una per giorno, e dentro ogni pasto con il NOME del piatto per esteso. Si legge tutto, niente compromessi sui nomi, e regge tre come cinque pasti senza stringersi. Tocca la riga per spegnere il pasto, la freccia a destra apre il piatto. Limite: perdi la settimana a colpo d occhio, devi scorrere."
+      "text": "2 — ICONA DI STATO A SINISTRA. Una colonna stretta a sinistra con la casetta quando sei a casa e la croce quando sei fuori: tocchi li e ribalti. L occhio parte da sinistra, quindi il controllo e nel punto dove lo sguardo arriva per primo, e il nome del piatto resta lungo quanto puo. Costo: la casetta e la croce vanno imparate una volta, mentre A CASA e FUORI si leggono e basta."
     },
     {
-      "id": "c",
+      "id": "v3",
       "x": 1479,
-      "y": -390,
+      "y": -420,
       "w": 393,
-      "text": "C — STRISCIA PIU GIORNO. In alto i sette giorni come chip, con dentro un puntino per pasto acceso: la settimana a colpo d occhio in 60px di altezza. Sotto il giorno selezionato aperto per intero, con nome del piatto a 18px e i puntini delle aree. Tocca un chip per cambiare giorno, tocca una scheda per spegnere il pasto, la freccia apre il piatto. E l unica che tiene insieme la visione d insieme e il dettaglio."
+      "text": "3 — MODALITA CHECK-IN. Fuori modalita il tap apre sempre il piatto e non si spegne niente. Il pulsante SEGNA I PASTI FUORI CASA entra in una modalita dove le schede si bordano e il tap le spegne, e si esce con FINE. E la piu pulita nell uso quotidiano, perche non c e nessun controllo di stato a occupare spazio, ed e la piu veloce nel check-in di inizio settimana, perche un tap per pasto senza mirare. Costo: introduce il concetto di modalita, che e la cosa che gli utenti dimenticano di lasciare. Qui parte gia dentro la modalita cosi la vedi."
     },
     {
-      "id": "aperto",
+      "id": "giudizio",
       "x": 0,
-      "y": -690,
+      "y": -720,
       "w": 393,
-      "text": "RESTA APERTO, e va deciso prima di costruire il resto: il tap che spegne e la freccia che apre sono due bersagli nella stessa riga. Funziona, ma la pressione lunga che avevi proposto per cambiare piatto non l ho messa: su mobile e poco scopribile e non si vede in un mockup. Al suo posto la freccia porta al piatto, e da li si potra cambiarlo. L avviso sulla dispensa quando cambi un piatto e una buona idea ma e roba da Fase 3: serve simulare il residuo in avanti su tutta la settimana."
+      "text": "Se devo scegliere: la 2. La 1 e la piu chiara ma sacrifica il nome del piatto, che e l informazione per cui questa schermata esiste. La 3 e la piu elegante ma una modalita su una schermata che apri ogni giorno e un rischio: la si dimentica accesa. La 2 tiene il controllo a un tap, non ruba larghezza e non introduce stati nascosti; l unico prezzo e imparare due icone, che si impara una volta sola."
     },
     {
       "id": "altre",
       "x": 493,
-      "y": -690,
+      "y": -720,
       "w": 393,
-      "text": "Sotto: le tre schermate gia chiuse, Lista Piatti e Piatto, per verificare che la Settimana che scegli parli la stessa lingua."
+      "text": "Sotto: le altre tre schermate chiuse, per verificare la coerenza. Piatto e ancora quello di prima e andra aggiornato: e da li che si sostituira il piatto del pasto."
     }
   ],
   "launch": {

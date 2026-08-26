@@ -1,0 +1,195 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Plus Jakarta Sans', 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #14163A; } a:hover { opacity: 0.7; }
+    * { box-sizing: border-box; }
+    button { font-family: inherit; border: 0; background: none; padding: 0; cursor: pointer; text-align: left; }
+    .sc::-webkit-scrollbar { width: 0; height: 0; }
+  </style>
+</helmet>
+<div style="width:393px;height:852px;display:flex;flex-direction:column;overflow:hidden;background:#F1F0EE;">
+  <div style="padding: 20px 18px 12px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
+    <div style="display: flex; align-items: flex-start; gap: 13px; min-width: 0;"><div style="display: grid; grid-template-columns: repeat(3, 16px); gap: 4px; flex: none; margin-top: 8px;"><div style="width:16px;height:16px;border-radius:4.5px;box-sizing:border-box;background:#F2A465;border:2px solid #F2A465;"></div><div style="width:16px;height:16px;border-radius:4.5px;box-sizing:border-box;background:#9CC7F2;border:2px solid #9CC7F2;"></div><div style="width:16px;height:16px;border-radius:4.5px;box-sizing:border-box;background:#A8D96A;border:2px solid #A8D96A;"></div><div style="width:16px;height:16px;border-radius:4.5px;box-sizing:border-box;background:#B9AEF5;border:2px solid #B9AEF5;"></div><div style="width:16px;height:16px;border-radius:4.5px;box-sizing:border-box;background:#F5CE5B;border:2px solid #F5CE5B;"></div><div style="width:16px;height:16px;border-radius:4.5px;box-sizing:border-box;background:#F29B9B;border:2px solid #F29B9B;"></div></div><span style="font-size:52px;font-weight:800;letter-spacing:-0.05em;line-height:1;color:#14163A;">Settimana</span></div>
+    <button style="width:44px;height:44px;margin:-4px -10px 0 0;flex:none;display:flex;align-items:center;justify-content:center;">
+        <svg width="25" height="25" viewBox="0 0 25 25" fill="none"><path d="M3.5 7.2h18M3.5 12.5h18M3.5 17.8h18" stroke="#14163A" stroke-width="2.1" stroke-linecap="round"/></svg>
+      </button>
+  </div>
+
+
+  <div style="padding:2px 16px 14px;">
+    <div style="display:flex;gap:3px;">
+      <sc-for list="{{strip}}" as="s" hint-placeholder-count="7">
+        <button onClick="{{s.tap}}" style="{{s.style}}">
+          <span style="{{s.dayStyle}}">{{s.day}}</span>
+          <span style="{{s.numStyle}}">{{s.num}}</span>
+          <div style="display:flex;gap:2px;margin-top:5px;">
+            <sc-for list="{{s.dots}}" as="dt" hint-placeholder-count="4">
+              <span style="{{dt}}"></span>
+            </sc-for>
+          </div>
+        </button>
+      </sc-for>
+    </div>
+  </div>
+
+  <div class="sc" style="flex:1;overflow-y:auto;padding:0 16px 12px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 0 10px;">
+      <button onClick="{{prev}}" style="width:36px;height:36px;flex:none;border-radius:999px;background:rgba(20,22,58,0.05);display:flex;align-items:center;justify-content:center;"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 3.2 5.6 8 10 12.8" stroke="#14163A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <div style="flex:1;min-width:0;display:flex;align-items:baseline;justify-content:center;gap:9px;">
+        <span style="font-size:21px;font-weight:800;letter-spacing:-0.035em;color:#14163A;">{{titoloGiorno}}</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:0.11em;color:#8A8A96;">{{metaGiorno}}</span>
+      </div>
+      <button onClick="{{next}}" style="width:36px;height:36px;flex:none;border-radius:999px;background:rgba(20,22,58,0.05);display:flex;align-items:center;justify-content:center;"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M6 3.2 10.4 8 6 12.8" stroke="#14163A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:9px;">
+      <sc-for list="{{pasti}}" as="p" hint-placeholder-count="4">
+        <div style="{{p.cardStyle}}">
+          <button onClick="{{p.tap}}" style="{{p.iconBtn}}">
+            <sc-if value="{{p.on}}" hint-placeholder-val="{{true}}">
+              <svg width="17" height="17" viewBox="0 0 20 20" fill="none"><path d="M3.4 8.6 10 3.4l6.6 5.2v7.6a0.9 0.9 0 0 1-0.9 0.9H4.3a0.9 0.9 0 0 1-0.9-0.9Z" stroke="#FFFFFF" stroke-width="1.8" stroke-linejoin="round"/></svg>
+            </sc-if>
+            <sc-if value="{{p.off}}" hint-placeholder-val="{{false}}">
+              <svg width="15" height="15" viewBox="0 0 20 20" fill="none"><path d="M5.4 5.4 14.6 14.6M14.6 5.4 5.4 14.6" stroke="#A6A6B2" stroke-width="2.1" stroke-linecap="round"/></svg>
+            </sc-if>
+          </button>
+          <button style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;padding:13px 0;">
+            <span style="{{p.labelStyle}}">{{p.label}}</span>
+            <span style="{{p.nameStyle}}">{{p.nome}}</span>
+            <div style="display:flex;gap:4px;">
+              <sc-for list="{{p.aree}}" as="a" hint-placeholder-count="3"><span style="{{a}}"></span></sc-for>
+            </div>
+          </button>
+          <button style="width:44px;align-self:stretch;flex:none;display:flex;align-items:center;justify-content:center;">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M6 3.2 10.4 8 6 12.8" stroke="#C4C4CE" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="padding:6px 16px 0;display:flex;flex-direction:column;gap:9px;">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;padding:0 4px;">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.11em;color:#14163A;">{{countLabel}}</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.09em;color:#A6A6B2;">&rsaquo; APRE IL PIATTO</span>
+    </div>
+    <button style="width:100%;height:54px;border-radius:18px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:0.09em;background:#14163A;color:#FFFFFF;">CONFERMA E CREA LA LISTA</button>
+  </div>
+
+  <div style="display: flex; padding: 10px 16px 20px; gap: 4px;">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 0;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M4 6.5h16M4 12h16M4 17.5h11" stroke="#9A9AA6" stroke-width="1.9" stroke-linecap="round"/></svg><span style="font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:500;letter-spacing:0.12em;color:#9A9AA6;">LISTA</span></div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 0;border-radius:14px;background:rgba(20,22,58,0.06);"><svg width="21" height="21" viewBox="0 0 24 24" fill="none"><rect x="3.6" y="5" width="16.8" height="15" rx="3" stroke="#14163A" stroke-width="1.8"/><path d="M3.6 10h16.8M9 3.4v3.2M15 3.4v3.2" stroke="#14163A" stroke-width="1.8" stroke-linecap="round"/></svg><span style="font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:700;letter-spacing:0.12em;color:#14163A;">SETTIMANA</span></div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 0;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M5 4.6h9.5a4 4 0 0 1 4 4V20H9a4 4 0 0 1-4-4V4.6Z" stroke="#9A9AA6" stroke-width="1.8" stroke-linejoin="round"/><path d="M8.6 9.2h6.4M8.6 13h4.6" stroke="#9A9AA6" stroke-width="1.8" stroke-linecap="round"/></svg><span style="font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:500;letter-spacing:0.12em;color:#9A9AA6;">PIATTI</span></div>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":393,"height":852}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { off: { 'cen-3': true }, sel: 2, modo: false }; }
+  data() {
+    // i pasti sono una lista ordinata dall utente, da 3 a 5. Qui lo spuntino sta fra colazione e pranzo.
+    var pasti = [
+      { id: 'col', nome: 'COLAZIONE', breve: 'COL' },
+      { id: 'spu', nome: 'SPUNTINO', breve: 'SPU' },
+      { id: 'pra', nome: 'PRANZO', breve: 'PRA' },
+      { id: 'cen', nome: 'CENA', breve: 'CEN' }
+    ];
+    var giorni = [['LUN','1'],['MAR','2'],['MER','3'],['GIO','4'],['VEN','5'],['SAB','6'],['DOM','7']];
+    var Y = { nome: 'Yogurt, avena e frutti rossi', aree: ['#9CC7F2','#F5CE5B','#A8D96A'] };
+    var F = { nome: 'Frutta secca', aree: ['#A8D96A'] };
+    var P = { nome: 'Pollo, riso e spinaci', aree: ['#F29B9B','#F5CE5B','#A8D96A'] };
+    var M = { nome: 'Merluzzo e piselli', aree: ['#B9AEF5','#F2A465'] };
+    var T = { nome: 'Pasta al tonno', aree: ['#F5CE5B','#F2A465'] };
+    var piano = {
+      'col': [Y, Y, null, Y, Y, Y, Y],
+      'spu': [F, F, F, F, F, null, null],
+      'pra': [null, null, null, null, null, T, T],
+      'cen': [P, M, P, null, null, M, P]
+    };
+    return { pasti: pasti, giorni: giorni, piano: piano };
+  }
+
+
+  renderVals() {
+    var V = 'icona';
+    var self = this, d = this.data();
+    var LUNGHI = ['Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato','Domenica'];
+    var count = 0;
+    var strip = d.giorni.map(function (g, di) {
+      var sel = self.state.sel === di;
+      var dots = d.pasti.map(function (p) {
+        var dish = d.piano[p.id][di];
+        var on = !!dish && !self.state.off[p.id + '-' + di];
+        if (on) { count += 1; }
+        return 'width:5px;height:5px;border-radius:999px;display:inline-block;background:'
+          + (on ? (sel ? '#FFFFFF' : '#14163A') : (sel ? 'rgba(255,255,255,0.32)' : 'rgba(20,22,58,0.18)')) + ';';
+      });
+      return {
+        day: g[0], num: g[1], dots: dots,
+        style: 'flex:1;display:flex;flex-direction:column;align-items:center;padding:9px 0 10px;border-radius:14px;'
+          + (sel ? 'background:#14163A;' : 'background:#FFFFFF;border:1px solid rgba(20,22,58,0.07);'),
+        dayStyle: "font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:700;letter-spacing:0.08em;color:" + (sel ? 'rgba(255,255,255,0.62)' : '#A6A6B2') + ';',
+        numStyle: 'font-size:15px;font-weight:800;letter-spacing:-0.02em;line-height:1.25;color:' + (sel ? '#FFFFFF' : '#14163A') + ';',
+        tap: function () { self.setState({ sel: di }); }
+      };
+    });
+    var di = this.state.sel, acasaSel = 0;
+    var modo = !!this.state.modo;
+    var pasti = d.pasti.map(function (p) {
+      var dish = d.piano[p.id][di];
+      var k = p.id + '-' + di;
+      var on = !!dish && !self.state.off[k];
+      if (on) { acasaSel += 1; }
+      var flip = function () {
+        if (!dish) { return; }
+        var o = Object.assign({}, self.state.off);
+        if (o[k]) { delete o[k]; } else { o[k] = true; }
+        self.setState({ off: o });
+      };
+      var ring = (V === 'modalita' && modo) ? (on ? 'border:1.5px solid rgba(20,22,58,0.30);' : 'border:1.5px dashed rgba(20,22,58,0.22);') : '';
+      return {
+        label: p.nome, on: on, off: !on,
+        nome: dish ? dish.nome : 'Fuori casa',
+        aree: on ? dish.aree.map(function (c) { return 'width:8px;height:8px;border-radius:2.6px;display:inline-block;background:' + c + ';'; }) : [],
+        cardStyle: 'display:flex;align-items:stretch;border-radius:18px;'
+          + (on ? 'background:#FFFFFF;border:1px solid rgba(20,22,58,0.09);' : 'background:rgba(20,22,58,0.04);border:1px solid transparent;') + ring,
+        iconBtn: 'width:52px;align-self:stretch;flex:none;display:flex;align-items:center;justify-content:center;border-right:1px solid '
+          + (on ? 'rgba(20,22,58,0.07)' : 'transparent') + ';',
+        labelStyle: "font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.13em;color:" + (on ? '#8A8A96' : '#C4C4CE') + ';',
+        nameStyle: 'font-size:17.5px;font-weight:700;letter-spacing:-0.03em;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:'
+          + (on ? '#14163A' : '#B6B6C0') + (on ? ';' : ';text-decoration:line-through;text-decoration-thickness:1.5px;'),
+        pillLabel: on ? 'A CASA' : 'FUORI',
+        pillStyle: "height:34px;padding:0 12px;border-radius:999px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.1em;"
+          + (on ? 'background:#14163A;color:#FFFFFF;' : 'background:transparent;border:1px solid rgba(20,22,58,0.20);color:#8A8A96;'),
+        chev: !modo,
+        tailStyle: 'width:44px;align-self:stretch;flex:none;display:flex;align-items:center;justify-content:center;',
+        tap: flip
+      };
+    });
+    if (V === 'icona' || V === 'pillola') {
+      pasti = pasti.map(function (x) { return x; });
+    }
+    return {
+      strip: strip, pasti: pasti, modo: modo,
+      titoloGiorno: LUNGHI[di] + ' ' + d.giorni[di][1],
+      metaGiorno: acasaSel + '/' + d.pasti.length + ' A CASA',
+      countLabel: count + ' PASTI A CASA IN SETTIMANA',
+      modoBtn: "width:100%;height:46px;border-radius:16px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:0.09em;background:rgba(20,22,58,0.06);color:#14163A;margin-bottom:9px;",
+      entra: function () { self.setState({ modo: true }); },
+      esci: function () { self.setState({ modo: false }); },
+      prev: function () { self.setState({ sel: (self.state.sel + 6) % 7 }); },
+      next: function () { self.setState({ sel: (self.state.sel + 1) % 7 }); }
+    };
+  }
+}
+</script>
+</body>
+</html>
