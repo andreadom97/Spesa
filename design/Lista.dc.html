@@ -280,11 +280,10 @@ class Component extends DCLogic {
       var SZ = 16, RAD = 4.5;
       var sq = REPCOL.map(function (rc) {
         var st = stat[rc[0]] || { tot: 0, left: 0 };
-        var fatto = st.tot > 0 && st.left === 0;
-        var box = 'width: ' + SZ + 'px; height: ' + SZ + 'px; border-radius: ' + RAD + 'px; box-sizing: border-box;';
-        return fatto
-          ? box + ' background: ' + rc[1] + '; border: 2px solid ' + rc[1] + ';'
-          : box + ' background: transparent; border: 2px solid rgba(20,22,58,0.18);';
+        // pieno = in quest area non manca niente: o l hai finita, o non era in questa spesa
+        var aposto = st.left === 0;
+        var box = 'width: ' + SZ + 'px; height: ' + SZ + 'px; border-radius: ' + RAD + 'px; box-sizing: border-box; border: 2px solid ' + rc[1] + ';';
+        return aposto ? box + ' background: ' + rc[1] + ';' : box + ' background: transparent;';
       });
 
     var isBase = this.state.tab === 'base';

@@ -2,7 +2,7 @@
   "pages": [
     {
       "id": "page-1",
-      "name": "Logo — logica"
+      "name": "v1 definitiva"
     },
     {
       "id": "page-2",
@@ -16,115 +16,106 @@
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "1 — Inversione (come chiesto)",
-      "is_interactive": true
-    },
-    {
-      "file": "ListaPiena.dc.html",
-      "x": 493,
-      "y": 0,
-      "w": 393,
-      "h": 852,
-      "title": "2 — Mai vuoto",
-      "is_interactive": true
-    },
-    {
-      "file": "VuotoFatta.dc.html",
-      "x": 986,
-      "y": 0,
-      "w": 393,
-      "h": 852,
-      "title": "Spesa finita, con la 1",
-      "is_interactive": true
-    },
-    {
-      "file": "VuotoLista.dc.html",
-      "x": 1479,
-      "y": 0,
-      "w": 393,
-      "h": 852,
-      "title": "Nessuna lista",
+      "title": "1 — LISTA",
       "is_interactive": true
     },
     {
       "file": "Settimana.dc.html",
-      "x": 0,
-      "y": 1060,
+      "x": 493,
+      "y": 0,
       "w": 393,
       "h": 852,
-      "title": "SETTIMANA",
+      "title": "2 — SETTIMANA",
       "is_interactive": true
     },
     {
       "file": "Piatti.dc.html",
-      "x": 493,
-      "y": 1060,
+      "x": 986,
+      "y": 0,
       "w": 393,
       "h": 852,
-      "title": "PIATTI",
+      "title": "3 — PIATTI",
       "is_interactive": true
     },
     {
       "file": "Piatto.dc.html",
-      "x": 986,
-      "y": 1060,
+      "x": 1479,
+      "y": 0,
       "w": 393,
       "h": 852,
-      "title": "PIATTO",
+      "title": "4 — PIATTO",
       "is_interactive": true
     },
     {
       "file": "Ingrediente.dc.html",
-      "x": 1479,
-      "y": 1060,
+      "x": 1972,
+      "y": 0,
       "w": 393,
       "h": 852,
-      "title": "INGREDIENTE",
+      "title": "5 — INGREDIENTE",
       "is_interactive": true
     },
     {
       "file": "Impostazioni.dc.html",
       "x": 0,
-      "y": 2120,
+      "y": 1060,
       "w": 393,
       "h": 852,
-      "title": "IMPOSTAZIONI",
+      "title": "6 — IMPOSTAZIONI",
       "is_interactive": true
     },
     {
       "file": "Reparti.dc.html",
       "x": 493,
-      "y": 2120,
+      "y": 1060,
       "w": 393,
       "h": 852,
-      "title": "ORDINE REPARTI",
+      "title": "7 — ORDINE REPARTI",
       "is_interactive": true
     },
     {
       "file": "Scegli.dc.html",
       "x": 986,
-      "y": 2120,
+      "y": 1060,
       "w": 393,
       "h": 852,
-      "title": "SCEGLI IL PIATTO",
+      "title": "8 — SCEGLI IL PIATTO",
       "is_interactive": true
     },
     {
       "file": "VuotoPiatti.dc.html",
       "x": 1479,
+      "y": 1060,
+      "w": 393,
+      "h": 852,
+      "title": "Vuoto — primo avvio",
+      "is_interactive": true
+    },
+    {
+      "file": "VuotoLista.dc.html",
+      "x": 1972,
+      "y": 1060,
+      "w": 393,
+      "h": 852,
+      "title": "Vuoto — nessuna lista",
+      "is_interactive": true
+    },
+    {
+      "file": "VuotoFatta.dc.html",
+      "x": 0,
       "y": 2120,
       "w": 393,
       "h": 852,
-      "title": "Primo avvio",
+      "title": "Vuoto — spesa finita",
       "is_interactive": true
     },
     {
       "file": "VuotoPiatto.dc.html",
-      "x": 1972,
+      "x": 493,
       "y": 2120,
       "w": 393,
       "h": 852,
-      "title": "Piatto nuovo",
+      "title": "Vuoto — piatto nuovo",
       "is_interactive": true
     },
     {
@@ -686,43 +677,46 @@
       "title": "CasaBordo",
       "is_interactive": true,
       "page": "page-2"
+    },
+    {
+      "file": "ListaPiena.dc.html",
+      "x": 493,
+      "y": 11660,
+      "w": 393,
+      "h": 852,
+      "title": "ListaPiena",
+      "is_interactive": true,
+      "page": "page-2"
     }
   ],
   "annotations": [
     {
-      "id": "prova",
+      "id": "marchio",
       "x": 0,
       "y": -420,
       "w": 393,
-      "text": "PROVALE SPUNTANDO. Su entrambe: spunta tutte e quattro le voci di PASTA RISO E CEREALI e guarda il quadratino GIALLO in alto. Poi passa al TOP-UP e finisci un altra area. Sulla 1 il quadrato si accende quando finisci; sulla 2 cambia colore."
+      "text": "IL MARCHIO, regola finale. Ogni quadrato e SEMPRE nel colore della sua area: pieno quando in quell area non manca niente, contornato nello stesso colore quando manca ancora qualcosa. Il grigio e sparito del tutto. Provalo: spunta tutte e quattro le voci di PASTA RISO E CEREALI e guarda il quadratino GIALLO riempirsi, poi passa al TOP-UP e finiscine un altra."
     },
     {
-      "id": "v1",
+      "id": "conseguenza",
       "x": 493,
       "y": -420,
       "w": 393,
-      "text": "1 — INVERSIONE, quella che hai chiesto. Quadrato COLORATO uguale area completata, contorno uguale ti manca ancora qualcosa. Il logo si riempie mentre fai la spesa e a fine giro e tutto acceso: la metafora e quella della barra di progresso, che si riempie invece di svuotarsi, ed e la ragione per cui la tua intuizione regge. Il costo, dichiarato: quando apri l app PRIMA di andare a fare la spesa il marchio e tutto vuoto, e quello e il momento in cui apri l app piu spesso. Il vuoto non e sparito, si e spostato."
+      "text": "UNA CONSEGUENZA CHE NASCE DALLA REGOLA. Se pieno significa in quest area non manca niente, allora anche un area che NON E in questa spesa e piena: li davvero non manca nulla. E il motivo per cui nella lista BASE vedi gia tre quadrati pieni prima di aver spuntato qualsiasi cosa. E coerente ed e la ragione per cui il marchio non e mai tutto vuoto: lo sarebbe solo nel caso in cui devi comprare qualcosa in tutte e sei le aree."
     },
     {
-      "id": "v2",
+      "id": "vuoti",
       "x": 986,
       "y": -420,
       "w": 393,
-      "text": "2 — MAI VUOTO. Tre stati invece di due. Quadrato nel colore dell area uguale c e qualcosa da prendere li. Quadrato BLU-NOTTE uguale area finita. Contorno uguale quell area non e in questa spesa, che e l unico caso in cui davvero non c e niente da dire. Cosi il marchio non e mai tutto vuoto finche esiste una lista: parte colorato, e a fine spesa diventa sei quadrati blu, che si legge come tutto fatto. Costo: uno stato in piu da imparare, e il blu-notte non e un colore delle aree quindi va capito che significa finito."
+      "text": "GLI STATI VUOTI seguono la stessa regola. PRIMO AVVIO e NESSUNA LISTA hanno il marchio tutto pieno: non c e nessuna spesa in corso, quindi non manca niente da nessuna parte. SPESA FINITA e pieno anche lui, ed e il momento in cui la regola paga di piu. Nella card di NESSUNA LISTA ho tolto la grafica dei sei quadrati: con la nuova logica sei quadrati pieni accanto alla scritta la lista non c e ancora si contraddicevano. Al suo posto un segno neutro."
     },
     {
-      "id": "finita",
+      "id": "chiuso",
       "x": 1479,
       "y": -420,
       "w": 393,
-      "text": "SPESA FINITA, aggiornata alla logica 1: il marchio in alto e tutto pieno e il riquadro al centro mostra le sei aree colorate. E il punto in cui la tua inversione da il meglio, perche l app ti si presenta al massimo proprio quando hai finito. Accanto, NESSUNA LISTA resta a contorno in tutte e due le logiche: li non c e nessuna spesa, quindi non c e niente da riempire ne da confermare."
-    },
-    {
-      "id": "nota",
-      "x": 0,
-      "y": -720,
-      "w": 393,
-      "text": "Se scegli la 2, la spesa finita va rifatta col blu-notte al posto dei colori. Se scegli la 1 e tutto gia allineato: Lista, spesa finita e gli altri stati vuoti sono gia coerenti."
+      "text": "IL DESIGN DELLA V1 E CHIUSO. Otto schermate piu quattro stati vuoti, tutte con i controlli vivi, un solo linguaggio: sei aree fisse a colore, tessere accese e spente, blu-notte per le azioni, mono per le etichette di servizio, niente gradienti. Resta rinviato di proposito il solo avviso di conflitto in dispensa quando si sostituisce un piatto, che e Fase 3."
     }
   ],
   "launch": {

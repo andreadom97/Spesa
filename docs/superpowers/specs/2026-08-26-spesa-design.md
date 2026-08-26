@@ -172,6 +172,8 @@ Quattro fatti non inventabili, chiusi con l'utente. Restano qui perché il piano
 
 Prese dopo il ciclo di design; hanno precedenza sulle assunzioni della sezione precedente dove divergono.
 
+**Regola del marchio (definitiva).** Ogni casella è sempre nel colore della sua area: **piena** quando in quell'area non manca niente — o l'hai completata, o non era in questa spesa — e **contornata nello stesso colore** quando manca ancora qualcosa. Nessun grigio. Il marchio si riempie durante la spesa invece di svuotarsi, ed è pieno negli stati in cui non c'è una lista in corso. Conseguenza accettata: il marchio è tutto vuoto solo se devi comprare qualcosa in tutte e sei le aree.
+
 **Le sei aree sono fisse e non personalizzabili.** Ortofrutta (verde), macelleria e pescheria (corallo), latticini/uova/salumi (azzurro), pasta/riso/cereali (giallo), dispensa e conserve (arancio), surgelati (lilla). Sostituiscono l'elenco a otto della sezione Assunzioni. È personalizzabile **solo l'ordine di apparizione** nella lista, per seguire il percorso fisico nel supermercato. Il marchio dell'app è una griglia 3×2 dei sei colori in ordine fisso, dove ogni casella è accesa finché quell'area ha qualcosa da prendere: quindi il set di aree non può variare senza rompere il marchio.
 
 **Conseguenza accettata:** le bevande non hanno un'area in v1 — acqua, vino, birra e succhi restano scoperti; il caffè sta in dispensa. Se serviranno, si passa a otto aree in griglia 4×2 senza rifare il marchio.
