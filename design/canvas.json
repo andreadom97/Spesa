@@ -53,6 +53,33 @@
       "h": 852,
       "title": "C — Paper SaaS arancio",
       "is_interactive": true
+    },
+    {
+      "file": "DirEditoriale.dc.html",
+      "x": 0,
+      "y": 2120,
+      "w": 393,
+      "h": 852,
+      "title": "D — Editoriale oversize",
+      "is_interactive": true
+    },
+    {
+      "file": "DirAnnidato.dc.html",
+      "x": 493,
+      "y": 2120,
+      "w": 393,
+      "h": 852,
+      "title": "E — Contenitori annidati",
+      "is_interactive": true
+    },
+    {
+      "file": "DirNotte.dc.html",
+      "x": 986,
+      "y": 2120,
+      "w": 393,
+      "h": 852,
+      "title": "F — Notte blu (dark)",
+      "is_interactive": true
     }
   ],
   "annotations": [
@@ -61,42 +88,63 @@
       "x": 0,
       "y": -215,
       "w": 393,
-      "text": "RIGA 1 — Le tre schermate nella direzione tattile che avevi approvato. La lista qui a sinistra e il termine di paragone per le tre varianti sotto."
+      "text": "RIGA 1 — Le tre schermate nella direzione tattile approvata all inizio. La lista qui a sinistra e il termine di paragone per tutte le varianti sotto."
     },
     {
       "id": "zona-pollice",
       "x": 493,
       "y": -215,
       "w": 393,
-      "text": "Tab BASE / TOP-UP in basso, non in alto: su uno schermo da 852px il pollice non arriva al bordo superiore mentre spingi un carrello. In alto solo cio che si legge, in basso cio che si tocca. Vale per tutte le varianti."
+      "text": "Tab BASE / TOP-UP in basso, non in alto: su 852px il pollice non arriva al bordo superiore mentre spingi un carrello. Vale per ogni variante."
     },
     {
       "id": "metafora-premuto",
       "x": 986,
       "y": -215,
       "w": 393,
-      "text": "Nel check-in la profondita porta il significato: cella in rilievo = mangi a casa, cella premuta = pasto fuori. Se scegli una direzione piatta, questa metafora va sostituita con qualcos altro."
+      "text": "Nel check-in la profondita porta il significato: rilievo = mangi a casa, premuto = fuori. Se scegli una direzione piatta questa metafora va sostituita."
     },
     {
       "id": "dir-framed",
       "x": 0,
       "y": 905,
       "w": 393,
-      "text": "A — TECNICO INCORNICIATO. Zero ombre, linee da 1px, staffe angolari, texture diagonale appena percettibile, nero su bianco caldo. E il linguaggio di Linear e Raycast. Il piu sobrio e il piu longevo: invecchia poco perche non ha effetti da invecchiare. Rischio: freddo, quasi severo."
+      "text": "A — TECNICO INCORNICIATO. Zero ombre, linee da 1px, staffe angolari, texture diagonale. Il linguaggio di Linear e Raycast. Il piu longevo: non ha effetti da invecchiare. Rischio: freddo, quasi severo."
     },
     {
       "id": "dir-calma",
       "x": 493,
       "y": 905,
       "w": 393,
-      "text": "B — MINIMALE CALMO. Beige caldo, angoli generosi, contrasti bassi, verde salvia usato solo come segnale, titolo in serif. Piu Notion o Things che app da palestra. Rischio: il contrasto basso e proprio cio che sotto i neon del supermercato ti penalizza."
+      "text": "B — MINIMALE CALMO. Beige caldo, angoli generosi, verde salvia come segnale, titolo serif. Piu Notion che app da palestra. Rischio: il contrasto basso e proprio cio che sotto i neon ti penalizza."
     },
     {
       "id": "dir-paper",
       "x": 986,
       "y": 905,
       "w": 393,
-      "text": "C — PAPER SAAS ARANCIO. Crema caldo, schede bianche con ombra morbida, arancio saturo come colore di azione, tipografia piu decisa. E il piu moderno-consumer e il piu energico dei tre. Rischio: l accento forte puo stancare su una schermata che apri tutti i giorni."
+      "text": "C — PAPER SAAS ARANCIO. Crema, schede bianche con ombra morbida, arancio come colore di azione. Il piu moderno-consumer. Rischio: un accento forte stanca su una schermata quotidiana."
+    },
+    {
+      "id": "dir-editoriale",
+      "x": 0,
+      "y": 1965,
+      "w": 393,
+      "text": "D — EDITORIALE OVERSIZE. Niente schede: solo tipografia grande, filetti e molto respiro. I nomi a 23px si leggono col telefono a distanza di braccio, che in corsia e il vero vincolo. La spunta e a destra, dove sta il pollice. Rischio: ci sta meno roba per schermata, quindi si scorre di piu."
+    },
+    {
+      "id": "dir-annidato",
+      "x": 493,
+      "y": 1965,
+      "w": 393,
+      "text": "E — CONTENITORI ANNIDATI. Cornici dentro cornici, rail verticali ai bordi, blu come unico segnale. E il linguaggio dei prodotti 2025 (Vercel, Linear). Piu strutturato di A senza essere freddo. Rischio: il grigio-blu neutro e il piu anonimo del gruppo."
+    },
+    {
+      "id": "dir-notte",
+      "x": 986,
+      "y": 1965,
+      "w": 393,
+      "text": "F — NOTTE BLU. Riapre di proposito una decisione che avevamo chiuso: avevi scelto light per la leggibilita sotto i neon. Questa e la versione dark che regge meglio quel test, perche punta sul contrasto puro e non su vetri o sfocature. Guardala e decidi se il light era davvero la scelta giusta."
     }
   ],
   "launch": {
