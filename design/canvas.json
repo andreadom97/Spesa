@@ -2,7 +2,7 @@
   "pages": [
     {
       "id": "page-1",
-      "name": "Testata e logo"
+      "name": "Testata B+C+D"
     },
     {
       "id": "page-2",
@@ -11,48 +11,57 @@
   ],
   "artboards": [
     {
-      "file": "HdrRosetta.dc.html",
+      "file": "LogoPieno.dc.html",
       "x": 0,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "A — Rosetta",
+      "title": "1 — Spenti pieni",
       "is_interactive": true
     },
     {
-      "file": "HdrGriglia.dc.html",
+      "file": "LogoContorno.dc.html",
       "x": 493,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "B — Griglia",
+      "title": "2 — Spenti a contorno",
       "is_interactive": true
     },
     {
-      "file": "HdrAnello.dc.html",
+      "file": "LogoGraduale.dc.html",
       "x": 986,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "C — Anello che si riempie",
+      "title": "3 — Intensita graduale",
       "is_interactive": true
     },
     {
-      "file": "HdrMono.dc.html",
+      "file": "LogoBarra.dc.html",
       "x": 1479,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "D — Monogramma editoriale",
+      "title": "4 — Barra continua, a destra",
       "is_interactive": true
     },
     {
-      "file": "HeroPillola.dc.html",
+      "file": "HdrGriglia.dc.html",
       "x": 1972,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "La 4 con la testata vecchia",
+      "title": "B di prima",
+      "is_interactive": true
+    },
+    {
+      "file": "HdrMono.dc.html",
+      "x": 2465,
+      "y": 0,
+      "w": 393,
+      "h": 852,
+      "title": "D di prima",
       "is_interactive": true
     },
     {
@@ -346,51 +355,88 @@
       "page": "page-2"
     },
     {
-      "file": "HeroCollasso.dc.html",
+      "file": "HeroPillola.dc.html",
       "x": 1972,
       "y": 5300,
       "w": 393,
       "h": 852,
+      "title": "HeroPillola",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "HeroCollasso.dc.html",
+      "x": 0,
+      "y": 6360,
+      "w": 393,
+      "h": 852,
       "title": "HeroCollasso",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "HdrRosetta.dc.html",
+      "x": 493,
+      "y": 6360,
+      "w": 393,
+      "h": 852,
+      "title": "HdrRosetta",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "HdrAnello.dc.html",
+      "x": 986,
+      "y": 6360,
+      "w": 393,
+      "h": 852,
+      "title": "HdrAnello",
       "is_interactive": true,
       "page": "page-2"
     }
   ],
   "annotations": [
     {
-      "id": "premessa",
+      "id": "logica",
       "x": 0,
-      "y": -330,
+      "y": -360,
       "w": 393,
-      "text": "Quattro testate sulla schermata che hai scelto, la 4 con la pillola bianca. Il corpo della lista e identico in tutte: cambia solo la fascia in alto, cosi confronti una variabile sola. All estrema destra e rimasta la 4 con la testata vecchia come metro di paragone. Tutti e quattro i loghi sono astratti e costruiti con i colori dei reparti: giallo, arancio, lilla, verde, azzurro, corallo."
+      "text": "LA LOGICA, uguale in tutte e quattro. Sei quadratini in colonna, uno per reparto, nell ordine fisso giallo pasta, arancio scatolame, lilla bevande, verde ortofrutta, azzurro latticini, corallo macelleria. Un quadratino e ACCESO finche in quel reparto resta qualcosa da prendere, SPENTO quando lo hai finito o quando quel reparto non e in questa spesa. Spento vuol dire li non devi andare. Il conto e su Base e Top-up insieme, cosi il marchio non cambia quando cambi lista: rappresenta tutto il giro. Provalo: spunta le tre voci di un reparto e guarda il quadratino corrispondente spegnersi."
     },
     {
-      "id": "a",
+      "id": "v1",
       "x": 493,
-      "y": -330,
+      "y": -360,
       "w": 393,
-      "text": "A — ROSETTA. Sei cerchi disposti a esagono, uno per reparto. Legge come un fiore o una corolla e resta riconoscibile a 26px. La testata resta quella attuale: avatar, marchio al centro, ingranaggio, selettore settimana sotto. E la variante meno invasiva: cambia il marchio, non la struttura."
+      "text": "1 — SPENTI PIENI. Il quadratino spento diventa grigio chiaro pieno. E il piu solido come marchio: la colonna resta sempre una colonna compatta di sei blocchi, cambia solo il colore. Rischio: il grigio pieno pesa quanto il colore, quindi lo spegnimento si legge meno da lontano."
     },
     {
-      "id": "b",
+      "id": "v2",
       "x": 986,
-      "y": -330,
+      "y": -360,
       "w": 393,
-      "text": "B — GRIGLIA. Sei quadrati arrotondati due per tre, gli stessi sei colori. E il logo che assomiglia di piu al prodotto: le tessere della lista in miniatura. La testata si ricompone: marchio piu la parola spesa a sinistra, avatar e ingranaggio a destra, e il selettore settimana diventa una riga con frecce avanti e indietro, che serve davvero quando devi guardare la settimana prossima."
+      "text": "2 — SPENTI A CONTORNO. Il quadratino spento si svuota e resta solo il contorno sottile. Lo spegnimento si vede molto meglio perche cambia la massa, non solo la tinta: la colonna si alleggerisce mentre fai la spesa. E la piu leggibile delle quattro come indicatore."
     },
     {
-      "id": "c",
+      "id": "v3",
       "x": 1479,
-      "y": -330,
+      "y": -360,
       "w": 393,
-      "text": "C — ANELLO CHE SI RIEMPIE. Il marchio e un anello di sei archi colorati, e attorno gira un secondo anello scuro che E la progressione della spesa: si riempie mentre spunti le voci. Provalo, tocca qualche tessera e guarda il logo in alto. E l unico dei quattro in cui il marchio fa anche un lavoro. Testata compatta su una riga sola: marchio, titolo con la settimana sotto, avatar."
+      "text": "3 — INTENSITA GRADUALE. Non binario: il quadratino sbiadisce in proporzione a quanto resta nel reparto, quindi a meta strada e a meta opacita. Da piu informazione ma e anche la piu difficile da leggere a colpo d occhio, perche distinguere due livelli di opacita e piu lento che distinguere pieno da vuoto."
     },
     {
-      "id": "d",
+      "id": "v4",
       "x": 1972,
-      "y": -330,
+      "y": -360,
       "w": 393,
-      "text": "D — MONOGRAMMA EDITORIALE. Un rombo verde con due cerchi sovrapposti, giallo e blu-notte: piu astratto e piu da marchio, meno descrittivo degli altri tre. La testata diventa editoriale: titolo su due righe a 34px e il selettore settimana come pillola scura piena. E la piu di carattere e quella che ruba piu spazio alla lista."
+      "text": "4 — BARRA CONTINUA, A DESTRA. I sei quadratini si toccano e formano una colonna unica segmentata, spostata a destra del titolo. Legge piu come marchio e meno come indicatore, e bilancia meglio la testata perche il titolo parte a filo del bordo sinistro. Rischio: segmenti attaccati significa confini meno netti fra reparti."
+    },
+    {
+      "id": "confronto",
+      "x": 2465,
+      "y": -360,
+      "w": 393,
+      "text": "Alla fine della riga sono rimaste la B e la D di prima, da cui viene questa: la griglia sei colori della B, l animazione della C, l impaginazione editoriale della D."
     }
   ],
   "launch": {
