@@ -1,13 +1,79 @@
 {
+  "pages": [
+    {
+      "id": "page-1",
+      "name": "Direzione scelta"
+    },
+    {
+      "id": "page-2",
+      "name": "Archivio direzioni"
+    }
+  ],
   "artboards": [
+    {
+      "file": "MagBanda.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 393,
+      "h": 852,
+      "title": "1 — Banda colorata",
+      "is_interactive": true
+    },
+    {
+      "file": "MagTinte.dc.html",
+      "x": 493,
+      "y": 0,
+      "w": 393,
+      "h": 852,
+      "title": "2 — Tessere tinte",
+      "is_interactive": true
+    },
+    {
+      "file": "MagRail.dc.html",
+      "x": 986,
+      "y": 0,
+      "w": 393,
+      "h": 852,
+      "title": "3 — Rail laterale",
+      "is_interactive": true
+    },
+    {
+      "file": "MagPillole.dc.html",
+      "x": 1479,
+      "y": 0,
+      "w": 393,
+      "h": 852,
+      "title": "4 — Tutto a pillole",
+      "is_interactive": true
+    },
+    {
+      "file": "MagHero.dc.html",
+      "x": 1972,
+      "y": 0,
+      "w": 393,
+      "h": 852,
+      "title": "5 — Protagonista a colore pieno",
+      "is_interactive": true
+    },
+    {
+      "file": "MagBosco.dc.html",
+      "x": 0,
+      "y": 1060,
+      "w": 393,
+      "h": 852,
+      "title": "I.2 — Bosco (punto di partenza)",
+      "is_interactive": true,
+      "page": "page-1"
+    },
     {
       "file": "Main.dc.html",
       "x": 0,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "Lista — Tattile (attuale)",
-      "is_interactive": true
+      "title": "Lista — Tattile",
+      "is_interactive": true,
+      "page": "page-2"
     },
     {
       "file": "Checkin.dc.html",
@@ -16,7 +82,8 @@
       "w": 393,
       "h": 852,
       "title": "Check-in settimanale",
-      "is_interactive": true
+      "is_interactive": true,
+      "page": "page-2"
     },
     {
       "file": "Repertorio.dc.html",
@@ -25,7 +92,8 @@
       "w": 393,
       "h": 852,
       "title": "Repertorio piatti",
-      "is_interactive": true
+      "is_interactive": true,
+      "page": "page-2"
     },
     {
       "file": "DirFramed.dc.html",
@@ -34,7 +102,8 @@
       "w": 393,
       "h": 852,
       "title": "A — Tecnico incorniciato",
-      "is_interactive": true
+      "is_interactive": true,
+      "page": "page-2"
     },
     {
       "file": "DirCalma.dc.html",
@@ -43,7 +112,8 @@
       "w": 393,
       "h": 852,
       "title": "B — Minimale calmo",
-      "is_interactive": true
+      "is_interactive": true,
+      "page": "page-2"
     },
     {
       "file": "DirPaper.dc.html",
@@ -52,7 +122,8 @@
       "w": 393,
       "h": 852,
       "title": "C — Paper SaaS arancio",
-      "is_interactive": true
+      "is_interactive": true,
+      "page": "page-2"
     },
     {
       "file": "DirEditoriale.dc.html",
@@ -61,7 +132,8 @@
       "w": 393,
       "h": 852,
       "title": "D — Editoriale oversize",
-      "is_interactive": true
+      "is_interactive": true,
+      "page": "page-2"
     },
     {
       "file": "DirAnnidato.dc.html",
@@ -70,7 +142,8 @@
       "w": 393,
       "h": 852,
       "title": "E — Contenitori annidati",
-      "is_interactive": true
+      "is_interactive": true,
+      "page": "page-2"
     },
     {
       "file": "DirNotte.dc.html",
@@ -78,8 +151,9 @@
       "y": 2120,
       "w": 393,
       "h": 852,
-      "title": "F — Notte blu (dark)",
-      "is_interactive": true
+      "title": "F — Notte blu",
+      "is_interactive": true,
+      "page": "page-2"
     },
     {
       "file": "DirBrutale.dc.html",
@@ -88,7 +162,8 @@
       "w": 393,
       "h": 852,
       "title": "G — Brutalista",
-      "is_interactive": true
+      "is_interactive": true,
+      "page": "page-2"
     },
     {
       "file": "DirDither.dc.html",
@@ -97,7 +172,8 @@
       "w": 393,
       "h": 852,
       "title": "H — Dither laser",
-      "is_interactive": true
+      "is_interactive": true,
+      "page": "page-2"
     },
     {
       "file": "DirMagazine.dc.html",
@@ -105,8 +181,9 @@
       "y": 3180,
       "w": 393,
       "h": 852,
-      "title": "I — Magazine (originale)",
-      "is_interactive": true
+      "title": "I — Magazine originale",
+      "is_interactive": true,
+      "page": "page-2"
     },
     {
       "file": "MagScansione.dc.html",
@@ -115,109 +192,90 @@
       "w": 393,
       "h": 852,
       "title": "I.1 — Colonna singola",
-      "is_interactive": true
-    },
-    {
-      "file": "MagBosco.dc.html",
-      "x": 493,
-      "y": 4240,
-      "w": 393,
-      "h": 852,
-      "title": "I.2 — Bosco su crema",
-      "is_interactive": true
+      "is_interactive": true,
+      "page": "page-2"
     },
     {
       "file": "MagGhiaccio.dc.html",
-      "x": 986,
+      "x": 493,
       "y": 4240,
       "w": 393,
       "h": 852,
       "title": "I.3 — Inchiostro su ghiaccio",
-      "is_interactive": true
+      "is_interactive": true,
+      "page": "page-2"
     },
     {
       "file": "MagNotte.dc.html",
-      "x": 1479,
+      "x": 986,
       "y": 4240,
       "w": 393,
       "h": 852,
       "title": "I.4 — Notte e ambra",
-      "is_interactive": true
+      "is_interactive": true,
+      "page": "page-2"
     }
   ],
   "annotations": [
     {
-      "id": "riga-schermate",
+      "id": "colori-reparto",
       "x": 0,
-      "y": -215,
+      "y": -260,
       "w": 393,
-      "text": "RIGA 1 — Le tre schermate nella direzione tattile approvata all inizio."
+      "text": "CODICE COLORE PER REPARTO, comune a tutte e cinque: giallo pasta e cereali, arancio scatolame, lilla bevande, verde ortofrutta, azzurro latticini e uova, corallo macelleria. Sono pastelli con testo in blu-notte sopra, come il banner verde del tuo riferimento: il colore identifica il reparto, non urla. Cambia il tab in basso per vedere i reparti del fresco."
     },
     {
-      "id": "zona-pollice",
+      "id": "shell-comune",
       "x": 493,
-      "y": -215,
+      "y": -260,
       "w": 393,
-      "text": "Tab in basso, non in alto: su 852px il pollice non arriva al bordo superiore mentre spingi un carrello."
+      "text": "SHELL PRESA DAI RIFERIMENTI: fondo grigio-caldo, schede bianche a raggio 22, etichette mono maiuscole con tracking largo, inchiostro blu-notte, controlli a pillola, barra di navigazione in basso con micro-etichette mono. Uguale in tutte e cinque: cambia solo dove vive il colore."
     },
     {
-      "id": "metafora-premuto",
+      "id": "v1",
       "x": 986,
-      "y": -215,
+      "y": -260,
       "w": 393,
-      "text": "Nel check-in la profondita porta il significato: rilievo = a casa, premuto = fuori."
+      "text": "1 — BANDA COLORATA. Il colore sta solo nella testata del reparto, a tutta larghezza, come il banner verde del riferimento. Dentro la scheda si torna al bianco. E la piu vicina agli screenshot che mi hai dato e la piu ordinata: il colore segna, non invade."
     },
     {
-      "id": "riga-moderne",
-      "x": 0,
-      "y": 905,
-      "w": 393,
-      "text": "RIGA 2 — LE SICURE. Tre risposte a moderno, dentro i vincoli fissati."
-    },
-    {
-      "id": "riga-alternative",
-      "x": 0,
-      "y": 1965,
-      "w": 393,
-      "text": "RIGA 3 — LE ALTERNATIVE. D punta sulla tipografia, E sulla struttura, F riapre la scelta light/dark."
-    },
-    {
-      "id": "riga-ambiziose",
-      "x": 0,
-      "y": 3025,
-      "w": 393,
-      "text": "RIGA 4 — LE AMBIZIOSE. Ognuna rompe di proposito un vincolo e ci va fino in fondo."
-    },
-    {
-      "id": "riga-varianti",
-      "x": 0,
-      "y": 4085,
-      "w": 393,
-      "text": "RIGA 5 — VARIANTI DELLA I. I.1 cambia la struttura per riparare il difetto di scansione: una colonna sola, si legge dall alto in basso come una lista vera, ma tiene numerazione di sezione, metadati mono e la voce protagonista piu grande. Se la I ti convince ma vuoi usarla davvero, questa e la versione da guardare per prima."
-    },
-    {
-      "id": "var-bosco",
-      "x": 493,
-      "y": 4085,
-      "w": 393,
-      "text": "I.2 — BOSCO SU CREMA. Verde bosco profondo su crema calda. E la palette che c entra di piu col cibo senza scadere nel biologico-naturale. Contrasto alto quanto l originale, tono meno urgente: l arancio bruciato dice adesso, il verde bosco dice con calma."
-    },
-    {
-      "id": "var-ghiaccio",
-      "x": 986,
-      "y": 4085,
-      "w": 393,
-      "text": "I.3 — INCHIOSTRO SU GHIACCIO. Blu notte su bianco freddo, accento cobalto. La piu neutra e la piu da strumento: sembra un prodotto, non un magazine di cucina. E anche la piu leggibile delle quattro sotto luce forte."
-    },
-    {
-      "id": "var-notte",
+      "id": "v2",
       "x": 1479,
-      "y": 4085,
+      "y": -260,
       "w": 393,
-      "text": "I.4 — NOTTE E AMBRA. La griglia magazine ribaltata su fondo quasi nero, con l ambra come unico accento. La fascia scura del controllo diventa chiara e taglia la pagina: e il gesto piu editoriale del gruppo. Resta il problema del dark in corsia, ma qui il contrasto e tenuto alto apposta."
+      "text": "2 — TESSERE TINTE. Ogni voce e tinta nel colore del suo reparto. La lista diventa un mosaico e in corsia riconosci il gruppo senza leggere l etichetta. Rischio: con sei reparti a schermo diventa carnevale, e il testo su tinta perde un po di contrasto."
+    },
+    {
+      "id": "v3",
+      "x": 1972,
+      "y": -260,
+      "w": 393,
+      "text": "3 — RAIL LATERALE. Colore ridotto a una fascia da 6px sul bordo sinistro della scheda piu un quadratino accanto all etichetta. E la piu sobria delle cinque: il colore fa da indice, la scheda resta bianca. Se un giorno l app la usa qualcun altro, questa e quella che invecchia meglio."
+    },
+    {
+      "id": "v4",
+      "x": 0,
+      "y": -560,
+      "w": 393,
+      "text": "4 — TUTTO A PILLOLE. Niente scheda contenitore: le sezioni galleggiano, l etichetta del reparto e una pillola bianca bordata, la quantita e una pillola tinta, le voci sono card bianche a raggio 20. E la piu vicina al linguaggio a componenti del riferimento e la piu leggera. Rischio: senza la scheda i reparti si separano meno."
+    },
+    {
+      "id": "v5",
+      "x": 493,
+      "y": -560,
+      "w": 393,
+      "text": "5 — PROTAGONISTA A COLORE PIENO. La voce principale di ogni reparto e una tessera a colore pieno, il resto resta neutro. Il colore diventa gerarchia oltre che categoria: l occhio cade prima sulla cosa piu importante del reparto. E la piu editoriale e la piu vicina allo spirito della I originale."
+    },
+    {
+      "id": "partenza",
+      "x": 986,
+      "y": -560,
+      "w": 393,
+      "text": "Sotto, a sinistra, resta la I.2 Bosco da cui siamo partiti, per il confronto. Tutte le altre direzioni sono nella pagina Archivio direzioni."
     }
   ],
   "launch": {
-    "view": "canvas"
+    "view": "canvas",
+    "page": "page-1"
   }
 }

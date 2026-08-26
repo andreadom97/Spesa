@@ -1,0 +1,261 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Plus Jakarta Sans', 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #3B35D0; } a:hover { color: #2A26A0; }
+    * { box-sizing: border-box; }
+    button { font-family: inherit; border: 0; background: none; padding: 0; cursor: pointer; text-align: left; }
+    .sc::-webkit-scrollbar { width: 0; }
+  </style>
+</helmet>
+<div style="width: 393px; height: 852px; display: flex; flex-direction: column; overflow: hidden; background: #F1F0EE;">
+
+  <div style="padding: 16px 16px 10px; display: flex; flex-direction: column; gap: 13px;">
+    <div style="display: flex; align-items: center; justify-content: space-between;">
+      <div style="width: 34px; height: 34px; border-radius: 999px; border: 1.5px solid #14163A; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #14163A;">AD</div>
+      <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M13 2.2c2.2 3 5.6 3 8.6 5.2 -2.2 3-2.2 6.4 0 11.4 -3 -2.2-6.4-2.2-8.6 1.2 -2.2-3.4-5.6-3.4-8.6-1.2 2.2-5 2.2-8.4 0-11.4 3-2.2 6.4-2.2 8.6-5.2Z" fill="#14163A"/></svg>
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.1" stroke="#14163A" stroke-width="1.7"/><path d="M12 3.4v2.2M12 18.4v2.2M20.6 12h-2.2M5.6 12H3.4M18.1 5.9l-1.6 1.6M7.5 16.5l-1.6 1.6M18.1 18.1l-1.6-1.6M7.5 7.5 5.9 5.9" stroke="#14163A" stroke-width="1.7" stroke-linecap="round"/></svg>
+    </div>
+    <div style="display: flex; align-items: flex-end; justify-content: space-between;">
+      <div style="font-size: 27px; font-weight: 800; letter-spacing: -0.035em; color: #14163A;">Spesa</div>
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 700; letter-spacing: 0.11em; color: #14163A; padding-bottom: 4px;">{{progressLabel}}</div>
+    </div>
+    <div style="display: flex; align-items: center; justify-content: center; gap: 8px; height: 42px; border-radius: 999px; border: 1.5px solid rgba(20,22,58,0.16); background: transparent;">
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.15em; color: #14163A;">31 AGO — 6 SET</span>
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M4 6.2 8 10.2 12 6.2" stroke="#14163A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+  </div>
+
+  <div class="sc" style="flex: 1; overflow-y: auto; padding: 6px 16px 16px; display: flex; flex-direction: column; gap: 12px;">
+    <sc-for list="{{sections}}" as="sec" hint-placeholder-count="3">
+      <div style="{{sec.cardStyle}}">
+        <div style="{{sec.headStyle}}">
+          <div style="display: flex; align-items: center; gap: 9px; min-width: 0;">
+            <span style="{{sec.dotStyle}}"></span>
+            <span style="{{sec.labelStyle}}">{{sec.rep}}</span>
+          </div>
+          <span style="{{sec.countStyle}}">{{sec.n}}</span>
+        </div>
+        <div style="{{sec.gridStyle}}">
+          <sc-for list="{{sec.items}}" as="item" hint-placeholder-count="3">
+            <button onClick="{{item.toggle}}" style="{{item.tileStyle}}">
+              <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 9px;">
+                <div style="{{item.nameStyle}}">{{item.nome}}</div>
+                <div style="{{item.dotStyle}}">
+                  <sc-if value="{{item.done}}" hint-placeholder-val="{{true}}">
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="none"><path d="M4.5 10.5 8.2 14 15.5 6.4" stroke="{{item.tick}}" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </sc-if>
+                </div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 7px; margin-top: auto; padding-top: 9px;">
+                <span style="{{item.confStyle}}">{{item.conf}}</span>
+                <span style="{{item.qtyStyle}}">{{item.qty}}</span>
+              </div>
+              <sc-if value="{{item.showSub}}" hint-placeholder-val="{{true}}">
+                <div style="font-family: 'JetBrains Mono', monospace; font-size: 8.5px; letter-spacing: 0.03em; color: #A6A6B2; margin-top: 4px;">{{item.sub}}</div>
+              </sc-if>
+            </button>
+          </sc-for>
+        </div>
+        <sc-for list="{{sec.controls}}" as="ctl" hint-placeholder-count="1">
+          <div style="{{ctl.wrapStyle}}">
+            <div style="flex: 1; min-width: 0;">
+              <div style="{{ctl.titleStyle}}">{{ctl.nome}}</div>
+              <div style="{{ctl.hintStyle}}">{{ctl.hint}}</div>
+            </div>
+            <div style="display: flex; gap: 7px;">
+              <button onClick="{{ctl.yes}}" style="{{ctl.yesStyle}}">SÌ</button>
+              <button onClick="{{ctl.no}}" style="{{ctl.noStyle}}">NO</button>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="padding: 8px 16px 0;">
+    <div style="display: flex; gap: 6px; padding: 4px; border-radius: 999px; background: rgba(20,22,58,0.06);">
+      <button onClick="{{goBase}}" style="{{baseTabStyle}}">BASE · {{baseCount}}</button>
+      <button onClick="{{goTopup}}" style="{{topupTabStyle}}">TOP-UP · {{topupCount}}</button>
+    </div>
+  </div>
+
+  <div style="display: flex; padding: 10px 16px 20px; gap: 4px;">
+    <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 8px 0; border-radius: 14px; background: rgba(20,22,58,0.06);">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M4 6.5h16M4 12h16M4 17.5h11" stroke="#14163A" stroke-width="1.9" stroke-linecap="round"/></svg>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 8.5px; font-weight: 700; letter-spacing: 0.12em; color: #14163A;">LISTA</span>
+    </div>
+    <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 8px 0;">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none"><rect x="3.6" y="5" width="16.8" height="15" rx="3" stroke="#9A9AA6" stroke-width="1.8"/><path d="M3.6 10h16.8M9 3.4v3.2M15 3.4v3.2" stroke="#9A9AA6" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 8.5px; font-weight: 500; letter-spacing: 0.12em; color: #9A9AA6;">SETTIMANA</span>
+    </div>
+    <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 8px 0;">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M5 4.6h9.5a4 4 0 0 1 4 4V20H9a4 4 0 0 1-4-4V4.6Z" stroke="#9A9AA6" stroke-width="1.8" stroke-linejoin="round"/><path d="M8.6 9.2h6.4M8.6 13h4.6" stroke="#9A9AA6" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 8.5px; font-weight: 500; letter-spacing: 0.12em; color: #9A9AA6;">PIATTI</span>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":393,"height":852}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { tab: 'base', done: { tonno: true, ceci: true }, ctl: {} }; }
+
+  rgba(hex, a) {
+    var r = parseInt(hex.substr(1, 2), 16), g = parseInt(hex.substr(3, 2), 16), b = parseInt(hex.substr(5, 2), 16);
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+  }
+
+  data() {
+    return {
+      base: [
+        { rep: 'PASTA E CEREALI', col: '#F5CE5B', items: [
+          { id: 'riso', nome: 'Riso Carnaroli', conf: '1 conf', qty: '1000 g', sub: 'in casa 0 g', big: true },
+          { id: 'avena', nome: "Fiocchi d'avena", conf: '1 conf', qty: '500 g', sub: 'in casa 90 g' },
+          { id: 'pasta', nome: 'Pasta integrale', conf: '2 conf', qty: '1000 g', sub: '' }
+        ], controls: [] },
+        { rep: 'SCATOLAME', col: '#F2A465', items: [
+          { id: 'tonno', nome: 'Tonno al naturale', conf: '3 conf', qty: '240 g', sub: '' },
+          { id: 'ceci', nome: 'Ceci lessati', conf: '2 conf', qty: '800 g', sub: '' },
+          { id: 'passata', nome: 'Passata di pomodoro', conf: '1 conf', qty: '700 g', sub: '', big: true }
+        ], controls: [ { id: 'olio', nome: 'Olio: ne hai ancora?', hint: '54 GIORNI DALL ULTIMO ACQUISTO' } ] },
+        { rep: 'BEVANDE', col: '#B9AEF5', items: [
+          { id: 'caffe', nome: 'Caffè macinato', conf: '1 conf', qty: '250 g', sub: '', big: true }
+        ], controls: [] }
+      ],
+      topup: [
+        { rep: 'ORTOFRUTTA', col: '#A8D96A', items: [
+          { id: 'spinaci', nome: 'Spinaci', conf: '2 conf', qty: '400 g', sub: '', big: true },
+          { id: 'mele', nome: 'Mele', conf: '6 pz', qty: '6 pz', sub: '' },
+          { id: 'limoni', nome: 'Limoni', conf: '3 pz', qty: '3 pz', sub: '' }
+        ], controls: [] },
+        { rep: 'LATTICINI E UOVA', col: '#9CC7F2', items: [
+          { id: 'yogurt', nome: 'Yogurt greco', conf: '2 conf', qty: '1000 g', sub: 'in casa 50 g', big: true },
+          { id: 'uova', nome: 'Uova', conf: '6 pz', qty: '6 pz', sub: '' }
+        ], controls: [] },
+        { rep: 'MACELLERIA', col: '#F29B9B', items: [
+          { id: 'pollo', nome: 'Petto di pollo', conf: '1 conf', qty: '700 g', sub: 'in casa 0 g' },
+          { id: 'salmone', nome: 'Salmone', conf: '2 conf', qty: '300 g', sub: '' }
+        ], controls: [] }
+      ]
+    };
+  }
+
+  countOf(secs) { var n = 0; for (var i = 0; i < secs.length; i++) { n += secs[i].items.length; } return n; }
+
+  skin(col) {
+    var V = 'rail';
+    var rgba = this.rgba.bind(this);
+    var INK = '#14163A', MUT = '#8A8A96', FAD = '#B6B6C0';
+    var card = 'background: #FFFFFF; border-radius: 22px; border: 1px solid rgba(20,22,58,0.07); overflow: hidden;';
+    var head = 'display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 15px 16px 9px;';
+    var dot = 'width: 10px; height: 10px; border-radius: 4px; flex: none; background: ' + col + ';';
+    var label = "font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.16em; color: " + INK + ';';
+    var count = "font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.1em; color: " + MUT + ';';
+    var grid = 'display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 0 12px 12px;';
+    var tile = 'background: #F8F8F6; border: 0; border-radius: 15px;';
+    var tileBig = tile;
+    var tickCol = INK;
+
+    if (V === 'banner') {
+      head = 'display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 13px 16px; background: ' + col + ';';
+      dot = 'width: 0; height: 0;';
+      count = "font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; color: " + rgba(INK, 0.55) + ';';
+      grid = 'display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 12px;';
+    }
+    if (V === 'tinted') {
+      tile = 'background: ' + rgba(col, 0.20) + '; border: 1px solid ' + rgba(col, 0.42) + '; border-radius: 15px;';
+      tileBig = tile;
+    }
+    if (V === 'rail') {
+      card = 'background: #FFFFFF; border-radius: 22px; border: 1px solid rgba(20,22,58,0.07); border-left: 6px solid ' + col + '; overflow: hidden;';
+    }
+    if (V === 'pills') {
+      card = 'background: transparent; border: 0;';
+      head = 'display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 2px 4px 10px;';
+      label = "font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.14em; color: " + INK + '; background: #FFFFFF; border: 1px solid rgba(20,22,58,0.10); border-radius: 999px; padding: 7px 13px 7px 11px; margin-left: -7px;';
+      grid = 'display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; padding: 0;';
+      tile = 'background: #FFFFFF; border: 1px solid rgba(20,22,58,0.07); border-radius: 20px;';
+      tileBig = tile;
+    }
+    if (V === 'heroFill') {
+      tileBig = 'background: ' + col + '; border: 0; border-radius: 18px;';
+    }
+    return { V: V, INK: INK, MUT: MUT, FAD: FAD, card: card, head: head, dot: dot, label: label,
+             count: count, grid: grid, tile: tile, tileBig: tileBig, tick: tickCol, col: col };
+  }
+
+  renderVals() {
+    var self = this;
+    var rgba = this.rgba.bind(this);
+    var d = this.data();
+    var secs = (this.state.tab === 'base') ? d.base : d.topup;
+    var total = 0, done = 0;
+
+    var sections = secs.map(function (s) {
+      var k = self.skin(s.col);
+      var items = s.items.map(function (it) {
+        var on = !!self.state.done[it.id];
+        total += 1; if (on) { done += 1; }
+        var base = it.big ? k.tileBig : k.tile;
+        var span = it.big ? 'grid-column: span 2; min-height: 92px;' : 'min-height: 112px;';
+        var faded = on ? ' opacity: 0.55;' : '';
+        var qty = (k.V === 'pills')
+          ? "font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 500; letter-spacing: 0.04em; color: " + k.INK + '; background: ' + rgba(s.col, 0.30) + '; border-radius: 999px; padding: 3px 8px;'
+          : "font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.04em; color: " + k.MUT + ';';
+        return {
+          nome: it.nome, conf: it.conf, qty: it.qty, sub: it.sub, done: on, showSub: !!it.sub && !on,
+          tick: (k.V === 'heroFill' && it.big) ? s.col : '#FFFFFF',
+          tileStyle: 'display: flex; flex-direction: column; padding: 13px 14px 12px; ' + span + ' ' + base + faded,
+          nameStyle: 'font-size: ' + (it.big ? '24px' : '16px') + '; font-weight: 700; letter-spacing: -0.032em; line-height: 1.1; color: ' + k.INK + ';' + (on ? ' text-decoration: line-through; text-decoration-thickness: 1.6px;' : ''),
+          dotStyle: 'width: 23px; height: 23px; flex: none; border-radius: 999px; display: flex; align-items: center; justify-content: center; border: 1.6px solid ' + (on ? k.INK : rgba(k.INK, 0.22)) + '; background: ' + (on ? k.INK : 'transparent') + ';',
+          confStyle: "font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; color: " + k.INK + ';',
+          qtyStyle: qty,
+          toggle: function () { var n = Object.assign({}, self.state.done); if (n[it.id]) { delete n[it.id]; } else { n[it.id] = true; } self.setState({ done: n }); }
+        };
+      });
+
+      var controls = (s.controls || []).map(function (c) {
+        var a = self.state.ctl[c.id] || null;
+        var b = "min-width: 52px; height: 44px; padding: 0 14px; text-align: center; border-radius: 999px; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; letter-spacing: 0.08em;";
+        return {
+          nome: c.nome, hint: c.hint,
+          wrapStyle: 'display: flex; align-items: center; gap: 12px; margin: 0 12px 12px; padding: 14px 15px; border-radius: 18px; background: ' + rgba(s.col, 0.26) + ';',
+          titleStyle: 'font-size: 16px; font-weight: 700; letter-spacing: -0.024em; color: ' + k.INK + ';',
+          hintStyle: "font-family: 'JetBrains Mono', monospace; font-size: 8.5px; letter-spacing: 0.11em; color: " + rgba(k.INK, 0.5) + '; margin-top: 4px;',
+          yesStyle: b + (a === 'si' ? ' background: ' + k.INK + '; color: #FFFFFF;' : ' background: #FFFFFF; color: ' + k.INK + ';'),
+          noStyle: b + (a === 'no' ? ' background: ' + k.INK + '; color: #FFFFFF;' : ' background: #FFFFFF; color: ' + k.INK + ';'),
+          yes: function () { var x = Object.assign({}, self.state.ctl); x[c.id] = 'si'; self.setState({ ctl: x }); },
+          no: function () { var x = Object.assign({}, self.state.ctl); x[c.id] = 'no'; self.setState({ ctl: x }); }
+        };
+      });
+
+      return { rep: s.rep, n: s.items.length + ' VOCI', items: items, controls: controls,
+               cardStyle: k.card, headStyle: k.head, dotStyle: k.dot, labelStyle: k.label,
+               countStyle: k.count, gridStyle: k.grid };
+    });
+
+    var tOn = "flex: 1; height: 44px; border-radius: 999px; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; letter-spacing: 0.09em; color: #FFFFFF; background: #14163A;";
+    var tOff = "flex: 1; height: 44px; border-radius: 999px; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.09em; color: #8A8A96; background: transparent;";
+    return {
+      sections: sections,
+      baseCount: this.countOf(d.base), topupCount: this.countOf(d.topup),
+      progressLabel: done + '/' + total + ' PRESI',
+      baseTabStyle: this.state.tab === 'base' ? tOn : tOff,
+      topupTabStyle: this.state.tab === 'topup' ? tOn : tOff,
+      goBase: function () { self.setState({ tab: 'base' }); },
+      goTopup: function () { self.setState({ tab: 'topup' }); }
+    };
+  }
+}
+</script>
+</body>
+</html>
