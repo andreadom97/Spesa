@@ -13,3 +13,6 @@ coverage/
 *.log
 npm-debug.log*
 .vercel
+
+# canvas seedato: rigenerabile da design/ con design/build.sh
+spesa-schermate-fase-1.html

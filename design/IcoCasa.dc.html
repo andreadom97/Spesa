@@ -134,7 +134,7 @@ class Component extends DCLogic {
         day: g[0], num: g[1], dots: dots,
         style: 'flex:1;display:flex;flex-direction:column;align-items:center;padding:9px 0 10px;border-radius:14px;'
           + (sel ? 'background:linear-gradient(180deg,#252A5C,#14163A);box-shadow:0 2px 6px rgba(20,22,58,0.22);' : 'background:#FFFFFF;border:1px solid rgba(20,22,58,0.07);')
-          + (oggi ? 'outline:2px solid #3B35D0;outline-offset:1.5px;' : ''),
+          + (oggi ? 'outline:2px solid #14163A;outline-offset:1.5px;' : ''),
         dayStyle: "font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:700;letter-spacing:0.08em;color:" + (sel ? 'rgba(255,255,255,0.62)' : '#A6A6B2') + ';',
         numStyle: 'font-size:15px;font-weight:800;letter-spacing:-0.02em;line-height:1.25;color:' + (sel ? '#FFFFFF' : '#14163A') + ';',
         tap: function () { self.setState({ sel: di }); }
