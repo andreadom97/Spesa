@@ -1,0 +1,315 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Plus Jakarta Sans', 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #3B35D0; } a:hover { color: #2A26A0; }
+    * { box-sizing: border-box; }
+    button { font-family: inherit; border: 0; background: none; padding: 0; cursor: pointer; text-align: left; }
+    .sc::-webkit-scrollbar { width: 0; }
+  </style>
+</helmet>
+<div style="width: 393px; height: 852px; display: flex; flex-direction: column; overflow: hidden; background: #F1F0EE;">
+
+  <div style="padding: 20px 18px 12px; display: flex; flex-direction: column; gap: 15px;">
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
+      <div style="display: flex; align-items: flex-start; gap: 13px; min-width: 0;"><div style="display: grid; grid-template-columns: repeat(3, 22px); gap: 4px; flex: none; margin-top: 11px;"><div style="{{sq0}}"></div><div style="{{sq1}}"></div><div style="{{sq2}}"></div><div style="{{sq3}}"></div><div style="{{sq4}}"></div><div style="{{sq5}}"></div></div><span style="font-size: 68px; font-weight: 800; letter-spacing: -0.05em; line-height: 1; color: #14163A;">Spesa</span></div>
+      <button style="width: 44px; height: 44px; margin: -4px -10px 0 0; flex: none; display: flex; align-items: center; justify-content: center;">
+        <svg width="25" height="25" viewBox="0 0 25 25" fill="none"><path d="M3.5 7.2h18M3.5 12.5h18M3.5 17.8h18" stroke="#14163A" stroke-width="2.1" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div style="display: flex; align-items: center; gap: 7px; align-self: flex-start; height: 34px; padding: 0 14px; border-radius: 999px; background: #14163A;">
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 700; letter-spacing: 0.13em; color: #FFFFFF;">31 AGO — 6 SET</span>
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 6.2 8 10.2 12 6.2" stroke="#FFFFFF" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+  </div>
+  <div class="sc" style="flex: 1; overflow-y: auto; padding: 6px 16px 14px; display: flex; flex-direction: column; gap: 12px;">
+    <sc-for list="{{sections}}" as="sec" hint-placeholder-count="3">
+      <div style="background: #FFFFFF; border-radius: 22px; border: 1px solid rgba(20,22,58,0.07); overflow: hidden;">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 15px 16px 10px;">
+          <div style="display: flex; align-items: center; gap: 9px; min-width: 0;">
+            <span style="{{sec.dotStyle}}"></span>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.16em; color: #14163A;">{{sec.rep}}</span>
+          </div>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.1em; color: #8A8A96;">{{sec.n}}</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 0 12px 12px;">
+          <sc-for list="{{sec.items}}" as="item" hint-placeholder-count="3">
+            <button onClick="{{item.toggle}}" style="{{item.tileStyle}}">
+              <div style="{{item.nameWrapStyle}}">
+                <div style="{{item.nameStyle}}">{{item.nome}}</div>
+                <sc-if value="{{item.showSub}}" hint-placeholder-val="{{true}}">
+                  <div style="{{item.subStyle}}">{{item.sub}}</div>
+                </sc-if>
+              </div>
+              <div style="{{item.metaStyle}}">
+                <span style="{{item.confStyle}}">{{item.conf}}</span>
+                <span style="{{item.qtyStyle}}">{{item.qty}}</span>
+              </div>
+            </button>
+          </sc-for>
+        </div>
+        <sc-for list="{{sec.controls}}" as="ctl" hint-placeholder-count="1">
+          <div style="{{ctl.wrapStyle}}">
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 16px; font-weight: 700; letter-spacing: -0.024em; color: #14163A;">{{ctl.nome}}</div>
+              <div style="font-family: 'JetBrains Mono', monospace; font-size: 8.5px; letter-spacing: 0.11em; color: rgba(20,22,58,0.5); margin-top: 4px;">{{ctl.hint}}</div>
+            </div>
+            <div style="display: flex; gap: 7px;">
+              <button onClick="{{ctl.yes}}" style="{{ctl.yesStyle}}">SÌ</button>
+              <button onClick="{{ctl.no}}" style="{{ctl.noStyle}}">NO</button>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="padding: 8px 16px 0; display: flex; gap: 8px; align-items: center;">
+    <button onClick="{{goBase}}" style="{{baseTabStyle}}">
+      <div style="{{baseRowStyle}}">
+        <span style="{{baseLabelStyle}}">BASE</span>
+        <span style="{{baseMetaStyle}}">{{baseMeta}}</span>
+      </div>
+    </button>
+    <button onClick="{{goTopup}}" style="{{topupTabStyle}}">
+      <div style="{{topupRowStyle}}">
+        <span style="{{topupLabelStyle}}">TOP-UP</span>
+        <span style="{{topupMetaStyle}}">{{topupMeta}}</span>
+      </div>
+    </button>
+  </div>
+
+  <div style="display: flex; padding: 10px 16px 20px; gap: 4px;">
+    <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 8px 0; border-radius: 14px; background: rgba(20,22,58,0.06);">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M4 6.5h16M4 12h16M4 17.5h11" stroke="#14163A" stroke-width="1.9" stroke-linecap="round"/></svg>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 8.5px; font-weight: 700; letter-spacing: 0.12em; color: #14163A;">LISTA</span>
+    </div>
+    <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 8px 0;">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none"><rect x="3.6" y="5" width="16.8" height="15" rx="3" stroke="#9A9AA6" stroke-width="1.8"/><path d="M3.6 10h16.8M9 3.4v3.2M15 3.4v3.2" stroke="#9A9AA6" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 8.5px; font-weight: 500; letter-spacing: 0.12em; color: #9A9AA6;">SETTIMANA</span>
+    </div>
+    <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 8px 0;">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M5 4.6h9.5a4 4 0 0 1 4 4V20H9a4 4 0 0 1-4-4V4.6Z" stroke="#9A9AA6" stroke-width="1.8" stroke-linejoin="round"/><path d="M8.6 9.2h6.4M8.6 13h4.6" stroke="#9A9AA6" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 8.5px; font-weight: 500; letter-spacing: 0.12em; color: #9A9AA6;">PIATTI</span>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":393,"height":852}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { tab: 'base', done: { tonno: true, avena: true }, ctl: {} }; }
+  rgba(hex, a) {
+    var r = parseInt(hex.substr(1, 2), 16), g = parseInt(hex.substr(3, 2), 16), b = parseInt(hex.substr(5, 2), 16);
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+  }
+  data() {
+    return {
+      base: [
+        { rep: 'PASTA, RISO E CEREALI', col: '#F5CE5B', items: [
+          { id: 'riso', nome: 'Riso Carnaroli', conf: '1 conf', qty: '1000 g', sub: 'serve 820 g · in casa 0 g', big: true },
+          { id: 'avena', nome: "Fiocchi d'avena", conf: '1 conf', qty: '500 g', sub: 'serve 350 g · in casa 90 g' },
+          { id: 'pasta', nome: 'Pasta integrale', conf: '2 conf', qty: '1000 g', sub: '' }
+        ], controls: [] },
+        { rep: 'DISPENSA E CONSERVE', col: '#F2A465', items: [
+          { id: 'passata', nome: 'Passata di pomodoro', conf: '1 conf', qty: '700 g', sub: '', big: true },
+          { id: 'tonno', nome: 'Tonno al naturale', conf: '3 conf', qty: '240 g', sub: '' },
+          { id: 'ceci', nome: 'Ceci lessati', conf: '2 conf', qty: '800 g', sub: '' }
+        ], controls: [ { id: 'olio', nome: 'Olio: ne hai ancora?', hint: '54 GIORNI DALL ULTIMO ACQUISTO' } ] },
+        { rep: 'BEVANDE', col: '#B9AEF5', items: [
+          { id: 'caffe', nome: 'Caffè macinato', conf: '1 conf', qty: '250 g', sub: '', big: true }
+        ], controls: [] }
+      ],
+      topup: [
+        { rep: 'ORTOFRUTTA', col: '#A8D96A', items: [
+          { id: 'spinaci', nome: 'Spinaci', conf: '2 conf', qty: '400 g', sub: '', big: true },
+          { id: 'mele', nome: 'Mele', conf: '6 pz', qty: '6 pz', sub: '' },
+          { id: 'limoni', nome: 'Limoni', conf: '3 pz', qty: '3 pz', sub: '' }
+        ], controls: [] },
+        { rep: 'LATTICINI, UOVA E SALUMI', col: '#9CC7F2', items: [
+          { id: 'yogurt', nome: 'Yogurt greco', conf: '2 conf', qty: '1000 g', sub: 'serve 750 g · in casa 50 g', big: true },
+          { id: 'uova', nome: 'Uova', conf: '6 pz', qty: '6 pz', sub: '' }
+        ], controls: [] },
+        { rep: 'MACELLERIA E PESCHERIA', col: '#F29B9B', items: [
+          { id: 'pollo', nome: 'Petto di pollo', conf: '1 conf', qty: '700 g', sub: 'serve 640 g · in casa 0 g', big: true },
+          { id: 'salmone', nome: 'Salmone', conf: '2 conf', qty: '300 g', sub: '' }
+        ], controls: [] }
+      ]
+    };
+  }
+  tally(secs) {
+    var t = 0, dn = 0;
+    for (var i = 0; i < secs.length; i++) {
+      for (var j = 0; j < secs[i].items.length; j++) { t += 1; if (this.state.done[secs[i].items[j].id]) { dn += 1; } }
+    }
+    return { total: t, done: dn };
+  }
+
+  renderVals() {
+    var V = 'pillola';
+    var self = this, rgba = this.rgba.bind(this);
+    var INK = '#14163A', MUT = '#8A8A96', OFFINK = 'rgba(20,22,58,0.34)', OFFMUT = 'rgba(20,22,58,0.24)';
+    var d = this.data();
+    var secs = (this.state.tab === 'base') ? d.base : d.topup;
+    var tb = this.tally(d.base), tt = this.tally(d.topup);
+
+    var sections = secs.map(function (s) {
+      var items = s.items.map(function (it) {
+        var on = !self.state.done[it.id];
+        var hero = !!it.big;
+        var L = {};
+
+        if (V === 'eroeNumero') {
+          L.tile = hero ? 'grid-column: span 2; display: flex; flex-direction: column; min-height: 104px; padding: 14px 16px 13px;'
+                        : 'display: flex; flex-direction: column; min-height: 104px; padding: 13px 14px 12px;';
+          L.nameWrap = 'min-width: 0;';
+          L.meta = 'display: flex; align-items: baseline; gap: 7px; margin-top: auto; padding-top: 9px;';
+          L.name = hero ? '25px' : '16px'; L.conf = hero ? '22px' : '15px'; L.qty = hero ? '12px' : '10.5px';
+          L.pill = false;
+        } else if (V === 'destra') {
+          L.tile = hero ? 'grid-column: span 2; display: flex; flex-direction: row; align-items: center; gap: 12px; min-height: 84px; padding: 14px 16px;'
+                        : 'display: flex; flex-direction: row; align-items: center; gap: 10px; min-height: 62px; padding: 11px 14px;';
+          L.nameWrap = 'flex: 1; min-width: 0;';
+          L.meta = 'display: flex; flex-direction: column; align-items: flex-end; gap: 1px; flex: none;';
+          L.name = hero ? '24px' : '15.5px'; L.conf = hero ? '18px' : '13px'; L.qty = hero ? '11px' : '10px';
+          L.pill = false;
+        } else if (V === 'eroeColonna') {
+          L.tile = hero ? 'grid-column: span 2; display: flex; flex-direction: column; min-height: 108px; padding: 15px 16px 13px;'
+                        : 'grid-column: span 2; display: flex; flex-direction: row; align-items: center; gap: 12px; min-height: 62px; padding: 11px 16px;';
+          L.nameWrap = hero ? 'min-width: 0;' : 'flex: 1; min-width: 0;';
+          L.meta = hero ? 'display: flex; align-items: baseline; gap: 7px; margin-top: auto; padding-top: 10px;'
+                        : 'display: flex; align-items: baseline; gap: 7px; flex: none;';
+          L.name = hero ? '27px' : '16.5px'; L.conf = hero ? '19px' : '14px'; L.qty = hero ? '12px' : '10.5px';
+          L.pill = false;
+        } else if (V === 'pillola') {
+          L.tile = hero ? 'grid-column: span 2; display: flex; flex-direction: column; min-height: 104px; padding: 13px 16px 14px;'
+                        : 'display: flex; flex-direction: column; min-height: 104px; padding: 12px 14px 13px;';
+          L.nameWrap = 'min-width: 0; margin-top: 10px;';
+          L.meta = 'display: flex; align-items: center; gap: 6px; order: -1; flex: none;';
+          L.name = hero ? '25px' : '17px'; L.conf = '10.5px'; L.qty = '10px';
+          L.pill = true;
+        } else {
+          L.tile = on
+            ? (hero ? 'grid-column: span 2; display: flex; flex-direction: column; min-height: 100px; padding: 14px 16px 13px;'
+                    : 'display: flex; flex-direction: column; min-height: 100px; padding: 13px 14px 12px;')
+            : 'grid-column: span 2; display: flex; flex-direction: row; align-items: center; gap: 10px; min-height: 42px; padding: 8px 15px;';
+          L.nameWrap = on ? 'min-width: 0;' : 'flex: 1; min-width: 0;';
+          L.meta = on ? 'display: flex; align-items: baseline; gap: 7px; margin-top: auto; padding-top: 9px;'
+                      : 'display: flex; align-items: baseline; gap: 6px; flex: none;';
+          L.name = on ? (hero ? '25px' : '16px') : '14px';
+          L.conf = on ? (hero ? '19px' : '15px') : '11px';
+          L.qty = on ? '11px' : '9.5px';
+          L.pill = false;
+        }
+
+        var radius = hero ? ' border-radius: 18px;' : ' border-radius: 15px;';
+        if (V === 'collasso' && !on) { radius = ' border-radius: 11px;'; }
+
+        var skin, nameCol, confCol, qtyCol, pillBg, pillTxt;
+        if (!on) {
+          skin = ' background: rgba(20,22,58,0.035); border: 1px solid transparent;';
+          nameCol = OFFINK; confCol = OFFINK; qtyCol = OFFMUT;
+          pillBg = 'rgba(20,22,58,0.06)'; pillTxt = OFFINK;
+        } else if (hero) {
+          skin = ' background: ' + s.col + '; border: 1px solid ' + rgba(s.col, 0.9) + ';';
+          nameCol = INK; confCol = INK; qtyCol = rgba(INK, 0.55);
+          pillBg = '#FFFFFF'; pillTxt = INK;
+        } else {
+          skin = ' background: #FFFFFF; border: 1px solid ' + rgba(s.col, 0.45) + '; box-shadow: 0 1px 2px rgba(20,22,58,0.05);';
+          nameCol = INK; confCol = INK; qtyCol = MUT;
+          pillBg = rgba(s.col, 0.32); pillTxt = INK;
+        }
+
+        var confStyle = "font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: " + L.conf + '; letter-spacing: -0.01em; color: ' + confCol + ';';
+        if (L.pill) {
+          confStyle = "font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: " + L.conf + '; letter-spacing: 0.07em; color: ' + pillTxt + '; background: ' + pillBg + '; border-radius: 999px; padding: 5px 10px;';
+        }
+
+        return {
+          nome: it.nome, conf: it.conf, qty: it.qty, sub: it.sub,
+          showSub: !!it.sub && on && V !== 'destra' && !(V === 'collasso' && !on),
+          tileStyle: L.tile + radius + skin,
+          nameWrapStyle: L.nameWrap,
+          metaStyle: L.meta,
+          nameStyle: 'font-size: ' + L.name + '; font-weight: 700; letter-spacing: -0.032em; line-height: 1.1; color: ' + nameCol + ';' + (on ? '' : ' text-decoration: line-through; text-decoration-thickness: 1.6px;'),
+          subStyle: "font-family: 'JetBrains Mono', monospace; font-size: 8.5px; letter-spacing: 0.02em; margin-top: 5px; color: " + (hero && on ? rgba(INK, 0.55) : '#A6A6B2') + ';',
+          confStyle: confStyle,
+          qtyStyle: "font-family: 'JetBrains Mono', monospace; font-size: " + L.qty + '; font-weight: 500; letter-spacing: 0.04em; color: ' + qtyCol + ';',
+          toggle: function () { var n = Object.assign({}, self.state.done); if (n[it.id]) { delete n[it.id]; } else { n[it.id] = true; } self.setState({ done: n }); }
+        };
+      });
+
+      var controls = (s.controls || []).map(function (c) {
+        var a = self.state.ctl[c.id] || null;
+        var b = "min-width: 52px; height: 44px; padding: 0 14px; text-align: center; border-radius: 999px; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; letter-spacing: 0.08em;";
+        return {
+          nome: c.nome, hint: c.hint,
+          wrapStyle: 'display: flex; align-items: center; gap: 12px; margin: 0 12px 12px; padding: 14px 15px; border-radius: 18px; background: ' + rgba(s.col, 0.26) + ';',
+          yesStyle: b + (a === 'si' ? ' background: ' + INK + '; color: #FFFFFF;' : ' background: #FFFFFF; color: ' + INK + ';'),
+          noStyle: b + (a === 'no' ? ' background: ' + INK + '; color: #FFFFFF;' : ' background: #FFFFFF; color: ' + INK + ';'),
+          yes: function () { var x = Object.assign({}, self.state.ctl); x[c.id] = 'si'; self.setState({ ctl: x }); },
+          no: function () { var x = Object.assign({}, self.state.ctl); x[c.id] = 'no'; self.setState({ ctl: x }); }
+        };
+      });
+
+      return { rep: s.rep, n: s.items.length + ' VOCI', items: items, controls: controls,
+               dotStyle: 'width: 10px; height: 10px; border-radius: 4px; flex: none; background: ' + s.col + ';' };
+    });
+
+      var AREE = [['ORTOFRUTTA','#A8D96A'],['MACELLERIA E PESCHERIA','#F29B9B'],['LATTICINI, UOVA E SALUMI','#9CC7F2'],['PASTA, RISO E CEREALI','#F5CE5B'],['DISPENSA E CONSERVE','#F2A465'],['BEVANDE','#B9AEF5']];
+      var ROT = [4, 2, 0, 5, 3, 1];
+      var REPCOL = ROT.map(function (i) { return AREE[i]; });
+      var stat = {};
+      [d.base, d.topup].forEach(function (list) {
+        list.forEach(function (s) {
+          var tot = 0, left = 0;
+          s.items.forEach(function (it) { tot += 1; if (!self.state.done[it.id]) { left += 1; } });
+          stat[s.rep] = { tot: tot, left: left };
+        });
+      });
+      var SZ = 22, RAD = 6.2;
+      var sq = REPCOL.map(function (rc) {
+        var st = stat[rc[0]] || { tot: 0, left: 0 };
+        var live = st.left > 0;
+        var box = 'width: ' + SZ + 'px; height: ' + SZ + 'px; border-radius: ' + RAD + 'px; box-sizing: border-box;';
+        return live
+          ? box + ' background: ' + rc[1] + '; border: 2px solid ' + rc[1] + ';'
+          : box + ' background: transparent; border: 2px solid rgba(20,22,58,0.18);';
+      });
+
+    var isBase = this.state.tab === 'base';
+    var A = isBase ? tb : tt, B = isBase ? tt : tb;
+    var tOn = 'flex: 1; padding: 13px 16px; border-radius: 18px; background: ' + INK + ';';
+    var tOff = 'flex: none; width: 96px; padding: 13px 12px; border-radius: 18px; background: rgba(20,22,58,0.05);';
+    var rowOn = 'display: flex; align-items: baseline; justify-content: space-between; gap: 10px;';
+    var rowOff = 'display: flex; align-items: baseline; justify-content: center; gap: 6px;';
+    var labOn = 'font-size: 17px; font-weight: 800; letter-spacing: -0.03em; color: #FFFFFF;';
+    var labOff = "font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; color: " + MUT + ';';
+    var metaOn = "font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.62);";
+    var metaOff = "font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: rgba(20,22,58,0.34);";
+    var mOn = (A.total - A.done) + ' DA PRENDERE', mOff = '' + (B.total - B.done);
+
+    return {
+      sq0: sq[0], sq1: sq[1], sq2: sq[2], sq3: sq[3], sq4: sq[4], sq5: sq[5],
+      sections: sections,
+      baseTabStyle: isBase ? tOn : tOff, topupTabStyle: isBase ? tOff : tOn,
+      baseRowStyle: isBase ? rowOn : rowOff, topupRowStyle: isBase ? rowOff : rowOn,
+      baseLabelStyle: isBase ? labOn : labOff, topupLabelStyle: isBase ? labOff : labOn,
+      baseMetaStyle: isBase ? metaOn : metaOff, topupMetaStyle: isBase ? metaOff : metaOn,
+      baseMeta: isBase ? mOn : mOff, topupMeta: isBase ? mOff : mOn,
+      goBase: function () { self.setState({ tab: 'base' }); },
+      goTopup: function () { self.setState({ tab: 'topup' }); }
+    };
+  }
+}
+</script>
+</body>
+</html>
