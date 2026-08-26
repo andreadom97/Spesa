@@ -2,7 +2,7 @@
   "pages": [
     {
       "id": "page-1",
-      "name": "Settimana — interazione"
+      "name": "Settimana — rifinita"
     },
     {
       "id": "page-2",
@@ -11,39 +11,39 @@
   ],
   "artboards": [
     {
-      "file": "IntPillola.dc.html",
+      "file": "IcoCasa.dc.html",
       "x": 0,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "1 — Pillola A CASA / FUORI",
+      "title": "1 — Casa piena / vuota  +  posate",
       "is_interactive": true
     },
     {
-      "file": "IntIcona.dc.html",
+      "file": "IcoBarrata.dc.html",
       "x": 493,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "2 — Icona di stato a sinistra",
+      "title": "2 — Casa piena / barrata  +  posate",
       "is_interactive": true
     },
     {
-      "file": "IntModalita.dc.html",
+      "file": "IcoCarota.dc.html",
       "x": 986,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "3 — Modalita check-in",
+      "title": "3 — Casa piena / vuota  +  carota",
       "is_interactive": true
     },
     {
-      "file": "SetIbrida.dc.html",
+      "file": "IntIcona.dc.html",
       "x": 1479,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "La C di prima (tap = spegne)",
+      "title": "Prima del fix (icona invisibile)",
       "is_interactive": true
     },
     {
@@ -552,50 +552,73 @@
       "title": "SetLista",
       "is_interactive": true,
       "page": "page-2"
+    },
+    {
+      "file": "SetIbrida.dc.html",
+      "x": 1479,
+      "y": 9540,
+      "w": 393,
+      "h": 852,
+      "title": "SetIbrida",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "IntPillola.dc.html",
+      "x": 1972,
+      "y": 9540,
+      "w": 393,
+      "h": 852,
+      "title": "IntPillola",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "IntModalita.dc.html",
+      "x": 0,
+      "y": 10600,
+      "w": 393,
+      "h": 852,
+      "title": "IntModalita",
+      "is_interactive": true,
+      "page": "page-2"
     }
   ],
   "annotations": [
     {
-      "id": "comune",
+      "id": "bug",
       "x": 0,
-      "y": -420,
+      "y": -450,
       "w": 393,
-      "text": "COMUNE A TUTTE E TRE. Il tap sul corpo della scheda adesso APRE il piatto, come ti aspettavi: non spegne piu. E sono arrivate le frecce accanto al nome del giorno, perche lo swipe da solo non lo scopre nessuno. Nel prodotto vero lo scorrimento orizzontale sul contenuto fara la stessa cosa delle frecce; qui funzionano le frecce. Nota che i chip dei giorni restano: frecce e chip sono due strade allo stesso posto, una per andare al giorno dopo e una per saltare al sabato."
+      "text": "IL BUG. Nella versione precedente, in fondo alla riga, la casetta dello stato A CASA era disegnata in BIANCO su una scheda bianca: invisibile. Restava solo la X dello stato spento, senza il suo contrario, e infatti sembrava che non ci fosse nessuna icona. Adesso il controllo e una pastiglia tonda da 38px sempre visibile: piena e scura con la casa bianca quando mangi a casa, bianca e bordata quando sei fuori. La stessa forma in due stati si legge come un interruttore, e si capisce da sola che il tocco la ribalta."
     },
     {
       "id": "v1",
       "x": 493,
-      "y": -420,
+      "y": -450,
       "w": 393,
-      "text": "1 — PILLOLA A CASA / FUORI. A destra di ogni scheda una pillola che dice lo stato corrente e lo ribalta al tocco, con la freccia sotto per aprire il piatto. Due bersagli distinti, un tap ciascuno, e lo stato e scritto a parole invece che dedotto da un colore. E la piu esplicita: nessuno deve indovinare niente. Costo: la pillola ruba larghezza al nome del piatto, che si tronca prima."
+      "text": "1 — CASA PIENA / CASA VUOTA. Lo stesso simbolo in due pesi: pieno acceso, contorno spento. E la lettura piu immediata perche non c e da interpretare un secondo simbolo, e riaccenderlo e ovvio: la casa vuota chiede di essere riempita. Icona della sezione Piatti: forchetta e coltello."
     },
     {
       "id": "v2",
       "x": 986,
-      "y": -420,
+      "y": -450,
       "w": 393,
-      "text": "2 — ICONA DI STATO A SINISTRA. Una colonna stretta a sinistra con la casetta quando sei a casa e la croce quando sei fuori: tocchi li e ribalti. L occhio parte da sinistra, quindi il controllo e nel punto dove lo sguardo arriva per primo, e il nome del piatto resta lungo quanto puo. Costo: la casetta e la croce vanno imparate una volta, mentre A CASA e FUORI si leggono e basta."
+      "text": "2 — CASA BARRATA. Lo stato spento ha la casa attraversata da una diagonale, come i segnali di divieto. E piu esplicito nel dire NON a casa, ma aggiunge un tratto e a 17px la barra si mangia un po la forma della casa. Icona Piatti: forchetta e coltello."
     },
     {
       "id": "v3",
       "x": 1479,
-      "y": -420,
+      "y": -450,
       "w": 393,
-      "text": "3 — MODALITA CHECK-IN. Fuori modalita il tap apre sempre il piatto e non si spegne niente. Il pulsante SEGNA I PASTI FUORI CASA entra in una modalita dove le schede si bordano e il tap le spegne, e si esce con FINE. E la piu pulita nell uso quotidiano, perche non c e nessun controllo di stato a occupare spazio, ed e la piu veloce nel check-in di inizio settimana, perche un tap per pasto senza mirare. Costo: introduce il concetto di modalita, che e la cosa che gli utenti dimenticano di lasciare. Qui parte gia dentro la modalita cosi la vedi."
+      "text": "3 — CAROTA. Stesse icone di stato della 1, cambia solo la sezione Piatti: una carota al posto delle posate. Piu distintiva e piu vicina al tema cibo-spesa che a quello ristorante; le posate sono piu immediatamente riconoscibili ma sono anche l icona piu usata al mondo per dire ristorante o cibo. Puoi mescolare: icone di stato dalla 1 o dalla 2, icona di sezione da qui o dalle altre."
     },
     {
-      "id": "giudizio",
+      "id": "altro",
       "x": 0,
-      "y": -720,
+      "y": -750,
       "w": 393,
-      "text": "Se devo scegliere: la 2. La 1 e la piu chiara ma sacrifica il nome del piatto, che e l informazione per cui questa schermata esiste. La 3 e la piu elegante ma una modalita su una schermata che apri ogni giorno e un rischio: la si dimentica accesa. La 2 tiene il controllo a un tap, non ruba larghezza e non introduce stati nascosti; l unico prezzo e imparare due icone, che si impara una volta sola."
-    },
-    {
-      "id": "altre",
-      "x": 493,
-      "y": -720,
-      "w": 393,
-      "text": "Sotto: le altre tre schermate chiuse, per verificare la coerenza. Piatto e ancora quello di prima e andra aggiornato: e da li che si sostituira il piatto del pasto."
+      "text": "LE ALTRE TRE COSE, applicate a tutte e tre. GRADIENTE: le superfici scure — chip del giorno selezionato, pastiglia della casa accesa, pulsante di conferma — hanno un gradiente verticale leggero piu una ombra minima. OGGI: il giorno corrente e contornato di blu anche quando non e selezionato. Nel campione oggi e mercoledi ma e selezionato giovedi, cosi vedi i due stati insieme. PRANZO FUORI: e l impostazione abitualmente fuori, vive nelle Impostazioni e precompila la settimana; qui il pranzo e gia spento dal lunedi al venerdi."
     }
   ],
   "launch": {
