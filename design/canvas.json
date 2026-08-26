@@ -2,7 +2,7 @@
   "pages": [
     {
       "id": "page-1",
-      "name": "Settimana — rifinita"
+      "name": "Settimana — casa blu"
     },
     {
       "id": "page-2",
@@ -11,39 +11,39 @@
   ],
   "artboards": [
     {
-      "file": "IcoCasa.dc.html",
+      "file": "CasaNuda.dc.html",
       "x": 0,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "1 — Casa piena / vuota  +  posate",
+      "title": "1 — Casa bianca nuda (come chiesto)",
       "is_interactive": true
     },
     {
-      "file": "IcoBarrata.dc.html",
+      "file": "CasaBordo.dc.html",
       "x": 493,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "2 — Casa piena / barrata  +  posate",
+      "title": "2 — Casa bianca con contorno",
       "is_interactive": true
     },
     {
-      "file": "IcoCarota.dc.html",
+      "file": "IcoCasa.dc.html",
       "x": 986,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "3 — Casa piena / vuota  +  carota",
+      "title": "Prima: cerchietto e gradiente",
       "is_interactive": true
     },
     {
-      "file": "IntIcona.dc.html",
+      "file": "IcoCarota.dc.html",
       "x": 1479,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "Prima del fix (icona invisibile)",
+      "title": "Variante con la carota",
       "is_interactive": true
     },
     {
@@ -574,51 +574,64 @@
       "page": "page-2"
     },
     {
-      "file": "IntModalita.dc.html",
+      "file": "IntIcona.dc.html",
       "x": 0,
+      "y": 10600,
+      "w": 393,
+      "h": 852,
+      "title": "IntIcona",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "IntModalita.dc.html",
+      "x": 493,
       "y": 10600,
       "w": 393,
       "h": 852,
       "title": "IntModalita",
       "is_interactive": true,
       "page": "page-2"
+    },
+    {
+      "file": "IcoBarrata.dc.html",
+      "x": 986,
+      "y": 10600,
+      "w": 393,
+      "h": 852,
+      "title": "IcoBarrata",
+      "is_interactive": true,
+      "page": "page-2"
     }
   ],
   "annotations": [
     {
-      "id": "bug",
+      "id": "fatte",
       "x": 0,
       "y": -450,
       "w": 393,
-      "text": "IL BUG. Nella versione precedente, in fondo alla riga, la casetta dello stato A CASA era disegnata in BIANCO su una scheda bianca: invisibile. Restava solo la X dello stato spento, senza il suo contrario, e infatti sembrava che non ci fosse nessuna icona. Adesso il controllo e una pastiglia tonda da 38px sempre visibile: piena e scura con la casa bianca quando mangi a casa, bianca e bordata quando sei fuori. La stessa forma in due stati si legge come un interruttore, e si capisce da sola che il tocco la ribalta."
+      "text": "LE TRE COSE CHIESTE. Gradiente via da tutte le superfici scure, resta solo l ombra. Il cerchietto sotto la casa e sparito: ora c e solo il glifo, blu-notte pieno quando mangi a casa e bianco quando mangi fuori. Il contorno del giorno di oggi e passato da 2px indaco a 3px nel blu-notte dell app, staccato di 2px dal riquadro cosi si vede anche quando oggi e pure il giorno selezionato e lo sfondo e scuro. Nel campione oggi e mercoledi ed e selezionato giovedi."
     },
     {
       "id": "v1",
       "x": 493,
       "y": -450,
       "w": 393,
-      "text": "1 — CASA PIENA / CASA VUOTA. Lo stesso simbolo in due pesi: pieno acceso, contorno spento. E la lettura piu immediata perche non c e da interpretare un secondo simbolo, e riaccenderlo e ovvio: la casa vuota chiede di essere riempita. Icona della sezione Piatti: forchetta e coltello."
+      "text": "1 — CASA BIANCA NUDA. Esattamente come l hai chiesta: bianco pieno, nessun contorno. Guarda la riga PRANZO, che e spenta: la casa bianca sta sopra un fondo grigio chiarissimo e il contrasto e quasi nullo, circa 1 a 1. E la stessa dinamica della casa bianca su bianco di prima, attenuata ma non risolta. Da lontano e con lo schermo non al massimo sparisce."
     },
     {
       "id": "v2",
       "x": 986,
       "y": -450,
       "w": 393,
-      "text": "2 — CASA BARRATA. Lo stato spento ha la casa attraversata da una diagonale, come i segnali di divieto. E piu esplicito nel dire NON a casa, ma aggiunge un tratto e a 17px la barra si mangia un po la forma della casa. Icona Piatti: forchetta e coltello."
+      "text": "2 — CASA BIANCA CON CONTORNO. Identica alla 1 con l aggiunta di un filo grigio da 1.3px sul perimetro. Resta bianca come volevi, ma il perimetro la stacca dal fondo e continua a leggersi anche quando il grigio della scheda spenta si avvicina al bianco. E la stessa idea, resa robusta."
     },
     {
-      "id": "v3",
+      "id": "aperto",
       "x": 1479,
       "y": -450,
       "w": 393,
-      "text": "3 — CAROTA. Stesse icone di stato della 1, cambia solo la sezione Piatti: una carota al posto delle posate. Piu distintiva e piu vicina al tema cibo-spesa che a quello ristorante; le posate sono piu immediatamente riconoscibili ma sono anche l icona piu usata al mondo per dire ristorante o cibo. Puoi mescolare: icone di stato dalla 1 o dalla 2, icona di sezione da qui o dalle altre."
-    },
-    {
-      "id": "altro",
-      "x": 0,
-      "y": -750,
-      "w": 393,
-      "text": "LE ALTRE TRE COSE, applicate a tutte e tre. GRADIENTE: le superfici scure — chip del giorno selezionato, pastiglia della casa accesa, pulsante di conferma — hanno un gradiente verticale leggero piu una ombra minima. OGGI: il giorno corrente e contornato di blu anche quando non e selezionato. Nel campione oggi e mercoledi ma e selezionato giovedi, cosi vedi i due stati insieme. PRANZO FUORI: e l impostazione abitualmente fuori, vive nelle Impostazioni e precompila la settimana; qui il pranzo e gia spento dal lunedi al venerdi."
+      "text": "RESTA DA SCEGLIERE: posate o carota per la sezione Piatti. Non me l hai detto e le ho lasciate entrambe: le prime due artboard hanno le posate, l ultima della riga ha la carota con le icone di stato della versione precedente. Se preferisci la carota la porto sulla versione che scegli qui."
     }
   ],
   "launch": {
