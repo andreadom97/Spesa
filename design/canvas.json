@@ -2,7 +2,7 @@
   "pages": [
     {
       "id": "page-1",
-      "name": "Settimana — casa blu"
+      "name": "v1 — quattro schermate"
     },
     {
       "id": "page-2",
@@ -11,66 +11,48 @@
   ],
   "artboards": [
     {
-      "file": "CasaNuda.dc.html",
+      "file": "Lista.dc.html",
       "x": 0,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "1 — Casa bianca nuda (come chiesto)",
+      "title": "1 — LISTA",
       "is_interactive": true
     },
     {
-      "file": "CasaBordo.dc.html",
+      "file": "Settimana.dc.html",
       "x": 493,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "2 — Casa bianca con contorno",
-      "is_interactive": true
-    },
-    {
-      "file": "IcoCasa.dc.html",
-      "x": 986,
-      "y": 0,
-      "w": 393,
-      "h": 852,
-      "title": "Prima: cerchietto e gradiente",
-      "is_interactive": true
-    },
-    {
-      "file": "IcoCarota.dc.html",
-      "x": 1479,
-      "y": 0,
-      "w": 393,
-      "h": 852,
-      "title": "Variante con la carota",
-      "is_interactive": true
-    },
-    {
-      "file": "Lista.dc.html",
-      "x": 0,
-      "y": 1060,
-      "w": 393,
-      "h": 852,
-      "title": "LISTA",
+      "title": "2 — SETTIMANA  (chiusa)",
       "is_interactive": true
     },
     {
       "file": "Piatti.dc.html",
-      "x": 493,
-      "y": 1060,
+      "x": 986,
+      "y": 0,
       "w": 393,
       "h": 852,
-      "title": "PIATTI",
+      "title": "3 — PIATTI",
       "is_interactive": true
     },
     {
       "file": "Piatto.dc.html",
-      "x": 986,
-      "y": 1060,
+      "x": 1479,
+      "y": 0,
       "w": 393,
       "h": 852,
-      "title": "PIATTO",
+      "title": "4 — PIATTO",
+      "is_interactive": true
+    },
+    {
+      "file": "CasaBordo.dc.html",
+      "x": 1972,
+      "y": 0,
+      "w": 393,
+      "h": 852,
+      "title": "Prima del fix sul bordo di oggi",
       "is_interactive": true
     },
     {
@@ -524,18 +506,8 @@
       "page": "page-2"
     },
     {
-      "file": "Settimana.dc.html",
-      "x": 0,
-      "y": 9540,
-      "w": 393,
-      "h": 852,
-      "title": "Settimana",
-      "is_interactive": true,
-      "page": "page-2"
-    },
-    {
       "file": "SetGriglia.dc.html",
-      "x": 493,
+      "x": 0,
       "y": 9540,
       "w": 393,
       "h": 852,
@@ -545,7 +517,7 @@
     },
     {
       "file": "SetLista.dc.html",
-      "x": 986,
+      "x": 493,
       "y": 9540,
       "w": 393,
       "h": 852,
@@ -555,7 +527,7 @@
     },
     {
       "file": "SetIbrida.dc.html",
-      "x": 1479,
+      "x": 986,
       "y": 9540,
       "w": 393,
       "h": 852,
@@ -565,7 +537,7 @@
     },
     {
       "file": "IntPillola.dc.html",
-      "x": 1972,
+      "x": 1479,
       "y": 9540,
       "w": 393,
       "h": 852,
@@ -575,8 +547,8 @@
     },
     {
       "file": "IntIcona.dc.html",
-      "x": 0,
-      "y": 10600,
+      "x": 1972,
+      "y": 9540,
       "w": 393,
       "h": 852,
       "title": "IntIcona",
@@ -585,11 +557,21 @@
     },
     {
       "file": "IntModalita.dc.html",
-      "x": 493,
+      "x": 0,
       "y": 10600,
       "w": 393,
       "h": 852,
       "title": "IntModalita",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "IcoCasa.dc.html",
+      "x": 493,
+      "y": 10600,
+      "w": 393,
+      "h": 852,
+      "title": "IcoCasa",
       "is_interactive": true,
       "page": "page-2"
     },
@@ -602,36 +584,56 @@
       "title": "IcoBarrata",
       "is_interactive": true,
       "page": "page-2"
+    },
+    {
+      "file": "IcoCarota.dc.html",
+      "x": 1479,
+      "y": 10600,
+      "w": 393,
+      "h": 852,
+      "title": "IcoCarota",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "CasaNuda.dc.html",
+      "x": 1972,
+      "y": 10600,
+      "w": 393,
+      "h": 852,
+      "title": "CasaNuda",
+      "is_interactive": true,
+      "page": "page-2"
     }
   ],
   "annotations": [
     {
-      "id": "fatte",
+      "id": "chiusa",
       "x": 0,
-      "y": -450,
+      "y": -420,
       "w": 393,
-      "text": "LE TRE COSE CHIESTE. Gradiente via da tutte le superfici scure, resta solo l ombra. Il cerchietto sotto la casa e sparito: ora c e solo il glifo, blu-notte pieno quando mangi a casa e bianco quando mangi fuori. Il contorno del giorno di oggi e passato da 2px indaco a 3px nel blu-notte dell app, staccato di 2px dal riquadro cosi si vede anche quando oggi e pure il giorno selezionato e lo sfondo e scuro. Nel campione oggi e mercoledi ed e selezionato giovedi."
+      "text": "SETTIMANA CHIUSA. Il segno di OGGI e passato da un contorno disegnato fuori dal riquadro al BORDO del riquadro stesso, 3px nel blu-notte dell app: e esattamente l elemento che l hover ti mostrava tratteggiato. Il contatore 2 su 4 A CASA accanto al nome del giorno e sparito. Resta solo il totale settimanale in fondo, accanto al pulsante. Nel campione oggi e mercoledi ed e selezionato giovedi, cosi vedi il bordo blu su un chip non selezionato."
     },
     {
-      "id": "v1",
+      "id": "nota",
       "x": 493,
-      "y": -450,
+      "y": -420,
       "w": 393,
-      "text": "1 — CASA BIANCA NUDA. Esattamente come l hai chiesta: bianco pieno, nessun contorno. Guarda la riga PRANZO, che e spenta: la casa bianca sta sopra un fondo grigio chiarissimo e il contrasto e quasi nullo, circa 1 a 1. E la stessa dinamica della casa bianca su bianco di prima, attenuata ma non risolta. Da lontano e con lo schermo non al massimo sparisce."
+      "text": "UN CASO LIMITE, per trasparenza: quando oggi coincide col giorno selezionato, il bordo blu finisce su uno sfondo blu e non si distingue. Non l ho risolto perche quando un giorno e selezionato lo sai gia che ci sei dentro, e aggiungere un secondo segno la dentro voleva dire un anello bianco interno che sporcava. Tocca mercoledi per vederlo e dimmi se ti da fastidio."
     },
     {
-      "id": "v2",
+      "id": "stato",
       "x": 986,
-      "y": -450,
+      "y": -420,
       "w": 393,
-      "text": "2 — CASA BIANCA CON CONTORNO. Identica alla 1 con l aggiunta di un filo grigio da 1.3px sul perimetro. Resta bianca come volevi, ma il perimetro la stacca dal fondo e continua a leggersi anche quando il grigio della scheda spenta si avvicina al bianco. E la stessa idea, resa robusta."
+      "text": "Le altre scelte sono chiuse cosi: casa blu piena quando mangi a casa, casa bianca col filo di contorno quando mangi fuori, nessun cerchietto, nessun gradiente da nessuna parte, solo ombre. Icona della sezione Piatti: posate. Non me l avevi detta e ho deciso io per non tenerti fermo, si cambia in una riga se preferisci la carota, che trovi in archivio."
     },
     {
-      "id": "aperto",
+      "id": "mancano",
       "x": 1479,
-      "y": -450,
+      "y": -420,
       "w": 393,
-      "text": "RESTA DA SCEGLIERE: posate o carota per la sezione Piatti. Non me l hai detto e le ho lasciate entrambe: le prime due artboard hanno le posate, l ultima della riga ha la carota con le icone di stato della versione precedente. Se preferisci la carota la porto sulla versione che scegli qui."
+      "text": "MANCANO TRE SCHERMATE alla v1: INGREDIENTE, dove si definiscono unita di misura, area, deperibile, classe del residuo e formato della confezione. IMPOSTAZIONI, dove vivono i pasti da tre a cinque riordinabili, gli slot abitualmente fuori come il pranzo in ufficio, e il moltiplicatore delle porzioni. ORDINE DEI REPARTI, dove si trascinano le sei aree nell ordine del proprio supermercato. In piu PIATTO va aggiornato: e da li che si sostituira il piatto assegnato a un pasto."
     }
   ],
   "launch": {
