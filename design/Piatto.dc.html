@@ -42,23 +42,17 @@
       <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #8A8A96;">PER 1 PORZIONE</span>
     </div>
 
-    <div style="background: #FFFFFF; border-radius: 20px; border: 1px solid rgba(20,22,58,0.07); overflow: hidden;">
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;">
       <sc-for list="{{ingredienti}}" as="i" hint-placeholder-count="4">
-        <button style="{{i.rowStyle}}">
-          <span style="{{i.dot}}"></span>
-          <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
-            <span style="font-size: 16px; font-weight: 600; letter-spacing: -0.015em; color: #14163A;">{{i.nome}}</span>
-            <span style="font-family: 'JetBrains Mono', monospace; font-size: 8.5px; letter-spacing: 0.09em; color: #A6A6B2;">{{i.area}}</span>
-          </div>
-          <span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; color: #14163A;">{{i.qta}}</span>
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M6 3.2 10.4 8 6 12.8" stroke="#C4C4CE" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <button style="{{i.tileStyle}}">
+          <span style="{{i.pillStyle}}">{{i.qta}}</span>
+          <span style="{{i.nameStyle}}">{{i.nome}}</span>
+          <span style="{{i.areaStyle}}">{{i.area}}</span>
         </button>
       </sc-for>
-      <button style="width: 100%; display: flex; align-items: center; gap: 11px; padding: 15px 16px; border-top: 1px dashed rgba(20,22,58,0.16);">
-        <span style="width: 22px; height: 22px; border-radius: 7px; border: 1.5px dashed rgba(20,22,58,0.30); display: flex; align-items: center; justify-content: center; flex: none;">
-          <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M6 2v8M2 6h8" stroke="#8A8A96" stroke-width="1.8" stroke-linecap="round"/></svg>
-        </span>
-        <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; color: #8A8A96;">AGGIUNGI INGREDIENTE</span>
+      <button style="min-height: 108px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; padding: 13px 12px; border-radius: 15px; background: transparent; border: 1.5px dashed rgba(20,22,58,0.28);">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="#8A8A96" stroke-width="2.1" stroke-linecap="round"/></svg>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; letter-spacing: 0.11em; color: #8A8A96; text-align: center; line-height: 1.5;">AGGIUNGI<br>INGREDIENTE</span>
       </button>
     </div>
 
@@ -98,11 +92,17 @@ class Component extends DCLogic {
       slots: ['COLAZIONE','PRANZO','CENA','SPUNTINO'].map(function (l) {
         return { label: l, style: self.state.slot === l ? on : off, tap: function () { self.setState({ slot: l }); } };
       }),
-      ingredienti: ing.map(function (i, n) {
+      ingredienti: ing.map(function (i) {
+        var rgba = function (hex, a) {
+          var r = parseInt(hex.substr(1, 2), 16), g = parseInt(hex.substr(3, 2), 16), b = parseInt(hex.substr(5, 2), 16);
+          return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+        };
         return {
           nome: i.nome, area: i.area, qta: i.qta,
-          dot: 'width: 10px; height: 10px; border-radius: 3px; flex: none; background: ' + i.col + ';',
-          rowStyle: 'width: 100%; display: flex; align-items: center; gap: 11px; padding: 14px 16px;' + (n > 0 ? ' border-top: 1px solid rgba(20,22,58,0.06);' : '')
+          tileStyle: 'min-height: 108px; display: flex; flex-direction: column; align-items: flex-start; gap: 7px; padding: 13px 14px 12px; border-radius: 15px; background: #FFFFFF; border: 1px solid ' + rgba(i.col, 0.45) + '; box-shadow: 0 1px 2px rgba(20,22,58,0.05);',
+          pillStyle: "font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 700; letter-spacing: 0.07em; color: #14163A; background: " + rgba(i.col, 0.32) + '; border-radius: 999px; padding: 5px 10px;',
+          nameStyle: 'font-size: 17px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.12; color: #14163A;',
+          areaStyle: "font-family: 'JetBrains Mono', monospace; font-size: 8px; letter-spacing: 0.09em; line-height: 1.4; color: #A6A6B2; margin-top: auto;"
         };
       }),
       giorni: ['LUN','MAR','MER','GIO','VEN','SAB','DOM'].map(function (g, i) {

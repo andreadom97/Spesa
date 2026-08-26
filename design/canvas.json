@@ -629,11 +629,18 @@
       "text": "Le altre scelte sono chiuse cosi: casa blu piena quando mangi a casa, casa bianca col filo di contorno quando mangi fuori, nessun cerchietto, nessun gradiente da nessuna parte, solo ombre. Icona della sezione Piatti: posate. Non me l avevi detta e ho deciso io per non tenerti fermo, si cambia in una riga se preferisci la carota, che trovi in archivio."
     },
     {
-      "id": "mancano",
+      "id": "piatto-tessere",
       "x": 1479,
       "y": -420,
       "w": 393,
-      "text": "MANCANO TRE SCHERMATE alla v1: INGREDIENTE, dove si definiscono unita di misura, area, deperibile, classe del residuo e formato della confezione. IMPOSTAZIONI, dove vivono i pasti da tre a cinque riordinabili, gli slot abitualmente fuori come il pranzo in ufficio, e il moltiplicatore delle porzioni. ORDINE DEI REPARTI, dove si trascinano le sei aree nell ordine del proprio supermercato. In piu PIATTO va aggiornato: e da li che si sostituira il piatto assegnato a un pasto."
+      "text": "PIATTO RIFATTO A TESSERE. Gli ingredienti non sono piu righe di una lista ma riquadri come nella lista della spesa: due per riga, quantita come pillola tinta nel colore dell area in alto, nome sotto, nome dell area in mono in fondo. Il bordo di ogni tessera porta il colore della sua area, che e la stessa regola della lista. Toccando una tessera si va al dettaglio dell ingrediente. AGGIUNGI INGREDIENTE e diventato una tessera come le altre, stessa altezza, solo tratteggiata fuori e col piu al centro."
+    },
+    {
+      "id": "mancano",
+      "x": 1972,
+      "y": -420,
+      "w": 393,
+      "text": "MANCANO TRE SCHERMATE alla v1. INGREDIENTE, dove si definiscono unita di misura, area, deperibile, classe del residuo e formato della confezione: e la schermata che si apre toccando una tessera qui. IMPOSTAZIONI, con i pasti da tre a cinque riordinabili, gli slot abitualmente fuori e il moltiplicatore delle porzioni. ORDINE DEI REPARTI, dove si trascinano le sei aree. Piu l azione per sostituire il piatto assegnato a un pasto, che partira dalla Settimana."
     }
   ],
   "launch": {
