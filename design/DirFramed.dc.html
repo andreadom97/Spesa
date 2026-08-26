@@ -1,0 +1,191 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #18181B; } a:hover { color: #52525B; }
+    * { box-sizing: border-box; }
+    button { font-family: inherit; border: 0; background: none; padding: 0; cursor: pointer; }
+    .brk {
+      background:
+        linear-gradient(rgba(24,24,27,0.34), rgba(24,24,27,0.34)) left top / 14px 1px no-repeat,
+        linear-gradient(rgba(24,24,27,0.34), rgba(24,24,27,0.34)) left top / 1px 14px no-repeat,
+        linear-gradient(rgba(24,24,27,0.34), rgba(24,24,27,0.34)) right top / 14px 1px no-repeat,
+        linear-gradient(rgba(24,24,27,0.34), rgba(24,24,27,0.34)) right top / 1px 14px no-repeat,
+        linear-gradient(rgba(24,24,27,0.34), rgba(24,24,27,0.34)) left bottom / 14px 1px no-repeat,
+        linear-gradient(rgba(24,24,27,0.34), rgba(24,24,27,0.34)) left bottom / 1px 14px no-repeat,
+        linear-gradient(rgba(24,24,27,0.34), rgba(24,24,27,0.34)) right bottom / 14px 1px no-repeat,
+        linear-gradient(rgba(24,24,27,0.34), rgba(24,24,27,0.34)) right bottom / 1px 14px no-repeat,
+        rgba(255,255,255,0.62);
+    }
+    .sc::-webkit-scrollbar { width: 0; }
+  </style>
+</helmet>
+<div style="width: 393px; height: 852px; display: flex; flex-direction: column; overflow: hidden; background: repeating-linear-gradient(135deg, transparent 0 11px, rgba(24,24,27,0.035) 11px 12px), #F7F7F4;">
+
+  <div style="padding: 22px 16px 14px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; border-bottom: 1px solid rgba(24,24,27,0.14);">
+    <div style="display: flex; flex-direction: column; gap: 5px;">
+      <div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.14em; color: #71717A;">SETT. 31 AGO — 6 SET</div>
+      <div style="font-size: 26px; font-weight: 600; letter-spacing: -0.03em; color: #18181B;">Spesa</div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 9px; border: 1px solid rgba(24,24,27,0.22);">
+      <svg width="8" height="8" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="3.6" stroke="#52525B" stroke-width="1.7"/></svg>
+      <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 9px; letter-spacing: 0.1em; color: #52525B;">OFFLINE · 3</span>
+    </div>
+  </div>
+
+  <div class="sc" style="flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 14px;">
+    <sc-for list="{{sections}}" as="sec" hint-placeholder-count="3">
+      <div class="brk" style="border: 1px solid rgba(24,24,27,0.14);">
+        <div style="padding: 13px 14px 10px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.13em; color: #71717A;">{{sec.rep}}</div>
+        <sc-for list="{{sec.items}}" as="item" hint-placeholder-count="3">
+          <div style="{{item.rowStyle}}">
+            <button onClick="{{item.toggle}}" style="{{item.boxStyle}}">
+              <sc-if value="{{item.done}}" hint-placeholder-val="{{true}}">
+                <svg width="15" height="15" viewBox="0 0 20 20" fill="none"><path d="M4.5 10.5 L8.2 14 L15.5 6.4" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </sc-if>
+            </button>
+            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+              <div style="{{item.nameStyle}}">{{item.nome}}</div>
+              <sc-if value="{{item.showSub}}" hint-placeholder-val="{{true}}">
+                <div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 9.5px; color: #A1A1AA;">{{item.sub}}</div>
+              </sc-if>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 1px;">
+              <div style="{{item.confStyle}}">{{item.conf}}</div>
+              <div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10px; color: #A1A1AA;">{{item.qty}}</div>
+            </div>
+          </div>
+        </sc-for>
+        <sc-for list="{{sec.controls}}" as="ctl" hint-placeholder-count="1">
+          <div style="display: flex; align-items: center; gap: 12px; padding: 13px 14px; border-top: 1px dashed rgba(24,24,27,0.26); background: rgba(24,24,27,0.028);">
+            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px;">
+              <div style="font-size: 15px; font-weight: 500; color: #18181B;">{{ctl.nome}}</div>
+              <div style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 9px; letter-spacing: 0.08em; color: #A1A1AA;">{{ctl.hint}}</div>
+            </div>
+            <div style="display: flex; gap: 0px;">
+              <button onClick="{{ctl.yes}}" style="{{ctl.yesStyle}}">SÌ</button>
+              <button onClick="{{ctl.no}}" style="{{ctl.noStyle}}">NO</button>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="padding: 13px 14px 20px; border-top: 1px solid rgba(24,24,27,0.14); background: #F7F7F4;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 11px;">
+      <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10px; letter-spacing: 0.12em; color: #52525B;">{{progressLabel}}</span>
+      <div style="width: 128px; height: 3px; background: rgba(24,24,27,0.14);">
+        <div style="{{progressBar}}"></div>
+      </div>
+    </div>
+    <div style="display: flex; border: 1px solid rgba(24,24,27,0.22);">
+      <button onClick="{{goBase}}" style="{{baseTabStyle}}">BASE · {{baseCount}}</button>
+      <button onClick="{{goTopup}}" style="{{topupTabStyle}}">TOP-UP · {{topupCount}}</button>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":393,"height":852}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { tab: 'base', done: { tonno: true, ceci: true }, ctl: {} }; }
+  data() {
+    return {
+      base: [
+        { rep: 'PASTA, RISO E CEREALI', items: [
+          { id: 'riso', nome: 'Riso Carnaroli', conf: '1 conf', qty: '1000 g', sub: 'serve 820 g · in casa 0 g' },
+          { id: 'avena', nome: "Fiocchi d'avena", conf: '1 conf', qty: '500 g', sub: 'serve 350 g · in casa 90 g' },
+          { id: 'pasta', nome: 'Pasta integrale', conf: '2 conf', qty: '1000 g', sub: '' }
+        ], controls: [] },
+        { rep: 'SCATOLAME E CONSERVE', items: [
+          { id: 'tonno', nome: 'Tonno al naturale', conf: '3 conf', qty: '240 g', sub: '' },
+          { id: 'ceci', nome: 'Ceci lessati', conf: '2 conf', qty: '800 g', sub: '' },
+          { id: 'passata', nome: 'Passata di pomodoro', conf: '1 conf', qty: '700 g', sub: '' }
+        ], controls: [ { id: 'olio', nome: 'Olio extravergine', hint: 'ULTIMO ACQUISTO 54 GIORNI FA' } ] },
+        { rep: 'BEVANDE', items: [
+          { id: 'caffe', nome: 'Caffè macinato', conf: '1 conf', qty: '250 g', sub: '' }
+        ], controls: [] }
+      ],
+      topup: [
+        { rep: 'LATTICINI E UOVA', items: [
+          { id: 'yogurt', nome: 'Yogurt greco', conf: '2 conf', qty: '1000 g', sub: 'serve 750 g · in casa 50 g' },
+          { id: 'uova', nome: 'Uova', conf: '6 pz', qty: '6 pz', sub: '' }
+        ], controls: [] },
+        { rep: 'MACELLERIA E PESCHERIA', items: [
+          { id: 'pollo', nome: 'Petto di pollo', conf: '1 conf', qty: '700 g', sub: 'serve 640 g · in casa 0 g' },
+          { id: 'salmone', nome: 'Salmone', conf: '2 conf', qty: '300 g', sub: '' }
+        ], controls: [] },
+        { rep: 'ORTOFRUTTA', items: [
+          { id: 'spinaci', nome: 'Spinaci', conf: '2 conf', qty: '400 g', sub: '' },
+          { id: 'mele', nome: 'Mele', conf: '6 pz', qty: '6 pz', sub: '' }
+        ], controls: [] }
+      ]
+    };
+  }
+  countOf(secs) { var n = 0; for (var i = 0; i < secs.length; i++) { n += secs[i].items.length; } return n; }
+  renderVals() {
+    var self = this;
+    var d = this.data();
+    var secs = (this.state.tab === 'base') ? d.base : d.topup;
+    var row = 'display: flex; align-items: center; gap: 12px; padding: 0 14px; height: 60px; border-top: 1px solid rgba(24,24,27,0.10);';
+    var boxOff = 'width: 26px; height: 26px; flex: none; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(24,24,27,0.34); background: transparent;';
+    var boxOn = 'width: 26px; height: 26px; flex: none; display: flex; align-items: center; justify-content: center; border: 1px solid #18181B; background: #18181B;';
+    var total = 0, done = 0;
+    var sections = secs.map(function (s) {
+      var items = s.items.map(function (it) {
+        var isDone = !!self.state.done[it.id];
+        total += 1; if (isDone) { done += 1; }
+        return {
+          nome: it.nome, conf: it.conf, qty: it.qty, sub: it.sub, done: isDone,
+          showSub: !!it.sub && !isDone,
+          rowStyle: row,
+          boxStyle: isDone ? boxOn : boxOff,
+          nameStyle: isDone
+            ? 'font-size: 16px; font-weight: 400; color: #A1A1AA; text-decoration: line-through; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'
+            : 'font-size: 16px; font-weight: 500; color: #18181B; letter-spacing: -0.012em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;',
+          confStyle: isDone
+            ? "font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12.5px; color: #A1A1AA;"
+            : "font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12.5px; font-weight: 600; color: #18181B;",
+          toggle: function () { var nd = Object.assign({}, self.state.done); if (nd[it.id]) { delete nd[it.id]; } else { nd[it.id] = true; } self.setState({ done: nd }); }
+        };
+      });
+      var controls = (s.controls || []).map(function (c) {
+        var ans = self.state.ctl[c.id] || null;
+        var b = "width: 54px; height: 44px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11.5px; font-weight: 600; letter-spacing: 0.07em; border: 1px solid rgba(24,24,27,0.34);";
+        return {
+          nome: c.nome + ' — ancora?', hint: c.hint,
+          yesStyle: b + (ans === 'si' ? ' background: #18181B; color: #FFFFFF;' : ' background: transparent; color: #52525B;') + ' border-right: 0;',
+          noStyle: b + (ans === 'no' ? ' background: #18181B; color: #FFFFFF;' : ' background: transparent; color: #52525B;'),
+          yes: function () { var x = Object.assign({}, self.state.ctl); x[c.id] = 'si'; self.setState({ ctl: x }); },
+          no: function () { var x = Object.assign({}, self.state.ctl); x[c.id] = 'no'; self.setState({ ctl: x }); }
+        };
+      });
+      return { rep: s.rep, items: items, controls: controls };
+    });
+    var pct = total ? Math.round((done / total) * 100) : 0;
+    var tOn = "flex: 1; height: 46px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em; color: #F7F7F4; background: #18181B;";
+    var tOff = "flex: 1; height: 46px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11.5px; font-weight: 500; letter-spacing: 0.08em; color: #52525B; background: transparent;";
+    return {
+      sections: sections,
+      baseCount: this.countOf(d.base), topupCount: this.countOf(d.topup),
+      progressLabel: done + ' / ' + total + ' PRESI',
+      progressBar: 'height: 100%; width: ' + pct + '%; background: #18181B;',
+      baseTabStyle: this.state.tab === 'base' ? tOn : tOff,
+      topupTabStyle: this.state.tab === 'topup' ? tOn : tOff,
+      goBase: function () { self.setState({ tab: 'base' }); },
+      goTopup: function () { self.setState({ tab: 'topup' }); }
+    };
+  }
+}
+</script>
+</body>
+</html>
