@@ -2,7 +2,7 @@
   "pages": [
     {
       "id": "page-1",
-      "name": "Direzione scelta"
+      "name": "Rail — versioni"
     },
     {
       "id": "page-2",
@@ -11,59 +11,58 @@
   ],
   "artboards": [
     {
-      "file": "MagBanda.dc.html",
+      "file": "RailNumero.dc.html",
       "x": 0,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "1 — Banda colorata",
+      "title": "1 — Quantita protagonista",
       "is_interactive": true
     },
     {
-      "file": "MagTinte.dc.html",
+      "file": "RailDestra.dc.html",
       "x": 493,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "2 — Tessere tinte",
+      "title": "2 — Quantita a destra",
       "is_interactive": true
     },
     {
-      "file": "MagRail.dc.html",
+      "file": "RailColonna.dc.html",
       "x": 986,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "3 — Rail laterale",
+      "title": "3 — Colonna singola",
       "is_interactive": true
     },
     {
-      "file": "MagPillole.dc.html",
+      "file": "RailEtichetta.dc.html",
       "x": 1479,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "4 — Tutto a pillole",
+      "title": "4 — Etichetta in alto",
       "is_interactive": true
     },
     {
-      "file": "MagHero.dc.html",
+      "file": "RailCollasso.dc.html",
       "x": 1972,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "5 — Protagonista a colore pieno",
+      "title": "5 — Le prese collassano",
       "is_interactive": true
     },
     {
-      "file": "MagBosco.dc.html",
+      "file": "MagRail.dc.html",
       "x": 0,
       "y": 1060,
       "w": 393,
       "h": 852,
-      "title": "I.2 — Bosco (punto di partenza)",
-      "is_interactive": true,
-      "page": "page-1"
+      "title": "Rail — versione precedente",
+      "is_interactive": true
     },
     {
       "file": "Main.dc.html",
@@ -196,82 +195,125 @@
       "page": "page-2"
     },
     {
-      "file": "MagGhiaccio.dc.html",
+      "file": "MagBosco.dc.html",
       "x": 493,
       "y": 4240,
       "w": 393,
       "h": 852,
-      "title": "I.3 — Inchiostro su ghiaccio",
+      "title": "I.2 — Bosco",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "MagGhiaccio.dc.html",
+      "x": 986,
+      "y": 4240,
+      "w": 393,
+      "h": 852,
+      "title": "I.3 — Ghiaccio",
       "is_interactive": true,
       "page": "page-2"
     },
     {
       "file": "MagNotte.dc.html",
-      "x": 986,
+      "x": 1479,
       "y": 4240,
       "w": 393,
       "h": 852,
       "title": "I.4 — Notte e ambra",
       "is_interactive": true,
       "page": "page-2"
+    },
+    {
+      "file": "MagBanda.dc.html",
+      "x": 0,
+      "y": 5300,
+      "w": 393,
+      "h": 852,
+      "title": "Colore: banda",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "MagTinte.dc.html",
+      "x": 493,
+      "y": 5300,
+      "w": 393,
+      "h": 852,
+      "title": "Colore: tessere tinte",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "MagPillole.dc.html",
+      "x": 986,
+      "y": 5300,
+      "w": 393,
+      "h": 852,
+      "title": "Colore: pillole",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "MagHero.dc.html",
+      "x": 1479,
+      "y": 5300,
+      "w": 393,
+      "h": 852,
+      "title": "Colore: protagonista pieno",
+      "is_interactive": true,
+      "page": "page-2"
     }
   ],
   "annotations": [
     {
-      "id": "colori-reparto",
+      "id": "regola-stato",
       "x": 0,
-      "y": -260,
+      "y": -300,
       "w": 393,
-      "text": "CODICE COLORE PER REPARTO, comune a tutte e cinque: giallo pasta e cereali, arancio scatolame, lilla bevande, verde ortofrutta, azzurro latticini e uova, corallo macelleria. Sono pastelli con testo in blu-notte sopra, come il banner verde del tuo riferimento: il colore identifica il reparto, non urla. Cambia il tab in basso per vedere i reparti del fresco."
-    },
-    {
-      "id": "shell-comune",
-      "x": 493,
-      "y": -260,
-      "w": 393,
-      "text": "SHELL PRESA DAI RIFERIMENTI: fondo grigio-caldo, schede bianche a raggio 22, etichette mono maiuscole con tracking largo, inchiostro blu-notte, controlli a pillola, barra di navigazione in basso con micro-etichette mono. Uguale in tutte e cinque: cambia solo dove vive il colore."
+      "text": "NUOVA REGOLA DI STATO, uguale in tutte e cinque. Niente pallino. La tessera ACCESA — bianca, bordo nel colore del reparto, ombra minima — significa DA PRENDERE. La tessera SPENTA — piatta, grigia, nome depennato — significa PRESA. Il tap sulla tessera fa da interruttore. Due voci partono gia prese cosi vedi entrambi gli stati."
     },
     {
       "id": "v1",
-      "x": 986,
-      "y": -260,
+      "x": 493,
+      "y": -300,
       "w": 393,
-      "text": "1 — BANDA COLORATA. Il colore sta solo nella testata del reparto, a tutta larghezza, come il banner verde del riferimento. Dentro la scheda si torna al bianco. E la piu vicina agli screenshot che mi hai dato e la piu ordinata: il colore segna, non invade."
+      "text": "1 — QUANTITA PROTAGONISTA. Lo spazio del pallino va al numero: 1 conf sale a 19px e diventa la seconda cosa che leggi dopo il nome. Sotto resta la riga del residuo. Selettore: due blocchi con barra di avanzamento per lista, cosi vedi a colpo d occhio quanto manca in ciascuna."
     },
     {
       "id": "v2",
-      "x": 1479,
-      "y": -260,
+      "x": 986,
+      "y": -300,
       "w": 393,
-      "text": "2 — TESSERE TINTE. Ogni voce e tinta nel colore del suo reparto. La lista diventa un mosaico e in corsia riconosci il gruppo senza leggere l etichetta. Rischio: con sei reparti a schermo diventa carnevale, e il testo su tinta perde un po di contrasto."
+      "text": "2 — QUANTITA A DESTRA. Le tessere diventano righe basse: nome a sinistra, quantita allineata a destra. Ci stanno molte piu voci per schermata, ed e la piu vicina a una lista della spesa vera. Prezzo: sparisce la riga del residuo, che qui non entra. Selettore: due pillole, l attiva dice quante ne restano a parole."
     },
     {
       "id": "v3",
-      "x": 1972,
-      "y": -260,
+      "x": 1479,
+      "y": -300,
       "w": 393,
-      "text": "3 — RAIL LATERALE. Colore ridotto a una fascia da 6px sul bordo sinistro della scheda piu un quadratino accanto all etichetta. E la piu sobria delle cinque: il colore fa da indice, la scheda resta bianca. Se un giorno l app la usa qualcun altro, questa e quella che invecchia meglio."
+      "text": "3 — COLONNA SINGOLA. Una voce per riga a tutta larghezza, nome a 17px e quantita a destra. La piu scandibile di tutte in corsia. Selettore: un unico controllo bordato dove il segmento attivo ha l avanzamento disegnato dentro il bordo inferiore — il selettore E la barra di progresso."
     },
     {
       "id": "v4",
-      "x": 0,
-      "y": -560,
+      "x": 1972,
+      "y": -300,
       "w": 393,
-      "text": "4 — TUTTO A PILLOLE. Niente scheda contenitore: le sezioni galleggiano, l etichetta del reparto e una pillola bianca bordata, la quantita e una pillola tinta, le voci sono card bianche a raggio 20. E la piu vicina al linguaggio a componenti del riferimento e la piu leggera. Rischio: senza la scheda i reparti si separano meno."
+      "text": "4 — ETICHETTA IN ALTO. La quantita sale in cima alla tessera come pillola tinta nel colore del reparto, e il nome sotto cresce a 19px. Il colore entra anche dentro la tessera senza tingerla tutta. Selettore: due schede stile cartellina, l attiva ha il bordo inferiore spesso, e il numero grande e quanto MANCA."
     },
     {
       "id": "v5",
-      "x": 493,
-      "y": -560,
+      "x": 0,
+      "y": -600,
       "w": 393,
-      "text": "5 — PROTAGONISTA A COLORE PIENO. La voce principale di ogni reparto e una tessera a colore pieno, il resto resta neutro. Il colore diventa gerarchia oltre che categoria: l occhio cade prima sulla cosa piu importante del reparto. E la piu editoriale e la piu vicina allo spirito della I originale."
+      "text": "5 — LE PRESE COLLASSANO. La piu radicale: una voce presa non resta della stessa dimensione, si accorcia a una striscia bassa a tutta larghezza. La lista si accorcia fisicamente mentre fai la spesa e quello che resta da prendere occupa sempre piu spazio relativo. Selettore: la lista attiva diventa un blocco grande con quante ne mancano scritto accanto, l altra si riduce a un chip per scambiare."
     },
     {
-      "id": "partenza",
-      "x": 986,
-      "y": -560,
+      "id": "precedente",
+      "x": 493,
+      "y": -600,
       "w": 393,
-      "text": "Sotto, a sinistra, resta la I.2 Bosco da cui siamo partiti, per il confronto. Tutte le altre direzioni sono nella pagina Archivio direzioni."
+      "text": "Sotto a sinistra e rimasta la versione precedente del rail, quella con il pallino, per il confronto diretto. La testata in cima e ancora quella vecchia in tutte: la rivediamo dopo, come hai detto."
     }
   ],
   "launch": {
