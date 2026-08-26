@@ -2,7 +2,7 @@
   "pages": [
     {
       "id": "page-1",
-      "name": "Protagonista — versioni"
+      "name": "Testata e logo"
     },
     {
       "id": "page-2",
@@ -11,66 +11,48 @@
   ],
   "artboards": [
     {
-      "file": "HeroNumero.dc.html",
+      "file": "HdrRosetta.dc.html",
       "x": 0,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "1 — Numero grande sull eroe",
+      "title": "A — Rosetta",
       "is_interactive": true
     },
     {
-      "file": "HeroDestra.dc.html",
+      "file": "HdrGriglia.dc.html",
       "x": 493,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "2 — Quantita a destra",
+      "title": "B — Griglia",
       "is_interactive": true
     },
     {
-      "file": "HeroColonna.dc.html",
+      "file": "HdrAnello.dc.html",
       "x": 986,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "3 — Eroe piu colonna",
+      "title": "C — Anello che si riempie",
       "is_interactive": true
     },
     {
-      "file": "HeroPillola.dc.html",
+      "file": "HdrMono.dc.html",
       "x": 1479,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "4 — Pillola bianca sul colore",
+      "title": "D — Monogramma editoriale",
       "is_interactive": true
     },
     {
-      "file": "HeroCollasso.dc.html",
+      "file": "HeroPillola.dc.html",
       "x": 1972,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "5 — Le prese collassano",
-      "is_interactive": true
-    },
-    {
-      "file": "MagHero.dc.html",
-      "x": 0,
-      "y": 1060,
-      "w": 393,
-      "h": 852,
-      "title": "PARTENZA — Protagonista pieno (col pallino)",
-      "is_interactive": true
-    },
-    {
-      "file": "RailCollasso.dc.html",
-      "x": 493,
-      "y": 1060,
-      "w": 393,
-      "h": 852,
-      "title": "Da qui viene il selettore in basso",
+      "title": "La 4 con la testata vecchia",
       "is_interactive": true
     },
     {
@@ -274,8 +256,18 @@
       "page": "page-2"
     },
     {
-      "file": "RailNumero.dc.html",
+      "file": "MagHero.dc.html",
       "x": 0,
+      "y": 4240,
+      "w": 393,
+      "h": 852,
+      "title": "MagHero",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "RailNumero.dc.html",
+      "x": 493,
       "y": 4240,
       "w": 393,
       "h": 852,
@@ -285,7 +277,7 @@
     },
     {
       "file": "RailDestra.dc.html",
-      "x": 493,
+      "x": 986,
       "y": 4240,
       "w": 393,
       "h": 852,
@@ -295,7 +287,7 @@
     },
     {
       "file": "RailColonna.dc.html",
-      "x": 986,
+      "x": 1479,
       "y": 4240,
       "w": 393,
       "h": 852,
@@ -305,71 +297,100 @@
     },
     {
       "file": "RailEtichetta.dc.html",
-      "x": 1479,
+      "x": 1972,
       "y": 4240,
       "w": 393,
       "h": 852,
       "title": "RailEtichetta",
       "is_interactive": true,
       "page": "page-2"
+    },
+    {
+      "file": "RailCollasso.dc.html",
+      "x": 0,
+      "y": 5300,
+      "w": 393,
+      "h": 852,
+      "title": "RailCollasso",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "HeroNumero.dc.html",
+      "x": 493,
+      "y": 5300,
+      "w": 393,
+      "h": 852,
+      "title": "HeroNumero",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "HeroDestra.dc.html",
+      "x": 986,
+      "y": 5300,
+      "w": 393,
+      "h": 852,
+      "title": "HeroDestra",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "HeroColonna.dc.html",
+      "x": 1479,
+      "y": 5300,
+      "w": 393,
+      "h": 852,
+      "title": "HeroColonna",
+      "is_interactive": true,
+      "page": "page-2"
+    },
+    {
+      "file": "HeroCollasso.dc.html",
+      "x": 1972,
+      "y": 5300,
+      "w": 393,
+      "h": 852,
+      "title": "HeroCollasso",
+      "is_interactive": true,
+      "page": "page-2"
     }
   ],
   "annotations": [
     {
-      "id": "stato",
+      "id": "premessa",
       "x": 0,
       "y": -330,
       "w": 393,
-      "text": "REGOLA DI STATO. Niente pallino. Tessera ACCESA = da prendere, tessera SPENTA e depennata = presa, tap come interruttore. Sulla voce protagonista la regola e letterale: accesa ha il colore pieno del reparto, presa il colore si SVUOTA e resta una tessera grigia depennata. Due voci partono gia prese, una normale e una protagonista, cosi vedi entrambe le transizioni."
+      "text": "Quattro testate sulla schermata che hai scelto, la 4 con la pillola bianca. Il corpo della lista e identico in tutte: cambia solo la fascia in alto, cosi confronti una variabile sola. All estrema destra e rimasta la 4 con la testata vecchia come metro di paragone. Tutti e quattro i loghi sono astratti e costruiti con i colori dei reparti: giallo, arancio, lilla, verde, azzurro, corallo."
     },
     {
-      "id": "selettore",
+      "id": "a",
       "x": 493,
       "y": -330,
       "w": 393,
-      "text": "SELETTORE IN BASSO, uguale in tutte e cinque: quello della NUOVA 5 che hai indicato. La lista attiva e un blocco scuro largo con quante voci restano DA PRENDERE, l altra si riduce a un chip col solo numero. Asimmetrico di proposito: dice dove sei e quanto manca."
+      "text": "A — ROSETTA. Sei cerchi disposti a esagono, uno per reparto. Legge come un fiore o una corolla e resta riconoscibile a 26px. La testata resta quella attuale: avatar, marchio al centro, ingranaggio, selettore settimana sotto. E la variante meno invasiva: cambia il marchio, non la struttura."
     },
     {
-      "id": "v1",
+      "id": "b",
       "x": 986,
       "y": -330,
       "w": 393,
-      "text": "1 — NUMERO GRANDE SULL EROE. Lo spazio del pallino va al numero. Sulla voce protagonista 1 conf sale a 22px in blu-notte sul colore pieno: e il contrasto piu forte della schermata. Sulle tessere piccole resta a 15px. La riga del residuo sopravvive ovunque."
+      "text": "B — GRIGLIA. Sei quadrati arrotondati due per tre, gli stessi sei colori. E il logo che assomiglia di piu al prodotto: le tessere della lista in miniatura. La testata si ricompone: marchio piu la parola spesa a sinistra, avatar e ingranaggio a destra, e il selettore settimana diventa una riga con frecce avanti e indietro, che serve davvero quando devi guardare la settimana prossima."
     },
     {
-      "id": "v2",
+      "id": "c",
       "x": 1479,
       "y": -330,
       "w": 393,
-      "text": "2 — QUANTITA A DESTRA. Tutto diventa riga: nome a sinistra, quantita a destra, anche la protagonista che resta a colore pieno ma bassa e larga. La piu compatta. Prezzo dichiarato: sparisce la riga del residuo, qui non entra. Se il residuo conta, questa e la piu debole."
+      "text": "C — ANELLO CHE SI RIEMPIE. Il marchio e un anello di sei archi colorati, e attorno gira un secondo anello scuro che E la progressione della spesa: si riempie mentre spunti le voci. Provalo, tocca qualche tessera e guarda il logo in alto. E l unico dei quattro in cui il marchio fa anche un lavoro. Testata compatta su una riga sola: marchio, titolo con la settimana sotto, avatar."
     },
     {
-      "id": "v3",
+      "id": "d",
       "x": 1972,
       "y": -330,
       "w": 393,
-      "text": "3 — EROE PIU COLONNA. Ritmo misto: la protagonista resta un blocco alto a colore pieno col nome a 27px, tutte le altre diventano righe a tutta larghezza sotto di lei. La piu vicina allo spirito del magazine e insieme la piu scandibile, perche sotto l eroe si legge dall alto in basso."
-    },
-    {
-      "id": "v4",
-      "x": 0,
-      "y": -630,
-      "w": 393,
-      "text": "4 — PILLOLA BIANCA SUL COLORE. La quantita sale in cima come pillola: bianca sulla protagonista a colore pieno, tinta nel colore del reparto sulle altre. Il nome sotto cresce. La piu vicina al linguaggio a componenti del riferimento, e la piu ordinata: la quantita si legge sempre nello stesso punto."
-    },
-    {
-      "id": "v5",
-      "x": 493,
-      "y": -630,
-      "w": 393,
-      "text": "5 — LE PRESE COLLASSANO. La versione che avevi indicato, riportata su questa direzione. Una voce presa si accorcia a una striscia bassa a tutta larghezza, protagonista compresa. La lista si accorcia mentre fai la spesa. Rispetto alla NUOVA 5 di prima qui la voce protagonista c e: era la cosa che si era persa."
-    },
-    {
-      "id": "partenza",
-      "x": 986,
-      "y": -630,
-      "w": 393,
-      "text": "Sotto: a sinistra la versione di partenza col pallino per il confronto diretto, accanto la NUOVA 5 da cui viene il selettore. La testata in cima e ancora quella vecchia in tutte, come d accordo."
+      "text": "D — MONOGRAMMA EDITORIALE. Un rombo verde con due cerchi sovrapposti, giallo e blu-notte: piu astratto e piu da marchio, meno descrittivo degli altri tre. La testata diventa editoriale: titolo su due righe a 34px e il selettore settimana come pillola scura piena. E la piu di carattere e quella che ruba piu spazio alla lista."
     }
   ],
   "launch": {
