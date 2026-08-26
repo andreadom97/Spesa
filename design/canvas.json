@@ -2,7 +2,7 @@
   "pages": [
     {
       "id": "page-1",
-      "name": "v1 — spina dorsale"
+      "name": "Settimana — 3 vie"
     },
     {
       "id": "page-2",
@@ -11,39 +11,66 @@
   ],
   "artboards": [
     {
-      "file": "Lista.dc.html",
+      "file": "SetGriglia.dc.html",
       "x": 0,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "1 — LISTA",
+      "title": "A — Griglia densa",
       "is_interactive": true
     },
     {
-      "file": "Settimana.dc.html",
+      "file": "SetLista.dc.html",
       "x": 493,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "2 — SETTIMANA",
+      "title": "B — Lista per giorno",
       "is_interactive": true
     },
     {
-      "file": "Piatti.dc.html",
+      "file": "SetIbrida.dc.html",
       "x": 986,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "3 — PIATTI",
+      "title": "C — Striscia + giorno",
       "is_interactive": true
     },
     {
-      "file": "Piatto.dc.html",
+      "file": "Settimana.dc.html",
       "x": 1479,
       "y": 0,
       "w": 393,
       "h": 852,
-      "title": "4 — PIATTO (dettaglio)",
+      "title": "La versione che hai criticato",
+      "is_interactive": true
+    },
+    {
+      "file": "Lista.dc.html",
+      "x": 0,
+      "y": 1060,
+      "w": 393,
+      "h": 852,
+      "title": "LISTA",
+      "is_interactive": true
+    },
+    {
+      "file": "Piatti.dc.html",
+      "x": 493,
+      "y": 1060,
+      "w": 393,
+      "h": 852,
+      "title": "PIATTI",
+      "is_interactive": true
+    },
+    {
+      "file": "Piatto.dc.html",
+      "x": 986,
+      "y": 1060,
+      "w": 393,
+      "h": 852,
+      "title": "PIATTO",
       "is_interactive": true
     },
     {
@@ -499,32 +526,46 @@
   ],
   "annotations": [
     {
-      "id": "flusso",
+      "id": "comune",
       "x": 0,
-      "y": -330,
+      "y": -390,
       "w": 393,
-      "text": "IL FLUSSO. Da destra a sinistra si costruisce, da sinistra a destra si usa. In PIATTO definisci cosa mangi e con quali grammature, in PIATTI li tieni tutti, in SETTIMANA dici quali pasti farai a casa, e da li nasce la LISTA. I tre tab in basso sono Lista, Settimana, Piatti; PIATTO e una schermata di dettaglio quindi non ha i tab ma ha la freccia indietro e i due pulsanti in fondo."
+      "text": "COSA CAMBIA IN TUTTE E TRE. Uno stato spento solo, niente piu tratteggio: abitualmente fuori e un impostazione, non uno stato della settimana, e va nella schermata impostazioni invece di ripetersi a schermo. Il quadratino blu senza significato e sparito. I pasti sono quattro ma NON sono l elenco fisso di prima: sono una lista ordinata dall utente, da tre a cinque, e infatti qui lo SPUNTINO sta fra colazione e pranzo come avevi detto tu. E soprattutto adesso si vede COSA mangi: Settimana non e piu solo un check-in, e il piano alimentare."
     },
     {
-      "id": "settimana",
+      "id": "a",
       "x": 493,
-      "y": -330,
+      "y": -390,
       "w": 393,
-      "text": "2 — SETTIMANA. Stessa regola di stato della lista, coerente: cella ACCESA bianca col quadratino scuro significa mangi a casa, cella SPENTA piatta significa fuori. Il tratteggio marca gli slot abitualmente fuori, cioe il pranzo in ufficio dal lunedi al venerdi e la colazione del mercoledi al bar: li vedi ma non li rinneghi ogni settimana. Tocca le celle e guarda il contatore. Il pulsante scuro in fondo e quello che genera la lista. Nota: la metafora rilievo contro incasso che avevamo nella prima versione qui non c e piu, perche il design e diventato piatto: al suo posto acceso contro spento, la stessa dei tessere della lista."
+      "text": "A — GRIGLIA DENSA. Tiene la settimana intera a colpo d occhio. I nomi dei giorni sono cresciuti a 14px in grassetto col numero sotto, quindi non sono piu schiacciati dai quadratoni. Nella cella accesa ci sono i puntini delle aree del piatto: non il nome, perche in 73px non ci sta. Limite dichiarato: sai che colori tocchi ma non che piatto e, e con cinque pasti le celle si stringono ancora."
     },
     {
-      "id": "piatti",
+      "id": "b",
       "x": 986,
-      "y": -330,
+      "y": -390,
       "w": 393,
-      "text": "3 — PIATTI. I filtri per slot funzionano, provali. Ogni scheda porta i puntini colorati delle aree che quel piatto tocca: e un modo per capire a colpo d occhio se un piatto ti fa girare mezzo supermercato o se sta tutto in due corsie. Se filtri su Spuntino compare lo stato vuoto, che e uno dei quattro da disegnare."
+      "text": "B — LISTA PER GIORNO. Sette schede, una per giorno, e dentro ogni pasto con il NOME del piatto per esteso. Si legge tutto, niente compromessi sui nomi, e regge tre come cinque pasti senza stringersi. Tocca la riga per spegnere il pasto, la freccia a destra apre il piatto. Limite: perdi la settimana a colpo d occhio, devi scorrere."
     },
     {
-      "id": "piatto",
+      "id": "c",
       "x": 1479,
-      "y": -330,
+      "y": -390,
       "w": 393,
-      "text": "4 — PIATTO. Il selettore dello slot funziona. Le grammature sono per una porzione: la moltiplicazione per il numero di persone sta nelle impostazioni, non qui, cosi il piatto resta una ricetta e non una quantita. Ogni ingrediente porta il puntino della sua area e si apre sulla schermata Ingrediente, che e nel prossimo blocco. In fondo la riga IN QUESTA SETTIMANA mostra dove finisce davvero il piatto: e la connessione visibile fra repertorio e piano, ed e li che capisci perche una voce entra in lista sei volte e non sette."
+      "text": "C — STRISCIA PIU GIORNO. In alto i sette giorni come chip, con dentro un puntino per pasto acceso: la settimana a colpo d occhio in 60px di altezza. Sotto il giorno selezionato aperto per intero, con nome del piatto a 18px e i puntini delle aree. Tocca un chip per cambiare giorno, tocca una scheda per spegnere il pasto, la freccia apre il piatto. E l unica che tiene insieme la visione d insieme e il dettaglio."
+    },
+    {
+      "id": "aperto",
+      "x": 0,
+      "y": -690,
+      "w": 393,
+      "text": "RESTA APERTO, e va deciso prima di costruire il resto: il tap che spegne e la freccia che apre sono due bersagli nella stessa riga. Funziona, ma la pressione lunga che avevi proposto per cambiare piatto non l ho messa: su mobile e poco scopribile e non si vede in un mockup. Al suo posto la freccia porta al piatto, e da li si potra cambiarlo. L avviso sulla dispensa quando cambi un piatto e una buona idea ma e roba da Fase 3: serve simulare il residuo in avanti su tutta la settimana."
+    },
+    {
+      "id": "altre",
+      "x": 493,
+      "y": -690,
+      "w": 393,
+      "text": "Sotto: le tre schermate gia chiuse, Lista Piatti e Piatto, per verificare che la Settimana che scegli parli la stessa lingua."
     }
   ],
   "launch": {

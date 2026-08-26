@@ -182,6 +182,18 @@ Prese dopo il ciclo di design; hanno precedenza sulle assunzioni della sezione p
 
 **Stato delle voci senza checkbox.** Nessun pallino: la tessera accesa significa da prendere, la tessera spenta e depennata significa presa, il tap sulla tessera è l'interruttore. Sulla voce protagonista di ogni area la regola è letterale — accesa ha il colore pieno dell'area, presa il colore si svuota.
 
+### Revisione del 2026-08-26, secondo giro
+
+**I pasti non sono un elenco fisso.** `slot_type` smette di essere l'enum colazione/pranzo/cena/spuntino e diventa una tabella `meal_slot_def` per utente: da 3 a 5 righe, con nome e posizione ordinabile. Lo spuntino può stare fra colazione e pranzo, o fra pranzo e cena, o entrambi. Ogni schermata che rende i pasti deve reggere un numero variabile di colonne o righe.
+
+**"Abitualmente fuori" esce dalla schermata Settimana.** Non è uno stato della settimana ma un default per slot, e vive nelle Impostazioni. La griglia settimanale ha **due soli stati**: acceso (mangi a casa) e spento. Il tratteggio sparisce.
+
+**Settimana diventa il piano alimentare, non solo un check-in.** Ogni pasto acceso mostra il piatto in programma. È la risposta a una lacuna vera: fino a qui nessuna schermata mostrava *cosa* si mangia, solo *se* si è a casa. Tap sul pasto = spegni/accendi; freccia = apri il piatto (da lì lo si potrà sostituire).
+
+**Rinviato a Fase 3, non scartato:** l'avviso di conflitto in dispensa quando si sostituisce un piatto ("se usi lo yogurt qui non ti resta per giovedì"). Richiede di simulare il residuo in avanti su tutta la settimana; è calcolabile con i dati che già abbiamo, ma non è lavoro da Fase 1.
+
+**Macronutrienti e calorie: fuori dalla v1, con il posto riservato.** Servirebbe un database nutrizionale per ingrediente, sposterebbe il prodotto verso il tracker nutrizionale (con il rischio legale già documentato nell'analisi) e aggiungerebbe lavoro di inserimento su ogni ingrediente — che è la causa principale di abbandono in questa categoria. La tabella `ingredient` prevede da ora colonne facoltative `kcal_100`, `prot_100`, `carb_100`, `gras_100`, mai popolate né lette in v1: costano zero e evitano una migrazione dopo.
+
 ## Scope del piano di implementazione
 
 Il piano che segue questa spec copre **la sola Fase 1**. Le fasi 2-4 restano descritte qui come direzione, non come lavoro pianificato: si pianificano dopo il gate delle tre settimane.

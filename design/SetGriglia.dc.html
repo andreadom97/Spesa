@@ -1,0 +1,139 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Plus Jakarta Sans', 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #14163A; } a:hover { opacity: 0.7; }
+    * { box-sizing: border-box; }
+    button { font-family: inherit; border: 0; background: none; padding: 0; cursor: pointer; text-align: left; }
+    .sc::-webkit-scrollbar { width: 0; height: 0; }
+  </style>
+</helmet>
+<div style="width:393px;height:852px;display:flex;flex-direction:column;overflow:hidden;background:#F1F0EE;">
+  <div style="padding: 20px 18px 12px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
+    <div style="display: flex; align-items: flex-start; gap: 13px; min-width: 0;"><div style="display: grid; grid-template-columns: repeat(3, 16px); gap: 4px; flex: none; margin-top: 8px;"><div style="width:16px;height:16px;border-radius:4.5px;box-sizing:border-box;background:#F2A465;border:2px solid #F2A465;"></div><div style="width:16px;height:16px;border-radius:4.5px;box-sizing:border-box;background:#9CC7F2;border:2px solid #9CC7F2;"></div><div style="width:16px;height:16px;border-radius:4.5px;box-sizing:border-box;background:#A8D96A;border:2px solid #A8D96A;"></div><div style="width:16px;height:16px;border-radius:4.5px;box-sizing:border-box;background:#B9AEF5;border:2px solid #B9AEF5;"></div><div style="width:16px;height:16px;border-radius:4.5px;box-sizing:border-box;background:#F5CE5B;border:2px solid #F5CE5B;"></div><div style="width:16px;height:16px;border-radius:4.5px;box-sizing:border-box;background:#F29B9B;border:2px solid #F29B9B;"></div></div><span style="font-size:52px;font-weight:800;letter-spacing:-0.05em;line-height:1;color:#14163A;">Settimana</span></div>
+    <button style="width:44px;height:44px;margin:-4px -10px 0 0;flex:none;display:flex;align-items:center;justify-content:center;">
+        <svg width="25" height="25" viewBox="0 0 25 25" fill="none"><path d="M3.5 7.2h18M3.5 12.5h18M3.5 17.8h18" stroke="#14163A" stroke-width="2.1" stroke-linecap="round"/></svg>
+      </button>
+  </div>
+
+  <div class="sc" style="flex:1;overflow-y:auto;padding:2px 16px 12px;">
+    <div style="background:#FFFFFF;border-radius:22px;border:1px solid rgba(20,22,58,0.07);padding:14px 12px 16px;">
+      <div style="display:grid;grid-template-columns:44px repeat(4, minmax(0,1fr));gap:7px;margin-bottom:9px;">
+        <div></div>
+        <sc-for list="{{pasti}}" as="p" hint-placeholder-count="4">
+          <div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.1em;color:#8A8A96;">{{p}}</div>
+        </sc-for>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:7px;">
+        <sc-for list="{{rows}}" as="row" hint-placeholder-count="7">
+          <div style="display:grid;grid-template-columns:44px repeat(4, minmax(0,1fr));gap:7px;align-items:center;">
+            <div style="display:flex;flex-direction:column;line-height:1.05;">
+              <span style="font-size:14px;font-weight:800;letter-spacing:-0.02em;color:#14163A;">{{row.day}}</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;color:#A6A6B2;">{{row.num}}</span>
+            </div>
+            <sc-for list="{{row.cells}}" as="c" hint-placeholder-count="4">
+              <button onClick="{{c.tap}}" style="{{c.style}}">
+                <sc-if value="{{c.on}}" hint-placeholder-val="{{true}}">
+                  <div style="display:flex;gap:3px;">
+                    <sc-for list="{{c.aree}}" as="a" hint-placeholder-count="3">
+                      <span style="{{a}}"></span>
+                    </sc-for>
+                  </div>
+                </sc-if>
+              </button>
+            </sc-for>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="margin-top:12px;padding:0 4px;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.09em;color:#8A8A96;line-height:1.7;">
+      I PUNTINI SONO LE AREE DEL PIATTO IN PROGRAMMA<br>CELLA VUOTA = PASTO FUORI CASA
+    </div>
+  </div>
+
+  <div style="padding:6px 16px 0;display:flex;flex-direction:column;gap:9px;">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;padding:0 4px;">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.11em;color:#14163A;">{{countLabel}}</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.09em;color:#A6A6B2;">{{totLabel}}</span>
+    </div>
+    <button style="width:100%;height:54px;border-radius:18px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:0.09em;background:#14163A;color:#FFFFFF;">CONFERMA E CREA LA LISTA</button>
+  </div>
+
+  <div style="display: flex; padding: 10px 16px 20px; gap: 4px;">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 0;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M4 6.5h16M4 12h16M4 17.5h11" stroke="#9A9AA6" stroke-width="1.9" stroke-linecap="round"/></svg><span style="font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:500;letter-spacing:0.12em;color:#9A9AA6;">LISTA</span></div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 0;border-radius:14px;background:rgba(20,22,58,0.06);"><svg width="21" height="21" viewBox="0 0 24 24" fill="none"><rect x="3.6" y="5" width="16.8" height="15" rx="3" stroke="#14163A" stroke-width="1.8"/><path d="M3.6 10h16.8M9 3.4v3.2M15 3.4v3.2" stroke="#14163A" stroke-width="1.8" stroke-linecap="round"/></svg><span style="font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:700;letter-spacing:0.12em;color:#14163A;">SETTIMANA</span></div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 0;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M5 4.6h9.5a4 4 0 0 1 4 4V20H9a4 4 0 0 1-4-4V4.6Z" stroke="#9A9AA6" stroke-width="1.8" stroke-linejoin="round"/><path d="M8.6 9.2h6.4M8.6 13h4.6" stroke="#9A9AA6" stroke-width="1.8" stroke-linecap="round"/></svg><span style="font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:500;letter-spacing:0.12em;color:#9A9AA6;">PIATTI</span></div>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":393,"height":852}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { off: { 'cen-3': true } }; }
+  data() {
+    // i pasti sono una lista ordinata dall utente, da 3 a 5. Qui lo spuntino sta fra colazione e pranzo.
+    var pasti = [
+      { id: 'col', nome: 'COLAZIONE', breve: 'COL' },
+      { id: 'spu', nome: 'SPUNTINO', breve: 'SPU' },
+      { id: 'pra', nome: 'PRANZO', breve: 'PRA' },
+      { id: 'cen', nome: 'CENA', breve: 'CEN' }
+    ];
+    var giorni = [['LUN','1'],['MAR','2'],['MER','3'],['GIO','4'],['VEN','5'],['SAB','6'],['DOM','7']];
+    var Y = { nome: 'Yogurt, avena e frutti rossi', aree: ['#9CC7F2','#F5CE5B','#A8D96A'] };
+    var F = { nome: 'Frutta secca', aree: ['#A8D96A'] };
+    var P = { nome: 'Pollo, riso e spinaci', aree: ['#F29B9B','#F5CE5B','#A8D96A'] };
+    var M = { nome: 'Merluzzo e piselli', aree: ['#B9AEF5','#F2A465'] };
+    var T = { nome: 'Pasta al tonno', aree: ['#F5CE5B','#F2A465'] };
+    var piano = {
+      'col': [Y, Y, null, Y, Y, Y, Y],
+      'spu': [F, F, F, F, F, null, null],
+      'pra': [null, null, null, null, null, T, T],
+      'cen': [P, M, P, null, null, M, P]
+    };
+    return { pasti: pasti, giorni: giorni, piano: piano };
+  }
+
+  renderVals() {
+    var self = this, d = this.data();
+    var on = 'height:56px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:#FFFFFF;border:1px solid rgba(20,22,58,0.16);';
+    var off = 'height:56px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:rgba(20,22,58,0.045);border:1px solid transparent;';
+    var count = 0, tot = 0;
+    var rows = d.giorni.map(function (g, di) {
+      var cells = d.pasti.map(function (p) {
+        var dish = d.piano[p.id][di];
+        var k = p.id + '-' + di;
+        var acceso = !!dish && !self.state.off[k];
+        if (dish) { tot += 1; }
+        if (acceso) { count += 1; }
+        return {
+          on: acceso,
+          aree: acceso ? dish.aree.map(function (c) { return 'width:7px;height:7px;border-radius:2.2px;display:inline-block;background:' + c + ';'; }) : [],
+          style: acceso ? on : off,
+          tap: function () {
+            if (!dish) { return; }
+            var o = Object.assign({}, self.state.off);
+            if (o[k]) { delete o[k]; } else { o[k] = true; }
+            self.setState({ off: o });
+          }
+        };
+      });
+      return { day: g[0], num: g[1], cells: cells };
+    });
+    return {
+      pasti: d.pasti.map(function (p) { return p.breve; }),
+      rows: rows,
+      countLabel: count + ' PASTI A CASA',
+      totLabel: 'SU ' + (d.pasti.length * 7)
+    };
+  }
+}
+</script>
+</body>
+</html>
