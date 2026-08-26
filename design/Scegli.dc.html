@@ -1,0 +1,107 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Plus Jakarta Sans', 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #14163A; } a:hover { opacity: 0.7; }
+    * { box-sizing: border-box; }
+    button { font-family: inherit; border: 0; background: none; padding: 0; cursor: pointer; text-align: left; }
+    .sc::-webkit-scrollbar { width: 0; height: 0; }
+  </style>
+</helmet>
+<div style="width: 393px; height: 852px; display: flex; flex-direction: column; overflow: hidden; background: #F1F0EE;">
+  <div style="padding: 18px 16px 6px; display: flex; align-items: center; justify-content: space-between;">
+    <button style="width:44px;height:44px;margin-left:-10px;display:flex;align-items:center;justify-content:center;">
+      <svg width="23" height="23" viewBox="0 0 24 24" fill="none"><path d="M14.5 5 7.8 12l6.7 7" stroke="#14163A" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.16em;color:#8A8A96;">GIOVEDÌ 4 &middot; CENA</span>
+    <div style="width:44px;height:44px;"></div>
+  </div>
+
+  <div class="sc" style="flex:1;overflow-y:auto;padding:6px 16px 16px;">
+    <div style="font-size:32px;font-weight:800;letter-spacing:-0.045em;line-height:1.05;color:#14163A;padding:0 2px 16px;">Cosa mangi</div>
+
+    <div style="margin:0 4px 9px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.16em;color:#14163A;">DAL TUO REPERTORIO</div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <sc-for list="{{piatti}}" as="p" hint-placeholder-count="4">
+        <button onClick="{{p.tap}}" style="{{p.cardStyle}}">
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;">
+            <sc-if value="{{p.corrente}}" hint-placeholder-val="{{true}}">
+              <span style="align-self:flex-start;font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;letter-spacing:0.11em;color:#FFFFFF;background:#14163A;border-radius:999px;padding:4px 8px;">ORA IN PROGRAMMA</span>
+            </sc-if>
+            <span style="{{p.nameStyle}}">{{p.nome}}</span>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="display:flex;gap:3px;">
+                <sc-for list="{{p.aree}}" as="a" hint-placeholder-count="3"><span style="{{a}}"></span></sc-for>
+              </div>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.09em;color:#A6A6B2;">{{p.meta}}</span>
+            </div>
+          </div>
+          <span style="{{p.checkStyle}}">
+            <sc-if value="{{p.scelto}}" hint-placeholder-val="{{true}}">
+              <svg width="13" height="13" viewBox="0 0 20 20" fill="none"><path d="M4.5 10.5 8.2 14 15.5 6.4" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </sc-if>
+          </span>
+        </button>
+      </sc-for>
+    </div>
+
+    <button style="margin-top:14px;width:100%;display:flex;align-items:center;justify-content:center;gap:9px;min-height:52px;border-radius:18px;background:transparent;border:1.5px dashed rgba(20,22,58,0.28);">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="#8A8A96" stroke-width="2.1" stroke-linecap="round"/></svg>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.11em;color:#8A8A96;">CREA UN PIATTO NUOVO</span>
+    </button>
+
+    <div style="font-size:12.5px;line-height:1.45;color:#8A8A96;margin:16px 6px 0;">{{nota}}</div>
+  </div>
+
+  <div style="padding:8px 16px 22px;display:flex;gap:9px;">
+    <button style="flex:none;width:104px;height:54px;border-radius:18px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;letter-spacing:0.09em;color:#8A8A96;background:rgba(20,22,58,0.05);">ANNULLA</button>
+    <button style="{{confermaStyle}}">SOSTITUISCI</button>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":393,"height":852}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { scelto: 0 }; }
+  renderVals() {
+    var self = this;
+    var d = [
+      { nome: 'Pollo, riso e spinaci', n: 4, aree: ['#F29B9B','#F5CE5B','#A8D96A','#F2A465'] },
+      { nome: 'Merluzzo e piselli', n: 3, aree: ['#B9AEF5','#F2A465'] },
+      { nome: 'Salmone e patate', n: 3, aree: ['#F29B9B','#A8D96A'] },
+      { nome: 'Frittata e insalata', n: 4, aree: ['#9CC7F2','#A8D96A','#F2A465'] }
+    ];
+    var cambiato = this.state.scelto !== 0;
+    return {
+      piatti: d.map(function (p, i) {
+        var sel = self.state.scelto === i;
+        return {
+          nome: p.nome, corrente: i === 0, scelto: sel, meta: p.n + ' INGR.',
+          aree: p.aree.map(function (c) { return 'width:8px;height:8px;border-radius:2.6px;display:inline-block;background:' + c + ';'; }),
+          cardStyle: 'width:100%;display:flex;align-items:center;gap:12px;padding:15px 16px;border-radius:20px;background:#FFFFFF;'
+            + (sel ? 'border:1.5px solid #14163A;' : 'border:1px solid rgba(20,22,58,0.07);'),
+          nameStyle: 'font-size:17px;font-weight:700;letter-spacing:-0.03em;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#14163A;',
+          checkStyle: 'width:24px;height:24px;flex:none;border-radius:999px;display:flex;align-items:center;justify-content:center;'
+            + (sel ? 'background:#14163A;' : 'border:1.5px solid rgba(20,22,58,0.20);'),
+          tap: function () { self.setState({ scelto: i }); }
+        };
+      }),
+      nota: cambiato
+        ? 'Cambia solo la cena di giovedì. Gli altri giorni restano come sono, e la lista della spesa si ricalcola da sola.'
+        : 'Tocca un piatto per sostituire la cena di giovedì. Vale solo per quel giorno, non cambia il piatto nel repertorio.',
+      confermaStyle: "flex:1;height:54px;border-radius:18px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:0.09em;"
+        + (cambiato ? 'background:#14163A;box-shadow:0 3px 10px rgba(20,22,58,0.24);color:#FFFFFF;' : 'background:rgba(20,22,58,0.10);color:#A6A6B2;')
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Plus Jakarta Sans', 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #14163A; } a:hover { opacity: 0.7; }
+    * { box-sizing: border-box; }
+    button { font-family: inherit; border: 0; background: none; padding: 0; cursor: pointer; text-align: left; }
+    .sc::-webkit-scrollbar { width: 0; height: 0; }
+  </style>
+</helmet>
+<div style="width: 393px; height: 852px; display: flex; flex-direction: column; overflow: hidden; background: #F1F0EE;">
+  <div style="padding: 18px 16px 6px; display: flex; align-items: center; justify-content: space-between;">
+    <button style="width: 44px; height: 44px; margin-left: -10px; display: flex; align-items: center; justify-content: center;">
+      <svg width="23" height="23" viewBox="0 0 24 24" fill="none"><path d="M14.5 5 7.8 12l6.7 7" stroke="#14163A" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.16em; color: #8A8A96;">PIATTO</span>
+    <button style="width: 44px; height: 44px; margin-right: -10px; display: flex; align-items: center; justify-content: center;">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M4.6 6.6h14.8M9.6 6.6V4.4h4.8v2.2M6.6 6.6l.9 12.2a1.4 1.4 0 0 0 1.4 1.3h6.2a1.4 1.4 0 0 0 1.4-1.3l.9-12.2" stroke="#14163A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </div>
+
+
+  <div class="sc" style="flex:1;overflow-y:auto;padding:6px 16px 16px;">
+    <div style="font-size:32px;font-weight:800;letter-spacing:-0.045em;line-height:1.05;color:#C4C4CE;padding:0 2px 8px;border-bottom:1.5px solid rgba(20,22,58,0.14);">Dai un nome al piatto</div>
+
+    <div style="display:flex;gap:6px;margin-top:16px;flex-wrap:wrap;">
+      <sc-for list="{{slots}}" as="s" hint-placeholder-count="4">
+        <button onClick="{{s.tap}}" style="{{s.style}}">{{s.label}}</button>
+      </sc-for>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin:22px 4px 9px;">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.16em;color:#14163A;">INGREDIENTI</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.1em;color:#8A8A96;">PER 1 PORZIONE</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(2, minmax(0,1fr));gap:8px;">
+      <button style="min-height:108px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:13px 12px;border-radius:15px;background:transparent;border:1.5px dashed rgba(20,22,58,0.28);">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="#8A8A96" stroke-width="2.1" stroke-linecap="round"/></svg>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.11em;color:#8A8A96;text-align:center;line-height:1.5;">AGGIUNGI<br>INGREDIENTE</span>
+      </button>
+      <div style="min-height:108px;border-radius:15px;border:1.5px dashed rgba(20,22,58,0.10);"></div>
+    </div>
+    <div style="font-size:12.5px;line-height:1.45;color:#8A8A96;margin:14px 6px 0;">Un piatto senza ingredienti non entra nella lista della spesa: è la grammatura di ogni ingrediente a dire quanto comprare. Aggiungine almeno uno.</div>
+
+    <div style="margin:26px 4px 9px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.16em;color:#C4C4CE;">IN QUESTA SETTIMANA</div>
+    <div style="padding:16px 18px;border-radius:18px;background:rgba(20,22,58,0.035);font-size:13px;line-height:1.45;color:#8A8A96;">Non ancora in programma. Comparirà qui appena lo assegni a un pasto dalla Settimana.</div>
+  </div>
+
+  <div style="padding:8px 16px 22px;display:flex;gap:9px;">
+    <button style="flex:none;width:104px;height:54px;border-radius:18px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;letter-spacing:0.09em;color:#8A8A96;background:rgba(20,22,58,0.05);">ANNULLA</button>
+    <button style="flex:1;height:54px;border-radius:18px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:0.09em;background:rgba(20,22,58,0.10);color:#A6A6B2;">SALVA PIATTO</button>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":393,"height":852}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { slot: null }; }
+  renderVals() {
+    var self = this;
+    var on = "height:40px;padding:0 15px;border-radius:999px;font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:0.09em;color:#FFFFFF;background:#14163A;";
+    var off = "height:40px;padding:0 15px;border-radius:999px;font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:500;letter-spacing:0.09em;color:#8A8A96;background:#FFFFFF;border:1px solid rgba(20,22,58,0.09);";
+    return {
+      slots: ['COLAZIONE','PRANZO','CENA','SPUNTINO'].map(function (l) {
+        return { label: l, style: self.state.slot === l ? on : off, tap: function () { self.setState({ slot: l }); } };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

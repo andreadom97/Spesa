@@ -194,6 +194,27 @@ Prese dopo il ciclo di design; hanno precedenza sulle assunzioni della sezione p
 
 **Macronutrienti e calorie: fuori dalla v1, con il posto riservato.** Servirebbe un database nutrizionale per ingrediente, sposterebbe il prodotto verso il tracker nutrizionale (con il rischio legale già documentato nell'analisi) e aggiungerebbe lavoro di inserimento su ogni ingrediente — che è la causa principale di abbandono in questa categoria. La tabella `ingredient` prevede da ora colonne facoltative `kcal_100`, `prot_100`, `carb_100`, `gras_100`, mai popolate né lette in v1: costano zero e evitano una migrazione dopo.
 
+### Schermate della v1 — elenco definitivo
+
+Otto schermate più quattro stati vuoti. Tre tab in barra (Lista, Settimana, Piatti), il resto sono schermate di dettaglio o impostazione.
+
+| # | Schermata | Da dove | Note |
+|---|---|---|---|
+| 1 | Lista | tab | Base/Top-up, aree, tessere accese/spente |
+| 2 | Settimana | tab | Striscia giorni + giorno espanso; è il piano alimentare |
+| 3 | Piatti | tab | Repertorio, filtro per pasto |
+| 4 | Piatto | da 3 | Editor della ricetta: ingredienti a tessere, grammature per una porzione |
+| 5 | Ingrediente | da 4 | Area, unità, formato confezione, classe residuo, deperibile |
+| 6 | Impostazioni | burger | Porzioni, pasti 3–5 riordinabili con giorni di abituale assenza, link a 7 |
+| 7 | Ordine dei reparti | da 6 | Sequenza delle sei aree fisse |
+| 8 | Scegli il piatto | da 2 | **Agganciata al pasto, non al piatto**: sostituisce solo quel giorno |
+
+**Stati vuoti:** repertorio vuoto (è l'onboarding: spiega il giro in tre passi e dichiara il costo iniziale), settimana non confermata, spesa finita, piatto nuovo. Nei primi tre il marchio è tutto spento — coerente con la regola: casella accesa significa "in quell'area ti resta qualcosa".
+
+**"Chiudi la spesa" vive nello stato "spesa finita".** È l'azione che scrive il record d'acquisto (cosa, quando) su cui si regge il controllo a 90 giorni. Senza quell'azione la registrazione silenziosa decisa in precedenza non ha un momento in cui avvenire.
+
+**La sostituzione di un piatto è per-pasto, non per-piatto.** Il dettaglio del piatto (4) è l'editor della ricetta e non conosce il giorno; la sostituzione ha una schermata propria (8) che nasce dal pasto, mostra solo i piatti di quello slot e non tocca il repertorio.
+
 ## Scope del piano di implementazione
 
 Il piano che segue questa spec copre **la sola Fase 1**. Le fasi 2-4 restano descritte qui come direzione, non come lavoro pianificato: si pianificano dopo il gate delle tre settimane.

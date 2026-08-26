@@ -2,7 +2,7 @@
   "pages": [
     {
       "id": "page-1",
-      "name": "v1 completa"
+      "name": "v1 — tutto"
     },
     {
       "id": "page-2",
@@ -48,8 +48,8 @@
     },
     {
       "file": "Ingrediente.dc.html",
-      "x": 0,
-      "y": 1060,
+      "x": 1972,
+      "y": 0,
       "w": 393,
       "h": 852,
       "title": "5 — INGREDIENTE",
@@ -57,7 +57,7 @@
     },
     {
       "file": "Impostazioni.dc.html",
-      "x": 493,
+      "x": 0,
       "y": 1060,
       "w": 393,
       "h": 852,
@@ -66,11 +66,56 @@
     },
     {
       "file": "Reparti.dc.html",
+      "x": 493,
+      "y": 1060,
+      "w": 393,
+      "h": 852,
+      "title": "7 — ORDINE REPARTI",
+      "is_interactive": true
+    },
+    {
+      "file": "Scegli.dc.html",
       "x": 986,
       "y": 1060,
       "w": 393,
       "h": 852,
-      "title": "7 — ORDINE DEI REPARTI",
+      "title": "8 — SCEGLI IL PIATTO",
+      "is_interactive": true
+    },
+    {
+      "file": "VuotoPiatti.dc.html",
+      "x": 0,
+      "y": 2120,
+      "w": 393,
+      "h": 852,
+      "title": "Vuoto — primo avvio",
+      "is_interactive": true
+    },
+    {
+      "file": "VuotoLista.dc.html",
+      "x": 493,
+      "y": 2120,
+      "w": 393,
+      "h": 852,
+      "title": "Vuoto — settimana non confermata",
+      "is_interactive": true
+    },
+    {
+      "file": "VuotoFatta.dc.html",
+      "x": 986,
+      "y": 2120,
+      "w": 393,
+      "h": 852,
+      "title": "Vuoto — spesa finita",
+      "is_interactive": true
+    },
+    {
+      "file": "VuotoPiatto.dc.html",
+      "x": 1479,
+      "y": 2120,
+      "w": 393,
+      "h": 852,
+      "title": "Vuoto — piatto nuovo",
       "is_interactive": true
     },
     {
@@ -636,39 +681,53 @@
   ],
   "annotations": [
     {
-      "id": "v1",
+      "id": "riga1",
       "x": 0,
       "y": -330,
       "w": 393,
-      "text": "LA V1 COMPLETA, sette schermate. Sopra i tre tab piu il dettaglio del piatto, sotto le tre di supporto. Tutte con i controlli vivi: prova a cambiare area e classe sull ingrediente, a riordinare i pasti nelle impostazioni e a spostare i reparti."
+      "text": "RIGA 1 e 2 — LE OTTO SCHERMATE. Le sette di prima piu la nuova SCEGLI IL PIATTO. Tutte con i controlli vivi."
     },
     {
-      "id": "ing",
-      "x": 493,
-      "y": -330,
-      "w": 393,
-      "text": "5 — INGREDIENTE. E la schermata che spiega il modello del residuo, quindi ogni scelta porta la sua conseguenza scritta sotto invece di lasciarti indovinare. COME SI CONSUMA cambia la spiegazione quando tocchi PORZIONABILE, INTERO o A STIMA: sono i tre comportamenti che avevamo definito. DEPERIBILE non dice solo si o no ma dice dove finisce, in lista BASE o in lista TOP-UP. FORMATO DELLA CONFEZIONE ha la nota che serve: non e quanto ne usi, e quanto ne vendono, ed e il numero da cui nasce tutto il calcolo dei resti."
-    },
-    {
-      "id": "imp",
+      "id": "scegli",
       "x": 986,
       "y": -330,
       "w": 393,
-      "text": "6 — IMPOSTAZIONI. I pasti si riordinano con le frecce, da tre a cinque, e sotto ciascuno ci sono i sette giorni per marcare quando quel pasto e ABITUALMENTE fuori: il pranzo e gia acceso da lunedi a venerdi, la colazione solo il mercoledi. E da qui che la Settimana si precompila, cosi ogni lunedi correggi solo le eccezioni invece di rifare tutto. In fondo la voce che porta all ordine dei reparti, con i sei colori in miniatura. Le frecce ci sono anche perche il trascinamento non si puo mostrare in un mockup: nel prodotto vero il trascinamento fara la stessa cosa."
+      "text": "8 — SCEGLI IL PIATTO. Correzione rispetto a quanto avevo detto io: mandare la freccia della Settimana sul dettaglio del piatto era sbagliato, perche quella schermata e l editor della ricetta e non sa nulla del giovedi. Questa invece e agganciata al pasto: in testa GIOVEDI 4 CENA, il piatto attuale marcato ORA IN PROGRAMMA, e sotto solo i piatti da cena del repertorio. Il pulsante resta spento finche non scegli qualcosa di diverso. La nota in fondo dice la cosa che si teme di piu quando si sostituisce: vale solo per quel giorno, non tocca il repertorio."
     },
     {
-      "id": "rep",
-      "x": 1479,
-      "y": -330,
+      "id": "vuoti",
+      "x": 0,
+      "y": 1790,
       "w": 393,
-      "text": "7 — ORDINE DEI REPARTI. Sei righe fisse, si sposta solo la sequenza. Sotto c e l anteprima: le sei barrette colorate nell ordine corrente, che e l ordine in cui vedrai i blocchi nella lista della spesa. Sposta un reparto e guarda l anteprima cambiare. E la schermata piu noiosa da costruire e quella che ti fa risparmiare piu tempo in corsia, perche e l unica cosa che adatta l app al TUO supermercato."
+      "text": "RIGA 3 — I QUATTRO STATI VUOTI. Non sono schermate di errore ma i primi momenti dell app, quindi ognuno spiega e propone una sola azione. Dettaglio che li tiene insieme: in tre di questi il marchio in alto e tutto SPENTO, sei caselle a contorno. Coerente con la regola: casella accesa vuol dire che in quell area ti resta qualcosa da prendere, e qui non c e niente da prendere."
+    },
+    {
+      "id": "v-piatti",
+      "x": 493,
+      "y": 1790,
+      "w": 393,
+      "text": "PRIMO AVVIO. E la prima cosa che vedi installando l app, quindi non e un vuoto ma un onboarding: spiega cosa e un piatto, mostra il giro in tre passi — piatti, settimana, lista — e dichiara il costo invece di nasconderlo, una ventina di minuti per i primi piatti. Un unica azione: crea il primo piatto."
+    },
+    {
+      "id": "v-lista",
+      "x": 986,
+      "y": 1790,
+      "w": 393,
+      "text": "SETTIMANA NON CONFERMATA. La lista non esiste finche non dici dove mangi. Invece di mostrare una lista vuota, spiega la dipendenza e manda dove serve. SPESA FINITA: e qui che vive CHIUDI LA SPESA, l azione che registra cosa hai comprato e quando. Il riquadro grigio spiega a cosa serve quel dato, cioe al controllo dei 90 giorni, e chiarisce che non finisce da nessun altra parte."
+    },
+    {
+      "id": "v-piatto",
+      "x": 1479,
+      "y": 1790,
+      "w": 393,
+      "text": "PIATTO NUOVO. Il titolo e un segnaposto grigio, nessuno slot e selezionato e il pulsante SALVA e spento: non si salva un piatto senza nome e senza ingredienti. La griglia ha solo la tessera tratteggiata dell aggiungi, con accanto un posto vuoto appena accennato per far capire che ne stanno due per riga. In fondo, al posto dei giorni della settimana, la spiegazione del perche quella sezione e ancora vuota."
     },
     {
       "id": "resta",
-      "x": 0,
-      "y": -630,
+      "x": 1972,
+      "y": 1790,
       "w": 393,
-      "text": "COSA RESTA FUORI, per essere espliciti. Gli stati vuoti non sono ancora disegnati: repertorio vuoto al primo avvio, settimana non confermata, lista completata, piatto senza ingredienti. E manca l azione per sostituire il piatto assegnato a un pasto, che parte dalla Settimana e ha bisogno di una schermata di scelta dal repertorio. Nessuna delle due e una sorpresa: erano gia annotate come da fare."
+      "text": "RESTA UNA COSA SOLA, gia annotata e rinviata di proposito: l avviso di conflitto in dispensa quando sostituisci un piatto, del tipo se usi lo yogurt qui non ti resta per la colazione di sabato. Andrebbe sotto la nota della schermata 8. E calcolabile con i dati che abbiamo ma richiede di simulare il residuo in avanti su tutta la settimana: e Fase 3, non v1."
     }
   ],
   "launch": {
