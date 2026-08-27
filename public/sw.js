@@ -15,9 +15,13 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
-  // Le chiamate a Supabase non si mettono mai in cache: mostrerebbero dati
-  // vecchi come se fossero freschi. Offline ci pensa la coda delle spunte.
-  if (e.request.method !== 'GET' || url.pathname.startsWith('/rest/')) return;
+  // Si mette in cache solo la stessa origine dell'app: il guscio è tutto
+  // same-origin, quindi non perdiamo niente. Le chiamate a servizi esterni
+  // (Supabase e chiunque altro, oggi o in futuro) restano sempre fuori dalla
+  // cache per costruzione — non per un elenco di path da tenere aggiornato —
+  // perché mostrerebbero dati vecchi come se fossero freschi. Offline ci
+  // pensa la coda delle spunte.
+  if (e.request.method !== 'GET' || url.origin !== self.location.origin) return;
   e.respondWith(
     fetch(e.request)
       .then((r) => {

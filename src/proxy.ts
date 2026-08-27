@@ -42,8 +42,12 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   // Esclude gli asset statici e le route interne di Next: la sessione non
-  // ha senso per un file .png quanto per una pagina.
+  // ha senso per un file .png quanto per una pagina. manifest.json e sw.js
+  // sono pubblici per natura — non contengono dati dell'utente — e devono
+  // restare raggiungibili senza sessione: il browser li scarica per
+  // decidere se l'app è installabile e per registrare il service worker,
+  // anche prima che ci sia un login.
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
   ],
 };
