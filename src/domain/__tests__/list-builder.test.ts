@@ -3,7 +3,7 @@ import { costruisciLista, IngredienteMancanteError, OrdineAreeNonValidoError } f
 import { UnitaIncompatibileError } from '../unita';
 import {
   INGREDIENTI, PIATTI, IMPOSTAZIONI, dispensaVuota, cinqueColazioni,
-  yogurt, avena, colazione,
+  colazione,
 } from './fixtures';
 
 const OGGI = '2026-08-30';
