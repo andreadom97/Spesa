@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import type { AreaId, Dish, Ingredient, MealSlot, MealSlotDef, StatoSlot } from '@/domain/types';
 import { applicaStato } from '@/domain/week-shape';
@@ -41,10 +41,19 @@ export default function Settimana() {
   const router = useRouter();
 
   const [dati, setDati] = useState<Repertorio | null>(null);
-  const [errore, setErrore] = useState<string | null>(null);
+  const [erroreCaricamento, setErroreCaricamento] = useState<string | null>(null);
+  const [erroreCheckin, setErroreCheckin] = useState<string | null>(null);
   const [selezionato, setSelezionato] = useState(0);
   const [confermando, setConfermando] = useState(false);
   const [erroreConferma, setErroreConferma] = useState<string | null>(null);
+
+  // Tiene la promise di creaSettimana in corso, condivisa fra le due
+  // esecuzioni dell'effetto che React Strict Mode innesca in sviluppo: senza
+  // questo, entrambe leggerebbero "nessuna settimana" e proverebbero a
+  // crearla insieme. Non protegge dal caso di due schede o di una ricarica a
+  // metà creazione (istanze diverse, ref diversi) — per quello serve il
+  // fallback nel catch qui sotto, che è la vera rete di sicurezza.
+  const creazioneInCorsoRef = useRef<Promise<void> | null>(null);
 
   useEffect(() => {
     let vivo = true;
@@ -53,11 +62,24 @@ export default function Settimana() {
       try {
         let corrente = await leggiSettimanaCorrente();
         if (!corrente) {
-          // Primo accesso della settimana: creaSettimana genera i default
-          // (ogni pasto a casa tranne le assenze abituali) e assegna i
-          // piatti. L'utente trova la settimana già compilata.
-          await creaSettimana(lunediDi(oggiIso()));
-          corrente = await leggiSettimanaCorrente();
+          if (!creazioneInCorsoRef.current) {
+            // Primo accesso della settimana: creaSettimana genera i default
+            // (ogni pasto a casa tranne le assenze abituali) e assegna i
+            // piatti. L'utente trova la settimana già compilata.
+            creazioneInCorsoRef.current = creaSettimana(lunediDi(oggiIso())).then(() => undefined);
+          }
+          try {
+            await creazioneInCorsoRef.current;
+            corrente = await leggiSettimanaCorrente();
+          } catch (erroreCreazione) {
+            // L'unique (user_id, data_inizio) blocca un doppione lato
+            // database: se la settimana esiste già — creata da un'altra
+            // scheda, o da un tentativo precedente dopo una ricarica a metà —
+            // si rilegge e si prosegue in silenzio invece di mostrare un
+            // errore bloccante quando in realtà non c'è nulla di rotto.
+            corrente = await leggiSettimanaCorrente();
+            if (!corrente) throw erroreCreazione;
+          }
         }
         if (!corrente) throw new Error('Settimana non disponibile dopo la creazione.');
 
@@ -81,7 +103,7 @@ export default function Settimana() {
         const indiceOggi = giorni.indexOf(oggiIso());
         setSelezionato(indiceOggi >= 0 ? indiceOggi : 0);
       } catch {
-        if (vivo) setErrore('Non riusciamo a caricare la settimana. Riprova più tardi.');
+        if (vivo) setErroreCaricamento('Non riusciamo a caricare la settimana. Riprova più tardi.');
       }
     }
 
@@ -91,10 +113,10 @@ export default function Settimana() {
     };
   }, []);
 
-  if (errore) {
+  if (erroreCaricamento) {
     return (
       <Cornice>
-        <p style={{ margin: '20px 18px', color: 'var(--sec)' }}>{errore}</p>
+        <p style={{ margin: '20px 18px', color: 'var(--sec)' }}>{erroreCaricamento}</p>
       </Cornice>
     );
   }
@@ -139,12 +161,18 @@ export default function Settimana() {
     const risultato = applicaStato(slot, nuovoStato, 'checkin');
     // Ottimistico: spegnere/accendere un pasto è un'azione di massa, deve
     // sentirsi immediata. In caso di errore si torna allo stato precedente.
+    // L'errore è uno stato inline separato da erroreCaricamento apposta: un
+    // singolo check-in fallito per un blip di rete non deve rimpiazzare
+    // striscia dei giorni, righe pasto e pulsante finale con un gate d'errore
+    // — l'utente sta spegnendo molti pasti di fila, non deve perdere la
+    // schermata a metà.
+    setErroreCheckin(null);
     aggiornaSlotLocale(risultato);
     try {
       await aggiornaSlot(slot.id, { stato: nuovoStato }, 'checkin');
     } catch {
       aggiornaSlotLocale(slot);
-      setErrore('Non siamo riusciti a salvare il cambiamento. Riprova.');
+      setErroreCheckin('Non siamo riusciti a salvare il cambiamento. Riprova.');
     }
   }
 
@@ -216,6 +244,10 @@ export default function Settimana() {
             </svg>
           </button>
         </div>
+
+        {erroreCheckin && (
+          <p style={{ margin: '0 4px 9px', fontSize: 12.5, color: 'var(--sec)' }}>{erroreCheckin}</p>
+        )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
           {pastiOrdinati.map((def) => {

@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom/vitest';
+import { StrictMode } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import type { Dish, Ingredient, MealSlot, MealSlotDef } from '@/domain/types';
@@ -175,6 +176,79 @@ describe('Settimana (piano alimentare)', () => {
     );
     // Un tap solo: subito "Fuori casa" senza bisogno di un secondo tap o conferma.
     expect(await screen.findByLabelText('Colazione: fuori casa, tocca per segnare a casa')).toBeInTheDocument();
+  });
+
+  it('check-in fallito: mostra un errore inline senza rimpiazzare la schermata (striscia, righe, pulsante restano)', async () => {
+    mockCarico();
+    vi.mocked(aggiornaSlot).mockRejectedValue(new Error('rete assente'));
+    render(<Settimana />);
+    await screen.findByText('Yogurt e frutta');
+
+    fireEvent.click(screen.getByLabelText('Colazione: a casa, tocca per segnare fuori'));
+
+    expect(await screen.findByText('Non siamo riusciti a salvare il cambiamento. Riprova.')).toBeInTheDocument();
+    // L'errore di check-in non è il gate di caricamento: il resto della
+    // schermata deve restare in piedi, non sparire dietro un paragrafo solo.
+    expect(screen.getByLabelText('Colazione: a casa, tocca per segnare fuori')).toBeInTheDocument(); // stato ripristinato
+    expect(screen.getByText('Pollo e riso')).toBeInTheDocument();
+    expect(screen.getByText('CONFERMA E CREA LA LISTA')).toBeInTheDocument();
+    expect(screen.getByLabelText('Giorno precedente')).toBeInTheDocument();
+  });
+
+  it('un secondo check-in riuscito pulisce il messaggio d\'errore del precedente', async () => {
+    mockCarico();
+    vi.mocked(aggiornaSlot).mockRejectedValueOnce(new Error('rete assente')).mockResolvedValueOnce(undefined);
+    render(<Settimana />);
+    await screen.findByText('Yogurt e frutta');
+
+    fireEvent.click(screen.getByLabelText('Colazione: a casa, tocca per segnare fuori'));
+    expect(await screen.findByText('Non siamo riusciti a salvare il cambiamento. Riprova.')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Colazione: a casa, tocca per segnare fuori'));
+    await waitFor(() =>
+      expect(screen.queryByText('Non siamo riusciti a salvare il cambiamento. Riprova.')).not.toBeInTheDocument(),
+    );
+  });
+
+  it('React Strict Mode monta l\'effetto due volte, ma creaSettimana viene chiamata una sola volta', async () => {
+    let creazioneCompletata = false;
+    let risolviCreazione!: (id: string) => void;
+    const creazionePendente = new Promise<string>((resolve) => {
+      risolviCreazione = (id: string) => {
+        creazioneCompletata = true;
+        resolve(id);
+      };
+    });
+
+    // Finché la creazione non si è risolta, leggiSettimanaCorrente continua a
+    // tornare null: simula la finestra in cui la seconda esecuzione
+    // dell'effetto (il remount di Strict Mode) troverebbe ancora "nessuna
+    // settimana" e sarebbe tentata di chiamare creaSettimana una seconda volta.
+    vi.mocked(leggiSettimanaCorrente).mockImplementation(async () =>
+      creazioneCompletata ? SETTIMANA_BASE : null,
+    );
+    vi.mocked(creaSettimana).mockReturnValue(creazionePendente);
+    vi.mocked(leggiSlotDefs).mockResolvedValue(SLOT_DEFS);
+    vi.mocked(leggiRepertorio).mockResolvedValue([DISH_COLAZIONE, DISH_CENA]);
+    vi.mocked(leggiIngredienti).mockResolvedValue([ING_YOGURT, ING_POLLO]);
+    vi.mocked(leggiImpostazioni).mockResolvedValue({
+      moltiplicatorePorzioni: 1,
+      ordineAree: [...ORDINE_AREE_TEST],
+    });
+
+    render(
+      <StrictMode>
+        <Settimana />
+      </StrictMode>,
+    );
+
+    await waitFor(() => expect(creaSettimana).toHaveBeenCalled());
+    risolviCreazione('week-1');
+
+    expect(await screen.findByText('Yogurt e frutta')).toBeInTheDocument();
+    // Le due esecuzioni dell'effetto (mount + Strict Mode remount) condividono
+    // la stessa creazione in corso: una sola chiamata reale, non due.
+    expect(creaSettimana).toHaveBeenCalledTimes(1);
   });
 
   it('zona corpo: il tap apre il dettaglio del piatto, non lo stato', async () => {
