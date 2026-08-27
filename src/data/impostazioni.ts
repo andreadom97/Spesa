@@ -59,9 +59,14 @@ export async function leggiSlotDefs(): Promise<MealSlotDef[]> {
  * le righe (con id nuovi o anche uguali ma passando per un delete totale)
  * si porterebbe via in cascata anche i piatti del repertorio. Si elimina solo
  * l'insieme delle righe che non compaiono più nel nuovo elenco — la cascata
- * su quei soli pasti è voluta — e si fa upsert delle altre.
+ * su quei soli pasti è voluta, un piatto appartiene a un pasto — e si fa
+ * upsert delle altre. **Non "semplificare" tornando a un delete totale**: a
+ * ogni salvataggio delle Impostazioni distruggerebbe il repertorio.
  */
 export async function salvaSlotDefs(defs: MealSlotDef[]): Promise<void> {
+  // Il vincolo 3-5 si controlla per primo e prima di qualunque scrittura:
+  // rifiutare a metà lavoro (dopo un delete già eseguito) lascerebbe i dati
+  // in uno stato peggiore di quello di partenza.
   if (defs.length < 3 || defs.length > 5) {
     throw new Error(`I pasti configurabili devono essere da 3 a 5: ricevuti ${defs.length}.`);
   }

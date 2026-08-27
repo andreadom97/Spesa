@@ -1,8 +1,12 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-/** Chi non ha sessione viene reindirizzato a /entra; /entra stessa resta accessibile. */
-export async function middleware(request: NextRequest) {
+/**
+ * Chi non ha sessione viene reindirizzato a /entra; /entra stessa resta
+ * accessibile. Convenzione Next.js 16: `middleware.ts` è deprecato in favore
+ * di `proxy.ts` (file e nome della funzione esportata, non solo la posizione).
+ */
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(

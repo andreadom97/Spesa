@@ -1,6 +1,7 @@
 import type { FonteStato, MealSlot, StatoSlot } from '@/domain/types';
 import { generaSettimana, applicaStato } from '@/domain/week-shape';
 import { assegnaPiatti } from '@/domain/planner';
+import { lunediDi } from '@/domain/date';
 import { client } from './supabase';
 import { aMealSlot } from './mappers';
 import { leggiSlotDefs } from './impostazioni';
@@ -13,16 +14,23 @@ export interface SettimanaCorrente {
   slots: MealSlot[];
 }
 
-/** La settimana più recente dell'utente, con tutti i suoi slot. */
+/**
+ * La settimana corrente è quella che **contiene oggi**, non l'ultima creata:
+ * se Andrea non apre l'app per due settimane, "l'ultima creata" sarebbe una
+ * settimana passata, e `generaListe` costruirebbe la lista sugli slot sbagliati.
+ * `data_inizio` è sempre un lunedì (vedi `creaSettimana`), quindi il filtro è
+ * `data_inizio = lunediDi(oggi)`: l'unique `(user_id, data_inizio)` dello
+ * schema garantisce al più una riga.
+ */
 export async function leggiSettimanaCorrente(): Promise<SettimanaCorrente | null> {
   const sb = client();
   const { data: utente } = await sb.auth.getUser();
+  const oggi = new Date().toISOString().slice(0, 10);
   const { data: settimana, error } = await sb
     .from('week')
     .select('id, data_inizio, stato')
     .eq('user_id', utente.user!.id)
-    .order('data_inizio', { ascending: false })
-    .limit(1)
+    .eq('data_inizio', lunediDi(oggi))
     .maybeSingle();
   if (error) throw error;
   if (!settimana) return null;
