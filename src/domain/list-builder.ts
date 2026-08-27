@@ -3,11 +3,25 @@ import type {
 } from './types';
 import { convertiInUnitaBase } from './unita';
 import { serveControllo } from './pantry';
+// Unica eccezione al divieto di importare da ./aree: qui serve solo l'elenco
+// canonico delle sei aree per validare l'input, non nomi né colori.
+import { ORDINE_AREE_DEFAULT } from './aree';
 
 export class IngredienteMancanteError extends Error {
   constructor(id: string) {
     super(`Un piatto cita l'ingrediente ${id}, che non esiste nel repertorio.`);
     this.name = 'IngredienteMancanteError';
+  }
+}
+
+export class OrdineAreeNonValidoError extends Error {
+  constructor(ordine: readonly AreaId[]) {
+    super(
+      `impostazioni.ordineAree deve contenere esattamente le sei aree ` +
+      `(${ORDINE_AREE_DEFAULT.join(', ')}) senza duplicati né mancanze; ` +
+      `ricevuto: [${ordine.join(', ')}].`,
+    );
+    this.name = 'OrdineAreeNonValidoError';
   }
 }
 
@@ -67,6 +81,8 @@ export interface ListaInput {
  */
 export function costruisciLista(input: ListaInput): ListaRisultato {
   const { slots, dishes, ingredients, pantry, impostazioni, oggi } = input;
+
+  validaOrdineAree(impostazioni.ordineAree);
 
   const perId = new Map(ingredients.map((i) => [i.id, i]));
   const piattoPerId = new Map(dishes.map((d) => [d.id, d]));
@@ -135,6 +151,23 @@ export function costruisciLista(input: ListaInput): ListaRisultato {
       impostazioni.ordineAree,
     ),
   };
+}
+
+/**
+ * L'ordine deve essere una permutazione esatta delle sei aree note: sei
+ * elementi, tutti distinti, nessuno mancante, nessuno sconosciuto. Senza
+ * questo controllo un'area assente sparisce in silenzio da `sezioni()`,
+ * chiamata due volte più sotto — per questo si valida una volta sola qui,
+ * all'ingresso.
+ */
+function validaOrdineAree(ordine: AreaId[]): void {
+  const attese = new Set(ORDINE_AREE_DEFAULT);
+  const ricevute = new Set(ordine);
+  const valido =
+    ordine.length === ORDINE_AREE_DEFAULT.length &&
+    ricevute.size === ordine.length &&
+    ordine.every((area) => attese.has(area));
+  if (!valido) throw new OrdineAreeNonValidoError(ordine);
 }
 
 function sezioni(voci: VoceLista[], controlli: VoceControllo[], ordine: AreaId[]): SezioneLista[] {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { costruisciLista, IngredienteMancanteError } from '../list-builder';
+import { costruisciLista, IngredienteMancanteError, OrdineAreeNonValidoError } from '../list-builder';
 import { UnitaIncompatibileError } from '../unita';
 import {
   INGREDIENTI, PIATTI, IMPOSTAZIONI, dispensaVuota, cinqueColazioni,
@@ -208,5 +208,45 @@ describe('costruisciLista — split e ordinamento', () => {
     });
     const cereali = r.base.find((s) => s.area === 'cereali')!;
     expect(cereali.voci.every((v) => v.confezioni === 1)).toBe(true);
+  });
+});
+
+describe('costruisciLista — validazione ordineAree', () => {
+  it('rifiuta un ordineAree a cui manca un\'area', () => {
+    const impostazioni = {
+      ...IMPOSTAZIONI,
+      ordineAree: ['ortofrutta', 'macelleria', 'latticini', 'cereali', 'dispensa'] as const,
+    };
+    expect(() => base({ impostazioni: { ...impostazioni, ordineAree: [...impostazioni.ordineAree] } }))
+      .toThrow(OrdineAreeNonValidoError);
+  });
+
+  it('rifiuta un ordineAree con un\'area duplicata', () => {
+    const impostazioni = {
+      ...IMPOSTAZIONI,
+      ordineAree: ['ortofrutta', 'macelleria', 'latticini', 'cereali', 'dispensa', 'dispensa'] as const,
+    };
+    expect(() => base({ impostazioni: { ...impostazioni, ordineAree: [...impostazioni.ordineAree] } }))
+      .toThrow(OrdineAreeNonValidoError);
+  });
+
+  it('rifiuta un ordineAree più lungo di sei elementi', () => {
+    const impostazioni = {
+      ...IMPOSTAZIONI,
+      ordineAree: [
+        'ortofrutta', 'macelleria', 'latticini', 'cereali', 'dispensa', 'surgelati', 'dispensa',
+      ] as const,
+    };
+    expect(() => base({ impostazioni: { ...impostazioni, ordineAree: [...impostazioni.ordineAree] } }))
+      .toThrow(OrdineAreeNonValidoError);
+  });
+
+  it('accetta un ordineAree valido anche se diverso dal default', () => {
+    const impostazioni = {
+      ...IMPOSTAZIONI,
+      ordineAree: ['surgelati', 'dispensa', 'cereali', 'latticini', 'macelleria', 'ortofrutta'] as const,
+    };
+    expect(() => base({ impostazioni: { ...impostazioni, ordineAree: [...impostazioni.ordineAree] } }))
+      .not.toThrow();
   });
 });
