@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import type { Dish, DishIngredient, Ingredient, MealSlotDef } from '@/domain/types';
-import { salvaPiatto, leggiRepertorio, leggiIngredienti } from '@/data/repertorio';
+import { salvaPiatto, leggiRepertorio, leggiIngredienti, eliminaPiatto } from '@/data/repertorio';
 import { leggiSlotDefs } from '@/data/impostazioni';
 import { leggiSettimanaCorrente } from '@/data/settimana';
 import { giorniDellaSettimana } from '@/domain/date';
@@ -21,26 +21,38 @@ const TESTO_SENZA_INGREDIENTI =
 const TESTO_NON_IN_PROGRAMMA =
   'Non ancora in programma. Comparirà qui appena lo assegni a un pasto dalla Settimana.';
 
+const TESTO_ELIMINA =
+  'Non comparirà più nel repertorio né nelle prossime settimane. Le settimane già passate restano invariate.';
+
+// Solo 0-7 possibili (sette giorni): un lookup fisso è sicuro qui, a
+// differenza di provare a pluralizzare un nome di pasto scritto liberamente
+// dall'utente (quello sì fragile, ed è il motivo per cui la frase sotto non
+// riproduce il gioco di parole "Sei... sei al bar" del mock).
+const NUMERI_PAROLA = ['zero', 'una', 'due', 'tre', 'quattro', 'cinque', 'sei', 'sette'];
+
+function volte(n: number): string {
+  return n === 1 ? 'una volta' : `${NUMERI_PAROLA[n]} volte`;
+}
+
 /**
- * La frase di riepilogo sotto la striscia dei giorni. Il caso "non in
- * programma" è copiato alla lettera da VuotoPiatto.dc.html; gli altri casi
- * non hanno un testo imposto dall'artboard (lì è un dato di mock), quindi
- * qui si genera una frase onesta sui numeri reali senza provare a
- * riprodurre il gioco di parole "Sei... sei al bar" del mock, che non
- * regge con un nome di pasto o un conteggio qualsiasi.
+ * La frase di riepilogo sotto la striscia dei giorni, mostrata solo quando
+ * il piatto è davvero in programma questa settimana (altrimenti si usa il
+ * riquadro muto con TESTO_NON_IN_PROGRAMMA, copiato alla lettera da
+ * VuotoPiatto.dc.html — niente striscia in quel caso, vedi il render).
+ *
+ * Non c'è un testo imposto dall'artboard per questo caso (in Piatto.dc.html
+ * è un dato di mock, non copy fisso): tenendo dal mock i numeri scritti in
+ * lettere e la struttura in due tempi — prima cosa succede in settimana, poi
+ * la conseguenza sulla lista — senza il gioco di parole, che non regge con
+ * un conteggio o un nome di pasto qualsiasi.
  */
 function testoRiepilogo(nCasa: number, nFuori: number): string {
-  if (nCasa === 0 && nFuori === 0) return TESTO_NON_IN_PROGRAMMA;
   if (nCasa === 0) {
-    const volte = nFuori === 1 ? '1 volta' : `${nFuori} volte`;
-    return `In programma ${volte} questa settimana, ma sempre fuori casa: non entra nella lista.`;
+    return `Fuori casa ${volte(nFuori)} questa settimana: non entra nella lista.`;
   }
-  const volteCasa = nCasa === 1 ? '1 volta' : `${nCasa} volte`;
-  let frase = `Il piatto entra ${volteCasa} nella lista questa settimana.`;
-  if (nFuori > 0) {
-    const volteFuori = nFuori === 1 ? '1 volta' : `${nFuori} volte`;
-    frase += ` In più è in programma, ma fuori casa, ${volteFuori}.`;
-  }
+  let frase = `In casa ${volte(nCasa)} questa settimana`;
+  if (nFuori > 0) frase += `, fuori ${volte(nFuori)}`;
+  frase += `. Il piatto entra ${volte(nCasa)} nella lista.`;
   return frase;
 }
 
@@ -70,6 +82,8 @@ export default function Piatto() {
   const [slotDefId, setSlotDefId] = useState('');
   const [ingredienti, setIngredienti] = useState<DishIngredient[]>([]);
   const [selettoreAperto, setSelettoreAperto] = useState(false);
+  const [confermaEliminazione, setConfermaEliminazione] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
   const nomeRef = useRef<HTMLTextAreaElement>(null);
 
   // Il titolo va a capo su più righe come nell'artboard (che lo scrive con un
@@ -144,6 +158,34 @@ export default function Piatto() {
     setIngredienti((prev) => prev.filter((r) => r.ingredientId !== ingredientId));
   }
 
+  /**
+   * Il cestino nell'header è quello dell'artboard: deve fare qualcosa di
+   * vero, non solo esserci. Su un piatto nuovo (mai salvato) non c'è ancora
+   * niente da eliminare: equivale ad annullare, senza bisogno di conferma
+   * (ANNULLA già fa esattamente questo senza chiederla). Su un piatto
+   * esistente apre la conferma.
+   */
+  function tapCestino() {
+    if (nuovo) {
+      router.push('/piatti');
+      return;
+    }
+    setConfermaEliminazione(true);
+  }
+
+  async function confermaElimina() {
+    if (!piattoOriginale) return;
+    setEliminando(true);
+    try {
+      await eliminaPiatto(piattoOriginale.id);
+      router.push('/piatti');
+    } catch {
+      setErrore('Non siamo riusciti a eliminare il piatto. Riprova.');
+      setEliminando(false);
+      setConfermaEliminazione(false);
+    }
+  }
+
   async function salva() {
     if (ingredienti.length === 0 || salvando) return;
     setSalvando(true);
@@ -169,14 +211,15 @@ export default function Piatto() {
   }
 
   if (errore && !caricamento && !piattoOriginale && !nuovo) {
+    // Niente da eliminare su un piatto che non è stato trovato.
     return (
-      <Cornice>
+      <Cornice cestinoAttivo={false}>
         <p style={{ margin: '20px 18px', color: 'var(--sec)' }}>{errore}</p>
       </Cornice>
     );
   }
 
-  if (caricamento) return <Cornice />;
+  if (caricamento) return <Cornice cestinoAttivo={false} />;
 
   const catalogoPerId = new Map(catalogo.map((i) => [i.id, i]));
   const disponibili = catalogo.filter((i) => !ingredienti.some((r) => r.ingredientId === i.id));
@@ -192,7 +235,7 @@ export default function Piatto() {
   const senzaIngredienti = ingredienti.length === 0;
 
   return (
-    <Cornice>
+    <Cornice onCestino={tapCestino}>
       <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 14px' }}>
         <textarea
           ref={nomeRef}
@@ -301,33 +344,50 @@ export default function Piatto() {
           </div>
         )}
 
-        <div style={{ margin: '22px 4px 9px', fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--ink)' }}>
-          IN QUESTA SETTIMANA
-        </div>
-        <div style={{ display: 'flex', gap: 5 }}>
-          {giorni.map((g) => (
-            <span
-              key={g.label}
-              style={{
-                flex: '1 1 0%',
-                textAlign: 'center',
-                padding: '11px 0',
-                borderRadius: 12,
-                fontFamily: 'var(--font-mono)',
-                fontSize: 10,
-                fontWeight: g.inProgramma ? 700 : 500,
-                letterSpacing: '0.07em',
-                color: g.inProgramma ? '#FFFFFF' : 'var(--ter)',
-                background: g.inProgramma ? 'var(--ink)' : 'rgba(20,22,58,0.045)',
-              }}
-            >
-              {g.label}
-            </span>
-          ))}
-        </div>
-        <div style={{ margin: '10px 4px 0', fontSize: 13, lineHeight: 1.45, color: 'var(--sec)' }}>
-          {testoRiepilogo(nCasa, nFuori)}
-        </div>
+        {nCasa === 0 && nFuori === 0 ? (
+          // Non in programma: niente striscia di sette giorni tutti spenti
+          // (rumore che non dice niente) — il riquadro muto di
+          // VuotoPiatto.dc.html, copiato alla lettera, dice cosa manca e
+          // cosa fare per rimediare.
+          <>
+            <div style={{ margin: '26px 4px 9px', fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: '#C4C4CE' }}>
+              IN QUESTA SETTIMANA
+            </div>
+            <div style={{ padding: '16px 18px', borderRadius: 18, background: 'rgba(20,22,58,0.035)', fontSize: 13, lineHeight: 1.45, color: 'var(--sec)' }}>
+              {TESTO_NON_IN_PROGRAMMA}
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ margin: '22px 4px 9px', fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--ink)' }}>
+              IN QUESTA SETTIMANA
+            </div>
+            <div style={{ display: 'flex', gap: 5 }}>
+              {giorni.map((g) => (
+                <span
+                  key={g.label}
+                  style={{
+                    flex: '1 1 0%',
+                    textAlign: 'center',
+                    padding: '11px 0',
+                    borderRadius: 12,
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 10,
+                    fontWeight: g.inProgramma ? 700 : 500,
+                    letterSpacing: '0.07em',
+                    color: g.inProgramma ? '#FFFFFF' : 'var(--ter)',
+                    background: g.inProgramma ? 'var(--ink)' : 'rgba(20,22,58,0.045)',
+                  }}
+                >
+                  {g.label}
+                </span>
+              ))}
+            </div>
+            <div style={{ margin: '10px 4px 0', fontSize: 13, lineHeight: 1.45, color: 'var(--sec)' }}>
+              {testoRiepilogo(nCasa, nFuori)}
+            </div>
+          </>
+        )}
 
         {errore && <p style={{ margin: '14px 6px 0', color: 'var(--sec)', fontSize: 13 }}>{errore}</p>}
       </div>
@@ -429,6 +489,50 @@ export default function Piatto() {
           </div>
         </div>
       )}
+
+      {confermaEliminazione && (
+        <div
+          onClick={() => !eliminando && setConfermaEliminazione(false)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(20,22,58,0.35)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: '0 24px',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: '100%', maxWidth: 320, background: '#FFFFFF', borderRadius: 22, padding: '22px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}
+          >
+            <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)' }}>
+              Eliminare questo piatto?
+            </div>
+            <div style={{ fontSize: 13.5, lineHeight: 1.5, color: 'var(--sec)' }}>{TESTO_ELIMINA}</div>
+            <div style={{ display: 'flex', gap: 9, marginTop: 4 }}>
+              <button
+                type="button"
+                onClick={() => setConfermaEliminazione(false)}
+                disabled={eliminando}
+                style={{
+                  flex: 1, height: 48, borderRadius: 14, fontFamily: 'var(--font-mono)', fontSize: 11,
+                  fontWeight: 700, letterSpacing: '0.08em', color: 'var(--sec)', background: 'rgba(20,22,58,0.05)',
+                }}
+              >
+                ANNULLA
+              </button>
+              <button
+                type="button"
+                onClick={confermaElimina}
+                disabled={eliminando}
+                style={{
+                  flex: 1, height: 48, borderRadius: 14, fontFamily: 'var(--font-mono)', fontSize: 11,
+                  fontWeight: 700, letterSpacing: '0.08em', color: '#FFFFFF', background: 'var(--ink)',
+                }}
+              >
+                ELIMINA
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Cornice>
   );
 }
@@ -438,11 +542,13 @@ export default function Piatto() {
  * etichetta centrale, icona a destra. Non è Testata (quella è per le
  * schermate di casa, con marchio e titolo a 52px).
  *
- * L'icona a destra è quella del cestino nell'artboard ma resta inerte: non
- * esiste ancora una funzione di eliminazione del piatto nel data layer di
- * questo task (fuori scope, da valutare in un task futuro).
+ * Il cestino è quello dell'artboard e deve fare qualcosa di vero: quando
+ * `onCestino` non è passato (in caricamento, o piatto non trovato) resta un
+ * bottone disattivato — un controllo che sembra fare qualcosa senza fare
+ * niente è peggio di uno assente.
  */
-function Cornice({ children }: { children?: ReactNode }) {
+function Cornice({ children, onCestino, cestinoAttivo = true }: { children?: ReactNode; onCestino?: () => void; cestinoAttivo?: boolean }) {
+  const attivo = cestinoAttivo && !!onCestino;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       <div style={{ padding: '18px 16px 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -457,7 +563,16 @@ function Cornice({ children }: { children?: ReactNode }) {
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--sec)' }}>
           PIATTO
         </span>
-        <span style={{ width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 -10px 0 0' }}>
+        <button
+          type="button"
+          onClick={onCestino}
+          disabled={!attivo}
+          aria-label="Elimina piatto"
+          style={{
+            width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 -10px 0 0', background: 'transparent', opacity: attivo ? 1 : 0.35,
+          }}
+        >
           <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
             <path
               d="M4.6 6.6h14.8M9.6 6.6V4.4h4.8v2.2M6.6 6.6l.9 12.2a1.4 1.4 0 0 0 1.4 1.3h6.2a1.4 1.4 0 0 0 1.4-1.3l.9-12.2"
@@ -467,7 +582,7 @@ function Cornice({ children }: { children?: ReactNode }) {
               strokeLinejoin="round"
             />
           </svg>
-        </span>
+        </button>
       </div>
       {children}
     </div>

@@ -8,10 +8,12 @@ export async function leggiIngredienti(): Promise<Ingredient[]> {
   return data.map(aIngrediente);
 }
 
+/** Solo i piatti attivi: un piatto eliminato (soft delete, `attivo = false`) non deve ricomparire qui. */
 export async function leggiRepertorio(): Promise<Dish[]> {
   const { data, error } = await client()
     .from('dish')
     .select('id, nome, slot_def_id, fonte, attivo, dish_ingredient(ingredient_id, quantita, unita)')
+    .eq('attivo', true)
     .order('created_at');
   if (error) throw error;
   return data.map((r) => ({
@@ -62,6 +64,24 @@ export async function salvaPiatto(
     if (eIns) throw eIns;
   }
   return dishId;
+}
+
+/**
+ * Soft delete: imposta solo `attivo = false`, non cancella la riga. Le
+ * settimane passate vanno conservate per lo storico acquisti, e un
+ * `meal_slot` che punta a un piatto davvero cancellato perderebbe
+ * l'informazione di cosa era stato mangiato. `assegnaPiatti` già ignora i
+ * piatti non attivi, e `leggiRepertorio` ora li esclude dal repertorio.
+ */
+export async function eliminaPiatto(id: string): Promise<void> {
+  const sb = client();
+  const { data: utente } = await sb.auth.getUser();
+  const { error } = await sb
+    .from('dish')
+    .update({ attivo: false })
+    .eq('id', id)
+    .eq('user_id', utente.user!.id);
+  if (error) throw error;
 }
 
 export async function salvaIngrediente(

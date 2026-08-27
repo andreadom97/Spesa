@@ -19,3 +19,6 @@ spesa-schermate-fase-1.html
 
 # scratch della skill SDD
 .superpowers/
+
+# output incrementale di TypeScript
+tsconfig.tsbuildinfo

@@ -8,6 +8,7 @@ vi.mock('@/data/repertorio', () => ({
   salvaPiatto: vi.fn(),
   leggiRepertorio: vi.fn(),
   leggiIngredienti: vi.fn(),
+  eliminaPiatto: vi.fn(),
 }));
 vi.mock('@/data/impostazioni', () => ({
   leggiSlotDefs: vi.fn(),
@@ -23,7 +24,7 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push, back: vi.fn(), replace: vi.fn() }),
 }));
 
-import { salvaPiatto, leggiRepertorio, leggiIngredienti } from '@/data/repertorio';
+import { salvaPiatto, leggiRepertorio, leggiIngredienti, eliminaPiatto } from '@/data/repertorio';
 import { leggiSlotDefs } from '@/data/impostazioni';
 import { leggiSettimanaCorrente } from '@/data/settimana';
 import Piatto from '../page';
@@ -88,6 +89,8 @@ describe('Piatto (editor)', () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByText('Non ancora in programma. Comparirà qui appena lo assegni a un pasto dalla Settimana.')).toBeInTheDocument();
+    // Non in programma: niente striscia dei sette giorni (sarebbe rumore), solo il riquadro muto.
+    expect(screen.queryByText('LUN')).not.toBeInTheDocument();
 
     const salva = screen.getByRole('button', { name: 'SALVA PIATTO' });
     expect(salva).toBeDisabled();
@@ -150,7 +153,27 @@ describe('Piatto (editor)', () => {
     render(<Piatto />);
     await screen.findByDisplayValue('Yogurt e avena');
 
-    expect(screen.getByText('Il piatto entra 2 volte nella lista questa settimana. In più è in programma, ma fuori casa, 1 volta.')).toBeInTheDocument();
+    expect(screen.getByText('In casa due volte questa settimana, fuori una volta. Il piatto entra due volte nella lista.')).toBeInTheDocument();
+    expect(screen.getByText('LUN')).toBeInTheDocument();
+  });
+
+  it('un piatto assegnato ma sempre fuori casa non entra nella lista', async () => {
+    paramsId = 'd-1';
+    vi.mocked(leggiRepertorio).mockResolvedValue([PIATTO_ESISTENTE]);
+    const settimana: SettimanaCorrente = {
+      id: 'w-1',
+      dataInizio: '2026-08-24',
+      stato: 'confermata',
+      slots: [
+        { id: 's-lun', data: '2026-08-24', slotDefId: 'sd-1', stato: 'fuori', dishId: 'd-1', fonteStato: 'default' },
+      ],
+    };
+    vi.mocked(leggiSettimanaCorrente).mockResolvedValue(settimana);
+
+    render(<Piatto />);
+    await screen.findByDisplayValue('Yogurt e avena');
+
+    expect(screen.getByText('Fuori casa una volta questa settimana: non entra nella lista.')).toBeInTheDocument();
   });
 
   it('salva chiama salvaPiatto con la grammatura non moltiplicata e torna al repertorio', async () => {
@@ -177,5 +200,48 @@ describe('Piatto (editor)', () => {
       ingredienti: [{ ingredientId: 'i-1', quantita: 150, unita: 'g' }],
     }));
     await waitFor(() => expect(push).toHaveBeenCalledWith('/piatti'));
+  });
+
+  it('il cestino su un piatto nuovo torna al repertorio senza chiedere conferma', async () => {
+    render(<Piatto />);
+    await screen.findByPlaceholderText('Dai un nome al piatto');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Elimina piatto' }));
+
+    expect(screen.queryByText('Eliminare questo piatto?')).not.toBeInTheDocument();
+    expect(push).toHaveBeenCalledWith('/piatti');
+    expect(eliminaPiatto).not.toHaveBeenCalled();
+  });
+
+  it('il cestino su un piatto esistente chiede conferma, poi elimina (soft delete) e torna al repertorio', async () => {
+    paramsId = 'd-1';
+    vi.mocked(leggiRepertorio).mockResolvedValue([PIATTO_ESISTENTE]);
+    vi.mocked(eliminaPiatto).mockResolvedValue(undefined);
+
+    render(<Piatto />);
+    await screen.findByDisplayValue('Yogurt e avena');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Elimina piatto' }));
+    expect(screen.getByText('Eliminare questo piatto?')).toBeInTheDocument();
+    expect(eliminaPiatto).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'ELIMINA' }));
+
+    await waitFor(() => expect(eliminaPiatto).toHaveBeenCalledWith('d-1'));
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/piatti'));
+  });
+
+  it('ANNULLA nella conferma chiude il dialogo senza eliminare', async () => {
+    paramsId = 'd-1';
+    vi.mocked(leggiRepertorio).mockResolvedValue([PIATTO_ESISTENTE]);
+
+    render(<Piatto />);
+    await screen.findByDisplayValue('Yogurt e avena');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Elimina piatto' }));
+    fireEvent.click(screen.getByRole('button', { name: 'ANNULLA' }));
+
+    expect(screen.queryByText('Eliminare questo piatto?')).not.toBeInTheDocument();
+    expect(eliminaPiatto).not.toHaveBeenCalled();
   });
 });
