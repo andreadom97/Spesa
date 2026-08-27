@@ -161,6 +161,29 @@ describe('chiudiSpesa', () => {
     await expect(chiudiSpesa('week-1')).rejects.toEqual({ message: 'boom' });
   });
 
+  it('se purchase fallisce, non chiude né la week né le shopping_list: un ritentativo deve poter ancora scrivere lo storico', async () => {
+    // Riproduce l'interazione trovata in review: le quattro scritture non
+    // sono più tutte nello stesso Promise.all. Se week.stato venisse posato
+    // a 'chiusa' comunque, il guard di idempotenza (che è corretto e va
+    // tenuto) bloccherebbe in silenzio ogni ritentativo, e le righe di
+    // purchase non spuntate qui non verrebbero mai più scritte.
+    const { sb, scritture } = creaClientMock((tabella, chiamate) => {
+      if (tabella === 'purchase') return { data: null, error: { message: 'boom' } };
+      return risolviSettimanaConfermata(LISTE_LETTURA)(tabella, chiamate);
+    });
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    await expect(chiudiSpesa('week-1')).rejects.toEqual({ message: 'boom' });
+
+    // Nessuna chiamata update() né su week né su shopping_list: il passo 2
+    // (la chiusura ufficiale) non deve partire se il passo 1 (i dati) è fallito.
+    expect((scritture['week'] ?? []).some((c) => c.some((x) => x.metodo === 'update'))).toBe(false);
+    expect((scritture['shopping_list'] ?? []).some((c) => c.some((x) => x.metodo === 'update'))).toBe(false);
+    // pantry_state, invece, è nel passo 1 insieme a purchase: essendo in
+    // Promise.all coi due, entrambi partono comunque (yogurt/pasta/olio: 3 scritture).
+    expect(scritture['pantry_state']).toHaveLength(3);
+  });
+
   it('senza liste per la settimana non scrive nulla', async () => {
     const { sb, scritture } = creaClientMock(risolviSettimanaConfermata([]));
     vi.mocked(client).mockReturnValue(sb as never);

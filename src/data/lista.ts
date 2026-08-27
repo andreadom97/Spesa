@@ -232,6 +232,17 @@ interface RigaChiusuraGrezza {
  * lista, non quello live in pantry_state — richiamarla due volte sulla stessa
  * settimana (doppio tap, o si torna sulla schermata dopo averla già chiusa)
  * applicherebbe due volte lo stesso delta, sballando la dispensa.
+ *
+ * Per questo il guard e la scrittura non possono correre in parallelo fra
+ * loro: prima i DATI (pantry_state, purchase), solo se vanno a buon fine la
+ * chiusura UFFICIALE (shopping_list.chiusa_il, week.stato). Se posassimo
+ * `week.stato = 'chiusa'` insieme a un insert su `purchase` che poi fallisce,
+ * il guard qui sopra bloccherebbe in silenzio ogni ritentativo — la week
+ * risulterebbe già chiusa, ma lo storico acquisti di quella spesa sarebbe
+ * perso per sempre, e non c'è modo di riscriverlo se non a mano sul database.
+ * Il residuo non ha lo stesso problema (è una sovrascrittura assoluta da
+ * dati congelati, non un delta: un ritentativo la ricalcola identica), ma non
+ * costa nulla tenerlo nello stesso primo passo dei dati.
  */
 export async function chiudiSpesa(weekId: string): Promise<void> {
   const sb = client();
@@ -304,15 +315,24 @@ export async function chiudiSpesa(weekId: string): Promise<void> {
 
   const listaIds = liste.map((l) => String(l.id));
 
-  const risultati = await Promise.all([
+  // Passo 1, i DATI: se uno di questi fallisce, si lancia qui, PRIMA di
+  // toccare shopping_list/week — il guard di idempotenza resta disarmato e
+  // un ritentativo dell'utente può ancora scrivere lo storico mancante.
+  const risultatiDati = await Promise.all([
     ...scrittureDispensa,
     righeAcquisto.length > 0
       ? sb.from('purchase').insert(righeAcquisto)
       : Promise.resolve({ error: null }),
+  ]);
+  const primoErroreDati = risultatiDati.find((r) => r.error)?.error;
+  if (primoErroreDati) throw primoErroreDati;
+
+  // Passo 2, la chiusura UFFICIALE: solo ora, con i dati al sicuro, si arma
+  // il guard che rende chiudiSpesa idempotente.
+  const risultatiChiusura = await Promise.all([
     sb.from('shopping_list').update({ chiusa_il: new Date().toISOString() }).in('id', listaIds).eq('user_id', userId),
     sb.from('week').update({ stato: 'chiusa' }).eq('id', weekId).eq('user_id', userId),
   ]);
-
-  const primoErrore = risultati.find((r) => r.error)?.error;
-  if (primoErrore) throw primoErrore;
+  const primoErroreChiusura = risultatiChiusura.find((r) => r.error)?.error;
+  if (primoErroreChiusura) throw primoErroreChiusura;
 }
