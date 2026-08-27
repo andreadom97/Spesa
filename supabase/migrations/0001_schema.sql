@@ -93,7 +93,8 @@ create table shopping_list_item (
   confezioni int not null,
   quantita_totale numeric not null,
   unita text not null check (unita in ('g', 'ml', 'pz')),
-  area text not null,
+  area text not null check (area in
+    ('ortofrutta', 'macelleria', 'latticini', 'cereali', 'dispensa', 'surgelati')),
   spuntato boolean not null default false,
   spuntato_il timestamptz,
   origine text not null default 'piano' check (origine in ('piano', 'controllo', 'manuale')),
