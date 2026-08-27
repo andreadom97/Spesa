@@ -6,9 +6,9 @@ import { useParams, useRouter } from 'next/navigation';
 import type { AreaId, Dish } from '@/domain/types';
 import { leggiRepertorio, leggiIngredienti } from '@/data/repertorio';
 import { leggiSettimanaCorrente, aggiornaSlot } from '@/data/settimana';
-import { leggiSlotDefs } from '@/data/impostazioni';
+import { leggiSlotDefs, leggiImpostazioni } from '@/data/impostazioni';
 import { giorniTra, lunediDi } from '@/domain/date';
-import { coloreArea, ORDINE_AREE_DEFAULT } from '@/domain/aree';
+import { coloreArea } from '@/domain/aree';
 
 const GIORNI = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
 
@@ -58,6 +58,22 @@ function testoNota(cambiato: boolean, nomePasto: string, giorno: string): string
 }
 
 /**
+ * Le aree distinte presenti negli ingredienti del piatto, nell'ordine
+ * impostato dall'utente — allineata a `areeDelPiatto` di
+ * `src/app/(app)/piatti/page.tsx`: la stessa informazione (quali reparti
+ * tocca un piatto) deve comparire nello stesso ordine in entrambe le
+ * schermate, non in un ordine fisso diverso da schermata a schermata.
+ */
+function areeDelPiatto(piatto: Dish, areaPerIngrediente: Map<string, AreaId>, ordineAree: AreaId[]): AreaId[] {
+  const presenti = new Set(
+    piatto.ingredienti
+      .map((i) => areaPerIngrediente.get(i.ingredientId))
+      .filter((a): a is AreaId => a !== undefined),
+  );
+  return ordineAree.filter((a) => presenti.has(a));
+}
+
+/**
  * Scegli il piatto: sostituzione per-pasto, non per-piatto. Nasce dal pasto
  * (data + slotDefId dalla rotta), mostra solo i piatti attivi di quello slot
  * e scrive solo `meal_slot.dish_id` di quel singolo slot — non tocca mai il
@@ -78,11 +94,12 @@ export default function ScegliPiatto() {
     let vivo = true;
     async function carica() {
       try {
-        const [settimana, repertorio, slotDefs, ingredienti] = await Promise.all([
+        const [settimana, repertorio, slotDefs, ingredienti, impostazioni] = await Promise.all([
           leggiSettimanaCorrente(),
           leggiRepertorio(),
           leggiSlotDefs(),
           leggiIngredienti(),
+          leggiImpostazioni(),
         ]);
         if (!vivo) return;
 
@@ -100,12 +117,7 @@ export default function ScegliPiatto() {
 
         const areePerPiatto = new Map<string, AreaId[]>();
         for (const p of piatti) {
-          const presenti = new Set(
-            p.ingredienti
-              .map((i) => areaPerIngrediente.get(i.ingredientId))
-              .filter((a): a is AreaId => a !== undefined),
-          );
-          areePerPiatto.set(p.id, ORDINE_AREE_DEFAULT.filter((a) => presenti.has(a)));
+          areePerPiatto.set(p.id, areeDelPiatto(p, areaPerIngrediente, impostazioni.ordineAree));
         }
 
         setDati({ slotId: slot.id, dishIdOriginale: slot.dishId, nomePasto: def.nome, piatti, areePerPiatto });
@@ -224,7 +236,11 @@ export default function ScegliPiatto() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <div style={{ display: 'flex', gap: 3 }}>
                       {aree.map((a) => (
-                        <span key={a} style={{ width: 8, height: 8, borderRadius: 2.6, display: 'inline-block', background: coloreArea(a) }} />
+                        <span
+                          key={a}
+                          data-area={a}
+                          style={{ width: 8, height: 8, borderRadius: 2.6, display: 'inline-block', background: coloreArea(a) }}
+                        />
                       ))}
                     </div>
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.09em', color: 'var(--ter)' }}>

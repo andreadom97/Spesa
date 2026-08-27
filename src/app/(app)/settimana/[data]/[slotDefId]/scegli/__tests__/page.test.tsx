@@ -14,6 +14,7 @@ vi.mock('@/data/repertorio', () => ({
 }));
 vi.mock('@/data/impostazioni', () => ({
   leggiSlotDefs: vi.fn(),
+  leggiImpostazioni: vi.fn(),
 }));
 
 const push = vi.fn();
@@ -28,7 +29,7 @@ vi.mock('next/navigation', () => ({
 
 import { leggiSettimanaCorrente, aggiornaSlot } from '@/data/settimana';
 import { leggiRepertorio, leggiIngredienti } from '@/data/repertorio';
-import { leggiSlotDefs } from '@/data/impostazioni';
+import { leggiSlotDefs, leggiImpostazioni } from '@/data/impostazioni';
 import ScegliPiatto from '../page';
 
 const DATA = '2026-08-27';
@@ -71,11 +72,20 @@ const SETTIMANA_BASE: SettimanaCorrente = {
   id: 'week-1', dataInizio: '2026-08-24', stato: 'bozza', slots: [SLOT_COLAZIONE, SLOT_CENA],
 };
 
+// Ordine deliberatamente diverso da ORDINE_AREE_DEFAULT (che metterebbe
+// macelleria prima di cereali): prova che i quadratini seguono l'ordine
+// scelto dall'utente in Impostazioni, non l'ordine fisso di aree.ts.
+const ORDINE_AREE_TEST = ['surgelati', 'dispensa', 'cereali', 'latticini', 'macelleria', 'ortofrutta'] as const;
+
 function mockCarico() {
   vi.mocked(leggiSettimanaCorrente).mockResolvedValue(SETTIMANA_BASE);
   vi.mocked(leggiSlotDefs).mockResolvedValue(SLOT_DEFS);
   vi.mocked(leggiRepertorio).mockResolvedValue([DISH_COLAZIONE, DISH_POLLO, DISH_MERLUZZO]);
   vi.mocked(leggiIngredienti).mockResolvedValue([ING_POLLO, ING_RISO, ING_YOGURT]);
+  vi.mocked(leggiImpostazioni).mockResolvedValue({
+    moltiplicatorePorzioni: 1,
+    ordineAree: [...ORDINE_AREE_TEST],
+  });
 }
 
 describe('Scegli il piatto', () => {
@@ -119,6 +129,19 @@ describe('Scegli il piatto', () => {
     expect(
       screen.getByText('Tocca un piatto per sostituire Cena di giovedì. Vale solo per quel giorno, non cambia il piatto nel repertorio.'),
     ).toBeInTheDocument();
+  });
+
+  it('i quadratini delle aree seguono l\'ordine dell\'utente (ordineAree), non l\'ordine fisso di default', async () => {
+    mockCarico();
+    render(<ScegliPiatto />);
+    const nomePiatto = await screen.findByText('Pollo e riso');
+
+    // Pollo e riso tocca macelleria (i-1) e cereali (i-2). Con
+    // ORDINE_AREE_TEST cereali viene prima di macelleria: l'ordine di
+    // default (aree.ts) li metterebbe nell'ordine opposto.
+    const riga = nomePiatto.closest('button') as HTMLElement;
+    const quadratini = riga.querySelectorAll('[data-area]');
+    expect(Array.from(quadratini).map((el) => el.getAttribute('data-area'))).toEqual(['cereali', 'macelleria']);
   });
 
   it('il pulsante di conferma è disattivato finché non si sceglie un piatto diverso da quello attuale', async () => {
