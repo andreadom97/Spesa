@@ -84,7 +84,10 @@ export default function Piatti() {
 
   return (
     <Cornice>
-      <div className="sc" style={{ padding: '0 16px 12px', overflowX: 'auto' }}>
+      {/* Bottom ridotto a 6px (era 12): il bottone di Segmento è ora alto 44px invece di
+          38 (area di tap, non disegno) — si compensano i +6px per non spostare il resto
+          della schermata rispetto all'artboard. */}
+      <div className="sc" style={{ padding: '0 16px 6px', overflowX: 'auto' }}>
         <Segmento opzioni={opzioni} valore={filtro} onCambia={setFiltro} />
       </div>
 

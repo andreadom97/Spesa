@@ -17,10 +17,11 @@ interface Props {
  * corrente, callback) è pensata per essere riusata identica da Ingrediente
  * e Lista con altre opzioni (aree, unità...).
  *
- * Le pillole sono alte 38px per fedeltà all'artboard: più basse del minimo
- * di 44px per i bersagli tattili dettato dalle regole globali. È una
- * divergenza dichiarata, non un errore: sia il brief che l'artboard la
- * indicano esplicitamente.
+ * La pillola resta visivamente 38px come nell'artboard, ma l'area toccabile
+ * (il <button>) è alta 44px: un pollice in corsia non deve sbagliare
+ * bersaglio solo perché il disegno è sottile. Il bottone è trasparente e fa
+ * solo da area di tap; lo <span> interno disegna la pillola vera, centrata.
+ * Regola da portare con sé in ogni riuso, non da riparare tre volte.
  */
 export function Segmento({ opzioni, valore, onCambia }: Props) {
   return (
@@ -36,20 +37,33 @@ export function Segmento({ opzioni, valore, onCambia }: Props) {
               aria-pressed={attivo}
               style={{
                 flex: 'none',
-                height: 38,
-                padding: '0 15px',
-                borderRadius: 999,
-                fontFamily: 'var(--font-mono)',
-                fontSize: 10.5,
-                fontWeight: attivo ? 700 : 500,
-                letterSpacing: '0.09em',
-                textTransform: 'uppercase',
-                color: attivo ? '#FFFFFF' : 'var(--sec)',
-                background: attivo ? 'var(--ink)' : '#FFFFFF',
-                border: attivo ? 'none' : '1px solid rgba(20,22,58,0.09)',
+                height: 44,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'transparent',
               }}
             >
-              {o.label}
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: 38,
+                  padding: '0 15px',
+                  borderRadius: 999,
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 10.5,
+                  fontWeight: attivo ? 700 : 500,
+                  letterSpacing: '0.09em',
+                  textTransform: 'uppercase',
+                  color: attivo ? '#FFFFFF' : 'var(--sec)',
+                  background: attivo ? 'var(--ink)' : '#FFFFFF',
+                  border: attivo ? 'none' : '1px solid rgba(20,22,58,0.09)',
+                }}
+              >
+                {o.label}
+              </span>
             </button>
           );
         })}

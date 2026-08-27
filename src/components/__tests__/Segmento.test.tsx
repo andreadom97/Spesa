@@ -32,4 +32,16 @@ describe('Segmento', () => {
     render(<Segmento opzioni={OPZIONI} valore="tutti" onCambia={() => {}} />);
     expect(screen.getByText('Colazione')).toBeInTheDocument();
   });
+
+  it("area di tap (button) 44px, disegno della pillola (span interno) 38px: sono due elementi distinti", () => {
+    // jsdom non calcola il layout reale (niente getBoundingClientRect utile):
+    // qui si verifica solo che lo stile dichiarato separi le due altezze come
+    // da contratto. La misura in pixel effettivi è verificata a parte, in un
+    // vero browser (vedi report del task).
+    render(<Segmento opzioni={OPZIONI} valore="tutti" onCambia={() => {}} />);
+    const bottone = screen.getByRole('button', { name: 'Pranzo' });
+    expect(bottone.style.height).toBe('44px');
+    const pillola = bottone.firstElementChild as HTMLElement;
+    expect(pillola.style.height).toBe('38px');
+  });
 });
