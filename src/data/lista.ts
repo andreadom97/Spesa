@@ -1,5 +1,6 @@
 import type { AreaId, UnitaBase } from '@/domain/types';
 import { costruisciLista } from '@/domain/list-builder';
+import { calcolaChiusura, type VoceChiusura } from '@/domain/chiusura';
 import { client } from './supabase';
 import { leggiImpostazioni } from './impostazioni';
 import { leggiSlotSettimana } from './settimana';
@@ -207,7 +208,111 @@ export async function spunta(itemId: string, spuntato: boolean): Promise<void> {
   if (error) throw error;
 }
 
-/** Corpo nel Task 15: registra gli acquisti, aggiorna la dispensa e chiude le liste. */
+/** Forma grezza delle righe lette per la chiusura: solo i campi che servono a calcolaChiusura, niente join su ingredient. */
+interface RigaChiusuraGrezza {
+  ingredient_id: unknown;
+  fabbisogno: unknown;
+  residuo: unknown;
+  confezioni: unknown;
+  quantita_totale: unknown;
+  spuntato: unknown;
+  origine: unknown;
+}
+
+/**
+ * L'unico momento in cui il residuo viene scritto: senza questo tap la
+ * registrazione silenziosa non ha un istante in cui avvenire. Legge le righe
+ * congelate di entrambe le liste (non leggiListe: qui non servono sezioni,
+ * ordine aree o nomi — solo i numeri che calcolaChiusura consuma), chiama la
+ * funzione pura, e in una sola andata scrive pantry_state, purchase,
+ * shopping_list.chiusa_il e week.stato.
+ *
+ * Idempotente rispetto alla week: se è già `chiusa` esce subito senza
+ * scrivere nulla. calcolaChiusura legge il residuo congelato nella riga della
+ * lista, non quello live in pantry_state — richiamarla due volte sulla stessa
+ * settimana (doppio tap, o si torna sulla schermata dopo averla già chiusa)
+ * applicherebbe due volte lo stesso delta, sballando la dispensa.
+ */
 export async function chiudiSpesa(weekId: string): Promise<void> {
-  throw new Error(`chiudiSpesa non ancora implementato (Task 15): weekId=${weekId}`);
+  const sb = client();
+  const { data: u } = await sb.auth.getUser();
+  const userId = u.user!.id;
+  const oggi = new Date().toISOString().slice(0, 10);
+
+  const { data: week, error: eWeek } = await sb
+    .from('week')
+    .select('stato')
+    .eq('id', weekId)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (eWeek) throw eWeek;
+  if (!week || week.stato === 'chiusa') return;
+
+  const { data: liste, error } = await sb
+    .from('shopping_list')
+    .select('id, shopping_list_item(ingredient_id, fabbisogno, residuo, confezioni, quantita_totale, spuntato, origine)')
+    .eq('week_id', weekId)
+    .returns<Array<{ id: unknown; shopping_list_item: RigaChiusuraGrezza[] }>>();
+  if (error) throw error;
+  if (!liste || liste.length === 0) return;
+
+  // Ogni ingrediente compare in una sola delle due liste (base/topup sono uno
+  // split per deperibilità, non due copie): la mappa non perde nessuna riga.
+  const shoppingListIdPerIngrediente = new Map<string, string>();
+  const voci: VoceChiusura[] = [];
+  for (const lista of liste) {
+    for (const r of lista.shopping_list_item ?? []) {
+      const ingredientId = String(r.ingredient_id);
+      shoppingListIdPerIngrediente.set(ingredientId, String(lista.id));
+      voci.push({
+        ingredientId,
+        spuntato: Boolean(r.spuntato),
+        quantitaTotale: Number(r.quantita_totale),
+        fabbisogno: Number(r.fabbisogno),
+        residuo: Number(r.residuo),
+        confezioni: Number(r.confezioni),
+        origine: r.origine as VoceChiusura['origine'],
+      });
+    }
+  }
+  if (voci.length === 0) return;
+
+  const aggiornamenti = calcolaChiusura({ voci, oggi });
+
+  const scrittureDispensa = aggiornamenti
+    .filter((a) => a.residuo !== null || a.ultimoAcquisto !== null)
+    .map((a) => {
+      // pantry_state.residuo ha `check (residuo >= 0)`: calcolaChiusura non
+      // produce mai un negativo, ma qui si scrive solo quello che è cambiato
+      // davvero, mai un valore indovinato per le colonne che non c'entrano.
+      const patch: Record<string, unknown> = {};
+      if (a.residuo !== null) patch.residuo = a.residuo;
+      if (a.ultimoAcquisto !== null) patch.ultimo_acquisto = a.ultimoAcquisto;
+      return sb.from('pantry_state').update(patch).eq('ingredient_id', a.ingredientId).eq('user_id', userId);
+    });
+
+  const righeAcquisto = aggiornamenti
+    .filter((a) => a.registraAcquisto)
+    .map((a) => ({
+      user_id: userId,
+      ingredient_id: a.ingredientId,
+      data: oggi,
+      confezioni: a.confezioni,
+      quantita: a.quantita,
+      shopping_list_id: shoppingListIdPerIngrediente.get(a.ingredientId) ?? null,
+    }));
+
+  const listaIds = liste.map((l) => String(l.id));
+
+  const risultati = await Promise.all([
+    ...scrittureDispensa,
+    righeAcquisto.length > 0
+      ? sb.from('purchase').insert(righeAcquisto)
+      : Promise.resolve({ error: null }),
+    sb.from('shopping_list').update({ chiusa_il: new Date().toISOString() }).in('id', listaIds).eq('user_id', userId),
+    sb.from('week').update({ stato: 'chiusa' }).eq('id', weekId).eq('user_id', userId),
+  ]);
+
+  const primoErrore = risultati.find((r) => r.error)?.error;
+  if (primoErrore) throw primoErrore;
 }

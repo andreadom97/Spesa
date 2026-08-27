@@ -227,6 +227,27 @@ describe('Lista', () => {
     expect(leggiListe).toHaveBeenCalledTimes(2);
   });
 
+  it('con un controllo ancora in sospeso non mostra il link per chiudere la spesa, anche se tutte le voci sono spuntate', async () => {
+    const lista = buildLista();
+    lista.base[0].voci = lista.base[0].voci.map((v) => ({ ...v, spuntato: true }));
+    vi.mocked(leggiListe).mockResolvedValue(lista);
+    render(<Lista />);
+    await screen.findByText('Olio: ne hai ancora?');
+
+    expect(screen.queryByRole('link', { name: 'HAI PRESO TUTTO' })).not.toBeInTheDocument();
+  });
+
+  it('quando ogni voce è spuntata e non resta nessun controllo in sospeso, mostra il link per chiudere la spesa', async () => {
+    const lista = buildLista();
+    lista.base[0].voci = lista.base[0].voci.map((v) => ({ ...v, spuntato: true }));
+    lista.base[1].controlli = []; // il controllo sull'olio è stato risposto
+    vi.mocked(leggiListe).mockResolvedValue(lista);
+    render(<Lista />);
+    await screen.findByText('Riso Carnaroli');
+
+    expect(screen.getByRole('link', { name: 'HAI PRESO TUTTO' })).toHaveAttribute('href', '/lista/fatta');
+  });
+
   it('senza lista per la settimana mostra lo stato vuoto con il link alla Settimana', async () => {
     vi.mocked(leggiListe).mockResolvedValue(null);
     render(<Lista />);

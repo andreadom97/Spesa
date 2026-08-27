@@ -39,6 +39,19 @@ function tally(sezioni: SezioneSalvata[]): { totale: number; fatte: number } {
 }
 
 /**
+ * Vero solo quando non resta più nulla da fare: ogni voce spuntata *e*
+ * nessun controllo ancora in sospeso (un controllo si risponde, non si
+ * spunta — finché non ha risposta la spesa non è finita). Guida solo il tap
+ * verso /lista/fatta: quella schermata non si fida di questo calcolo e lo
+ * rifà per conto suo prima di mostrare "hai preso tutto".
+ */
+function tuttoFatto(lista: ListaSalvata): boolean {
+  const sezioni = [...lista.base, ...lista.topup];
+  const haVoci = sezioni.some((s) => s.voci.length > 0);
+  return haVoci && sezioni.every((s) => s.controlli.length === 0 && s.voci.every((v) => v.spuntato));
+}
+
+/**
  * Le aree con almeno una voce non spuntata, considerando base e topup
  * insieme. Solo qui si calcolano le aree mancanti: un'area assente dalla
  * spesa non entra in questo insieme, quindi resta piena nel marchio.
@@ -306,6 +319,21 @@ export default function Lista() {
         daPrendereTopup={tallyTopup.totale - tallyTopup.fatte}
         onCambia={setTab}
       />
+
+      {tuttoFatto(lista) && (
+        <div style={{ padding: '8px 16px 0' }}>
+          <Link
+            href="/lista/fatta"
+            style={{
+              width: '100%', height: 54, borderRadius: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700, letterSpacing: '0.09em',
+              background: '#14163A', boxShadow: '0 3px 10px rgba(20,22,58,0.24)', color: '#FFFFFF',
+            }}
+          >
+            HAI PRESO TUTTO
+          </Link>
+        </div>
+      )}
     </Cornice>
   );
 }
