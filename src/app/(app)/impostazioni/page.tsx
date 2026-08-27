@@ -1,0 +1,451 @@
+'use client';
+
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import type { AreaId, MealSlotDef } from '@/domain/types';
+import { leggiImpostazioni, salvaImpostazioni, leggiSlotDefs, salvaSlotDefs } from '@/data/impostazioni';
+import { coloreArea, nomeArea } from '@/domain/aree';
+
+const GIORNI = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
+const GIORNI_LUNGHI = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
+const ASSENZE_VUOTE = [false, false, false, false, false, false, false];
+const MIN_PASTI = 3;
+const MAX_PASTI = 5;
+
+/** Reindicizza `posizione` sull'ordine effettivo dell'array: va rifatto a ogni aggiunta, rimozione o riordino. */
+function conPosizioni(lista: MealSlotDef[]): MealSlotDef[] {
+  return lista.map((p, i) => ({ ...p, posizione: i }));
+}
+
+interface Dati {
+  porzioni: number;
+  ordineAree: AreaId[];
+  pasti: MealSlotDef[];
+}
+
+/**
+ * Impostazioni: moltiplicatore porzioni, editor dei pasti (da 3 a 5, non i
+ * quattro cablati nel mock — leggiSlotDefs() legge quelli reali), e il link
+ * all'ordine dei reparti (personalizzazione vera e propria delegata a
+ * /impostazioni/reparti, che ha il proprio pulsante SALVA).
+ *
+ * Porzioni e pasti si salvano da soli a ogni interazione (niente pulsante
+ * SALVA nell'artboard): ottimistico, con rollback se la scrittura fallisce.
+ */
+export default function Impostazioni() {
+  const router = useRouter();
+
+  const [dati, setDati] = useState<Dati | null>(null);
+  const [erroreCaricamento, setErroreCaricamento] = useState<string | null>(null);
+  const [erroreSalvataggio, setErroreSalvataggio] = useState<string | null>(null);
+
+  // Ultimo stato dei pasti confermato dal server: a differenza di `dati.pasti`
+  // (che include anche le modifiche non ancora salvate, es. mentre si digita
+  // un nome) è il valore a cui tornare se una scrittura fallisce.
+  const pastiSalvatiRef = useRef<MealSlotDef[]>([]);
+
+  useEffect(() => {
+    let vivo = true;
+    Promise.all([leggiImpostazioni(), leggiSlotDefs()])
+      .then(([impostazioni, pasti]) => {
+        if (!vivo) return;
+        pastiSalvatiRef.current = pasti;
+        setDati({ porzioni: impostazioni.moltiplicatorePorzioni, ordineAree: impostazioni.ordineAree, pasti });
+      })
+      .catch(() => {
+        if (vivo) setErroreCaricamento('Non riusciamo a caricare le impostazioni. Riprova più tardi.');
+      });
+    return () => {
+      vivo = false;
+    };
+  }, []);
+
+  async function cambiaPorzioni(delta: number) {
+    if (!dati) return;
+    const nuovo = Math.min(6, Math.max(1, dati.porzioni + delta));
+    if (nuovo === dati.porzioni) return;
+    const precedente = dati.porzioni;
+    setErroreSalvataggio(null);
+    setDati({ ...dati, porzioni: nuovo });
+    try {
+      await salvaImpostazioni({ moltiplicatorePorzioni: nuovo, ordineAree: dati.ordineAree });
+    } catch {
+      setDati((correnti) => (correnti ? { ...correnti, porzioni: precedente } : correnti));
+      setErroreSalvataggio('Non siamo riusciti a salvare. Riprova.');
+    }
+  }
+
+  /** Persiste l'insieme dei pasti; in caso di errore torna all'ultimo stato salvato dal server. */
+  async function persistiPasti(nuovi: MealSlotDef[]) {
+    setErroreSalvataggio(null);
+    setDati((correnti) => (correnti ? { ...correnti, pasti: nuovi } : correnti));
+    try {
+      await salvaSlotDefs(nuovi);
+      pastiSalvatiRef.current = nuovi;
+    } catch {
+      const salvati = pastiSalvatiRef.current;
+      setDati((correnti) => (correnti ? { ...correnti, pasti: salvati } : correnti));
+      setErroreSalvataggio('Non siamo riusciti a salvare. Riprova.');
+    }
+  }
+
+  function spostaPasto(indice: number, delta: number) {
+    if (!dati) return;
+    const j = indice + delta;
+    if (j < 0 || j >= dati.pasti.length) return;
+    const copia = [...dati.pasti];
+    const tmp = copia[indice];
+    copia[indice] = copia[j];
+    copia[j] = tmp;
+    persistiPasti(conPosizioni(copia));
+  }
+
+  function aggiungiPasto() {
+    if (!dati || dati.pasti.length >= MAX_PASTI) return;
+    const nuovo: MealSlotDef = {
+      id: crypto.randomUUID(),
+      nome: 'Nuovo pasto',
+      posizione: dati.pasti.length,
+      assenzeAbituali: [...ASSENZE_VUOTE],
+    };
+    persistiPasti(conPosizioni([...dati.pasti, nuovo]));
+  }
+
+  function rimuoviPasto(id: string) {
+    if (!dati || dati.pasti.length <= MIN_PASTI) return;
+    persistiPasti(conPosizioni(dati.pasti.filter((p) => p.id !== id)));
+  }
+
+  function toggleGiorno(id: string, indiceGiorno: number) {
+    if (!dati) return;
+    const nuovi = dati.pasti.map((p) => {
+      if (p.id !== id) return p;
+      const assenze = [...p.assenzeAbituali];
+      assenze[indiceGiorno] = !assenze[indiceGiorno];
+      return { ...p, assenzeAbituali: assenze };
+    });
+    persistiPasti(nuovi);
+  }
+
+  /** Aggiorna solo lo stato locale mentre si digita: il salvataggio parte al blur, in confermaNome. */
+  function cambiaNomeLocale(id: string, nome: string) {
+    setDati((correnti) =>
+      correnti ? { ...correnti, pasti: correnti.pasti.map((p) => (p.id === id ? { ...p, nome } : p)) } : correnti,
+    );
+  }
+
+  function confermaNome(id: string) {
+    setDati((correnti) => {
+      if (!correnti) return correnti;
+      const pasto = correnti.pasti.find((p) => p.id === id);
+      if (!pasto) return correnti;
+      const nomeCorretto = pasto.nome.trim() || 'Pasto';
+      const aggiornati = correnti.pasti.map((p) => (p.id === id ? { ...p, nome: nomeCorretto } : p));
+      const salvato = pastiSalvatiRef.current.find((p) => p.id === id);
+      if (!salvato || salvato.nome !== nomeCorretto) {
+        persistiPasti(aggiornati);
+      }
+      return { ...correnti, pasti: aggiornati };
+    });
+  }
+
+  if (erroreCaricamento) {
+    return (
+      <Cornice router={router}>
+        <p style={{ margin: '20px 18px', color: 'var(--sec)' }}>{erroreCaricamento}</p>
+      </Cornice>
+    );
+  }
+
+  if (!dati) {
+    // Nessuno stato di caricamento è nell'artboard: l'intestazione basta finché i dati non arrivano.
+    return <Cornice router={router} />;
+  }
+
+  // L'artboard abbrevia i nomi ("MACELLERIA" invece di "MACELLERIA E
+  // PESCHERIA"): sono stringhe inventate per stare su una riga, non dati
+  // reali. Qui si usano i nomi veri di nomeArea() e si tronca con CSS
+  // (nowrap + ellipsis), non con un taglio a 3 elementi + "…" fisso.
+  const ordineTesto = dati.ordineAree.map(nomeArea).join(' · ');
+
+  return (
+    <Cornice router={router}>
+      <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 18px' }}>
+        <div style={{ fontSize: 32, fontWeight: 800, letterSpacing: '-0.045em', lineHeight: 1, color: 'var(--ink)', padding: '0 2px 14px' }}>
+          Impostazioni
+        </div>
+
+        <Etichetta margine="6px 4px 10px">PORZIONI</Etichetta>
+        <div
+          style={{
+            display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', borderRadius: 18,
+            background: 'var(--superficie)', border: '1px solid var(--bordo)',
+          }}
+        >
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)' }}>
+              Per quante persone cucini
+            </div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--sec)', marginTop: 5 }}>
+              MOLTIPLICA TUTTE LE GRAMMATURE
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 'none' }}>
+            <button
+              type="button"
+              onClick={() => cambiaPorzioni(-1)}
+              disabled={dati.porzioni <= 1}
+              aria-label="Diminuisci porzioni"
+              style={{ width: 38, height: 38, borderRadius: 12, background: 'rgba(20,22,58,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <path d="M3.4 8h9.2" stroke="var(--ink)" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </button>
+            <span style={{ width: 34, textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: 19, fontWeight: 700, color: 'var(--ink)' }}>
+              {dati.porzioni}
+            </span>
+            <button
+              type="button"
+              onClick={() => cambiaPorzioni(1)}
+              disabled={dati.porzioni >= 6}
+              aria-label="Aumenta porzioni"
+              style={{ width: 38, height: 38, borderRadius: 12, background: 'rgba(20,22,58,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <path d="M8 3.4v9.2M3.4 8h9.2" stroke="var(--ink)" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', marginTop: 8 }}>
+          Serve solo a cucinare per più persone: moltiplica le quantità della lista, ma non cambia le
+          grammature dei piatti, che restano quelle di una porzione per un commensale. Non toccare le
+          ricette per adattarle: se cucini in due, basta alzare qui il moltiplicatore a 2.
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', margin: '26px 4px 10px' }}>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--ink)' }}>
+            I TUOI PASTI
+          </span>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9.5, letterSpacing: '0.1em', color: 'var(--ter)' }}>
+            {dati.pasti.length} DI {MAX_PASTI}
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {dati.pasti.map((p, i) => (
+            <RigaPastoEditor
+              key={p.id}
+              pasto={p}
+              indice={i}
+              totale={dati.pasti.length}
+              onSu={() => spostaPasto(i, -1)}
+              onGiu={() => spostaPasto(i, 1)}
+              onRimuovi={() => rimuoviPasto(p.id)}
+              onCambiaNome={(nome) => cambiaNomeLocale(p.id, nome)}
+              onConfermaNome={() => confermaNome(p.id)}
+              onToggleGiorno={(gi) => toggleGiorno(p.id, gi)}
+              rimozioneAttiva={dati.pasti.length > MIN_PASTI}
+            />
+          ))}
+          <button
+            type="button"
+            onClick={aggiungiPasto}
+            disabled={dati.pasti.length >= MAX_PASTI}
+            style={{
+              minHeight: 52, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9,
+              borderRadius: 18, background: 'transparent', border: '1.5px dashed rgba(20,22,58,0.28)',
+              opacity: dati.pasti.length >= MAX_PASTI ? 0.35 : 1,
+            }}
+          >
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+              <path d="M12 5v14M5 12h14" stroke="var(--sec)" strokeWidth="2.1" strokeLinecap="round" />
+            </svg>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.11em', color: 'var(--sec)' }}>
+              AGGIUNGI PASTO
+            </span>
+          </button>
+        </div>
+        <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', marginTop: 8 }}>
+          Da tre a cinque pasti, nell’ordine in cui li fai. I giorni segnati qui vengono già spenti quando si
+          apre una settimana nuova: nella Settimana correggi solo le eccezioni — le settimane già create non
+          cambiano.
+        </div>
+
+        {erroreSalvataggio && <p style={{ margin: '10px 6px 0', fontSize: 13, color: 'var(--sec)' }}>{erroreSalvataggio}</p>}
+
+        <Etichetta margine="26px 4px 10px">SUPERMERCATO</Etichetta>
+        <Link
+          href="/impostazioni/reparti"
+          style={{
+            width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: 16, borderRadius: 18,
+            background: 'var(--superficie)', border: '1px solid var(--bordo)',
+          }}
+        >
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 9px)', gap: 3, flex: 'none' }}>
+            {dati.ordineAree.map((a) => (
+              <span key={a} style={{ width: 9, height: 9, borderRadius: 2.6, display: 'inline-block', background: coloreArea(a) }} />
+            ))}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)' }}>Ordine dei reparti</div>
+            <div
+              style={{
+                fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--sec)', marginTop: 5,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              }}
+            >
+              {ordineTesto}
+            </div>
+          </div>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <path d="M6 3.2 10.4 8 6 12.8" stroke="var(--ter)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </Link>
+      </div>
+    </Cornice>
+  );
+}
+
+function Etichetta({ children, margine }: { children: ReactNode; margine: string }) {
+  return (
+    <div style={{ margin: margine, fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--ink)' }}>
+      {children}
+    </div>
+  );
+}
+
+interface PropsRigaPasto {
+  pasto: MealSlotDef;
+  indice: number;
+  totale: number;
+  onSu: () => void;
+  onGiu: () => void;
+  onRimuovi: () => void;
+  onCambiaNome: (nome: string) => void;
+  onConfermaNome: () => void;
+  onToggleGiorno: (indiceGiorno: number) => void;
+  rimozioneAttiva: boolean;
+}
+
+/**
+ * Una riga pasto: nome modificabile, frecce di riordino, rimozione, e sotto
+ * le sette pastiglie dei giorni "abitualmente fuori casa". Il pulsante di
+ * rimozione non è nell'artboard (il mock non copre il vincolo 3-5): 34px
+ * come su/giu, per coerenza visiva con il resto della riga.
+ */
+function RigaPastoEditor({
+  pasto, indice, totale, onSu, onGiu, onRimuovi, onCambiaNome, onConfermaNome, onToggleGiorno, rimozioneAttiva,
+}: PropsRigaPasto) {
+  return (
+    <div style={{ background: 'var(--superficie)', borderRadius: 18, border: '1px solid var(--bordo)', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '13px 14px 11px' }}>
+        <svg width="17" height="17" viewBox="0 0 20 20" fill="none">
+          <path d="M6.6 6h6.8M6.6 10h6.8M6.6 14h6.8" stroke="var(--ter)" strokeWidth="1.9" strokeLinecap="round" />
+        </svg>
+        <input
+          type="text"
+          value={pasto.nome}
+          onChange={(e) => onCambiaNome(e.target.value)}
+          onBlur={onConfermaNome}
+          aria-label="Nome del pasto"
+          style={{
+            flex: 1, minWidth: 0, fontFamily: 'inherit', fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em',
+            color: 'var(--ink)', border: 'none', outline: 'none', background: 'transparent', padding: 0,
+          }}
+        />
+        <button
+          type="button"
+          onClick={onRimuovi}
+          disabled={!rimozioneAttiva}
+          aria-label={`Rimuovi ${pasto.nome}`}
+          style={{
+            width: 34, height: 34, borderRadius: 11, background: 'rgba(20,22,58,0.05)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: rimozioneAttiva ? 1 : 0.35,
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <path d="M4 4l8 8M12 4l-8 8" stroke="var(--ink)" strokeWidth="1.9" strokeLinecap="round" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          onClick={onSu}
+          disabled={indice === 0}
+          aria-label={`Sposta ${pasto.nome} in alto`}
+          style={{ width: 34, height: 34, borderRadius: 11, background: 'rgba(20,22,58,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+            <path d="M3.6 10 8 5.6 12.4 10" stroke="var(--ink)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          onClick={onGiu}
+          disabled={indice === totale - 1}
+          aria-label={`Sposta ${pasto.nome} in basso`}
+          style={{ width: 34, height: 34, borderRadius: 11, background: 'rgba(20,22,58,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+            <path d="M3.6 6 8 10.4 12.4 6" stroke="var(--ink)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      </div>
+      <div style={{ padding: '0 14px 13px' }}>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 8.5, letterSpacing: '0.11em', color: 'var(--ter)', marginBottom: 7 }}>
+          ABITUALMENTE FUORI CASA
+        </div>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {pasto.assenzeAbituali.map((acceso, gi) => (
+            <button
+              key={gi}
+              type="button"
+              onClick={() => onToggleGiorno(gi)}
+              aria-pressed={acceso}
+              aria-label={`${GIORNI_LUNGHI[gi]}, abitualmente fuori casa`}
+              style={{ flex: 1, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent' }}
+            >
+              <span
+                style={{
+                  width: '100%', height: 36, borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700,
+                  background: acceso ? 'var(--ink)' : 'rgba(20,22,58,0.05)',
+                  color: acceso ? '#FFFFFF' : 'var(--ter)',
+                }}
+              >
+                {GIORNI[gi]}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Header minimale: freccia indietro (torna a dove si veniva, via il burger della Testata), etichetta centrale. */
+function Cornice({ children, router }: { children?: ReactNode; router: ReturnType<typeof useRouter> }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+      <div style={{ padding: '18px 16px 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <button
+          type="button"
+          onClick={() => router.back()}
+          aria-label="Indietro"
+          style={{ width: 44, height: 44, margin: '0 0 0 -10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <svg width="23" height="23" viewBox="0 0 24 24" fill="none">
+            <path d="M14.5 5 7.8 12l6.7 7" stroke="var(--ink)" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--sec)' }}>
+          IMPOSTAZIONI
+        </span>
+        <div style={{ width: 44, height: 44 }} />
+      </div>
+      {children}
+    </div>
+  );
+}
