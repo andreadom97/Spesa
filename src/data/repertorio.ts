@@ -152,3 +152,22 @@ export async function eliminaIngrediente(id: string): Promise<void> {
     throw error;
   }
 }
+
+/**
+ * True se l'ingrediente ha almeno un acquisto registrato in `purchase`.
+ * Serve solo alla conferma di eliminazione in
+ * `piatti/[id]/ingredienti/[ingId]/page.tsx`: a differenza di
+ * `dish_ingredient` e `shopping_list_item` (`on delete restrict`),
+ * `purchase.ingredient_id` ha `on delete cascade` — eliminare l'ingrediente
+ * porta via in silenzio anche il suo storico acquisti (utile alla Fase 4,
+ * non letto dalla Fase 1). Se non c'è nessun acquisto da perdere, avvisarne
+ * l'utente sarebbe rumore, non informazione.
+ */
+export async function haAcquistiRegistrati(ingredientId: string): Promise<boolean> {
+  const { count, error } = await client()
+    .from('purchase')
+    .select('id', { count: 'exact', head: true })
+    .eq('ingredient_id', ingredientId);
+  if (error) throw error;
+  return (count ?? 0) > 0;
+}

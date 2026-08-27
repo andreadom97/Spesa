@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import type { AreaId, ClasseResiduo, UnitaBase } from '@/domain/types';
-import { salvaIngrediente, leggiIngredienti, eliminaIngrediente, IngredienteInUsoError } from '@/data/repertorio';
+import { salvaIngrediente, leggiIngredienti, eliminaIngrediente, IngredienteInUsoError, haAcquistiRegistrati } from '@/data/repertorio';
 import { AREE } from '@/domain/aree';
 import { Segmento } from '@/components/Segmento';
 
@@ -22,9 +22,23 @@ const SPIEGA_CLASSE: Record<ClasseResiduo, string> = {
     'Non vale la pena contarlo a grammi. Ogni 90 giorni dall’ultimo acquisto la lista ti chiede se ne hai ancora.',
 };
 
-const TESTO_ELIMINA =
-  'Verrà cancellato per sempre, insieme al residuo di dispensa che gli è legato. Se è ancora usato in un ' +
-  'piatto o in una lista della spesa, l’eliminazione viene bloccata: toglilo prima da lì.';
+/**
+ * La frase sullo storico acquisti compare solo se ce n'è uno da perdere
+ * davvero: `purchase.ingredient_id` ha `on delete cascade` (a differenza di
+ * `dish_ingredient`/`shopping_list_item`, che hanno `restrict` e bloccano
+ * l'eliminazione), quindi cancellare l'ingrediente porta via anche il suo
+ * storico acquisti senza altro avviso. Su un ingrediente mai comprato
+ * aggiungerla sarebbe rumore, non informazione.
+ */
+function testoElimina(haAcquisti: boolean): string {
+  const base = 'Verrà cancellato per sempre, insieme al residuo di dispensa che gli è legato.';
+  const storico = haAcquisti
+    ? ' Sparisce anche lo storico degli acquisti registrati: non si recupera.'
+    : '';
+  const blocco =
+    ' Se è ancora usato in un piatto o in una lista della spesa, l’eliminazione viene bloccata: toglilo prima da lì.';
+  return base + storico + blocco;
+}
 
 const OPZIONI_UNITA = [
   { id: 'g', label: 'G' },
@@ -65,6 +79,7 @@ export default function IngredienteEditor() {
   const [nonTrovato, setNonTrovato] = useState(false);
   const [confermaEliminazione, setConfermaEliminazione] = useState(false);
   const [eliminando, setEliminando] = useState(false);
+  const [haAcquisti, setHaAcquisti] = useState(false);
 
   const [nome, setNome] = useState('');
   const [area, setArea] = useState<AreaId | null>(null);
@@ -97,6 +112,15 @@ export default function IngredienteEditor() {
           setClasseResiduo(trovato.classeResiduo);
           setDeperibile(trovato.deperibile);
           setFormatoTesto(String(trovato.formatoConfezione));
+          // Non blocca il caricamento della scheda se fallisce: al peggio la
+          // conferma di eliminazione resta silenziosa su questo punto,
+          // invece di impedire di vedere o modificare l'ingrediente.
+          try {
+            const conAcquisti = await haAcquistiRegistrati(ingId);
+            if (vivo) setHaAcquisti(conAcquisti);
+          } catch {
+            // Volutamente ignorato: vedi commento sopra.
+          }
         }
       } catch {
         if (vivo) setErrore('Non riusciamo a caricare l’ingrediente. Riprova più tardi.');
@@ -450,7 +474,7 @@ export default function IngredienteEditor() {
             <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)' }}>
               Eliminare questo ingrediente?
             </div>
-            <div style={{ fontSize: 13.5, lineHeight: 1.5, color: 'var(--sec)' }}>{TESTO_ELIMINA}</div>
+            <div style={{ fontSize: 13.5, lineHeight: 1.5, color: 'var(--sec)' }}>{testoElimina(haAcquisti)}</div>
             <div style={{ display: 'flex', gap: 9, marginTop: 4 }}>
               <button
                 type="button"

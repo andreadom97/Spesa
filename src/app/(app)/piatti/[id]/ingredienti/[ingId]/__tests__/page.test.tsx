@@ -9,6 +9,7 @@ vi.mock('@/data/repertorio', () => {
     salvaIngrediente: vi.fn(),
     leggiIngredienti: vi.fn(),
     eliminaIngrediente: vi.fn(),
+    haAcquistiRegistrati: vi.fn(),
     IngredienteInUsoError,
   };
 });
@@ -21,7 +22,7 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push, back: vi.fn(), replace: vi.fn() }),
 }));
 
-import { salvaIngrediente, leggiIngredienti, eliminaIngrediente, IngredienteInUsoError } from '@/data/repertorio';
+import { salvaIngrediente, leggiIngredienti, eliminaIngrediente, haAcquistiRegistrati, IngredienteInUsoError } from '@/data/repertorio';
 import IngredienteEditor from '../page';
 
 const ING_YOGURT: Ingredient = {
@@ -35,6 +36,7 @@ describe('Ingrediente (editor)', () => {
     paramsId = 'd-1';
     paramsIngId = 'nuovo';
     vi.mocked(leggiIngredienti).mockResolvedValue([ING_YOGURT]);
+    vi.mocked(haAcquistiRegistrati).mockResolvedValue(false);
   });
 
   it('creazione: il salvataggio è bloccato finché mancano nome, area e formato', async () => {
@@ -164,12 +166,34 @@ describe('Ingrediente (editor)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Elimina ingrediente' }));
     expect(screen.getByText('Eliminare questo ingrediente?')).toBeInTheDocument();
+    // Nessun acquisto registrato (mock di default): niente frase sullo
+    // storico, sarebbe rumore su un ingrediente mai comprato.
+    expect(screen.getByText(
+      'Verrà cancellato per sempre, insieme al residuo di dispensa che gli è legato. Se è ancora usato in un ' +
+      'piatto o in una lista della spesa, l’eliminazione viene bloccata: toglilo prima da lì.',
+    )).toBeInTheDocument();
     expect(eliminaIngrediente).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: 'ELIMINA' }));
 
     await waitFor(() => expect(eliminaIngrediente).toHaveBeenCalledWith('i-1'));
     await waitFor(() => expect(push).toHaveBeenCalledWith('/piatti/d-1'));
+  });
+
+  it('un ingrediente con acquisti registrati avvisa che lo storico va perso, per via della on delete cascade su purchase', async () => {
+    paramsIngId = 'i-1';
+    vi.mocked(haAcquistiRegistrati).mockResolvedValue(true);
+
+    render(<IngredienteEditor />);
+    await screen.findByDisplayValue('Yogurt greco');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Elimina ingrediente' }));
+
+    expect(screen.getByText(
+      'Verrà cancellato per sempre, insieme al residuo di dispensa che gli è legato. Sparisce anche lo storico ' +
+      'degli acquisti registrati: non si recupera. Se è ancora usato in un piatto o in una lista della spesa, ' +
+      'l’eliminazione viene bloccata: toglilo prima da lì.',
+    )).toBeInTheDocument();
   });
 
   it('ANNULLA nella conferma chiude il dialogo senza eliminare', async () => {
