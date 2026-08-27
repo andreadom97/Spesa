@@ -1,0 +1,181 @@
+import '@testing-library/jest-dom/vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import type { Dish, Ingredient, MealSlotDef } from '@/domain/types';
+import type { SettimanaCorrente } from '@/data/settimana';
+
+vi.mock('@/data/repertorio', () => ({
+  salvaPiatto: vi.fn(),
+  leggiRepertorio: vi.fn(),
+  leggiIngredienti: vi.fn(),
+}));
+vi.mock('@/data/impostazioni', () => ({
+  leggiSlotDefs: vi.fn(),
+}));
+vi.mock('@/data/settimana', () => ({
+  leggiSettimanaCorrente: vi.fn(),
+}));
+
+const push = vi.fn();
+let paramsId = 'nuovo';
+vi.mock('next/navigation', () => ({
+  useParams: () => ({ id: paramsId }),
+  useRouter: () => ({ push, back: vi.fn(), replace: vi.fn() }),
+}));
+
+import { salvaPiatto, leggiRepertorio, leggiIngredienti } from '@/data/repertorio';
+import { leggiSlotDefs } from '@/data/impostazioni';
+import { leggiSettimanaCorrente } from '@/data/settimana';
+import Piatto from '../page';
+
+const ASSENZE = [false, false, false, false, false, false, false];
+const SLOT_COLAZIONE: MealSlotDef = { id: 'sd-1', nome: 'Colazione', posizione: 0, assenzeAbituali: ASSENZE };
+const SLOT_PRANZO: MealSlotDef = { id: 'sd-2', nome: 'Pranzo', posizione: 1, assenzeAbituali: ASSENZE };
+const SLOT_CENA: MealSlotDef = { id: 'sd-3', nome: 'Cena', posizione: 2, assenzeAbituali: ASSENZE };
+
+const ING_YOGURT: Ingredient = {
+  id: 'i-1', nome: 'Yogurt greco', unitaBase: 'g', area: 'latticini',
+  classeResiduo: 'stima', deperibile: true, formatoConfezione: 500,
+};
+const ING_AVENA: Ingredient = {
+  id: 'i-2', nome: "Fiocchi d'avena", unitaBase: 'g', area: 'cereali',
+  classeResiduo: 'intero', deperibile: false, formatoConfezione: 1000,
+};
+
+const PIATTO_ESISTENTE: Dish = {
+  id: 'd-1',
+  nome: 'Yogurt e avena',
+  slotDefId: 'sd-1',
+  fonte: 'proprio',
+  attivo: true,
+  ingredienti: [{ ingredientId: 'i-1', quantita: 150, unita: 'g' }],
+};
+
+function nessunaSettimana() {
+  vi.mocked(leggiSettimanaCorrente).mockResolvedValue(null);
+}
+
+function mockBase() {
+  vi.mocked(leggiSlotDefs).mockResolvedValue([SLOT_COLAZIONE, SLOT_PRANZO, SLOT_CENA]);
+  vi.mocked(leggiIngredienti).mockResolvedValue([ING_YOGURT, ING_AVENA]);
+}
+
+describe('Piatto (editor)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    paramsId = 'nuovo';
+    mockBase();
+    nessunaSettimana();
+  });
+
+  it('creazione: gli slot vengono dai meal_slot_def reali, non dai quattro cablati nel mock', async () => {
+    render(<Piatto />);
+
+    expect(await screen.findByPlaceholderText('Dai un nome al piatto')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Colazione' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Pranzo' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cena' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Spuntino' })).not.toBeInTheDocument();
+  });
+
+  it('un piatto nuovo, senza ingredienti, ha il salvataggio bloccato con il copy di VuotoPiatto', async () => {
+    render(<Piatto />);
+    await screen.findByPlaceholderText('Dai un nome al piatto');
+
+    expect(
+      screen.getByText(
+        'Un piatto senza ingredienti non entra nella lista della spesa: è la grammatura di ogni ingrediente a dire quanto comprare. Aggiungine almeno uno.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Non ancora in programma. Comparirà qui appena lo assegni a un pasto dalla Settimana.')).toBeInTheDocument();
+
+    const salva = screen.getByRole('button', { name: 'SALVA PIATTO' });
+    expect(salva).toBeDisabled();
+  });
+
+  it('aggiungere un ingrediente dal selettore sblocca il salvataggio', async () => {
+    render(<Piatto />);
+    await screen.findByPlaceholderText('Dai un nome al piatto');
+
+    fireEvent.click(screen.getByRole('button', { name: /AGGIUNGI\s*INGREDIENTE/ }));
+    fireEvent.click(await screen.findByText('Yogurt greco'));
+
+    expect(screen.getByRole('button', { name: 'SALVA PIATTO' })).toBeEnabled();
+    expect(
+      screen.queryByText(
+        'Un piatto senza ingredienti non entra nella lista della spesa: è la grammatura di ogni ingrediente a dire quanto comprare. Aggiungine almeno uno.',
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it('rimuovere l\'ultimo ingrediente ridisattiva il salvataggio', async () => {
+    render(<Piatto />);
+    await screen.findByPlaceholderText('Dai un nome al piatto');
+    fireEvent.click(screen.getByRole('button', { name: /AGGIUNGI\s*INGREDIENTE/ }));
+    fireEvent.click(await screen.findByText('Yogurt greco'));
+    expect(screen.getByRole('button', { name: 'SALVA PIATTO' })).toBeEnabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Rimuovi Yogurt greco' }));
+
+    expect(screen.getByRole('button', { name: 'SALVA PIATTO' })).toBeDisabled();
+  });
+
+  it('modifica: carica nome, pasto e ingredienti del piatto esistente', async () => {
+    paramsId = 'd-1';
+    vi.mocked(leggiRepertorio).mockResolvedValue([PIATTO_ESISTENTE]);
+
+    render(<Piatto />);
+
+    expect(await screen.findByDisplayValue('Yogurt e avena')).toBeInTheDocument();
+    expect(screen.getByText('Yogurt greco')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Colazione' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'SALVA PIATTO' })).toBeEnabled();
+  });
+
+  it('la striscia dei sette giorni riflette la settimana reale, non i sei giorni cablati nel mock', async () => {
+    paramsId = 'd-1';
+    vi.mocked(leggiRepertorio).mockResolvedValue([PIATTO_ESISTENTE]);
+    const settimana: SettimanaCorrente = {
+      id: 'w-1',
+      dataInizio: '2026-08-24', // lunedì
+      stato: 'confermata',
+      slots: [
+        { id: 's-lun', data: '2026-08-24', slotDefId: 'sd-1', stato: 'casa', dishId: 'd-1', fonteStato: 'default' },
+        { id: 's-mar', data: '2026-08-25', slotDefId: 'sd-1', stato: 'casa', dishId: 'd-1', fonteStato: 'default' },
+        { id: 's-mer', data: '2026-08-26', slotDefId: 'sd-1', stato: 'fuori', dishId: 'd-1', fonteStato: 'default' },
+      ],
+    };
+    vi.mocked(leggiSettimanaCorrente).mockResolvedValue(settimana);
+
+    render(<Piatto />);
+    await screen.findByDisplayValue('Yogurt e avena');
+
+    expect(screen.getByText('Il piatto entra 2 volte nella lista questa settimana. In più è in programma, ma fuori casa, 1 volta.')).toBeInTheDocument();
+  });
+
+  it('salva chiama salvaPiatto con la grammatura non moltiplicata e torna al repertorio', async () => {
+    render(<Piatto />);
+    await screen.findByPlaceholderText('Dai un nome al piatto');
+    vi.mocked(salvaPiatto).mockResolvedValue('d-nuovo');
+
+    fireEvent.change(screen.getByPlaceholderText('Dai un nome al piatto'), { target: { value: 'Yogurt e avena' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Pranzo' }));
+    fireEvent.click(screen.getByRole('button', { name: /AGGIUNGI\s*INGREDIENTE/ }));
+    fireEvent.click(await screen.findByText('Yogurt greco'));
+
+    const input = screen.getByLabelText('Grammatura di Yogurt greco');
+    fireEvent.change(input, { target: { value: '150' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'SALVA PIATTO' }));
+
+    await waitFor(() => expect(salvaPiatto).toHaveBeenCalledWith({
+      id: undefined,
+      nome: 'Yogurt e avena',
+      slotDefId: 'sd-2',
+      fonte: 'proprio',
+      attivo: true,
+      ingredienti: [{ ingredientId: 'i-1', quantita: 150, unita: 'g' }],
+    }));
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/piatti'));
+  });
+});
