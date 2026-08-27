@@ -87,9 +87,10 @@ export async function salvaIngrediente(
 
   // Ogni ingrediente ha una riga di dispensa dal primo giorno, a residuo zero:
   // "punto di partenza del residuo: zero" della spec.
-  await sb.from('pantry_state').upsert(
+  const { error: ePantry } = await sb.from('pantry_state').upsert(
     { ingredient_id: String(data.id), user_id: utente.user!.id, residuo: 0 },
     { onConflict: 'ingredient_id', ignoreDuplicates: true },
   );
+  if (ePantry) throw ePantry;
   return String(data.id);
 }

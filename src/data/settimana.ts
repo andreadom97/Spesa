@@ -80,7 +80,20 @@ export async function creaSettimana(lunedi: string): Promise<string> {
   return weekId;
 }
 
-/** Passa sempre per applicaStato: una fonte debole non sovrascrive una forte. */
+/**
+ * Il cambio di `stato` passa sempre per `applicaStato`: una fonte debole non
+ * sovrascrive una forte. Il cambio di `dishId` è un percorso indipendente e
+ * si applica sempre, qualunque sia `fonte` — non c'è "annullato in silenzio".
+ *
+ * La distinzione è voluta, non un dettaglio da poter unificare: `FonteStato`
+ * è la fonte dello stato casa/fuori (default/calendario/checkin/correzione),
+ * non della scelta del piatto. Scegliere un piatto non è una transizione di
+ * stato, quindi non passa per la gerarchia delle fonti e non tocca
+ * `fonte_stato`. Se lo si facesse passare per lo stesso cancello, la
+ * schermata "Scegli il piatto" (Task 13) fallirebbe in silenzio proprio sugli
+ * slot che l'utente ha già toccato durante il check-in — cioè quelli su cui
+ * è più probabile che voglia cambiare piatto.
+ */
 export async function aggiornaSlot(
   slotId: string,
   patch: { stato?: StatoSlot; dishId?: string | null },
@@ -99,20 +112,29 @@ export async function aggiornaSlot(
   if (error) throw error;
 
   const attuale = aMealSlot(riga);
-  const risultato = applicaStato(attuale, patch.stato ?? attuale.stato, fonte);
-  if (risultato.fonteStato !== fonte) {
-    // La fonte non è abbastanza forte da scavalcare quella già registrata:
-    // né lo stato né il piatto si aggiornano.
-    return;
+
+  const aggiornamento: Record<string, unknown> = {};
+
+  if (patch.stato !== undefined) {
+    const risultato = applicaStato(attuale, patch.stato, fonte);
+    if (risultato.fonteStato === fonte) {
+      // La fonte è abbastanza forte da scavalcare quella già registrata.
+      aggiornamento.stato = risultato.stato;
+      aggiornamento.fonte_stato = risultato.fonteStato;
+    }
+    // Altrimenti: fonte troppo debole, lo stato non si tocca.
   }
+
+  if (patch.dishId !== undefined) {
+    // Percorso indipendente dalla gerarchia delle fonti: non scrive fonte_stato.
+    aggiornamento.dish_id = patch.dishId;
+  }
+
+  if (Object.keys(aggiornamento).length === 0) return;
 
   const { error: eUpd } = await sb
     .from('meal_slot')
-    .update({
-      stato: risultato.stato,
-      dish_id: patch.dishId !== undefined ? patch.dishId : attuale.dishId,
-      fonte_stato: risultato.fonteStato,
-    })
+    .update(aggiornamento)
     .eq('id', slotId)
     .eq('user_id', userId);
   if (eUpd) throw eUpd;
