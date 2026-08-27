@@ -57,4 +57,18 @@ describe('assegnaPiatti', () => {
     const dopo = assegnaPiatti({ slots: conScelta, dishes: PIATTI });
     expect(dopo.find((s) => s.data === '2026-08-31' && s.slotDefId === 'col')!.dishId).toBe('c2');
   });
+
+  it('è stabile rispetto all\'ordine dell\'array: stessi slot in ordine diverso → stesse assegnazioni per date', () => {
+    const dopo1 = assegnaPiatti({ slots, dishes: PIATTI });
+    // Mescola l'ordine degli slot
+    const slotsMescolati = [...slots].reverse();
+    const dopo2 = assegnaPiatti({ slots: slotsMescolati, dishes: PIATTI });
+
+    // Verifico che per ogni data e slotDef, l'assegnazione sia identica
+    for (const slot of slots) {
+      const s1 = dopo1.find((s) => s.data === slot.data && s.slotDefId === slot.slotDefId)!;
+      const s2 = dopo2.find((s) => s.data === slot.data && s.slotDefId === slot.slotDefId)!;
+      expect(s2.dishId).toBe(s1.dishId);
+    }
+  });
 });
