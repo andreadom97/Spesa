@@ -91,7 +91,8 @@ export async function generaListe(weekId: string): Promise<void> {
   }
 }
 
-interface RigaVoceGrezza {
+/** Forma delle righe come tornano davvero da Supabase: esportata solo per il test di regressione su raggruppaInSezioni. */
+export interface RigaVoceGrezza {
   id: unknown;
   ingredient_id: unknown;
   fabbisogno: unknown;
@@ -134,10 +135,15 @@ function eControlloInSospeso(r: RigaVoceGrezza): boolean {
   return r.origine === 'controllo' && Number(r.confezioni) === 0;
 }
 
-/** Stesse due regole di ordinamento della funzione sezioni() del Task 4: ordine
- *  aree dell'utente, poi confezioni decrescenti e nome per le voci, solo nome
- *  per i controlli. Niente sezioni vuote. */
-function raggruppaInSezioni(righe: RigaVoceGrezza[], ordine: AreaId[]): SezioneSalvata[] {
+/**
+ * Stesse due regole di ordinamento della funzione sezioni() del Task 4: ordine
+ * aree dell'utente, poi confezioni decrescenti e nome per le voci, solo nome
+ * per i controlli. Niente sezioni vuote.
+ *
+ * Esportata solo per il test di regressione sullo smistamento voci/controlli
+ * (eControlloInSospeso): leggiListe resta l'unico chiamante in produzione.
+ */
+export function raggruppaInSezioni(righe: RigaVoceGrezza[], ordine: AreaId[]): SezioneSalvata[] {
   const voci = righe.filter((r) => !eControlloInSospeso(r)).map(aVoceSalvata);
   const controlli = righe.filter(eControlloInSospeso).map(aVoceSalvata);
 

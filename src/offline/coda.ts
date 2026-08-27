@@ -44,6 +44,20 @@ export function svuotaCoda(): void {
   localStorage.removeItem(CHIAVE);
 }
 
+/**
+ * Toglie dalla coda solo le voci esattamente confermate — stesso itemId *e*
+ * stesso ts di quelle passate. Serve a chi sincronizza un sottoinsieme della
+ * coda (non tutta, non svuotaCoda): se nel frattempo è arrivato un evento più
+ * recente sulla stessa voce (ts diverso), quella resta in coda, perché la
+ * scrittura appena confermata non la copre.
+ */
+export function rimuoviConfermate(confermate: Spunta[]): void {
+  const rimanenti = leggiCoda().filter(
+    (s) => !confermate.some((c) => c.itemId === s.itemId && c.ts === s.ts),
+  );
+  scrivi(rimanenti);
+}
+
 /** Lo stato locale in attesa ha sempre ragione su quello letto dal server. */
 export function applicaCodaSuVoci<T extends { id: string; spuntato: boolean }>(voci: T[]): T[] {
   const coda = new Map(leggiCoda().map((s) => [s.itemId, s.spuntato]));

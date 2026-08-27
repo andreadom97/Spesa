@@ -7,7 +7,7 @@ import { coloreArea, nomeArea } from '@/domain/aree';
 import { leggiSettimanaCorrente } from '@/data/settimana';
 import { leggiListe, spunta, type ListaSalvata, type SezioneSalvata, type VoceSalvata } from '@/data/lista';
 import { rispondiControllo } from '@/data/dispensa';
-import { accodaSpunta, leggiCoda, svuotaCoda, applicaCodaSuVoci } from '@/offline/coda';
+import { accodaSpunta, leggiCoda, rimuoviConfermate, applicaCodaSuVoci, type Spunta } from '@/offline/coda';
 import { Testata } from '@/components/Testata';
 import { Tessera } from '@/components/Tessera';
 import { RigaControllo } from '@/components/RigaControllo';
@@ -78,22 +78,53 @@ function applicaCodaLista(lista: ListaSalvata): ListaSalvata {
   return { ...lista, base: applica(lista.base), topup: applica(lista.topup) };
 }
 
+// Lucchetto modulo: sincronizzaCoda parte da ogni tap (oltre che al
+// montaggio e al ritorno online), senza debounce. Senza un lucchetto due
+// chiamate sovrapposte leggerebbero la coda due volte con istantanee
+// diverse, e la prima a risolvere svuoterebbe voci che la seconda ha ancora
+// in volo — è il bug critico trovato in review. `inVolo` fa sì che una
+// chiamata che arriva mentre un giro è già in corso si limiti ad aspettarlo,
+// invece di partire in parallelo con un'istantanea vecchia; `richiestaAncora`
+// fa sì che, se durante quel giro è arrivato un nuovo tap, si rifaccia
+// subito un altro giro invece di lasciare quella voce ferma fino al
+// prossimo trigger esterno.
+let inVolo: Promise<void> | null = null;
+let richiestaAncora = false;
+
 /**
- * Scrive tutta la coda sul server e la svuota. Se un colpo fallisce (offline,
- * blip di rete), l'intera coda resta ferma per il prossimo giro — al tap
- * successivo, al montaggio, o al ritorno online. Non c'è uno svuotamento
- * parziale: la coda è piccola (poche spunte per sessione di spesa) e
- * riscrivere due volte una voce già sincronizzata è innocuo, perché
- * l'ultima scrittura vince sempre sullo stesso id.
+ * Un giro: tenta di scrivere ogni voce ancora in coda, e toglie dalla coda
+ * *solo* quelle che quella scrittura ha davvero confermato — mai un
+ * `svuotaCoda()` incondizionato. Un fallimento (offline, blip di rete) sulla
+ * singola voce non tocca le altre: `Promise.allSettled`, non `Promise.all`,
+ * perché una voce fallita non deve far sembrare fallite anche le sorelle
+ * riuscite nello stesso giro.
  */
+async function eseguiGiroDiSincronizzazione(): Promise<void> {
+  const istantanea = leggiCoda();
+  if (istantanea.length === 0) return;
+  const esiti = await Promise.allSettled(
+    istantanea.map((s) => spunta(s.itemId, s.spuntato).then(() => s)),
+  );
+  const confermate = esiti
+    .filter((e): e is PromiseFulfilledResult<Spunta> => e.status === 'fulfilled')
+    .map((e) => e.value);
+  if (confermate.length > 0) rimuoviConfermate(confermate);
+}
+
 async function sincronizzaCoda(): Promise<void> {
-  const coda = leggiCoda();
-  if (coda.length === 0) return;
+  if (inVolo) {
+    richiestaAncora = true;
+    return inVolo;
+  }
+  inVolo = eseguiGiroDiSincronizzazione();
   try {
-    await Promise.all(coda.map((s) => spunta(s.itemId, s.spuntato)));
-    svuotaCoda();
-  } catch {
-    // Resta in coda: la prossima chiamata la ritenta da capo.
+    await inVolo;
+  } finally {
+    inVolo = null;
+  }
+  if (richiestaAncora) {
+    richiestaAncora = false;
+    await sincronizzaCoda();
   }
 }
 

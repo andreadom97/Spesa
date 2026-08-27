@@ -116,6 +116,54 @@ describe('Lista', () => {
     expect(tessera.closest('button')).toHaveAttribute('aria-pressed', 'true');
   });
 
+  it('una spunta accodata mentre la sincronizzazione della precedente è ancora in volo non si perde se poi fallisce', async () => {
+    // Riproduce la corsa trovata in review: tap su riso parte una prima
+    // sincronizzazione la cui scrittura resta pending; mentre è in volo,
+    // tap su pasta accoda una seconda voce. Se riso risolve per primo, uno
+    // svuotamento incondizionato della coda cancellerebbe anche pasta,
+    // ancora da scrivere — e se la sua scrittura fallisce dopo, sparirebbe
+    // senza che nessuno se ne accorga. Con la coalescenza a lucchetto, la
+    // seconda sincronizzazione riparte da zero *dopo* la prima, con
+    // un'istantanea fresca che contiene solo pasta.
+    vi.mocked(leggiListe).mockResolvedValue(buildLista());
+    let risolviRiso: () => void = () => {};
+    let rifiutaPasta: (e: Error) => void = () => {};
+    const chiamatePerVoce: Record<string, number> = {};
+    vi.mocked(spunta).mockImplementation((itemId: string) => {
+      chiamatePerVoce[itemId] = (chiamatePerVoce[itemId] ?? 0) + 1;
+      if (itemId === 'item-riso') return new Promise<void>((resolve) => { risolviRiso = resolve; });
+      return new Promise<void>((_resolve, reject) => { rifiutaPasta = reject; });
+    });
+
+    render(<Lista />);
+    const risoBottone = (await screen.findByText('Riso Carnaroli')).closest('button')!;
+    const pastaBottone = screen.getByText('Pasta integrale').closest('button')!;
+
+    // Tap 1: riso. Parte la prima sincronizzazione, scrittura ancora pending.
+    fireEvent.click(risoBottone);
+    await waitFor(() => expect(spunta).toHaveBeenCalledWith('item-riso', true));
+
+    // Tap 2, mentre la prima sincronizzazione è ancora in volo: pasta si
+    // accoda. La seconda chiamata a sincronizzaCoda() deve accodarsi alla
+    // prima (coalescere), non partire in parallelo con un'istantanea vecchia
+    // che non contiene ancora pasta.
+    fireEvent.click(pastaBottone);
+    expect(leggiCoda().map((s) => s.itemId).sort()).toEqual(['item-pasta', 'item-riso']);
+    expect(chiamatePerVoce['item-pasta']).toBeUndefined();
+
+    // La scrittura di riso (la prima, quella già in volo) risolve per prima.
+    risolviRiso();
+    // Solo riso viene tolto dalla coda: pasta, ancora da scrivere, resta.
+    await waitFor(() => expect(leggiCoda()).toEqual([{ itemId: 'item-pasta', spuntato: true, ts: expect.any(Number) }]));
+
+    // La coalescenza deve aver fatto ripartire subito un giro per pasta.
+    await waitFor(() => expect(chiamatePerVoce['item-pasta']).toBe(1));
+    rifiutaPasta(new Error('offline'));
+
+    // La scrittura di pasta fallisce: resta in coda, non sparisce.
+    await waitFor(() => expect(leggiCoda()).toEqual([{ itemId: 'item-pasta', spuntato: true, ts: expect.any(Number) }]));
+  });
+
   it('il tab TOP-UP mostra le sue sezioni, non quelle di BASE', async () => {
     vi.mocked(leggiListe).mockResolvedValue(buildLista());
     render(<Lista />);

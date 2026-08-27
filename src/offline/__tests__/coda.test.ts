@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { accodaSpunta, leggiCoda, svuotaCoda, applicaCodaSuVoci } from '../coda';
+import { accodaSpunta, leggiCoda, svuotaCoda, applicaCodaSuVoci, rimuoviConfermate } from '../coda';
 
 beforeEach(() => localStorage.clear());
 
@@ -44,5 +44,29 @@ describe('coda delle spunte', () => {
   it('sopravvive a un localStorage corrotto invece di rompere la schermata', () => {
     localStorage.setItem('spesa:coda', 'non è json');
     expect(leggiCoda()).toEqual([]);
+  });
+});
+
+describe('rimuoviConfermate', () => {
+  it('rimuove solo le voci confermate, lasciando le altre intatte', () => {
+    accodaSpunta('v1', true, 1000);
+    accodaSpunta('v2', true, 1000);
+    rimuoviConfermate([{ itemId: 'v1', spuntato: true, ts: 1000 }]);
+    expect(leggiCoda()).toEqual([{ itemId: 'v2', spuntato: true, ts: 1000 }]);
+  });
+
+  it('non rimuove una voce se nel frattempo è arrivato un evento più recente sulla stessa voce', () => {
+    accodaSpunta('v1', true, 1000);
+    // Mentre la scrittura del vecchio evento (ts 1000) era in volo, un nuovo
+    // tap ha già accodato un evento più recente sulla stessa voce.
+    accodaSpunta('v1', false, 2000);
+    rimuoviConfermate([{ itemId: 'v1', spuntato: true, ts: 1000 }]);
+    expect(leggiCoda()).toEqual([{ itemId: 'v1', spuntato: false, ts: 2000 }]);
+  });
+
+  it('non tocca la coda se non conferma nulla', () => {
+    accodaSpunta('v1', true, 1000);
+    rimuoviConfermate([]);
+    expect(leggiCoda()).toEqual([{ itemId: 'v1', spuntato: true, ts: 1000 }]);
   });
 });
