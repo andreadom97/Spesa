@@ -3,10 +3,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import type { Ingredient } from '@/domain/types';
 
-vi.mock('@/data/repertorio', () => ({
-  salvaIngrediente: vi.fn(),
-  leggiIngredienti: vi.fn(),
-}));
+vi.mock('@/data/repertorio', () => {
+  class IngredienteInUsoError extends Error {}
+  return {
+    salvaIngrediente: vi.fn(),
+    leggiIngredienti: vi.fn(),
+    eliminaIngrediente: vi.fn(),
+    IngredienteInUsoError,
+  };
+});
 
 const push = vi.fn();
 let paramsId = 'd-1';
@@ -16,7 +21,7 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push, back: vi.fn(), replace: vi.fn() }),
 }));
 
-import { salvaIngrediente, leggiIngredienti } from '@/data/repertorio';
+import { salvaIngrediente, leggiIngredienti, eliminaIngrediente, IngredienteInUsoError } from '@/data/repertorio';
 import IngredienteEditor from '../page';
 
 const ING_YOGURT: Ingredient = {
@@ -83,19 +88,20 @@ describe('Ingrediente (editor)', () => {
     ).toBeInTheDocument();
   });
 
-  it('l\'etichetta sotto l\'interruttore deperibile segue lo stato: base di default, top-up quando attivo', async () => {
+  it('l\'etichetta sotto l\'interruttore deperibile segue lo stato: top-up di default (come Ingrediente.dc.html), base quando disattivato', async () => {
     render(<IngredienteEditor />);
     await screen.findByPlaceholderText("Dai un nome all'ingrediente");
 
-    expect(screen.getByText('FINISCE NELLA LISTA BASE')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: /No, si conserva a lungo/ }));
-
+    // Default deper: true come in Ingrediente.dc.html riga 86.
     expect(screen.getByText('FINISCE NELLA LISTA TOP-UP')).toBeInTheDocument();
-    expect(screen.queryByText('FINISCE NELLA LISTA BASE')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Sì, va comprato fresco/ }));
+
+    expect(screen.getByText('FINISCE NELLA LISTA BASE')).toBeInTheDocument();
+    expect(screen.queryByText('FINISCE NELLA LISTA TOP-UP')).not.toBeInTheDocument();
   });
 
-  it('salva chiama salvaIngrediente con i valori scelti e torna al piatto', async () => {
+  it('salva chiama salvaIngrediente con i valori scelti (deperibile true di default) e torna al piatto', async () => {
     vi.mocked(salvaIngrediente).mockResolvedValue('i-nuovo');
     render(<IngredienteEditor />);
     await screen.findByPlaceholderText("Dai un nome all'ingrediente");
@@ -112,7 +118,7 @@ describe('Ingrediente (editor)', () => {
       unitaBase: 'pz',
       area: 'macelleria',
       classeResiduo: 'intero',
-      deperibile: false,
+      deperibile: true,
       formatoConfezione: 1,
     }));
     await waitFor(() => expect(push).toHaveBeenCalledWith('/piatti/d-1'));
@@ -136,5 +142,69 @@ describe('Ingrediente (editor)', () => {
     render(<IngredienteEditor />);
 
     expect(await screen.findByText('Ingrediente non trovato.')).toBeInTheDocument();
+  });
+
+  it('il cestino su un ingrediente nuovo torna al piatto senza chiedere conferma né eliminare nulla', async () => {
+    render(<IngredienteEditor />);
+    await screen.findByPlaceholderText("Dai un nome all'ingrediente");
+
+    fireEvent.click(screen.getByRole('button', { name: 'Elimina ingrediente' }));
+
+    expect(screen.queryByText('Eliminare questo ingrediente?')).not.toBeInTheDocument();
+    expect(push).toHaveBeenCalledWith('/piatti/d-1');
+    expect(eliminaIngrediente).not.toHaveBeenCalled();
+  });
+
+  it('il cestino su un ingrediente esistente chiede conferma, poi elimina (hard delete) e torna al piatto', async () => {
+    paramsIngId = 'i-1';
+    vi.mocked(eliminaIngrediente).mockResolvedValue(undefined);
+
+    render(<IngredienteEditor />);
+    await screen.findByDisplayValue('Yogurt greco');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Elimina ingrediente' }));
+    expect(screen.getByText('Eliminare questo ingrediente?')).toBeInTheDocument();
+    expect(eliminaIngrediente).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'ELIMINA' }));
+
+    await waitFor(() => expect(eliminaIngrediente).toHaveBeenCalledWith('i-1'));
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/piatti/d-1'));
+  });
+
+  it('ANNULLA nella conferma chiude il dialogo senza eliminare', async () => {
+    paramsIngId = 'i-1';
+
+    render(<IngredienteEditor />);
+    await screen.findByDisplayValue('Yogurt greco');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Elimina ingrediente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'ANNULLA' }));
+
+    expect(screen.queryByText('Eliminare questo ingrediente?')).not.toBeInTheDocument();
+    expect(eliminaIngrediente).not.toHaveBeenCalled();
+  });
+
+  it('un ingrediente ancora in uso mostra il motivo del blocco, non un errore Postgres grezzo', async () => {
+    paramsIngId = 'i-1';
+    vi.mocked(eliminaIngrediente).mockRejectedValue(
+      new IngredienteInUsoError('Questo ingrediente è usato in almeno un piatto o in una lista della spesa: toglilo prima da lì, poi riprova a eliminarlo.'),
+    );
+
+    render(<IngredienteEditor />);
+    await screen.findByDisplayValue('Yogurt greco');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Elimina ingrediente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'ELIMINA' }));
+
+    expect(
+      await screen.findByText(
+        'Questo ingrediente è usato in almeno un piatto o in una lista della spesa: toglilo prima da lì, poi riprova a eliminarlo.',
+      ),
+    ).toBeInTheDocument();
+    expect(push).not.toHaveBeenCalledWith('/piatti/d-1');
+    // Il dialogo si chiude e il messaggio resta visibile nella pagina, stessa
+    // convenzione già usata per l'eliminazione del piatto.
+    expect(screen.queryByText('Eliminare questo ingrediente?')).not.toBeInTheDocument();
   });
 });

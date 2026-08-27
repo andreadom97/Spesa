@@ -114,3 +114,41 @@ export async function salvaIngrediente(
   if (ePantry) throw ePantry;
   return String(data.id);
 }
+
+/**
+ * L'ingrediente è ancora referenziato da `dish_ingredient` (un piatto lo usa)
+ * o da `shopping_list_item` (una lista già generata lo contiene): entrambe le
+ * colonne hanno `on delete restrict` nello schema, quindi il database rifiuta
+ * la cancellazione con l'errore Postgres 23503 (foreign_key_violation) prima
+ * che `eliminaIngrediente` possa fare danni. Questa classe esiste per portare
+ * quel rifiuto fino alla UI come un messaggio comprensibile, non come un
+ * errore Postgres grezzo.
+ */
+export class IngredienteInUsoError extends Error {}
+
+/**
+ * Hard delete, a differenza di `eliminaPiatto` (soft, `attivo = false`): qui
+ * non serve una colonna `attivo` perché lo schema protegge già chi conta.
+ * `pantry_state` ha `on delete cascade` sull'ingrediente — la riga di
+ * dispensa sparisce con lui, giusto perché "niente ingrediente, niente
+ * residuo". `dish_ingredient` e `shopping_list_item` hanno `on delete
+ * restrict`: se l'ingrediente è ancora usato lì, Postgres rifiuta la
+ * cancellazione (codice 23503) prima di lasciarla a metà.
+ */
+export async function eliminaIngrediente(id: string): Promise<void> {
+  const sb = client();
+  const { data: utente } = await sb.auth.getUser();
+  const { error } = await sb
+    .from('ingredient')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', utente.user!.id);
+  if (error) {
+    if (error.code === '23503') {
+      throw new IngredienteInUsoError(
+        'Questo ingrediente è usato in almeno un piatto o in una lista della spesa: toglilo prima da lì, poi riprova a eliminarlo.',
+      );
+    }
+    throw error;
+  }
+}

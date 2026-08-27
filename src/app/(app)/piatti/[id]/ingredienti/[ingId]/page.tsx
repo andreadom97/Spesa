@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import type { AreaId, ClasseResiduo, UnitaBase } from '@/domain/types';
-import { salvaIngrediente, leggiIngredienti } from '@/data/repertorio';
+import { salvaIngrediente, leggiIngredienti, eliminaIngrediente, IngredienteInUsoError } from '@/data/repertorio';
 import { AREE } from '@/domain/aree';
 import { Segmento } from '@/components/Segmento';
 
@@ -21,6 +21,10 @@ const SPIEGA_CLASSE: Record<ClasseResiduo, string> = {
   stima:
     'Non vale la pena contarlo a grammi. Ogni 90 giorni dall’ultimo acquisto la lista ti chiede se ne hai ancora.',
 };
+
+const TESTO_ELIMINA =
+  'Verrà cancellato per sempre, insieme al residuo di dispensa che gli è legato. Se è ancora usato in un ' +
+  'piatto o in una lista della spesa, l’eliminazione viene bloccata: toglilo prima da lì.';
 
 const OPZIONI_UNITA = [
   { id: 'g', label: 'G' },
@@ -59,12 +63,18 @@ export default function IngredienteEditor() {
   const [errore, setErrore] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [nonTrovato, setNonTrovato] = useState(false);
+  const [confermaEliminazione, setConfermaEliminazione] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
 
   const [nome, setNome] = useState('');
   const [area, setArea] = useState<AreaId | null>(null);
   const [unitaBase, setUnitaBase] = useState<UnitaBase>('g');
   const [classeResiduo, setClasseResiduo] = useState<ClasseResiduo>('porzionabile');
-  const [deperibile, setDeperibile] = useState(false);
+  // Default true come in Ingrediente.dc.html (this.state.deper = true, riga 86):
+  // un default sbagliato qui si nota subito, perché finisce nel top-up, la
+  // lista che si guarda più spesso — con false l'errore resterebbe sepolto
+  // nella lista base settimanale.
+  const [deperibile, setDeperibile] = useState(true);
   const [formatoTesto, setFormatoTesto] = useState('');
 
   useEffect(() => {
@@ -146,9 +156,40 @@ export default function IngredienteEditor() {
     }
   }
 
+  /**
+   * Su un ingrediente nuovo (mai salvato) non c'è niente da eliminare:
+   * equivale ad annullare, senza chiedere conferma — stessa scelta già fatta
+   * per il piatto in piatti/[id]/page.tsx. Su un ingrediente esistente apre
+   * la conferma: qui l'eliminazione è definitiva (hard delete), non va fatta
+   * con un tap solo.
+   */
+  function tapCestino() {
+    if (nuovo) {
+      router.push(`/piatti/${id}`);
+      return;
+    }
+    setConfermaEliminazione(true);
+  }
+
+  async function confermaElimina() {
+    setEliminando(true);
+    try {
+      await eliminaIngrediente(ingId);
+      router.push(`/piatti/${id}`);
+    } catch (e) {
+      setErrore(
+        e instanceof IngredienteInUsoError
+          ? e.message
+          : 'Non siamo riusciti a eliminare l’ingrediente. Riprova.',
+      );
+      setEliminando(false);
+      setConfermaEliminazione(false);
+    }
+  }
+
   if (nonTrovato) {
     return (
-      <Cornice dishId={id}>
+      <Cornice dishId={id} cestinoAttivo={false}>
         <p style={{ margin: '20px 18px', color: 'var(--sec)' }}>Ingrediente non trovato.</p>
       </Cornice>
     );
@@ -157,7 +198,7 @@ export default function IngredienteEditor() {
   if (caricamento) return <Cornice dishId={id} />;
 
   return (
-    <Cornice dishId={id}>
+    <Cornice dishId={id} onCestino={tapCestino}>
       <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 16px' }}>
         <input
           type="text"
@@ -393,6 +434,50 @@ export default function IngredienteEditor() {
           SALVA INGREDIENTE
         </button>
       </div>
+
+      {confermaEliminazione && (
+        <div
+          onClick={() => !eliminando && setConfermaEliminazione(false)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(20,22,58,0.35)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: '0 24px',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: '100%', maxWidth: 320, background: '#FFFFFF', borderRadius: 22, padding: '22px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}
+          >
+            <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)' }}>
+              Eliminare questo ingrediente?
+            </div>
+            <div style={{ fontSize: 13.5, lineHeight: 1.5, color: 'var(--sec)' }}>{TESTO_ELIMINA}</div>
+            <div style={{ display: 'flex', gap: 9, marginTop: 4 }}>
+              <button
+                type="button"
+                onClick={() => setConfermaEliminazione(false)}
+                disabled={eliminando}
+                style={{
+                  flex: 1, height: 48, borderRadius: 14, fontFamily: 'var(--font-mono)', fontSize: 11,
+                  fontWeight: 700, letterSpacing: '0.08em', color: 'var(--sec)', background: 'rgba(20,22,58,0.05)',
+                }}
+              >
+                ANNULLA
+              </button>
+              <button
+                type="button"
+                onClick={confermaElimina}
+                disabled={eliminando}
+                style={{
+                  flex: 1, height: 48, borderRadius: 14, fontFamily: 'var(--font-mono)', fontSize: 11,
+                  fontWeight: 700, letterSpacing: '0.08em', color: '#FFFFFF', background: 'var(--ink)',
+                }}
+              >
+                ELIMINA
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Cornice>
   );
 }
@@ -421,13 +506,26 @@ function Etichetta({ children, margine }: { children: ReactNode; margine: string
  * titolo a 52px delle schermate di casa): l'artboard di questa scheda ha lo
  * stesso header ridotto delle altre pagine di editing, non quello.
  *
- * L'icona a destra nell'artboard è lo stesso cestino di Piatto.dc.html, ma
- * qui resta disattivata: eliminare un ingrediente dal repertorio non è
- * nell'ambito di questo task (in src/data/repertorio.ts non esiste una
- * eliminaIngrediente) e un bottone che sembra fare qualcosa senza fare
- * niente è peggio di uno assente.
+ * L'icona a destra è lo stesso cestino di Piatto.dc.html (stesso path SVG) e
+ * qui fa sul serio: elimina davvero l'ingrediente (hard delete, non soft
+ * come per il piatto — vedi eliminaIngrediente in src/data/repertorio.ts).
+ * Un bottone che sembra fare qualcosa senza fare niente è peggio di uno
+ * assente, quindi resta disattivato solo quando non c'è ancora niente su cui
+ * agire (`onCestino` assente: caricamento in corso) o quando agire non avrebbe
+ * senso (`cestinoAttivo={false}`: ingrediente non trovato).
  */
-function Cornice({ children, dishId }: { children?: ReactNode; dishId: string }) {
+function Cornice({
+  children,
+  dishId,
+  onCestino,
+  cestinoAttivo = true,
+}: {
+  children?: ReactNode;
+  dishId: string;
+  onCestino?: () => void;
+  cestinoAttivo?: boolean;
+}) {
+  const attivo = cestinoAttivo && !!onCestino;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       <div style={{ padding: '18px 16px 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -444,9 +542,9 @@ function Cornice({ children, dishId }: { children?: ReactNode; dishId: string })
         </span>
         <button
           type="button"
-          disabled
-          aria-hidden="true"
-          tabIndex={-1}
+          onClick={onCestino}
+          disabled={!attivo}
+          aria-label="Elimina ingrediente"
           style={{
             width: 44,
             height: 44,
@@ -455,7 +553,7 @@ function Cornice({ children, dishId }: { children?: ReactNode; dishId: string })
             justifyContent: 'center',
             margin: '0 -10px 0 0',
             background: 'transparent',
-            opacity: 0.35,
+            opacity: attivo ? 1 : 0.35,
           }}
         >
           <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
