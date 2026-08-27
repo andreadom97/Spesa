@@ -113,13 +113,17 @@ export default function IngredienteEditor() {
           setDeperibile(trovato.deperibile);
           setFormatoTesto(String(trovato.formatoConfezione));
           // Non blocca il caricamento della scheda se fallisce: al peggio la
-          // conferma di eliminazione resta silenziosa su questo punto,
-          // invece di impedire di vedere o modificare l'ingrediente.
+          // conferma di eliminazione mostra o no la frase sullo storico.
+          // Fail-safe invertito di proposito: se non sappiamo se ci sono
+          // acquisti, assumiamo di sì. Un avviso di troppo costa una riga di
+          // testo; un avviso mancante costa dati che non tornano — un
+          // errore di rete transitorio non deve poter far sparire proprio
+          // l'unico avviso prima di una cancellazione irreversibile.
           try {
             const conAcquisti = await haAcquistiRegistrati(ingId);
             if (vivo) setHaAcquisti(conAcquisti);
           } catch {
-            // Volutamente ignorato: vedi commento sopra.
+            if (vivo) setHaAcquisti(true);
           }
         }
       } catch {
@@ -164,14 +168,23 @@ export default function IngredienteEditor() {
     setSalvando(true);
     setErrore(null);
     try {
+      // Guardiano di integrità: l'interfaccia blocca già la scelta
+      // dell'unità quando la classe è 'intero' (il Segmento sopra è
+      // disabilitato), ma il salvataggio non deve fidarsi solo di quello.
+      // list-builder forza formato=1 per 'intero' presupponendo che si
+      // contino pezzi: un 'intero' salvato con unità diversa da 'pz'
+      // farebbe divergere l'aritmetica della lista dalla realtà, senza dare
+      // alcun segnale. Qui si ricalcola, non solo si ricontrolla.
+      const unitaEffettiva = classeResiduo === 'intero' ? 'pz' : unitaBase;
+      const formatoEffettivo = classeResiduo === 'intero' ? 1 : formatoConfezione;
       await salvaIngrediente({
         id: nuovo ? undefined : ingId,
         nome: nome.trim(),
-        unitaBase,
+        unitaBase: unitaEffettiva,
         area,
         classeResiduo,
         deperibile,
-        formatoConfezione,
+        formatoConfezione: formatoEffettivo,
       });
       router.push(`/piatti/${id}`);
     } catch {
@@ -292,7 +305,13 @@ export default function IngredienteEditor() {
         </div>
 
         <Etichetta margine="24px 4px 10px">UNITÀ DI MISURA</Etichetta>
-        <Segmento opzioni={OPZIONI_UNITA} valore={unitaBase} onCambia={(u) => setUnitaBase(u as UnitaBase)} />
+        <Segmento
+          opzioni={OPZIONI_UNITA}
+          valore={unitaBase}
+          onCambia={(u) => setUnitaBase(u as UnitaBase)}
+          variante="blocco"
+          disabilitato={classeResiduo === 'intero'}
+        />
 
         <Etichetta margine="24px 4px 10px">FORMATO DELLA CONFEZIONE</Etichetta>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -349,7 +368,7 @@ export default function IngredienteEditor() {
         </div>
 
         <Etichetta margine="24px 4px 10px">COME SI CONSUMA</Etichetta>
-        <Segmento opzioni={OPZIONI_CLASSE} valore={classeResiduo} onCambia={scegliClasse} />
+        <Segmento opzioni={OPZIONI_CLASSE} valore={classeResiduo} onCambia={scegliClasse} variante="blocco" />
         <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', marginTop: 8 }}>
           {SPIEGA_CLASSE[classeResiduo]}
         </div>

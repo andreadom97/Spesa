@@ -44,4 +44,47 @@ describe('Segmento', () => {
     const pillola = bottone.firstElementChild as HTMLElement;
     expect(pillola.style.height).toBe('38px');
   });
+
+  describe("variante 'blocco'", () => {
+    it("il bottone stesso è l'area di tap: 46px pieno, non un wrapper attorno a una pillola più piccola", () => {
+      render(<Segmento opzioni={OPZIONI} valore="tutti" onCambia={() => {}} variante="blocco" />);
+      const bottone = screen.getByRole('button', { name: 'Pranzo' });
+      expect(bottone.style.height).toBe('46px');
+      expect(bottone.style.borderRadius).toBe('14px');
+      expect(bottone.style.flex).toBe('1 1 0%');
+      // Nessun <span> interno con un'altezza diversa: il testo è figlio diretto.
+      expect(bottone.firstElementChild).toBeNull();
+    });
+
+    it('segna attivo il bottone col valore corrente, come la pillola', () => {
+      render(<Segmento opzioni={OPZIONI} valore="pranzo" onCambia={() => {}} variante="blocco" />);
+      expect(screen.getByRole('button', { name: 'Pranzo' })).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByRole('button', { name: 'Colazione' })).toHaveAttribute('aria-pressed', 'false');
+    });
+  });
+
+  describe('disabilitato', () => {
+    it('non è cliccabile: onCambia non viene mai chiamata, in nessuna variante', () => {
+      const onCambiaPillola = vi.fn();
+      const onCambiaBlocco = vi.fn();
+      render(
+        <>
+          <Segmento opzioni={OPZIONI} valore="tutti" onCambia={onCambiaPillola} disabilitato />
+          <Segmento opzioni={OPZIONI} valore="tutti" onCambia={onCambiaBlocco} variante="blocco" disabilitato />
+        </>,
+      );
+      for (const bottone of screen.getAllByRole('button', { name: 'Colazione' })) {
+        fireEvent.click(bottone);
+      }
+      expect(onCambiaPillola).not.toHaveBeenCalled();
+      expect(onCambiaBlocco).not.toHaveBeenCalled();
+    });
+
+    it('non lo sembra: ogni bottone porta l\'attributo disabled nativo', () => {
+      render(<Segmento opzioni={OPZIONI} valore="tutti" onCambia={() => {}} variante="blocco" disabilitato />);
+      for (const bottone of screen.getAllByRole('button')) {
+        expect(bottone).toBeDisabled();
+      }
+    });
+  });
 });

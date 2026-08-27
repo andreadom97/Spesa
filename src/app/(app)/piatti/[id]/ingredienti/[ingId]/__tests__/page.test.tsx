@@ -30,12 +30,21 @@ const ING_YOGURT: Ingredient = {
   classeResiduo: 'stima', deperibile: true, formatoConfezione: 500,
 };
 
+// Dato "sporco" come quello che la Important 1 della review permetteva di
+// creare prima del fix: classe 'intero' salvata con un'unità diversa da PZ.
+// Serve a verificare che il guardiano in salva() lo corregga anche quando
+// arriva così dal caricamento, non solo quando nasce da un click in pagina.
+const ING_INTERO_INCONSISTENTE: Ingredient = {
+  id: 'i-2', nome: 'Uova', unitaBase: 'g', area: 'macelleria',
+  classeResiduo: 'intero', deperibile: false, formatoConfezione: 500,
+};
+
 describe('Ingrediente (editor)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     paramsId = 'd-1';
     paramsIngId = 'nuovo';
-    vi.mocked(leggiIngredienti).mockResolvedValue([ING_YOGURT]);
+    vi.mocked(leggiIngredienti).mockResolvedValue([ING_YOGURT, ING_INTERO_INCONSISTENTE]);
     vi.mocked(haAcquistiRegistrati).mockResolvedValue(false);
   });
 
@@ -69,6 +78,54 @@ describe('Ingrediente (editor)', () => {
     const formato = screen.getByLabelText('Formato della confezione') as HTMLInputElement;
     expect(formato.value).toBe('1');
     expect(formato).toBeDisabled();
+  });
+
+  it("con INTERO il segmento unità è disabilitato: cliccare G non lo riattiva, PZ resta l'unica scelta", async () => {
+    render(<IngredienteEditor />);
+    await screen.findByPlaceholderText("Dai un nome all'ingrediente");
+
+    fireEvent.click(screen.getByRole('button', { name: 'INTERO' }));
+    const g = screen.getByRole('button', { name: 'G' });
+    const pz = screen.getByRole('button', { name: 'PZ' });
+    expect(g).toBeDisabled();
+    expect(pz).toBeDisabled();
+
+    fireEvent.click(g);
+
+    // Il click su un bottone disabled non scatena onClick in un browser reale
+    // né in jsdom: PZ deve restare l'opzione attiva.
+    expect(pz).toHaveAttribute('aria-pressed', 'true');
+    expect(g).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it("il segmento unità torna cliccabile appena la classe non è più INTERO", async () => {
+    render(<IngredienteEditor />);
+    await screen.findByPlaceholderText("Dai un nome all'ingrediente");
+
+    fireEvent.click(screen.getByRole('button', { name: 'INTERO' }));
+    expect(screen.getByRole('button', { name: 'G' })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'PORZIONABILE' }));
+
+    expect(screen.getByRole('button', { name: 'G' })).toBeEnabled();
+  });
+
+  it('il guardiano in salva() corregge unità e formato anche per un ingrediente caricato già con la classe INTERO e un\'unità diversa da PZ', async () => {
+    paramsIngId = 'i-2';
+    vi.mocked(salvaIngrediente).mockResolvedValue('i-2');
+
+    render(<IngredienteEditor />);
+    await screen.findByDisplayValue('Uova');
+
+    // Il campo formato è disabilitato (classe INTERO), ma i dati caricati
+    // sono ancora quelli sporchi: unitaBase 'g', formatoConfezione 500. Il
+    // guardiano deve ricalcolare, non fidarsi di quello che era stato
+    // salvato prima del fix.
+    fireEvent.click(screen.getByRole('button', { name: 'SALVA INGREDIENTE' }));
+
+    await waitFor(() => expect(salvaIngrediente).toHaveBeenCalledWith(
+      expect.objectContaining({ unitaBase: 'pz', formatoConfezione: 1 }),
+    ));
   });
 
   it('le tre spiegazioni della classe di residuo sono quelle di Ingrediente.dc.html', async () => {
@@ -183,6 +240,22 @@ describe('Ingrediente (editor)', () => {
   it('un ingrediente con acquisti registrati avvisa che lo storico va perso, per via della on delete cascade su purchase', async () => {
     paramsIngId = 'i-1';
     vi.mocked(haAcquistiRegistrati).mockResolvedValue(true);
+
+    render(<IngredienteEditor />);
+    await screen.findByDisplayValue('Yogurt greco');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Elimina ingrediente' }));
+
+    expect(screen.getByText(
+      'Verrà cancellato per sempre, insieme al residuo di dispensa che gli è legato. Sparisce anche lo storico ' +
+      'degli acquisti registrati: non si recupera. Se è ancora usato in un piatto o in una lista della spesa, ' +
+      'l’eliminazione viene bloccata: toglilo prima da lì.',
+    )).toBeInTheDocument();
+  });
+
+  it('se non si riesce a sapere se ci sono acquisti, il fail-safe assume di sì (Important 3): un errore di rete non fa sparire l\'avviso', async () => {
+    paramsIngId = 'i-1';
+    vi.mocked(haAcquistiRegistrati).mockRejectedValue(new Error('rete assente'));
 
     render(<IngredienteEditor />);
     await screen.findByDisplayValue('Yogurt greco');
