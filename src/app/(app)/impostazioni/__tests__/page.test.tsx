@@ -155,8 +155,17 @@ describe('Impostazioni', () => {
     render(<Impostazioni />);
 
     await screen.findByDisplayValue('Colazione');
-    expect(screen.getByLabelText('Sposta Colazione in alto')).toBeDisabled();
-    expect(screen.getByLabelText('Sposta Cena in basso')).toBeDisabled();
+    const suColazione = screen.getByLabelText('Sposta Colazione in alto');
+    const giuCena = screen.getByLabelText('Sposta Cena in basso');
+    expect(suColazione).toBeDisabled();
+    expect(giuCena).toBeDisabled();
+    // Stesso trattamento visivo delle frecce dell'ordine reparti: dimming al
+    // 35% ai limiti, non solo l'attributo disabled — altrimenti lo stesso
+    // gesto (freccia su/giù) avrebbe due resti diversi a un tap di distanza.
+    expect(suColazione).toHaveStyle({ opacity: '0.35' });
+    expect(giuCena).toHaveStyle({ opacity: '0.35' });
+    expect(screen.getByLabelText('Sposta Colazione in basso')).toHaveStyle({ opacity: '1' });
+    expect(screen.getByLabelText('Sposta Cena in alto')).toHaveStyle({ opacity: '1' });
 
     fireEvent.click(screen.getByLabelText('Sposta Pranzo in alto'));
 

@@ -375,7 +375,10 @@ function RigaPastoEditor({
           onClick={onSu}
           disabled={indice === 0}
           aria-label={`Sposta ${pasto.nome} in alto`}
-          style={{ width: 34, height: 34, borderRadius: 11, background: 'rgba(20,22,58,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{
+            width: 34, height: 34, borderRadius: 11, background: 'rgba(20,22,58,0.05)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: indice === 0 ? 0.35 : 1,
+          }}
         >
           <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
             <path d="M3.6 10 8 5.6 12.4 10" stroke="var(--ink)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
@@ -386,7 +389,10 @@ function RigaPastoEditor({
           onClick={onGiu}
           disabled={indice === totale - 1}
           aria-label={`Sposta ${pasto.nome} in basso`}
-          style={{ width: 34, height: 34, borderRadius: 11, background: 'rgba(20,22,58,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{
+            width: 34, height: 34, borderRadius: 11, background: 'rgba(20,22,58,0.05)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: indice === totale - 1 ? 0.35 : 1,
+          }}
         >
           <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
             <path d="M3.6 6 8 10.4 12.4 6" stroke="var(--ink)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
