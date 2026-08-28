@@ -58,6 +58,19 @@ function testoRiepilogo(nCasa: number, nFuori: number): string {
 }
 
 /**
+ * Confronto tollerante agli accenti: chi cerca "caffe" deve trovare "Caffè",
+ * perché sulla tastiera del telefono l'accento costa un tocco in più e
+ * nessuno lo mette per cercare.
+ */
+function normalizza(testo: string): string {
+  return testo
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+/**
  * Editor della ricetta: crea (`id === 'nuovo'`) o modifica un piatto del
  * repertorio. Il marchio non compare in questa schermata (niente Testata:
  * l'header qui è quello minimale degli artboard Piatto/VuotoPiatto, non il
@@ -83,6 +96,7 @@ export default function Piatto() {
   const [slotDefId, setSlotDefId] = useState('');
   const [ingredienti, setIngredienti] = useState<DishIngredient[]>([]);
   const [selettoreAperto, setSelettoreAperto] = useState(false);
+  const [ricerca, setRicerca] = useState('');
   const [confermaEliminazione, setConfermaEliminazione] = useState(false);
   const [eliminando, setEliminando] = useState(false);
   const nomeRef = useRef<HTMLTextAreaElement>(null);
@@ -174,6 +188,9 @@ export default function Piatto() {
   function aggiungiIngrediente(ing: Ingredient) {
     setIngredienti((prev) => [...prev, { ingredientId: ing.id, quantita: 0, unita: ing.unitaBase }]);
     setSelettoreAperto(false);
+    // Riaprendo il selettore si riparte dall'elenco intero: la ricerca di
+    // prima non ha niente a che vedere con l'ingrediente successivo.
+    setRicerca('');
   }
 
   function cambiaQuantita(ingredientId: string, quantita: number) {
@@ -261,7 +278,12 @@ export default function Piatto() {
   if (caricamento) return <Cornice cestinoAttivo={false} />;
 
   const catalogoPerId = new Map(catalogo.map((i) => [i.id, i]));
-  const disponibili = catalogo.filter((i) => !ingredienti.some((r) => r.ingredientId === i.id));
+  const nonAncoraNelPiatto = catalogo.filter((i) => !ingredienti.some((r) => r.ingredientId === i.id));
+  // La ricerca cerca dentro il nome, non solo all'inizio: "pomo" trova sia
+  // "Pomodori" sia "Passata di pomodoro".
+  const disponibili = ricerca.trim()
+    ? nonAncoraNelPiatto.filter((i) => normalizza(i.nome).includes(normalizza(ricerca)))
+    : nonAncoraNelPiatto;
 
   const giorniSettimana = dataInizioSettimana ? giorniDellaSettimana(dataInizioSettimana) : [];
   const giorni = GIORNI_LABEL.map((label, i) => {
@@ -507,7 +529,10 @@ export default function Piatto() {
 
       {selettoreAperto && (
         <div
-          onClick={() => setSelettoreAperto(false)}
+          onClick={() => {
+            setSelettoreAperto(false);
+            setRicerca('');
+          }}
           style={{ position: 'fixed', inset: 0, background: 'rgba(20,22,58,0.35)', display: 'flex', alignItems: 'flex-end', zIndex: 50 }}
         >
           <div
@@ -528,9 +553,33 @@ export default function Piatto() {
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--ink)', margin: '0 6px 8px' }}>
               AGGIUNGI INGREDIENTE
             </div>
+
+            {/* Niente autoFocus: su un telefono aprirebbe la tastiera addosso
+                alla lista, e chi vuole solo scorrere si troverebbe metà
+                schermo occupato senza averlo chiesto. Compare solo quando la
+                lista è abbastanza lunga da rendere lo scorrimento peggiore
+                della digitazione. */}
+            {nonAncoraNelPiatto.length > 8 && (
+              <input
+                type="search"
+                value={ricerca}
+                onChange={(e) => setRicerca(e.target.value)}
+                placeholder="Cerca"
+                aria-label="Cerca un ingrediente"
+                style={{
+                  height: 44, margin: '0 2px 10px', padding: '0 14px',
+                  borderRadius: 14, border: '1px solid var(--bordo)',
+                  background: 'var(--fondo)', color: 'var(--ink)',
+                  fontSize: 15, outline: 'none',
+                }}
+              />
+            )}
+
             {disponibili.length === 0 && (
               <div style={{ fontSize: 13, color: 'var(--sec)', padding: '8px 6px' }}>
-                Hai già aggiunto tutti gli ingredienti del repertorio.
+                {ricerca.trim()
+                  ? `Nessun ingrediente per "${ricerca.trim()}". Puoi crearlo qui sotto.`
+                  : 'Hai già aggiunto tutti gli ingredienti del repertorio.'}
               </div>
             )}
             {disponibili.map((ing) => (

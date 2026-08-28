@@ -346,4 +346,54 @@ describe('Piatto (editor)', () => {
     await waitFor(() => expect(push).toHaveBeenCalledWith('/piatti'));
     expect(riprendiBozza('d-1')).toBeNull();
   });
+
+  it('il selettore ha un campo di ricerca solo quando la lista e lunga', async () => {
+    // Con pochi ingredienti scorrere e' piu' veloce che digitare, e il campo
+    // sarebbe solo un ostacolo in piu' prima della lista.
+    render(<Piatto />);
+    await screen.findByPlaceholderText('Dai un nome al piatto');
+    fireEvent.click(screen.getByRole('button', { name: /AGGIUNGI\s*INGREDIENTE/ }));
+
+    expect(screen.queryByLabelText('Cerca un ingrediente')).not.toBeInTheDocument();
+  });
+
+  it('la ricerca filtra per nome, ignorando accenti e maiuscole', async () => {
+    const molti: Ingredient[] = Array.from({ length: 12 }, (_, i) => ({
+      id: `i-${i}`, nome: `Riempitivo ${i}`, unitaBase: 'g' as const, area: 'dispensa' as const,
+      classeResiduo: 'porzionabile' as const, deperibile: false, formatoConfezione: 100,
+    }));
+    const CAFFE: Ingredient = {
+      id: 'i-caffe', nome: 'Caffè', unitaBase: 'g', area: 'dispensa',
+      classeResiduo: 'stima', deperibile: false, formatoConfezione: 250,
+    };
+    vi.mocked(leggiIngredienti).mockResolvedValue([...molti, CAFFE]);
+
+    render(<Piatto />);
+    await screen.findByPlaceholderText('Dai un nome al piatto');
+    fireEvent.click(screen.getByRole('button', { name: /AGGIUNGI\s*INGREDIENTE/ }));
+
+    const campo = screen.getByLabelText('Cerca un ingrediente');
+    // Senza accento: sulla tastiera del telefono nessuno lo scrive per cercare.
+    fireEvent.change(campo, { target: { value: 'caffe' } });
+
+    expect(screen.getByRole('button', { name: 'Caffè' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Riempitivo 0' })).not.toBeInTheDocument();
+  });
+
+  it('senza risultati suggerisce di crearlo invece di lasciare il vuoto', async () => {
+    const molti: Ingredient[] = Array.from({ length: 12 }, (_, i) => ({
+      id: `i-${i}`, nome: `Riempitivo ${i}`, unitaBase: 'g' as const, area: 'dispensa' as const,
+      classeResiduo: 'porzionabile' as const, deperibile: false, formatoConfezione: 100,
+    }));
+    vi.mocked(leggiIngredienti).mockResolvedValue(molti);
+
+    render(<Piatto />);
+    await screen.findByPlaceholderText('Dai un nome al piatto');
+    fireEvent.click(screen.getByRole('button', { name: /AGGIUNGI\s*INGREDIENTE/ }));
+    fireEvent.change(screen.getByLabelText('Cerca un ingrediente'), { target: { value: 'zafferano' } });
+
+    expect(screen.getByText(/Nessun ingrediente per "zafferano"/)).toBeInTheDocument();
+    // Il modo per uscirne resta a portata di mano.
+    expect(screen.getByRole('link', { name: /NUOVO\s*INGREDIENTE/ })).toBeInTheDocument();
+  });
 });
