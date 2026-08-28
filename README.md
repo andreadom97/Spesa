@@ -4,13 +4,24 @@ App personale che trasforma un piano alimentare già esistente in una lista dell
 ordinata come cammini nel supermercato. Costruita per uso proprio, con la porta aperta
 a un eventuale prodotto.
 
-**Stato: Fase 1 implementata, non ancora usata.** Dominio puro completo (`list-builder`,
-`pantry`, `planner`, `week-shape`, `chiusura`), 208 test automatici verdi, schema applicato
-su un progetto Supabase vero, tutte e dodici le schermate della v1 (otto più quattro stati
-vuoti), PWA installabile con guscio offline sulla schermata lista. **Non ancora in
-produzione**, nessun utente registrato, nessun dato reale nel database: il giro end-to-end
-(due settimane consecutive, la seconda con voci che spariscono dalla lista perché il
-residuo le copre) non è mai stato eseguito. Vedi «Sviluppo locale» e «Deploy» sotto.
+**Stato: Fase 1 implementata, primo giro reale eseguito il 28/08/2026.** Dominio puro
+completo (`list-builder`, `pantry`, `planner`, `week-shape`, `chiusura`), 224 test
+automatici verdi, schema applicato su un progetto Supabase vero, tutte e dodici le
+schermate della v1 (otto più quattro stati vuoti), PWA installabile con guscio offline
+sulla schermata lista. **Non ancora in produzione**: nessun deploy, si gira in locale.
+
+Cosa è stato verificato dal vivo, non solo in test: login col magic link, creazione di
+ingredienti e piatti, check-in settimanale, generazione della lista con l'aritmetica
+giusta (`ceil(fabbisogno − residuo / formato)`), split base/top-up sul flag deperibile,
+spunta, chiusura della spesa. **Il residuo si accumula davvero**: dopo la prima chiusura
+`pantry_state` riporta 990 su 1000 per un ingrediente consumato 10, 920 per uno consumato
+80 — misurato su database reale.
+
+Cosa resta da vedere: la seconda settimana consecutiva, in cui quelle voci devono
+sparire dalla lista perché il residuo le copre. È l'aritmetica già coperta dai test
+unitari, ma la conferma sul campo arriva solo col lunedì successivo. Non ancora provati:
+classi `intero` e `stima`, moltiplicatore porzioni, riordino delle aree, lettura offline,
+controllo staple a 90 giorni.
 
 ## Dove sta cosa
 
