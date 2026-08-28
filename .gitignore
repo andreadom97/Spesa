@@ -25,3 +25,4 @@ tsconfig.tsbuildinfo
 
 # configurazione MCP locale (project ref del progetto Supabase)
 .mcp.json
+.env*

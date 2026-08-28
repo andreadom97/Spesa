@@ -4,11 +4,13 @@ App personale che trasforma un piano alimentare già esistente in una lista dell
 ordinata come cammini nel supermercato. Costruita per uso proprio, con la porta aperta
 a un eventuale prodotto.
 
+**In produzione:** <https://spesa-zeta.vercel.app>
+
 **Stato: Fase 1 implementata, primo giro reale eseguito il 28/08/2026.** Dominio puro
 completo (`list-builder`, `pantry`, `planner`, `week-shape`, `chiusura`), 224 test
 automatici verdi, schema applicato su un progetto Supabase vero, tutte e dodici le
 schermate della v1 (otto più quattro stati vuoti), PWA installabile con guscio offline
-sulla schermata lista. **Non ancora in produzione**: nessun deploy, si gira in locale.
+sulla schermata lista. Deploy su Vercel eseguito il 28/08/2026 (progetto `spesa`, account personale).
 
 Cosa è stato verificato dal vivo, non solo in test: login col magic link, creazione di
 ingredienti e piatti, check-in settimanale, generazione della lista con l'aritmetica
@@ -77,8 +79,9 @@ npm test && npx tsc --noEmit && npm run build && npm run lint
 
 ## Deploy — istruzioni per il proprietario
 
-Non ancora fatto: nessun deploy è mai stato eseguito. Serve l'account Vercel del
-proprietario, quindi il deploy è una decisione sua, non di chi scrive il codice.
+Fatto il 28/08/2026: <https://spesa-zeta.vercel.app>. Le variabili d'ambiente sono già
+impostate su Vercel per production, preview e development. Per ripubblicare dopo una
+modifica basta `npx vercel --prod` dalla cartella del progetto.
 
 ### Passo 0 — prima di aprire l'app
 
@@ -114,7 +117,8 @@ Poi, nel progetto Vercel:
    `https://<dominio-produzione>/auth/callback`, non solo la root: è lì che il link
    atterra e scambia il code per una sessione (vedi C1 nel report della revisione finale).
 
-Una volta fatto, aggiungere qui l'URL di produzione.
+L'URL di produzione è <https://spesa-zeta.vercel.app>; quello autorizzato in Supabase è
+`https://spesa-zeta.vercel.app/auth/callback`.
 
 ### Limite noto: la lista non è ancora leggibile offline
 
