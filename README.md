@@ -99,6 +99,10 @@ non c'è repertorio):
 3. **Eseguire `supabase/seed.sql`** nell'SQL Editor, per intero. Trova l'utente per
    email (quella del login), quindi non serve copiare nessun uuid; è rieseguibile senza
    danno. Inserisce i quattro pasti di default e la riga `settings`.
+3b. **Facoltativo: `supabase/seed-ingredienti.sql`.** Settantuno ingredienti di base di un
+   supermercato italiano, già classificati per area, classe di residuo e formato confezione
+   — i tre campi che nessun database pubblico espone e che vanno decisi comunque. Salta
+   quelli che esistono già e non sovrascrive mai le correzioni fatte a mano.
 4. **Solo ora aprire l'app per usarla davvero.** Senza questo passo, le Impostazioni
    seminano comunque quattro pasti di default al primo accesso (vedi C3 nel report della
    revisione finale), ma repertorio e dispensa restano vuoti finché non li popoli a mano.
