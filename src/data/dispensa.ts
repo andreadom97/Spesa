@@ -83,3 +83,36 @@ export async function rispondiControllo(
   );
   if (eIns) throw eIns;
 }
+
+/**
+ * Corregge a mano il residuo di un ingrediente.
+ *
+ * È l'eccezione prevista dal principio che regge la dispensa (spec, riga 53:
+ * «l'utente non conta niente e non registra niente; corregge solo quando il
+ * calcolo sbaglia»). Il residuo resta derivato — questa non è la porta per
+ * tenere un inventario a mano, che è proprio la cosa che la spec esclude:
+ * serve a rimettere in pari il calcolo quando la realtà se n'è discostata,
+ * perché un uovo si è rotto o perché si è mangiato fuori piano.
+ *
+ * Perché conta: senza, uno scostamento non si recupera più e il residuo si
+ * allontana dal vero in silenzio, continuando a produrre liste che sembrano
+ * giuste. È il rischio già dichiarato alla riga 155 della spec.
+ *
+ * `upsert` e non `update`: un ingrediente mai comprato non ha ancora una riga
+ * in `pantry_state`, e dichiarare che se ne ha già in casa deve funzionare
+ * anche lì — è il primo caso d'uso di chi apre l'app con la dispensa piena.
+ */
+export async function correggiResiduo(ingredientId: string, residuo: number): Promise<void> {
+  if (!Number.isFinite(residuo) || residuo < 0) {
+    throw new Error(`Residuo non valido: ${residuo}. Lo schema ha check (residuo >= 0).`);
+  }
+  const sb = client();
+  const { data: utente } = await sb.auth.getUser();
+  const { error } = await sb
+    .from('pantry_state')
+    .upsert(
+      { ingredient_id: ingredientId, user_id: utente.user!.id, residuo },
+      { onConflict: 'ingredient_id' },
+    );
+  if (error) throw error;
+}

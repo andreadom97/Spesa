@@ -141,6 +141,26 @@ Risolve già il problema dichiarato.
 **Fase 3** — Correzioni vocali: Web Speech API (`it-IT`) → parsing LLM → eventi tipizzati.
 **Fase 4** — Classe `stima` con autonomia e controlli, reminder di riordino via Web Push.
 
+**Dopo, non prima: prodotto preferito e prezzo stimato.** Un ingrediente oggi
+e' generico ("Pasta") con un solo formato confezione. L'idea, di Andrea il
+28/08/2026, e' di legargli il prodotto che compra davvero fra i dieci formati
+che stanno a scaffale, e con quello un prezzo indicativo, cosi' la lista
+mostra anche quanto verra' a costare. Sta qui e non prima per due ragioni: e'
+un secondo livello sotto l'ingrediente (variante scelta, con il suo formato e
+il suo prezzo) e tocca quindi il modello dati, e i prezzi invecchiano — vanno
+o mantenuti a mano o presi da una fonte, e nessuna fonte italiana aperta li
+espone per supermercato (verificato il 28/08/2026: Open Food Facts cataloga
+prodotti per codice a barre senza prezzi; i dataset con corsia e prezzo sono
+statunitensi). Da riprendere quando il resto e' in piedi.
+
+**Vedere la dispensa e correggere il residuo.** Non e' una fase nuova: la
+correzione e' gia' il principio di riga 53 ("l'utente corregge solo quando il
+calcolo sbaglia"), e mancava solo la schermata. Costruita il 28/08/2026 su
+richiesta di Andrea, in anticipo sul gate delle tre settimane. Il passo
+successivo — suggerire con cosa sostituire un pasto in base a cosa c'e' in
+casa — resta oltre l'avviso di conflitto gia' rinviato a Fase 3: serve la
+simulazione del residuo in avanti piu' un criterio di equivalenza fra piatti.
+
 ## Testing
 
 - `list-builder` e `pantry` sono funzioni pure: test unitari in TDD, nessun mock. Casi obbligatori: porzione < formato con residuo che si accumula su più settimane (il caso yogurt), slot che passa a "fuori" e alza il residuo, arrotondamento a confezioni intere, unità miste sullo stesso ingrediente.

@@ -233,6 +233,25 @@ export default function Impostazioni() {
 
         {erroreSalvataggio && <p style={{ margin: '10px 6px 0', fontSize: 13, color: 'var(--sec)' }}>{erroreSalvataggio}</p>}
 
+        <Etichetta margine="26px 4px 10px">DISPENSA</Etichetta>
+        <Link
+          href="/dispensa"
+          style={{
+            width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: 16, borderRadius: 18,
+            background: 'var(--superficie)', border: '1px solid var(--bordo)',
+          }}
+        >
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)' }}>Cosa hai in casa</div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--sec)', marginTop: 5 }}>
+              CALCOLATO DALL’APP · CORREGGILO SE NON TORNA
+            </div>
+          </div>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <path d="M6 3.2 10.4 8 6 12.8" stroke="var(--ter)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </Link>
+
         <Etichetta margine="26px 4px 10px">REPERTORIO</Etichetta>
         <Link
           href="/impostazioni/ingredienti"
