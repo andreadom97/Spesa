@@ -16,3 +16,12 @@ npm-debug.log*
 
 # canvas seedato: rigenerabile da design/ con design/build.sh
 spesa-schermate-fase-1.html
+
+# scratch della skill SDD
+.superpowers/
+
+# output incrementale di TypeScript
+tsconfig.tsbuildinfo
+
+# configurazione MCP locale (project ref del progetto Supabase)
+.mcp.json

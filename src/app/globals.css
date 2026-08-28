@@ -1,0 +1,40 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import "tailwindcss";
+
+:root {
+  --fondo: #F1F0EE;
+  --superficie: #FFFFFF;
+  --ink: #14163A;
+  --ink-2: #3D4166;
+  --sec: #8A8A96;
+  --ter: #A6A6B2;
+  --off: #9A9AA6;
+  --bordo: rgba(20, 22, 58, 0.07);
+  --spento: rgba(20, 22, 58, 0.035);
+
+  --area-ortofrutta: #A8D96A;
+  --area-macelleria: #F29B9B;
+  --area-latticini: #9CC7F2;
+  --area-cereali: #F5CE5B;
+  --area-dispensa: #F2A465;
+  --area-surgelati: #B9AEF5;
+
+  --font-testo: 'Plus Jakarta Sans', 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--fondo);
+  color: var(--ink);
+  font-family: var(--font-testo);
+  -webkit-font-smoothing: antialiased;
+}
+
+button { font-family: inherit; border: 0; background: none; padding: 0; cursor: pointer; text-align: left; }
+
+/* Righe/colonne scrollabili senza scrollbar visibile (filtri, liste...). */
+.sc { scrollbar-width: none; }
+.sc::-webkit-scrollbar { width: 0; height: 0; }
