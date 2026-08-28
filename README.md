@@ -82,10 +82,9 @@ non c'è repertorio):
 2. **Registrarsi col magic link.** Aprire l'app (in locale con `npm run dev`, o sull'URL
    di produzione dopo il deploy sotto) e inserire la propria email in `/entra`. Il link
    arriva via mail: cliccarlo crea l'utente in `auth.users` e apre una sessione.
-3. **Eseguire `supabase/seed.sql`.** Copiare il proprio uuid da Supabase → Table Editor →
-   `auth.users` → colonna `id`, sostituirlo al posto del segnaposto
-   `SOSTITUISCI_CON_UUID_UTENTE` nel file, poi eseguire l'intero blocco nell'SQL Editor.
-   Inserisce i quattro pasti di default e la riga `settings`.
+3. **Eseguire `supabase/seed.sql`** nell'SQL Editor, per intero. Trova l'utente per
+   email (quella del login), quindi non serve copiare nessun uuid; è rieseguibile senza
+   danno. Inserisce i quattro pasti di default e la riga `settings`.
 4. **Solo ora aprire l'app per usarla davvero.** Senza questo passo, le Impostazioni
    seminano comunque quattro pasti di default al primo accesso (vedi C3 nel report della
    revisione finale), ma repertorio e dispensa restano vuoti finché non li popoli a mano.
