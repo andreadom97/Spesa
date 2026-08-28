@@ -44,6 +44,7 @@ export function aPantryState(r: Record<string, unknown>): PantryState {
     ultimoAcquisto: r.ultimo_acquisto ? data(r.ultimo_acquisto) : null,
     giorniStimati: num(r.giorni_stimati),
     ultimoCheck: r.ultimo_check ? data(r.ultimo_check) : null,
+    congelato: Boolean(r.congelato),
   };
 }
 

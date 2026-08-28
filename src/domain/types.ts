@@ -62,6 +62,8 @@ export interface PantryState {
   ultimoAcquisto: string | null;
   /** Costante 90 in Fase 1. Presente per la Fase 4. */
   giorniStimati: number;
+  /** Il residuo sta nel congelatore: decade in mesi invece che in giorni. */
+  congelato: boolean;
   /** ISO yyyy-mm-dd dell'ultima risposta "sì" a un controllo. */
   ultimoCheck: string | null;
 }

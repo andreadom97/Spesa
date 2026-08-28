@@ -4,11 +4,11 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import type { Ingredient, PantryState } from '@/domain/types';
 
 vi.mock('@/data/repertorio', () => ({ leggiIngredienti: vi.fn() }));
-vi.mock('@/data/dispensa', () => ({ leggiDispensa: vi.fn(), correggiResiduo: vi.fn() }));
+vi.mock('@/data/dispensa', () => ({ leggiDispensa: vi.fn(), correggiResiduo: vi.fn(), impostaCongelato: vi.fn() }));
 vi.mock('@/data/impostazioni', () => ({ leggiImpostazioni: vi.fn() }));
 
 import { leggiIngredienti } from '@/data/repertorio';
-import { leggiDispensa, correggiResiduo } from '@/data/dispensa';
+import { leggiDispensa, correggiResiduo, impostaCongelato } from '@/data/dispensa';
 import { leggiImpostazioni } from '@/data/impostazioni';
 import Dispensa from '../page';
 
@@ -27,6 +27,7 @@ function statoDispensa(righe: Partial<PantryState>[]): PantryState[] {
   return righe.map((r) => ({
     ingredientId: r.ingredientId!, residuo: r.residuo ?? 0,
     ultimoAcquisto: r.ultimoAcquisto ?? null, giorniStimati: 90, ultimoCheck: null,
+    congelato: r.congelato ?? false,
   }));
 }
 
@@ -129,6 +130,49 @@ describe('Dispensa', () => {
       expect(screen.getByText('Non siamo riusciti a salvare la correzione. Riprova.')).toBeInTheDocument(),
     );
     expect(screen.getByLabelText('Residuo di Riso')).toHaveValue(920);
+  });
+
+  it('avverte quando un fresco e troppo vecchio per contare ancora', async () => {
+    // Senza questo avviso la schermata direbbe "200 g di pollo" mentre la
+    // lista lo richiede lo stesso: due verita' diverse nella stessa app.
+    const POLLO: Ingredient = {
+      id: 'i-pollo', nome: 'Petto di pollo', unitaBase: 'g', area: 'macelleria',
+      classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 300,
+    };
+    mockBase(statoDispensa([{ ingredientId: 'i-pollo', residuo: 200, ultimoAcquisto: '2020-01-01' }]), [POLLO]);
+
+    render(<Dispensa />);
+
+    expect(await screen.findByText(/Troppo tempo per essere ancora buono/)).toBeInTheDocument();
+  });
+
+  it('non avverte se quel fresco e dichiarato in congelatore', async () => {
+    const POLLO: Ingredient = {
+      id: 'i-pollo', nome: 'Petto di pollo', unitaBase: 'g', area: 'macelleria',
+      classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 300,
+    };
+    const oggi = new Date().toISOString().slice(0, 10);
+    mockBase(statoDispensa([{ ingredientId: 'i-pollo', residuo: 200, ultimoAcquisto: oggi, congelato: true }]), [POLLO]);
+
+    render(<Dispensa />);
+
+    await screen.findByLabelText('Residuo di Petto di pollo');
+    expect(screen.queryByText(/Troppo tempo per essere ancora buono/)).not.toBeInTheDocument();
+    expect(screen.getByText(/IN CONGELATORE/)).toBeInTheDocument();
+  });
+
+  it('il congelatore si accende e si spegne, e non compare sui non deperibili', async () => {
+    mockBase(statoDispensa([{ ingredientId: 'i-banane', residuo: 3 }]));
+    vi.mocked(impostaCongelato).mockResolvedValue(undefined);
+
+    render(<Dispensa />);
+
+    // Riso non e' deperibile: un controllo che non farebbe niente.
+    expect(await screen.findByLabelText(/Banane: metti in congelatore/)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Riso: metti in congelatore/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText(/Banane: metti in congelatore/));
+    await waitFor(() => expect(impostaCongelato).toHaveBeenCalledWith('i-banane', true));
   });
 
   it('senza ingredienti spiega che la dispensa si riempie da se', async () => {

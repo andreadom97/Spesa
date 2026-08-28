@@ -64,6 +64,6 @@ export const IMPOSTAZIONI: Impostazioni = {
 export function dispensaVuota(): PantryState[] {
   return INGREDIENTI.map((i) => ({
     ingredientId: i.id, residuo: 0, ultimoAcquisto: null,
-    giorniStimati: 90, ultimoCheck: null,
+    giorniStimati: 90, ultimoCheck: null, congelato: false,
   }));
 }

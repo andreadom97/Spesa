@@ -4,14 +4,16 @@ import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import type { AreaId, Ingredient, PantryState } from '@/domain/types';
 import { leggiIngredienti } from '@/data/repertorio';
-import { leggiDispensa, correggiResiduo } from '@/data/dispensa';
+import { leggiDispensa, correggiResiduo, impostaCongelato } from '@/data/dispensa';
 import { leggiImpostazioni } from '@/data/impostazioni';
 import { coloreArea, nomeArea } from '@/domain/aree';
+import { residuoUtilizzabile } from '@/domain/pantry';
 
 interface Riga {
   ingrediente: Ingredient;
   residuo: number;
   ultimoAcquisto: string | null;
+  congelato: boolean;
 }
 
 const MESI = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
@@ -54,6 +56,7 @@ export default function Dispensa() {
               ingrediente,
               residuo: stato?.residuo ?? 0,
               ultimoAcquisto: stato?.ultimoAcquisto ?? null,
+              congelato: stato?.congelato ?? false,
             };
           }),
         );
@@ -83,6 +86,19 @@ export default function Dispensa() {
       console.error('dispensa: correzione del residuo fallita.', e);
       setRighe((prev) => prev?.map((r) => (r.ingrediente.id === ingredientId ? { ...r, residuo: precedente } : r)) ?? null);
       setErroreSalvataggio('Non siamo riusciti a salvare la correzione. Riprova.');
+    }
+  }
+
+  /** Come `salva`: ottimistico, con ritorno al valore di prima se fallisce. */
+  async function cambiaCongelato(ingredientId: string, congelato: boolean) {
+    setErroreSalvataggio(null);
+    setRighe((prev) => prev?.map((r) => (r.ingrediente.id === ingredientId ? { ...r, congelato } : r)) ?? null);
+    try {
+      await impostaCongelato(ingredientId, congelato);
+    } catch (e) {
+      console.error('dispensa: cambio congelatore fallito.', e);
+      setRighe((prev) => prev?.map((r) => (r.ingrediente.id === ingredientId ? { ...r, congelato: !congelato } : r)) ?? null);
+      setErroreSalvataggio('Non siamo riusciti a salvare. Riprova.');
     }
   }
 
@@ -126,8 +142,8 @@ export default function Dispensa() {
           <p style={{ fontSize: 13, color: 'var(--sec)', margin: '0 6px 12px' }}>{erroreSalvataggio}</p>
         )}
 
-        <Gruppo titolo="IN CASA" righe={inCasa} ordineAree={ordineAree} onSalva={salva} />
-        <Gruppo titolo="FINITI" righe={finiti} ordineAree={ordineAree} onSalva={salva} />
+        <Gruppo titolo="IN CASA" righe={inCasa} ordineAree={ordineAree} onSalva={salva} onCongela={cambiaCongelato} />
+        <Gruppo titolo="FINITI" righe={finiti} ordineAree={ordineAree} onSalva={salva} onCongela={cambiaCongelato} />
       </div>
     </Cornice>
   );
@@ -138,9 +154,10 @@ interface PropsGruppo {
   righe: Riga[];
   ordineAree: AreaId[];
   onSalva: (ingredientId: string, nuovo: number, precedente: number) => void;
+  onCongela: (ingredientId: string, congelato: boolean) => void;
 }
 
-function Gruppo({ titolo, righe, ordineAree, onSalva }: PropsGruppo) {
+function Gruppo({ titolo, righe, ordineAree, onSalva, onCongela }: PropsGruppo) {
   if (righe.length === 0) return null;
 
   // Stesso ordine dei reparti della lista della spesa: cercare qui costa
@@ -175,15 +192,42 @@ function Gruppo({ titolo, righe, ordineAree, onSalva }: PropsGruppo) {
           // riuscito, o rollback di uno fallito — la riga si rimonta e il
           // campo riparte dal valore vero. Il residuo cambia solo dopo il
           // blur, quindi non interrompe mai chi sta scrivendo.
-          <RigaDispensa key={`${r.ingrediente.id}:${r.residuo}`} riga={r} onSalva={onSalva} />
+          <RigaDispensa
+            key={`${r.ingrediente.id}:${r.residuo}:${r.congelato}`}
+            riga={r}
+            onSalva={onSalva}
+            onCongela={onCongela}
+          />
         ))}
       </div>
     </div>
   );
 }
 
-function RigaDispensa({ riga, onSalva }: { riga: Riga; onSalva: PropsGruppo['onSalva'] }) {
+function RigaDispensa({
+  riga,
+  onSalva,
+  onCongela,
+}: {
+  riga: Riga;
+  onSalva: PropsGruppo['onSalva'];
+  onCongela: PropsGruppo['onCongela'];
+}) {
   const [testo, setTesto] = useState(String(riga.residuo));
+
+  // Quello che il calcolo della lista userà davvero. Mostrarlo qui è
+  // necessario: senza, si legge "200 g" di pollo e non si capisce perché la
+  // lista lo chiede lo stesso — la schermata direbbe una cosa e l'app ne
+  // farebbe un'altra.
+  const utilizzabile = residuoUtilizzabile({
+    residuo: riga.residuo,
+    deperibile: riga.ingrediente.deperibile,
+    area: riga.ingrediente.area,
+    ultimoAcquisto: riga.ultimoAcquisto,
+    congelato: riga.congelato,
+    oggi: new Date().toISOString().slice(0, 10),
+  });
+  const decaduto = riga.residuo > 0 && utilizzabile === 0;
 
   function conferma() {
     const n = Number(testo);
@@ -216,8 +260,40 @@ function RigaDispensa({ riga, onSalva }: { riga: Riga; onSalva: PropsGruppo['onS
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: 8.5, letterSpacing: '0.09em', color: 'var(--ter)', marginTop: 4 }}>
           {nomeArea(riga.ingrediente.area)}
           {riga.ultimoAcquisto ? ` · PRESO IL ${dataBreve(riga.ultimoAcquisto).toUpperCase()}` : ' · MAI COMPRATO'}
+          {riga.congelato ? ' · IN CONGELATORE' : ''}
         </div>
+        {decaduto && (
+          <div style={{ fontSize: 12, lineHeight: 1.35, color: 'var(--sec)', marginTop: 5 }}>
+            Troppo tempo per essere ancora buono: la lista lo richiede.
+            {!riga.congelato && ' Se l’hai congelato, dillo qui accanto.'}
+          </div>
+        )}
       </div>
+
+      {/* Solo sui deperibili: su pasta e scatolame il congelatore non vuol
+          dire niente, e un controllo che non fa nulla è peggio che assente. */}
+      {riga.ingrediente.deperibile && (
+        <button
+          type="button"
+          onClick={() => onCongela(riga.ingrediente.id, !riga.congelato)}
+          aria-pressed={riga.congelato}
+          aria-label={`${riga.ingrediente.nome}: ${riga.congelato ? 'togli dal congelatore' : 'metti in congelatore'}`}
+          style={{
+            width: 44, height: 44, flex: 'none', borderRadius: 13,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: riga.congelato ? 'rgba(156,199,242,0.30)' : 'transparent',
+          }}
+        >
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M12 2v20M12 6.5 8.5 4M12 6.5 15.5 4M12 17.5 8.5 20M12 17.5l3.5 2.5M3.3 7l17.4 10M6.8 8.2 5.9 4.1M6.8 8.2 3 9.3M17.2 15.8l.9 4.1M17.2 15.8 21 14.7M20.7 7 3.3 17M17.2 8.2l.9-4.1M17.2 8.2 21 9.3M6.8 15.8l-.9 4.1M6.8 15.8 3 14.7"
+              stroke={riga.congelato ? '#4A90D9' : 'var(--ter)'}
+              strokeWidth="1.7"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
+      )}
 
       {/* onBlur e non onChange: qui si riscrive un numero che l'app ha
           calcolato, e salvare a ogni tasto premuto significherebbe scrivere

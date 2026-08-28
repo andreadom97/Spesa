@@ -64,6 +64,30 @@ Tre classi di ingrediente, distinte da **come si comporta il residuo** — non d
 
 **La deperibilità è un asse separato**, e serve a una cosa sola: decidere se l'ingrediente va nella lista base settimanale o nel top-up del fresco. Non ha nulla a che vedere con il residuo.
 
+**Corretto il 28/08/2026: il residuo di un deperibile decade.** La frase qui
+sopra era troppo netta. Cinquanta grammi di pollo avanzati non arrivano alla
+settimana dopo — o li hai mangiati o li hai buttati — e contarli fa credere
+all'app di avere qualcosa che non c'è, con la conseguenza di non metterlo in
+lista. Oltre una soglia dall'ultimo acquisto il residuo di un deperibile vale
+zero (`residuoUtilizzabile` in `src/domain/pantry.ts`). Le soglie sono per
+area, non per ingrediente, e vengono dai tempi di conservazione domestica del
+Ministero della Salute: macelleria 3 giorni, ortofrutta e latticini 7,
+cereali 5. Non esiste una norma sulla durata dei prodotti — il Reg. UE
+1169/2011 obbliga il produttore a indicare e provare la data, non a
+rispettare un minimo — quindi questi valori sono linee guida di conservazione,
+non legge.
+
+L'errore è asimmetrico di proposito: azzerare quando invece ce l'hai ancora
+costa una confezione in più, correggibile dalla Dispensa; non azzerare costa
+una cena, perché te ne accorgi ai fornelli.
+
+**Il congelatore** è la parte che rende sicuro l'azzeramento: chi fa scorta e
+congela non deve vedersi dire di ricomprare quello che ha nel freezer.
+`pantry_state.congelato` (migrazione 0003) porta la soglia a 90 giorni. Sta
+sullo stato di dispensa e non sull'ingrediente perché è una proprietà di
+quello che hai in casa adesso, non del prodotto. Il promemoria di scongelare
+in tempo quello che serve per stasera richiede le notifiche push: Fase 4.
+
 **Punto di partenza del residuo: zero.** Nessun inventario iniziale da inserire — la prima lista compra tutto, e da lì il residuo si deriva da solo. Se in futuro serve, una schermata opzionale una tantum per dichiarare cosa c'è già in casa resta possibile, ma non è in Fase 1.
 
 Uno slot che passa a "fuori" non consuma i suoi ingredienti: il residuo resta alto e la lista successiva compra di meno. È lo stesso meccanismo, non un caso speciale.

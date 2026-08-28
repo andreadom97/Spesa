@@ -2,7 +2,7 @@ import type {
   AreaId, Dish, Impostazioni, Ingredient, MealSlot, PantryState, UnitaBase,
 } from './types';
 import { convertiInUnitaBase } from './unita';
-import { serveControllo } from './pantry';
+import { residuoUtilizzabile, serveControllo } from './pantry';
 // Unica eccezione al divieto di importare da ./aree: qui serve solo l'elenco
 // canonico delle sei aree per validare l'input, non nomi né colori.
 import { ORDINE_AREE_DEFAULT } from './aree';
@@ -108,7 +108,18 @@ export function costruisciLista(input: ListaInput): ListaRisultato {
   for (const [ingredientId, fabbisogno] of fabbisogni) {
     const ing = perId.get(ingredientId)!;
     if (ing.classeResiduo === 'stima') continue; // regola 7: nessuna aritmetica
-    const residuo = dispensaPerId.get(ingredientId)?.residuo ?? 0;
+    // Non il residuo registrato ma quello ancora davvero in casa: per un
+    // deperibile comprato la settimana scorsa non c'è più, a meno che non sia
+    // dichiarato in congelatore. Vedi residuoUtilizzabile.
+    const statoDispensa = dispensaPerId.get(ingredientId);
+    const residuo = residuoUtilizzabile({
+      residuo: statoDispensa?.residuo ?? 0,
+      deperibile: ing.deperibile,
+      area: ing.area,
+      ultimoAcquisto: statoDispensa?.ultimoAcquisto ?? null,
+      congelato: statoDispensa?.congelato ?? false,
+      oggi,
+    });
     const daComprare = Math.max(0, fabbisogno - residuo);
     const formato = ing.classeResiduo === 'intero' ? 1 : ing.formatoConfezione;
     const confezioni = Math.ceil(daComprare / formato);

@@ -40,10 +40,25 @@ describe('aPantryState', () => {
   it('porta residuo e date nel dominio', () => {
     expect(aPantryState({
       ingredient_id: 'a', residuo: '300', ultimo_acquisto: '2026-01-10',
-      giorni_stimati: 90, ultimo_check: null,
+      giorni_stimati: 90, ultimo_check: null, congelato: false,
     })).toEqual({
       ingredientId: 'a', residuo: 300, ultimoAcquisto: '2026-01-10',
-      giorniStimati: 90, ultimoCheck: null,
+      giorniStimati: 90, ultimoCheck: null, congelato: false,
     });
+  });
+
+  it('legge congelato, e lo tratta come falso se la colonna non arriva', () => {
+    // Difesa sul disallineamento fra codice e schema: se il deploy precede la
+    // migrazione 0003, `congelato` arriva undefined. Vale false, cioe' il
+    // comportamento di prima — mai true per sbaglio, che terrebbe in vita un
+    // residuo di pollo per novanta giorni.
+    expect(aPantryState({
+      ingredient_id: 'a', residuo: 10, ultimo_acquisto: null,
+      giorni_stimati: 90, ultimo_check: null, congelato: true,
+    }).congelato).toBe(true);
+    expect(aPantryState({
+      ingredient_id: 'a', residuo: 10, ultimo_acquisto: null,
+      giorni_stimati: 90, ultimo_check: null,
+    }).congelato).toBe(false);
   });
 });

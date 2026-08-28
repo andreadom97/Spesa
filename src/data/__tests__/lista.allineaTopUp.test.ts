@@ -164,7 +164,7 @@ describe('allineaTopUp', () => {
     vi.mocked(leggiRepertorio).mockResolvedValue([]);
     vi.mocked(leggiIngredienti).mockResolvedValue([RISO]);
     vi.mocked(leggiDispensa).mockResolvedValue([
-      { ingredientId: 'ing-riso', residuo: 0, ultimoAcquisto: '2020-01-01', giorniStimati: 90, ultimoCheck: null },
+      { ingredientId: 'ing-riso', residuo: 0, ultimoAcquisto: '2020-01-01', giorniStimati: 90, ultimoCheck: null, congelato: false },
     ]);
     vi.mocked(leggiImpostazioni).mockResolvedValue({ ...IMPOSTAZIONI, ordineAree: [...IMPOSTAZIONI.ordineAree] });
 

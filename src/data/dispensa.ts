@@ -116,3 +116,27 @@ export async function correggiResiduo(ingredientId: string, residuo: number): Pr
     );
   if (error) throw error;
 }
+
+/**
+ * Dichiara che il residuo di un ingrediente sta nel congelatore.
+ *
+ * Cambia la soglia oltre la quale il residuo di un deperibile smette di
+ * contare: da giorni a mesi (`GIORNI_CONGELATO`). Senza questo, l'azzeramento
+ * automatico del fresco direbbe di ricomprare quello che sta nel freezer —
+ * ed è il motivo per cui le due cose sono state fatte insieme.
+ *
+ * Sta su `pantry_state` e non su `ingredient` perché è una proprietà di
+ * quello che hai in casa adesso: lo stesso petto di pollo è in frigo questa
+ * settimana e nel congelatore la prossima.
+ */
+export async function impostaCongelato(ingredientId: string, congelato: boolean): Promise<void> {
+  const sb = client();
+  const { data: utente } = await sb.auth.getUser();
+  const { error } = await sb
+    .from('pantry_state')
+    .upsert(
+      { ingredient_id: ingredientId, user_id: utente.user!.id, congelato },
+      { onConflict: 'ingredient_id' },
+    );
+  if (error) throw error;
+}
