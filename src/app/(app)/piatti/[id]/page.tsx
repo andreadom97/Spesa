@@ -11,6 +11,7 @@ import { giorniDellaSettimana } from '@/domain/date';
 import { coloreArea } from '@/domain/aree';
 import { Segmento } from '@/components/Segmento';
 import { TesseraIngrediente } from '@/components/TesseraIngrediente';
+import { riprendiBozza, salvaBozza, scartaBozza } from './bozza';
 
 const GIORNI_LABEL = ['LUN', 'MAR', 'MER', 'GIO', 'VEN', 'SAB', 'DOM'];
 
@@ -133,6 +134,15 @@ export default function Piatto() {
             }
           }
         }
+
+        // Dopo i dati veri, non prima: la bozza è più recente di quello che
+        // c'è sul server (è lavoro non ancora salvato) e deve vincere.
+        const bozza = riprendiBozza(id);
+        if (bozza) {
+          setNome(bozza.nome);
+          setSlotDefId(bozza.slotDefId);
+          setIngredienti(bozza.ingredienti);
+        }
       } catch (errore) {
         console.error('piatto: caricamento fallito.', errore);
         if (vivo) setErrore('Non riusciamo a caricare il piatto. Riprova più tardi.');
@@ -160,6 +170,15 @@ export default function Piatto() {
   }
 
   /**
+   * Da chiamare prima di ogni uscita verso l'editor di un ingrediente: è
+   * l'unica navigazione che si porta via lavoro non salvato, perché il
+   * piatto qui esiste solo in memoria finché non si preme SALVA PIATTO.
+   */
+  function riparaBozzaPrimaDiUscire() {
+    salvaBozza(id, { nome, slotDefId, ingredienti });
+  }
+
+  /**
    * Il cestino nell'header è quello dell'artboard: deve fare qualcosa di
    * vero, non solo esserci. Su un piatto nuovo (mai salvato) non c'è ancora
    * niente da eliminare: equivale ad annullare, senza bisogno di conferma
@@ -179,6 +198,7 @@ export default function Piatto() {
     setEliminando(true);
     try {
       await eliminaPiatto(piattoOriginale.id);
+      scartaBozza(id);
       router.push('/piatti');
     } catch (errore) {
       console.error('piatto: eliminazione fallita.', errore);
@@ -205,6 +225,7 @@ export default function Piatto() {
         attivo: piattoOriginale?.attivo ?? true,
         ingredienti,
       });
+      scartaBozza(id);
       router.push('/piatti');
     } catch (errore) {
       console.error('piatto: salvataggio fallito.', errore);
@@ -313,6 +334,8 @@ export default function Piatto() {
                 onCambiaQuantita={(q) => cambiaQuantita(riga.ingredientId, q)}
                 onRimuovi={() => rimuoviIngrediente(riga.ingredientId)}
                 quantitaValida={!quantitaNonValide.has(riga.ingredientId)}
+                hrefModifica={`/piatti/${id}/ingredienti/${riga.ingredientId}`}
+                onPrimaDiModificare={riparaBozzaPrimaDiUscire}
               />
             );
           })}
@@ -487,6 +510,7 @@ export default function Piatto() {
             ))}
             <Link
               href={`/piatti/${id}/ingredienti/nuovo`}
+              onClick={riparaBozzaPrimaDiUscire}
               style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 6px', minHeight: 44 }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none">

@@ -307,6 +307,69 @@ export default function IngredienteEditor() {
           })}
         </div>
 
+        {/* Sotto l'area, non in fondo alla schermata: area e deperibilità
+            decidono insieme dove finisce la voce, e soprattutto qui il campo
+            si vede senza scorrere. In fondo restava sotto la piega mentre
+            SALVA INGREDIENTE era già visibile e attivo: si salvava senza aver
+            mai incontrato il controllo, e su mobile il divario è maggiore.
+            L'ordine diverge da Ingrediente.dc.html; il default (true) no. */}
+        <Etichetta margine="24px 4px 10px">DEPERIBILE</Etichetta>
+        <button
+          type="button"
+          onClick={() => setDeperibile((v) => !v)}
+          aria-pressed={deperibile}
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 14,
+            padding: '15px 16px',
+            borderRadius: 18,
+            background: '#FFFFFF',
+            border: '1px solid rgba(20,22,58,0.09)',
+          }}
+        >
+          <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+            <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)' }}>
+              {deperibile ? 'Sì, va comprato fresco' : 'No, si conserva a lungo'}
+            </div>
+            <div
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 9,
+                letterSpacing: '0.1em',
+                color: 'var(--sec)',
+                marginTop: 5,
+              }}
+            >
+              {deperibile ? 'FINISCE NELLA LISTA TOP-UP' : 'FINISCE NELLA LISTA BASE'}
+            </div>
+          </div>
+          <span
+            style={{
+              width: 52,
+              height: 31,
+              borderRadius: 999,
+              flex: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              padding: 3,
+              background: deperibile ? 'var(--ink)' : 'rgba(20,22,58,0.14)',
+              justifyContent: deperibile ? 'flex-end' : 'flex-start',
+            }}
+          >
+            <span
+              style={{
+                width: 25,
+                height: 25,
+                borderRadius: 999,
+                background: '#FFFFFF',
+                boxShadow: '0 1px 3px rgba(20,22,58,0.28)',
+              }}
+            />
+          </span>
+        </button>
+
         <Etichetta margine="24px 4px 10px">UNITÀ DI MISURA</Etichetta>
         <Segmento
           opzioni={OPZIONI_UNITA}
@@ -375,63 +438,6 @@ export default function IngredienteEditor() {
         <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', marginTop: 8 }}>
           {SPIEGA_CLASSE[classeResiduo]}
         </div>
-
-        <Etichetta margine="24px 4px 10px">DEPERIBILE</Etichetta>
-        <button
-          type="button"
-          onClick={() => setDeperibile((v) => !v)}
-          aria-pressed={deperibile}
-          style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 14,
-            padding: '15px 16px',
-            borderRadius: 18,
-            background: '#FFFFFF',
-            border: '1px solid rgba(20,22,58,0.09)',
-          }}
-        >
-          <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-            <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)' }}>
-              {deperibile ? 'Sì, va comprato fresco' : 'No, si conserva a lungo'}
-            </div>
-            <div
-              style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: 9,
-                letterSpacing: '0.1em',
-                color: 'var(--sec)',
-                marginTop: 5,
-              }}
-            >
-              {deperibile ? 'FINISCE NELLA LISTA TOP-UP' : 'FINISCE NELLA LISTA BASE'}
-            </div>
-          </div>
-          <span
-            style={{
-              width: 52,
-              height: 31,
-              borderRadius: 999,
-              flex: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              padding: 3,
-              background: deperibile ? 'var(--ink)' : 'rgba(20,22,58,0.14)',
-              justifyContent: deperibile ? 'flex-end' : 'flex-start',
-            }}
-          >
-            <span
-              style={{
-                width: 25,
-                height: 25,
-                borderRadius: 999,
-                background: '#FFFFFF',
-                boxShadow: '0 1px 3px rgba(20,22,58,0.28)',
-              }}
-            />
-          </span>
-        </button>
 
         {errore && <p style={{ margin: '14px 6px 0', color: 'var(--sec)', fontSize: 13 }}>{errore}</p>}
       </div>

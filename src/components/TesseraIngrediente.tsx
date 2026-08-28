@@ -1,6 +1,7 @@
 'use client';
 
 import { useId, useState } from 'react';
+import Link from 'next/link';
 import type { AreaId, UnitaMisura } from '@/domain/types';
 import { coloreArea, nomeArea } from '@/domain/aree';
 
@@ -13,6 +14,16 @@ interface Props {
   onRimuovi: () => void;
   /** false quando quantita <= 0: lo schema ha `check (quantita > 0)`, un salvataggio con questa tessera così fallirebbe sempre (I2). Evidenzia il bordo in rosso invece del colore d'area. */
   quantitaValida?: boolean;
+  /**
+   * Rotta dell'editor dell'ingrediente. Senza, area, formato confezione,
+   * unità e deperibilità restano quelle scelte al momento della creazione
+   * per sempre: era l'unica schermata dell'app senza alcun modo di
+   * raggiungerla, benché completa e già capace di caricare un ingrediente
+   * esistente.
+   */
+  hrefModifica?: string;
+  /** Chiamata prima di seguire `hrefModifica`: serve a mettere al riparo la bozza del piatto, che vive solo in memoria. */
+  onPrimaDiModificare?: () => void;
 }
 
 /**
@@ -63,7 +74,17 @@ const COLORE_NON_VALIDA = '#D9534F';
  * cliccare ovunque nella fascia da 44px porta il focus sull'<input>
  * nativamente, senza bisogno di gestori di click aggiuntivi.
  */
-export function TesseraIngrediente({ nome, area, quantita, unita, onCambiaQuantita, onRimuovi, quantitaValida = true }: Props) {
+export function TesseraIngrediente({
+  nome,
+  area,
+  quantita,
+  unita,
+  onCambiaQuantita,
+  onRimuovi,
+  quantitaValida = true,
+  hrefModifica,
+  onPrimaDiModificare,
+}: Props) {
   const colore = coloreArea(area);
   const coloreBordo = quantitaValida ? colore : COLORE_NON_VALIDA;
   const [testoQuantita, setTestoQuantita] = useState(String(quantita));
@@ -112,6 +133,38 @@ export function TesseraIngrediente({ nome, area, quantita, unita, onCambiaQuanti
           <path d="M5 5l14 14M19 5 5 19" stroke="#C4C4CE" strokeWidth="2.2" strokeLinecap="round" />
         </svg>
       </button>
+
+      {/* Speculare al ✕ in alto a destra, stessa area di tap da 44px. L'artboard
+          non prevede questo controllo perché non prevede affatto di riaprire un
+          ingrediente: qualunque soluzione diverge, e questa è quella che non
+          tocca né il testo né l'altezza della tessera. */}
+      {hrefModifica && (
+        <Link
+          href={hrefModifica}
+          onClick={onPrimaDiModificare}
+          aria-label={`Modifica ${nome}`}
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            right: 0,
+            width: 44,
+            height: 44,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3Z"
+              stroke="#C4C4CE"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </Link>
+      )}
 
       <label
         htmlFor={idQuantita}

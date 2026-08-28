@@ -28,6 +28,7 @@ import { salvaPiatto, leggiRepertorio, leggiIngredienti, eliminaPiatto } from '@
 import { leggiSlotDefs } from '@/data/impostazioni';
 import { leggiSettimanaCorrente } from '@/data/settimana';
 import Piatto from '../page';
+import { salvaBozza, riprendiBozza } from '../bozza';
 
 const ASSENZE = [false, false, false, false, false, false, false];
 const SLOT_COLAZIONE: MealSlotDef = { id: 'sd-1', nome: 'Colazione', posizione: 0, assenzeAbituali: ASSENZE };
@@ -64,6 +65,7 @@ function mockBase() {
 describe('Piatto (editor)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    sessionStorage.clear();
     paramsId = 'nuovo';
     mockBase();
     nessunaSettimana();
@@ -256,5 +258,74 @@ describe('Piatto (editor)', () => {
 
     expect(screen.queryByText('Eliminare questo piatto?')).not.toBeInTheDocument();
     expect(eliminaPiatto).not.toHaveBeenCalled();
+  });
+
+  it('riprende il piatto lasciato a metà per andare a creare un ingrediente', async () => {
+    // Il percorso obbligato del primo avvio: per aggiungere un ingrediente che
+    // non esiste si esce dall'editor, e lo stato del piatto vive solo qui in
+    // memoria. Senza la bozza si riscrivono nome e pasto a ogni ingrediente.
+    salvaBozza('nuovo', {
+      nome: 'Riso condito',
+      slotDefId: 'sd-2',
+      ingredienti: [{ ingredientId: 'i-1', quantita: 150, unita: 'g' }],
+    });
+
+    render(<Piatto />);
+
+    expect(await screen.findByDisplayValue('Riso condito')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Pranzo' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText('Yogurt greco')).toBeInTheDocument();
+  });
+
+  it('la bozza vince sui dati del server: è lavoro più recente', async () => {
+    paramsId = 'd-1';
+    vi.mocked(leggiRepertorio).mockResolvedValue([PIATTO_ESISTENTE]);
+    salvaBozza('d-1', { nome: 'Nome cambiato non ancora salvato', slotDefId: 'sd-3', ingredienti: [] });
+
+    render(<Piatto />);
+
+    expect(await screen.findByDisplayValue('Nome cambiato non ancora salvato')).toBeInTheDocument();
+  });
+
+  it('mette al riparo la bozza quando si esce a creare un ingrediente', async () => {
+    render(<Piatto />);
+    await screen.findByPlaceholderText('Dai un nome al piatto');
+
+    fireEvent.change(screen.getByPlaceholderText('Dai un nome al piatto'), {
+      target: { value: 'Riso condito' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Cena' }));
+    fireEvent.click(screen.getByRole('button', { name: /AGGIUNGI\s*INGREDIENTE/ }));
+    fireEvent.click(screen.getByRole('link', { name: /NUOVO\s*INGREDIENTE/ }));
+
+    expect(riprendiBozza('nuovo')).toEqual({ nome: 'Riso condito', slotDefId: 'sd-3', ingredienti: [] });
+  });
+
+  it('ogni ingrediente del piatto ha un accesso al proprio editor', async () => {
+    paramsId = 'd-1';
+    vi.mocked(leggiRepertorio).mockResolvedValue([PIATTO_ESISTENTE]);
+
+    render(<Piatto />);
+    await screen.findByDisplayValue('Yogurt e avena');
+
+    expect(screen.getByRole('link', { name: 'Modifica Yogurt greco' })).toHaveAttribute(
+      'href',
+      '/piatti/d-1/ingredienti/i-1',
+    );
+  });
+
+  it('salvare il piatto scarta la bozza, così non riappare al rientro', async () => {
+    paramsId = 'd-1';
+    vi.mocked(leggiRepertorio).mockResolvedValue([PIATTO_ESISTENTE]);
+    vi.mocked(salvaPiatto).mockResolvedValue(undefined as never);
+
+    render(<Piatto />);
+    await screen.findByDisplayValue('Yogurt e avena');
+    salvaBozza('d-1', { nome: 'residuo', slotDefId: 'sd-1', ingredienti: [] });
+
+    fireEvent.click(screen.getByRole('button', { name: 'SALVA PIATTO' }));
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/piatti'));
+    expect(riprendiBozza('d-1')).toBeNull();
   });
 });
