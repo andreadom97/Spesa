@@ -46,7 +46,8 @@ export default function Piatti() {
       .then(([piatti, ingredienti, slotDefs, impostazioni]) => {
         if (vivo) setRepertorio({ piatti, ingredienti, slotDefs, ordineAree: impostazioni.ordineAree });
       })
-      .catch(() => {
+      .catch((errore) => {
+        console.error('piatti: caricamento del repertorio fallito.', errore);
         if (vivo) setErrore('Non riusciamo a caricare i piatti. Riprova più tardi.');
       });
     return () => {
