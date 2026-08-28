@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import type { Dish, DishIngredient, Ingredient, MealSlotDef } from '@/domain/types';
 import { salvaPiatto, leggiRepertorio, leggiIngredienti, eliminaPiatto } from '@/data/repertorio';
-import { leggiSlotDefs } from '@/data/impostazioni';
+import { leggiImpostazioni, leggiSlotDefs } from '@/data/impostazioni';
 import { leggiSettimanaCorrente } from '@/data/settimana';
 import { giorniDellaSettimana } from '@/domain/date';
 import { coloreArea } from '@/domain/aree';
@@ -14,6 +14,13 @@ import { TesseraIngrediente } from '@/components/TesseraIngrediente';
 import { raccogliIngredienteCreato, riprendiBozza, salvaBozza, scartaBozza } from './bozza';
 
 const GIORNI_LABEL = ['LUN', 'MAR', 'MER', 'GIO', 'VEN', 'SAB', 'DOM'];
+const GIORNI_LUNGHI = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
+// Iniziali, non LUN/MAR come nella striscia "in questa settimana": sono due
+// cose diverse nella stessa schermata (qui si sceglie, là si legge cosa è
+// già in programma) e due strisce identiche si confonderebbero. È anche la
+// stessa forma dei giorni "abitualmente fuori casa" in Impostazioni, dove
+// pure si sceglie.
+const GIORNI_INIZIALE = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
 
 const TESTO_SENZA_INGREDIENTI =
   'Un piatto senza ingredienti non entra nella lista della spesa: è la grammatura di ogni ' +
@@ -94,6 +101,12 @@ export default function Piatto() {
 
   const [nome, setNome] = useState('');
   const [slotDefId, setSlotDefId] = useState('');
+  const [descrizione, setDescrizione] = useState('');
+  const [settimanaCiclo, setSettimanaCiclo] = useState<number | null>(null);
+  const [giornoCiclo, setGiornoCiclo] = useState<number | null>(null);
+  // Quante settimane ha il ciclo: sotto le due, la scelta della settimana non
+  // ha nulla fra cui scegliere e la sezione non compare.
+  const [settimaneCiclo, setSettimaneCiclo] = useState(1);
   const [ingredienti, setIngredienti] = useState<DishIngredient[]>([]);
   const [selettoreAperto, setSelettoreAperto] = useState(false);
   const [ricerca, setRicerca] = useState('');
@@ -115,15 +128,17 @@ export default function Piatto() {
     let vivo = true;
     async function carica() {
       try {
-        const [defs, catalogoIngredienti, settimana, repertorio] = await Promise.all([
+        const [defs, catalogoIngredienti, settimana, repertorio, impostazioni] = await Promise.all([
           leggiSlotDefs(),
           leggiIngredienti(),
           leggiSettimanaCorrente(),
           nuovo ? Promise.resolve(null) : leggiRepertorio(),
+          leggiImpostazioni(),
         ]);
         if (!vivo) return;
         setSlotDefs(defs);
         setCatalogo(catalogoIngredienti);
+        setSettimaneCiclo(impostazioni.settimaneCiclo);
         if (settimana) setDataInizioSettimana(settimana.dataInizio);
 
         if (!nuovo) {
@@ -134,6 +149,9 @@ export default function Piatto() {
             setPiattoOriginale(trovato);
             setNome(trovato.nome);
             setSlotDefId(trovato.slotDefId);
+            setDescrizione(trovato.descrizione ?? '');
+            setSettimanaCiclo(trovato.settimanaCiclo);
+            setGiornoCiclo(trovato.giornoCiclo);
             setIngredienti(trovato.ingredienti);
             if (settimana) {
               const casa = new Set<string>();
@@ -155,6 +173,9 @@ export default function Piatto() {
         if (bozza) {
           setNome(bozza.nome);
           setSlotDefId(bozza.slotDefId);
+          setDescrizione(bozza.descrizione);
+          setSettimanaCiclo(bozza.settimanaCiclo);
+          setGiornoCiclo(bozza.giornoCiclo);
           setIngredienti(bozza.ingredienti);
         }
 
@@ -207,7 +228,7 @@ export default function Piatto() {
    * piatto qui esiste solo in memoria finché non si preme SALVA PIATTO.
    */
   function riparaBozzaPrimaDiUscire() {
-    salvaBozza(id, { nome, slotDefId, ingredienti });
+    salvaBozza(id, { nome, slotDefId, descrizione, settimanaCiclo, giornoCiclo, ingredienti });
   }
 
   /**
@@ -255,6 +276,12 @@ export default function Piatto() {
         slotDefId: slotEffettivo,
         fonte: piattoOriginale?.fonte ?? 'proprio',
         attivo: piattoOriginale?.attivo ?? true,
+        descrizione: descrizione.trim() || null,
+        // Una settimana del ciclo che il ciclo non contiene più (si è passati
+        // da quattro settimane a due) filtrerebbe via il piatto per sempre:
+        // si scrive solo quello che il ciclo corrente può ancora usare.
+        settimanaCiclo: settimanaCiclo !== null && settimanaCiclo <= settimaneCiclo ? settimanaCiclo : null,
+        giornoCiclo,
         ingredienti,
       });
       scartaBozza(id);
@@ -348,6 +375,47 @@ export default function Piatto() {
           />
         </div>
 
+
+        {/* Dove sta il piatto nel piano: la settimana del giro e il giorno
+            fisso. Entrambi facoltativi — un piatto senza niente di dichiarato
+            resta buono per tutte le settimane e per tutti i giorni, che è
+            come si comportava il repertorio prima della rotazione. La
+            settimana compare solo se un ciclo c'è: con una sola settimana non
+            avrebbe nulla fra cui scegliere. */}
+        <div style={{ margin: '22px 4px 9px', fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--ink)' }}>
+          NEL PIANO
+        </div>
+        <div style={{ background: 'var(--superficie)', borderRadius: 18, border: '1px solid var(--bordo)', padding: '13px 14px 14px' }}>
+          {settimaneCiclo > 1 && (
+            <>
+              <EtichettaCampo>SETTIMANA DEL GIRO</EtichettaCampo>
+              <Pillole
+                opzioni={[
+                  { valore: null, label: 'TUTTE', descrizione: 'Va bene in ogni settimana del giro' },
+                  ...Array.from({ length: settimaneCiclo }, (_, i) => ({
+                    valore: i + 1,
+                    label: String(i + 1),
+                    descrizione: `Settimana ${i + 1} del giro`,
+                  })),
+                ]}
+                valore={settimanaCiclo}
+                onCambia={setSettimanaCiclo}
+                gruppo="Settimana del giro"
+              />
+            </>
+          )}
+          <EtichettaCampo margine={settimaneCiclo > 1 ? '13px 0 7px' : '0 0 7px'}>GIORNO FISSO</EtichettaCampo>
+          <Pillole
+            opzioni={[
+              { valore: null, label: 'LIBERO', descrizione: 'Lo sceglie l’app, ruotando' },
+              ...GIORNI_INIZIALE.map((label, i) => ({ valore: i, label, descrizione: GIORNI_LUNGHI[i] })),
+            ]}
+            valore={giornoCiclo}
+            onCambia={setGiornoCiclo}
+            gruppo="Giorno fisso"
+          />
+        </div>
+
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '22px 4px 9px' }}>
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--ink)' }}>
             INGREDIENTI
@@ -434,6 +502,30 @@ export default function Piatto() {
             : tocca il numero sulla tessera e scrivi quanto ne usi per una porzione.
           </div>
         )}
+
+
+        <div style={{ margin: '22px 4px 9px', fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--ink)' }}>
+          COME SI FA
+        </div>
+        <textarea
+          value={descrizione}
+          onChange={(e) => setDescrizione(e.target.value)}
+          placeholder="Il procedimento, se serve ricordarlo"
+          aria-label="Procedimento del piatto"
+          rows={4}
+          className="ricetta"
+          style={{
+            display: 'block', width: '100%', resize: 'vertical',
+            fontFamily: 'inherit', fontSize: 14, lineHeight: 1.5, color: 'var(--ink)',
+            padding: '13px 14px', borderRadius: 18,
+            background: 'var(--superficie)', border: '1px solid var(--bordo)', outline: 'none',
+          }}
+        />
+        <style jsx>{`
+          .ricetta::placeholder {
+            color: #c4c4ce;
+          }
+        `}</style>
 
         {nCasa === 0 && nFuori === 0 ? (
           // Non in programma: niente striscia di sette giorni tutti spenti
@@ -653,6 +745,71 @@ export default function Piatto() {
         </div>
       )}
     </Cornice>
+  );
+}
+
+
+function EtichettaCampo({ children, margine = '0 0 7px' }: { children: ReactNode; margine?: string }) {
+  return (
+    <div style={{ margin: margine, fontFamily: 'var(--font-mono)', fontSize: 8.5, letterSpacing: '0.11em', color: 'var(--ter)' }}>
+      {children}
+    </div>
+  );
+}
+
+interface OpzionePillola {
+  valore: number | null;
+  label: string;
+  descrizione: string;
+}
+
+/**
+ * Fila di pillole a scelta singola, con `null` come prima opzione: è la
+ * forma che serve qui, dove "non deciso" è una scelta legittima e va detta
+ * esplicitamente invece di essere l'assenza di selezione.
+ *
+ * L'area di tap è 44px anche se la pillola disegnata è più bassa, come in
+ * Segmento: la regola dei bersagli vale ovunque, non solo dove il disegno è
+ * già abbastanza alto.
+ */
+function Pillole({ opzioni, valore, onCambia, gruppo }: {
+  opzioni: OpzionePillola[];
+  valore: number | null;
+  onCambia: (v: number | null) => void;
+  gruppo: string;
+}) {
+  return (
+    <div className="sc" style={{ overflowX: 'auto' }}>
+      <div style={{ display: 'flex', gap: 6, width: 'max-content' }}>
+        {opzioni.map((o) => {
+          const attivo = o.valore === valore;
+          return (
+            <button
+              key={o.descrizione}
+              type="button"
+              onClick={() => onCambia(o.valore)}
+              aria-pressed={attivo}
+              aria-label={`${gruppo}: ${o.descrizione}`}
+              style={{ flex: 'none', height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent' }}
+            >
+              <span
+                style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  minWidth: 42, height: 36, padding: '0 12px', borderRadius: 999,
+                  fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: attivo ? 700 : 500,
+                  letterSpacing: '0.09em',
+                  color: attivo ? '#FFFFFF' : 'var(--sec)',
+                  background: attivo ? 'var(--ink)' : 'var(--fondo)',
+                  border: attivo ? 'none' : '1px solid rgba(20,22,58,0.09)',
+                }}
+              >
+                {o.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

@@ -3,15 +3,33 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import type { AreaId, MealSlotDef } from '@/domain/types';
-import { leggiImpostazioni, leggiSlotDefs, salvaSlotDefs, pastiDiDefault } from '@/data/impostazioni';
+import type { Impostazioni, MealSlotDef } from '@/domain/types';
+import { leggiImpostazioni, leggiSlotDefs, salvaImpostazioni, salvaSlotDefs, pastiDiDefault } from '@/data/impostazioni';
+import { MAX_PASTI, MIN_PASTI } from '@/domain/pasti';
 import { coloreArea, nomeArea } from '@/domain/aree';
+import { MAX_SETTIMANE_CICLO, settimanaDelCiclo } from '@/domain/ciclo';
+import { lunediDi } from '@/domain/date';
+import { Segmento } from '@/components/Segmento';
 
 const GIORNI = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
 const GIORNI_LUNGHI = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
 const ASSENZE_VUOTE = [false, false, false, false, false, false, false];
-const MIN_PASTI = 3;
-const MAX_PASTI = 5;
+
+const MESI = [
+  'gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno',
+  'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre',
+];
+
+/** "24 agosto": una data ISO in mezzo a una frase si legge come un codice, non come un giorno. */
+function dataInParole(iso: string): string {
+  const [, mese, giorno] = iso.split('-');
+  return `${Number(giorno)} ${MESI[Number(mese) - 1]}`;
+}
+
+const OPZIONI_CICLO = Array.from({ length: MAX_SETTIMANE_CICLO }, (_, i) => ({
+  id: String(i + 1),
+  label: i === 0 ? 'NESSUNA' : `${i + 1} SETT.`,
+}));
 
 /** Reindicizza `posizione` sull'ordine effettivo dell'array: va rifatto a ogni aggiunta, rimozione o riordino. */
 function conPosizioni(lista: MealSlotDef[]): MealSlotDef[] {
@@ -19,13 +37,19 @@ function conPosizioni(lista: MealSlotDef[]): MealSlotDef[] {
 }
 
 interface Dati {
-  ordineAree: AreaId[];
+  /**
+   * Le impostazioni per intero, non i soli campi che questa schermata mostra:
+   * `salvaImpostazioni` riscrive la riga tutta, quindi quello che non si
+   * tiene qui si perde al primo salvataggio.
+   */
+  impostazioni: Impostazioni;
   pasti: MealSlotDef[];
 }
 
 /**
- * Impostazioni: editor dei pasti (da 3 a 5, non i
- * quattro cablati nel mock — leggiSlotDefs() legge quelli reali), e il link
+ * Impostazioni: editor dei pasti (da MIN_PASTI a MAX_PASTI, non i
+ * quattro cablati nel mock — leggiSlotDefs() legge quelli reali), la
+ * rotazione del piano su più settimane, e il link
  * all'ordine dei reparti (personalizzazione vera e propria delegata a
  * /impostazioni/reparti, che ha il proprio pulsante SALVA).
  *
@@ -43,6 +67,7 @@ export default function Impostazioni() {
   // (che include anche le modifiche non ancora salvate, es. mentre si digita
   // un nome) è il valore a cui tornare se una scrittura fallisce.
   const pastiSalvatiRef = useRef<MealSlotDef[]>([]);
+  const impostazioniSalvateRef = useRef<Impostazioni | null>(null);
 
   useEffect(() => {
     let vivo = true;
@@ -58,7 +83,8 @@ export default function Impostazioni() {
         if (pastiLetti.length === 0) await salvaSlotDefs(pasti);
         if (!vivo) return;
         pastiSalvatiRef.current = pasti;
-        setDati({ ordineAree: impostazioni.ordineAree, pasti });
+        impostazioniSalvateRef.current = impostazioni;
+        setDati({ impostazioni, pasti });
       })
       .catch((errore) => {
         console.error('impostazioni: caricamento fallito.', errore);
@@ -80,6 +106,31 @@ export default function Impostazioni() {
       console.error('impostazioni: salvataggio dei pasti fallito.', errore);
       const salvati = pastiSalvatiRef.current;
       setDati((correnti) => (correnti ? { ...correnti, pasti: salvati } : correnti));
+      setErroreSalvataggio('Non siamo riusciti a salvare. Riprova.');
+    }
+  }
+
+  /**
+   * Salva il ciclo. Come i pasti: ottimistico, con rollback all'ultimo stato
+   * confermato dal server se la scrittura fallisce.
+   *
+   * `salvaImpostazioni` àncora da sé l'origine al lunedì corrente quando si
+   * accende un ciclo che non ne ha una, quindi qui basta rileggere.
+   */
+  async function persistiCiclo(patch: Partial<Impostazioni>) {
+    if (!dati) return;
+    setErroreSalvataggio(null);
+    const nuove = { ...dati.impostazioni, ...patch };
+    setDati((correnti) => (correnti ? { ...correnti, impostazioni: nuove } : correnti));
+    try {
+      await salvaImpostazioni(nuove);
+      const rilette = await leggiImpostazioni();
+      impostazioniSalvateRef.current = rilette;
+      setDati((correnti) => (correnti ? { ...correnti, impostazioni: rilette } : correnti));
+    } catch (errore) {
+      console.error('impostazioni: salvataggio del ciclo fallito.', errore);
+      const salvate = impostazioniSalvateRef.current;
+      if (salvate) setDati((correnti) => (correnti ? { ...correnti, impostazioni: salvate } : correnti));
       setErroreSalvataggio('Non siamo riusciti a salvare. Riprova.');
     }
   }
@@ -161,7 +212,16 @@ export default function Impostazioni() {
   // PESCHERIA"): sono stringhe inventate per stare su una riga, non dati
   // reali. Qui si usano i nomi veri di nomeArea() e si tronca con CSS
   // (nowrap + ellipsis), non con un taglio a 3 elementi + "…" fisso.
-  const ordineTesto = dati.ordineAree.map(nomeArea).join(' · ');
+  const ordineTesto = dati.impostazioni.ordineAree.map(nomeArea).join(' · ');
+
+  const oggi = new Date().toISOString().slice(0, 10);
+  const lunediCorrente = lunediDi(oggi);
+  const settimaneCiclo = dati.impostazioni.settimaneCiclo;
+  const settimanaCorrente = settimanaDelCiclo({
+    lunedi: lunediCorrente,
+    origine: dati.impostazioni.cicloOrigine,
+    settimaneCiclo,
+  });
 
   return (
     <Cornice router={router}>
@@ -226,12 +286,57 @@ export default function Impostazioni() {
           </button>
         </div>
         <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', marginTop: 8 }}>
-          Da tre a cinque pasti, nell’ordine in cui li fai. I giorni segnati qui vengono già spenti quando si
+          Da tre a sei pasti, nell’ordine in cui li fai. I giorni segnati qui vengono già spenti quando si
           apre una settimana nuova: nella Settimana correggi solo le eccezioni — le settimane già create non
           cambiano.
         </div>
 
         {erroreSalvataggio && <p style={{ margin: '10px 6px 0', fontSize: 13, color: 'var(--sec)' }}>{erroreSalvataggio}</p>}
+
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', margin: '26px 4px 10px' }}>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--ink)' }}>
+            ROTAZIONE DEL PIANO
+          </span>
+          {settimaneCiclo > 1 && (
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9.5, letterSpacing: '0.1em', color: 'var(--ter)' }}>
+              ORA SEI ALLA {settimanaCorrente} DI {settimaneCiclo}
+            </span>
+          )}
+        </div>
+
+        <div style={{ background: 'var(--superficie)', borderRadius: 18, border: '1px solid var(--bordo)', padding: '14px 14px 15px' }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 8.5, letterSpacing: '0.11em', color: 'var(--ter)', marginBottom: 9 }}>
+            OGNI QUANTE SETTIMANE SI RIPETE
+          </div>
+          <Segmento
+            variante="blocco"
+            opzioni={OPZIONI_CICLO}
+            valore={String(settimaneCiclo)}
+            onCambia={(id) => persistiCiclo({ settimaneCiclo: Number(id) })}
+          />
+          <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', marginTop: 11 }}>
+            {settimaneCiclo === 1
+              ? 'I piatti ruotano uno dopo l’altro, senza giro fisso. Scegli due o più settimane se il tuo piano si ripete a blocchi: ogni piatto potrà dire a quale settimana appartiene.'
+              : `Il giro è cominciato lunedì ${dataInParole(dati.impostazioni.cicloOrigine ?? lunediCorrente)}. Ogni piatto può dire a quale delle ${settimaneCiclo} settimane appartiene, e in che giorno: chi non lo dice resta buono per tutte.`}
+          </div>
+          {settimaneCiclo > 1 && (
+            <button
+              type="button"
+              onClick={() => persistiCiclo({ cicloOrigine: lunediCorrente })}
+              disabled={dati.impostazioni.cicloOrigine === lunediCorrente}
+              style={{
+                marginTop: 11, minHeight: 44, width: '100%', borderRadius: 14,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'rgba(20,22,58,0.05)',
+                fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700,
+                letterSpacing: '0.09em', color: 'var(--sec)',
+                opacity: dati.impostazioni.cicloOrigine === lunediCorrente ? 0.35 : 1,
+              }}
+            >
+              RIPARTI DALLA SETTIMANA 1
+            </button>
+          )}
+        </div>
 
         <Etichetta margine="26px 4px 10px">DISPENSA</Etichetta>
         <Link
@@ -280,7 +385,7 @@ export default function Impostazioni() {
           }}
         >
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 9px)', gap: 3, flex: 'none' }}>
-            {dati.ordineAree.map((a) => (
+            {dati.impostazioni.ordineAree.map((a) => (
               <span key={a} style={{ width: 9, height: 9, borderRadius: 2.6, display: 'inline-block', background: coloreArea(a) }} />
             ))}
           </div>

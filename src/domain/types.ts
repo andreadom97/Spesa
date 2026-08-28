@@ -33,6 +33,19 @@ export interface Dish {
   slotDefId: string;
   fonte: FonteDish;
   attivo: boolean;
+  /** Il procedimento, testo libero. Non entra in nessun calcolo. */
+  descrizione: string | null;
+  /**
+   * A quale settimana del ciclo appartiene (1..4). `null` = va bene in tutte,
+   * che è il comportamento di prima del ciclo.
+   */
+  settimanaCiclo: number | null;
+  /**
+   * Giorno fisso dentro quella settimana, 0 = lunedì. `null` = lo sceglie il
+   * planner ruotando. Obbligatori entrambi e non facoltativi: se un mapper si
+   * dimenticasse di leggerli, il piano uscirebbe sbagliato in silenzio.
+   */
+  giornoCiclo: number | null;
   ingredienti: DishIngredient[];
 }
 
@@ -71,4 +84,8 @@ export interface PantryState {
 export interface Impostazioni {
   moltiplicatorePorzioni: number;
   ordineAree: AreaId[];
+  /** Quante settimane compongono il piano prima di ricominciare (1..4). */
+  settimaneCiclo: number;
+  /** Il lunedì della settimana 1 del ciclo. null finché il ciclo non si usa. */
+  cicloOrigine: string | null;
 }

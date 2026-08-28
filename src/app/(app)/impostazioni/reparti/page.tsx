@@ -3,12 +3,18 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import type { AreaId } from '@/domain/types';
+import type { AreaId, Impostazioni } from '@/domain/types';
 import { leggiImpostazioni, salvaImpostazioni } from '@/data/impostazioni';
 import { coloreArea, nomeArea } from '@/domain/aree';
 
 interface Dati {
-  porzioni: number;
+  /**
+   * Le impostazioni lette all'apertura, tenute intere: questa pagina cambia
+   * solo l'ordine, ma `salvaImpostazioni` riscrive la riga per intero — se
+   * si portasse dietro solo il moltiplicatore, salvare l'ordine dei reparti
+   * azzererebbe il ciclo delle settimane.
+   */
+  impostazioni: Impostazioni;
   ordine: AreaId[];
 }
 
@@ -34,7 +40,7 @@ export default function OrdineReparti() {
     let vivo = true;
     leggiImpostazioni()
       .then((impostazioni) => {
-        if (vivo) setDati({ porzioni: impostazioni.moltiplicatorePorzioni, ordine: impostazioni.ordineAree });
+        if (vivo) setDati({ impostazioni, ordine: impostazioni.ordineAree });
       })
       .catch((errore) => {
         console.error('impostazioni/reparti: caricamento fallito.', errore);
@@ -62,9 +68,9 @@ export default function OrdineReparti() {
     setSalvando(true);
     setErroreSalvataggio(null);
     try {
-      // moltiplicatorePorzioni viaggia invariato: questa pagina cambia solo
+      // Tutto il resto viaggia invariato: questa pagina cambia solo
       // ordineAree, ma salvaImpostazioni scrive la riga intera.
-      await salvaImpostazioni({ moltiplicatorePorzioni: dati.porzioni, ordineAree: dati.ordine });
+      await salvaImpostazioni({ ...dati.impostazioni, ordineAree: dati.ordine });
       router.push('/impostazioni');
     } catch (errore) {
       console.error('impostazioni/reparti: salvataggio fallito.', errore);

@@ -12,6 +12,7 @@ vi.mock('@/data/repertorio', () => ({
 }));
 vi.mock('@/data/impostazioni', () => ({
   leggiSlotDefs: vi.fn(),
+  leggiImpostazioni: vi.fn(),
 }));
 vi.mock('@/data/settimana', () => ({
   leggiSettimanaCorrente: vi.fn(),
@@ -25,7 +26,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 import { salvaPiatto, leggiRepertorio, leggiIngredienti, eliminaPiatto } from '@/data/repertorio';
-import { leggiSlotDefs } from '@/data/impostazioni';
+import { leggiImpostazioni, leggiSlotDefs } from '@/data/impostazioni';
 import { leggiSettimanaCorrente } from '@/data/settimana';
 import Piatto from '../page';
 import { salvaBozza, riprendiBozza } from '../bozza';
@@ -50,6 +51,9 @@ const PIATTO_ESISTENTE: Dish = {
   slotDefId: 'sd-1',
   fonte: 'proprio',
   attivo: true,
+  descrizione: null,
+  settimanaCiclo: null,
+  giornoCiclo: null,
   ingredienti: [{ ingredientId: 'i-1', quantita: 150, unita: 'g' }],
 };
 
@@ -57,9 +61,16 @@ function nessunaSettimana() {
   vi.mocked(leggiSettimanaCorrente).mockResolvedValue(null);
 }
 
-function mockBase() {
+/** Ciclo spento: la sezione "settimana del giro" non compare, ed è il default di tutti. */
+function mockBase(settimaneCiclo = 1) {
   vi.mocked(leggiSlotDefs).mockResolvedValue([SLOT_COLAZIONE, SLOT_PRANZO, SLOT_CENA]);
   vi.mocked(leggiIngredienti).mockResolvedValue([ING_YOGURT, ING_AVENA]);
+  vi.mocked(leggiImpostazioni).mockResolvedValue({
+    moltiplicatorePorzioni: 1,
+    ordineAree: ['ortofrutta', 'macelleria', 'latticini', 'cereali', 'dispensa', 'surgelati'],
+    settimaneCiclo,
+    cicloOrigine: settimaneCiclo > 1 ? '2026-08-31' : null,
+  });
 }
 
 describe('Piatto (editor)', () => {
@@ -230,6 +241,9 @@ describe('Piatto (editor)', () => {
       slotDefId: 'sd-2',
       fonte: 'proprio',
       attivo: true,
+      descrizione: null,
+      settimanaCiclo: null,
+      giornoCiclo: null,
       ingredienti: [{ ingredientId: 'i-1', quantita: 150, unita: 'g' }],
     }));
     await waitFor(() => expect(push).toHaveBeenCalledWith('/piatti'));
@@ -285,6 +299,9 @@ describe('Piatto (editor)', () => {
     salvaBozza('nuovo', {
       nome: 'Riso condito',
       slotDefId: 'sd-2',
+      descrizione: '',
+      settimanaCiclo: null,
+      giornoCiclo: null,
       ingredienti: [{ ingredientId: 'i-1', quantita: 150, unita: 'g' }],
     });
 
@@ -298,7 +315,10 @@ describe('Piatto (editor)', () => {
   it('la bozza vince sui dati del server: è lavoro più recente', async () => {
     paramsId = 'd-1';
     vi.mocked(leggiRepertorio).mockResolvedValue([PIATTO_ESISTENTE]);
-    salvaBozza('d-1', { nome: 'Nome cambiato non ancora salvato', slotDefId: 'sd-3', ingredienti: [] });
+    salvaBozza('d-1', {
+      nome: 'Nome cambiato non ancora salvato', slotDefId: 'sd-3',
+      descrizione: '', settimanaCiclo: null, giornoCiclo: null, ingredienti: [],
+    });
 
     render(<Piatto />);
 
@@ -316,7 +336,10 @@ describe('Piatto (editor)', () => {
     fireEvent.click(screen.getByRole('button', { name: /AGGIUNGI\s*INGREDIENTE/ }));
     fireEvent.click(screen.getByRole('link', { name: /NUOVO\s*INGREDIENTE/ }));
 
-    expect(riprendiBozza('nuovo')).toEqual({ nome: 'Riso condito', slotDefId: 'sd-3', ingredienti: [] });
+    expect(riprendiBozza('nuovo')).toEqual({
+      nome: 'Riso condito', slotDefId: 'sd-3',
+      descrizione: '', settimanaCiclo: null, giornoCiclo: null, ingredienti: [],
+    });
   });
 
   it('ogni ingrediente del piatto ha un accesso al proprio editor', async () => {
@@ -339,7 +362,10 @@ describe('Piatto (editor)', () => {
 
     render(<Piatto />);
     await screen.findByDisplayValue('Yogurt e avena');
-    salvaBozza('d-1', { nome: 'residuo', slotDefId: 'sd-1', ingredienti: [] });
+    salvaBozza('d-1', {
+      nome: 'residuo', slotDefId: 'sd-1',
+      descrizione: '', settimanaCiclo: null, giornoCiclo: null, ingredienti: [],
+    });
 
     fireEvent.click(screen.getByRole('button', { name: 'SALVA PIATTO' }));
 

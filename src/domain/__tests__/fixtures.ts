@@ -30,7 +30,7 @@ export const INGREDIENTI = [yogurt, avena, uova, olio, passata];
 
 export const colazione: Dish = {
   id: 'colazione-yogurt', nome: 'Yogurt e avena', slotDefId: 'col',
-  fonte: 'nutrizionista', attivo: true,
+  fonte: 'nutrizionista', attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
   ingredienti: [
     { ingredientId: 'yogurt', quantita: 150, unita: 'g' },
     { ingredientId: 'avena', quantita: 50, unita: 'g' },
@@ -39,7 +39,7 @@ export const colazione: Dish = {
 
 export const frittata: Dish = {
   id: 'cena-frittata', nome: 'Frittata', slotDefId: 'cen',
-  fonte: 'proprio', attivo: true,
+  fonte: 'proprio', attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
   ingredienti: [
     { ingredientId: 'uova', quantita: 3, unita: 'pz' },
     { ingredientId: 'olio', quantita: 10, unita: 'ml' },
@@ -59,6 +59,8 @@ export function cinqueColazioni(): MealSlot[] {
 export const IMPOSTAZIONI: Impostazioni = {
   moltiplicatorePorzioni: 1,
   ordineAree: ORDINE_AREE_DEFAULT,
+  settimaneCiclo: 1,
+  cicloOrigine: null,
 };
 
 export function dispensaVuota(): PantryState[] {

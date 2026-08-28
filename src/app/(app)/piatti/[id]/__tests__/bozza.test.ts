@@ -4,6 +4,9 @@ import { salvaBozza, riprendiBozza, scartaBozza } from '../bozza';
 const BOZZA = {
   nome: 'Riso condito',
   slotDefId: 'pranzo-1',
+  descrizione: 'Lessa il riso, condisci a freddo.',
+  settimanaCiclo: 2,
+  giornoCiclo: 4,
   ingredienti: [{ ingredientId: 'olio-1', quantita: 10, unita: 'ml' as const }],
 };
 
@@ -60,5 +63,18 @@ describe('bozza del piatto', () => {
     expect(() => salvaBozza('nuovo', BOZZA)).not.toThrow();
     expect(() => scartaBozza('nuovo')).not.toThrow();
     expect(riprendiBozza('nuovo')).toBeNull();
+  });
+
+  it('una bozza scritta prima dei campi del ciclo resta valida', () => {
+    // Chi ha una bozza aperta mentre l'app si aggiorna non deve perderla:
+    // i campi nuovi si leggono con un default, non si butta tutto.
+    sessionStorage.setItem(
+      'spesa:bozza-piatto:nuovo',
+      JSON.stringify({ nome: 'Vecchia', slotDefId: 'pranzo-1', ingredienti: [] }),
+    );
+    expect(riprendiBozza('nuovo')).toEqual({
+      nome: 'Vecchia', slotDefId: 'pranzo-1', descrizione: '',
+      settimanaCiclo: null, giornoCiclo: null, ingredienti: [],
+    });
   });
 });

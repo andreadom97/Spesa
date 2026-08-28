@@ -16,6 +16,9 @@ import type { DishIngredient } from '@/domain/types';
 export interface BozzaPiatto {
   nome: string;
   slotDefId: string;
+  descrizione: string;
+  settimanaCiclo: number | null;
+  giornoCiclo: number | null;
   ingredienti: DishIngredient[];
 }
 
@@ -66,7 +69,16 @@ export function riprendiBozza(id: string): BozzaPiatto | null {
     // deve poter rompere l'editor: si scarta e si riparte dai dati veri.
     if (typeof letto.nome !== 'string' || typeof letto.slotDefId !== 'string') return null;
     if (!Array.isArray(letto.ingredienti)) return null;
-    return { nome: letto.nome, slotDefId: letto.slotDefId, ingredienti: letto.ingredienti };
+    // I campi aggiunti dopo si leggono con un default: una bozza scritta da
+    // una versione precedente resta valida invece di essere buttata via.
+    return {
+      nome: letto.nome,
+      slotDefId: letto.slotDefId,
+      descrizione: typeof letto.descrizione === 'string' ? letto.descrizione : '',
+      settimanaCiclo: typeof letto.settimanaCiclo === 'number' ? letto.settimanaCiclo : null,
+      giornoCiclo: typeof letto.giornoCiclo === 'number' ? letto.giornoCiclo : null,
+      ingredienti: letto.ingredienti,
+    };
   } catch {
     return null;
   }

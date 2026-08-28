@@ -67,11 +67,11 @@ const ING_POLLO: Ingredient = {
 };
 
 const DISH_COLAZIONE: Dish = {
-  id: 'd-1', nome: 'Yogurt e frutta', slotDefId: 'sd-1', fonte: 'proprio', attivo: true,
+  id: 'd-1', nome: 'Yogurt e frutta', slotDefId: 'sd-1', fonte: 'proprio', attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
   ingredienti: [{ ingredientId: 'i-1', quantita: 150, unita: 'g' }],
 };
 const DISH_CENA: Dish = {
-  id: 'd-2', nome: 'Pollo e riso', slotDefId: 'sd-3', fonte: 'proprio', attivo: true,
+  id: 'd-2', nome: 'Pollo e riso', slotDefId: 'sd-3', fonte: 'proprio', attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
   ingredienti: [{ ingredientId: 'i-2', quantita: 200, unita: 'g' }],
 };
 
@@ -103,6 +103,8 @@ function mockCarico(settimana: SettimanaCorrente = SETTIMANA_BASE) {
   vi.mocked(leggiImpostazioni).mockResolvedValue({
     moltiplicatorePorzioni: 1,
     ordineAree: [...ORDINE_AREE_TEST],
+    settimaneCiclo: 1,
+    cicloOrigine: null,
   });
 }
 
@@ -132,6 +134,8 @@ describe('Settimana (piano alimentare)', () => {
     vi.mocked(leggiImpostazioni).mockResolvedValue({
       moltiplicatorePorzioni: 1,
       ordineAree: [...ORDINE_AREE_TEST],
+      settimaneCiclo: 1,
+      cicloOrigine: null,
     });
 
     render(<Settimana />);
@@ -234,6 +238,8 @@ describe('Settimana (piano alimentare)', () => {
     vi.mocked(leggiImpostazioni).mockResolvedValue({
       moltiplicatorePorzioni: 1,
       ordineAree: [...ORDINE_AREE_TEST],
+      settimaneCiclo: 1,
+      cicloOrigine: null,
     });
 
     render(

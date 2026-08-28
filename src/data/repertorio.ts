@@ -12,7 +12,7 @@ export async function leggiIngredienti(): Promise<Ingredient[]> {
 export async function leggiRepertorio(): Promise<Dish[]> {
   const { data, error } = await client()
     .from('dish')
-    .select('id, nome, slot_def_id, fonte, attivo, dish_ingredient(ingredient_id, quantita, unita)')
+    .select('id, nome, slot_def_id, fonte, attivo, descrizione, settimana_ciclo, giorno_ciclo, dish_ingredient(ingredient_id, quantita, unita)')
     .eq('attivo', true)
     .order('created_at');
   if (error) throw error;
@@ -22,6 +22,9 @@ export async function leggiRepertorio(): Promise<Dish[]> {
     slotDefId: String(r.slot_def_id),
     fonte: r.fonte as Dish['fonte'],
     attivo: Boolean(r.attivo),
+    descrizione: r.descrizione === null || r.descrizione === undefined ? null : String(r.descrizione),
+    settimanaCiclo: r.settimana_ciclo === null || r.settimana_ciclo === undefined ? null : Number(r.settimana_ciclo),
+    giornoCiclo: r.giorno_ciclo === null || r.giorno_ciclo === undefined ? null : Number(r.giorno_ciclo),
     ingredienti: (r.dish_ingredient ?? []).map(aDishIngredient),
   }));
 }
@@ -42,6 +45,9 @@ export async function salvaPiatto(
       slot_def_id: piatto.slotDefId,
       fonte: piatto.fonte,
       attivo: piatto.attivo,
+      descrizione: piatto.descrizione,
+      settimana_ciclo: piatto.settimanaCiclo,
+      giorno_ciclo: piatto.giornoCiclo,
     })
     .select('id')
     .single();

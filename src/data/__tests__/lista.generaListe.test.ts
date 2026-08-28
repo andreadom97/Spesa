@@ -89,6 +89,8 @@ describe('generaListe — difesa in profondità (C4)', () => {
     vi.mocked(leggiImpostazioni).mockResolvedValue({
       moltiplicatorePorzioni: 1,
       ordineAree: ['ortofrutta', 'macelleria', 'latticini', 'cereali', 'dispensa', 'surgelati'],
+      settimaneCiclo: 1,
+      cicloOrigine: null,
     });
 
     await generaListe('week-1');

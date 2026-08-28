@@ -43,6 +43,8 @@ function mockDati(overrides?: { porzioni?: number; pasti?: MealSlotDef[] }) {
   vi.mocked(leggiImpostazioni).mockResolvedValue({
     moltiplicatorePorzioni: overrides?.porzioni ?? 1,
     ordineAree: [...ORDINE_AREE_TEST],
+    settimaneCiclo: 1,
+    cicloOrigine: null,
   });
   vi.mocked(leggiSlotDefs).mockResolvedValue(overrides?.pasti ?? [SLOT_COLAZIONE, SLOT_PRANZO, SLOT_CENA]);
   vi.mocked(salvaImpostazioni).mockResolvedValue(undefined);
@@ -62,7 +64,7 @@ describe('Impostazioni', () => {
     expect(screen.getByDisplayValue('Pranzo')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Cena')).toBeInTheDocument();
     expect(screen.queryByDisplayValue('Spuntino')).not.toBeInTheDocument();
-    expect(screen.getByText('3 DI 5')).toBeInTheDocument();
+    expect(screen.getByText('3 DI 6')).toBeInTheDocument();
   });
 
   it('non offre piu il moltiplicatore porzioni', async () => {
@@ -121,16 +123,19 @@ describe('Impostazioni', () => {
     ]);
   });
 
-  it('al massimo di 5 pasti il pulsante di aggiunta è disattivato', async () => {
+  it('al massimo di 6 pasti il pulsante di aggiunta è disattivato', async () => {
+    // Sei è il numero che serve al piano di Andrea: colazione, due spuntini
+    // distinti, pranzo, cena, dopocena.
     const pasti: MealSlotDef[] = [
       SLOT_COLAZIONE, SLOT_PRANZO, SLOT_CENA,
       { id: 'sd-4', nome: 'Spuntino mattina', posizione: 3, assenzeAbituali: ASSENZE_VUOTE },
       { id: 'sd-5', nome: 'Spuntino pomeriggio', posizione: 4, assenzeAbituali: ASSENZE_VUOTE },
+      { id: 'sd-6', nome: 'Dopocena', posizione: 5, assenzeAbituali: ASSENZE_VUOTE },
     ];
     mockDati({ pasti });
     render(<Impostazioni />);
 
-    await screen.findByText('5 DI 5');
+    await screen.findByText('6 DI 6');
     const aggiungi = screen.getByText('AGGIUNGI PASTO').closest('button');
     expect(aggiungi).toBeDisabled();
     fireEvent.click(aggiungi!);
@@ -141,10 +146,10 @@ describe('Impostazioni', () => {
     mockDati();
     render(<Impostazioni />);
 
-    await screen.findByText('3 DI 5');
+    await screen.findByText('3 DI 6');
     fireEvent.click(screen.getByText('AGGIUNGI PASTO').closest('button')!);
 
-    await waitFor(() => expect(screen.getByText('4 DI 5')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('4 DI 6')).toBeInTheDocument());
     expect(salvaSlotDefs).toHaveBeenCalledTimes(1);
     const salvato = vi.mocked(salvaSlotDefs).mock.calls[0][0];
     expect(salvato).toHaveLength(4);
@@ -234,7 +239,7 @@ describe('Impostazioni', () => {
     expect(screen.getByDisplayValue('Spuntino')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Pranzo')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Cena')).toBeInTheDocument();
-    expect(screen.getByText('4 DI 5')).toBeInTheDocument();
+    expect(screen.getByText('4 DI 6')).toBeInTheDocument();
 
     await waitFor(() => expect(salvaSlotDefs).toHaveBeenCalledTimes(1));
     const salvato = vi.mocked(salvaSlotDefs).mock.calls[0][0];
@@ -254,5 +259,44 @@ describe('Impostazioni', () => {
     expect(
       within(link).getByText('DISPENSA E CONSERVE · LATTICINI, UOVA E SALUMI · ORTOFRUTTA · SURGELATI · PASTA, RISO E CEREALI · MACELLERIA E PESCHERIA'),
     ).toBeInTheDocument();
+  });
+
+  it('con il ciclo spento la rotazione si può accendere e dice cosa cambia', async () => {
+    mockDati();
+    render(<Impostazioni />);
+
+    await screen.findByDisplayValue('Colazione');
+    expect(screen.getByText('ROTAZIONE DEL PIANO')).toBeInTheDocument();
+    // Senza giro non ha senso dire a che punto del giro siamo.
+    expect(screen.queryByText(/ORA SEI ALLA/)).not.toBeInTheDocument();
+
+    vi.mocked(leggiImpostazioni).mockResolvedValue({
+      moltiplicatorePorzioni: 1,
+      ordineAree: [...ORDINE_AREE_TEST],
+      settimaneCiclo: 2,
+      cicloOrigine: '2026-08-31',
+    });
+    fireEvent.click(screen.getByRole('button', { name: '2 SETT.' }));
+
+    await waitFor(() => expect(salvaImpostazioni).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(salvaImpostazioni).mock.calls[0][0].settimaneCiclo).toBe(2);
+    // L'ordine dei reparti viaggia invariato: salvaImpostazioni riscrive la
+    // riga intera, e questa schermata non deve azzerare quello che non mostra.
+    expect(vi.mocked(salvaImpostazioni).mock.calls[0][0].ordineAree).toEqual([...ORDINE_AREE_TEST]);
+    await waitFor(() => expect(screen.getByText(/ORA SEI ALLA/)).toBeInTheDocument());
+  });
+
+  it('se il salvataggio del ciclo fallisce torna al valore di prima e lo dice', async () => {
+    mockDati();
+    vi.mocked(salvaImpostazioni).mockRejectedValue(new Error('rete'));
+    render(<Impostazioni />);
+
+    await screen.findByDisplayValue('Colazione');
+    fireEvent.click(screen.getByRole('button', { name: '3 SETT.' }));
+
+    await waitFor(() =>
+      expect(screen.getByText('Non siamo riusciti a salvare. Riprova.')).toBeInTheDocument(),
+    );
+    expect(screen.getByRole('button', { name: 'NESSUNA' })).toHaveAttribute('aria-pressed', 'true');
   });
 });

@@ -59,7 +59,7 @@ const RISO: Ingredient = {
 };
 
 const PIATTO: Dish = {
-  id: 'd-1', nome: 'Spuntino', slotDefId: 'sd-1', fonte: 'proprio', attivo: true,
+  id: 'd-1', nome: 'Spuntino', slotDefId: 'sd-1', fonte: 'proprio', attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
   ingredienti: [{ ingredientId: 'ing-banana', quantita: 1, unita: 'pz' }],
 };
 
@@ -70,6 +70,8 @@ const SLOT: MealSlot[] = [
 const IMPOSTAZIONI = {
   moltiplicatorePorzioni: 1,
   ordineAree: ['ortofrutta', 'macelleria', 'latticini', 'cereali', 'dispensa', 'surgelati'] as const,
+  settimaneCiclo: 1,
+  cicloOrigine: null,
 };
 
 function preparaPiano() {

@@ -34,7 +34,7 @@ function statoDispensa(righe: Partial<PantryState>[]): PantryState[] {
 function mockBase(dispensa: PantryState[], ingredienti: Ingredient[] = [RISO, BANANE]) {
   vi.mocked(leggiIngredienti).mockResolvedValue(ingredienti);
   vi.mocked(leggiDispensa).mockResolvedValue(dispensa);
-  vi.mocked(leggiImpostazioni).mockResolvedValue({ moltiplicatorePorzioni: 1, ordineAree: [...ORDINE] });
+  vi.mocked(leggiImpostazioni).mockResolvedValue({ moltiplicatorePorzioni: 1, ordineAree: [...ORDINE], settimaneCiclo: 1, cicloOrigine: null });
 }
 
 describe('Dispensa', () => {

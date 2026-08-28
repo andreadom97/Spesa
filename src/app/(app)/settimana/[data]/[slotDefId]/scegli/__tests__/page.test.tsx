@@ -53,15 +53,15 @@ const ING_YOGURT: Ingredient = {
 
 // Piatto di colazione: non deve mai comparire nella lista dello slot cena.
 const DISH_COLAZIONE: Dish = {
-  id: 'd-0', nome: 'Yogurt e frutta', slotDefId: 'sd-1', fonte: 'proprio', attivo: true,
+  id: 'd-0', nome: 'Yogurt e frutta', slotDefId: 'sd-1', fonte: 'proprio', attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
   ingredienti: [{ ingredientId: 'i-3', quantita: 150, unita: 'g' }],
 };
 const DISH_POLLO: Dish = {
-  id: 'd-1', nome: 'Pollo e riso', slotDefId: 'sd-3', fonte: 'proprio', attivo: true,
+  id: 'd-1', nome: 'Pollo e riso', slotDefId: 'sd-3', fonte: 'proprio', attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
   ingredienti: [{ ingredientId: 'i-1', quantita: 200, unita: 'g' }, { ingredientId: 'i-2', quantita: 80, unita: 'g' }],
 };
 const DISH_MERLUZZO: Dish = {
-  id: 'd-2', nome: 'Merluzzo e piselli', slotDefId: 'sd-3', fonte: 'proprio', attivo: true,
+  id: 'd-2', nome: 'Merluzzo e piselli', slotDefId: 'sd-3', fonte: 'proprio', attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
   ingredienti: [{ ingredientId: 'i-2', quantita: 80, unita: 'g' }],
 };
 
@@ -85,6 +85,8 @@ function mockCarico() {
   vi.mocked(leggiImpostazioni).mockResolvedValue({
     moltiplicatorePorzioni: 1,
     ordineAree: [...ORDINE_AREE_TEST],
+    settimaneCiclo: 1,
+    cicloOrigine: null,
   });
 }
 

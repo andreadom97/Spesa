@@ -30,14 +30,14 @@ const ING_PANE: Ingredient = {
 };
 
 const PIATTO_COLAZIONE: Dish = {
-  id: 'd-1', nome: 'Latte e pane', slotDefId: 'sd-1', fonte: 'proprio', attivo: true,
+  id: 'd-1', nome: 'Latte e pane', slotDefId: 'sd-1', fonte: 'proprio', attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
   ingredienti: [
     { ingredientId: 'i-1', quantita: 200, unita: 'ml' },
     { ingredientId: 'i-2', quantita: 50, unita: 'g' },
   ],
 };
 const PIATTO_PRANZO: Dish = {
-  id: 'd-2', nome: 'Pasta al pomodoro', slotDefId: 'sd-2', fonte: 'nutrizionista', attivo: true,
+  id: 'd-2', nome: 'Pasta al pomodoro', slotDefId: 'sd-2', fonte: 'nutrizionista', attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
   ingredienti: [{ ingredientId: 'i-2', quantita: 80, unita: 'g' }],
 };
 
@@ -50,6 +50,8 @@ function mockRepertorioPieno() {
   vi.mocked(leggiImpostazioni).mockResolvedValue({
     moltiplicatorePorzioni: 1,
     ordineAree: [...ORDINE_AREE_TEST],
+    settimaneCiclo: 1,
+    cicloOrigine: null,
   });
 }
 
@@ -65,6 +67,8 @@ describe('Piatti (repertorio)', () => {
     vi.mocked(leggiImpostazioni).mockResolvedValue({
       moltiplicatorePorzioni: 1,
       ordineAree: [...ORDINE_AREE_TEST],
+      settimaneCiclo: 1,
+      cicloOrigine: null,
     });
 
     render(<Piatti />);

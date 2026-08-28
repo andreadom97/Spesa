@@ -18,7 +18,7 @@ import OrdineReparti from '../page';
 const ORDINE_DEFAULT = ['ortofrutta', 'macelleria', 'latticini', 'cereali', 'dispensa', 'surgelati'] as const;
 
 function mockDati(porzioni = 2) {
-  vi.mocked(leggiImpostazioni).mockResolvedValue({ moltiplicatorePorzioni: porzioni, ordineAree: [...ORDINE_DEFAULT] });
+  vi.mocked(leggiImpostazioni).mockResolvedValue({ moltiplicatorePorzioni: porzioni, ordineAree: [...ORDINE_DEFAULT], settimaneCiclo: 1, cicloOrigine: null });
   vi.mocked(salvaImpostazioni).mockResolvedValue(undefined);
 }
 
@@ -58,7 +58,7 @@ describe('Ordine dei reparti', () => {
     expect(righe[0]).toHaveTextContent('1');
   });
 
-  it('SALVA ORDINE persiste il nuovo ordine mantenendo invariato il moltiplicatore porzioni, poi torna a Impostazioni', async () => {
+  it('SALVA ORDINE persiste il nuovo ordine lasciando intatto tutto il resto, poi torna a Impostazioni', async () => {
     mockDati(3);
     render(<OrdineReparti />);
 
@@ -68,9 +68,14 @@ describe('Ordine dei reparti', () => {
 
     fireEvent.click(screen.getByText('SALVA ORDINE'));
 
+    // Tutti i campi che questa schermata non mostra viaggiano invariati:
+    // salvaImpostazioni riscrive la riga intera, quindi ometterli qui
+    // azzererebbe il ciclo delle settimane a ogni riordino dei reparti.
     await waitFor(() => expect(salvaImpostazioni).toHaveBeenCalledWith({
       moltiplicatorePorzioni: 3,
       ordineAree: ['ortofrutta', 'macelleria', 'latticini', 'surgelati', 'cereali', 'dispensa'],
+      settimaneCiclo: 1,
+      cicloOrigine: null,
     }));
     await waitFor(() => expect(push).toHaveBeenCalledWith('/impostazioni'));
   });

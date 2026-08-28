@@ -23,6 +23,9 @@
 --   - due spuntini distinti (allenamento / riposo) e due dopocena, da
 --     scegliere quando si assegna la settimana.
 --
+-- IMPOSTA ANCHE IL CICLO: due settimane, con origine lunedì 31 agosto 2026.
+-- È l'ancora senza la quale "settimana 1" non vuol dire niente.
+--
 -- È sicuro rieseguirlo: cancella e ricrea solo i piatti di questo piano,
 -- riconosciuti per nome. Non tocca gli altri, né gli ingredienti, né le
 -- settimane già pianificate.
@@ -349,6 +352,19 @@ begin
   );
   if v_mancanti is not null then
     raise exception 'Pasti non configurati: %.', v_mancanti;
+  end if;
+
+  -- Il piano dichiara a quale delle due settimane appartiene ogni piatto, ma
+  -- "settimana 1" non significa niente finché il ciclo non è ancorato a una
+  -- data: senza questo, la settimana 1 del piano potrebbe cadere sulla 2
+  -- dell'app e i pranzi uscirebbero sfasati di sette giorni. L'ancora è il
+  -- lunedì da cui parte il piano, 31 agosto 2026.
+  update settings
+     set settimane_ciclo = 2,
+         ciclo_origine = date '2026-08-31'
+   where user_id = v_uid;
+  if not found then
+    raise exception 'Nessuna riga settings per %: esegui prima supabase/seed.sql.', v_email;
   end if;
 
   -- Cancella solo i piatti di questo piano, riconosciuti per nome. dish_ingredient

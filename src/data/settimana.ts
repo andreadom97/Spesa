@@ -1,10 +1,11 @@
 import type { FonteStato, MealSlot, StatoSlot } from '@/domain/types';
 import { generaSettimana, applicaStato } from '@/domain/week-shape';
 import { assegnaPiatti } from '@/domain/planner';
+import { settimanaDelCiclo, settimaneTrascorse } from '@/domain/ciclo';
 import { lunediDi } from '@/domain/date';
 import { client } from './supabase';
 import { aMealSlot } from './mappers';
-import { leggiSlotDefs } from './impostazioni';
+import { leggiImpostazioni, leggiSlotDefs } from './impostazioni';
 import { leggiRepertorio } from './repertorio';
 
 export interface SettimanaCorrente {
@@ -51,7 +52,11 @@ export async function creaSettimana(lunedi: string): Promise<string> {
   const { data: utente } = await sb.auth.getUser();
   const userId = utente.user!.id;
 
-  const [slotDefs, repertorio] = await Promise.all([leggiSlotDefs(), leggiRepertorio()]);
+  const [slotDefs, repertorio, impostazioni] = await Promise.all([
+    leggiSlotDefs(),
+    leggiRepertorio(),
+    leggiImpostazioni(),
+  ]);
   // Senza pasti configurati non c'è nulla da mettere negli slot: creare la
   // week comunque lascerebbe una settimana vuota che leggiSettimanaCorrente
   // trova già esistente, quindi non verrebbe mai più rigenerata (l'unique su
@@ -70,7 +75,24 @@ export async function creaSettimana(lunedi: string): Promise<string> {
   const weekId = String(settimana.id);
 
   const bozza = generaSettimana({ dataInizio: lunedi, slotDefs });
-  const assegnata = assegnaPiatti({ slots: bozza, dishes: repertorio });
+  // Le due coordinate del ciclo: *quale* settimana del giro è questa (filtra
+  // i piatti) e *quante* ne sono passate dall'origine (fa avanzare la
+  // rotazione da un lunedì all'altro, invece di ripartire da zero ogni volta).
+  const assegnata = assegnaPiatti({
+    slots: bozza,
+    dishes: repertorio,
+    // Con il ciclo spento si passa null, non 1: le etichette rimaste sui
+    // piatti non devono continuare a filtrare dopo che la rotazione è stata
+    // disattivata.
+    settimanaCiclo: impostazioni.settimaneCiclo > 1
+      ? settimanaDelCiclo({
+        lunedi,
+        origine: impostazioni.cicloOrigine,
+        settimaneCiclo: impostazioni.settimaneCiclo,
+      })
+      : null,
+    settimaneTrascorse: settimaneTrascorse(lunedi, impostazioni.cicloOrigine),
+  });
 
   const { error: eIns } = await sb.from('meal_slot').insert(
     assegnata.map((s) => ({

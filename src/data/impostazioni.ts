@@ -1,10 +1,19 @@
 import type { Impostazioni, MealSlotDef } from '@/domain/types';
 import { ORDINE_AREE_DEFAULT } from '@/domain/aree';
+import { lunediDi } from '@/domain/date';
+import { MAX_PASTI, MIN_PASTI } from '@/domain/pasti';
 import { client } from './supabase';
 import { aSlotDef } from './mappers';
 
 /** Deve coincidere con il default della colonna `moltiplicatore_porzioni`. */
 const MOLTIPLICATORE_DEFAULT = 1;
+
+/** Deve coincidere con il default della colonna `settimane_ciclo`: nessuna rotazione. */
+const SETTIMANE_CICLO_DEFAULT = 1;
+
+function oggiIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
 
 /**
  * Gli stessi quattro pasti che supabase/seed.sql inserisce per un utente
@@ -40,16 +49,23 @@ export async function leggiImpostazioni(): Promise<Impostazioni> {
   const { data: utente } = await sb.auth.getUser();
   const { data, error } = await sb
     .from('settings')
-    .select('moltiplicatore_porzioni, ordine_aree')
+    .select('moltiplicatore_porzioni, ordine_aree, settimane_ciclo, ciclo_origine')
     .eq('user_id', utente.user!.id)
     .maybeSingle();
   if (error) throw error;
   if (!data) {
-    return { moltiplicatorePorzioni: MOLTIPLICATORE_DEFAULT, ordineAree: [...ORDINE_AREE_DEFAULT] };
+    return {
+      moltiplicatorePorzioni: MOLTIPLICATORE_DEFAULT,
+      ordineAree: [...ORDINE_AREE_DEFAULT],
+      settimaneCiclo: SETTIMANE_CICLO_DEFAULT,
+      cicloOrigine: null,
+    };
   }
   return {
     moltiplicatorePorzioni: Number(data.moltiplicatore_porzioni),
     ordineAree: data.ordine_aree as Impostazioni['ordineAree'],
+    settimaneCiclo: Number(data.settimane_ciclo ?? SETTIMANE_CICLO_DEFAULT),
+    cicloOrigine: data.ciclo_origine ? String(data.ciclo_origine).slice(0, 10) : null,
   };
 }
 
@@ -60,11 +76,18 @@ export async function salvaImpostazioni(i: Impostazioni): Promise<void> {
     user_id: utente.user!.id,
     moltiplicatore_porzioni: i.moltiplicatorePorzioni,
     ordine_aree: i.ordineAree,
+    settimane_ciclo: i.settimaneCiclo,
+    // Un ciclo di più settimane senza origine non saprebbe da dove contare
+    // le settimane: si àncora al lunedì di oggi, così chi accende la
+    // rotazione comincia il giro da questa settimana. Tornando a un ciclo di
+    // una settimana l'origine si conserva com'è: riaccendendolo, il giro
+    // riprende dove stava invece di ripartire da capo.
+    ciclo_origine: i.settimaneCiclo > 1 ? (i.cicloOrigine ?? lunediDi(oggiIso())) : i.cicloOrigine,
   });
   if (error) throw error;
 }
 
-/** Ordinati per posizione. Da 3 a 5 righe. */
+/** Ordinati per posizione. Da 3 a 6 righe. */
 export async function leggiSlotDefs(): Promise<MealSlotDef[]> {
   const { data, error } = await client()
     .from('meal_slot_def')
@@ -75,7 +98,7 @@ export async function leggiSlotDefs(): Promise<MealSlotDef[]> {
 }
 
 /**
- * Riscrive l'intero insieme; rifiuta meno di 3 o più di 5.
+ * Riscrive l'intero insieme; rifiuta meno di MIN_PASTI o più di MAX_PASTI.
  *
  * Non è un delete-then-insert indiscriminato: `dish.slot_def_id` referenzia
  * `meal_slot_def` con `on delete cascade`, quindi cancellare e ricreare tutte
@@ -87,11 +110,11 @@ export async function leggiSlotDefs(): Promise<MealSlotDef[]> {
  * ogni salvataggio delle Impostazioni distruggerebbe il repertorio.
  */
 export async function salvaSlotDefs(defs: MealSlotDef[]): Promise<void> {
-  // Il vincolo 3-5 si controlla per primo e prima di qualunque scrittura:
+  // Il vincolo sul numero di pasti si controlla per primo e prima di qualunque scrittura:
   // rifiutare a metà lavoro (dopo un delete già eseguito) lascerebbe i dati
   // in uno stato peggiore di quello di partenza.
-  if (defs.length < 3 || defs.length > 5) {
-    throw new Error(`I pasti configurabili devono essere da 3 a 5: ricevuti ${defs.length}.`);
+  if (defs.length < MIN_PASTI || defs.length > MAX_PASTI) {
+    throw new Error(`I pasti configurabili devono essere da ${MIN_PASTI} a ${MAX_PASTI}: ricevuti ${defs.length}.`);
   }
   const sb = client();
   const { data: utente } = await sb.auth.getUser();
