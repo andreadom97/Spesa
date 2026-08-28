@@ -23,17 +23,24 @@
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 
-* { box-sizing: border-box; }
+/* Dentro @layer base, non fuori: in Tailwind 4 le utility vivono in
+   @layer utilities, e una regola fuori da ogni layer batte sempre quelle
+   dentro un layer, a prescindere dalla specificità. Con `button { background:
+   none }` non in layer, una classe come `bg-[var(--ink)]` su un <button> non
+   dipinge niente — il bottone resta trasparente. */
+@layer base {
+  * { box-sizing: border-box; }
 
-body {
-  margin: 0;
-  background: var(--fondo);
-  color: var(--ink);
-  font-family: var(--font-testo);
-  -webkit-font-smoothing: antialiased;
+  body {
+    margin: 0;
+    background: var(--fondo);
+    color: var(--ink);
+    font-family: var(--font-testo);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button { font-family: inherit; border: 0; background: none; padding: 0; cursor: pointer; text-align: left; }
 }
-
-button { font-family: inherit; border: 0; background: none; padding: 0; cursor: pointer; text-align: left; }
 
 /* Righe/colonne scrollabili senza scrollbar visibile (filtri, liste...). */
 .sc { scrollbar-width: none; }
