@@ -128,7 +128,12 @@ export default function Dispensa() {
   }
 
   const inCasa = righe.filter((r) => r.residuo > 0);
-  const finiti = righe.filter((r) => r.residuo <= 0);
+  // "Finito" e "mai avuto" non sono la stessa cosa: il primo e' un
+  // ingrediente che usi e che si e' esaurito — informazione utile, sono
+  // pochi — il secondo e' catalogo, e dopo il seed sono decine. Tenerli
+  // insieme seppelliva i primi sotto i secondi.
+  const finiti = righe.filter((r) => r.residuo <= 0 && r.ultimoAcquisto !== null);
+  const maiComprati = righe.filter((r) => r.residuo <= 0 && r.ultimoAcquisto === null);
 
   return (
     <Cornice>
@@ -144,6 +149,18 @@ export default function Dispensa() {
 
         <Gruppo titolo="IN CASA" righe={inCasa} ordineAree={ordineAree} onSalva={salva} onCongela={cambiaCongelato} />
         <Gruppo titolo="FINITI" righe={finiti} ordineAree={ordineAree} onSalva={salva} onCongela={cambiaCongelato} />
+        {/* Chiuso di partenza: e' l'intero catalogo di quello che non hai mai
+            preso, serve solo quando cerchi qualcosa di preciso per dire che
+            ce l'hai gia' in casa. Aperto sarebbe la parte piu' lunga della
+            schermata e la meno utile. */}
+        <Gruppo
+          titolo="MAI COMPRATI"
+          righe={maiComprati}
+          ordineAree={ordineAree}
+          onSalva={salva}
+          onCongela={cambiaCongelato}
+          chiusoDaSubito
+        />
       </div>
     </Cornice>
   );
@@ -155,9 +172,12 @@ interface PropsGruppo {
   ordineAree: AreaId[];
   onSalva: (ingredientId: string, nuovo: number, precedente: number) => void;
   onCongela: (ingredientId: string, congelato: boolean) => void;
+  /** Parte richiuso, con il solo titolo cliccabile. */
+  chiusoDaSubito?: boolean;
 }
 
-function Gruppo({ titolo, righe, ordineAree, onSalva, onCongela }: PropsGruppo) {
+function Gruppo({ titolo, righe, ordineAree, onSalva, onCongela, chiusoDaSubito = false }: PropsGruppo) {
+  const [aperto, setAperto] = useState(!chiusoDaSubito);
   if (righe.length === 0) return null;
 
   // Stesso ordine dei reparti della lista della spesa: cercare qui costa
@@ -171,7 +191,17 @@ function Gruppo({ titolo, righe, ordineAree, onSalva, onCongela }: PropsGruppo) 
 
   return (
     <div style={{ marginBottom: 22 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', margin: '0 4px 9px' }}>
+      <button
+        type="button"
+        onClick={chiusoDaSubito ? () => setAperto((v) => !v) : undefined}
+        aria-expanded={chiusoDaSubito ? aperto : undefined}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', gap: 7,
+          margin: '0 0 9px', padding: '0 4px',
+          minHeight: chiusoDaSubito ? 44 : undefined,
+          cursor: chiusoDaSubito ? 'pointer' : 'default',
+        }}
+      >
         <span
           style={{
             fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700,
@@ -180,13 +210,18 @@ function Gruppo({ titolo, righe, ordineAree, onSalva, onCongela }: PropsGruppo) 
         >
           {titolo}
         </span>
+        {chiusoDaSubito && (
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ transform: aperto ? 'rotate(90deg)' : undefined }}>
+            <path d="M9 5l7 7-7 7" stroke="var(--ter)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
         <span style={{ flex: 1 }} />
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--ter)' }}>
           {ordinate.length}
         </span>
-      </div>
+      </button>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+      <div style={{ display: aperto ? 'flex' : 'none', flexDirection: 'column', gap: 7 }}>
         {ordinate.map((r) => (
           // La key include il residuo: quando cambia sotto — salvataggio
           // riuscito, o rollback di uno fallito — la riga si rimonta e il

@@ -42,18 +42,36 @@ describe('Dispensa', () => {
     vi.clearAllMocks();
   });
 
-  it('separa quello che c e in casa da quello che e finito', async () => {
+  it('separa in casa, finiti e mai comprati', async () => {
+    // "Finito" e "mai avuto" non sono la stessa cosa: il primo e' una cosa
+    // che usi e si e' esaurita, il secondo e' catalogo. Dopo il seed i
+    // secondi sono decine e seppellivano i primi.
     mockBase(statoDispensa([
       { ingredientId: 'i-riso', residuo: 920, ultimoAcquisto: '2026-08-28' },
-      { ingredientId: 'i-banane', residuo: 0 },
+      { ingredientId: 'i-banane', residuo: 0, ultimoAcquisto: '2026-08-20' },
     ]));
 
     render(<Dispensa />);
 
     expect(await screen.findByText('IN CASA')).toBeInTheDocument();
     expect(screen.getByText('FINITI')).toBeInTheDocument();
+    expect(screen.queryByText('MAI COMPRATI')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Residuo di Riso')).toHaveValue(920);
     expect(screen.getByLabelText('Residuo di Banane')).toHaveValue(0);
+  });
+
+  it('i mai comprati stanno in un gruppo a parte, chiuso di partenza', async () => {
+    mockBase(statoDispensa([{ ingredientId: 'i-riso', residuo: 920, ultimoAcquisto: '2026-08-28' }]));
+
+    render(<Dispensa />);
+
+    // Banane non ha riga di dispensa: mai comprato.
+    const intestazione = await screen.findByRole('button', { name: /MAI COMPRATI/ });
+    expect(intestazione).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText('FINITI')).not.toBeInTheDocument();
+
+    fireEvent.click(intestazione);
+    expect(intestazione).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('mostra a zero un ingrediente che non ha ancora una riga di dispensa', async () => {
