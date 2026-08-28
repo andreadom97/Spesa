@@ -272,4 +272,35 @@ describe('Lista', () => {
     // settimana non c'è nulla da formattare, quindi niente em-dash in pagina.
     expect(screen.queryByText(/—/)).not.toBeInTheDocument();
   });
+
+  it('le voci gia prese scendono in fondo, e la grande in cima e la prossima', async () => {
+    // In corsia la tessera grande e' quella da prendere adesso: lasciarci una
+    // voce gia' spuntata significa leggere in grande una cosa gia' fatta.
+    vi.mocked(leggiSettimanaCorrente).mockResolvedValue(SETTIMANA);
+    vi.mocked(leggiListe).mockResolvedValue({
+      base: [
+        {
+          area: 'cereali' as const,
+          voci: [
+            { ...VOCE_RISO, spuntato: true },
+            { ...VOCE_PASTA, spuntato: false },
+          ],
+          controlli: [],
+        },
+      ],
+      topup: [],
+      baseListaId: 'l-base',
+      topupListaId: 'l-topup',
+    });
+
+    render(<Lista />);
+
+    await screen.findByText('Pasta integrale');
+    const etichette = screen
+      .getAllByRole('button')
+      .map((b) => b.getAttribute('aria-label'))
+      .filter((l): l is string => !!l && (l.startsWith('Riso Carnaroli') || l.startsWith('Pasta integrale')));
+    expect(etichette[0]).toMatch(/^Pasta integrale/);
+    expect(etichette[1]).toMatch(/^Riso Carnaroli/);
+  });
 });

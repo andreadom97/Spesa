@@ -376,6 +376,19 @@ export default function Lista() {
   );
 }
 
+/**
+ * Da prendere in cima, gia' prese in fondo — dentro ognuno dei due gruppi
+ * l'ordine di generazione resta.
+ *
+ * La tessera grande in cima e' la prossima cosa da mettere nel carrello:
+ * senza questo riordino restava grande la prima voce dell'area anche dopo
+ * averla spuntata, e in corsia si continuava a leggere in grande una cosa
+ * gia' fatta. `sort` su una copia: l'array arriva dallo stato di React.
+ */
+function ordinaPerCarrello(voci: VoceSalvata[]): VoceSalvata[] {
+  return [...voci].sort((a, b) => Number(a.spuntato) - Number(b.spuntato));
+}
+
 function CartaSezione({
   sezione, rigaInVolo, onToggleVoce, onSi, onNo,
 }: {
@@ -386,7 +399,17 @@ function CartaSezione({
   onNo: (c: VoceSalvata) => void;
 }) {
   return (
-    <div style={{ background: '#FFFFFF', borderRadius: 22, border: '1px solid rgba(20,22,58,0.07)', overflow: 'hidden' }}>
+    // flexShrink: 0 non e' cosmetico. La carta sta in un contenitore flex in
+    // colonna, e i figli flex si comprimono quando lo spazio non basta:
+    // sommato a overflow hidden, il risultato e' una tessera tagliata a meta'
+    // invece di una lista che scorre. Su uno schermo alto lo spazio bastava e
+    // il difetto non si vedeva; su un telefono si vede subito.
+    <div
+      style={{
+        background: '#FFFFFF', borderRadius: 22, border: '1px solid rgba(20,22,58,0.07)',
+        overflow: 'hidden', flexShrink: 0,
+      }}
+    >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '15px 16px 10px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 }}>
           <span style={{ width: 10, height: 10, borderRadius: 4, flex: 'none', background: coloreArea(sezione.area), display: 'inline-block' }} />
@@ -399,7 +422,7 @@ function CartaSezione({
         </span>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, padding: '0 12px 12px' }}>
-        {sezione.voci.map((v, i) => (
+        {ordinaPerCarrello(sezione.voci).map((v, i) => (
           <Tessera
             key={v.id}
             nome={v.nome}
@@ -411,7 +434,9 @@ function CartaSezione({
             quantitaTotale={v.quantitaTotale}
             spuntato={v.spuntato}
             mostraDettaglio={v.mostraDettaglio}
-            protagonista={i === 0}
+            // Grande a piena larghezza solo se e' la prossima da prendere.
+            // Una voce gia' nel carrello non merita il posto d'onore.
+            protagonista={i === 0 && !v.spuntato}
             onToggle={() => onToggleVoce(v)}
           />
         ))}
