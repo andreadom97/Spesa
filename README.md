@@ -6,24 +6,43 @@ a un eventuale prodotto.
 
 **In produzione:** <https://spesa-zeta.vercel.app>
 
-**Stato: Fase 1 implementata, primo giro reale eseguito il 28/08/2026.** Dominio puro
-completo (`list-builder`, `pantry`, `planner`, `week-shape`, `chiusura`), 224 test
-automatici verdi, schema applicato su un progetto Supabase vero, tutte e dodici le
-schermate della v1 (otto più quattro stati vuoti), PWA installabile con guscio offline
-sulla schermata lista. Deploy su Vercel eseguito il 28/08/2026 (progetto `spesa`, account personale).
+**Stato: Fase 1 completa e provata sul campo il 28/08/2026.** Dominio puro
+(`list-builder`, `pantry`, `planner`, `week-shape`, `chiusura`), 258 test automatici
+verdi, schema su un progetto Supabase vero, quattordici schermate, PWA installabile con
+guscio offline sulla lista, in produzione su Vercel.
 
-Cosa è stato verificato dal vivo, non solo in test: login col magic link, creazione di
-ingredienti e piatti, check-in settimanale, generazione della lista con l'aritmetica
-giusta (`ceil(fabbisogno − residuo / formato)`), split base/top-up sul flag deperibile,
-spunta, chiusura della spesa. **Il residuo si accumula davvero**: dopo la prima chiusura
-`pantry_state` riporta 990 su 1000 per un ingrediente consumato 10, 920 per uno consumato
-80 — misurato su database reale.
+### Il ciclo del residuo è chiuso
 
-Cosa resta da vedere: la seconda settimana consecutiva, in cui quelle voci devono
-sparire dalla lista perché il residuo le copre. È l'aritmetica già coperta dai test
-unitari, ma la conferma sul campo arriva solo col lunedì successivo. Non ancora provati:
-classi `intero` e `stima`, moltiplicatore porzioni, riordino delle aree, lettura offline,
-controllo staple a 90 giorni.
+È la cosa che il prodotto deve saper fare, e la fa. Verificata il 28/08/2026 attraverso
+l'app, sul database reale:
+
+| | settimana 1 | settimana 2 |
+|---|---|---|
+| Riso (serve 80 g, confezione 1000 g) | 1 conf in lista | **assente**, ne restano 920 |
+| Olio EVO (serve 10 ml, confezione 1 l) | 1 conf in lista | **assente**, ne restano 990 |
+| Olio di semi | 1 conf in lista | **assente**, ne restano 990 |
+| Pomodorini (servono 750 g, conf. 500 g) | — | 2 conf, 1000 g |
+
+La seconda settimana la lista base è **vuota**: «Niente da comprare qui». L'app ha smesso
+di chiedere quello che c'è già in casa, che è l'intero punto del modello.
+
+Le date sono state fatte invecchiare di sette giorni con `supabase/simula-lunedi.sql` per
+non aspettare il lunedì: **le date sono simulate, il calcolo no** — stessi dati, stessa
+app, stesso `list-builder`.
+
+### Cosa è stato verificato dal vivo
+
+Login col magic link, creazione di ingredienti e piatti, check-in settimanale,
+generazione della lista, split base/top-up sul flag deperibile, spunta, chiusura della
+spesa con accumulo del residuo, allineamento del top-up quando il piano cambia a spesa
+già fatta, correzione manuale del residuo, ricerca fra 70 ingredienti.
+
+### Cosa resta non provato
+
+Classe `stima` e il controllo staple a 90 giorni (serve far invecchiare una data di tre
+mesi), decadimento del fresco e congelatore su dati veri (nessun deperibile ha ancora un
+residuo), riordino delle aree, lettura offline — che **non funziona** ed è un traguardo
+a sé, vedi sotto.
 
 ## Dove sta cosa
 
@@ -44,6 +63,11 @@ Per aggiornarlo: `bash design/build.sh`, poi ripubblicare quello stesso URL con 
 Definitive: `Lista`, `Settimana`, `Piatti`, `Piatto`, `Ingrediente`, `Impostazioni`,
 `Reparti`, `Scegli`, più gli stati vuoti `VuotoPiatti` (primo avvio/onboarding),
 `VuotoLista`, `VuotoFatta`, `VuotoPiatto`.
+
+Due schermate sono nate dopo, dall'uso reale, e **non hanno un artboard**: l'elenco degli
+ingredienti (`/impostazioni/ingredienti`) e la Dispensa (`/dispensa`). Seguono i token e i
+pattern del design system, ma chi le tocca non ha una specifica visiva contro cui
+confrontarsi — a differenza di tutte le altre.
 
 Tutto il resto in `design/` è archivio: direzioni visive scartate (`Dir*`, `Mag*`,
 `Rail*`, `Hero*`), prove di testata e logo (`Hdr*`, `Logo*`, `Grid*`, `Casa*`, `Ico*`),
@@ -142,5 +166,10 @@ successive automatizzano un rituale che non esiste e non vanno costruite.
 
 Il criterio è misurabile e va misurato davvero: per tre settimane consecutive la lista
 viene generata, usata al supermercato, e la spesa serale per il singolo giorno non
-avviene più di una volta a settimana. Questa misurazione **non è ancora iniziata**: non
-c'è ancora un deploy né un utente che usa l'app.
+avviene più di una volta a settimana.
+
+**La misurazione può cominciare dal 31/08/2026**: l'app è in produzione, installata sul
+telefono, il repertorio è popolato e il ciclo del residuo è provato. Quello che manca non
+è più il software: sono tre settimane di spesa vera. Attenzione a non confondere le due
+cose — che il modello funzioni (dimostrato) non dice ancora che il rituale regga
+(da dimostrare), ed è quest'ultimo il vero gate.
