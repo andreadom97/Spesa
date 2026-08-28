@@ -7,9 +7,22 @@ a un eventuale prodotto.
 **In produzione:** <https://spesa-zeta.vercel.app>
 
 **Stato: Fase 1 completa e provata sul campo il 28/08/2026.** Dominio puro
-(`list-builder`, `pantry`, `planner`, `week-shape`, `chiusura`), 258 test automatici
-verdi, schema su un progetto Supabase vero, quattordici schermate, PWA installabile con
-guscio offline sulla lista, in produzione su Vercel.
+(`list-builder`, `pantry`, `planner`, `ciclo`, `week-shape`, `chiusura`), 291 test
+automatici verdi, schema su un progetto Supabase vero, quattordici schermate, PWA
+installabile con guscio offline sulla lista, in produzione su Vercel.
+
+### Il piano vero è caricato
+
+Dal 28/08/2026 il repertorio non è più di prova: sono i **33 piatti del piano
+vegetariano di Andrea** (`supabase/seed-piano-vegetariano.sql`), con il procedimento
+di ogni ricetta nella descrizione, su **due settimane che ruotano** a partire da lunedì
+31 agosto. Ogni piatto dice a quale settimana del giro appartiene e in che giorno; il
+planner li rispetta e ruota solo su quello che resta libero.
+
+Serviva perché il planner ruotava sull'indice del giorno *dentro* la settimana, che
+riparte da zero ogni lunedì: con quattordici pranzi in repertorio ne avrebbe usati per
+sempre gli stessi sette. I pasti configurabili salgono da cinque a sei, per tenere
+separati i due spuntini della giornata invece di accorparli in uno.
 
 ### Il ciclo del residuo è chiuso
 

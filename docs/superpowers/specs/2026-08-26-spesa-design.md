@@ -230,11 +230,24 @@ Prese dopo il ciclo di design; hanno precedenza sulle assunzioni della sezione p
 
 ### Revisione del 2026-08-26, secondo giro
 
-**I pasti non sono un elenco fisso.** `slot_type` smette di essere l'enum colazione/pranzo/cena/spuntino e diventa una tabella `meal_slot_def` per utente: da 3 a 5 righe, con nome e posizione ordinabile. Lo spuntino può stare fra colazione e pranzo, o fra pranzo e cena, o entrambi. Ogni schermata che rende i pasti deve reggere un numero variabile di colonne o righe.
+**I pasti non sono un elenco fisso.** `slot_type` smette di essere l'enum colazione/pranzo/cena/spuntino e diventa una tabella `meal_slot_def` per utente: da 3 a 5 righe, con nome e posizione ordinabile. **Corretto il 28/08/2026: da 3 a 6.** Il piano vero di Andrea ha due spuntini distinti (mattina e pomeriggio) oltre a colazione, pranzo, cena e dopocena; con cinque righe due momenti della giornata finivano accorpati in uno, e la lista ne sommava le grammature in un pasto solo. Il numero vive in `src/domain/pasti.ts`. Lo spuntino può stare fra colazione e pranzo, o fra pranzo e cena, o entrambi. Ogni schermata che rende i pasti deve reggere un numero variabile di colonne o righe.
 
 **"Abitualmente fuori" esce dalla schermata Settimana.** Non è uno stato della settimana ma un default per slot, e vive nelle Impostazioni. La griglia settimanale ha **due soli stati**: acceso (mangi a casa) e spento. Il tratteggio sparisce.
 
 **Settimana diventa il piano alimentare, non solo un check-in.** Ogni pasto acceso mostra il piatto in programma. È la risposta a una lacuna vera: fino a qui nessuna schermata mostrava *cosa* si mangia, solo *se* si è a casa. Tap sul pasto = spegni/accendi; freccia = apri il piatto (da lì lo si potrà sostituire).
+
+**Il piano può girare su più settimane (28/08/2026).** La spec dava per
+scontato che il repertorio fosse piatto e che la rotazione bastasse a dare
+varietà. Il piano vero di Andrea sono due settimane che ruotano, con un
+piatto preciso in un giorno preciso: senza saperlo, l'app riproponeva sempre
+gli stessi sette pranzi (il planner ruotava sull'indice del giorno dentro la
+settimana, che riparte da zero ogni lunedì). Da qui `settings.settimane_ciclo`
+(1-4) e `settings.ciclo_origine`, più `dish.settimana_ciclo` e
+`dish.giorno_ciclo`, tutti facoltativi: con una sola settimana il
+comportamento è quello di prima, e a ciclo spento le etichette sui piatti non
+filtrano niente — spegnere la rotazione non deve nascondere metà repertorio.
+`dish.descrizione` tiene il procedimento della ricetta e non entra in nessun
+calcolo.
 
 **Rinviato a Fase 3, non scartato:** l'avviso di conflitto in dispensa quando si sostituisce un piatto ("se usi lo yogurt qui non ti resta per giovedì"). Richiede di simulare il residuo in avanti su tutta la settimana; è calcolabile con i dati che già abbiamo, ma non è lavoro da Fase 1.
 
