@@ -448,8 +448,16 @@ export default function IngredienteEditor() {
             appearance: textfield;
           }
         `}</style>
+        {/* La prima frase è quella di Ingrediente.dc.html. La seconda è
+            aggiunta: al banco il peso non è mai quello dichiarato — una
+            vaschetta di pollo è 297 g, non 300 — e senza dirlo si cerca una
+            precisione che non esiste, o peggio ci si blocca. Il numero serve
+            a decidere quante confezioni prendere, e lo scarto lo assorbe la
+            Dispensa, che è fatta per questo. */}
         <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', marginTop: 8 }}>
           Quanto ne vendono in una confezione. Serve a sapere quante confezioni comprare, non quanti grammi.
+          Dove il peso varia — carne, pesce, formaggio al banco — basta un valore indicativo: lo scarto lo
+          correggi dalla Dispensa quando il conto non torna.
         </div>
 
         <Etichetta margine="24px 4px 10px">COME SI CONSUMA</Etichetta>
