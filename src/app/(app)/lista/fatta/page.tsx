@@ -87,7 +87,8 @@ export default function ListaFatta() {
           settimanaLabel: formattaPillola(settimana.dataInizio),
           totaleVoci: esito.totale,
         });
-      } catch {
+      } catch (errore) {
+        console.error('lista/fatta: caricamento fallito.', errore);
         if (vivo) setErroreCaricamento('Non riusciamo a caricare la spesa. Riprova più tardi.');
       }
     }
@@ -105,7 +106,8 @@ export default function ListaFatta() {
     try {
       await chiudiSpesa(stato.weekId);
       router.push('/settimana');
-    } catch {
+    } catch (errore) {
+      console.error('lista/fatta: chiusura della spesa fallita.', errore);
       setErroreChiusura('Non siamo riusciti a chiudere la spesa. Riprova.');
       setChiudendo(false);
     }

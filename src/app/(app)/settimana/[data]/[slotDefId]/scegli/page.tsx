@@ -49,10 +49,19 @@ function etichettaGiorno(dataIso: string): { maiuscolo: string; minuscolo: strin
  * stesso motivo — evitare di indovinare un genere che non si conosce, lo
  * stesso principio per cui altrove nel progetto si evita di pluralizzare un
  * nome di pasto scritto liberamente.
+ *
+ * La frase per `cambiato` NON è più quella dell'artboard (I9): prometteva
+ * "la lista della spesa si ricalcola da sola", ma generaListe congela la
+ * lista in shopping_list_item per scelta esplicita — nulla la rigenera dopo.
+ * L'artboard è stato disegnato prima che si decidesse il congelamento. Resta
+ * il tratto che contava nell'originale: prima cosa NON cambia (gli altri
+ * giorni), poi la conseguenza pratica per l'utente — solo che ora è la
+ * conseguenza vera (rigenerare a mano dalla Settimana), non quella
+ * automatica che non esiste.
  */
 function testoNota(cambiato: boolean, nomePasto: string, giorno: string): string {
   if (cambiato) {
-    return `Cambia solo ${nomePasto} di ${giorno}. Gli altri giorni restano come sono, e la lista della spesa si ricalcola da sola.`;
+    return `Cambia solo ${nomePasto} di ${giorno}. Gli altri giorni restano come sono. Se la lista della spesa è già stata creata, non si aggiorna da sola: va rigenerata dalla Settimana.`;
   }
   return `Tocca un piatto per sostituire ${nomePasto} di ${giorno}. Vale solo per quel giorno, non cambia il piatto nel repertorio.`;
 }
@@ -122,7 +131,8 @@ export default function ScegliPiatto() {
 
         setDati({ slotId: slot.id, dishIdOriginale: slot.dishId, nomePasto: def.nome, piatti, areePerPiatto });
         setScelto(slot.dishId);
-      } catch {
+      } catch (errore) {
+        console.error('scegli: caricamento fallito.', errore);
         if (vivo) setErrore('Non riusciamo a caricare i piatti. Riprova più tardi.');
       }
     }
@@ -143,7 +153,8 @@ export default function ScegliPiatto() {
       // non è una transizione di stato casa/fuori.
       await aggiornaSlot(dati.slotId, { dishId: scelto }, 'correzione');
       router.push('/settimana');
-    } catch {
+    } catch (errore) {
+      console.error('scegli: salvataggio della scelta fallito.', errore);
       setErroreSalva('Non siamo riusciti a salvare la scelta. Riprova.');
       setSalvando(false);
     }

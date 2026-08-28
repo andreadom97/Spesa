@@ -31,7 +31,13 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
 
   const paginaEntra = request.nextUrl.pathname.startsWith('/entra');
-  if (!user && !paginaEntra) {
+  // /auth/callback scambia il code del magic link per una sessione: deve
+  // poter girare senza sessione già presente, altrimenti il proxy la
+  // rimanderebbe a /entra prima ancora che la sessione venga scritta. Solo
+  // questo prefisso, non l'intero resto: il matcher qui sotto continua a
+  // proteggere tutte le altre rotte.
+  const paginaAuth = request.nextUrl.pathname.startsWith('/auth');
+  if (!user && !paginaEntra && !paginaAuth) {
     const url = request.nextUrl.clone();
     url.pathname = '/entra';
     return NextResponse.redirect(url);

@@ -3,11 +3,22 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import type { MealSlotDef } from '@/domain/types';
 
+// pastiDiDefault non è nella lista solo per pigrizia: la pagina reale la usa
+// quando leggiSlotDefs() torna vuoto (C3), quindi il mock deve fornirla —
+// altrimenti la pagina la chiamerebbe come undefined e il caricamento
+// fallirebbe in modo silenzioso, mascherando il test come un bug diverso.
+const ASSENZE_VUOTE_MODULO = [false, false, false, false, false, false, false];
 vi.mock('@/data/impostazioni', () => ({
   leggiImpostazioni: vi.fn(),
   salvaImpostazioni: vi.fn(),
   leggiSlotDefs: vi.fn(),
   salvaSlotDefs: vi.fn(),
+  pastiDiDefault: vi.fn(() => [
+    { id: 'default-colazione', nome: 'Colazione', posizione: 0, assenzeAbituali: ASSENZE_VUOTE_MODULO },
+    { id: 'default-spuntino', nome: 'Spuntino', posizione: 1, assenzeAbituali: [false, false, false, false, false, true, true] },
+    { id: 'default-pranzo', nome: 'Pranzo', posizione: 2, assenzeAbituali: [true, true, true, true, true, false, false] },
+    { id: 'default-cena', nome: 'Cena', posizione: 3, assenzeAbituali: ASSENZE_VUOTE_MODULO },
+  ]),
 }));
 
 const back = vi.fn();
@@ -217,6 +228,29 @@ describe('Impostazioni', () => {
       SLOT_PRANZO,
       SLOT_CENA,
     ]));
+  });
+
+  // Regressione su C3: un utente nuovo, mai passato da seed.sql, ha
+  // leggiSlotDefs() vuoto. Senza un seed automatico qui, il primo "+" in
+  // AGGIUNGI PASTO produrrebbe una sola riga, rifiutata dal minimo di 3 di
+  // salvaSlotDefs — un vicolo cieco.
+  it('con leggiSlotDefs() vuoto semina i quattro pasti di default e li salva davvero sul server', async () => {
+    mockDati({ pasti: [] });
+    render(<Impostazioni />);
+
+    expect(await screen.findByDisplayValue('Colazione')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Spuntino')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Pranzo')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Cena')).toBeInTheDocument();
+    expect(screen.getByText('4 DI 5')).toBeInTheDocument();
+
+    await waitFor(() => expect(salvaSlotDefs).toHaveBeenCalledTimes(1));
+    const salvato = vi.mocked(salvaSlotDefs).mock.calls[0][0];
+    expect(salvato.map((p) => p.nome)).toEqual(['Colazione', 'Spuntino', 'Pranzo', 'Cena']);
+    // Spuntino fuori sabato e domenica, Pranzo fuori lunedì-venerdì: gli
+    // stessi valori di supabase/seed.sql, non inventati qui.
+    expect(salvato[1].assenzeAbituali).toEqual([false, false, false, false, false, true, true]);
+    expect(salvato[2].assenzeAbituali).toEqual([true, true, true, true, true, false, false]);
   });
 
   it('il link ordine dei reparti mostra l’anteprima e il riepilogo nell’ordine reale, non un ordine fisso', async () => {

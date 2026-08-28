@@ -96,26 +96,39 @@ describe('Piatto (editor)', () => {
     expect(salva).toBeDisabled();
   });
 
-  it('aggiungere un ingrediente dal selettore sblocca il salvataggio', async () => {
+  // Corretto in sede di revisione finale (I2): un ingrediente appena
+  // aggiunto parte da quantita: 0, e lo schema ha `check (quantita > 0)` —
+  // prima di I2 il pulsante si sbloccava comunque, e salvare falliva sempre
+  // con "Non siamo riusciti a salvare il piatto. Riprova.", per sempre.
+  it('aggiungere un ingrediente dal selettore NON sblocca il salvataggio finché la grammatura è 0; digitarne una valida sì', async () => {
     render(<Piatto />);
     await screen.findByPlaceholderText('Dai un nome al piatto');
 
     fireEvent.click(screen.getByRole('button', { name: /AGGIUNGI\s*INGREDIENTE/ }));
     fireEvent.click(await screen.findByText('Yogurt greco'));
 
-    expect(screen.getByRole('button', { name: 'SALVA PIATTO' })).toBeEnabled();
+    // Quantita 0 appena aggiunto: il salvataggio resta bloccato, e la
+    // tessera segnala quale ingrediente è il problema.
+    expect(screen.getByRole('button', { name: 'SALVA PIATTO' })).toBeDisabled();
     expect(
       screen.queryByText(
         'Un piatto senza ingredienti non entra nella lista della spesa: è la grammatura di ogni ingrediente a dire quanto comprare. Aggiungine almeno uno.',
       ),
     ).not.toBeInTheDocument();
+    const tessera = screen.getByText('Yogurt greco').closest('[data-quantita-valida]');
+    expect(tessera).toHaveAttribute('data-quantita-valida', 'false');
+
+    fireEvent.change(screen.getByLabelText('Grammatura di Yogurt greco'), { target: { value: '150' } });
+
+    expect(screen.getByRole('button', { name: 'SALVA PIATTO' })).toBeEnabled();
+    expect(tessera).toHaveAttribute('data-quantita-valida', 'true');
   });
 
   it('rimuovere l\'ultimo ingrediente ridisattiva il salvataggio', async () => {
+    paramsId = 'd-1';
+    vi.mocked(leggiRepertorio).mockResolvedValue([PIATTO_ESISTENTE]);
     render(<Piatto />);
-    await screen.findByPlaceholderText('Dai un nome al piatto');
-    fireEvent.click(screen.getByRole('button', { name: /AGGIUNGI\s*INGREDIENTE/ }));
-    fireEvent.click(await screen.findByText('Yogurt greco'));
+    await screen.findByDisplayValue('Yogurt e avena');
     expect(screen.getByRole('button', { name: 'SALVA PIATTO' })).toBeEnabled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Rimuovi Yogurt greco' }));

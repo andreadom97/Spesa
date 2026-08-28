@@ -126,7 +126,8 @@ export default function IngredienteEditor() {
             if (vivo) setHaAcquisti(true);
           }
         }
-      } catch {
+      } catch (errore) {
+        console.error('ingrediente: caricamento fallito.', errore);
         if (vivo) setErrore('Non riusciamo a caricare l’ingrediente. Riprova più tardi.');
       } finally {
         if (vivo) setCaricamento(false);
@@ -187,7 +188,8 @@ export default function IngredienteEditor() {
         formatoConfezione: formatoEffettivo,
       });
       router.push(`/piatti/${id}`);
-    } catch {
+    } catch (errore) {
+      console.error('ingrediente: salvataggio fallito.', errore);
       setErrore('Non siamo riusciti a salvare l’ingrediente. Riprova.');
       setSalvando(false);
     }
@@ -214,6 +216,7 @@ export default function IngredienteEditor() {
       await eliminaIngrediente(ingId);
       router.push(`/piatti/${id}`);
     } catch (e) {
+      console.error('ingrediente: eliminazione fallita.', e);
       setErrore(
         e instanceof IngredienteInUsoError
           ? e.message

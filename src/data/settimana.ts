@@ -52,6 +52,14 @@ export async function creaSettimana(lunedi: string): Promise<string> {
   const userId = utente.user!.id;
 
   const [slotDefs, repertorio] = await Promise.all([leggiSlotDefs(), leggiRepertorio()]);
+  // Senza pasti configurati non c'è nulla da mettere negli slot: creare la
+  // week comunque lascerebbe una settimana vuota che leggiSettimanaCorrente
+  // trova già esistente, quindi non verrebbe mai più rigenerata (l'unique su
+  // data_inizio impedisce un secondo tentativo per lo stesso lunedì) — resterebbe
+  // vuota fino al lunedì dopo. Meglio nessuna settimana che una vuota bloccata.
+  if (slotDefs.length === 0) {
+    throw new Error('Configura prima i tuoi pasti in Impostazioni: senza, non c’è nulla da mettere in settimana.');
+  }
 
   const { data: settimana, error } = await sb
     .from('week')

@@ -36,7 +36,8 @@ export default function OrdineReparti() {
       .then((impostazioni) => {
         if (vivo) setDati({ porzioni: impostazioni.moltiplicatorePorzioni, ordine: impostazioni.ordineAree });
       })
-      .catch(() => {
+      .catch((errore) => {
+        console.error('impostazioni/reparti: caricamento fallito.', errore);
         if (vivo) setErroreCaricamento('Non riusciamo a caricare l’ordine dei reparti. Riprova più tardi.');
       });
     return () => {
@@ -65,7 +66,8 @@ export default function OrdineReparti() {
       // ordineAree, ma salvaImpostazioni scrive la riga intera.
       await salvaImpostazioni({ moltiplicatorePorzioni: dati.porzioni, ordineAree: dati.ordine });
       router.push('/impostazioni');
-    } catch {
+    } catch (errore) {
+      console.error('impostazioni/reparti: salvataggio fallito.', errore);
       setErroreSalvataggio('Non siamo riusciti a salvare l’ordine. Riprova.');
       setSalvando(false);
     }

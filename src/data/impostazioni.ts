@@ -7,6 +7,29 @@ import { aSlotDef } from './mappers';
 const MOLTIPLICATORE_DEFAULT = 1;
 
 /**
+ * Gli stessi quattro pasti che supabase/seed.sql inserisce per un utente
+ * seminato a mano: Colazione, Spuntino (fuori sabato e domenica), Pranzo
+ * (fuori dal lunedì al venerdì), Cena. `assenzeAbituali` ha indice 0 =
+ * lunedì, come da MealSlotDef.
+ *
+ * Servono a un utente nuovo che apre le Impostazioni senza essere mai
+ * passato da seed.sql: senza questi, il primo `+` in "AGGIUNGI PASTO"
+ * produrrebbe una sola riga, sotto il minimo di 3 imposto da
+ * salvaSlotDefs — un vicolo cieco (vedi C3).
+ */
+const PASTI_DEFAULT: ReadonlyArray<Pick<MealSlotDef, 'nome' | 'posizione' | 'assenzeAbituali'>> = [
+  { nome: 'Colazione', posizione: 0, assenzeAbituali: [false, false, false, false, false, false, false] },
+  { nome: 'Spuntino', posizione: 1, assenzeAbituali: [false, false, false, false, false, true, true] },
+  { nome: 'Pranzo', posizione: 2, assenzeAbituali: [true, true, true, true, true, false, false] },
+  { nome: 'Cena', posizione: 3, assenzeAbituali: [false, false, false, false, false, false, false] },
+];
+
+/** Genera i quattro pasti di default con id freschi, pronti per salvaSlotDefs(). */
+export function pastiDiDefault(): MealSlotDef[] {
+  return PASTI_DEFAULT.map((p) => ({ ...p, id: crypto.randomUUID() }));
+}
+
+/**
  * Se la riga `settings` non esiste ancora per l'utente (mai salvata),
  * restituisce i default: `costruisciLista` lancia se `ordineAree` non è una
  * permutazione esatta delle sei aree, quindi qui non si può restituire un

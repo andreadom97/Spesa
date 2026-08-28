@@ -1,7 +1,18 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { client } from '@/data/supabase';
+
+/**
+ * Messaggi per ?errore=... sulla query string: ci arriva chi rimbalza da
+ * /auth/callback perché il code mancava o lo scambio con Supabase è
+ * fallito. Senza questo, l'utente vedrebbe solo il form vuoto, senza sapere
+ * che il link appena toccato non ha funzionato.
+ */
+const MESSAGGI_ERRORE: Record<string, string> = {
+  'link-non-valido': 'Questo link non è valido. Richiedine uno nuovo qui sotto.',
+  'accesso-fallito': 'Non siamo riusciti a completare l’accesso. Richiedi un nuovo link.',
+};
 
 export default function Entra() {
   const [email, setEmail] = useState('');
@@ -9,13 +20,33 @@ export default function Entra() {
   const [inviata, setInviata] = useState(false);
   const [errore, setErrore] = useState<string | null>(null);
 
+  // Letto direttamente da window.location, non da useSearchParams: questa è
+  // una pagina interamente client-side (niente dati da leggere lato server),
+  // e useSearchParams costringerebbe a un confine <Suspense> solo per questo.
+  useEffect(() => {
+    const codice = new URLSearchParams(window.location.search).get('errore');
+    if (codice) {
+      // Non è stato derivato da uno stato/prop React (il caso che la regola
+      // vuole evitare): legge una API del browser non disponibile durante
+      // il render statico (window.location). Farlo fuori da un effetto
+      // darebbe un mismatch di idratazione fra il markup prerenderizzato
+      // (senza window) e il client.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setErrore(MESSAGGI_ERRORE[codice] ?? 'Non siamo riusciti a completare l’accesso. Riprova.');
+    }
+  }, []);
+
   async function inviaLink(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setErrore(null);
     setCaricando(true);
-    const { error } = await client().auth.signInWithOtp({ email });
+    const { error } = await client().auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+    });
     setCaricando(false);
     if (error) {
+      console.error('entra: signInWithOtp fallita.', error);
       setErrore('Non siamo riusciti a inviare il link. Riprova.');
       return;
     }

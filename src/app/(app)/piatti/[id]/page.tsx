@@ -133,7 +133,8 @@ export default function Piatto() {
             }
           }
         }
-      } catch {
+      } catch (errore) {
+        console.error('piatto: caricamento fallito.', errore);
         if (vivo) setErrore('Non riusciamo a caricare il piatto. Riprova più tardi.');
       } finally {
         if (vivo) setCaricamento(false);
@@ -179,7 +180,8 @@ export default function Piatto() {
     try {
       await eliminaPiatto(piattoOriginale.id);
       router.push('/piatti');
-    } catch {
+    } catch (errore) {
+      console.error('piatto: eliminazione fallita.', errore);
       setErrore('Non siamo riusciti a eliminare il piatto. Riprova.');
       setEliminando(false);
       setConfermaEliminazione(false);
@@ -187,7 +189,7 @@ export default function Piatto() {
   }
 
   async function salva() {
-    if (ingredienti.length === 0 || salvando) return;
+    if (ingredienti.length === 0 || ingredienti.some((r) => r.quantita <= 0) || salvando) return;
     setSalvando(true);
     setErrore(null);
     try {
@@ -204,7 +206,8 @@ export default function Piatto() {
         ingredienti,
       });
       router.push('/piatti');
-    } catch {
+    } catch (errore) {
+      console.error('piatto: salvataggio fallito.', errore);
       setErrore('Non siamo riusciti a salvare il piatto. Riprova.');
       setSalvando(false);
     }
@@ -233,6 +236,12 @@ export default function Piatto() {
   const nFuori = giorniFuori.size;
 
   const senzaIngredienti = ingredienti.length === 0;
+  // dish_ingredient ha `check (quantita > 0)`: un ingrediente aggiunto e mai
+  // toccato parte da quantita: 0 (vedi aggiungiIngrediente sopra) e
+  // salverebbe sempre lo stesso errore generico, senza dire quale tessera è
+  // il problema (I2). Il salvataggio resta disattivato finché non è > 0.
+  const quantitaNonValide = new Set(ingredienti.filter((r) => r.quantita <= 0).map((r) => r.ingredientId));
+  const salvataggioDisabilitato = senzaIngredienti || quantitaNonValide.size > 0;
 
   return (
     <Cornice onCestino={tapCestino}>
@@ -303,6 +312,7 @@ export default function Piatto() {
                 unita={riga.unita}
                 onCambiaQuantita={(q) => cambiaQuantita(riga.ingredientId, q)}
                 onRimuovi={() => rimuoviIngrediente(riga.ingredientId)}
+                quantitaValida={!quantitaNonValide.has(riga.ingredientId)}
               />
             );
           })}
@@ -416,7 +426,7 @@ export default function Piatto() {
         <button
           type="button"
           onClick={salva}
-          disabled={senzaIngredienti || salvando}
+          disabled={salvataggioDisabilitato || salvando}
           style={{
             flex: 1,
             height: 54,
@@ -428,8 +438,8 @@ export default function Piatto() {
             fontSize: 12,
             fontWeight: 700,
             letterSpacing: '0.09em',
-            background: senzaIngredienti ? 'rgba(20,22,58,0.10)' : 'var(--ink)',
-            color: senzaIngredienti ? 'var(--ter)' : '#FFFFFF',
+            background: salvataggioDisabilitato ? 'rgba(20,22,58,0.10)' : 'var(--ink)',
+            color: salvataggioDisabilitato ? 'var(--ter)' : '#FFFFFF',
           }}
         >
           SALVA PIATTO

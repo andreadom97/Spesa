@@ -54,6 +54,21 @@ export async function generaListe(weekId: string): Promise<void> {
   const { data: u } = await sb.auth.getUser();
   const userId = u.user!.id;
 
+  // Difesa in profondità (C4): una settimana chiusa non va mai rigenerata,
+  // qualunque sia la via per cui si arriva qui. Cancellare e reinserire gli
+  // shopping_list_item perderebbe ogni spunta e ogni risposta ai controlli
+  // già dati — e se a monte lo stato fosse stato riportato a 'confermata'
+  // (il bug di C4 sulla pagina Settimana), una chiudiSpesa successiva
+  // riapplicherebbe il delta al residuo e duplicherebbe le righe purchase.
+  const { data: week, error: eWeek } = await sb
+    .from('week')
+    .select('stato')
+    .eq('id', weekId)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (eWeek) throw eWeek;
+  if (!week || week.stato === 'chiusa') return;
+
   const [slots, dishes, ingredients, pantry, impostazioni] = await Promise.all([
     leggiSlotSettimana(weekId), leggiRepertorio(), leggiIngredienti(),
     leggiDispensa(), leggiImpostazioni(),
@@ -296,10 +311,17 @@ export async function chiudiSpesa(weekId: string): Promise<void> {
       // pantry_state.residuo ha `check (residuo >= 0)`: calcolaChiusura non
       // produce mai un negativo, ma qui si scrive solo quello che è cambiato
       // davvero, mai un valore indovinato per le colonne che non c'entrano.
-      const patch: Record<string, unknown> = {};
+      //
+      // upsert, non update: pantry_state esiste solo per gli ingredienti
+      // creati passando da salvaIngrediente(). Un ingrediente inserito con
+      // un insert SQL diretto (repertorio popolato a mano da un piano di un
+      // nutrizionista) non ha ancora una riga — un update su una riga
+      // inesistente è un no-op silenzioso, senza errore da nessuna parte: il
+      // residuo di quell'ingrediente non si accumulerebbe mai (I1).
+      const patch: Record<string, unknown> = { ingredient_id: a.ingredientId, user_id: userId };
       if (a.residuo !== null) patch.residuo = a.residuo;
       if (a.ultimoAcquisto !== null) patch.ultimo_acquisto = a.ultimoAcquisto;
-      return sb.from('pantry_state').update(patch).eq('ingredient_id', a.ingredientId).eq('user_id', userId);
+      return sb.from('pantry_state').upsert(patch, { onConflict: 'ingredient_id' });
     });
 
   const righeAcquisto = aggiornamenti

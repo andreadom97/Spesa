@@ -73,7 +73,13 @@ describe('Lista', () => {
     expect(screen.getByText('serve 820 g · in casa 0 g')).toBeInTheDocument();
   });
 
-  it('il marchio segna mancante solo l\'area con voci non spuntate: un\'area con solo un controllo resta piena', async () => {
+  // Corretto in sede di revisione finale (I10): prima un'area con solo un
+  // controllo in sospeso risultava "piena" nel marchio, mentre tuttoFatto()
+  // già richiedeva zero controlli oltre a ogni voce spuntata — l'utente
+  // vedeva il marchio completo senza capire perché HAI PRESO TUTTO non
+  // compariva. Ora un controllo in sospeso conta come "manca qualcosa"
+  // anche per il marchio, non solo per il pulsante finale.
+  it('il marchio segna mancante sia l\'area con voci non spuntate sia quella con un controllo ancora in sospeso', async () => {
     vi.mocked(leggiListe).mockResolvedValue(buildLista());
     const { container } = render(<Lista />);
     await screen.findByText('Riso Carnaroli');
@@ -82,8 +88,9 @@ describe('Lista', () => {
     const dispensa = container.querySelector('[data-area="dispensa"]');
     // cereali ha due voci non spuntate: contornata (manca qualcosa).
     expect(cereali).toHaveAttribute('data-stato', 'vuoto');
-    // dispensa ha zero voci (solo un controllo, che non conta per il marchio): piena.
-    expect(dispensa).toHaveAttribute('data-stato', 'pieno');
+    // dispensa ha zero voci ma un controllo ancora in sospeso: manca
+    // qualcosa anche lì, quindi il marchio non deve segnarla piena.
+    expect(dispensa).toHaveAttribute('data-stato', 'vuoto');
   });
 
   it('il tap spunta subito in locale, accoda offline, e sincronizza se il server risponde', async () => {

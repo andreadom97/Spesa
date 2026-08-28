@@ -11,6 +11,8 @@ interface Props {
   unita: UnitaMisura;
   onCambiaQuantita: (quantita: number) => void;
   onRimuovi: () => void;
+  /** false quando quantita <= 0: lo schema ha `check (quantita > 0)`, un salvataggio con questa tessera così fallirebbe sempre (I2). Evidenzia il bordo in rosso invece del colore d'area. */
+  quantitaValida?: boolean;
 }
 
 /**
@@ -35,6 +37,15 @@ function rgba(hex: string, alpha: number): string {
 const ALTEZZA_TAP_QUANTITA = 44;
 
 /**
+ * Nessun colore d'errore è già definito nel design system (niente rosso da
+ * nessuna parte, solo var(--sec) grigio per il testo): questa è l'unica
+ * eccezione, e serve a un caso specifico — quantita <= 0 fallirebbe sempre
+ * il salvataggio contro `check (quantita > 0)` — non a un rosso generico
+ * riusato altrove.
+ */
+const COLORE_NON_VALIDA = '#D9534F';
+
+/**
  * Tessera di un ingrediente dentro il piatto: pillola della grammatura,
  * nome, nome dell'area. La grammatura è la porzione del piano per una
  * persona — mai moltiplicata qui: il moltiplicatore vive nelle Impostazioni
@@ -52,8 +63,9 @@ const ALTEZZA_TAP_QUANTITA = 44;
  * cliccare ovunque nella fascia da 44px porta il focus sull'<input>
  * nativamente, senza bisogno di gestori di click aggiuntivi.
  */
-export function TesseraIngrediente({ nome, area, quantita, unita, onCambiaQuantita, onRimuovi }: Props) {
+export function TesseraIngrediente({ nome, area, quantita, unita, onCambiaQuantita, onRimuovi, quantitaValida = true }: Props) {
   const colore = coloreArea(area);
+  const coloreBordo = quantitaValida ? colore : COLORE_NON_VALIDA;
   const [testoQuantita, setTestoQuantita] = useState(String(quantita));
   const idQuantita = useId();
 
@@ -65,6 +77,7 @@ export function TesseraIngrediente({ nome, area, quantita, unita, onCambiaQuanti
 
   return (
     <div
+      data-quantita-valida={quantitaValida}
       style={{
         position: 'relative',
         minHeight: 108,
@@ -75,7 +88,7 @@ export function TesseraIngrediente({ nome, area, quantita, unita, onCambiaQuanti
         padding: '13px 14px 12px',
         borderRadius: 15,
         background: '#FFFFFF',
-        border: `1px solid ${rgba(colore, 0.45)}`,
+        border: quantitaValida ? `1px solid ${rgba(coloreBordo, 0.45)}` : `1.5px solid ${coloreBordo}`,
         boxShadow: '0 1px 2px rgba(20,22,58,0.05)',
       }}
     >
@@ -119,7 +132,7 @@ export function TesseraIngrediente({ nome, area, quantita, unita, onCambiaQuanti
             fontWeight: 700,
             letterSpacing: '0.07em',
             color: 'var(--ink)',
-            background: rgba(colore, 0.32),
+            background: rgba(coloreBordo, 0.32),
             borderRadius: 999,
             padding: '5px 10px',
           }}

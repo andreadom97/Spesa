@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { AreaId, MealSlotDef } from '@/domain/types';
-import { leggiImpostazioni, salvaImpostazioni, leggiSlotDefs, salvaSlotDefs } from '@/data/impostazioni';
+import { leggiImpostazioni, salvaImpostazioni, leggiSlotDefs, salvaSlotDefs, pastiDiDefault } from '@/data/impostazioni';
 import { coloreArea, nomeArea } from '@/domain/aree';
 
 const GIORNI = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
@@ -48,12 +48,21 @@ export default function Impostazioni() {
   useEffect(() => {
     let vivo = true;
     Promise.all([leggiImpostazioni(), leggiSlotDefs()])
-      .then(([impostazioni, pasti]) => {
+      .then(async ([impostazioni, pastiLetti]) => {
+        if (!vivo) return;
+        // Utente nuovo, mai passato da seed.sql: leggiSlotDefs() torna vuoto.
+        // Si seminano subito i quattro pasti di default e si salvano davvero
+        // — non un fallback solo in memoria, altrimenti il primo "+" in
+        // AGGIUNGI PASTO produrrebbe una sola riga, sotto il minimo di 3
+        // richiesto da salvaSlotDefs (vedi C3).
+        const pasti = pastiLetti.length > 0 ? pastiLetti : pastiDiDefault();
+        if (pastiLetti.length === 0) await salvaSlotDefs(pasti);
         if (!vivo) return;
         pastiSalvatiRef.current = pasti;
         setDati({ porzioni: impostazioni.moltiplicatorePorzioni, ordineAree: impostazioni.ordineAree, pasti });
       })
-      .catch(() => {
+      .catch((errore) => {
+        console.error('impostazioni: caricamento fallito.', errore);
         if (vivo) setErroreCaricamento('Non riusciamo a caricare le impostazioni. Riprova più tardi.');
       });
     return () => {
@@ -70,7 +79,8 @@ export default function Impostazioni() {
     setDati({ ...dati, porzioni: nuovo });
     try {
       await salvaImpostazioni({ moltiplicatorePorzioni: nuovo, ordineAree: dati.ordineAree });
-    } catch {
+    } catch (errore) {
+      console.error('impostazioni: salvataggio delle porzioni fallito.', errore);
       setDati((correnti) => (correnti ? { ...correnti, porzioni: precedente } : correnti));
       setErroreSalvataggio('Non siamo riusciti a salvare. Riprova.');
     }
@@ -83,7 +93,8 @@ export default function Impostazioni() {
     try {
       await salvaSlotDefs(nuovi);
       pastiSalvatiRef.current = nuovi;
-    } catch {
+    } catch (errore) {
+      console.error('impostazioni: salvataggio dei pasti fallito.', errore);
       const salvati = pastiSalvatiRef.current;
       setDati((correnti) => (correnti ? { ...correnti, pasti: salvati } : correnti));
       setErroreSalvataggio('Non siamo riusciti a salvare. Riprova.');

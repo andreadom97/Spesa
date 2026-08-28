@@ -8,7 +8,16 @@ export async function leggiDispensa(): Promise<PantryState[]> {
   return data.map(aPantryState);
 }
 
-/** "sì" scrive ultimo_check = oggi; "no" trasforma il controllo in voce d'acquisto. */
+/**
+ * "sì" scrive ultimo_check = oggi *e* toglie la riga di controllo da
+ * shopping_list_item; "no" trasforma il controllo in voce d'acquisto.
+ *
+ * Senza la delete, la riga resta con origine='controllo' e confezioni=0 —
+ * esattamente la definizione di controllo in sospeso di eControlloInSospeso
+ * (src/data/lista.ts). /lista la nasconde solo in memoria locale, ma
+ * /lista/fatta rilegge dal server: la troverebbe ancora lì e rimbalzerebbe
+ * indietro per sempre, anche dopo aver risposto "sì".
+ */
 export async function rispondiControllo(
   ingredientId: string,
   listaId: string,
@@ -20,12 +29,21 @@ export async function rispondiControllo(
 
   if (ancora) {
     const oggi = new Date().toISOString().slice(0, 10);
-    const { error } = await sb
-      .from('pantry_state')
-      .update({ ultimo_check: oggi })
-      .eq('ingredient_id', ingredientId)
-      .eq('user_id', userId);
-    if (error) throw error;
+    const [{ error: eUpd }, { error: eDel }] = await Promise.all([
+      sb
+        .from('pantry_state')
+        .update({ ultimo_check: oggi })
+        .eq('ingredient_id', ingredientId)
+        .eq('user_id', userId),
+      sb
+        .from('shopping_list_item')
+        .delete()
+        .eq('shopping_list_id', listaId)
+        .eq('ingredient_id', ingredientId)
+        .eq('user_id', userId),
+    ]);
+    if (eUpd) throw eUpd;
+    if (eDel) throw eDel;
     return;
   }
 

@@ -308,4 +308,33 @@ describe('Settimana (piano alimentare)', () => {
     expect(await screen.findByText('Non siamo riusciti a confermare la settimana. Riprova.')).toBeInTheDocument();
     expect(push).not.toHaveBeenCalledWith('/lista');
   });
+
+  // Regressione su C4: riconfermare una settimana già confermata (o chiusa)
+  // cancellava e reinseriva la lista, perdendo ogni spunta e risposta ai
+  // controlli, e su una settimana chiusa riportava lo stato a 'confermata',
+  // disarmando il guard di idempotenza di chiudiSpesa.
+  it('su una settimana già confermata il pulsante diventa "VAI ALLA LISTA" e naviga soltanto, senza toccare il server', async () => {
+    mockCarico({ ...SETTIMANA_BASE, stato: 'confermata' });
+    render(<Settimana />);
+    await screen.findByText('Yogurt e frutta');
+
+    expect(screen.queryByText('CONFERMA E CREA LA LISTA')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('VAI ALLA LISTA'));
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/lista'));
+    expect(confermaSettimana).not.toHaveBeenCalled();
+    expect(generaListe).not.toHaveBeenCalled();
+  });
+
+  it('su una settimana già chiusa il pulsante diventa "VAI ALLA LISTA" e naviga soltanto, senza toccare il server', async () => {
+    mockCarico({ ...SETTIMANA_BASE, stato: 'chiusa' });
+    render(<Settimana />);
+    await screen.findByText('Yogurt e frutta');
+
+    fireEvent.click(screen.getByText('VAI ALLA LISTA'));
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/lista'));
+    expect(confermaSettimana).not.toHaveBeenCalled();
+    expect(generaListe).not.toHaveBeenCalled();
+  });
 });

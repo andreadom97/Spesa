@@ -80,10 +80,22 @@ function risolviSettimanaConfermata(liste: unknown[]) {
   };
 }
 
-/** Estrae il patch dell'unica chiamata update() su pantry_state per un dato ingredientId. */
+/**
+ * Estrae il patch dell'unica chiamata upsert() su pantry_state per un dato
+ * ingredientId, spogliato di ingredient_id/user_id (le chiavi che
+ * identificano la riga, non il "cosa cambia" verificato dai test). upsert,
+ * non update (I1): niente .eq() a valle da cercare, l'ingrediente si
+ * riconosce dal corpo stesso della scrittura.
+ */
 function patchPantry(scritture: Chiamata[][], ingredientId: string): Record<string, unknown> | undefined {
-  const chiamate = scritture.find((c) => c.some((x) => x.metodo === 'eq' && x.args[0] === 'ingredient_id' && x.args[1] === ingredientId));
-  return chiamate?.find((x) => x.metodo === 'update')?.args[0] as Record<string, unknown> | undefined;
+  const chiamata = scritture
+    .flat()
+    .find((x) => x.metodo === 'upsert' && (x.args[0] as Record<string, unknown>).ingredient_id === ingredientId);
+  if (!chiamata) return undefined;
+  const patch = { ...(chiamata.args[0] as Record<string, unknown>) };
+  delete patch.ingredient_id;
+  delete patch.user_id;
+  return patch;
 }
 
 describe('chiudiSpesa', () => {

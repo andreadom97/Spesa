@@ -23,6 +23,7 @@ interface Repertorio {
   settimana: {
     id: string;
     dataInizio: string;
+    stato: 'bozza' | 'confermata' | 'chiusa';
     slots: MealSlot[];
   };
   slotDefs: MealSlotDef[];
@@ -92,7 +93,7 @@ export default function Settimana() {
         if (!vivo) return;
 
         setDati({
-          settimana: { id: corrente.id, dataInizio: corrente.dataInizio, slots: corrente.slots },
+          settimana: { id: corrente.id, dataInizio: corrente.dataInizio, stato: corrente.stato, slots: corrente.slots },
           slotDefs,
           piatti,
           ingredienti,
@@ -102,7 +103,8 @@ export default function Settimana() {
         const giorni = giorniDellaSettimana(corrente.dataInizio);
         const indiceOggi = giorni.indexOf(oggiIso());
         setSelezionato(indiceOggi >= 0 ? indiceOggi : 0);
-      } catch {
+      } catch (errore) {
+        console.error('settimana: caricamento fallito.', errore);
         if (vivo) setErroreCaricamento('Non riusciamo a caricare la settimana. Riprova più tardi.');
       }
     }
@@ -170,7 +172,8 @@ export default function Settimana() {
     aggiornaSlotLocale(risultato);
     try {
       await aggiornaSlot(slot.id, { stato: nuovoStato }, 'checkin');
-    } catch {
+    } catch (errore) {
+      console.error('settimana: check-in fallito.', errore);
       aggiornaSlotLocale(slot);
       setErroreCheckin('Non siamo riusciti a salvare il cambiamento. Riprova.');
     }
@@ -180,15 +183,30 @@ export default function Settimana() {
     router.push(`/piatti/${dishId}`);
   }
 
+  /**
+   * Una settimana già confermata o chiusa NON deve mai rifare confermaSettimana
+   * + generaListe: generaListe cancella e reinserisce shopping_list_item,
+   * perdendo ogni spunta e risposta ai controlli già dati, e confermaSettimana
+   * riporterebbe una settimana 'chiusa' a 'confermata', disarmando il guard
+   * di idempotenza di chiudiSpesa — una seconda chiusura duplicherebbe le
+   * righe purchase e sottrarrebbe di nuovo il fabbisogno dal residuo (C4).
+   * Il pulsante qui sotto diventa un semplice "VAI ALLA LISTA": naviga e
+   * basta, non tocca mai il server.
+   */
   async function confermaEVaiLista() {
     if (confermando) return;
+    if (settimana.stato !== 'bozza') {
+      router.push('/lista');
+      return;
+    }
     setConfermando(true);
     setErroreConferma(null);
     try {
       await confermaSettimana(settimana.id);
       await generaListe(settimana.id);
       router.push('/lista');
-    } catch {
+    } catch (errore) {
+      console.error('settimana: conferma o generazione della lista fallita.', errore);
       setErroreConferma('Non siamo riusciti a confermare la settimana. Riprova.');
       setConfermando(false);
     }
@@ -196,6 +214,7 @@ export default function Settimana() {
 
   const pastiOrdinati = [...slotDefs].sort((a, b) => a.posizione - b.posizione);
   const nCasaSettimana = settimana.slots.filter((s) => s.stato === 'casa' && s.dishId !== null).length;
+  const testoConferma = settimana.stato === 'bozza' ? 'CONFERMA E CREA LA LISTA' : 'VAI ALLA LISTA';
 
   return (
     <Cornice>
@@ -293,7 +312,7 @@ export default function Settimana() {
             opacity: confermando ? 0.7 : 1,
           }}
         >
-          CONFERMA E CREA LA LISTA
+          {testoConferma}
         </button>
       </div>
     </Cornice>

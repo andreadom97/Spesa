@@ -52,14 +52,21 @@ function tuttoFatto(lista: ListaSalvata): boolean {
 }
 
 /**
- * Le aree con almeno una voce non spuntata, considerando base e topup
- * insieme. Solo qui si calcolano le aree mancanti: un'area assente dalla
- * spesa non entra in questo insieme, quindi resta piena nel marchio.
+ * Le aree con almeno una voce non spuntata *o* un controllo ancora in
+ * sospeso, considerando base e topup insieme. Solo qui si calcolano le aree
+ * mancanti: un'area assente dalla spesa non entra in questo insieme, quindi
+ * resta piena nel marchio.
+ *
+ * I controlli contano quanto le voci (I10): tuttoFatto() già richiede zero
+ * controlli in sospeso oltre a ogni voce spuntata, quindi un'area con solo
+ * un controllo aperto non è "a posto" — se il marchio la segnasse piena,
+ * l'utente vedrebbe tutto completo senza capire perché HAI PRESO TUTTO non
+ * compare.
  */
 function areeMancanti(lista: ListaSalvata): AreaId[] {
   const mancanti = new Set<AreaId>();
   for (const sezione of [...lista.base, ...lista.topup]) {
-    if (sezione.voci.some((v) => !v.spuntato)) mancanti.add(sezione.area);
+    if (sezione.voci.some((v) => !v.spuntato) || sezione.controlli.length > 0) mancanti.add(sezione.area);
   }
   return [...mancanti];
 }
@@ -184,7 +191,8 @@ export default function Lista() {
         if (!vivo) return;
         setStato({ weekId: settimana.id, settimanaLabel: label, lista: applicaCodaLista(lista) });
         void sincronizzaCoda();
-      } catch {
+      } catch (errore) {
+        console.error('lista: caricamento fallito.', errore);
         if (vivo) setErroreCaricamento('Non riusciamo a caricare la lista. Riprova più tardi.');
       }
     }
@@ -225,11 +233,13 @@ export default function Lista() {
         try {
           const fresca = await leggiListe(stato.weekId);
           if (fresca) setStato((p) => (p ? { ...p, lista: applicaCodaLista(fresca) } : p));
-        } catch {
+        } catch (errore) {
+          console.error('lista: ricaricamento dopo "no" fallito.', errore);
           setErroreAzione('Risposta salvata, ma non siamo riusciti a ricaricare la lista. Ricarica la pagina.');
         }
       }
-    } catch {
+    } catch (errore) {
+      console.error('lista: risposta al controllo fallita.', errore);
       setErroreAzione('Non siamo riusciti a salvare la risposta. Riprova.');
     } finally {
       setRigaInVolo(null);

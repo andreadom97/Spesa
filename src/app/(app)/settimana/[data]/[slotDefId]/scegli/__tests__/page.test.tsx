@@ -166,7 +166,7 @@ describe('Scegli il piatto', () => {
     fireEvent.click(screen.getByText('Merluzzo e piselli'));
 
     expect(
-      screen.getByText('Cambia solo Cena di giovedì. Gli altri giorni restano come sono, e la lista della spesa si ricalcola da sola.'),
+      screen.getByText('Cambia solo Cena di giovedì. Gli altri giorni restano come sono. Se la lista della spesa è già stata creata, non si aggiorna da sola: va rigenerata dalla Settimana.'),
     ).toBeInTheDocument();
     const bottone = screen.getByText('SOSTITUISCI');
     expect(bottone).not.toBeDisabled();
