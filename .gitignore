@@ -22,3 +22,6 @@ spesa-schermate-fase-1.html
 
 # output incrementale di TypeScript
 tsconfig.tsbuildinfo
+
+# configurazione MCP locale (project ref del progetto Supabase)
+.mcp.json
