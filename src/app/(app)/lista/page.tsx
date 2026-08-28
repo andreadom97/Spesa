@@ -5,7 +5,7 @@ import Link from 'next/link';
 import type { AreaId } from '@/domain/types';
 import { coloreArea, nomeArea } from '@/domain/aree';
 import { leggiSettimanaCorrente } from '@/data/settimana';
-import { leggiListe, spunta, type ListaSalvata, type SezioneSalvata, type VoceSalvata } from '@/data/lista';
+import { leggiListe, spunta, allineaTopUp, type ListaSalvata, type SezioneSalvata, type VoceSalvata } from '@/data/lista';
 import { rispondiControllo } from '@/data/dispensa';
 import { accodaSpunta, leggiCoda, rimuoviConfermate, applicaCodaSuVoci, type Spunta } from '@/offline/coda';
 import { Testata } from '@/components/Testata';
@@ -16,6 +16,19 @@ const INK = '#14163A';
 const MUT = '#8A8A96';
 
 const MESI = ['GEN', 'FEB', 'MAR', 'APR', 'MAG', 'GIU', 'LUG', 'AGO', 'SET', 'OTT', 'NOV', 'DIC'];
+
+/**
+ * Cosa distingue le due liste. La regola esiste nella spec (riga 15: base
+ * settimanale sui non deperibili, top-up per il fresco) ed e' nel codice — e'
+ * il flag `deperibile` dell'ingrediente a smistare — ma non era scritta da
+ * nessuna parte nell'app: due parole in un selettore non spiegano perche' la
+ * stessa spesa sia divisa in due, e chi apre la lista in corsia deve capirlo
+ * a colpo d'occhio, non dedurlo.
+ */
+const SPIEGA_TAB: Record<'base' | 'topup', string> = {
+  base: 'La spesa grossa, una volta a settimana: quello che si conserva.',
+  topup: 'Il fresco, e quello che si aggiunge strada facendo se il piano cambia.',
+};
 
 /** "31 AGO — 6 SET": il lunedì e la domenica della settimana, come nell'artboard. */
 function formattaPillola(dataInizio: string): string {
@@ -180,6 +193,18 @@ export default function Lista() {
           return;
         }
         const label = formattaPillola(settimana.dataInizio);
+        // Prima di leggere, non dopo: se il piano è cambiato da quando la
+        // lista è stata creata (un pasto spostato, un piatto aggiunto), qui
+        // il mancante entra nel top-up. È il solo punto in cui serve —
+        // qualunque strada tu abbia preso per cambiare il piano, la lista è
+        // dove vai a vedere cosa comprare. Non blocca il caricamento: se
+        // fallisce si mostra comunque la lista che c'è, che è meglio di una
+        // schermata di errore in corsia.
+        try {
+          await allineaTopUp(settimana.id);
+        } catch (errore) {
+          console.error('lista: allineamento del top-up fallito.', errore);
+        }
         const lista = await leggiListe(settimana.id);
         if (!lista) {
           if (vivo) {
@@ -306,6 +331,9 @@ export default function Lista() {
         {erroreAzione && (
           <p style={{ margin: '0 4px', fontSize: 12.5, color: 'var(--sec)' }}>{erroreAzione}</p>
         )}
+        <p style={{ margin: '0 4px', fontSize: 12.5, lineHeight: 1.4, color: 'var(--sec)' }}>
+          {SPIEGA_TAB[tab]}
+        </p>
         {sezioniAttive.length === 0 && (
           <p style={{ margin: '20px 4px', fontSize: 14, color: 'var(--sec)', textAlign: 'center' }}>
             Niente da comprare qui.

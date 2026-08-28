@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { AreaId, MealSlotDef } from '@/domain/types';
-import { leggiImpostazioni, salvaImpostazioni, leggiSlotDefs, salvaSlotDefs, pastiDiDefault } from '@/data/impostazioni';
+import { leggiImpostazioni, leggiSlotDefs, salvaSlotDefs, pastiDiDefault } from '@/data/impostazioni';
 import { coloreArea, nomeArea } from '@/domain/aree';
 
 const GIORNI = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
@@ -19,13 +19,12 @@ function conPosizioni(lista: MealSlotDef[]): MealSlotDef[] {
 }
 
 interface Dati {
-  porzioni: number;
   ordineAree: AreaId[];
   pasti: MealSlotDef[];
 }
 
 /**
- * Impostazioni: moltiplicatore porzioni, editor dei pasti (da 3 a 5, non i
+ * Impostazioni: editor dei pasti (da 3 a 5, non i
  * quattro cablati nel mock — leggiSlotDefs() legge quelli reali), e il link
  * all'ordine dei reparti (personalizzazione vera e propria delegata a
  * /impostazioni/reparti, che ha il proprio pulsante SALVA).
@@ -59,7 +58,7 @@ export default function Impostazioni() {
         if (pastiLetti.length === 0) await salvaSlotDefs(pasti);
         if (!vivo) return;
         pastiSalvatiRef.current = pasti;
-        setDati({ porzioni: impostazioni.moltiplicatorePorzioni, ordineAree: impostazioni.ordineAree, pasti });
+        setDati({ ordineAree: impostazioni.ordineAree, pasti });
       })
       .catch((errore) => {
         console.error('impostazioni: caricamento fallito.', errore);
@@ -69,22 +68,6 @@ export default function Impostazioni() {
       vivo = false;
     };
   }, []);
-
-  async function cambiaPorzioni(delta: number) {
-    if (!dati) return;
-    const nuovo = Math.min(6, Math.max(1, dati.porzioni + delta));
-    if (nuovo === dati.porzioni) return;
-    const precedente = dati.porzioni;
-    setErroreSalvataggio(null);
-    setDati({ ...dati, porzioni: nuovo });
-    try {
-      await salvaImpostazioni({ moltiplicatorePorzioni: nuovo, ordineAree: dati.ordineAree });
-    } catch (errore) {
-      console.error('impostazioni: salvataggio delle porzioni fallito.', errore);
-      setDati((correnti) => (correnti ? { ...correnti, porzioni: precedente } : correnti));
-      setErroreSalvataggio('Non siamo riusciti a salvare. Riprova.');
-    }
-  }
 
   /** Persiste l'insieme dei pasti; in caso di errore torna all'ultimo stato salvato dal server. */
   async function persistiPasti(nuovi: MealSlotDef[]) {
@@ -187,54 +170,17 @@ export default function Impostazioni() {
           Impostazioni
         </div>
 
-        <Etichetta margine="6px 4px 10px">PORZIONI</Etichetta>
-        <div
-          style={{
-            display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', borderRadius: 18,
-            background: 'var(--superficie)', border: '1px solid var(--bordo)',
-          }}
-        >
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)' }}>
-              Per quante persone cucini
-            </div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--sec)', marginTop: 5 }}>
-              MOLTIPLICA TUTTE LE GRAMMATURE
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 'none' }}>
-            <button
-              type="button"
-              onClick={() => cambiaPorzioni(-1)}
-              disabled={dati.porzioni <= 1}
-              aria-label="Diminuisci porzioni"
-              style={{ width: 38, height: 38, borderRadius: 12, background: 'rgba(20,22,58,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-            >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                <path d="M3.4 8h9.2" stroke="var(--ink)" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            </button>
-            <span style={{ width: 34, textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: 19, fontWeight: 700, color: 'var(--ink)' }}>
-              {dati.porzioni}
-            </span>
-            <button
-              type="button"
-              onClick={() => cambiaPorzioni(1)}
-              disabled={dati.porzioni >= 6}
-              aria-label="Aumenta porzioni"
-              style={{ width: 38, height: 38, borderRadius: 12, background: 'rgba(20,22,58,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-            >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                <path d="M8 3.4v9.2M3.4 8h9.2" stroke="var(--ink)" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            </button>
-          </div>
-        </div>
-        <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', marginTop: 8 }}>
-          Serve solo a cucinare per più persone: moltiplica le quantità della lista, ma non cambia le
-          grammature dei piatti, che restano quelle di una porzione per un commensale. Non toccare le
-          ricette per adattarle: se cucini in due, basta alzare qui il moltiplicatore a 2.
-        </div>
+        {/* Il moltiplicatore porzioni è tolto dall'interfaccia, non dal
+            modello: `settings.moltiplicatore_porzioni` resta nello schema e
+            list-builder continua a usarlo, fermo a 1. Un moltiplicatore
+            unico presuppone che tutti a tavola mangino la stessa porzione,
+            che è falso appena qualcuno mangia meno — e la lista sbagliata
+            per eccesso non si nota, si nota solo la spesa più cara. Chi
+            cucina per due scriva due banane nel piatto: è più lavoro una
+            volta sola, ma dice la verità. Diverge dalla spec riga 166, dove
+            la voce risulta "Chiusa"; la rimozione è richiesta esplicita di
+            Andrea del 28/08/2026 dopo la prova sul campo. Rimetterlo è una
+            riga di interfaccia, non una migrazione. */}
 
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', margin: '26px 4px 10px' }}>
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--ink)' }}>
@@ -286,6 +232,25 @@ export default function Impostazioni() {
         </div>
 
         {erroreSalvataggio && <p style={{ margin: '10px 6px 0', fontSize: 13, color: 'var(--sec)' }}>{erroreSalvataggio}</p>}
+
+        <Etichetta margine="26px 4px 10px">REPERTORIO</Etichetta>
+        <Link
+          href="/impostazioni/ingredienti"
+          style={{
+            width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: 16, borderRadius: 18,
+            background: 'var(--superficie)', border: '1px solid var(--bordo)',
+          }}
+        >
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)' }}>Ingredienti</div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--sec)', marginTop: 5 }}>
+              AREA, CONFEZIONE, COME SI CONSUMA
+            </div>
+          </div>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <path d="M6 3.2 10.4 8 6 12.8" stroke="var(--ter)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </Link>
 
         <Etichetta margine="26px 4px 10px">SUPERMERCATO</Etichetta>
         <Link

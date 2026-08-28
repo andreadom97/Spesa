@@ -117,13 +117,31 @@ describe('Piatto (editor)', () => {
         'Un piatto senza ingredienti non entra nella lista della spesa: è la grammatura di ogni ingrediente a dire quanto comprare. Aggiungine almeno uno.',
       ),
     ).not.toBeInTheDocument();
-    const tessera = screen.getByText('Yogurt greco').closest('[data-quantita-valida]');
-    expect(tessera).toHaveAttribute('data-quantita-valida', 'false');
+    // getAllByText e non getByText: il nome compare due volte, nella tessera
+    // e nella riga che dice quale grammatura manca. La tessera e' quella
+    // dentro un elemento con data-quantita-valida.
+    const nelleTessere = screen
+      .getAllByText('Yogurt greco')
+      .map((el) => el.closest('[data-quantita-valida]'))
+      .filter((el) => el !== null);
+    expect(nelleTessere).toHaveLength(1);
+    expect(nelleTessere[0]).toHaveAttribute('data-quantita-valida', 'false');
+
+    // La riga che spiega cosa manca: senza, il salvataggio resta bloccato
+    // senza dire perche' e il numero sulla tessera non si legge come campo.
+    expect(
+      screen.getByText(/tocca il numero sulla tessera e scrivi quanto ne usi/),
+    ).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText('Grammatura di Yogurt greco'), { target: { value: '150' } });
 
     expect(screen.getByRole('button', { name: 'SALVA PIATTO' })).toBeEnabled();
-    expect(tessera).toHaveAttribute('data-quantita-valida', 'true');
+    expect(screen.getByText('Yogurt greco').closest('[data-quantita-valida]')).toHaveAttribute(
+      'data-quantita-valida',
+      'true',
+    );
+    // Con la grammatura scritta, la riga che la chiedeva sparisce.
+    expect(screen.queryByText(/tocca il numero sulla tessera/)).not.toBeInTheDocument();
   });
 
   it('rimuovere l\'ultimo ingrediente ridisattiva il salvataggio', async () => {

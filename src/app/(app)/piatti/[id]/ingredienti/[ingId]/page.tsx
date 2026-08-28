@@ -7,6 +7,7 @@ import type { AreaId, ClasseResiduo, UnitaBase } from '@/domain/types';
 import { salvaIngrediente, leggiIngredienti, eliminaIngrediente, IngredienteInUsoError, haAcquistiRegistrati } from '@/data/repertorio';
 import { AREE } from '@/domain/aree';
 import { Segmento } from '@/components/Segmento';
+import { segnalaIngredienteCreato } from '../../bozza';
 
 /**
  * Le tre spiegazioni sono copiate alla lettera da Ingrediente.dc.html,
@@ -80,6 +81,19 @@ export default function IngredienteEditor() {
   const [confermaEliminazione, setConfermaEliminazione] = useState(false);
   const [eliminando, setEliminando] = useState(false);
   const [haAcquisti, setHaAcquisti] = useState(false);
+
+  // Da dove si è arrivati, e quindi dove tornare. L'editor nasce dentro un
+  // piatto, ma l'elenco in Impostazioni riusa questa stessa schermata: senza
+  // saperlo, salvare da lì scaricherebbe l'utente su un piatto nuovo vuoto.
+  // Letto da window.location e non da useSearchParams per non imporre un
+  // confine <Suspense> a tutta la pagina, come già fatto in /entra.
+  const [tornaAImpostazioni, setTornaAImpostazioni] = useState(false);
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search).get('torna');
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (p === 'impostazioni') setTornaAImpostazioni(true);
+  }, []);
+  const destinazioneRitorno = tornaAImpostazioni ? '/impostazioni/ingredienti' : `/piatti/${id}`;
 
   const [nome, setNome] = useState('');
   const [area, setArea] = useState<AreaId | null>(null);
@@ -178,7 +192,7 @@ export default function IngredienteEditor() {
       // alcun segnale. Qui si ricalcola, non solo si ricontrolla.
       const unitaEffettiva = classeResiduo === 'intero' ? 'pz' : unitaBase;
       const formatoEffettivo = classeResiduo === 'intero' ? 1 : formatoConfezione;
-      await salvaIngrediente({
+      const idSalvato = await salvaIngrediente({
         id: nuovo ? undefined : ingId,
         nome: nome.trim(),
         unitaBase: unitaEffettiva,
@@ -187,7 +201,12 @@ export default function IngredienteEditor() {
         deperibile,
         formatoConfezione: formatoEffettivo,
       });
-      router.push(`/piatti/${id}`);
+      // Solo su un ingrediente nuovo: chi apre questa scheda per correggere
+      // un ingrediente già nel piatto non vuole vederselo aggiungere due volte.
+      // Solo tornando a un piatto: da Impostazioni non c'è nessun piatto in
+      // attesa di questo ingrediente.
+      if (nuovo && !tornaAImpostazioni) segnalaIngredienteCreato(id, idSalvato);
+      router.push(destinazioneRitorno);
     } catch (errore) {
       console.error('ingrediente: salvataggio fallito.', errore);
       setErrore('Non siamo riusciti a salvare l’ingrediente. Riprova.');
@@ -204,7 +223,7 @@ export default function IngredienteEditor() {
    */
   function tapCestino() {
     if (nuovo) {
-      router.push(`/piatti/${id}`);
+      router.push(destinazioneRitorno);
       return;
     }
     setConfermaEliminazione(true);
@@ -214,7 +233,7 @@ export default function IngredienteEditor() {
     setEliminando(true);
     try {
       await eliminaIngrediente(ingId);
-      router.push(`/piatti/${id}`);
+      router.push(destinazioneRitorno);
     } catch (e) {
       console.error('ingrediente: eliminazione fallita.', e);
       setErrore(
@@ -444,7 +463,7 @@ export default function IngredienteEditor() {
 
       <div style={{ padding: '8px 16px 22px', display: 'flex', gap: 9 }}>
         <Link
-          href={`/piatti/${id}`}
+          href={destinazioneRitorno}
           style={{
             flex: 'none',
             width: 104,

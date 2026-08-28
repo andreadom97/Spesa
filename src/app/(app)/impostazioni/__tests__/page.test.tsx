@@ -65,42 +65,34 @@ describe('Impostazioni', () => {
     expect(screen.getByText('3 DI 5')).toBeInTheDocument();
   });
 
-  it('il moltiplicatore porzioni va da 1 a 6: ai limiti i pulsanti sono disattivati', async () => {
+  it('non offre piu il moltiplicatore porzioni', async () => {
+    // Tolto dall'interfaccia il 28/08/2026 su richiesta di Andrea dopo la
+    // prova sul campo: un moltiplicatore unico presuppone che tutti a tavola
+    // mangino la stessa porzione. Il campo resta nello schema e in
+    // list-builder, fermo a 1 — qui si verifica solo che non sia piu
+    // governabile da qui, cosi il giorno che lo si reintroduce questo test
+    // fallisce e obbliga a decidere di nuovo.
     mockDati({ porzioni: 1 });
     render(<Impostazioni />);
 
-    expect(await screen.findByText('1')).toBeInTheDocument();
-    const meno = screen.getByLabelText('Diminuisci porzioni');
-    const piu = screen.getByLabelText('Aumenta porzioni');
-    expect(meno).toBeDisabled();
-    expect(piu).not.toBeDisabled();
-
-    fireEvent.click(piu);
-    await waitFor(() => expect(screen.getByText('2')).toBeInTheDocument());
-    expect(salvaImpostazioni).toHaveBeenCalledWith({ moltiplicatorePorzioni: 2, ordineAree: [...ORDINE_AREE_TEST] });
-  });
-
-  it('a 6 porzioni il pulsante + è disattivato e non supera il limite', async () => {
-    mockDati({ porzioni: 6 });
-    render(<Impostazioni />);
-
-    expect(await screen.findByText('6')).toBeInTheDocument();
-    const piu = screen.getByLabelText('Aumenta porzioni');
-    expect(piu).toBeDisabled();
-    fireEvent.click(piu);
+    await screen.findByDisplayValue('Colazione');
+    expect(screen.queryByLabelText('Aumenta porzioni')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Diminuisci porzioni')).not.toBeInTheDocument();
+    expect(screen.queryByText('Per quante persone cucini')).not.toBeInTheDocument();
     expect(salvaImpostazioni).not.toHaveBeenCalled();
   });
 
-  it('se il salvataggio delle porzioni fallisce, torna al valore precedente e mostra un errore', async () => {
+  it('porta all elenco degli ingredienti', async () => {
+    // Era l'unica parte del repertorio senza un elenco: un ingrediente non
+    // usato in nessun piatto non si raggiungeva da nessuna parte.
     mockDati({ porzioni: 1 });
-    vi.mocked(salvaImpostazioni).mockRejectedValue(new Error('rete'));
     render(<Impostazioni />);
 
-    await screen.findByText('1');
-    fireEvent.click(screen.getByLabelText('Aumenta porzioni'));
-
-    await waitFor(() => expect(screen.getByText('Non siamo riusciti a salvare. Riprova.')).toBeInTheDocument());
-    expect(screen.getByText('1')).toBeInTheDocument();
+    await screen.findByDisplayValue('Colazione');
+    expect(screen.getByRole('link', { name: /Ingredienti/ })).toHaveAttribute(
+      'href',
+      '/impostazioni/ingredienti',
+    );
   });
 
   it('sotto il minimo di 3 pasti il pulsante di rimozione è disattivato', async () => {

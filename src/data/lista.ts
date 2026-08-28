@@ -107,6 +107,99 @@ export async function generaListe(weekId: string): Promise<void> {
   }
 }
 
+/**
+ * Aggiunge al top-up quello che il piano chiede e la lista non ha ancora.
+ *
+ * Serve al caso che si presenta ogni settimana: la spesa è già fatta e il
+ * piano cambia — un pasto che si sposta, un ospite, una trasferta che salta.
+ * Senza questo la lista resta ferma a com'era e si ricade sulla spesa serale
+ * del singolo giorno, cioè esattamente il problema che l'app esiste per
+ * togliere (spec, riga 13).
+ *
+ * Perché nel top-up e non nella base, anche per un non deperibile: la base è
+ * la spesa grossa, già fatta. Quello che si aggiunge dopo lo si prende
+ * passando, ed è la definizione di top-up nella spec (riga 15).
+ *
+ * Aggiunge soltanto: non riscrive né rimuove nulla di esistente. È la
+ * differenza con `generaListe`, che cancella e reinserisce — qui le spunte
+ * già date e le risposte ai controlli non vengono mai toccate, e per questo
+ * la funzione è sicura anche su una settimana chiusa, dove il residuo è già
+ * stato aggiornato (il ricalcolo lo legge aggiornato e chiede solo il
+ * mancante vero).
+ *
+ * Conseguenza accettata: togliere un piatto non toglie la voce dalla lista.
+ * Comprare una cosa in più costa poco; far sparire una riga già spuntata
+ * costerebbe la fiducia in tutta la lista.
+ *
+ * Restituisce quante voci ha aggiunto, 0 se non c'era niente da aggiungere.
+ */
+export async function allineaTopUp(weekId: string): Promise<number> {
+  const sb = client();
+  const { data: u } = await sb.auth.getUser();
+  const userId = u.user!.id;
+
+  const { data: liste, error: eListe } = await sb
+    .from('shopping_list')
+    .select('id, tipo')
+    .eq('week_id', weekId)
+    .eq('user_id', userId);
+  if (eListe) throw eListe;
+
+  // Nessuna lista ancora generata: la settimana non è mai stata confermata,
+  // e crearla qui scavalcherebbe il gesto dell'utente.
+  const topup = (liste ?? []).find((l) => l.tipo === 'topup');
+  if (!topup) return 0;
+
+  const idListe = (liste ?? []).map((l) => String(l.id));
+  const { data: esistenti, error: eEsist } = await sb
+    .from('shopping_list_item')
+    .select('ingredient_id')
+    .in('shopping_list_id', idListe);
+  if (eEsist) throw eEsist;
+  const gia = new Set((esistenti ?? []).map((r) => String(r.ingredient_id)));
+
+  const [slots, dishes, ingredients, pantry, impostazioni] = await Promise.all([
+    leggiSlotSettimana(weekId), leggiRepertorio(), leggiIngredienti(),
+    leggiDispensa(), leggiImpostazioni(),
+  ]);
+  const risultato = costruisciLista({
+    slots, dishes, ingredients, pantry, impostazioni,
+    oggi: new Date().toISOString().slice(0, 10),
+  });
+
+  // Solo le voci del piano: i controlli staple nascono dal ciclo dei 90
+  // giorni, non da un cambio di piano, e farli comparire qui sarebbe rumore.
+  const righe = (['base', 'topup'] as const)
+    .flatMap((tipo) => risultato[tipo])
+    .flatMap((sezione) => sezione.voci)
+    .filter((v) => !gia.has(v.ingredientId))
+    .map((v) => ({
+      user_id: userId,
+      shopping_list_id: String(topup.id),
+      ingredient_id: v.ingredientId,
+      fabbisogno: v.fabbisogno,
+      residuo: v.residuo,
+      confezioni: v.confezioni,
+      quantita_totale: v.quantitaTotale,
+      unita: v.unita,
+      area: v.area,
+      origine: 'piano',
+    }));
+
+  if (righe.length === 0) return 0;
+  // upsert che ignora i duplicati, non insert: fra la lettura di `gia` e la
+  // scrittura può essersene infilata un'altra identica — due schede aperte,
+  // due caricamenti ravvicinati della stessa pagina — e `shopping_list_item`
+  // ha `unique (shopping_list_id, ingredient_id)`. Con insert la seconda
+  // fallisce e l'errore finisce sull'utente; qui la riga già presente resta
+  // com'è, spunta compresa, che è esattamente il comportamento voluto.
+  const { error } = await sb
+    .from('shopping_list_item')
+    .upsert(righe, { onConflict: 'shopping_list_id,ingredient_id', ignoreDuplicates: true });
+  if (error) throw error;
+  return righe.length;
+}
+
 /** Forma delle righe come tornano davvero da Supabase: esportata solo per il test di regressione su raggruppaInSezioni. */
 export interface RigaVoceGrezza {
   id: unknown;

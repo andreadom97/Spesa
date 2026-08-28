@@ -81,3 +81,37 @@ export function scartaBozza(id: string): void {
     // Vedi salvaBozza.
   }
 }
+
+const CHIAVE_CREATO = 'spesa:ingrediente-creato:';
+
+/**
+ * L'ingrediente appena creato, da aggiungere al piatto che lo aspetta.
+ *
+ * Chi esce dall'editor del piatto per creare un ingrediente lo sta creando
+ * *per quel piatto*: tornare indietro e doverlo riselezionare a mano è un
+ * passaggio che non serve a niente, e a fine creazione non è nemmeno ovvio
+ * che vada fatto — il piatto ricompare identico a prima.
+ */
+export function segnalaIngredienteCreato(piattoId: string, ingredientId: string): void {
+  const d = deposito();
+  if (!d) return;
+  try {
+    d.setItem(`${CHIAVE_CREATO}${piattoId}`, ingredientId);
+  } catch {
+    // Vedi salvaBozza: al peggio si riseleziona a mano.
+  }
+}
+
+/** Come `riprendiBozza`, consuma: l'ingrediente va aggiunto una volta sola. */
+export function raccogliIngredienteCreato(piattoId: string): string | null {
+  const d = deposito();
+  if (!d) return null;
+  const chiave = `${CHIAVE_CREATO}${piattoId}`;
+  try {
+    const id = d.getItem(chiave);
+    d.removeItem(chiave);
+    return id || null;
+  } catch {
+    return null;
+  }
+}

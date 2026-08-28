@@ -11,7 +11,7 @@ import { giorniDellaSettimana } from '@/domain/date';
 import { coloreArea } from '@/domain/aree';
 import { Segmento } from '@/components/Segmento';
 import { TesseraIngrediente } from '@/components/TesseraIngrediente';
-import { riprendiBozza, salvaBozza, scartaBozza } from './bozza';
+import { raccogliIngredienteCreato, riprendiBozza, salvaBozza, scartaBozza } from './bozza';
 
 const GIORNI_LABEL = ['LUN', 'MAR', 'MER', 'GIO', 'VEN', 'SAB', 'DOM'];
 
@@ -142,6 +142,21 @@ export default function Piatto() {
           setNome(bozza.nome);
           setSlotDefId(bozza.slotDefId);
           setIngredienti(bozza.ingredienti);
+        }
+
+        // Chi è appena tornato dalla creazione di un ingrediente lo aveva
+        // creato per questo piatto: entra da solo, con grammatura da
+        // scrivere. Il catalogo appena letto è la fonte dell'unità di base.
+        const creato = raccogliIngredienteCreato(id);
+        if (creato) {
+          const ing = catalogoIngredienti.find((i) => i.id === creato);
+          if (ing) {
+            setIngredienti((prev) =>
+              prev.some((r) => r.ingredientId === creato)
+                ? prev
+                : [...prev, { ingredientId: creato, quantita: 0, unita: ing.unitaBase }],
+            );
+          }
         }
       } catch (errore) {
         console.error('piatto: caricamento fallito.', errore);
@@ -374,6 +389,27 @@ export default function Piatto() {
         {senzaIngredienti && (
           <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', margin: '14px 6px 0' }}>
             {TESTO_SENZA_INGREDIENTI}
+          </div>
+        )}
+
+        {/* Il bordo rosso della tessera segnala che qualcosa non va, ma non
+            dice cosa fare, e il numero in alto nella tessera non si legge
+            come un campo da riempire — sembra un'etichetta. Senza questa
+            riga il salvataggio resta bloccato senza spiegazione: si prova a
+            toccare in giro finché non si scopre da soli che quel numero si
+            scrive. Nominare gli ingredienti che mancano evita anche di
+            doverli cercare a occhio in una griglia lunga. */}
+        {!senzaIngredienti && quantitaNonValide.size > 0 && (
+          <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', margin: '14px 6px 0' }}>
+            {quantitaNonValide.size === 1 ? 'Manca la grammatura di' : 'Mancano le grammature di'}{' '}
+            <strong style={{ color: 'var(--ink)', fontWeight: 700 }}>
+              {ingredienti
+                .filter((r) => quantitaNonValide.has(r.ingredientId))
+                .map((r) => catalogoPerId.get(r.ingredientId)?.nome)
+                .filter(Boolean)
+                .join(', ')}
+            </strong>
+            : tocca il numero sulla tessera e scrivi quanto ne usi per una porzione.
           </div>
         )}
 
