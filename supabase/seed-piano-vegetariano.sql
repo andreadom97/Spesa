@@ -4,8 +4,11 @@
 -- settimane che ruotano.
 --
 -- RICHIEDE LE MIGRAZIONI 0004 (settimana_ciclo, giorno_ciclo) E 0005
--- (descrizione), e richiede che i pasti si chiamino Colazione, Spuntino,
--- Pranzo, Cena, Dopocena. Fallisce con un errore esplicito se manca qualcosa.
+-- (descrizione), e richiede che i pasti si chiamino Colazione, Pranzo,
+-- Spuntino pomeriggio, Cena, Dopocena. Fallisce con un errore esplicito se
+-- manca qualcosa. Lo spuntino e' quello del pomeriggio perche' i suoi due
+-- piatti dicono "verso le 17:30" e "giorni di riposo": lo spuntino della
+-- mattina e' un sesto pasto a parte, che questo piano non copre.
 --
 -- COSA HO DECISO IO, dove il piano non poteva dirlo (rivisto e approvato da
 -- Andrea il 28/08/2026):
@@ -20,7 +23,7 @@
 --   - pesce surgelato e non fresco, perché nel piano sta nella lista del
 --     freezer. Conseguenza voluta: non è deperibile, quindi va nella spesa
 --     base e il suo residuo non decade.
---   - due spuntini distinti (allenamento / riposo) e due dopocena, da
+--   - due spuntini del pomeriggio (allenamento / riposo) e due dopocena, da
 --     scegliere quando si assegna la settimana.
 --
 -- IMPOSTA ANCHE IL CICLO: due settimane, con origine lunedì 31 agosto 2026.
@@ -43,9 +46,9 @@ declare
     ['Porridge con banana', 'Colazione', null, null,
      'Fiocchi d''avena e latte al microonde 2 minuti a piena potenza, mescola, altri 40 secondi. Fuori dal microonde aggiungi lo yogurt greco, la banana a rondelle e la frutta secca. Cannella se ti va. Tre minuti in tutto, e nessuna decisione da prendere alle sette del mattino.'],
 
-    ['Pane con miele e uva', 'Spuntino', null, null,
+    ['Pane con miele e uva', 'Spuntino pomeriggio', null, null,
      'Lo spuntino dei giorni di allenamento, verso le 17:30. Pane con miele e un grappolo d''uva: carboidrati che arrivano in tempo senza pesare sullo stomaco. Se hai mangiato tardi a pranzo, sostituisci con 150 g di skyr e un cucchiaino di miele.'],
-    ['Frutta e frutta secca', 'Spuntino', null, null,
+    ['Frutta e frutta secca', 'Spuntino pomeriggio', null, null,
      'Lo spuntino dei giorni di riposo: frutta di stagione con venti grammi di mandorle o tre noci.'],
 
     ['Yogurt greco con frutta', 'Dopocena', null, null,
