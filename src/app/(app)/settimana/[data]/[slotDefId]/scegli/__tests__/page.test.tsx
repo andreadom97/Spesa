@@ -118,6 +118,45 @@ const PANTRY_RICOTTA_COPERTA: PantryState = {
   ingredientId: 'i-4', residuo: 100, ultimoAcquisto: null, giorniStimati: 90, congelato: false, ultimoCheck: null,
 };
 
+// Piatto con DUE componenti (fix round 1, finding ALTA): serve a provare che
+// un ciclo andata-e-ritorno su un componente (che lascia una entry in
+// scelteCorrenti identica all'originale) non viene mandato come scelta
+// manuale, mentre un cambio vero sull'altro componente sì.
+const ING_PREZZEMOLO: Ingredient = {
+  id: 'i-6', nome: 'Prezzemolo', unitaBase: 'g', area: 'ortofrutta',
+  classeResiduo: 'stima', deperibile: true, formatoConfezione: 30,
+};
+const ING_BASILICO: Ingredient = {
+  id: 'i-7', nome: 'Basilico', unitaBase: 'g', area: 'ortofrutta',
+  classeResiduo: 'stima', deperibile: true, formatoConfezione: 30,
+};
+const DISH_TORTA_DUE: Dish = {
+  id: 'd-4', nome: 'Torta salata doppia', slotDefId: 'sd-3', fonte: 'proprio', attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
+  ingredienti: [],
+  componenti: [
+    {
+      id: 'c-farcitura2',
+      nome: 'Farcitura',
+      opzioni: [
+        { id: 'o-ricotta2', righe: [{ ingredientId: 'i-4', quantita: 50, unita: 'g' }] },
+        { id: 'o-noci2', righe: [{ ingredientId: 'i-5', quantita: 20, unita: 'g' }] },
+      ],
+    },
+    {
+      id: 'c-guarnizione',
+      nome: 'Guarnizione',
+      opzioni: [
+        { id: 'o-prezzemolo', righe: [{ ingredientId: 'i-6', quantita: 5, unita: 'g' }] },
+        { id: 'o-basilico', righe: [{ ingredientId: 'i-7', quantita: 5, unita: 'g' }] },
+      ],
+    },
+  ],
+};
+const SLOT_TORTA_DUE: MealSlot = { id: 'slot-torta-due', data: DATA, slotDefId: 'sd-3', stato: 'casa', dishId: 'd-4', fonteStato: 'default', scelte: {} };
+const SETTIMANA_TORTA_DUE: SettimanaCorrente = {
+  id: 'week-3', dataInizio: '2026-08-24', stato: 'bozza', slots: [SLOT_TORTA_DUE],
+};
+
 // Ordine deliberatamente diverso da ORDINE_AREE_DEFAULT (che metterebbe
 // macelleria prima di cereali): prova che i quadratini seguono l'ordine
 // scelto dall'utente in Impostazioni, non l'ordine fisso di aree.ts.
@@ -144,6 +183,21 @@ function mockCaricoConComponenti() {
   vi.mocked(leggiSlotDefs).mockResolvedValue(SLOT_DEFS);
   vi.mocked(leggiRepertorio).mockResolvedValue([DISH_TORTA]);
   vi.mocked(leggiIngredienti).mockResolvedValue([ING_RICOTTA, ING_NOCI]);
+  vi.mocked(leggiImpostazioni).mockResolvedValue({
+    moltiplicatorePorzioni: 1,
+    ordineAree: [...ORDINE_AREE_TEST],
+    settimaneCiclo: 1,
+    cicloOrigine: null,
+  });
+  vi.mocked(leggiDispensa).mockResolvedValue([PANTRY_RICOTTA_COPERTA]);
+}
+
+// Variante con un piatto a DUE componenti, per il test del ciclo no-op (fix round 1).
+function mockCaricoConDueComponenti() {
+  vi.mocked(leggiSettimanaCorrente).mockResolvedValue(SETTIMANA_TORTA_DUE);
+  vi.mocked(leggiSlotDefs).mockResolvedValue(SLOT_DEFS);
+  vi.mocked(leggiRepertorio).mockResolvedValue([DISH_TORTA_DUE]);
+  vi.mocked(leggiIngredienti).mockResolvedValue([ING_RICOTTA, ING_NOCI, ING_PREZZEMOLO, ING_BASILICO]);
   vi.mocked(leggiImpostazioni).mockResolvedValue({
     moltiplicatorePorzioni: 1,
     ordineAree: [...ORDINE_AREE_TEST],
@@ -328,5 +382,40 @@ describe('Scegli il piatto', () => {
       ),
     );
     await waitFor(() => expect(push).toHaveBeenCalledWith('/settimana'));
+  });
+
+  it('un ciclo andata-e-ritorno su un componente non lo manda come scelta manuale, un cambio vero su un altro sì', async () => {
+    mockCaricoConDueComponenti();
+    vi.mocked(aggiornaSlot).mockResolvedValue(undefined);
+    render(<ScegliPiatto />);
+    await screen.findByText('Torta salata doppia');
+
+    // Farcitura: Ricotta (default) -> Noci -> di nuovo Ricotta. Torna
+    // esattamente all'originale: non deve comparire nel patch.
+    fireEvent.click(screen.getByText('Ricotta'));
+    fireEvent.click(screen.getByText('Noci'));
+    expect(screen.getByText('Ricotta')).toBeInTheDocument();
+
+    // Guarnizione: Prezzemolo (default) -> Basilico. Cambio vero.
+    fireEvent.click(screen.getByText('Prezzemolo'));
+    expect(screen.getByText('Basilico')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('SOSTITUISCI'));
+
+    await waitFor(() =>
+      expect(aggiornaSlot).toHaveBeenCalledWith(
+        'slot-torta-due',
+        { dishId: 'd-4', scelte: { 'c-guarnizione': { opzioneId: 'o-basilico', fonte: 'manuale' } } },
+        'correzione',
+      ),
+    );
+  });
+
+  it('la riga del componente ha un aria-label che dice cosa cambia e qual è l\'opzione corrente', async () => {
+    mockCaricoConComponenti();
+    render(<ScegliPiatto />);
+    await screen.findByText('Torta salata');
+
+    expect(screen.getByLabelText('Cambia Farcitura: ora Ricotta')).toBeInTheDocument();
   });
 });

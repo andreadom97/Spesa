@@ -184,16 +184,32 @@ function ilPiattoOLeScelteSonoCambiate(
 /**
  * Le scelte manuali sui componenti del piatto `dish` da mandare ad
  * `aggiornaSlot`: solo quelle presenti in `scelteCorrenti` (toccate a mano,
- * qui o in una sessione precedente), mai l'intero record — un componente di
- * un piatto diverso da quello selezionato non deve mai finire nel patch.
+ * qui o in una sessione precedente) E diverse dall'opzione originale
+ * effettiva (`scelteOriginali[c.id]?.opzioneId`, o il default — la prima —
+ * quando lo slot non aveva nulla registrato per quel componente).
+ *
+ * Il filtro sulla differenza non è ridondante col semplice "presente in
+ * scelteCorrenti": un ciclo andata-e-ritorno (avanti e poi di nuovo avanti
+ * fino a ripassare per l'originale) lascia una entry in scelteCorrenti anche
+ * quando l'utente è tornato esattamente dov'era. Mandarla come 'manuale'
+ * marcherebbe quel componente come deciso a mano per sempre — il planner non
+ * lo ricalcolerebbe più — per un tocco che l'utente ha di fatto annullato.
+ *
  * `undefined` (non `{}`) quando non c'è nulla da mandare: `aggiornaSlot`
  * tratta `scelte` assente come "non toccare", non come "azzera".
  */
-function scelteManualiDaMandare(dish: Dish, scelteCorrenti: Record<string, Scelta>): Record<string, Scelta> | undefined {
+function scelteManualiDaMandare(
+  dish: Dish,
+  scelteCorrenti: Record<string, Scelta>,
+  scelteOriginali: Record<string, Scelta>,
+): Record<string, Scelta> | undefined {
   const scelte: Record<string, Scelta> = {};
   for (const c of dish.componenti) {
     const s = scelteCorrenti[c.id];
-    if (s !== undefined) scelte[c.id] = s;
+    if (s === undefined) continue;
+    const originale = scelteOriginali[c.id]?.opzioneId ?? c.opzioni[0]?.id;
+    if (s.opzioneId === originale) continue;
+    scelte[c.id] = s;
   }
   return Object.keys(scelte).length > 0 ? scelte : undefined;
 }
@@ -288,7 +304,7 @@ export default function ScegliPiatto() {
     try {
       const dishScelto = dati.piatti.find((p) => p.id === scelto) ?? null;
       const patch: { dishId: string | null; scelte?: Record<string, Scelta> } = { dishId: scelto };
-      const scelteDaMandare = dishScelto ? scelteManualiDaMandare(dishScelto, scelteCorrenti) : undefined;
+      const scelteDaMandare = dishScelto ? scelteManualiDaMandare(dishScelto, scelteCorrenti, dati.scelteOriginali) : undefined;
       if (scelteDaMandare !== undefined) patch.scelte = scelteDaMandare;
       // 'correzione' qui è inerte: aggiornaSlot usa `fonte` solo per un patch
       // di `stato` (gerarchia delle fonti). Un patch che tocca solo `dishId`
@@ -439,6 +455,7 @@ export default function ScegliPiatto() {
                   key={componente.id}
                   type="button"
                   onClick={() => toccaComponente(componente)}
+                  aria-label={`Cambia ${componente.nome}: ora ${nomeOpzione(opzione, dati.nomePerIngrediente)}`}
                   style={{
                     width: '100%',
                     display: 'flex',
