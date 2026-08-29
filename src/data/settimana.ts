@@ -1,4 +1,4 @@
-import type { FonteStato, MealSlot, StatoSlot } from '@/domain/types';
+import type { FonteStato, MealSlot, Scelta, StatoSlot } from '@/domain/types';
 import { generaSettimana, applicaStato } from '@/domain/week-shape';
 import { assegnaPiatti } from '@/domain/planner';
 import { settimanaDelCiclo, settimaneTrascorse } from '@/domain/ciclo';
@@ -6,7 +6,8 @@ import { lunediDi } from '@/domain/date';
 import { client } from './supabase';
 import { aMealSlot } from './mappers';
 import { leggiImpostazioni, leggiSlotDefs } from './impostazioni';
-import { leggiRepertorio } from './repertorio';
+import { leggiRepertorio, leggiIngredienti } from './repertorio';
+import { leggiDispensa } from './dispensa';
 
 export interface SettimanaCorrente {
   id: string;
@@ -52,10 +53,12 @@ export async function creaSettimana(lunedi: string): Promise<string> {
   const { data: utente } = await sb.auth.getUser();
   const userId = utente.user!.id;
 
-  const [slotDefs, repertorio, impostazioni] = await Promise.all([
+  const [slotDefs, repertorio, impostazioni, ingredients, pantry] = await Promise.all([
     leggiSlotDefs(),
     leggiRepertorio(),
     leggiImpostazioni(),
+    leggiIngredienti(),
+    leggiDispensa(),
   ]);
   // Senza pasti configurati non c'è nulla da mettere negli slot: creare la
   // week comunque lascerebbe una settimana vuota che leggiSettimanaCorrente
@@ -92,9 +95,15 @@ export async function creaSettimana(lunedi: string): Promise<string> {
       })
       : null,
     settimaneTrascorse: settimaneTrascorse(lunedi, impostazioni.cicloOrigine),
+    ingredients,
+    pantry,
+    oggi: new Date().toISOString().slice(0, 10),
+    moltiplicatorePorzioni: impostazioni.moltiplicatorePorzioni,
   });
 
-  const { error: eIns } = await sb.from('meal_slot').insert(
+  // `.select(...)` sull'insert: senza gli id tornati indietro non si saprebbe
+  // a quale meal_slot agganciare le righe di meal_slot_choice qui sotto.
+  const { data: slotInseriti, error: eIns } = await sb.from('meal_slot').insert(
     assegnata.map((s) => ({
       user_id: userId,
       week_id: weekId,
@@ -104,8 +113,31 @@ export async function creaSettimana(lunedi: string): Promise<string> {
       dish_id: s.dishId,
       fonte_stato: s.fonteStato,
     })),
-  );
+  ).select('id, data, slot_def_id');
   if (eIns) throw eIns;
+
+  // Si riabbina per (data, slot_def_id): l'insert non garantisce che
+  // l'ordine di ritorno coincida con quello delle righe inviate.
+  const idPerSlot = new Map(
+    (slotInseriti ?? []).map((r) => [`${String(r.data).slice(0, 10)}|${String(r.slot_def_id)}`, String(r.id)]),
+  );
+
+  const righeScelte = assegnata.flatMap((s) => {
+    if (Object.keys(s.scelte).length === 0) return [];
+    const mealSlotId = idPerSlot.get(`${s.data}|${s.slotDefId}`);
+    if (!mealSlotId) return [];
+    return Object.entries(s.scelte).map(([componenteId, scelta]) => ({
+      user_id: userId,
+      meal_slot_id: mealSlotId,
+      componente_id: componenteId,
+      option_id: scelta.opzioneId,
+      fonte: scelta.fonte,
+    }));
+  });
+  if (righeScelte.length > 0) {
+    const { error: eScelte } = await sb.from('meal_slot_choice').insert(righeScelte);
+    if (eScelte) throw eScelte;
+  }
 
   return weekId;
 }
@@ -123,10 +155,19 @@ export async function creaSettimana(lunedi: string): Promise<string> {
  * schermata "Scegli il piatto" (Task 13) fallirebbe in silenzio proprio sugli
  * slot che l'utente ha già toccato durante il check-in — cioè quelli su cui
  * è più probabile che voglia cambiare piatto.
+ *
+ * Anche `scelte` è un percorso indipendente dalla gerarchia delle fonti, come
+ * `dishId`: un upsert su `meal_slot_choice` per componente nominato nel patch
+ * (`onConflict: 'meal_slot_id,componente_id'`), le scelte non nominate restano
+ * quelle che c'erano. Unica differenza da `dishId` da solo: quando il patch
+ * cambia anche il piatto (Scegli lo ha sostituito), si cancellano prima TUTTE
+ * le `meal_slot_choice` dello slot — le scelte sui componenti del piatto
+ * vecchio non hanno significato su quello nuovo, e lasciarle lì rischia di
+ * agganciare per errore un option_id del piatto sbagliato.
  */
 export async function aggiornaSlot(
   slotId: string,
-  patch: { stato?: StatoSlot; dishId?: string | null },
+  patch: { stato?: StatoSlot; dishId?: string | null; scelte?: Record<string, Scelta> },
   fonte: FonteStato,
 ): Promise<void> {
   const sb = client();
@@ -160,14 +201,40 @@ export async function aggiornaSlot(
     aggiornamento.dish_id = patch.dishId;
   }
 
-  if (Object.keys(aggiornamento).length === 0) return;
+  if (Object.keys(aggiornamento).length > 0) {
+    const { error: eUpd } = await sb
+      .from('meal_slot')
+      .update(aggiornamento)
+      .eq('id', slotId)
+      .eq('user_id', userId);
+    if (eUpd) throw eUpd;
+  }
 
-  const { error: eUpd } = await sb
-    .from('meal_slot')
-    .update(aggiornamento)
-    .eq('id', slotId)
-    .eq('user_id', userId);
-  if (eUpd) throw eUpd;
+  if (patch.dishId !== undefined) {
+    // Il piatto è cambiato: le scelte registrate sul piatto vecchio non
+    // hanno più significato, si ripulisce prima di scrivere le nuove.
+    const { error: eDel } = await sb
+      .from('meal_slot_choice')
+      .delete()
+      .eq('meal_slot_id', slotId);
+    if (eDel) throw eDel;
+  }
+
+  if (patch.scelte !== undefined) {
+    const righe = Object.entries(patch.scelte).map(([componenteId, scelta]) => ({
+      user_id: userId,
+      meal_slot_id: slotId,
+      componente_id: componenteId,
+      option_id: scelta.opzioneId,
+      fonte: scelta.fonte,
+    }));
+    if (righe.length > 0) {
+      const { error: eUps } = await sb
+        .from('meal_slot_choice')
+        .upsert(righe, { onConflict: 'meal_slot_id,componente_id' });
+      if (eUps) throw eUps;
+    }
+  }
 }
 
 export async function confermaSettimana(weekId: string): Promise<void> {
@@ -185,9 +252,17 @@ export async function confermaSettimana(weekId: string): Promise<void> {
 export async function leggiSlotSettimana(weekId: string): Promise<MealSlot[]> {
   const { data, error } = await client()
     .from('meal_slot')
-    .select('*')
+    .select('*, meal_slot_choice(componente_id, option_id, fonte)')
     .eq('week_id', weekId)
     .order('data');
   if (error) throw error;
-  return data.map(aMealSlot);
+  return data.map((r) => ({
+    ...aMealSlot(r),
+    scelte: Object.fromEntries(
+      ((r.meal_slot_choice ?? []) as Record<string, unknown>[]).map((c) => [
+        String(c.componente_id),
+        { opzioneId: String(c.option_id), fonte: c.fonte as Scelta['fonte'] },
+      ]),
+    ),
+  }));
 }
