@@ -65,11 +65,26 @@ export default function Settimana() {
   // fallback nel catch qui sotto, che è la vera rete di sicurezza.
   const creazioneInCorsoRef = useRef<Promise<void> | null>(null);
 
-  useEffect(() => {
-    let vivo = true;
+  /**
+   * Unico punto che cambia `vista`: azzera tutto lo stato derivato dal
+   * caricamento precedente PRIMA di far scattare l'effetto (non dentro,
+   * dove `react-hooks/set-state-in-effect` lo vieta — lo setState va nella
+   * risposta all'evento, non nel corpo dell'effetto). Include
+   * `erroreCaricamento`: senza azzerarlo qui, un fallimento di leggiSettimana
+   * sulla precedente lascerebbe la schermata d'errore senza via d'uscita, dato
+   * che il selettore di vista non è renderizzato nei rami erroreCaricamento
+   * e !dati.
+   */
+  function cambiaVista(v: 'corrente' | 'precedente') {
     setDati(null);
     setPrecedenteVuota(false);
     setFoglio(null);
+    setErroreCaricamento(null);
+    setVista(v);
+  }
+
+  useEffect(() => {
+    let vivo = true;
 
     async function carica() {
       try {
@@ -160,7 +175,7 @@ export default function Settimana() {
         <div style={{ padding: '0 16px' }}>
           <button
             type="button"
-            onClick={() => setVista('corrente')}
+            onClick={() => cambiaVista('corrente')}
             style={{
               fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700,
               letterSpacing: '0.11em', color: 'var(--ter)', padding: '4px 2px',
@@ -291,7 +306,7 @@ export default function Settimana() {
       <div style={{ display: 'flex', justifyContent: 'center', padding: '2px 16px 0' }}>
         <button
           type="button"
-          onClick={() => setVista((v) => (v === 'corrente' ? 'precedente' : 'corrente'))}
+          onClick={() => cambiaVista(vista === 'corrente' ? 'precedente' : 'corrente')}
           style={{
             fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700,
             letterSpacing: '0.11em', color: 'var(--ter)', padding: '4px 2px',
