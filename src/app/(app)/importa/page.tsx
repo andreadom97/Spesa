@@ -11,6 +11,7 @@ import { proponiSlot, normalizza } from '@/domain/import/mapping';
 import { Testata } from '@/components/Testata';
 import { Segmento } from '@/components/Segmento';
 import { Camera } from './Camera';
+import { Revisione } from './Revisione';
 
 type Vista =
   | 'caricamento'
@@ -66,6 +67,10 @@ function mappaturaPastiIniziale(
 export default function Importa() {
   const [vista, setVista] = useState<Vista>('caricamento');
   const [bozza, setBozza] = useState<BozzaImport | null>(null);
+  // Servono alla revisione (etichette e opzioni dello slot per pasto): letti una volta
+  // al mount, indipendentemente dalla vista corrente, così sono già pronti quando si
+  // riprende una bozza salvata (che non rifà il giro di estrazione).
+  const [slotDefs, setSlotDefs] = useState<MealSlotDef[]>([]);
 
   // Acquisizione: stato indipendente dalla vista corrente, così un errore o
   // un giro di estrazione non fanno perdere le foto già scelte.
@@ -78,9 +83,10 @@ export default function Importa() {
 
   useEffect(() => {
     let vivo = true;
-    leggiBozzaImport()
-      .then((b) => {
+    Promise.all([leggiBozzaImport(), leggiSlotDefs()])
+      .then(([b, defs]) => {
         if (!vivo) return;
+        setSlotDefs(defs);
         if (b) {
           setBozza(b);
           setVista('ripresa');
@@ -96,6 +102,23 @@ export default function Importa() {
       vivo = false;
     };
   }, []);
+
+  /**
+   * `onStato` di `<Revisione>`: ogni modifica che deve sopravvivere (conferma
+   * pasto, cambio mappatura, cambio giorno — mai a ogni tasto, vedi Revisione.tsx)
+   * aggiorna subito lo stato della pagina e persiste con `salvaBozzaImport`.
+   * Nessun debounce: Revisione già decide quando chiamare questa funzione.
+   */
+  async function aggiornaStatoRevisione(statoRevisione: StatoRevisione) {
+    setBozza((prev) => {
+      if (!prev) return prev;
+      const nuova = { ...prev, statoRevisione };
+      salvaBozzaImport(nuova).catch((e) => {
+        console.error('importa: salvataggio della revisione fallito.', e);
+      });
+      return nuova;
+    });
+  }
 
   async function ricomincia() {
     try {
@@ -202,7 +225,7 @@ export default function Importa() {
   if (vista === 'bozza' && bozza) {
     return (
       <Cornice>
-        <ContenutoBozza bozza={bozza} />
+        <ContenutoBozza bozza={bozza} slotDefs={slotDefs} onStatoRevisione={aggiornaStatoRevisione} />
       </Cornice>
     );
   }
@@ -422,13 +445,23 @@ function SchermataErrore({ messaggio, onRiprova }: { messaggio: string; onRiprov
 }
 
 /**
- * Segnaposto per i passi successivi: Task 10 sostituisce 'revisione', Task 11
- * sostituisce 'formati'. 'riepilogo' non ha ancora un task assegnato.
+ * Segnaposto per i passi successivi: Task 11 sostituisce 'formati'. 'riepilogo'
+ * non ha ancora un task assegnato.
  */
-function ContenutoBozza({ bozza }: { bozza: BozzaImport }) {
+function ContenutoBozza({
+  bozza,
+  slotDefs,
+  onStatoRevisione,
+}: {
+  bozza: BozzaImport;
+  slotDefs: MealSlotDef[];
+  onStatoRevisione: (s: StatoRevisione) => void;
+}) {
   switch (bozza.statoRevisione.passo) {
     case 'revisione':
-      return <p style={{ margin: '20px 16px', color: 'var(--sec)' }}>Revisione — in arrivo.</p>;
+      return (
+        <Revisione piano={bozza.piano} stato={bozza.statoRevisione} slotDefs={slotDefs} onStato={onStatoRevisione} />
+      );
     case 'formati':
       return <p style={{ margin: '20px 16px', color: 'var(--sec)' }}>Formati — in arrivo.</p>;
     case 'riepilogo':
