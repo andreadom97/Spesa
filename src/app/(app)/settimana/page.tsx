@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import type { AreaId, Dish, Ingredient, MealSlot, MealSlotDef, StatoSlot } from '@/domain/types';
 import { applicaStato } from '@/domain/week-shape';
+import { descriviScelte } from '@/domain/opzioni';
 import { giorniDellaSettimana, lunediDi } from '@/domain/date';
 import { leggiSettimanaCorrente, creaSettimana, aggiornaSlot, confermaSettimana } from '@/data/settimana';
 import { leggiRepertorio, leggiIngredienti } from '@/data/repertorio';
@@ -135,6 +136,7 @@ export default function Settimana() {
 
   const piattiPerId = new Map(piatti.map((p) => [p.id, p]));
   const areaPerIngrediente = new Map(ingredienti.map((i) => [i.id, i.area]));
+  const nomePerIngrediente = new Map(ingredienti.map((i) => [i.id, i.nome]));
 
   function areeDelPiatto(piatto: Dish): AreaId[] {
     const presenti = new Set(
@@ -280,6 +282,7 @@ export default function Settimana() {
                 aCasa={slot.stato === 'casa'}
                 nomePiatto={piatto?.nome ?? null}
                 aree={piatto ? areeDelPiatto(piatto) : []}
+                sottotitolo={piatto ? descriviScelte(piatto, slot.scelte, nomePerIngrediente) : null}
                 onToggleStato={() => toggleStato(slot)}
                 onApriPiatto={piatto ? () => apriPiatto(piatto.id) : undefined}
                 hrefScegli={`/settimana/${dataSelezionata}/${def.id}/scegli`}

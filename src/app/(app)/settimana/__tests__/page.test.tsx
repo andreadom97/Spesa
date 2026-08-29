@@ -65,6 +65,14 @@ const ING_POLLO: Ingredient = {
   id: 'i-2', nome: 'Pollo', unitaBase: 'g', area: 'macelleria',
   classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 1000,
 };
+const ING_UOVA: Ingredient = {
+  id: 'i-3', nome: 'Uova', unitaBase: 'pz', area: 'latticini',
+  classeResiduo: 'intero', deperibile: true, formatoConfezione: 1,
+};
+const ING_PASSATA: Ingredient = {
+  id: 'i-4', nome: 'Passata di pomodoro', unitaBase: 'g', area: 'dispensa',
+  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 700,
+};
 
 const DISH_COLAZIONE: Dish = {
   id: 'd-1', nome: 'Yogurt e frutta', slotDefId: 'sd-1', fonte: 'proprio', attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
@@ -75,6 +83,21 @@ const DISH_CENA: Dish = {
   id: 'd-2', nome: 'Pollo e riso', slotDefId: 'sd-3', fonte: 'proprio', attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
   ingredienti: [{ ingredientId: 'i-2', quantita: 200, unita: 'g' }],
   componenti: [],
+};
+/** Piatto a componenti: farcitura con due opzioni, yogurt (default) o uova+passata. */
+const DISH_WRAP: Dish = {
+  id: 'd-3', nome: 'Wrap', slotDefId: 'sd-2', fonte: 'proprio', attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
+  ingredienti: [{ ingredientId: 'i-1', quantita: 50, unita: 'g' }],
+  componenti: [{
+    id: 'farcitura', nome: 'farcitura',
+    opzioni: [
+      { id: 'farcitura-yogurt', righe: [{ ingredientId: 'i-1', quantita: 100, unita: 'g' }] },
+      { id: 'farcitura-uova', righe: [
+        { ingredientId: 'i-3', quantita: 2, unita: 'pz' },
+        { ingredientId: 'i-4', quantita: 50, unita: 'g' },
+      ] },
+    ],
+  }],
 };
 
 const ORDINE_AREE_TEST = ['ortofrutta', 'macelleria', 'latticini', 'cereali', 'dispensa', 'surgelati'] as const;
@@ -344,5 +367,26 @@ describe('Settimana (piano alimentare)', () => {
     await waitFor(() => expect(push).toHaveBeenCalledWith('/lista'));
     expect(confermaSettimana).not.toHaveBeenCalled();
     expect(generaListe).not.toHaveBeenCalled();
+  });
+
+  it('sottotitolo: un piatto a componenti con scelta registrata mostra l\'opzione, un piatto senza componenti resta senza sottotitolo', async () => {
+    const slots = buildSlots().map((s) =>
+      s.data === OGGI && s.slotDefId === 'sd-2'
+        ? { ...s, dishId: DISH_WRAP.id, stato: 'casa' as const, scelte: { farcitura: { opzioneId: 'farcitura-uova', fonte: 'planner' as const } } }
+        : s,
+    );
+    mockCarico({ ...SETTIMANA_BASE, slots });
+    vi.mocked(leggiRepertorio).mockResolvedValue([DISH_COLAZIONE, DISH_WRAP, DISH_CENA]);
+    vi.mocked(leggiIngredienti).mockResolvedValue([ING_YOGURT, ING_POLLO, ING_UOVA, ING_PASSATA]);
+
+    render(<Settimana />);
+    await screen.findByText('Wrap');
+
+    // Piatto a componenti con scelta registrata: il nome dell'opzione compare come sottotitolo.
+    expect(screen.getByText('Uova + Passata di pomodoro')).toBeInTheDocument();
+
+    // Piatto senza componenti (colazione): nessun sottotitolo, la riga resta identica a prima.
+    const rigaColazione = (await screen.findByText('Yogurt e frutta')).closest('button');
+    expect(rigaColazione?.textContent).not.toMatch(/\+|·/);
   });
 });

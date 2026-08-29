@@ -13,6 +13,8 @@ interface Props {
   nomePiatto: string | null;
   /** Le aree distinte del piatto, nell'ordine dell'utente. Vuoto se nomePiatto è null. */
   aree: AreaId[];
+  /** Le opzioni scelte per i componenti del piatto ("Uova + Passata di pomodoro"), da `descriviScelte`. null = niente da mostrare (piatto senza componenti). */
+  sottotitolo?: string | null;
   /** Zona sinistra 60px: accende/spegne. Un tap solo, sempre disponibile. */
   onToggleStato: () => void;
   /** Zona centrale: apre il dettaglio del piatto. Assente (nessun onClick) se non c'è un piatto da aprire. */
@@ -31,7 +33,7 @@ interface Props {
  * contorno l'icona sparisce sul fondo chiaro — è l'errore già commesso una
  * volta, non va ripetuto.
  */
-export function RigaPasto({ nomePasto, aCasa, nomePiatto, aree, onToggleStato, onApriPiatto, hrefScegli }: Props) {
+export function RigaPasto({ nomePasto, aCasa, nomePiatto, aree, sottotitolo, onToggleStato, onApriPiatto, hrefScegli }: Props) {
   return (
     <div
       style={{
@@ -115,6 +117,18 @@ export function RigaPasto({ nomePasto, aCasa, nomePiatto, aree, onToggleStato, o
         >
           {aCasa ? (nomePiatto ?? 'Nessun piatto assegnato') : 'Fuori casa'}
         </span>
+        {aCasa && sottotitolo && (
+          <span
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 9,
+              letterSpacing: '0.02em',
+              color: '#8A8A96',
+            }}
+          >
+            {sottotitolo}
+          </span>
+        )}
         {aCasa && aree.length > 0 && (
           <div style={{ display: 'flex', gap: 4 }}>
             {aree.map((a) => (
