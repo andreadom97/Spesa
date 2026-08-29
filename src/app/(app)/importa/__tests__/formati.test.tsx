@@ -1,10 +1,10 @@
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { Formati } from '../Formati';
 import { PIANO_MENU_SETTIMANALE } from '@/domain/import/fixtures';
 import type { Ingredient } from '@/domain/types';
-import type { StatoRevisione } from '@/domain/import/types';
+import type { PastoEstratto, StatoRevisione } from '@/domain/import/types';
 
 const AVENA: Ingredient = { id: 'i-avena', nome: "Fiocchi d'avena", unitaBase: 'g', area: 'cereali', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500 };
 const STATO: StatoRevisione = { passo: 'formati', mappaturaPasti: { colazione: 's-col', cena: 's-cena', condimenti: 's-cena' }, pastiConfermati: [], correzioni: {}, ingredientiNuovi: [] };
@@ -27,5 +27,61 @@ describe('Formati', () => {
       expect(stato.passo).toBe('riepilogo');
       expect(stato.ingredientiNuovi.some((i) => i.formatoConfezione === 750)).toBe(true);
     });
+  });
+
+  it('ricalcola sempre: conserva le proposte già corrette e propone i nuovi alimenti introdotti da una correzione', async () => {
+    // Correzione della colazione (settimana 1, giorno 0, pasto indice 0): stesse
+    // righe originali più un alimento mai visto prima ("farina di mandorle"),
+    // come se fosse tornato dalla revisione dopo un BozzaIncompletaError.
+    const colazioneCorretta: PastoEstratto = {
+      nomeOriginale: 'colazione',
+      piatti: [{
+        nome: 'Porridge', descrizione: null, componenti: [],
+        righeFisse: [
+          { alimento: "fiocchi d'avena", quantita: 30, unita: 'g', testoOriginale: "30g fiocchi d'avena" },
+          { alimento: 'latte parzialmente scremato', quantita: 150, unita: 'ml', testoOriginale: '150ml latte parz. scremato' },
+          { alimento: 'farina di mandorle', quantita: 20, unita: 'g', testoOriginale: '20g farina di mandorle' },
+        ],
+      }],
+    };
+    const statoConCorrezione: StatoRevisione = {
+      ...STATO,
+      correzioni: { '1-0-0': colazioneCorretta },
+      // Il "latte" è già stato corretto dall'utente in un giro precedente di
+      // questo stesso passo; "alimento fantasma" non serve più al piano
+      // (nessuna riga lo referenzia più) e deve sparire dalla fusione.
+      ingredientiNuovi: [
+        { alimento: 'latte parzialmente scremato', nome: 'Latte scremato bio', unitaBase: 'ml', area: 'latticini', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 750 },
+        { alimento: 'alimento fantasma', nome: 'Fantasma', unitaBase: 'g', area: 'dispensa', classeResiduo: 'stima', deperibile: false, formatoConfezione: 1 },
+      ],
+    };
+
+    render(<Formati piano={PIANO_MENU_SETTIMANALE} stato={statoConCorrezione} ingredientiEsistenti={[AVENA]} onStato={() => {}} />);
+
+    expect(await screen.findByDisplayValue(/latte scremato bio/i)).toBeInTheDocument();
+    expect(await screen.findByDisplayValue(/farina di mandorle/i)).toBeInTheDocument();
+    expect(screen.queryByDisplayValue(/fantasma/i)).not.toBeInTheDocument();
+  });
+
+  it('"usa l\'ingrediente esistente" offre solo esistenti con unità compatibile, e la scelta rinomina la proposta', async () => {
+    const LATTE_ESISTENTE: Ingredient = { id: 'i-latte', nome: 'Latte intero', unitaBase: 'ml', area: 'latticini', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 1000 };
+    const PARMIGIANO_ESISTENTE: Ingredient = { id: 'i-parm', nome: 'Parmigiano', unitaBase: 'g', area: 'latticini', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 200 };
+
+    render(
+      <Formati
+        piano={PIANO_MENU_SETTIMANALE}
+        stato={STATO}
+        ingredientiEsistenti={[AVENA, LATTE_ESISTENTE, PARMIGIANO_ESISTENTE]}
+        onStato={() => {}}
+      />,
+    );
+
+    const select = await screen.findByLabelText(/usa l'ingrediente esistente per latte parzialmente scremato/i);
+    const opzioni = within(select).getAllByRole('option').map((o) => o.textContent);
+    expect(opzioni).toContain('Latte intero');
+    expect(opzioni).not.toContain('Parmigiano');
+
+    fireEvent.change(select, { target: { value: 'i-latte' } });
+    expect(await screen.findByDisplayValue(/latte intero/i)).toBeInTheDocument();
   });
 });

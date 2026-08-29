@@ -22,37 +22,45 @@ interface Props {
   onStato: (s: StatoRevisione) => void;
 }
 
-/** Una proposta per ogni alimento del piano che non abbina già un ingrediente esistente. */
+/**
+ * L'insieme necessario si ricalcola SEMPRE (non solo quando `ingredientiNuovi`
+ * è vuoto): un ritorno da un `BozzaIncompletaError` al passo riepilogo può
+ * portare in revisione una correzione che introduce un alimento mai visto
+ * prima, e quell'alimento deve poter comparire qui — altrimenti l'import
+ * resterebbe bloccato in un loop permanente fra riepilogo e revisione. Per
+ * ogni alimento ancora necessario si conserva la proposta già in
+ * `ingredientiNuovi` (comprese le correzioni fatte dall'utente in questo
+ * passo); quelli non più necessari spariscono; quelli nuovi ricevono una
+ * proposta fresca da `proponi`. La chiave di conservazione è `alimento` (il
+ * nome estratto normalizzato), mai `nome` (che l'utente può aver rinominato
+ * con "Usa l'ingrediente esistente").
+ */
 function calcolaProposte(
   piano: PianoEstratto,
   stato: StatoRevisione,
   ingredientiEsistenti: Ingredient[],
 ): IngredienteProposto[] {
+  const giaProposti = new Map(stato.ingredientiNuovi.map((i) => [i.alimento, i]));
   return ingredientiDaAbbinare(piano, stato.correzioni)
     .filter(({ alimento, unita }) => !abbina(alimento, unita, ingredientiEsistenti))
-    .map(({ alimento, unita }) => proponi(alimento, unita));
+    .map(({ alimento, unita }) => giaProposti.get(alimento) ?? proponi(alimento, unita));
 }
 
 /**
  * Il passo formati: una card per ogni ingrediente non abbinato, precompilata
- * da `proponi` e correggibile. Entrando nel passo con `ingredientiNuovi`
- * vuoto si calcolano subito le proposte e si risalgono a `onStato` — un
- * refresh (o un ritorno da un passo successivo) non deve più ricalcolare
- * sopra le correzioni già fatte qui, quindi da quel momento lo stato locale è
- * l'unica fonte di verità finché non si preme VAI AL RIEPILOGO.
+ * da `proponi` (o conservata da un giro precedente per questo stesso passo) e
+ * correggibile. Il risultato fuso si salva subito in `onStato`, così un
+ * refresh non perde né il calcolo né le correzioni già fatte; da quel
+ * momento lo stato locale del componente è l'unica fonte di verità finché non
+ * si preme VAI AL RIEPILOGO.
  */
 export function Formati({ piano, stato, ingredientiEsistenti, onStato }: Props) {
   const [ingredienti, setIngredienti] = useState<IngredienteProposto[]>(() =>
-    stato.ingredientiNuovi.length > 0 ? stato.ingredientiNuovi : calcolaProposte(piano, stato, ingredientiEsistenti),
+    calcolaProposte(piano, stato, ingredientiEsistenti),
   );
 
-  // Persiste il calcolo iniziale una sola volta, solo se `ingredientiNuovi`
-  // era davvero vuoto in ingresso: altrimenti si ripersisterebbe a ogni
-  // render lo stesso stato già salvato, senza bisogno.
   useEffect(() => {
-    if (stato.ingredientiNuovi.length === 0 && ingredienti.length > 0) {
-      onStato({ ...stato, ingredientiNuovi: ingredienti });
-    }
+    onStato({ ...stato, ingredientiNuovi: ingredienti });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
