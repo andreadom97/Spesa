@@ -7,9 +7,20 @@ a un eventuale prodotto.
 **In produzione:** <https://spesa-zeta.vercel.app>
 
 **Stato: Fase 1 completa e provata sul campo il 28/08/2026.** Dominio puro
-(`list-builder`, `pantry`, `planner`, `ciclo`, `week-shape`, `chiusura`), 291 test
-automatici verdi, schema su un progetto Supabase vero, quattordici schermate, PWA
-installabile con guscio offline sulla lista, in produzione su Vercel.
+(`list-builder`, `pantry`, `planner`, `ciclo`, `week-shape`, `chiusura`, `opzioni`,
+`confezioni`), 338 test automatici verdi, schema su un progetto Supabase vero,
+quattordici schermate, PWA installabile con guscio offline sulla lista, in produzione
+su Vercel.
+
+### Le alternative (29/08/2026)
+
+Le diete vere sono piene di "oppure": dal 29/08 il dominio le rappresenta. Due piatti
+fissati sullo stesso giorno sono sorelle fra cui il planner sceglie; dentro il piatto,
+i **componenti con opzioni** ("Bevanda: latte *oppure* yogurt greco") si risolvono al
+check-in col criterio *meno confezioni nuove vince, a parità rotazione*, e la scelta
+della settimana vive sullo slot (`meal_slot_choice`, migrazione 0006 — già applicata
+in produzione). Un piatto senza componenti si comporta esattamente come prima. Spec:
+[`docs/superpowers/specs/2026-08-29-alternative-design.md`](docs/superpowers/specs/2026-08-29-alternative-design.md).
 
 ### Il piano vero è caricato
 
