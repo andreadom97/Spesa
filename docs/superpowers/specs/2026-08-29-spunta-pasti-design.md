@@ -168,10 +168,13 @@ lunedì, spesa la sera — verrebbe cancellato dall'overwrite.
 
 Fix nel passo 1 (i DATI): dopo `calcolaChiusura`, si leggono gli storni di
 tutti gli slot della settimana, si sommano per ingrediente e si aggiungono al
-residuo in scrittura: `max(0, residuoCalcolato + sommaStorni)`. Gli storni di
-ingredienti fuori dagli aggiornamenti della chiusura (piatto sostituito con
-ingredienti mai in lista) si applicano comunque, sul residuo live, con lo
-stesso upsert.
+residuo in scrittura: `max(0, residuoCalcolato + sommaStorni)` — ma **solo
+per gli ingredienti che la chiusura sovrascrive** (aggiornamenti con residuo
+non-null). Gli storni su ingredienti fuori dalla lista congelata (piatto
+sostituito con ingredienti mai in lista) sono già stati applicati al residuo
+vivo al momento del tap, e la chiusura non li tocca: riapplicarli li
+conterebbe due volte. La riapplicazione compensa esattamente ciò che
+l'overwrite cancella, niente di più.
 
 L'idempotenza non cambia: il guard `week.stato === 'chiusa'` fa girare la
 chiusura una volta sola, e la riapplicazione è dentro quel giro.
