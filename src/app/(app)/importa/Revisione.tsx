@@ -136,10 +136,6 @@ export function Revisione({ piano, stato, slotDefs, onStato }: Props) {
   const [indice, setIndice] = useState(0);
   // Modifiche non ancora risalite al genitore, per chiavePasto. Si svuota a ogni dispatch.
   const [locali, setLocali] = useState<Record<string, PastoEstratto>>({});
-  // Pasti confermati che l'utente ha riaperto per ritoccarli: restano confermati
-  // (in pastiConfermati) finché non si preme di nuovo CONFERMA PASTO, ma la card
-  // torna estesa invece che compattata.
-  const [riaperti, setRiaperti] = useState<Set<string>>(new Set());
   // "chiave|indicePiatto" del piatto per cui è aperta la conferma di eliminazione (è l'ultimo del pasto).
   const [confermaElimina, setConfermaElimina] = useState<string | null>(null);
 
@@ -177,12 +173,17 @@ export function Revisione({ piano, stato, slotDefs, onStato }: Props) {
       ? stato.pastiConfermati
       : [...stato.pastiConfermati, chiave];
     dispatch({ pastiConfermati });
-    setRiaperti((prev) => {
-      if (!prev.has(chiave)) return prev;
-      const next = new Set(prev);
-      next.delete(chiave);
-      return next;
-    });
+  }
+
+  /**
+   * Riaprire un pasto già confermato lo toglie da `pastiConfermati`: va
+   * riconfermato. Senza questo, svuotare una quantità (o un piatto) dopo aver
+   * riaperto lascerebbe il pasto "confermato" con dati non risolti — passando
+   * indenne il gate di VAI AI FORMATI per finire in un errore hard al
+   * riepilogo invece che nel blocco guidato di CONFERMA PASTO.
+   */
+  function riapriPasto(chiave: string) {
+    dispatch({ pastiConfermati: stato.pastiConfermati.filter((c) => c !== chiave) });
   }
 
   function vaiAGiorno(nuovoIndice: number) {
@@ -204,6 +205,10 @@ export function Revisione({ piano, stato, slotDefs, onStato }: Props) {
         // Il controllo di mappatura scatta solo se il pasto ha piatti: un pasto svuotato in
         // revisione non ne ha bisogno (nessuna scrittura da fare, vedi commit.ts).
         if (effettivo.piatti.length === 0) return true;
+        // Difesa in profondità: un pasto non dovrebbe mai essere confermato con quantità
+        // irrisolte (CONFERMA PASTO lo blocca), ma se lo fosse — es. riaperto e poi
+        // modificato senza riconfermare — non deve comunque sbloccare VAI AI FORMATI.
+        if (pastoHaRigheNonRisolte(effettivo)) return false;
         return Boolean(stato.mappaturaPasti[normalizza(effettivo.nomeOriginale)]);
       }),
     ),
@@ -251,7 +256,7 @@ export function Revisione({ piano, stato, slotDefs, onStato }: Props) {
         {tappa.pastiOriginali.map((_, indicePasto) => {
           const chiave = chiavePasto(tappa.settimana, tappa.giorno, indicePasto);
           const pasto = pastoAttuale(indicePasto);
-          const confermato = stato.pastiConfermati.includes(chiave) && !riaperti.has(chiave);
+          const confermato = stato.pastiConfermati.includes(chiave);
           const slotAssegnato = stato.mappaturaPasti[normalizza(pasto.nomeOriginale)] ?? '';
           const bloccato = pastoHaRigheNonRisolte(pasto);
 
@@ -260,7 +265,7 @@ export function Revisione({ piano, stato, slotDefs, onStato }: Props) {
               <section key={chiave} style={{ marginBottom: 10 }}>
                 <button
                   type="button"
-                  onClick={() => setRiaperti((prev) => new Set(prev).add(chiave))}
+                  onClick={() => riapriPasto(chiave)}
                   style={{
                     width: '100%', textAlign: 'left', padding: '13px 14px', borderRadius: 14,
                     background: 'var(--superficie)', border: '1px solid var(--bordo)', fontSize: 14, color: 'var(--ink)',
@@ -306,18 +311,16 @@ export function Revisione({ piano, stato, slotDefs, onStato }: Props) {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <h4
-                      contentEditable
-                      suppressContentEditableWarning
-                      role="textbox"
+                    <input
+                      type="text"
+                      value={piatto.nome}
                       aria-label={`Nome del piatto ${indicePiatto + 1}`}
-                      onBlur={(e) =>
-                        modificaPasto(indicePasto, cambiaNomePiatto(pasto, indicePiatto, e.currentTarget.textContent ?? ''))
-                      }
-                      style={{ flex: 1, margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--ink)', outline: 'none' }}
-                    >
-                      {piatto.nome}
-                    </h4>
+                      onChange={(e) => modificaPasto(indicePasto, cambiaNomePiatto(pasto, indicePiatto, e.target.value))}
+                      style={{
+                        flex: 1, height: 38, padding: '0 8px', borderRadius: 8, border: '1px solid transparent',
+                        background: 'transparent', fontSize: 16, fontWeight: 700, color: 'var(--ink)', outline: 'none',
+                      }}
+                    />
                     <button
                       type="button"
                       aria-label={`Elimina piatto ${indicePiatto + 1}`}
@@ -506,7 +509,11 @@ function RigaEditor({
         </button>
       </div>
       <div style={{ fontSize: 11.5, color: 'var(--ter)', padding: '0 2px' }}>{riga.testoOriginale}</div>
-      {nonRisolta && <div style={{ fontSize: 11.5, color: '#C77700', padding: '0 2px' }}>quantità da indicare</div>}
+      {nonRisolta && (
+        <div aria-live="polite" style={{ fontSize: 11.5, color: '#C77700', padding: '0 2px' }}>
+          quantità da indicare
+        </div>
+      )}
     </div>
   );
 }
