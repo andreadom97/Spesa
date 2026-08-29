@@ -98,18 +98,37 @@ export async function salvaPiatto(
           posizione,
         })),
       )
-      .select('id');
+      .select('id, componente_id, posizione');
     if (eOpz) throw eOpz;
 
-    const righeOpzione = componente.opzioni.flatMap((o, i) =>
-      o.righe.map((r) => ({
+    // Non ci si fida dell'ordine di RETURNING: Postgres/PostgREST non
+    // garantisce che coincida con l'ordine delle VALUES inserite. Si abbina
+    // per valore — componente_id + posizione identificano univocamente
+    // l'opzione dentro il piatto, c'è l'unique (dish_id, componente_id,
+    // posizione) in migrazione 0006.
+    const idPerPosizione = new Map<number, string>();
+    for (const o of opzioniInserite) {
+      if (String(o.componente_id) === componenteId) {
+        idPerPosizione.set(Number(o.posizione), String(o.id));
+      }
+    }
+
+    const righeOpzione = componente.opzioni.flatMap((o, posizione) => {
+      const optionId = idPerPosizione.get(posizione);
+      if (optionId === undefined) {
+        throw new Error(
+          `salvaPiatto: dish_option non trovata per componente ${componenteId} posizione ${posizione} (dish ${dishId})`,
+        );
+      }
+      return o.righe.map((r) => ({
         user_id: userId,
         dish_id: dishId,
         ingredient_id: r.ingredientId,
         quantita: r.quantita,
         unita: r.unita,
-        option_id: String(opzioniInserite[i].id),
-      })));
+        option_id: optionId,
+      }));
+    });
     if (righeOpzione.length > 0) {
       const { error: eRighe } = await sb.from('dish_ingredient').insert(righeOpzione);
       if (eRighe) throw eRighe;
