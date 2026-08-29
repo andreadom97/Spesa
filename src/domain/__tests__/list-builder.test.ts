@@ -3,7 +3,7 @@ import { costruisciLista, IngredienteMancanteError, OrdineAreeNonValidoError } f
 import { UnitaIncompatibileError } from '../unita';
 import {
   INGREDIENTI, PIATTI, IMPOSTAZIONI, dispensaVuota, cinqueColazioni,
-  colazione,
+  colazione, wrap,
 } from './fixtures';
 
 const OGGI = '2026-08-30';
@@ -250,5 +250,32 @@ describe('costruisciLista — validazione ordineAree', () => {
     };
     expect(() => base({ impostazioni: { ...impostazioni, ordineAree: [...impostazioni.ordineAree] } }))
       .not.toThrow();
+  });
+});
+
+describe('costruisciLista — componenti a scelta', () => {
+  it('con una scelta registrata compra per l\'opzione scelta, non per il default', () => {
+    const slots = [{
+      id: 's1', data: '2026-08-31', slotDefId: 'pra', stato: 'casa' as const,
+      dishId: 'pranzo-wrap', fonteStato: 'default' as const,
+      scelte: { farcitura: { opzioneId: 'farcitura-uova', fonte: 'planner' as const } },
+    }];
+    const r = base({ slots, dishes: [...PIATTI, wrap], pantry: dispensaVuota() });
+    expect(voce(r, 'avena')).toBeDefined();
+    expect(voce(r, 'uova')).toBeDefined();
+    expect(voce(r, 'passata')).toBeDefined();
+    expect(voce(r, 'yogurt')).toBeUndefined();
+  });
+
+  it('senza scelta registrata compra per il default: la prima opzione', () => {
+    const slots = [{
+      id: 's1', data: '2026-08-31', slotDefId: 'pra', stato: 'casa' as const,
+      dishId: 'pranzo-wrap', fonteStato: 'default' as const,
+      scelte: {},
+    }];
+    const r = base({ slots, dishes: [...PIATTI, wrap], pantry: dispensaVuota() });
+    expect(voce(r, 'avena')).toBeDefined();
+    expect(voce(r, 'yogurt')).toBeDefined();
+    expect(voce(r, 'uova')).toBeUndefined();
   });
 });

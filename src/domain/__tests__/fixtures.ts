@@ -48,6 +48,23 @@ export const frittata: Dish = {
   componenti: [],
 };
 
+/** Piatto con un componente a due opzioni: yogurt (default) oppure uova+passata. */
+export const wrap: Dish = {
+  id: 'pranzo-wrap', nome: 'Wrap', slotDefId: 'pra',
+  fonte: 'nutrizionista', attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
+  ingredienti: [{ ingredientId: 'avena', quantita: 80, unita: 'g' }],
+  componenti: [{
+    id: 'farcitura', nome: 'farcitura',
+    opzioni: [
+      { id: 'farcitura-yogurt', righe: [{ ingredientId: 'yogurt', quantita: 100, unita: 'g' }] },
+      { id: 'farcitura-uova', righe: [
+        { ingredientId: 'uova', quantita: 2, unita: 'pz' },
+        { ingredientId: 'passata', quantita: 50, unita: 'g' },
+      ] },
+    ],
+  }],
+};
+
 export const PIATTI = [colazione, frittata];
 
 /** Cinque colazioni a casa, lunedì-venerdì. */

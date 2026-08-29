@@ -4,6 +4,7 @@ import type {
 import { convertiInUnitaBase } from './unita';
 import { residuoUtilizzabile, serveControllo } from './pantry';
 import { confezioniNecessarie } from './confezioni';
+import { righeEffettive } from './opzioni';
 // Unica eccezione al divieto di importare da ./aree: qui serve solo l'elenco
 // canonico delle sei aree per validare l'input, non nomi né colori.
 import { ORDINE_AREE_DEFAULT } from './aree';
@@ -95,7 +96,7 @@ export function costruisciLista(input: ListaInput): ListaRisultato {
     if (slot.stato !== 'casa' || !slot.dishId) continue;
     const piatto = piattoPerId.get(slot.dishId);
     if (!piatto) continue;
-    for (const riga of piatto.ingredienti) {
+    for (const riga of righeEffettive(piatto, slot.scelte)) {
       const ing = perId.get(riga.ingredientId);
       if (!ing) throw new IngredienteMancanteError(riga.ingredientId);
       const q = convertiInUnitaBase(riga.quantita, riga.unita, ing.unitaBase)
