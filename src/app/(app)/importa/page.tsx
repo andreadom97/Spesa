@@ -261,7 +261,12 @@ function SchermataAcquisizione({ tab, onTab, foto, onFoto, pdf, onPdf, onEstrai 
 
       <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 16px 16px' }}>
         {tab === 'foto' ? (
-          <Camera onFoto={onFoto} />
+          // `iniziali={foto}`: Camera si smonta e rimonta a ogni uscita/rientro
+          // in questa vista (es. dopo un errore di estrazione, RIPROVA torna
+          // qui da capo) — senza seminare lo stato, la galleria ripartirebbe
+          // vuota e il primo scatto successivo sovrascriverebbe in silenzio,
+          // via onFoto, gli scatti già presenti nel genitore.
+          <Camera onFoto={onFoto} iniziali={foto} />
         ) : (
           <label
             style={{

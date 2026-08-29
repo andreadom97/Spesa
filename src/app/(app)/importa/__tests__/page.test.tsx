@@ -80,6 +80,30 @@ describe('Importa', () => {
     expect(await screen.findByText(/non è disponibile/i)).toBeInTheDocument();
   });
 
+  it('errore di estrazione: riprova conserva le foto già scattate e ne aggiunge di nuove', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500, json: async () => ({}) });
+    render(<Importa />);
+    await screen.findByRole('button', { name: /estrai la dieta/i });
+    await caricaUnaFoto();
+    fireEvent.click(screen.getByRole('button', { name: /estrai la dieta/i }));
+
+    fireEvent.click(await screen.findByRole('button', { name: /riprova/i }));
+
+    // Camera si è smontata e rimontata da capo (RIPROVA torna in acquisizione):
+    // senza `iniziali` la galleria sarebbe vuota e il prossimo scatto
+    // sovrascriverebbe in silenzio, via onFoto, la foto già presa.
+    expect(await screen.findByText('pag. 1')).toBeInTheDocument();
+
+    const input = screen.getByLabelText(/scegli le foto/i);
+    fireEvent.change(input, { target: { files: [new File(['b'], 'p2.jpg', { type: 'image/jpeg' })] } });
+    await waitFor(() => expect(screen.getByText('pag. 2')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /estrai la dieta/i }));
+    await waitFor(() => expect(vi.mocked(global.fetch)).toHaveBeenCalledTimes(2));
+    const secondoBody = vi.mocked(global.fetch).mock.calls[1][1]?.body as FormData;
+    expect(secondoBody.getAll('immagini')).toHaveLength(2);
+  });
+
   it('bozza esistente: riprendi/ricomincia; ricominciare la cancella', async () => {
     vi.mocked(leggiBozzaImport).mockResolvedValue({
       piano: PIANO,

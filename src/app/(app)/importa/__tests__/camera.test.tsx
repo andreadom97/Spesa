@@ -54,6 +54,16 @@ describe('Camera', () => {
     expect(URL.revokeObjectURL).toHaveBeenCalledTimes(2);
   });
 
+  it('con iniziali mostra le miniature già presenti senza richiamare onFoto', async () => {
+    const onFoto = vi.fn();
+    const f1 = new File(['a'], 'p1.jpg', { type: 'image/jpeg' });
+    const f2 = new File(['b'], 'p2.jpg', { type: 'image/jpeg' });
+    render(<Camera onFoto={onFoto} iniziali={[f1, f2]} />);
+    expect(await screen.findByText('pag. 1')).toBeInTheDocument();
+    expect(screen.getByText('pag. 2')).toBeInTheDocument();
+    expect(onFoto).not.toHaveBeenCalled();
+  });
+
   it('con getUserMedia disponibile mostra anteprima e pulsante scatta, e ferma le tracce allo smontaggio', async () => {
     const stop = vi.fn();
     const stream = { getTracks: () => [{ stop }] } as unknown as MediaStream;

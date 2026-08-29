@@ -4,6 +4,14 @@ import { useEffect, useRef, useState } from 'react';
 
 interface Props {
   onFoto: (foto: Blob[]) => void;
+  /**
+   * Scatti già presenti da un montaggio precedente (es. dopo un errore di
+   * estrazione, quando il chiamante rimonta Camera da capo ma vuole
+   * mostrare — e far accodare i nuovi scatti a — quelli già presi). Seminati
+   * nello stato al mount, mai richiamando `onFoto`: non sono una modifica,
+   * sono lo stato di partenza che il chiamante conosce già.
+   */
+  iniziali?: Blob[];
 }
 
 interface Pagina {
@@ -62,8 +70,14 @@ function scattaDaVideo(video: HTMLVideoElement): Promise<Blob | null> {
  * al mount con la lista vuota, un `onFoto([])` che il chiamante non si
  * aspetta finché l'utente non ha davvero cambiato qualcosa.
  */
-export function Camera({ onFoto }: Props) {
-  const [pagine, setPagine] = useState<Pagina[]>([]);
+export function Camera({ onFoto, iniziali = [] }: Props) {
+  // Lazy initializer: gira una sola volta, al mount — nessun accesso a
+  // `navigator` qui (i blob arrivano già pronti da prop), quindi resta
+  // identico fra server e client. Semina lo stato ma non chiama `onFoto`:
+  // il chiamante conosce già questi blob, non è una modifica sua.
+  const [pagine, setPagine] = useState<Pagina[]>(() =>
+    iniziali.map((blob) => ({ blob, url: URL.createObjectURL(blob) })),
+  );
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [modo, setModo] = useState<Modo>('rilevamento');
   const videoRef = useRef<HTMLVideoElement | null>(null);
