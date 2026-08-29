@@ -69,10 +69,12 @@ const ING_POLLO: Ingredient = {
 const DISH_COLAZIONE: Dish = {
   id: 'd-1', nome: 'Yogurt e frutta', slotDefId: 'sd-1', fonte: 'proprio', attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
   ingredienti: [{ ingredientId: 'i-1', quantita: 150, unita: 'g' }],
+  componenti: [],
 };
 const DISH_CENA: Dish = {
   id: 'd-2', nome: 'Pollo e riso', slotDefId: 'sd-3', fonte: 'proprio', attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
   ingredienti: [{ ingredientId: 'i-2', quantita: 200, unita: 'g' }],
+  componenti: [],
 };
 
 const ORDINE_AREE_TEST = ['ortofrutta', 'macelleria', 'latticini', 'cereali', 'dispensa', 'surgelati'] as const;
@@ -87,7 +89,7 @@ function buildSlots(): MealSlot[] {
       if (def.id === 'sd-1') dishId = DISH_COLAZIONE.id;
       if (def.id === 'sd-3') dishId = DISH_CENA.id;
       if (data === OGGI && def.id === 'sd-2') stato = 'fuori';
-      slots.push({ id: `${data}:${def.id}`, data, slotDefId: def.id, stato, dishId, fonteStato: 'default' });
+      slots.push({ id: `${data}:${def.id}`, data, slotDefId: def.id, stato, dishId, fonteStato: 'default', scelte: {} });
     }
   }
   return slots;

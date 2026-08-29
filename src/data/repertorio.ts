@@ -26,6 +26,7 @@ export async function leggiRepertorio(): Promise<Dish[]> {
     settimanaCiclo: r.settimana_ciclo === null || r.settimana_ciclo === undefined ? null : Number(r.settimana_ciclo),
     giornoCiclo: r.giorno_ciclo === null || r.giorno_ciclo === undefined ? null : Number(r.giorno_ciclo),
     ingredienti: (r.dish_ingredient ?? []).map(aDishIngredient),
+    componenti: [],
   }));
 }
 

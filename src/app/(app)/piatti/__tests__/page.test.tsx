@@ -35,10 +35,12 @@ const PIATTO_COLAZIONE: Dish = {
     { ingredientId: 'i-1', quantita: 200, unita: 'ml' },
     { ingredientId: 'i-2', quantita: 50, unita: 'g' },
   ],
+  componenti: [],
 };
 const PIATTO_PRANZO: Dish = {
   id: 'd-2', nome: 'Pasta al pomodoro', slotDefId: 'sd-2', fonte: 'nutrizionista', attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
   ingredienti: [{ ingredientId: 'i-2', quantita: 80, unita: 'g' }],
+  componenti: [],
 };
 
 const ORDINE_AREE_TEST = ['ortofrutta', 'macelleria', 'latticini', 'cereali', 'dispensa', 'surgelati'] as const;

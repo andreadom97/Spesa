@@ -61,10 +61,11 @@ const RISO: Ingredient = {
 const PIATTO: Dish = {
   id: 'd-1', nome: 'Spuntino', slotDefId: 'sd-1', fonte: 'proprio', attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
   ingredienti: [{ ingredientId: 'ing-banana', quantita: 1, unita: 'pz' }],
+  componenti: [],
 };
 
 const SLOT: MealSlot[] = [
-  { id: 's-1', data: '2026-08-28', slotDefId: 'sd-1', stato: 'casa', dishId: 'd-1', fonteStato: 'default' },
+  { id: 's-1', data: '2026-08-28', slotDefId: 'sd-1', stato: 'casa', dishId: 'd-1', fonteStato: 'default', scelte: {} },
 ];
 
 const IMPOSTAZIONI = {

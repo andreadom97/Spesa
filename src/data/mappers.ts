@@ -34,6 +34,7 @@ export function aMealSlot(r: Record<string, unknown>): MealSlot {
     stato: r.stato as StatoSlot,
     dishId: r.dish_id ? String(r.dish_id) : null,
     fonteStato: r.fonte_stato as FonteStato,
+    scelte: {},
   };
 }
 

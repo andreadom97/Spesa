@@ -35,6 +35,7 @@ export const colazione: Dish = {
     { ingredientId: 'yogurt', quantita: 150, unita: 'g' },
     { ingredientId: 'avena', quantita: 50, unita: 'g' },
   ],
+  componenti: [],
 };
 
 export const frittata: Dish = {
@@ -44,6 +45,7 @@ export const frittata: Dish = {
     { ingredientId: 'uova', quantita: 3, unita: 'pz' },
     { ingredientId: 'olio', quantita: 10, unita: 'ml' },
   ],
+  componenti: [],
 };
 
 export const PIATTI = [colazione, frittata];
@@ -53,6 +55,7 @@ export function cinqueColazioni(): MealSlot[] {
   return ['2026-08-31', '2026-09-01', '2026-09-02', '2026-09-03', '2026-09-04'].map((data, i) => ({
     id: `col-${i}`, data, slotDefId: 'col', stato: 'casa' as const,
     dishId: 'colazione-yogurt', fonteStato: 'default' as const,
+    scelte: {},
   }));
 }
 

@@ -55,6 +55,7 @@ const PIATTO_ESISTENTE: Dish = {
   settimanaCiclo: null,
   giornoCiclo: null,
   ingredienti: [{ ingredientId: 'i-1', quantita: 150, unita: 'g' }],
+  componenti: [],
 };
 
 function nessunaSettimana() {
@@ -187,9 +188,9 @@ describe('Piatto (editor)', () => {
       dataInizio: '2026-08-24', // lunedì
       stato: 'confermata',
       slots: [
-        { id: 's-lun', data: '2026-08-24', slotDefId: 'sd-1', stato: 'casa', dishId: 'd-1', fonteStato: 'default' },
-        { id: 's-mar', data: '2026-08-25', slotDefId: 'sd-1', stato: 'casa', dishId: 'd-1', fonteStato: 'default' },
-        { id: 's-mer', data: '2026-08-26', slotDefId: 'sd-1', stato: 'fuori', dishId: 'd-1', fonteStato: 'default' },
+        { id: 's-lun', data: '2026-08-24', slotDefId: 'sd-1', stato: 'casa', dishId: 'd-1', fonteStato: 'default', scelte: {} },
+        { id: 's-mar', data: '2026-08-25', slotDefId: 'sd-1', stato: 'casa', dishId: 'd-1', fonteStato: 'default', scelte: {} },
+        { id: 's-mer', data: '2026-08-26', slotDefId: 'sd-1', stato: 'fuori', dishId: 'd-1', fonteStato: 'default', scelte: {} },
       ],
     };
     vi.mocked(leggiSettimanaCorrente).mockResolvedValue(settimana);
@@ -209,7 +210,7 @@ describe('Piatto (editor)', () => {
       dataInizio: '2026-08-24',
       stato: 'confermata',
       slots: [
-        { id: 's-lun', data: '2026-08-24', slotDefId: 'sd-1', stato: 'fuori', dishId: 'd-1', fonteStato: 'default' },
+        { id: 's-lun', data: '2026-08-24', slotDefId: 'sd-1', stato: 'fuori', dishId: 'd-1', fonteStato: 'default', scelte: {} },
       ],
     };
     vi.mocked(leggiSettimanaCorrente).mockResolvedValue(settimana);
@@ -245,6 +246,7 @@ describe('Piatto (editor)', () => {
       settimanaCiclo: null,
       giornoCiclo: null,
       ingredienti: [{ ingredientId: 'i-1', quantita: 150, unita: 'g' }],
+      componenti: [],
     }));
     await waitFor(() => expect(push).toHaveBeenCalledWith('/piatti'));
   });

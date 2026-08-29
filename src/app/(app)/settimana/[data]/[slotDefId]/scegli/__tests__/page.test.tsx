@@ -55,18 +55,21 @@ const ING_YOGURT: Ingredient = {
 const DISH_COLAZIONE: Dish = {
   id: 'd-0', nome: 'Yogurt e frutta', slotDefId: 'sd-1', fonte: 'proprio', attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
   ingredienti: [{ ingredientId: 'i-3', quantita: 150, unita: 'g' }],
+  componenti: [],
 };
 const DISH_POLLO: Dish = {
   id: 'd-1', nome: 'Pollo e riso', slotDefId: 'sd-3', fonte: 'proprio', attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
   ingredienti: [{ ingredientId: 'i-1', quantita: 200, unita: 'g' }, { ingredientId: 'i-2', quantita: 80, unita: 'g' }],
+  componenti: [],
 };
 const DISH_MERLUZZO: Dish = {
   id: 'd-2', nome: 'Merluzzo e piselli', slotDefId: 'sd-3', fonte: 'proprio', attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
   ingredienti: [{ ingredientId: 'i-2', quantita: 80, unita: 'g' }],
+  componenti: [],
 };
 
-const SLOT_CENA: MealSlot = { id: 'slot-cena', data: DATA, slotDefId: 'sd-3', stato: 'casa', dishId: 'd-1', fonteStato: 'default' };
-const SLOT_COLAZIONE: MealSlot = { id: 'slot-colazione', data: DATA, slotDefId: 'sd-1', stato: 'casa', dishId: 'd-0', fonteStato: 'default' };
+const SLOT_CENA: MealSlot = { id: 'slot-cena', data: DATA, slotDefId: 'sd-3', stato: 'casa', dishId: 'd-1', fonteStato: 'default', scelte: {} };
+const SLOT_COLAZIONE: MealSlot = { id: 'slot-colazione', data: DATA, slotDefId: 'sd-1', stato: 'casa', dishId: 'd-0', fonteStato: 'default', scelte: {} };
 
 const SETTIMANA_BASE: SettimanaCorrente = {
   id: 'week-1', dataInizio: '2026-08-24', stato: 'bozza', slots: [SLOT_COLAZIONE, SLOT_CENA],

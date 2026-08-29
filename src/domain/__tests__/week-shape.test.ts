@@ -51,6 +51,7 @@ describe('applicaStato', () => {
   const slot: MealSlot = {
     id: 's1', data: '2026-08-31', slotDefId: 'cen',
     stato: 'casa', dishId: null, fonteStato: 'checkin',
+    scelte: {},
   };
 
   it('una fonte più forte sovrascrive', () => {

@@ -33,6 +33,7 @@ export function generaSettimana(input: GeneraSettimanaInput): MealSlot[] {
         stato: fuori ? 'fuori' : 'casa',
         dishId: null,
         fonteStato: 'default',
+        scelte: {},
       });
     });
   }

@@ -24,6 +24,7 @@ function piatto(id: string, settimanaCiclo: number | null): Dish {
   return {
     id, nome: id, slotDefId: 'cen', fonte: 'proprio', attivo: true,
     descrizione: null, settimanaCiclo, giornoCiclo: null, ingredienti: [],
+    componenti: [],
   };
 }
 

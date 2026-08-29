@@ -283,6 +283,7 @@ export default function Piatto() {
         settimanaCiclo: settimanaCiclo !== null && settimanaCiclo <= settimaneCiclo ? settimanaCiclo : null,
         giornoCiclo,
         ingredienti,
+        componenti: [],
       });
       scartaBozza(id);
       router.push('/piatti');

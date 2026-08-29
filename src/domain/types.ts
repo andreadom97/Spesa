@@ -27,6 +27,26 @@ export interface DishIngredient {
   unita: UnitaMisura;
 }
 
+export interface OpzioneComponente {
+  id: string;
+  /** Le righe ingrediente che questa opzione comporta (>=1: "ricotta 50g + noci 20g" è UNA opzione). */
+  righe: DishIngredient[];
+}
+
+export interface Componente {
+  id: string;
+  /** Etichetta mostrata in Scegli e nell'editor: "pane", "farcitura". */
+  nome: string;
+  /** >=1. La prima è il default quando nessuna scelta è registrata. */
+  opzioni: OpzioneComponente[];
+}
+
+export interface Scelta {
+  opzioneId: string;
+  /** Come fonteStato: una scelta 'manuale' non viene mai sovrascritta dal planner. */
+  fonte: 'planner' | 'manuale';
+}
+
 export interface Dish {
   id: string;
   nome: string;
@@ -47,6 +67,8 @@ export interface Dish {
    */
   giornoCiclo: number | null;
   ingredienti: DishIngredient[];
+  /** Componenti a scelta. [] = piatto senza alternative = comportamento identico a prima. */
+  componenti: Componente[];
 }
 
 export interface MealSlotDef {
@@ -65,6 +87,12 @@ export interface MealSlot {
   stato: StatoSlot;
   dishId: string | null;
   fonteStato: FonteStato;
+  /**
+   * componenteId -> scelta della settimana. Vuoto finché il planner non
+   * risolve. La fonte è per singola scelta: si può correggere a mano un solo
+   * componente e lasciare gli altri al planner.
+   */
+  scelte: Record<string, Scelta>;
 }
 
 export interface PantryState {

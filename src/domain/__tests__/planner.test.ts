@@ -19,6 +19,7 @@ function piatto(
     settimanaCiclo: ciclo.settimanaCiclo ?? null,
     giornoCiclo: ciclo.giornoCiclo ?? null,
     ingredienti: [],
+    componenti: [],
   };
 }
 
