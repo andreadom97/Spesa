@@ -188,6 +188,42 @@ describe('creaSettimana — persiste le scelte del planner (Task 8)', () => {
 
     expect(scritture['meal_slot_choice']).toBeUndefined();
   });
+
+  it('mismatch fra le righe inserite e gli slot assegnati: lancia un errore esplicito invece di scartare le scelte', async () => {
+    // Simula un insert su meal_slot che non restituisce nessuna riga (es. un
+    // problema di RLS/RETURNING): il riabbinamento per (data, slot_def_id) non
+    // trova mai un id, e questo non deve degenerare in una settimana silenziosamente
+    // senza scelte.
+    function from(tabella: string) {
+      const chiamate: Chiamata[] = [];
+      const registra = (metodo: string) => (...args: unknown[]) => {
+        chiamate.push({ metodo, args });
+        return proxy;
+      };
+      const proxy: Record<string, unknown> = {
+        select: registra('select'),
+        eq: registra('eq'),
+        insert: registra('insert'),
+        single: () => proxy,
+        then(onFulfilled: (v: unknown) => unknown) {
+          if (tabella === 'meal_slot') {
+            return Promise.resolve({ data: [], error: null }).then(onFulfilled);
+          }
+          return Promise.resolve({ data: { id: 'week-1' }, error: null }).then(onFulfilled);
+        },
+      };
+      return proxy;
+    }
+    const sb = { auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }) }, from };
+    vi.mocked(client).mockReturnValue(sb as never);
+    vi.mocked(leggiSlotDefs).mockResolvedValue([CENA]);
+    vi.mocked(leggiRepertorio).mockResolvedValue([piattoConComponente('s1', 'comp1', 'opt-scelta')]);
+    vi.mocked(leggiImpostazioni).mockResolvedValue(impostazioni(1, null));
+    vi.mocked(leggiIngredienti).mockResolvedValue([]);
+    vi.mocked(leggiDispensa).mockResolvedValue([]);
+
+    await expect(creaSettimana('2026-08-31')).rejects.toThrow(/nessun meal_slot inserito trovato/i);
+  });
 });
 
 describe('aggiornaSlot — patch di scelte (Task 8)', () => {
@@ -252,13 +288,17 @@ describe('aggiornaSlot — patch di scelte (Task 8)', () => {
       'correzione',
     );
 
-    // L'ordine fra le due tabelle: prima si ripulisce tutto, poi si scrive il nuovo.
+    // L'ordine fra le due tabelle: prima si ripulisce tutto, poi si scrive il nuovo
+    // (delete → update di meal_slot → upsert: un fallimento a metà degenera nel
+    // caso benigno "piatto vecchio, scelte vuote").
     expect(ordineOperazioni).toEqual(['delete', 'upsert']);
 
     const [chiamateDelete, chiamateUpsert] = scritture['meal_slot_choice'];
     const del = chiamateDelete.find((c) => c.metodo === 'delete')!;
     expect(del).toBeDefined();
     expect(chiamateDelete.some((c) => c.metodo === 'eq' && c.args[0] === 'meal_slot_id' && c.args[1] === 'slot-1')).toBe(true);
+    // Difesa in profondità come tutte le altre scritture del file.
+    expect(chiamateDelete.some((c) => c.metodo === 'eq' && c.args[0] === 'user_id' && c.args[1] === 'user-1')).toBe(true);
 
     const ups = chiamateUpsert.find((c) => c.metodo === 'upsert')!;
     expect(ups.args[0]).toEqual([
@@ -290,6 +330,31 @@ describe('aggiornaSlot — patch di scelte (Task 8)', () => {
     const ups = scritture['meal_slot_choice'][0].find((c) => c.metodo === 'upsert')!;
     expect(ups.args[0]).toEqual([
       { user_id: 'user-1', meal_slot_id: 'slot-1', componente_id: 'comp1', option_id: 'opt-manuale', fonte: 'manuale' },
+    ]);
+  });
+
+  it('dishId invariato (stesso di quello già registrato) con nuove scelte: non cancella nulla, solo upsert del componente nominato', async () => {
+    // Il caso del Task 9: il piatto non cambia, si corregge a mano un solo
+    // componente. Cancellare tutte le meal_slot_choice qui perderebbe le
+    // scelte degli altri componenti dello stesso piatto, non nominati nel patch.
+    const rigaAttuale = {
+      id: 'slot-1', data: '2026-08-31', slot_def_id: 'cen',
+      stato: 'casa', dish_id: 'piatto-1', fonte_stato: 'default',
+    };
+    const { sb, scritture, ordineOperazioni } = creaMockAggiornaSlot(rigaAttuale);
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    await aggiornaSlot(
+      'slot-1',
+      { dishId: 'piatto-1', scelte: { comp2: { opzioneId: 'opt-nuova', fonte: 'manuale' } } },
+      'correzione',
+    );
+
+    expect(ordineOperazioni).toEqual(['upsert']);
+    expect(scritture['meal_slot_choice']).toHaveLength(1);
+    const ups = scritture['meal_slot_choice'][0].find((c) => c.metodo === 'upsert')!;
+    expect(ups.args[0]).toEqual([
+      { user_id: 'user-1', meal_slot_id: 'slot-1', componente_id: 'comp2', option_id: 'opt-nuova', fonte: 'manuale' },
     ]);
   });
 });

@@ -125,7 +125,16 @@ export async function creaSettimana(lunedi: string): Promise<string> {
   const righeScelte = assegnata.flatMap((s) => {
     if (Object.keys(s.scelte).length === 0) return [];
     const mealSlotId = idPerSlot.get(`${s.data}|${s.slotDefId}`);
-    if (!mealSlotId) return [];
+    if (!mealSlotId) {
+      // Un mismatch qui vuol dire che l'insert non ha restituito la riga
+      // attesa per questa (data, slot_def_id): scartare le scelte in
+      // silenzio produrrebbe una settimana con piatti assegnati ma senza
+      // scelte, indistinguibile da un piatto senza componenti. Meglio far
+      // rumore subito.
+      throw new Error(
+        `creaSettimana: nessun meal_slot inserito trovato per data=${s.data} slot_def_id=${s.slotDefId}, impossibile salvare le scelte.`,
+      );
+    }
     return Object.entries(s.scelte).map(([componenteId, scelta]) => ({
       user_id: userId,
       meal_slot_id: mealSlotId,
@@ -160,10 +169,20 @@ export async function creaSettimana(lunedi: string): Promise<string> {
  * `dishId`: un upsert su `meal_slot_choice` per componente nominato nel patch
  * (`onConflict: 'meal_slot_id,componente_id'`), le scelte non nominate restano
  * quelle che c'erano. Unica differenza da `dishId` da solo: quando il patch
- * cambia anche il piatto (Scegli lo ha sostituito), si cancellano prima TUTTE
- * le `meal_slot_choice` dello slot — le scelte sui componenti del piatto
- * vecchio non hanno significato su quello nuovo, e lasciarle lì rischia di
- * agganciare per errore un option_id del piatto sbagliato.
+ * *cambia* il piatto rispetto a quello già registrato (`patch.dishId !==
+ * attuale.dishId` — Scegli lo ha sostituito), si cancellano prima TUTTE le
+ * `meal_slot_choice` dello slot — le scelte sui componenti del piatto vecchio
+ * non hanno significato su quello nuovo, e lasciarle lì rischia di agganciare
+ * per errore un option_id del piatto sbagliato. Se `dishId` è presente nel
+ * patch ma è lo stesso di prima (il Task 9 può mandarlo invariato insieme a
+ * `scelte` per i soli componenti toccati), non si cancella nulla.
+ *
+ * Ordine delle scritture: delete delle scelte → update di `meal_slot` →
+ * upsert delle nuove scelte. Se qualcosa fallisce a metà, questo ordine
+ * degenera sempre nel caso benigno "piatto vecchio, scelte vuote" — mai in
+ * "piatto nuovo con le scelte del piatto vecchio", che sarebbe il peggiore
+ * dei due (un option_id che punta a un componente/opzione di un altro
+ * piatto).
  */
 export async function aggiornaSlot(
   slotId: string,
@@ -183,6 +202,19 @@ export async function aggiornaSlot(
   if (error) throw error;
 
   const attuale = aMealSlot(riga);
+
+  if (patch.dishId !== undefined && patch.dishId !== attuale.dishId) {
+    // Il piatto sta per cambiare: le scelte registrate sul piatto vecchio non
+    // hanno più significato. Si ripulisce PRIMA dell'update di meal_slot, così
+    // un fallimento a metà lascia "piatto vecchio, scelte vuote" — mai
+    // "piatto nuovo con le scelte del piatto vecchio".
+    const { error: eDel } = await sb
+      .from('meal_slot_choice')
+      .delete()
+      .eq('meal_slot_id', slotId)
+      .eq('user_id', userId);
+    if (eDel) throw eDel;
+  }
 
   const aggiornamento: Record<string, unknown> = {};
 
@@ -208,16 +240,6 @@ export async function aggiornaSlot(
       .eq('id', slotId)
       .eq('user_id', userId);
     if (eUpd) throw eUpd;
-  }
-
-  if (patch.dishId !== undefined) {
-    // Il piatto è cambiato: le scelte registrate sul piatto vecchio non
-    // hanno più significato, si ripulisce prima di scrivere le nuove.
-    const { error: eDel } = await sb
-      .from('meal_slot_choice')
-      .delete()
-      .eq('meal_slot_id', slotId);
-    if (eDel) throw eDel;
   }
 
   if (patch.scelte !== undefined) {
