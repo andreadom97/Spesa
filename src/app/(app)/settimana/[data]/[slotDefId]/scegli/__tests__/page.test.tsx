@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import type { Dish, Ingredient, MealSlot, MealSlotDef } from '@/domain/types';
+import type { Dish, Ingredient, MealSlot, MealSlotDef, PantryState } from '@/domain/types';
 import type { SettimanaCorrente } from '@/data/settimana';
 
 vi.mock('@/data/settimana', () => ({
@@ -15,6 +15,9 @@ vi.mock('@/data/repertorio', () => ({
 vi.mock('@/data/impostazioni', () => ({
   leggiSlotDefs: vi.fn(),
   leggiImpostazioni: vi.fn(),
+}));
+vi.mock('@/data/dispensa', () => ({
+  leggiDispensa: vi.fn(),
 }));
 
 const push = vi.fn();
@@ -30,6 +33,7 @@ vi.mock('next/navigation', () => ({
 import { leggiSettimanaCorrente, aggiornaSlot } from '@/data/settimana';
 import { leggiRepertorio, leggiIngredienti } from '@/data/repertorio';
 import { leggiSlotDefs, leggiImpostazioni } from '@/data/impostazioni';
+import { leggiDispensa } from '@/data/dispensa';
 import ScegliPiatto from '../page';
 
 const DATA = '2026-08-27';
@@ -49,6 +53,17 @@ const ING_RISO: Ingredient = {
 const ING_YOGURT: Ingredient = {
   id: 'i-3', nome: 'Yogurt', unitaBase: 'g', area: 'latticini',
   classeResiduo: 'stima', deperibile: true, formatoConfezione: 500,
+};
+// Ingredienti delle due opzioni del componente di prova (Task 9): Ricotta
+// coperta dalla dispensa mockata (chip IN CASA sul default), Noci no
+// (nessuna riga in leggiDispensa → residuo 0 → costa una confezione).
+const ING_RICOTTA: Ingredient = {
+  id: 'i-4', nome: 'Ricotta', unitaBase: 'g', area: 'latticini',
+  classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 250,
+};
+const ING_NOCI: Ingredient = {
+  id: 'i-5', nome: 'Noci', unitaBase: 'g', area: 'dispensa',
+  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 200,
 };
 
 // Piatto di colazione: non deve mai comparire nella lista dello slot cena.
@@ -75,6 +90,34 @@ const SETTIMANA_BASE: SettimanaCorrente = {
   id: 'week-1', dataInizio: '2026-08-24', stato: 'bozza', slots: [SLOT_COLAZIONE, SLOT_CENA],
 };
 
+// Piatto con un componente a due opzioni, per i test del Task 9 (ciclo al
+// tap, chip IN CASA). Nessun ingrediente fisso: quello che conta qui sono le
+// righe delle opzioni.
+const DISH_TORTA: Dish = {
+  id: 'd-3', nome: 'Torta salata', slotDefId: 'sd-3', fonte: 'proprio', attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
+  ingredienti: [],
+  componenti: [
+    {
+      id: 'c-farcitura',
+      nome: 'Farcitura',
+      opzioni: [
+        { id: 'o-ricotta', righe: [{ ingredientId: 'i-4', quantita: 50, unita: 'g' }] },
+        { id: 'o-noci', righe: [{ ingredientId: 'i-5', quantita: 20, unita: 'g' }] },
+      ],
+    },
+  ],
+};
+
+const SLOT_TORTA: MealSlot = { id: 'slot-torta', data: DATA, slotDefId: 'sd-3', stato: 'casa', dishId: 'd-3', fonteStato: 'default', scelte: {} };
+const SETTIMANA_TORTA: SettimanaCorrente = {
+  id: 'week-2', dataInizio: '2026-08-24', stato: 'bozza', slots: [SLOT_TORTA],
+};
+
+// Nessuna riga per Noci: residuo 0, la conta costerà sempre una confezione.
+const PANTRY_RICOTTA_COPERTA: PantryState = {
+  ingredientId: 'i-4', residuo: 100, ultimoAcquisto: null, giorniStimati: 90, congelato: false, ultimoCheck: null,
+};
+
 // Ordine deliberatamente diverso da ORDINE_AREE_DEFAULT (che metterebbe
 // macelleria prima di cereali): prova che i quadratini seguono l'ordine
 // scelto dall'utente in Impostazioni, non l'ordine fisso di aree.ts.
@@ -91,6 +134,23 @@ function mockCarico() {
     settimaneCiclo: 1,
     cicloOrigine: null,
   });
+  vi.mocked(leggiDispensa).mockResolvedValue([]);
+}
+
+// Variante di mockCarico() per i test del componente a scelta: un solo
+// piatto (Torta salata), la sua dispensa mockata copre solo Ricotta.
+function mockCaricoConComponenti() {
+  vi.mocked(leggiSettimanaCorrente).mockResolvedValue(SETTIMANA_TORTA);
+  vi.mocked(leggiSlotDefs).mockResolvedValue(SLOT_DEFS);
+  vi.mocked(leggiRepertorio).mockResolvedValue([DISH_TORTA]);
+  vi.mocked(leggiIngredienti).mockResolvedValue([ING_RICOTTA, ING_NOCI]);
+  vi.mocked(leggiImpostazioni).mockResolvedValue({
+    moltiplicatorePorzioni: 1,
+    ordineAree: [...ORDINE_AREE_TEST],
+    settimaneCiclo: 1,
+    cicloOrigine: null,
+  });
+  vi.mocked(leggiDispensa).mockResolvedValue([PANTRY_RICOTTA_COPERTA]);
 }
 
 describe('Scegli il piatto', () => {
@@ -215,5 +275,58 @@ describe('Scegli il piatto', () => {
     expect(screen.getByLabelText('Torna alla Settimana')).toHaveAttribute('href', '/settimana');
     expect(screen.getByText('ANNULLA')).toHaveAttribute('href', '/settimana');
     expect(aggiornaSlot).not.toHaveBeenCalled();
+  });
+
+  it('un piatto con componente a due opzioni mostra la riga del componente col nome dell\'opzione di default', async () => {
+    mockCaricoConComponenti();
+    render(<ScegliPiatto />);
+    await screen.findByText('Torta salata');
+
+    expect(screen.getByText('FARCITURA')).toBeInTheDocument();
+    expect(screen.getByText('Ricotta')).toBeInTheDocument();
+  });
+
+  it('il tap sul componente cicla alla seconda opzione e abilita il bottone SOSTITUISCI', async () => {
+    mockCaricoConComponenti();
+    render(<ScegliPiatto />);
+    await screen.findByText('Torta salata');
+
+    const bottone = screen.getByText('SOSTITUISCI');
+    expect(bottone).toBeDisabled();
+
+    fireEvent.click(screen.getByText('Ricotta'));
+
+    expect(screen.getByText('Noci')).toBeInTheDocument();
+    expect(bottone).not.toBeDisabled();
+  });
+
+  it('il chip IN CASA compare quando la dispensa mockata copre l\'opzione corrente, sparisce quando non la copre', async () => {
+    mockCaricoConComponenti();
+    render(<ScegliPiatto />);
+    await screen.findByText('Torta salata');
+
+    expect(screen.getByText('IN CASA')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Ricotta'));
+    expect(screen.queryByText('IN CASA')).not.toBeInTheDocument();
+  });
+
+  it('confermare dopo aver toccato un componente salva il dishId invariato e la scelta manuale del componente', async () => {
+    mockCaricoConComponenti();
+    vi.mocked(aggiornaSlot).mockResolvedValue(undefined);
+    render(<ScegliPiatto />);
+    await screen.findByText('Torta salata');
+
+    fireEvent.click(screen.getByText('Ricotta'));
+    fireEvent.click(screen.getByText('SOSTITUISCI'));
+
+    await waitFor(() =>
+      expect(aggiornaSlot).toHaveBeenCalledWith(
+        'slot-torta',
+        { dishId: 'd-3', scelte: { 'c-farcitura': { opzioneId: 'o-noci', fonte: 'manuale' } } },
+        'correzione',
+      ),
+    );
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/settimana'));
   });
 });

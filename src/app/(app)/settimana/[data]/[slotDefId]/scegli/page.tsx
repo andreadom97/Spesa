@@ -3,12 +3,16 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import type { AreaId, Dish } from '@/domain/types';
+import type { AreaId, ClasseResiduo, Componente, Dish, Ingredient, OpzioneComponente, PantryState, Scelta } from '@/domain/types';
 import { leggiRepertorio, leggiIngredienti } from '@/data/repertorio';
 import { leggiSettimanaCorrente, aggiornaSlot } from '@/data/settimana';
 import { leggiSlotDefs, leggiImpostazioni } from '@/data/impostazioni';
+import { leggiDispensa } from '@/data/dispensa';
 import { giorniTra, lunediDi } from '@/domain/date';
 import { coloreArea } from '@/domain/aree';
+import { residuoUtilizzabile } from '@/domain/pantry';
+import { confezioniNecessarie } from '@/domain/confezioni';
+import { convertiInUnitaBase } from '@/domain/unita';
 
 const GIORNI = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
 
@@ -19,6 +23,12 @@ interface DatiScegli {
   nomePasto: string;
   piatti: Dish[];
   areePerPiatto: Map<string, AreaId[]>;
+  /** Le scelte registrate sullo slot al caricamento: riferimento per capire se un componente è stato toccato. */
+  scelteOriginali: Record<string, Scelta>;
+  dispensa: PantryState[];
+  ingredientiPerId: Map<string, Ingredient>;
+  nomePerIngrediente: Map<string, string>;
+  moltiplicatorePorzioni: number;
 }
 
 /**
@@ -83,6 +93,112 @@ function areeDelPiatto(piatto: Dish, areaPerIngrediente: Map<string, AreaId>, or
 }
 
 /**
+ * L'opzione attualmente in vigore per un componente: quella scelta, o la
+ * prima (il default) quando nessuna scelta è registrata — stesso criterio di
+ * `righeEffettive`/`descriviScelte` in `src/domain/opzioni.ts`. Se la scelta
+ * registrata punta a un'opzione che non esiste più si ricade sul default:
+ * qui, a differenza di `righeEffettive`, non è il posto per esplodere — la
+ * schermata deve restare usabile per correggere la scelta.
+ */
+function opzioneCorrente(componente: Componente, scelte: Record<string, Scelta>): OpzioneComponente {
+  const scelta = scelte[componente.id];
+  const opzione = scelta === undefined
+    ? componente.opzioni[0]
+    : componente.opzioni.find((o) => o.id === scelta.opzioneId);
+  return opzione ?? componente.opzioni[0];
+}
+
+/** La prossima opzione nell'ordine d'autore, con wrap-around: il tap cicla, non sceglie. */
+function opzioneSuccessiva(componente: Componente, opzioneAttualeId: string): OpzioneComponente {
+  const indice = componente.opzioni.findIndex((o) => o.id === opzioneAttualeId);
+  const prossimo = (indice === -1 ? 0 : indice + 1) % componente.opzioni.length;
+  return componente.opzioni[prossimo];
+}
+
+/** I nomi degli ingredienti dell'opzione, uniti come nel sottotitolo di `descriviScelte`. */
+function nomeOpzione(opzione: OpzioneComponente, nomePerIngrediente: Map<string, string>): string {
+  return opzione.righe.map((r) => nomePerIngrediente.get(r.ingredientId) ?? '?').join(' + ');
+}
+
+/**
+ * Il chip IN CASA: vero quando nessuna riga dell'opzione costerebbe una
+ * confezione nuova. Stesso calcolo di `costoInConfezioni` in
+ * `src/domain/planner.ts` — residuo utilizzabile poi confezioniNecessarie —
+ * ma per una singola opzione invece che per un piatto intero. La classe
+ * `stima` è esclusa per contratto (regola 7: nessuna aritmetica su di lei) e
+ * un ingrediente sconosciuto non blocca il chip, non fa crashare la schermata.
+ */
+function opzioneInCasa(
+  opzione: OpzioneComponente,
+  ingredientiPerId: Map<string, Ingredient>,
+  dispensaPerId: Map<string, PantryState>,
+  moltiplicatorePorzioni: number,
+  oggi: string,
+): boolean {
+  for (const riga of opzione.righe) {
+    const ing = ingredientiPerId.get(riga.ingredientId);
+    if (!ing || ing.classeResiduo === 'stima') continue;
+    const fabbisogno = convertiInUnitaBase(riga.quantita, riga.unita, ing.unitaBase) * moltiplicatorePorzioni;
+    const statoDispensa = dispensaPerId.get(riga.ingredientId);
+    const residuo = residuoUtilizzabile({
+      residuo: statoDispensa?.residuo ?? 0,
+      deperibile: ing.deperibile,
+      area: ing.area,
+      ultimoAcquisto: statoDispensa?.ultimoAcquisto ?? null,
+      congelato: statoDispensa?.congelato ?? false,
+      oggi,
+    });
+    const { confezioni } = confezioniNecessarie({
+      fabbisogno,
+      residuo,
+      classeResiduo: ing.classeResiduo as Exclude<ClasseResiduo, 'stima'>,
+      formatoConfezione: ing.formatoConfezione,
+    });
+    if (confezioni > 0) return false;
+  }
+  return true;
+}
+
+/**
+ * Vero se il piatto scelto è diverso da quello assegnato allo slot, o se le
+ * opzioni dei suoi componenti sono state toccate rispetto alle scelte
+ * originali dello slot. Guida sia il disabled del bottone SOSTITUISCI sia il
+ * bail-out di `confermaScelta`: le due cose devono restare in sincrono, da
+ * cui un'unica funzione invece di due calcoli paralleli.
+ */
+function ilPiattoOLeScelteSonoCambiate(
+  dati: DatiScegli,
+  scelto: string | null,
+  scelteCorrenti: Record<string, Scelta>,
+): boolean {
+  if (scelto !== dati.dishIdOriginale) return true;
+  const dish = dati.piatti.find((p) => p.id === scelto);
+  if (!dish) return false;
+  return dish.componenti.some((c) => {
+    const attuale = scelteCorrenti[c.id]?.opzioneId ?? c.opzioni[0]?.id;
+    const originale = dati.scelteOriginali[c.id]?.opzioneId ?? c.opzioni[0]?.id;
+    return attuale !== originale;
+  });
+}
+
+/**
+ * Le scelte manuali sui componenti del piatto `dish` da mandare ad
+ * `aggiornaSlot`: solo quelle presenti in `scelteCorrenti` (toccate a mano,
+ * qui o in una sessione precedente), mai l'intero record — un componente di
+ * un piatto diverso da quello selezionato non deve mai finire nel patch.
+ * `undefined` (non `{}`) quando non c'è nulla da mandare: `aggiornaSlot`
+ * tratta `scelte` assente come "non toccare", non come "azzera".
+ */
+function scelteManualiDaMandare(dish: Dish, scelteCorrenti: Record<string, Scelta>): Record<string, Scelta> | undefined {
+  const scelte: Record<string, Scelta> = {};
+  for (const c of dish.componenti) {
+    const s = scelteCorrenti[c.id];
+    if (s !== undefined) scelte[c.id] = s;
+  }
+  return Object.keys(scelte).length > 0 ? scelte : undefined;
+}
+
+/**
  * Scegli il piatto: sostituzione per-pasto, non per-piatto. Nasce dal pasto
  * (data + slotDefId dalla rotta), mostra solo i piatti attivi di quello slot
  * e scrive solo `meal_slot.dish_id` di quel singolo slot — non tocca mai il
@@ -96,6 +212,7 @@ export default function ScegliPiatto() {
   const [dati, setDati] = useState<DatiScegli | null>(null);
   const [errore, setErrore] = useState<string | null>(null);
   const [scelto, setScelto] = useState<string | null>(null);
+  const [scelteCorrenti, setScelteCorrenti] = useState<Record<string, Scelta>>({});
   const [salvando, setSalvando] = useState(false);
   const [erroreSalva, setErroreSalva] = useState<string | null>(null);
 
@@ -103,12 +220,13 @@ export default function ScegliPiatto() {
     let vivo = true;
     async function carica() {
       try {
-        const [settimana, repertorio, slotDefs, ingredienti, impostazioni] = await Promise.all([
+        const [settimana, repertorio, slotDefs, ingredienti, impostazioni, dispensa] = await Promise.all([
           leggiSettimanaCorrente(),
           leggiRepertorio(),
           leggiSlotDefs(),
           leggiIngredienti(),
           leggiImpostazioni(),
+          leggiDispensa(),
         ]);
         if (!vivo) return;
 
@@ -120,6 +238,8 @@ export default function ScegliPiatto() {
         }
 
         const areaPerIngrediente = new Map(ingredienti.map((i) => [i.id, i.area]));
+        const ingredientiPerId = new Map(ingredienti.map((i) => [i.id, i]));
+        const nomePerIngrediente = new Map(ingredienti.map((i) => [i.id, i.nome]));
         // Solo i piatti attivi di questo slot: leggiRepertorio() esclude già
         // i piatti eliminati (soft delete), qui si filtra anche per pasto.
         const piatti = repertorio.filter((p) => p.slotDefId === slotDefId);
@@ -129,8 +249,20 @@ export default function ScegliPiatto() {
           areePerPiatto.set(p.id, areeDelPiatto(p, areaPerIngrediente, impostazioni.ordineAree));
         }
 
-        setDati({ slotId: slot.id, dishIdOriginale: slot.dishId, nomePasto: def.nome, piatti, areePerPiatto });
+        setDati({
+          slotId: slot.id,
+          dishIdOriginale: slot.dishId,
+          nomePasto: def.nome,
+          piatti,
+          areePerPiatto,
+          scelteOriginali: slot.scelte,
+          dispensa,
+          ingredientiPerId,
+          nomePerIngrediente,
+          moltiplicatorePorzioni: impostazioni.moltiplicatorePorzioni,
+        });
         setScelto(slot.dishId);
+        setScelteCorrenti(slot.scelte);
       } catch (errore) {
         console.error('scegli: caricamento fallito.', errore);
         if (vivo) setErrore('Non riusciamo a caricare i piatti. Riprova più tardi.');
@@ -142,16 +274,27 @@ export default function ScegliPiatto() {
     };
   }, [dataParam, slotDefId]);
 
+  /** Cicla il componente alla prossima opzione, come scelta manuale — mai sovrascritta dal planner. */
+  function toccaComponente(componente: Componente) {
+    const attuale = opzioneCorrente(componente, scelteCorrenti);
+    const prossima = opzioneSuccessiva(componente, attuale.id);
+    setScelteCorrenti((prev) => ({ ...prev, [componente.id]: { opzioneId: prossima.id, fonte: 'manuale' } }));
+  }
+
   async function confermaScelta() {
-    if (!dati || scelto === dati.dishIdOriginale || salvando) return;
+    if (!dati || !ilPiattoOLeScelteSonoCambiate(dati, scelto, scelteCorrenti) || salvando) return;
     setSalvando(true);
     setErroreSalva(null);
     try {
+      const dishScelto = dati.piatti.find((p) => p.id === scelto) ?? null;
+      const patch: { dishId: string | null; scelte?: Record<string, Scelta> } = { dishId: scelto };
+      const scelteDaMandare = dishScelto ? scelteManualiDaMandare(dishScelto, scelteCorrenti) : undefined;
+      if (scelteDaMandare !== undefined) patch.scelte = scelteDaMandare;
       // 'correzione' qui è inerte: aggiornaSlot usa `fonte` solo per un patch
       // di `stato` (gerarchia delle fonti). Un patch che tocca solo `dishId`
-      // si applica sempre e non scrive `fonte_stato` — scegliere un piatto
-      // non è una transizione di stato casa/fuori.
-      await aggiornaSlot(dati.slotId, { dishId: scelto }, 'correzione');
+      // (e `scelte`) si applica sempre e non scrive `fonte_stato` — scegliere
+      // un piatto non è una transizione di stato casa/fuori.
+      await aggiornaSlot(dati.slotId, patch, 'correzione');
       router.push('/settimana');
     } catch (errore) {
       console.error('scegli: salvataggio della scelta fallito.', errore);
@@ -176,8 +319,11 @@ export default function ScegliPiatto() {
     return <Cornice etichetta={etichettaGiornoTesto} />;
   }
 
-  const cambiato = scelto !== dati.dishIdOriginale;
+  const cambiato = ilPiattoOLeScelteSonoCambiate(dati, scelto, scelteCorrenti);
   const etichettaHeader = etichettaGiornoTesto ? `${etichettaGiornoTesto} · ${dati.nomePasto.toUpperCase()}` : dati.nomePasto.toUpperCase();
+  const dishSelezionato = dati.piatti.find((p) => p.id === scelto) ?? null;
+  const dispensaPerId = new Map(dati.dispensa.map((d) => [d.ingredientId, d]));
+  const oggi = new Date().toISOString().slice(0, 10);
 
   return (
     <Cornice etichetta={etichettaHeader}>
@@ -282,6 +428,58 @@ export default function ScegliPiatto() {
             );
           })}
         </div>
+
+        {dishSelezionato && dishSelezionato.componenti.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 14 }}>
+            {dishSelezionato.componenti.map((componente) => {
+              const opzione = opzioneCorrente(componente, scelteCorrenti);
+              const inCasa = opzioneInCasa(opzione, dati.ingredientiPerId, dispensaPerId, dati.moltiplicatorePorzioni, oggi);
+              return (
+                <button
+                  key={componente.id}
+                  type="button"
+                  onClick={() => toccaComponente(componente)}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    padding: '15px 16px',
+                    borderRadius: 20,
+                    background: '#FFFFFF',
+                    border: '1px solid var(--bordo)',
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--ink)' }}>
+                      {componente.nome.toUpperCase()}
+                    </span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--sec)' }}>
+                      {nomeOpzione(opzione, dati.nomePerIngrediente)}
+                    </span>
+                    {inCasa && (
+                      <span
+                        style={{
+                          alignSelf: 'flex-start',
+                          fontFamily: 'var(--font-mono)',
+                          fontSize: 8,
+                          fontWeight: 700,
+                          letterSpacing: '0.11em',
+                          color: '#FFFFFF',
+                          background: 'var(--ink)',
+                          borderRadius: 999,
+                          padding: '4px 8px',
+                        }}
+                      >
+                        IN CASA
+                      </span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         <Link
           href="/piatti/nuovo"
