@@ -217,6 +217,7 @@ export default function Piatto() {
           setSettimanaCiclo(bozza.settimanaCiclo);
           setGiornoCiclo(bozza.giornoCiclo);
           setIngredienti(bozza.ingredienti);
+          setComponenti(bozza.componenti);
         }
 
         // Chi è appena tornato dalla creazione di un ingrediente lo aveva
@@ -369,7 +370,7 @@ export default function Piatto() {
    * piatto qui esiste solo in memoria finché non si preme SALVA PIATTO.
    */
   function riparaBozzaPrimaDiUscire() {
-    salvaBozza(id, { nome, slotDefId, descrizione, settimanaCiclo, giornoCiclo, ingredienti });
+    salvaBozza(id, { nome, slotDefId, descrizione, settimanaCiclo, giornoCiclo, ingredienti, componenti });
   }
 
   /**
@@ -1004,9 +1005,7 @@ export default function Piatto() {
             {disponibili.length === 0 && (
               <div style={{ fontSize: 13, color: 'var(--sec)', padding: '8px 6px' }}>
                 {ricerca.trim()
-                  ? selettore?.tipo === 'principale'
-                    ? `Nessun ingrediente per "${ricerca.trim()}". Puoi crearlo qui sotto.`
-                    : `Nessun ingrediente per "${ricerca.trim()}".`
+                  ? `Nessun ingrediente per "${ricerca.trim()}". Puoi crearlo qui sotto.`
                   : 'Hai già aggiunto tutti gli ingredienti del repertorio.'}
               </div>
             )}
@@ -1021,25 +1020,23 @@ export default function Piatto() {
                 <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>{ing.nome}</span>
               </button>
             ))}
-            {/* La creazione al volo resta solo per la lista fissa: la bozza
-                che mette al riparo il piatto durante quel viaggio (bozza.ts)
-                non conosce `componenti`, quindi da un'opzione perderebbe
-                silenziosamente le modifiche fatte ai componenti fino a quel
-                momento. Fuori scope di questo task (vedi report). */}
-            {selettore?.tipo === 'principale' && (
-              <Link
-                href={`/piatti/${id}/ingredienti/nuovo`}
-                onClick={riparaBozzaPrimaDiUscire}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 6px', minHeight: 44 }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                  <path d="M12 5v14M5 12h14" stroke="#14163A" strokeWidth="2.1" strokeLinecap="round" />
-                </svg>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--ink)' }}>
-                  NUOVO INGREDIENTE
-                </span>
-              </Link>
-            )}
+            {/* Disponibile anche aprendo il selettore da un'opzione: da qui in
+                avanti `riparaBozzaPrimaDiUscire` mette al riparo anche
+                `componenti` (vedi BozzaPiatto in bozza.ts), quindi il viaggio
+                verso la creazione dell'ingrediente e ritorno non perde più le
+                modifiche fatte ai componenti fino a quel momento. */}
+            <Link
+              href={`/piatti/${id}/ingredienti/nuovo`}
+              onClick={riparaBozzaPrimaDiUscire}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 6px', minHeight: 44 }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M12 5v14M5 12h14" stroke="#14163A" strokeWidth="2.1" strokeLinecap="round" />
+              </svg>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--ink)' }}>
+                NUOVO INGREDIENTE
+              </span>
+            </Link>
           </div>
         </div>
       )}

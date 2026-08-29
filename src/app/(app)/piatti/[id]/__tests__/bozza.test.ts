@@ -8,6 +8,7 @@ const BOZZA = {
   settimanaCiclo: 2,
   giornoCiclo: 4,
   ingredienti: [{ ingredientId: 'olio-1', quantita: 10, unita: 'ml' as const }],
+  componenti: [{ id: 'c-1', nome: 'Pane', opzioni: [{ id: 'o-1', righe: [{ ingredientId: 'farina-1', quantita: 60, unita: 'g' as const }] }] }],
 };
 
 describe('bozza del piatto', () => {
@@ -74,7 +75,29 @@ describe('bozza del piatto', () => {
     );
     expect(riprendiBozza('nuovo')).toEqual({
       nome: 'Vecchia', slotDefId: 'pranzo-1', descrizione: '',
-      settimanaCiclo: null, giornoCiclo: null, ingredienti: [],
+      settimanaCiclo: null, giornoCiclo: null, ingredienti: [], componenti: [],
     });
+  });
+
+  it('una bozza scritta prima di componenti resta valida', () => {
+    // Stesso caso di sopra, isolato su `componenti`: è il campo aggiunto più
+    // di recente (Task 11, review round 1) e deve leggersi con [] su una
+    // bozza vecchia, non far scartare l'intera bozza.
+    sessionStorage.setItem(
+      'spesa:bozza-piatto:nuovo',
+      JSON.stringify({
+        nome: 'Riso condito', slotDefId: 'pranzo-1', descrizione: '',
+        settimanaCiclo: null, giornoCiclo: null, ingredienti: [],
+      }),
+    );
+    expect(riprendiBozza('nuovo')?.componenti).toEqual([]);
+  });
+
+  it('conserva i componenti della bozza, con i loro id', () => {
+    // Il motivo per cui il campo esiste: senza, uscire dall'editor per
+    // creare o modificare un ingrediente perdeva silenziosamente ogni
+    // componente aggiunto fino a quel momento (review round 1, finding HIGH).
+    salvaBozza('nuovo', BOZZA);
+    expect(riprendiBozza('nuovo')?.componenti).toEqual(BOZZA.componenti);
   });
 });

@@ -1,4 +1,4 @@
-import type { DishIngredient } from '@/domain/types';
+import type { Componente, DishIngredient } from '@/domain/types';
 
 /**
  * Il piatto in scrittura, messo al riparo prima di uscire dall'editor.
@@ -20,6 +20,16 @@ export interface BozzaPiatto {
   settimanaCiclo: number | null;
   giornoCiclo: number | null;
   ingredienti: DishIngredient[];
+  /**
+   * Senza questo campo, uscire dall'editor per creare un ingrediente (dalla
+   * lista fissa o da un'opzione di un componente) o per modificarne uno
+   * esistente perdeva silenziosamente ogni componente aggiunto/modificato
+   * fino a quel momento: `riparaBozzaPrimaDiUscire` salvava una bozza senza
+   * componenti, e al rientro `carica()` li rileggeva dal server (o da `[]`
+   * su un piatto nuovo), cancellando il lavoro in corso. Sono oggetti
+   * piani, serializzabili come il resto della bozza.
+   */
+  componenti: Componente[];
 }
 
 const PREFISSO = 'spesa:bozza-piatto:';
@@ -71,6 +81,8 @@ export function riprendiBozza(id: string): BozzaPiatto | null {
     if (!Array.isArray(letto.ingredienti)) return null;
     // I campi aggiunti dopo si leggono con un default: una bozza scritta da
     // una versione precedente resta valida invece di essere buttata via.
+    // `componenti` è fra questi: una bozza salvata prima di questo fix non
+    // ce l'ha, e deve restare leggibile.
     return {
       nome: letto.nome,
       slotDefId: letto.slotDefId,
@@ -78,6 +90,7 @@ export function riprendiBozza(id: string): BozzaPiatto | null {
       settimanaCiclo: typeof letto.settimanaCiclo === 'number' ? letto.settimanaCiclo : null,
       giornoCiclo: typeof letto.giornoCiclo === 'number' ? letto.giornoCiclo : null,
       ingredienti: letto.ingredienti,
+      componenti: Array.isArray(letto.componenti) ? letto.componenti : [],
     };
   } catch {
     return null;

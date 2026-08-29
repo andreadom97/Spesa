@@ -317,6 +317,7 @@ describe('Piatto (editor)', () => {
       settimanaCiclo: null,
       giornoCiclo: null,
       ingredienti: [{ ingredientId: 'i-1', quantita: 150, unita: 'g' }],
+      componenti: [],
     });
 
     render(<Piatto />);
@@ -331,7 +332,7 @@ describe('Piatto (editor)', () => {
     vi.mocked(leggiRepertorio).mockResolvedValue([PIATTO_ESISTENTE]);
     salvaBozza('d-1', {
       nome: 'Nome cambiato non ancora salvato', slotDefId: 'sd-3',
-      descrizione: '', settimanaCiclo: null, giornoCiclo: null, ingredienti: [],
+      descrizione: '', settimanaCiclo: null, giornoCiclo: null, ingredienti: [], componenti: [],
     });
 
     render(<Piatto />);
@@ -352,7 +353,7 @@ describe('Piatto (editor)', () => {
 
     expect(riprendiBozza('nuovo')).toEqual({
       nome: 'Riso condito', slotDefId: 'sd-3',
-      descrizione: '', settimanaCiclo: null, giornoCiclo: null, ingredienti: [],
+      descrizione: '', settimanaCiclo: null, giornoCiclo: null, ingredienti: [], componenti: [],
     });
   });
 
@@ -378,7 +379,7 @@ describe('Piatto (editor)', () => {
     await screen.findByDisplayValue('Yogurt e avena');
     salvaBozza('d-1', {
       nome: 'residuo', slotDefId: 'sd-1',
-      descrizione: '', settimanaCiclo: null, giornoCiclo: null, ingredienti: [],
+      descrizione: '', settimanaCiclo: null, giornoCiclo: null, ingredienti: [], componenti: [],
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'SALVA PIATTO' }));
@@ -501,5 +502,60 @@ describe('Piatto (editor)', () => {
     // Nome dato, ma l'opzione di default nasce senza righe: il salvataggio si blocca.
     expect(screen.getByRole('button', { name: 'SALVA PIATTO' })).toBeDisabled();
     expect(screen.getByText(/Ogni opzione deve avere almeno un ingrediente/)).toBeInTheDocument();
+  });
+
+  // Review round 1, finding HIGH: BozzaPiatto non includeva `componenti`, e
+  // uscire dall'editor (per creare o modificare un ingrediente) e rientrare
+  // cancellava silenziosamente i componenti aggiunti fino a quel momento,
+  // perché carica() li rileggeva dal server (o da `[]` su un piatto nuovo)
+  // sopra una bozza che non li aveva mai salvati. Il giro qui è simulato con
+  // unmount + un nuovo render di <Piatto/>, come farebbe una navigazione
+  // reale verso l'editor dell'ingrediente e ritorno.
+  it("conserva un componente attraverso il giro bozza (uscita verso 'nuovo ingrediente' e rientro)", async () => {
+    const { unmount } = render(<Piatto />);
+    await screen.findByPlaceholderText('Dai un nome al piatto');
+
+    fireEvent.change(screen.getByPlaceholderText('Dai un nome al piatto'), { target: { value: 'Panino' } });
+    fireEvent.click(screen.getByRole('button', { name: 'AGGIUNGI COMPONENTE' }));
+    fireEvent.change(screen.getByLabelText('Nome del componente 1'), { target: { value: 'Pane' } });
+    fireEvent.click(screen.getByRole('button', { name: "Aggiungi ingrediente all'opzione 1 del componente 1" }));
+    fireEvent.click(await screen.findByText("Fiocchi d'avena"));
+    fireEvent.change(screen.getByLabelText("Grammatura di Fiocchi d'avena"), { target: { value: '40' } });
+
+    // Il selettore si è chiuso da solo dopo la scelta: per raggiungere
+    // "NUOVO INGREDIENTE" (che chiama riparaBozzaPrimaDiUscire) lo si riapre
+    // dal selettore principale — stesso link, ora visibile a prescindere dal
+    // target da cui il selettore è stato aperto (era nascosto per le opzioni
+    // prima di questo fix).
+    fireEvent.click(screen.getByRole('button', { name: /AGGIUNGI\s*INGREDIENTE/ }));
+    fireEvent.click(screen.getByRole('link', { name: /NUOVO\s*INGREDIENTE/ }));
+
+    unmount();
+    render(<Piatto />);
+
+    expect(await screen.findByDisplayValue('Pane')).toBeInTheDocument();
+    expect(screen.getByText("Fiocchi d'avena")).toBeInTheDocument();
+  });
+
+  // Review round 1, finding MEDIUM: il flusso critico della nota cross-task
+  // del Task 1 — aprire un piatto con componenti già salvati e premere SALVA
+  // senza toccare nulla non deve rigenerare gli id di componenti/opzioni
+  // (salvaPiatto, Task 7, riusa solo id che sono già uuid: rigenerarli qui
+  // invaliderebbe le meal_slot_choice registrate per quel componente).
+  it('aprire un piatto con componenti e salvare senza toccare nulla conserva gli id originali', async () => {
+    paramsId = 'd-2';
+    vi.mocked(leggiRepertorio).mockResolvedValue([PIATTO_CON_COMPONENTI]);
+    vi.mocked(salvaPiatto).mockResolvedValue('d-2');
+
+    render(<Piatto />);
+    await screen.findByDisplayValue('Yogurt e avena');
+
+    fireEvent.click(screen.getByRole('button', { name: 'SALVA PIATTO' }));
+
+    await waitFor(() => expect(salvaPiatto).toHaveBeenCalled());
+    const [chiamata] = vi.mocked(salvaPiatto).mock.calls[0];
+    expect(chiamata.componenti).toEqual([
+      { id: 'c-1', nome: 'Pane', opzioni: [{ id: 'o-1', righe: [{ ingredientId: 'i-2', quantita: 40, unita: 'g' }] }] },
+    ]);
   });
 });
