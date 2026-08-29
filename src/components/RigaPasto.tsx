@@ -123,6 +123,10 @@ export function RigaPasto({ nomePasto, aCasa, nomePiatto, aree, sottotitolo, onT
               fontFamily: 'var(--font-mono)',
               fontSize: 9,
               letterSpacing: '0.02em',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              maxWidth: '100%',
               color: '#8A8A96',
             }}
           >
