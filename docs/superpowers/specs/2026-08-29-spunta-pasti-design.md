@@ -214,7 +214,9 @@ con una variante `leggiSettimana(lunedi)` del data layer — stessa lettura di
   chiama mai per il passato;
 - niente bottone di conferma né rigenerazione lista: la settimana passata è
   tipicamente `chiusa`, e gli storni si applicano direttamente al residuo
-  vivo (il caso già coperto dall'invariante §2).
+  vivo. Attenzione però al limite cross-settimana descritto in §7: se la
+  settimana corrente è confermata ma non ancora chiusa, la sua chiusura può
+  cancellare il credito per gli ingredienti presenti nella lista congelata.
 
 ## 7. Errori e casi limite
 
@@ -250,6 +252,14 @@ con una variante `leggiSettimana(lunedi)` del data layer — stessa lettura di
   (residuo sottostimato → si ricompra, si corregge dalla Dispensa). Il
   doppio conteggio alla radice precede la spunta pasti. A backlog il fix
   dell'interazione `allineaTopUp` × ledger.
+- **Storno cross-settimana e chiusura della corrente (limite noto, 29/08)**:
+  la riapplicazione di `chiudiSpesa` somma solo gli storni della settimana
+  che si chiude. Una correzione sulla settimana precedente fatta DOPO la
+  conferma della corrente accredita il residuo vivo, ma la chiusura della
+  corrente lo sovrascrive dai dati congelati per gli ingredienti in lista —
+  il credito sparisce. Sopravvive se la correzione precede la conferma (il
+  caso tipico del lunedì mattina). Errore in direzione economica (si
+  ricompra); fix a backlog, gemello del limite `allineaTopUp` qui sopra.
 
 ## 8. Test
 
