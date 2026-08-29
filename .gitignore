@@ -26,3 +26,7 @@ tsconfig.tsbuildinfo
 # configurazione MCP locale (project ref del progetto Supabase)
 .mcp.json
 .env*
+
+# diete vere di persone vere: dati personali, mai in git
+diete:/
+diete/
