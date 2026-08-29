@@ -398,6 +398,27 @@ export async function chiudiSpesa(weekId: string): Promise<void> {
 
   const aggiornamenti = calcolaChiusura({ voci, oggi });
 
+  // ── Riapplicazione degli storni (spec spunta-pasti §5.2) ────────────────
+  // La sovrascrittura qui sotto è ASSOLUTA, dai dati congelati: uno storno
+  // registrato fra la generazione della lista e questa chiusura (salti il
+  // pranzo di lunedì, spesa la sera) verrebbe cancellato. Si sommano quindi
+  // gli storni degli slot della settimana al residuo in scrittura — ma SOLO
+  // per gli ingredienti che la chiusura sovrascrive: uno storno su un
+  // ingrediente fuori dalla lista congelata è già nel residuo vivo dal
+  // momento del tap, e l'overwrite non lo tocca — riapplicarlo lo conterebbe
+  // due volte. La riapplicazione compensa esattamente ciò che l'overwrite
+  // cancella, niente di più; il guard di idempotenza la fa girare una volta.
+  const { data: righeStorno, error: eStorni } = await sb
+    .from('meal_slot_storno')
+    .select('ingredient_id, delta, meal_slot!inner(week_id)')
+    .eq('meal_slot.week_id', weekId);
+  if (eStorni) throw eStorni;
+  const stornoPerIngrediente = new Map<string, number>();
+  for (const r of (righeStorno ?? []) as Array<Record<string, unknown>>) {
+    const id = String(r.ingredient_id);
+    stornoPerIngrediente.set(id, (stornoPerIngrediente.get(id) ?? 0) + Number(r.delta));
+  }
+
   const scrittureDispensa = aggiornamenti
     .filter((a) => a.residuo !== null || a.ultimoAcquisto !== null)
     .map((a) => {
@@ -412,7 +433,9 @@ export async function chiudiSpesa(weekId: string): Promise<void> {
       // inesistente è un no-op silenzioso, senza errore da nessuna parte: il
       // residuo di quell'ingrediente non si accumulerebbe mai (I1).
       const patch: Record<string, unknown> = { ingredient_id: a.ingredientId, user_id: userId };
-      if (a.residuo !== null) patch.residuo = a.residuo;
+      if (a.residuo !== null) {
+        patch.residuo = Math.max(0, a.residuo + (stornoPerIngrediente.get(a.ingredientId) ?? 0));
+      }
       if (a.ultimoAcquisto !== null) patch.ultimo_acquisto = a.ultimoAcquisto;
       return sb.from('pantry_state').upsert(patch, { onConflict: 'ingredient_id' });
     });

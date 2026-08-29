@@ -67,14 +67,26 @@ const LISTE_LETTURA = [
   { id: 'lista-topup', shopping_list_item: [RIGA_OLIO] },
 ];
 
-/** Risolve week (select) come settimana confermata (non ancora chiusa) e shopping_list (select) con le liste passate. */
-function risolviSettimanaConfermata(liste: unknown[]) {
+/**
+ * Risolve week (select) come confermata, shopping_list (select) con le liste
+ * passate e meal_slot_storno (select) con gli storni passati. Il default []
+ * riproduce il mondo senza spunte: i test pre-esistenti non cambiano di una
+ * virgola.
+ */
+function risolviSettimanaConfermata(
+  liste: unknown[],
+  storni: Array<{ ingredient_id: string; delta: number }> = [],
+) {
   return (tabella: string, chiamate: Chiamata[]) => {
-    if (tabella === 'week' && chiamate.some((c) => c.metodo === 'select')) {
+    const legge = chiamate.some((c) => c.metodo === 'select');
+    if (tabella === 'week' && legge) {
       return { data: { stato: 'confermata' }, error: null };
     }
-    if (tabella === 'shopping_list' && chiamate.some((c) => c.metodo === 'select')) {
+    if (tabella === 'shopping_list' && legge) {
       return { data: liste, error: null };
+    }
+    if (tabella === 'meal_slot_storno' && legge) {
+      return { data: storni, error: null };
     }
     return { data: null, error: null };
   };
@@ -222,5 +234,51 @@ describe('chiudiSpesa', () => {
     expect(scritture['shopping_list']).toBeUndefined();
     expect(scritture['pantry_state']).toBeUndefined();
     expect(scritture['purchase']).toBeUndefined();
+  });
+
+  it('riapplica gli storni della settimana sopra il residuo congelato', async () => {
+    // Lo yogurt ha uno storno di +100 (una colazione saltata prima della
+    // chiusura): la sovrascrittura assoluta lo cancellerebbe, la
+    // riapplicazione lo somma — 50 + 1000 − 750 + 100 = 400 (spec §5.2).
+    const { sb, scritture } = creaClientMock(risolviSettimanaConfermata(
+      LISTE_LETTURA,
+      [{ ingredient_id: 'ing-yogurt', delta: 100 }],
+    ));
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    await chiudiSpesa('week-1');
+
+    expect(patchPantry(scritture['pantry_state'] ?? [], 'ing-yogurt'))
+      .toEqual({ residuo: 400, ultimo_acquisto: '2026-09-06' });
+  });
+
+  it('uno storno su un ingrediente fuori lista NON si riapplica: il residuo vivo lo ha già', async () => {
+    // Il piatto sostituito ha addebitato un ingrediente mai entrato in lista:
+    // il delta è stato applicato al residuo vivo al momento del tap, e la
+    // chiusura non sovrascrive quella riga. Riapplicarlo qui lo conterebbe
+    // due volte (spec §5.2).
+    const { sb, scritture } = creaClientMock(risolviSettimanaConfermata(
+      LISTE_LETTURA,
+      [{ ingredient_id: 'ing-fagioli', delta: -30 }],
+    ));
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    await chiudiSpesa('week-1');
+
+    expect(patchPantry(scritture['pantry_state'] ?? [], 'ing-fagioli')).toBeUndefined();
+  });
+
+  it('la riapplicazione clampa a zero, come ogni applicazione di storno', async () => {
+    const { sb, scritture } = creaClientMock(risolviSettimanaConfermata(
+      LISTE_LETTURA,
+      [{ ingredient_id: 'ing-pasta', delta: -700 }],
+    ));
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    await chiudiSpesa('week-1');
+
+    // Pasta congelata: 100 + 0 − 500 → 0; storno −700 → max(0, 0 − 700) = 0.
+    expect(patchPantry(scritture['pantry_state'] ?? [], 'ing-pasta'))
+      .toEqual({ residuo: 0 });
   });
 });
