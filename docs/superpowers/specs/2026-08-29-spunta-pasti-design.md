@@ -241,6 +241,15 @@ con una variante `leggiSettimana(lunedi)` del data layer — stessa lettura di
 - **Doppio tap / due schede**: leggi-somma-scrivi non è atomico, ma l'app è
   mono-utente e il danno peggiore è uno storno doppio, visibile in Dispensa
   e invertibile con "Torna al piano". Nessun RPC per questo.
+- **allineaTopUp dopo uno storno (limite noto, 29/08)**: una riga aggiunta da
+  `allineaTopUp` congela il residuo *vivo*, che dopo un tap include già lo
+  storno — mentre il suo fabbisogno conta la stessa consumazione un'altra
+  volta, e la riapplicazione della chiusura una terza. Colpisce solo il
+  percorso "sostituto con ingrediente nuovo → riapertura Lista → acquisto →
+  chiusura nella stessa settimana"; l'errore va nella direzione economica
+  (residuo sottostimato → si ricompra, si corregge dalla Dispensa). Il
+  doppio conteggio alla radice precede la spunta pasti. A backlog il fix
+  dell'interazione `allineaTopUp` × ledger.
 
 ## 8. Test
 
