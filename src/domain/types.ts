@@ -5,7 +5,7 @@ export type AreaId =
   | 'ortofrutta' | 'macelleria' | 'latticini'
   | 'cereali' | 'dispensa' | 'surgelati';
 
-export type StatoSlot = 'casa' | 'fuori' | 'saltato';
+export type StatoSlot = 'casa' | 'fuori' | 'saltato' | 'sostituito';
 export type FonteStato = 'default' | 'calendario' | 'checkin' | 'correzione';
 export type FonteDish = 'nutrizionista' | 'proprio';
 
