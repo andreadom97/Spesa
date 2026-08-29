@@ -273,4 +273,44 @@ describe('piatti sorella sullo stesso giorno', () => {
     const b = assegnaPiatti({ slots: [slotSpuntinoLunedi()], dishes: [spuntinoNoci, spuntinoCioccolato], ingredients: [cioccolato, noci], pantry: [residuoDi('cioccolato', 90)], oggi: '2026-08-31' });
     expect(a[0].dishId).toBe(b[0].dishId);
   });
+
+  it('regressione: passare solo ingredients (senza pantry né oggi) non accende da solo il criterio del costo', () => {
+    // Un pasto libero di lunedì consuma cioccolato; martedì due sorelle
+    // fisse, una a cioccolato una a noci. Senza NESSUN dato di dispensa
+    // decide la rotazione (z-noci). Il bug: passando SOLO `ingredients` (non
+    // `pantry` né `oggi`), `consumaDaResiduo` di lunedì popolava comunque la
+    // copia di lavoro simulando un acquisto contro una dispensa fantasma, e
+    // il confronto costi si accendeva da solo per martedì, facendo vincere
+    // m-cioccolato invece di rispettare "facoltativi insieme per contratto".
+    const lunediLibero: Dish = {
+      id: 'lunedi-libero', nome: 'lunedi-libero', slotDefId: 'pasto', fonte: 'proprio',
+      attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
+      ingredienti: [{ ingredientId: 'cioccolato', quantita: 10, unita: 'g' }],
+      componenti: [],
+    };
+    const mCioccolato: Dish = {
+      id: 'm-cioccolato', nome: 'm-cioccolato', slotDefId: 'pasto', fonte: 'proprio',
+      attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: 1,
+      ingredienti: [{ ingredientId: 'cioccolato', quantita: 5, unita: 'g' }],
+      componenti: [],
+    };
+    const zNoci: Dish = {
+      id: 'z-noci', nome: 'z-noci', slotDefId: 'pasto', fonte: 'proprio',
+      attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: 1,
+      ingredienti: [{ ingredientId: 'noci', quantita: 20, unita: 'g' }],
+      componenti: [],
+    };
+    const slots: MealSlot[] = [
+      { id: 'lun', data: '2026-08-31', slotDefId: 'pasto', stato: 'casa', dishId: null, fonteStato: 'default', scelte: {} },
+      { id: 'mar', data: '2026-09-01', slotDefId: 'pasto', stato: 'casa', dishId: null, fonteStato: 'default', scelte: {} },
+    ];
+    const dishes = [lunediLibero, mCioccolato, zNoci];
+    const martediDi = (r: MealSlot[]) => r.find((s) => s.data === '2026-09-01')!.dishId;
+
+    const senzaDispensa = assegnaPiatti({ slots, dishes, settimaneTrascorse: 0 });
+    const soloIngredients = assegnaPiatti({ slots, dishes, ingredients: [cioccolato, noci], settimaneTrascorse: 0 });
+
+    expect(martediDi(senzaDispensa)).toBe('z-noci');
+    expect(martediDi(soloIngredients)).toBe(martediDi(senzaDispensa));
+  });
 });

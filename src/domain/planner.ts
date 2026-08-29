@@ -67,9 +67,13 @@ function giornoDellaSettimana(data: string): number {
  * Stabile rispetto all'ordine dell'array in ingresso: l'ordinale dipende
  * dalla posizione della data nella sequenza ordinata, non dalla posizione
  * dello slot nell'array. Per il criterio del costo la stabilità è ancora più
- * stretta: il vincitore per confezioni non dipende dall'ordine dei piatti in
- * ingresso, e a parità di costo il tie-break di rotazione si applica ai soli
- * pari-merito ordinati per `id` — così anche il pareggio resta stabile.
+ * stretta, ma solo *a parità di consumi precedenti*: fra le sorelle di uno
+ * stesso pasto il vincitore per confezioni non dipende dall'ordine con cui
+ * sono arrivate nell'array (si ordinano per id prima di confrontarle), ma
+ * può dipendere da cosa ha già consumato uno slot libero precedente nella
+ * sequenza — quello sì pesca dall'ordine dell'array, com'è sempre stato per
+ * la rotazione. A parità di costo il tie-break di rotazione si applica ai
+ * soli pari-merito ordinati per `id` — così anche il pareggio resta stabile.
  *
  * ## Il criterio del residuo (sorelle e, dal Task 6, opzioni)
  *
@@ -111,9 +115,15 @@ export function assegnaPiatti(input: AssegnaPiattiInput): MealSlot[] {
   // sconosciuta e costa zero (vedi costoInConfezioni/consumaDaResiduo).
   const ingredientiPerId = new Map((input.ingredients ?? []).map((i) => [i.id, i]));
 
-  // La copia di lavoro del residuo: vuota (quindi costo sempre zero) finché
-  // dispensa, ingredienti e data non sono TUTTI presenti — sono facoltativi
-  // insieme per contratto.
+  // Il criterio del costo è acceso solo se TUTTI e tre gli input di dispensa
+  // sono presenti — sono facoltativi insieme per contratto. Non basta
+  // dedurlo da "residuoLavoro non è vuota": con `ingredients` presente ma
+  // senza `pantry`/`oggi`, `consumaDaResiduo` popolerebbe comunque la mappa
+  // simulando acquisti contro una dispensa fantasma, accendendo il
+  // confronto costi in silenzio. Guardia esplicita, usata da entrambe le
+  // funzioni sotto.
+  const criterioAttivo = Boolean(input.ingredients && input.pantry && input.oggi);
+
   const residuoLavoro = new Map<string, number>();
   if (input.ingredients && input.pantry && input.oggi) {
     const oggi = input.oggi;
@@ -139,12 +149,12 @@ export function assegnaPiatti(input: AssegnaPiattiInput): MealSlot[] {
    * Righe di ingrediente sconosciuto o di classe `stima` non contano: costo
    * zero e nessun conteggio. Il planner non deve mai far fallire la
    * creazione della settimana per un dato mancante — a quello (e all'errore
-   * esplicito) pensa il list-builder. Residuo di lavoro vuoto (input
-   * facoltativi assenti) → zero sempre: tutte le opzioni pari, decide la
+   * esplicito) pensa il list-builder. Criterio spento (input facoltativi non
+   * TUTTI presenti) → zero sempre: tutte le opzioni pari, decide la
    * rotazione.
    */
   function costoInConfezioni(righe: DishIngredient[], residuoLavoro: Map<string, number>): number {
-    if (residuoLavoro.size === 0) return 0;
+    if (!criterioAttivo) return 0;
     let totale = 0;
     for (const riga of righe) {
       const ing = ingredientiPerId.get(riga.ingredientId);
@@ -169,8 +179,14 @@ export function assegnaPiatti(input: AssegnaPiattiInput): MealSlot[] {
    * `confezioniNecessarie`) e l'avanzo della confezione aperta resta
    * disponibile per il pasto successivo. Riusata dal Task 6 per registrare
    * il consumo dell'opzione davvero scelta in un componente.
+   *
+   * Criterio spento (input facoltativi non TUTTI presenti) → no-op: senza
+   * `pantry`/`oggi` non c'è un residuo reale da cui partire, e simulare
+   * comunque un acquisto per la sola presenza di `ingredients` accenderebbe
+   * il confronto costi contro una dispensa fantasma.
    */
   function consumaDaResiduo(righe: DishIngredient[], residuoLavoro: Map<string, number>): void {
+    if (!criterioAttivo) return;
     for (const riga of righe) {
       const ing = ingredientiPerId.get(riga.ingredientId);
       if (!ing || ing.classeResiduo === 'stima') continue;
