@@ -29,8 +29,13 @@ beforeEach(() => {
   vi.mocked(leggiSlotDefs).mockResolvedValue(SLOTS);
 });
 
-function caricaUnaFoto() {
-  const input = screen.getByLabelText(/scegli le foto/i);
+// `findByLabelText` (non `getByLabelText`) apposta: la vista acquisizione è già
+// stabile quando questa funzione viene chiamata (i chiamanti attendono prima il
+// bottone "estrai la dieta"), ma `Camera` decide fra fotocamera e fallback solo
+// dentro un effect, un giro asincrono dopo il proprio mount — `findByLabelText`
+// aspetta quel giro invece di assumere che sia già passato.
+async function caricaUnaFoto() {
+  const input = await screen.findByLabelText(/scegli le foto/i);
   fireEvent.change(input, { target: { files: [new File(['a'], 'p1.jpg', { type: 'image/jpeg' })] } });
 }
 
@@ -39,7 +44,7 @@ describe('Importa', () => {
     render(<Importa />);
     const estrai = await screen.findByRole('button', { name: /estrai la dieta/i });
     expect(estrai).toBeDisabled();
-    caricaUnaFoto();
+    await caricaUnaFoto();
     await waitFor(() => expect(estrai).toBeEnabled());
   });
 
@@ -47,7 +52,7 @@ describe('Importa', () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => FIXTURE_MENU_SETTIMANALE });
     render(<Importa />);
     await screen.findByRole('button', { name: /estrai la dieta/i });
-    caricaUnaFoto();
+    await caricaUnaFoto();
     fireEvent.click(screen.getByRole('button', { name: /estrai la dieta/i }));
     await waitFor(() => expect(salvaBozzaImport).toHaveBeenCalled());
     const bozza = vi.mocked(salvaBozzaImport).mock.calls[0][0];
@@ -60,7 +65,7 @@ describe('Importa', () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => FIXTURE_RIFIUTO_MACRO });
     render(<Importa />);
     await screen.findByRole('button', { name: /estrai la dieta/i });
-    caricaUnaFoto();
+    await caricaUnaFoto();
     fireEvent.click(screen.getByRole('button', { name: /estrai la dieta/i }));
     expect(await screen.findByText(/questa dieta non ha un menu/i)).toBeInTheDocument();
     expect(salvaBozzaImport).not.toHaveBeenCalled();
@@ -70,7 +75,7 @@ describe('Importa', () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 503, json: async () => ({ errore: 'estrazione non disponibile' }) });
     render(<Importa />);
     await screen.findByRole('button', { name: /estrai la dieta/i });
-    caricaUnaFoto();
+    await caricaUnaFoto();
     fireEvent.click(screen.getByRole('button', { name: /estrai la dieta/i }));
     expect(await screen.findByText(/non è disponibile/i)).toBeInTheDocument();
   });

@@ -111,11 +111,16 @@ export default function Importa() {
     setMessaggioErrore(null);
     setVista('estrazione');
     try {
+      // Solo la tab attiva finisce nel FormData: le due modalità non si
+      // mescolano mai (un PDF scelto e poi abbandonato per tornare alle foto
+      // non deve rispuntare in un invio successivo, e viceversa). Lo stato
+      // dell'altra tab resta comunque in memoria — tornare indietro non lo
+      // perde — semplicemente non parte con questa richiesta.
       const body = new FormData();
-      if (pdf) {
-        body.append('documento', pdf);
-      } else {
+      if (tab === 'foto') {
         foto.forEach((f) => body.append('immagini', f));
+      } else if (pdf) {
+        body.append('documento', pdf);
       }
       const res = await fetch('/api/import/estrai', { method: 'POST', body });
       if (res.status === 503) {
@@ -155,10 +160,12 @@ export default function Importa() {
     }
   }
 
-  if (vista === 'bozza' && bozza) {
+  if (vista === 'caricamento') return <Cornice />;
+
+  if (vista === 'ripresa' && bozza) {
     return (
       <Cornice>
-        <ContenutoBozza bozza={bozza} />
+        <SchermataRipresa onRiprendi={() => setVista('bozza')} onRicomincia={ricomincia} />
       </Cornice>
     );
   }
@@ -171,49 +178,51 @@ export default function Importa() {
     );
   }
 
-  /*
-   * 'caricamento' | 'ripresa' | 'acquisizione' | 'estrazione' | 'errore'
-   * condividono la stessa base, sempre montata: la `Camera` (e le sue foto)
-   * non si smonta mai finché l'acquisizione non è davvero conclusa — un
-   * remount fra un tentativo di estrazione e il successivo perderebbe le
-   * miniature già scattate, e in jsdom (senza mediaDevices) farebbe ripartire
-   * da capo la corsa fra il rilevamento del fallback e il controllo della
-   * bozza. Le altre viste si limitano a comparire sopra come overlay.
-   */
+  if (vista === 'errore') {
+    return (
+      <Cornice>
+        <SchermataErrore
+          messaggio={messaggioErrore ?? MESSAGGIO_ERRORE_GENERICO}
+          onRiprova={() => setVista('acquisizione')}
+        />
+      </Cornice>
+    );
+  }
+
+  if (vista === 'estrazione') {
+    return (
+      <Cornice>
+        <p style={{ margin: '40px 20px', textAlign: 'center', color: 'var(--sec)', fontSize: 14 }}>
+          Sto leggendo la dieta…
+        </p>
+      </Cornice>
+    );
+  }
+
+  if (vista === 'bozza' && bozza) {
+    return (
+      <Cornice>
+        <ContenutoBozza bozza={bozza} />
+      </Cornice>
+    );
+  }
+
+  // vista === 'acquisizione': la Camera si monta solo qui (e solo con la tab
+  // FOTO attiva) — in un browser vero `getUserMedia` parte al mount, quindi
+  // deve accendersi solo quando serve davvero, mai in sottofondo mentre si
+  // mostra il banner di ripresa o il caricamento. Il cleanup di Camera ferma
+  // le tracce ogni volta che si esce da questa vista.
   return (
     <Cornice>
-      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-        {vista === 'ripresa' && (
-          <SchermataRipresa onRiprendi={() => setVista('bozza')} onRicomincia={ricomincia} />
-        )}
-        {vista === 'estrazione' && (
-          <p style={{ margin: '40px 20px', textAlign: 'center', color: 'var(--sec)', fontSize: 14 }}>
-            Sto leggendo la dieta…
-          </p>
-        )}
-        {vista === 'errore' && (
-          <SchermataErrore
-            messaggio={messaggioErrore ?? MESSAGGIO_ERRORE_GENERICO}
-            onRiprova={() => setVista('acquisizione')}
-          />
-        )}
-        <div
-          style={{
-            display: vista === 'acquisizione' ? 'flex' : 'none',
-            flexDirection: 'column', flex: 1, minHeight: 0,
-          }}
-        >
-          <SchermataAcquisizione
-            tab={tab}
-            onTab={setTab}
-            foto={foto}
-            onFoto={setFoto}
-            pdf={pdf}
-            onPdf={setPdf}
-            onEstrai={estrai}
-          />
-        </div>
-      </div>
+      <SchermataAcquisizione
+        tab={tab}
+        onTab={setTab}
+        foto={foto}
+        onFoto={setFoto}
+        pdf={pdf}
+        onPdf={setPdf}
+        onEstrai={estrai}
+      />
     </Cornice>
   );
 }
@@ -229,7 +238,12 @@ interface PropsAcquisizione {
 }
 
 function SchermataAcquisizione({ tab, onTab, foto, onFoto, pdf, onPdf, onEstrai }: PropsAcquisizione) {
-  const abilitato = foto.length >= 1 || pdf !== null;
+  // Solo la tab attiva conta: uno stato residuo nell'altra tab (una foto
+  // scattata prima di passare al PDF, o viceversa) non deve abilitare
+  // l'estrazione finché non è quella la modalità scelta — `estrai()` invia
+  // comunque solo il payload della tab attiva, quindi il bottone deve
+  // riflettere esattamente quello.
+  const abilitato = tab === 'foto' ? foto.length >= 1 : pdf !== null;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
