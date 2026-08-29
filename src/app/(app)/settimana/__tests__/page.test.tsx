@@ -503,4 +503,31 @@ describe('settimana precedente', () => {
     await screen.findByText('Questa settimana non è mai stata creata: non c’è nulla da correggere.');
     expect(creaSettimana).not.toHaveBeenCalled();
   });
+
+  it('leggiSettimana fallita sulla precedente: errore col bottone di ritorno, che riporta alla corrente', async () => {
+    const corrente: SettimanaCorrente = { id: 'w-1', dataInizio: LUNEDI, stato: 'confermata', slots: buildSlots() };
+    vi.mocked(leggiSettimanaCorrente).mockResolvedValue(corrente);
+    vi.mocked(leggiSettimana).mockRejectedValue(new Error('rete assente'));
+    vi.mocked(leggiSlotDefs).mockResolvedValue(SLOT_DEFS);
+    vi.mocked(leggiRepertorio).mockResolvedValue([DISH_COLAZIONE, DISH_CENA]);
+    vi.mocked(leggiIngredienti).mockResolvedValue([ING_YOGURT, ING_POLLO]);
+    vi.mocked(leggiImpostazioni).mockResolvedValue({
+      moltiplicatorePorzioni: 1,
+      ordineAree: [...ORDINE_AREE_TEST],
+      settimaneCiclo: 1,
+      cicloOrigine: null,
+    });
+
+    render(<StrictMode><Settimana /></StrictMode>);
+    await screen.findByText('Yogurt e frutta');
+
+    fireEvent.click(screen.getByRole('button', { name: '‹ SETTIMANA SCORSA' }));
+
+    await screen.findByText('Non riusciamo a caricare la settimana. Riprova più tardi.');
+    const bottoneRitorno = screen.getByRole('button', { name: 'SETTIMANA CORRENTE ›' });
+
+    fireEvent.click(bottoneRitorno);
+
+    expect(await screen.findByText('Yogurt e frutta')).toBeInTheDocument();
+  });
 });

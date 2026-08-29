@@ -162,6 +162,20 @@ export default function Settimana() {
     return (
       <Cornice>
         <p style={{ margin: '20px 18px', color: 'var(--sec)' }}>{erroreCaricamento}</p>
+        {vista === 'precedente' && (
+          <div style={{ padding: '0 16px' }}>
+            <button
+              type="button"
+              onClick={() => cambiaVista('corrente')}
+              style={{
+                fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700,
+                letterSpacing: '0.11em', color: 'var(--ter)', padding: '4px 2px',
+              }}
+            >
+              SETTIMANA CORRENTE ›
+            </button>
+          </div>
+        )}
       </Cornice>
     );
   }
