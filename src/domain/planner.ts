@@ -3,7 +3,7 @@ import { confezioniNecessarie } from './confezioni';
 import { righeEffettive } from './opzioni';
 import { residuoUtilizzabile } from './pantry';
 import { convertiInUnitaBase } from './unita';
-import type { ClasseResiduo, Dish, DishIngredient, Ingredient, MealSlot, PantryState } from './types';
+import type { ClasseResiduo, Dish, DishIngredient, Ingredient, MealSlot, PantryState, Scelta } from './types';
 
 export interface AssegnaPiattiInput {
   slots: MealSlot[];
@@ -91,6 +91,19 @@ function giornoDellaSettimana(data: string): number {
  * Per questo gli slot si processano in ordine di `(data, slotDefId)` — anche
  * se l'array restituito mantiene l'ordine di input, che resta parte del
  * contratto.
+ *
+ * ## La risoluzione dei componenti (Task 6)
+ *
+ * Una volta deciso il piatto (per giorno fisso, sorelle, rotazione libera o
+ * perché già scelto a mano), ogni componente a scelta ("oppure" nel piatto)
+ * viene risolto con lo stesso criterio: costo minimo in confezioni; a parità
+ * vince l'opzione indicata dall'ordinale di rotazione dello slot,
+ * nell'ordine d'autore delle opzioni (non per id). Le righe fisse del
+ * piatto si consumano prima; poi i componenti, uno alla volta, ciascuno
+ * subito dopo la sua scelta — così il componente successivo dello stesso
+ * piatto (e il pasto successivo) vedono il residuo già scalato. Una scelta
+ * già registrata con `fonte: 'manuale'` non viene mai toccata; una scelta
+ * `'planner'` può essere ricalcolata.
  */
 export function assegnaPiatti(input: AssegnaPiattiInput): MealSlot[] {
   const settimanaCiclo = input.settimanaCiclo ?? null;
@@ -206,6 +219,48 @@ export function assegnaPiatti(input: AssegnaPiattiInput): MealSlot[] {
     }
   }
 
+  /**
+   * Task 6: risolve le opzioni dei componenti di un piatto al check-in. Per
+   * ogni componente senza una scelta 'manuale' già registrata, sceglie
+   * l'opzione che costa meno confezioni nuove; a parità vince l'opzione
+   * indicata da `posizioneRotazione % opzioni.length`, nell'ordine d'autore
+   * delle opzioni (non per id: la posizione è già una scelta d'autore, la
+   * prima è il default). Consuma la riga scelta dal residuo di lavoro subito
+   * dopo averla decisa — un componente alla volta — così il componente
+   * successivo dello stesso piatto vede il residuo già scalato.
+   *
+   * Le scelte con fonte 'manuale' non si toccano mai: si copiano così come
+   * sono e il componente si salta. Riusata su tutti i rami che assegnano o
+   * trovano un piatto (sorelle, rotazione libera, slot scelto a mano): il
+   * `dishId` non viene mai toccato qui, solo `scelte`.
+   */
+  function risolviComponenti(
+    piatto: Dish,
+    scelteEsistenti: Record<string, Scelta>,
+    posizioneRotazione: number,
+    residuoLavoro: Map<string, number>,
+  ): Record<string, Scelta> {
+    const scelte: Record<string, Scelta> = { ...scelteEsistenti };
+    for (const componente of piatto.componenti) {
+      if (scelte[componente.id]?.fonte === 'manuale') continue; // mai sovrascrivere una scelta manuale
+      let migliore = componente.opzioni[0];
+      let costoMigliore = Infinity;
+      componente.opzioni.forEach((opzione, i) => {
+        const costo = costoInConfezioni(opzione.righe, residuoLavoro);
+        // A parità vince l'opzione indicata dall'ordinale di rotazione,
+        // nell'ordine d'autore delle opzioni.
+        const preferita = i === posizioneRotazione % componente.opzioni.length;
+        if (costo < costoMigliore || (costo === costoMigliore && preferita)) {
+          migliore = opzione;
+          costoMigliore = costo;
+        }
+      });
+      scelte[componente.id] = { opzioneId: migliore.id, fonte: 'planner' };
+      consumaDaResiduo(migliore.righe, residuoLavoro);
+    }
+    return scelte;
+  }
+
   // Calcola le sequenze di date ordinate per ogni slotDef (solo slot a casa).
   // Usato per determinare l'ordinale di rotazione indipendente dall'ordine dell'array.
   const datesPerSlotDef = new Map<string, string[]>();
@@ -243,11 +298,16 @@ export function assegnaPiatti(input: AssegnaPiattiInput): MealSlot[] {
     if (slot.stato !== 'casa') continue; // niente consumo: non si mangia in casa
 
     if (slot.dishId !== null) {
-      // Scelto a mano: per ora si restituisce così com'è (lo risolverà il
-      // Task 6), ma il consumo va registrato comunque, altrimenti i pasti
-      // successivi vedrebbero un residuo che non c'è più.
+      // Scelto a mano: il dishId non si tocca, ma i suoi componenti si
+      // risolvono comunque (Task 6), e il consumo va registrato in ogni
+      // caso, altrimenti i pasti successivi vedrebbero un residuo che non
+      // c'è più.
       const piatto = piattoPerId.get(slot.dishId);
-      if (piatto) consumaDaResiduo(piatto.ingredienti, residuoLavoro);
+      if (piatto) {
+        consumaDaResiduo(piatto.ingredienti, residuoLavoro);
+        const scelte = risolviComponenti(piatto, slot.scelte, ordinale(slot), residuoLavoro);
+        risultato[indice] = { ...slot, scelte };
+      }
       continue;
     }
 
@@ -296,11 +356,13 @@ export function assegnaPiatti(input: AssegnaPiattiInput): MealSlot[] {
       scelto = pool[posizione];
     }
 
-    // Il consumo riguarda solo le righe fisse del piatto: quelle dei
-    // componenti le risolverà e consumerà il Task 6, con l'opzione davvero
-    // scelta e non col default usato sopra per valutare il costo.
+    // Il consumo delle righe fisse avviene prima della risoluzione dei
+    // componenti (Task 6): quelle si valutano e si consumano opzione per
+    // opzione, con l'opzione davvero scelta e non col default usato sopra
+    // per valutare il costo delle sorelle.
     consumaDaResiduo(scelto.ingredienti, residuoLavoro);
-    risultato[indice] = { ...slot, dishId: scelto.id };
+    const scelte = risolviComponenti(scelto, slot.scelte, ordinale(slot), residuoLavoro);
+    risultato[indice] = { ...slot, dishId: scelto.id, scelte };
   }
 
   return risultato;

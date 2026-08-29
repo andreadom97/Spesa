@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { assegnaPiatti } from '../planner';
 import { generaSettimana } from '../week-shape';
+import { wrap, INGREDIENTI } from './fixtures';
 import type { Dish, Ingredient, MealSlot, MealSlotDef, PantryState } from '../types';
 
 const DEFS: MealSlotDef[] = [
@@ -312,5 +313,86 @@ describe('piatti sorella sullo stesso giorno', () => {
 
     expect(martediDi(senzaDispensa)).toBe('z-noci');
     expect(martediDi(soloIngredients)).toBe(martediDi(senzaDispensa));
+  });
+});
+
+describe('risoluzione dei componenti', () => {
+  function slotPranzoLunedi(): MealSlot {
+    return {
+      id: 'pra-lun', data: '2026-08-31', slotDefId: 'pra', stato: 'casa',
+      dishId: null, fonteStato: 'default', scelte: {},
+    };
+  }
+
+  function residuoDi(ingredientId: string, residuo: number): PantryState {
+    return { ingredientId, residuo, ultimoAcquisto: null, giorniStimati: 90, congelato: false, ultimoCheck: null };
+  }
+
+  it('sceglie l’opzione coperta dal residuo e la registra con fonte planner', () => {
+    // 500 g di yogurt in casa, niente uova: l'opzione yogurt costa 0, quella uova 2 (uova pz + passata).
+    const out = assegnaPiatti({
+      slots: [slotPranzoLunedi()],
+      dishes: [wrap],
+      ingredients: INGREDIENTI,
+      pantry: [residuoDi('yogurt', 500)],
+      oggi: '2026-08-31',
+    });
+    expect(out[0].scelte).toEqual({ farcitura: { opzioneId: 'farcitura-yogurt', fonte: 'planner' } });
+  });
+
+  it('una scelta manuale non si tocca, qualunque cosa dica il residuo', () => {
+    const slot = { ...slotPranzoLunedi(), scelte: { farcitura: { opzioneId: 'farcitura-uova', fonte: 'manuale' as const } } };
+    const out = assegnaPiatti({
+      slots: [slot], dishes: [wrap], ingredients: INGREDIENTI,
+      pantry: [residuoDi('yogurt', 500)], oggi: '2026-08-31',
+    });
+    expect(out[0].scelte.farcitura).toEqual({ opzioneId: 'farcitura-uova', fonte: 'manuale' });
+  });
+
+  it('la scalatura è sequenziale: due pasti non si aggiudicano lo stesso residuo', () => {
+    // Fixture locali al test: `succo` (porzionabile, formato 200, non
+    // deperibile, area dispensa) e piatto `merenda` (slotDefId 'mer', nessuna
+    // riga fissa) con un componente 'bevanda' a due opzioni NELL'ORDINE:
+    // 'opz-a-succo' (succo 200 g) poi 'opz-b-avena' (avena 40 g).
+    // Dispensa: succo 200, avena 500. Tre slot merenda: lun, mar, mer.
+    const succo: Ingredient = {
+      id: 'succo', nome: 'Succo di frutta', unitaBase: 'g', area: 'dispensa',
+      classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 200,
+    };
+    const merenda: Dish = {
+      id: 'merenda', nome: 'Merenda', slotDefId: 'mer',
+      fonte: 'proprio', attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
+      ingredienti: [],
+      componenti: [{
+        id: 'bevanda', nome: 'bevanda',
+        opzioni: [
+          { id: 'opz-a-succo', righe: [{ ingredientId: 'succo', quantita: 200, unita: 'g' }] },
+          { id: 'opz-b-avena', righe: [{ ingredientId: 'avena', quantita: 40, unita: 'g' }] },
+        ],
+      }],
+    };
+    function slotMerenda(data: string): MealSlot {
+      return {
+        id: `mer-${data}`, data, slotDefId: 'mer', stato: 'casa',
+        dishId: null, fonteStato: 'default', scelte: {},
+      };
+    }
+
+    const out = assegnaPiatti({
+      slots: [slotMerenda('2026-08-31'), slotMerenda('2026-09-01'), slotMerenda('2026-09-02')],
+      dishes: [merenda],
+      ingredients: [...INGREDIENTI, succo],
+      pantry: [residuoDi('succo', 200), residuoDi('avena', 500)],
+      oggi: '2026-08-31',
+      settimaneTrascorse: 0,
+    });
+    // Lunedì: entrambe le opzioni costano 0 -> parità -> ordinale 0 -> succo.
+    expect(out[0].scelte.bevanda.opzioneId).toBe('opz-a-succo');
+    // Martedì: il succo è stato consumato lunedì (200-200=0) -> costa 1, l'avena 0.
+    expect(out[1].scelte.bevanda.opzioneId).toBe('opz-b-avena');
+    // Mercoledì È l'asserzione che discrimina: con scalatura vera l'avena ha
+    // ancora residuo -> costo 0 -> vince di nuovo; senza scalatura sarebbe di
+    // nuovo parità e l'ordinale 2 riporterebbe al succo.
+    expect(out[2].scelte.bevanda.opzioneId).toBe('opz-b-avena');
   });
 });
