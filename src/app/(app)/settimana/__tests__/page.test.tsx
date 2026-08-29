@@ -395,6 +395,10 @@ describe('Settimana (piano alimentare)', () => {
 });
 
 describe('spunta pasti', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('a settimana confermata la zona destra di oggi apre il foglio e "Saltato" spunta lo slot', async () => {
     const settimana: SettimanaCorrente = { id: 'w-1', dataInizio: LUNEDI, stato: 'confermata', slots: buildSlots() };
     vi.mocked(leggiSettimanaCorrente).mockResolvedValue(settimana);
@@ -443,6 +447,10 @@ describe('spunta pasti', () => {
 });
 
 describe('settimana precedente', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   const LUNEDI_PREC = sommaGiorni(LUNEDI, -7);
   const GIORNI_PREC = giorniDellaSettimana(LUNEDI_PREC);
 
