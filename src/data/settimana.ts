@@ -1,6 +1,7 @@
 import type { FonteStato, MealSlot, Scelta, StatoSlot } from '@/domain/types';
 import { generaSettimana, applicaStato } from '@/domain/week-shape';
 import { assegnaPiatti } from '@/domain/planner';
+import { consumoSlot, deltaStorno } from '@/domain/storno';
 import { settimanaDelCiclo, settimaneTrascorse } from '@/domain/ciclo';
 import { lunediDi } from '@/domain/date';
 import { client } from './supabase';
@@ -191,6 +192,12 @@ export async function creaSettimana(lunedi: string): Promise<string> {
  * "piatto nuovo con le scelte del piatto vecchio", che sarebbe il peggiore
  * dei due (un option_id che punta a un componente/opzione di un altro
  * piatto).
+ *
+ * In coda, dopo tutte le scritture su `meal_slot`/`meal_slot_choice`, il
+ * ledger degli storni (spec spunta-pasti §5.1): scritture slot → ledger →
+ * pantry, sempre in quest'ordine. Un fallimento a metà degenera in uno
+ * storno visibile e correggibile dalla Dispensa, mai in uno stato slot
+ * incoerente.
  */
 export async function aggiornaSlot(
   slotId: string,
@@ -203,15 +210,24 @@ export async function aggiornaSlot(
 
   const { data: riga, error } = await sb
     .from('meal_slot')
-    .select('*')
+    .select('*, meal_slot_choice(componente_id, option_id, fonte)')
     .eq('id', slotId)
     .eq('user_id', userId)
     .single();
   if (error) throw error;
 
-  const attuale = aMealSlot(riga);
+  const attuale: MealSlot = {
+    ...aMealSlot(riga),
+    scelte: Object.fromEntries(
+      ((riga.meal_slot_choice ?? []) as Record<string, unknown>[]).map((c) => [
+        String(c.componente_id),
+        { opzioneId: String(c.option_id), fonte: c.fonte as Scelta['fonte'] },
+      ]),
+    ),
+  };
 
-  if (patch.dishId !== undefined && patch.dishId !== attuale.dishId) {
+  const cambioPiatto = patch.dishId !== undefined && patch.dishId !== attuale.dishId;
+  if (cambioPiatto) {
     // Il piatto sta per cambiare: le scelte registrate sul piatto vecchio non
     // hanno più significato. Si ripulisce PRIMA dell'update di meal_slot, così
     // un fallimento a metà lascia "piatto vecchio, scelte vuote" — mai
@@ -264,6 +280,106 @@ export async function aggiornaSlot(
         .upsert(righe, { onConflict: 'meal_slot_id,componente_id' });
       if (eUps) throw eUps;
     }
+  }
+
+  // ── Il ledger degli storni (spec spunta-pasti §5.1) ─────────────────────
+  // Da quando la lista è generata, ogni mutazione che cambia il consumo dello
+  // slot scrive la differenza nel ledger e la applica al residuo. Prima
+  // (settimana bozza) il toggle è pianificazione: ci pensa costruisciLista,
+  // e accreditare qui sarebbe un doppio credito.
+  const { data: week, error: eWeek } = await sb
+    .from('week')
+    .select('stato')
+    .eq('id', String(riga.week_id))
+    .eq('user_id', userId)
+    .single();
+  if (eWeek) throw eWeek;
+  if (week.stato === 'bozza') return;
+
+  // Lo slot come le scritture sopra lo hanno lasciato: stato passato dal
+  // cancello delle fonti (se troppo debole, aggiornamento.stato è assente e
+  // lo stato resta quello di prima), piatto dal patch, scelte con la stessa
+  // regola della scrittura (cambio piatto = si riparte dal patch; altrimenti
+  // merge sulle esistenti).
+  const statoDopo = (aggiornamento.stato as StatoSlot | undefined) ?? attuale.stato;
+  const dishIdDopo = patch.dishId !== undefined ? patch.dishId : attuale.dishId;
+  const scelteDopo = cambioPiatto ? (patch.scelte ?? {}) : { ...attuale.scelte, ...(patch.scelte ?? {}) };
+
+  const [repertorio, ingredienti, impostazioni] = await Promise.all([
+    leggiRepertorio(), leggiIngredienti(), leggiImpostazioni(),
+  ]);
+  const piattoPerId = new Map(repertorio.map((d) => [d.id, d]));
+
+  // consumoSlot può lanciare (ingrediente sparito, opzione rimossa): succede
+  // QUI, prima di ogni scrittura di ledger/pantry — o il calcolo è completo
+  // o non si applica nulla (spec §7).
+  const prima = consumoSlot({
+    slot: attuale,
+    dish: attuale.dishId ? piattoPerId.get(attuale.dishId) ?? null : null,
+    ingredients: ingredienti,
+    moltiplicatorePorzioni: impostazioni.moltiplicatorePorzioni,
+  });
+  const dopo = consumoSlot({
+    slot: { ...attuale, stato: statoDopo, dishId: dishIdDopo, scelte: scelteDopo },
+    dish: dishIdDopo ? piattoPerId.get(dishIdDopo) ?? null : null,
+    ingredients: ingredienti,
+    moltiplicatorePorzioni: impostazioni.moltiplicatorePorzioni,
+  });
+  const deltas = deltaStorno(prima, dopo);
+  if (deltas.length === 0) return;
+
+  // Una riga CUMULATIVA per (slot, ingrediente): leggi-somma-scrivi, cumulo a
+  // zero = riga cancellata. Non è atomico, ma l'app è mono-utente e il danno
+  // peggiore (doppio tap ravvicinato) è uno storno doppio, visibile in
+  // Dispensa e invertibile con "Torna al piano" (spec §7).
+  const { data: righeLedger, error: eLedger } = await sb
+    .from('meal_slot_storno')
+    .select('ingredient_id, delta')
+    .eq('meal_slot_id', slotId);
+  if (eLedger) throw eLedger;
+  const cumuloEsistente = new Map(
+    (righeLedger ?? []).map((r) => [String(r.ingredient_id), Number(r.delta)]),
+  );
+
+  for (const d of deltas) {
+    const cumulo = (cumuloEsistente.get(d.ingredientId) ?? 0) + d.delta;
+    if (cumulo === 0) {
+      const { error: eDel } = await sb
+        .from('meal_slot_storno')
+        .delete()
+        .eq('meal_slot_id', slotId)
+        .eq('ingredient_id', d.ingredientId);
+      if (eDel) throw eDel;
+    } else {
+      const { error: eUps } = await sb.from('meal_slot_storno').upsert(
+        {
+          user_id: userId, meal_slot_id: slotId, ingredient_id: d.ingredientId,
+          delta: cumulo, aggiornato_il: new Date().toISOString(),
+        },
+        { onConflict: 'meal_slot_id,ingredient_id' },
+      );
+      if (eUps) throw eUps;
+    }
+  }
+
+  // L'applicazione al residuo: upsert per lo stesso motivo di chiudiSpesa
+  // (I1: la riga può non esistere), clamp a zero come nuovoResiduo.
+  const { data: righePantry, error: ePantry } = await sb
+    .from('pantry_state')
+    .select('ingredient_id, residuo')
+    .in('ingredient_id', deltas.map((d) => d.ingredientId));
+  if (ePantry) throw ePantry;
+  const residuoPerId = new Map(
+    (righePantry ?? []).map((r) => [String(r.ingredient_id), Number(r.residuo)]),
+  );
+
+  for (const d of deltas) {
+    const residuo = Math.max(0, (residuoPerId.get(d.ingredientId) ?? 0) + d.delta);
+    const { error: eUps } = await sb.from('pantry_state').upsert(
+      { ingredient_id: d.ingredientId, user_id: userId, residuo },
+      { onConflict: 'ingredient_id' },
+    );
+    if (eUps) throw eUps;
   }
 }
 

@@ -234,7 +234,11 @@ describe('aggiornaSlot — patch di scelte (Task 8)', () => {
   /**
    * Mock dedicato: `meal_slot` deve rispondere sia alla lettura della riga
    * attuale (select) sia all'update, con risposte diverse; `meal_slot_choice`
-   * riceve delete e upsert come due chiamate separate a `from`.
+   * riceve delete e upsert come due chiamate separate a `from`. `week`
+   * risponde sempre 'bozza': questi test riguardano solo il patch delle
+   * scelte (Task 8), non il ledger degli storni (Task 4) — a settimana
+   * bozza lo storno esce subito senza toccare altro (vedi
+   * settimana.aggiornaSlot.test.ts per quel comportamento).
    */
   function creaMockAggiornaSlot(rigaAttuale: Record<string, unknown>) {
     const scritture: Record<string, Chiamata[][]> = {};
@@ -258,9 +262,12 @@ describe('aggiornaSlot — patch di scelte (Task 8)', () => {
           if (chiamate.some((c) => c.metodo === 'delete')) ordineOperazioni.push('delete');
           if (chiamate.some((c) => c.metodo === 'upsert')) ordineOperazioni.push('upsert');
           const isLetturaRigaAttuale = tabella === 'meal_slot' && chiamate.some((c) => c.metodo === 'select');
+          const isLetturaWeek = tabella === 'week' && chiamate.some((c) => c.metodo === 'select');
           const risposta = isLetturaRigaAttuale
             ? { data: rigaAttuale, error: null }
-            : { data: null, error: null };
+            : isLetturaWeek
+              ? { data: { stato: 'bozza' }, error: null }
+              : { data: null, error: null };
           return Promise.resolve(risposta).then(onFulfilled);
         },
       };
