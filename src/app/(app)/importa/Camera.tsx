@@ -11,6 +11,19 @@ interface Pagina {
   url: string;
 }
 
+/**
+ * 'rilevamento': stato iniziale, identico su server e client — nessun accesso
+ * a `navigator` durante il render, solo dentro l'effect (che sul server non
+ * gira). Un client component in App Router viene comunque prerenderizzato
+ * lato server, dove `navigator.mediaDevices` non esiste: decidere il ramo
+ * durante il render (anche con un lazy initializer di `useState`) produce
+ * markup diverso fra server e client, e React scarta il sottoalbero
+ * all'hydration invece di riconciliarlo — flash del ramo sbagliato, warning
+ * in console, in questo caso anche un secondo `getUserMedia` di troppo.
+ * 'camera'/'fallback' si decidono solo dentro l'effect, dopo il mount.
+ */
+type Modo = 'rilevamento' | 'camera' | 'fallback';
+
 const LATO_MAX = 2048;
 
 /**
@@ -52,16 +65,31 @@ function scattaDaVideo(video: HTMLVideoElement): Promise<Blob | null> {
 export function Camera({ onFoto }: Props) {
   const [pagine, setPagine] = useState<Pagina[]>([]);
   const [stream, setStream] = useState<MediaStream | null>(null);
-  // Determinato una volta sola in modo sincrono (lazy initializer), non
-  // dentro l'effect: la lint rule react-hooks/set-state-in-effect vieta un
-  // setState sincrono nel corpo dell'effect, e qui il valore è comunque noto
-  // subito, senza bisogno di aspettare un giro di render.
-  const [fallback, setFallback] = useState(() => !navigator.mediaDevices?.getUserMedia);
+  const [modo, setModo] = useState<Modo>('rilevamento');
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  // Rif. sempre allineato a `pagine`, per revocare gli object URL residui
+  // allo smontaggio senza mettere `pagine` fra le dipendenze dell'effect di
+  // cleanup (che altrimenti scatterebbe — e revocherebbe — a ogni cambio).
+  const pagineRef = useRef<Pagina[]>([]);
+  useEffect(() => {
+    pagineRef.current = pagine;
+  }, [pagine]);
 
   useEffect(() => {
-    if (fallback) return;
     let vivo = true;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      // Ramo reso asincrono (microtask) apposta: la lint rule
+      // react-hooks/set-state-in-effect vieta un setState sincrono nel
+      // corpo dell'effect, e un setState sincrono qui è anche la causa
+      // diretta del mismatch di hydration — il primo render del client deve
+      // restare 'rilevamento', uguale a quello del server.
+      Promise.resolve().then(() => {
+        if (vivo) setModo('fallback');
+      });
+      return () => {
+        vivo = false;
+      };
+    }
     navigator.mediaDevices
       .getUserMedia({ video: { facingMode: 'environment' } })
       .then((s) => {
@@ -70,14 +98,15 @@ export function Camera({ onFoto }: Props) {
           return;
         }
         setStream(s);
+        setModo('camera');
       })
       .catch(() => {
-        if (vivo) setFallback(true);
+        if (vivo) setModo('fallback');
       });
     return () => {
       vivo = false;
     };
-  }, [fallback]);
+  }, []);
 
   // Collega lo stream al <video> non appena entrambi esistono.
   useEffect(() => {
@@ -92,6 +121,14 @@ export function Camera({ onFoto }: Props) {
       stream?.getTracks().forEach((t) => t.stop());
     };
   }, [stream]);
+
+  // Allo smontaggio, revoca anche gli object URL delle miniature ancora in
+  // lista (quelli rimossi singolarmente sono già revocati da `elimina`).
+  useEffect(() => {
+    return () => {
+      pagineRef.current.forEach((p) => URL.revokeObjectURL(p.url));
+    };
+  }, []);
 
   function aggiungiBlob(blob: Blob) {
     setPagine((prev) => {
@@ -140,9 +177,15 @@ export function Camera({ onFoto }: Props) {
     });
   }
 
+  if (modo === 'rilevamento') {
+    // Render minimale e identico fra server e client: nessun accesso a
+    // `navigator` qui, la scelta fra camera e fallback arriva dall'effect.
+    return <div style={{ minHeight: 160 }} />;
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {fallback ? (
+      {modo === 'fallback' ? (
         <label
           style={{
             display: 'flex',

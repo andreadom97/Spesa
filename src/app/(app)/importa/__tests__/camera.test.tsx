@@ -42,6 +42,18 @@ describe('Camera', () => {
     expect(screen.queryByText('pag. 2')).not.toBeInTheDocument();
   });
 
+  it('smontare con pagine ancora in lista revoca tutti gli object URL residui', async () => {
+    const onFoto = vi.fn();
+    const { unmount } = render(<Camera onFoto={onFoto} />);
+    const input = await screen.findByLabelText(/scegli le foto/i);
+    const f1 = new File(['a'], 'p1.jpg', { type: 'image/jpeg' });
+    const f2 = new File(['b'], 'p2.jpg', { type: 'image/jpeg' });
+    fireEvent.change(input, { target: { files: [f1, f2] } });
+    await waitFor(() => expect(onFoto).toHaveBeenLastCalledWith([f1, f2]));
+    unmount();
+    expect(URL.revokeObjectURL).toHaveBeenCalledTimes(2);
+  });
+
   it('con getUserMedia disponibile mostra anteprima e pulsante scatta, e ferma le tracce allo smontaggio', async () => {
     const stop = vi.fn();
     const stream = { getTracks: () => [{ stop }] } as unknown as MediaStream;
