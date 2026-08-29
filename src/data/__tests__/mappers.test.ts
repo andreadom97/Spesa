@@ -87,4 +87,26 @@ describe('aComponenti', () => {
   it('ignora le righe fisse (option_id null): quelle restano in Dish.ingredienti', () => {
     expect(aComponenti([], righe)).toEqual([]);
   });
+
+  it('ordina i componenti per la posizione minima delle loro opzioni, non per l\'ordine di arrivo delle righe', () => {
+    // Ordine sparso e apposta "scomodo": se l'esito dipendesse dall'ordine di
+    // arrivo (insertion order della Map) 'c-a' finirebbe prima di 'c-z' perché
+    // arriva prima nell'array — invece 'c-z' ha la posizione minima più bassa
+    // (0 contro 3) e deve vincere.
+    const opzioniSparse = [
+      { id: 'o-a1', componente_id: 'c-a', componente_nome: 'farcitura', posizione: 3 },
+      { id: 'o-z1', componente_id: 'c-z', componente_nome: 'pane', posizione: 0 },
+      { id: 'o-a2', componente_id: 'c-a', componente_nome: 'farcitura', posizione: 4 },
+      { id: 'o-z2', componente_id: 'c-z', componente_nome: 'pane', posizione: 1 },
+    ];
+    expect(aComponenti(opzioniSparse, []).map((c) => c.id)).toEqual(['c-z', 'c-a']);
+  });
+
+  it('a parità di posizione minima, spareggia per componente_id', () => {
+    const opzioniAPariMerito = [
+      { id: 'o-b1', componente_id: 'c-b', componente_nome: 'farcitura', posizione: 0 },
+      { id: 'o-a1', componente_id: 'c-a', componente_nome: 'pane', posizione: 0 },
+    ];
+    expect(aComponenti(opzioniAPariMerito, []).map((c) => c.id)).toEqual(['c-a', 'c-b']);
+  });
 });

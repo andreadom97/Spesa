@@ -71,12 +71,20 @@ export function aDishIngredient(r: Record<string, unknown>) {
  * per posizione (0 = default) e agganciando a ciascuna le sue righe
  * dish_ingredient (quelle con option_id valorizzato: le righe fisse hanno
  * option_id null e restano fuori, tornano in Dish.ingredienti).
+ *
+ * L'ordine FRA componenti nel risultato non può dipendere dall'insertion
+ * order della Map, cioè dall'ordine con cui PostgREST restituisce le righe
+ * embedded: non è garantito, e due letture della stessa select potrebbero
+ * differire. Si ordina quindi per la posizione minima delle opzioni di
+ * ciascun componente (conserva l'ordine d'autore dell'editor) e, a parità,
+ * per componente_id — deterministico in ogni caso.
  */
 export function aComponenti(
   opzioni: Record<string, unknown>[],
   righe: Record<string, unknown>[],
 ): Componente[] {
   const perComponente = new Map<string, Componente>();
+  const posizioneMinima = new Map<string, number>();
   for (const o of [...opzioni].sort((a, b) => num(a.posizione) - num(b.posizione))) {
     const componenteId = String(o.componente_id);
     const componente = perComponente.get(componenteId)
@@ -86,6 +94,10 @@ export function aComponenti(
       righe: righe.filter((r) => r.option_id === o.id).map(aDishIngredient),
     });
     perComponente.set(componenteId, componente);
+    if (!posizioneMinima.has(componenteId)) posizioneMinima.set(componenteId, num(o.posizione));
   }
-  return [...perComponente.values()];
+  return [...perComponente.values()].sort((a, b) => {
+    const diff = posizioneMinima.get(a.id)! - posizioneMinima.get(b.id)!;
+    return diff !== 0 ? diff : a.id.localeCompare(b.id);
+  });
 }
