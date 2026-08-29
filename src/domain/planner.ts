@@ -229,8 +229,13 @@ export function assegnaPiatti(input: AssegnaPiattiInput): MealSlot[] {
    * dopo averla decisa — un componente alla volta — così il componente
    * successivo dello stesso piatto vede il residuo già scalato.
    *
-   * Le scelte con fonte 'manuale' non si toccano mai: si copiano così come
-   * sono e il componente si salta. Riusata su tutti i rami che assegnano o
+   * Le scelte con fonte 'manuale' non si toccano mai: `scelte[componente.id]`
+   * non si riscrive. Ma quel pasto si mangia lo stesso, quindi la riga scelta
+   * a mano consuma comunque il residuo di lavoro — altrimenti la scalatura
+   * sequenziale mentirebbe ai pasti successivi su quanto è rimasto.
+   * Un'opzione manuale che punta a un id non più esistente nel piatto non
+   * consuma nulla (fallback silenzioso): all'errore esplicito ci pensa
+   * `righeEffettive`, non il planner. Riusata su tutti i rami che assegnano o
    * trovano un piatto (sorelle, rotazione libera, slot scelto a mano): il
    * `dishId` non viene mai toccato qui, solo `scelte`.
    */
@@ -242,14 +247,24 @@ export function assegnaPiatti(input: AssegnaPiattiInput): MealSlot[] {
   ): Record<string, Scelta> {
     const scelte: Record<string, Scelta> = { ...scelteEsistenti };
     for (const componente of piatto.componenti) {
-      if (scelte[componente.id]?.fonte === 'manuale') continue; // mai sovrascrivere una scelta manuale
+      const esistente = scelte[componente.id];
+      if (esistente?.fonte === 'manuale') {
+        // Non si sovrascrive la scelta, ma il pasto si mangia lo stesso: la
+        // riga dell'opzione scelta a mano va comunque scalata dal residuo.
+        const opzioneScelta = componente.opzioni.find((o) => o.id === esistente.opzioneId);
+        if (opzioneScelta) consumaDaResiduo(opzioneScelta.righe, residuoLavoro);
+        continue;
+      }
       let migliore = componente.opzioni[0];
       let costoMigliore = Infinity;
       componente.opzioni.forEach((opzione, i) => {
         const costo = costoInConfezioni(opzione.righe, residuoLavoro);
         // A parità vince l'opzione indicata dall'ordinale di rotazione,
-        // nell'ordine d'autore delle opzioni.
-        const preferita = i === posizioneRotazione % componente.opzioni.length;
+        // nell'ordine d'autore delle opzioni. Modulo normalizzato come per
+        // le altre due occorrenze in questo file: posizioneRotazione può
+        // essere negativo (settimaneTrascorse negativo è un caso testato).
+        const n = componente.opzioni.length;
+        const preferita = i === ((posizioneRotazione % n) + n) % n;
         if (costo < costoMigliore || (costo === costoMigliore && preferita)) {
           migliore = opzione;
           costoMigliore = costo;

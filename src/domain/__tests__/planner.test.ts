@@ -329,7 +329,8 @@ describe('risoluzione dei componenti', () => {
   }
 
   it('sceglie l’opzione coperta dal residuo e la registra con fonte planner', () => {
-    // 500 g di yogurt in casa, niente uova: l'opzione yogurt costa 0, quella uova 2 (uova pz + passata).
+    // 500 g di yogurt in casa, niente uova: l'opzione yogurt costa 0, quella
+    // uova 3 (2 confezioni uova, formato 1, + 1 passata).
     const out = assegnaPiatti({
       slots: [slotPranzoLunedi()],
       dishes: [wrap],
@@ -394,5 +395,81 @@ describe('risoluzione dei componenti', () => {
     // ancora residuo -> costo 0 -> vince di nuovo; senza scalatura sarebbe di
     // nuovo parità e l'ordinale 2 riporterebbe al succo.
     expect(out[2].scelte.bevanda.opzioneId).toBe('opz-b-avena');
+  });
+
+  it('una scelta manuale consuma comunque il residuo: il pasto si mangia lo stesso', () => {
+    // Stesse fixture del test precedente, ma lunedì la farcitura è fissata a
+    // mano su opz-a-succo. Se il consumo manuale non scala il residuo di
+    // lavoro (il bug), martedì e mercoledì vedrebbero ancora 200 g di succo
+    // disponibili e l'asserzione discriminante di mercoledì fallirebbe
+    // (tornerebbe succo per pareggio + ordinale). Con la scalatura vera i
+    // 200 g di lunedì sono spesi, martedì l'avena vince per costo e
+    // mercoledì l'avena vince ancora (ha ancora residuo, il succo no).
+    const succo: Ingredient = {
+      id: 'succo', nome: 'Succo di frutta', unitaBase: 'g', area: 'dispensa',
+      classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 200,
+    };
+    const merenda: Dish = {
+      id: 'merenda', nome: 'Merenda', slotDefId: 'mer',
+      fonte: 'proprio', attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
+      ingredienti: [],
+      componenti: [{
+        id: 'bevanda', nome: 'bevanda',
+        opzioni: [
+          { id: 'opz-a-succo', righe: [{ ingredientId: 'succo', quantita: 200, unita: 'g' }] },
+          { id: 'opz-b-avena', righe: [{ ingredientId: 'avena', quantita: 40, unita: 'g' }] },
+        ],
+      }],
+    };
+    function slotMerenda(data: string, scelte: MealSlot['scelte'] = {}): MealSlot {
+      return {
+        id: `mer-${data}`, data, slotDefId: 'mer', stato: 'casa',
+        dishId: null, fonteStato: 'default', scelte,
+      };
+    }
+
+    const lunedi = slotMerenda('2026-08-31', {
+      bevanda: { opzioneId: 'opz-a-succo', fonte: 'manuale' as const },
+    });
+    const out = assegnaPiatti({
+      slots: [lunedi, slotMerenda('2026-09-01'), slotMerenda('2026-09-02')],
+      dishes: [merenda],
+      ingredients: [...INGREDIENTI, succo],
+      pantry: [residuoDi('succo', 200), residuoDi('avena', 500)],
+      oggi: '2026-08-31',
+      settimaneTrascorse: 0,
+    });
+    // La scelta manuale di lunedì resta intatta.
+    expect(out[0].scelte.bevanda).toEqual({ opzioneId: 'opz-a-succo', fonte: 'manuale' });
+    // Mercoledì è l'asserzione discriminante: con la scalatura vera il succo
+    // costa 1 (i 200 g di lunedì sono spesi) e l'avena vince.
+    expect(out[2].scelte.bevanda.opzioneId).toBe('opz-b-avena');
+  });
+
+  it('il modulo dell\'ordinale si normalizza anche negativo: settimaneTrascorse negativo ruota comunque', () => {
+    // Senza dati di dispensa il costo è sempre 0 per entrambe le opzioni:
+    // decide solo il tie-break dell'ordinale. Un'unica data registrata per
+    // questo slotDef -> ordinale = settimaneTrascorse * 7 + 0 = -7.
+    // Non normalizzato, -7 % 2 === -1 non combacerebbe mai con un indice
+    // (0 o 1) e vincerebbe sempre la prima opzione qualunque fosse
+    // settimaneTrascorse; normalizzato, -7 % 2 diventa 1 -> seconda opzione.
+    const dueOpzioni: Dish = {
+      id: 'due-opzioni', nome: 'Due opzioni', slotDefId: 'pra',
+      fonte: 'proprio', attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
+      ingredienti: [],
+      componenti: [{
+        id: 'scelta', nome: 'scelta',
+        opzioni: [
+          { id: 'opz-0', righe: [{ ingredientId: 'yogurt', quantita: 1, unita: 'g' }] },
+          { id: 'opz-1', righe: [{ ingredientId: 'yogurt', quantita: 1, unita: 'g' }] },
+        ],
+      }],
+    };
+    const out = assegnaPiatti({
+      slots: [slotPranzoLunedi()],
+      dishes: [dueOpzioni],
+      settimaneTrascorse: -1,
+    });
+    expect(out[0].scelte.scelta.opzioneId).toBe('opz-1');
   });
 });
