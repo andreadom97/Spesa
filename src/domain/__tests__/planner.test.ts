@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { assegnaPiatti } from '../planner';
 import { generaSettimana } from '../week-shape';
-import type { Dish, MealSlotDef } from '../types';
+import type { Dish, Ingredient, MealSlot, MealSlotDef, PantryState } from '../types';
 
 const DEFS: MealSlotDef[] = [
   { id: 'col', nome: 'Colazione', posizione: 0, assenzeAbituali: [false, false, true, false, false, false, false] },
@@ -201,5 +201,76 @@ describe('assegnaPiatti — ciclo spento', () => {
     const dishes = [piatto('venerdi', 'cen', true, { giornoCiclo: 4 }), piatto('altro', 'cen')];
     const dopo = assegnaPiatti({ slots, dishes });
     expect(dopo.find((s) => s.data === '2026-09-04' && s.slotDefId === 'cen')!.dishId).toBe('venerdi');
+  });
+});
+
+describe('piatti sorella sullo stesso giorno', () => {
+  // Due ingredienti di dispensa, formati diversi apposta: il costo in
+  // confezioni deve dipendere dal residuo e dal formato, non da chi arriva
+  // prima nell'array dei piatti.
+  const cioccolato: Ingredient = {
+    id: 'cioccolato', nome: 'Cioccolato fondente', unitaBase: 'g', area: 'dispensa',
+    classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 100,
+  };
+  const noci: Ingredient = {
+    id: 'noci', nome: 'Noci', unitaBase: 'g', area: 'dispensa',
+    classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 200,
+  };
+
+  function spuntino(id: string, ingredientId: string, quantita: number): Dish {
+    return {
+      id, nome: id, slotDefId: 'spu', fonte: 'proprio', attivo: true, descrizione: null,
+      settimanaCiclo: null, giornoCiclo: 0,
+      ingredienti: [{ ingredientId, quantita, unita: 'g' }],
+      componenti: [],
+    };
+  }
+  const spuntinoCioccolato = spuntino('spuntino-cioccolato', 'cioccolato', 10);
+  const spuntinoNoci = spuntino('spuntino-noci', 'noci', 20);
+
+  function slotSpuntinoLunedi(): MealSlot {
+    return {
+      id: 'spu-lun', data: '2026-08-31', slotDefId: 'spu', stato: 'casa',
+      dishId: null, fonteStato: 'default', scelte: {},
+    };
+  }
+
+  function residuoDi(ingredientId: string, residuo: number): PantryState {
+    return { ingredientId, residuo, ultimoAcquisto: null, giorniStimati: 90, congelato: false, ultimoCheck: null };
+  }
+
+  it('vince la sorella che richiede meno confezioni nuove', () => {
+    // 90 g di cioccolato in dispensa, niente noci: il cioccolato costa 0 confezioni, le noci 1.
+    const out = assegnaPiatti({
+      slots: [slotSpuntinoLunedi()],
+      dishes: [spuntinoNoci, spuntinoCioccolato], // ordine sfavorevole: non deve contare
+      ingredients: [cioccolato, noci],
+      pantry: [residuoDi('cioccolato', 90)],
+      oggi: '2026-08-31',
+      moltiplicatorePorzioni: 1,
+    });
+    expect(out[0].dishId).toBe('spuntino-cioccolato');
+  });
+
+  it('a parità di confezioni decide la rotazione, che avanza con le settimane', () => {
+    // Dispensa vuota: entrambe costano 1 confezione. settimaneTrascorse pari/dispari alterna.
+    const pari = assegnaPiatti({ slots: [slotSpuntinoLunedi()], dishes: [spuntinoCioccolato, spuntinoNoci], ingredients: [cioccolato, noci], pantry: [], oggi: '2026-08-31', settimaneTrascorse: 0 });
+    const dispari = assegnaPiatti({ slots: [slotSpuntinoLunedi()], dishes: [spuntinoCioccolato, spuntinoNoci], ingredients: [cioccolato, noci], pantry: [], oggi: '2026-08-31', settimaneTrascorse: 1 });
+    expect(pari[0].dishId).not.toBe(dispari[0].dishId);
+  });
+
+  it('senza dati di dispensa (input facoltativi assenti) sceglie per rotazione', () => {
+    // Nessun ingredients/pantry/oggi: costo sempre 0 per entrambe, decide il
+    // tie-break di rotazione sull'elenco ordinato per id — non sull'ordine
+    // dell'array in ingresso. 'spuntino-cioccolato' < 'spuntino-noci', quindi
+    // ordinale 0 (settimaneTrascorse 0) cade su di lui.
+    const out = assegnaPiatti({ slots: [slotSpuntinoLunedi()], dishes: [spuntinoCioccolato, spuntinoNoci], settimaneTrascorse: 0 });
+    expect(out[0].dishId).toBe('spuntino-cioccolato');
+  });
+
+  it('è deterministico: stessi input, stessa scelta', () => {
+    const a = assegnaPiatti({ slots: [slotSpuntinoLunedi()], dishes: [spuntinoCioccolato, spuntinoNoci], ingredients: [cioccolato, noci], pantry: [residuoDi('cioccolato', 90)], oggi: '2026-08-31' });
+    const b = assegnaPiatti({ slots: [slotSpuntinoLunedi()], dishes: [spuntinoNoci, spuntinoCioccolato], ingredients: [cioccolato, noci], pantry: [residuoDi('cioccolato', 90)], oggi: '2026-08-31' });
+    expect(a[0].dishId).toBe(b[0].dishId);
   });
 });
