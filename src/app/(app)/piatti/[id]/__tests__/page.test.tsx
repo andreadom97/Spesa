@@ -58,6 +58,18 @@ const PIATTO_ESISTENTE: Dish = {
   componenti: [],
 };
 
+const PIATTO_CON_COMPONENTI: Dish = {
+  ...PIATTO_ESISTENTE,
+  id: 'd-2',
+  componenti: [
+    {
+      id: 'c-1',
+      nome: 'Pane',
+      opzioni: [{ id: 'o-1', righe: [{ ingredientId: 'i-2', quantita: 40, unita: 'g' }] }],
+    },
+  ],
+};
+
 function nessunaSettimana() {
   vi.mocked(leggiSettimanaCorrente).mockResolvedValue(null);
 }
@@ -423,5 +435,71 @@ describe('Piatto (editor)', () => {
     expect(screen.getByText(/Nessun ingrediente per "zafferano"/)).toBeInTheDocument();
     // Il modo per uscirne resta a portata di mano.
     expect(screen.getByRole('link', { name: /NUOVO\s*INGREDIENTE/ })).toBeInTheDocument();
+  });
+
+  it('un piatto caricato con componenti li mostra', async () => {
+    paramsId = 'd-2';
+    vi.mocked(leggiRepertorio).mockResolvedValue([PIATTO_CON_COMPONENTI]);
+
+    render(<Piatto />);
+    await screen.findByDisplayValue('Yogurt e avena');
+
+    expect(screen.getByDisplayValue('Pane')).toBeInTheDocument();
+    expect(screen.getByText("Fiocchi d'avena")).toBeInTheDocument();
+  });
+
+  it("aggiungere un componente con un'opzione e salvare chiama salvaPiatto con la struttura componenti attesa", async () => {
+    render(<Piatto />);
+    await screen.findByPlaceholderText('Dai un nome al piatto');
+    vi.mocked(salvaPiatto).mockResolvedValue('d-nuovo');
+
+    fireEvent.change(screen.getByPlaceholderText('Dai un nome al piatto'), { target: { value: 'Panino' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Pranzo' }));
+
+    // Un ingrediente fisso valido: senza, il salvataggio resta bloccato a
+    // prescindere dai componenti, e questo test verifica solo la struttura
+    // di questi ultimi.
+    fireEvent.click(screen.getByRole('button', { name: /AGGIUNGI\s*INGREDIENTE/ }));
+    fireEvent.click(await screen.findByText('Yogurt greco'));
+    fireEvent.change(screen.getByLabelText('Grammatura di Yogurt greco'), { target: { value: '150' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'AGGIUNGI COMPONENTE' }));
+    fireEvent.change(screen.getByLabelText('Nome del componente 1'), { target: { value: 'Pane' } });
+
+    fireEvent.click(screen.getByRole('button', { name: "Aggiungi ingrediente all'opzione 1 del componente 1" }));
+    fireEvent.click(await screen.findByText("Fiocchi d'avena"));
+    fireEvent.change(screen.getByLabelText("Grammatura di Fiocchi d'avena"), { target: { value: '40' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'SALVA PIATTO' }));
+
+    await waitFor(() => expect(salvaPiatto).toHaveBeenCalled());
+    const [chiamata] = vi.mocked(salvaPiatto).mock.calls[0];
+    expect(chiamata.componenti).toHaveLength(1);
+    const [componente] = chiamata.componenti;
+    expect(componente.nome).toBe('Pane');
+    // id generato da crypto.randomUUID() lato client (brief): un uuid vero,
+    // non l'id fisso di un componente esistente.
+    expect(componente.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+    expect(componente.opzioni).toHaveLength(1);
+    expect(componente.opzioni[0].righe).toEqual([{ ingredientId: 'i-2', quantita: 40, unita: 'g' }]);
+  });
+
+  it("un'opzione senza righe blocca il salva", async () => {
+    render(<Piatto />);
+    await screen.findByPlaceholderText('Dai un nome al piatto');
+
+    // Piatto altrimenti valido: nome e un ingrediente con grammatura.
+    fireEvent.change(screen.getByPlaceholderText('Dai un nome al piatto'), { target: { value: 'Panino' } });
+    fireEvent.click(screen.getByRole('button', { name: /AGGIUNGI\s*INGREDIENTE/ }));
+    fireEvent.click(await screen.findByText('Yogurt greco'));
+    fireEvent.change(screen.getByLabelText('Grammatura di Yogurt greco'), { target: { value: '150' } });
+    expect(screen.getByRole('button', { name: 'SALVA PIATTO' })).toBeEnabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'AGGIUNGI COMPONENTE' }));
+    fireEvent.change(screen.getByLabelText('Nome del componente 1'), { target: { value: 'Pane' } });
+
+    // Nome dato, ma l'opzione di default nasce senza righe: il salvataggio si blocca.
+    expect(screen.getByRole('button', { name: 'SALVA PIATTO' })).toBeDisabled();
+    expect(screen.getByText(/Ogni opzione deve avere almeno un ingrediente/)).toBeInTheDocument();
   });
 });
