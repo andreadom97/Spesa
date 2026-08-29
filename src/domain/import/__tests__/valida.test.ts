@@ -47,4 +47,18 @@ describe('validaEsito', () => {
     rotto.piano.settimane = [];
     expect(() => validaEsito(rotto)).toThrow(PianoNonValidoError);
   });
+
+  it('rifiuta due settimane con lo stesso numero', () => {
+    const rotto = structuredClone(FIXTURE_MENU_SETTIMANALE) as PianoEsito;
+    // FIXTURE_MENU_SETTIMANALE ha 2 settimane (numero 1 e 2): forza la seconda a duplicare la prima.
+    rotto.piano.settimane[1].numero = rotto.piano.settimane[0].numero;
+    expect(() => validaEsito(rotto)).toThrow(PianoNonValidoError);
+  });
+
+  it('rifiuta due giorni con lo stesso numero dentro la stessa settimana', () => {
+    const rotto = structuredClone(FIXTURE_MENU_SETTIMANALE) as PianoEsito;
+    // La settimana 1 ha giorni 0 e 1: forza il secondo a duplicare il primo.
+    rotto.piano.settimane[0].giorni[1].giorno = rotto.piano.settimane[0].giorni[0].giorno;
+    expect(() => validaEsito(rotto)).toThrow(PianoNonValidoError);
+  });
 });

@@ -294,6 +294,44 @@ describe('traduciBozza', () => {
     expect(s.piattiDaDisattivare).toEqual(['d-old']);
   });
 
+  it('fonde due righe sullo stesso ingrediente dentro la stessa opzione di un componente', () => {
+    const piano = {
+      archetipo: 'giornata_unica' as const,
+      fonte: 'test',
+      noteEstrazione: [],
+      settimane: [{
+        numero: 1,
+        giorni: [{
+          giorno: 0,
+          pasti: [{
+            nomeOriginale: 'pranzo',
+            piatti: [{
+              nome: 'Riso con condimento', descrizione: null, righeFisse: [],
+              componenti: [{
+                nome: 'condimento',
+                opzioni: [
+                  [
+                    { alimento: 'olio extravergine di oliva', quantita: 10, unita: 'ml' as const, testoOriginale: '10ml olio' },
+                    { alimento: 'olio extravergine di oliva', quantita: 5, unita: 'ml' as const, testoOriginale: '5ml olio' },
+                  ],
+                  [{ alimento: 'olio extravergine di oliva', quantita: 8, unita: 'ml' as const, testoOriginale: '8ml olio' }],
+                ],
+              }],
+            }],
+          }],
+        }],
+      }],
+    };
+    const stato: StatoRevisione = {
+      passo: 'riepilogo', mappaturaPasti: { pranzo: 's-pranzo' }, pastiConfermati: [], correzioni: {},
+      ingredientiNuovi: [{ alimento: 'olio extravergine di oliva', nome: 'Olio EVO', unitaBase: 'ml', area: 'dispensa', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 1000 }],
+    };
+    const s = traduciBozza(piano, stato, [], [], '2026-08-29');
+    const piatto = s.piattiDaCreare.find((p) => p.nome === 'Riso con condimento')!;
+    expect(piatto.componenti[0].opzioni[0]).toEqual([{ nuovoAlimento: 'olio extravergine di oliva', quantita: 15, unita: 'ml' }]);
+    expect(piatto.componenti[0].opzioni[1]).toEqual([{ nuovoAlimento: 'olio extravergine di oliva', quantita: 8, unita: 'ml' }]);
+  });
+
   it('gli ingredienti nuovi non usati da nessuna riga non si creano', () => {
     const stato = statoCompleto();
     stato.ingredientiNuovi.push({ alimento: 'zafferano', nome: 'Zafferano', unitaBase: 'g', area: 'dispensa', classeResiduo: 'stima', deperibile: false, formatoConfezione: 1 });

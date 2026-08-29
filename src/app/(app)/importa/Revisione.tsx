@@ -38,12 +38,17 @@ function capitalizza(s: string): string {
   return s.length === 0 ? s : s[0].toUpperCase() + s.slice(1);
 }
 
-/** Vero se una qualunque riga (fissa o dentro un'opzione di un componente) del pasto ha quantità non risolta. */
+/** Vero se una riga (quantità o unità) non è risolta: le due vanno o entrambe valorizzate o entrambe null (vedi valida.ts). */
+function rigaNonRisolta(r: RigaEstratta): boolean {
+  return r.quantita === null || r.unita === null;
+}
+
+/** Vero se una qualunque riga (fissa o dentro un'opzione di un componente) del pasto ha quantità o unità non risolta. */
 function pastoHaRigheNonRisolte(pasto: PastoEstratto): boolean {
   return pasto.piatti.some(
     (p) =>
-      p.righeFisse.some((r) => r.quantita === null) ||
-      p.componenti.some((c) => c.opzioni.some((op) => op.some((r) => r.quantita === null))),
+      p.righeFisse.some(rigaNonRisolta) ||
+      p.componenti.some((c) => c.opzioni.some((op) => op.some(rigaNonRisolta))),
   );
 }
 

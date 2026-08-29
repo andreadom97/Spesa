@@ -1,5 +1,5 @@
 import type { PianoEstratto, StatoRevisione } from '@/domain/import/types';
-import { validaEsito } from '@/domain/import/valida';
+import { validaEsito, validaStatoRevisione } from '@/domain/import/valida';
 import type { PiattoDaCreare, RigaTradotta, ScrittureImport } from '@/domain/import/commit';
 import type { Dish, DishIngredient } from '@/domain/types';
 import { client } from './supabase';
@@ -22,11 +22,13 @@ export async function leggiBozzaImport(): Promise<BozzaImport | null> {
   if (error) throw error;
   if (!data) return null;
   // Il jsonb torna dal database senza garanzie di forma: si rivalida come al
-  // bordo API. Una bozza corrotta si tratta come assente, non come un crash.
+  // bordo API, sia il piano che lo stato di revisione. Una bozza corrotta (in uno
+  // dei due) si tratta come assente, non come un crash.
   try {
     const esito = validaEsito({ tipo: 'piano', piano: data.piano });
     if (esito.tipo !== 'piano') return null;
-    return { piano: esito.piano, statoRevisione: data.stato_revisione as StatoRevisione };
+    const statoRevisione = validaStatoRevisione(data.stato_revisione);
+    return { piano: esito.piano, statoRevisione };
   } catch {
     return null;
   }

@@ -33,6 +33,18 @@ const MESSAGGIO_503 = "L'estrazione non è disponibile su questo ambiente.";
 const MESSAGGIO_ERRORE_GENERICO = 'Non siamo riusciti a leggere la dieta. Riprova.';
 
 /**
+ * La data di oggi in locale, come yyyy-mm-dd: `toISOString` converte a UTC, quindi vicino
+ * alla mezzanotte (in un fuso più avanti di UTC, come l'Italia) darebbe il giorno sbagliato.
+ * Costruita dai campi locali di `Date`, mai da una stringa UTC.
+ */
+function dataLocaleOggi(): string {
+  const d = new Date();
+  const mese = String(d.getMonth() + 1).padStart(2, '0');
+  const giorno = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mese}-${giorno}`;
+}
+
+/**
  * Costruisce la mappatura pasti iniziale da proporre in revisione: uno slot
  * proposto per ogni `nomeOriginale` distinto del piano (chiave normalizzata),
  * i `null` di `proponiSlot` (condimenti, nomi ignoti) restano fuori dalla
@@ -513,15 +525,25 @@ function Riepilogo({
   const [confermaSostituzione, setConfermaSostituzione] = useState(false);
   const [eseguendo, setEseguendo] = useState(false);
   const [erroreEsecuzione, setErroreEsecuzione] = useState<string | null>(null);
+  // Incrementato a ogni retry dopo un errore di eseguiScritture: forza l'effect sotto a
+  // rileggere ingredienti/repertorio e ricalcolare `scritture` da zero prima del nuovo
+  // tentativo — l'idempotenza vive in traduciBozza (riusaDishId, ingredienti già creati
+  // agganciati per nome), quindi un retry che riusa lo stesso oggetto `scritture` calcolato
+  // una volta salterebbe quella rivalutazione e duplicherebbe ingredienti e piatti sul DB.
+  const [tentativo, setTentativo] = useState(0);
 
   useEffect(() => {
     let vivo = true;
     (async () => {
+      // Azzera subito le scritture precedenti: sia al primo giro (già null) sia a un retry
+      // dopo un errore di eseguiScritture, SOSTITUISCI/Sì, sostituisci devono restare
+      // disabilitati (vedi `pronto` più sotto) finché questo ricalcolo non è finito, mai
+      // riabilitarsi su un oggetto ormai stantio.
+      setScritture(null);
       try {
         const [ingredientiEsistenti, repertorioEsistente] = await Promise.all([leggiIngredienti(), leggiRepertorio()]);
         if (!vivo) return;
-        const oggi = new Date().toISOString().slice(0, 10);
-        const s = traduciBozza(piano, stato, ingredientiEsistenti, repertorioEsistente, oggi);
+        const s = traduciBozza(piano, stato, ingredientiEsistenti, repertorioEsistente, dataLocaleOggi());
         setScritture(s);
       } catch (e) {
         if (!vivo) return;
@@ -536,7 +558,7 @@ function Riepilogo({
     return () => {
       vivo = false;
     };
-  }, [piano, stato]);
+  }, [piano, stato, tentativo]);
 
   async function confermaSostituisci() {
     if (!scritture) return;
@@ -549,6 +571,11 @@ function Riepilogo({
       console.error('importa: esecuzione dell’import fallita.', e);
       setErroreEsecuzione('Qualcosa si è fermato: riprova, l’import riprende da dove era.');
       setEseguendo(false);
+      // Il prossimo tentativo deve ripartire da scritture ricalcolate, non dallo stesso
+      // oggetto: bumpare `tentativo` fa ripartire l'effect sopra, che azzera `scritture` e
+      // rilegge ingredienti/repertorio freschi prima di ricalcolare — SOSTITUISCI/Sì,
+      // sostituisci restano disabilitati (vedi `pronto` più sotto) finché non è pronto di nuovo.
+      setTentativo((n) => n + 1);
     }
   }
 
@@ -577,19 +604,27 @@ function Riepilogo({
     return <p style={{ margin: '20px 16px', color: 'var(--sec)' }}>{erroreCaricamento}</p>;
   }
 
-  if (!scritture) return null;
+  // `scritture` è null sia al primo caricamento sia durante il ricalcolo dopo un errore
+  // di eseguiScritture (vedi effect sopra): il primo caso non ha ancora nulla da mostrare
+  // (schermo vuoto, come sempre), il secondo deve invece continuare a mostrare il messaggio
+  // di errore e il dialogo di conferma — solo con SOSTITUISCI/Sì, sostituisci disabilitati
+  // finché il ricalcolo non è pronto, mai un ritorno a null che li farebbe sparire.
+  if (!scritture && !erroreEsecuzione) return null;
 
-  const nPiatti = scritture.piattiDaCreare.length;
-  const mSettimane = scritture.impostazioni.settimaneCiclo;
-  const kIngredienti = scritture.ingredientiDaCreare.length;
-  const xDisattivati = scritture.piattiDaDisattivare.length;
+  const pronto = scritture !== null;
+  const nPiatti = scritture?.piattiDaCreare.length ?? 0;
+  const mSettimane = scritture?.impostazioni.settimaneCiclo ?? 0;
+  const kIngredienti = scritture?.ingredientiDaCreare.length ?? 0;
+  const xDisattivati = scritture?.piattiDaDisattivare.length ?? 0;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
       <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 16px 16px' }}>
-        <div style={{ padding: '16px 15px', borderRadius: 18, background: 'var(--superficie)', border: '1px solid var(--bordo)', fontSize: 14.5, lineHeight: 1.5, color: 'var(--ink)' }}>
-          {nPiatti} piatti su {mSettimane} settimane · {kIngredienti} ingredienti nuovi · {xDisattivati} piatti del piano attuale verranno disattivati
-        </div>
+        {pronto && (
+          <div style={{ padding: '16px 15px', borderRadius: 18, background: 'var(--superficie)', border: '1px solid var(--bordo)', fontSize: 14.5, lineHeight: 1.5, color: 'var(--ink)' }}>
+            {nPiatti} piatti su {mSettimane} settimane · {kIngredienti} ingredienti nuovi · {xDisattivati} piatti del piano attuale verranno disattivati
+          </div>
+        )}
 
         {confermaSostituzione && (
           <div style={{ marginTop: 14, padding: '15px 15px 16px', borderRadius: 18, background: 'var(--superficie)', border: '1px solid var(--bordo)' }}>
@@ -612,7 +647,7 @@ function Riepilogo({
               <button
                 type="button"
                 onClick={confermaSostituisci}
-                disabled={eseguendo}
+                disabled={eseguendo || !pronto}
                 style={{
                   flex: 1, height: 48, borderRadius: 14, border: 'none', background: 'var(--ink)',
                   fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: '#FFFFFF',
@@ -631,11 +666,12 @@ function Riepilogo({
         <div style={{ padding: '4px 16px 22px' }}>
           <button
             type="button"
+            disabled={!pronto}
             onClick={() => setConfermaSostituzione(true)}
             style={{
               width: '100%', height: 54, borderRadius: 18,
               fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700, letterSpacing: '0.09em',
-              background: 'var(--ink)', color: '#FFFFFF',
+              background: pronto ? 'var(--ink)' : 'var(--bordo)', color: pronto ? '#FFFFFF' : 'var(--sec)',
             }}
           >
             SOSTITUISCI IL PIANO

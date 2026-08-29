@@ -64,6 +64,16 @@ describe('Revisione', () => {
     expect(within(cardMerluzzo).getByRole('button', { name: /conferma pasto/i })).toBeDisabled();
   });
 
+  it('una riga con quantità valorizzata ma unità mancante blocca comunque la conferma del pasto', () => {
+    render(<Revisione piano={PIANO_MENU_SETTIMANALE} stato={STATO} slotDefs={SLOTS as never} onStato={() => {}} />);
+    const card = screen.getByDisplayValue('Porridge').closest('section')!;
+    // I fiocchi d'avena partono risolti (30g): svuotare solo l'unità (mai la quantità)
+    // deve comunque bloccare CONFERMA PASTO — {quantita: 40, unita: null} non è confermabile.
+    const selettoreUnita = within(card).getAllByLabelText(/unità di/i)[0];
+    fireEvent.change(selettoreUnita, { target: { value: '' } });
+    expect(within(card).getByRole('button', { name: /conferma pasto/i })).toBeDisabled();
+  });
+
   it('VAI AI FORMATI compare solo con tutti i pasti confermati', () => {
     const onStato = vi.fn();
     render(<Revisione piano={PIANO_MENU_SETTIMANALE} stato={statoConTuttiConfermati()} slotDefs={SLOTS as never} onStato={onStato} />);

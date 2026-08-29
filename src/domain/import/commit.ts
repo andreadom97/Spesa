@@ -70,8 +70,11 @@ function risolviRiga(
   ingredientiNuovi: IngredienteProposto[],
   usati: Set<string>,
 ): RigaTradotta {
-  if (riga.quantita === null || riga.unita === null) {
+  if (riga.quantita === null) {
     throw new BozzaIncompletaError(`Quantità non risolta per "${riga.testoOriginale}"`);
+  }
+  if (riga.unita === null) {
+    throw new BozzaIncompletaError(`Unità non indicata per "${riga.testoOriginale}"`);
   }
   const esistente = abbina(riga.alimento, riga.unita, ingredientiEsistenti);
   if (esistente) return { ingredientId: esistente.id, quantita: riga.quantita, unita: riga.unita };
@@ -127,7 +130,10 @@ function traduciPiatto(
     righe: fondiRighe(piatto.righeFisse.map((r) => risolviRiga(r, ingredientiEsistenti, ingredientiNuovi, usati))),
     componenti: piatto.componenti.map((c) => ({
       nome: c.nome,
-      opzioni: c.opzioni.map((op) => op.map((r) => risolviRiga(r, ingredientiEsistenti, ingredientiNuovi, usati))),
+      // fondiRighe anche qui: due righe sullo stesso ingrediente nella stessa opzione (es.
+      // "olio" fisso + "olio" da condimenti che finiscono nella stessa opzione) violerebbero
+      // altrimenti l'indice unico dish_ingredient_opzione_unica a valle.
+      opzioni: c.opzioni.map((op) => fondiRighe(op.map((r) => risolviRiga(r, ingredientiEsistenti, ingredientiNuovi, usati)))),
     })),
   };
 }

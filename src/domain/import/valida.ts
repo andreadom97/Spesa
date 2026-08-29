@@ -1,4 +1,4 @@
-import type { EsitoEstrazione, PastoEstratto, PianoEstratto, RigaEstratta } from './types';
+import type { EsitoEstrazione, IngredienteProposto, PassoRevisione, PastoEstratto, PianoEstratto, RigaEstratta, StatoRevisione } from './types';
 
 export class PianoNonValidoError extends Error {
   constructor(percorso: string, motivo: string) {
@@ -84,6 +84,7 @@ function validaPiano(v: unknown): PianoEstratto {
   if (!ARCHETIPI.has(archetipo)) throw new PianoNonValidoError('piano.archetipo', `sconosciuto: ${archetipo}`);
   const settimane = arr(p.settimane, 'piano.settimane');
   if (settimane.length === 0 || settimane.length > 4) throw new PianoNonValidoError('piano.settimane', 'da 1 a 4');
+  const numeriSettimana = new Set<number>();
   return {
     archetipo: archetipo as PianoEstratto['archetipo'],
     fonte: str(p.fonte, 'piano.fonte'),
@@ -93,8 +94,11 @@ function validaPiano(v: unknown): PianoEstratto {
       const numero = se.numero;
       if (typeof numero !== 'number' || numero < 1 || numero > 4)
         throw new PianoNonValidoError(`piano.settimane[${i}].numero`, 'fuori da 1..4');
+      if (numeriSettimana.has(numero)) throw new PianoNonValidoError(`piano.settimane[${i}].numero`, `duplicato: ${numero}`);
+      numeriSettimana.add(numero);
       const giorni = arr(se.giorni, `piano.settimane[${i}].giorni`);
       if (giorni.length === 0) throw new PianoNonValidoError(`piano.settimane[${i}].giorni`, 'vuoto');
+      const giorniVisti = new Set<number>();
       return {
         numero,
         giorni: giorni.map((g, j) => {
@@ -102,12 +106,48 @@ function validaPiano(v: unknown): PianoEstratto {
           const giorno = gi.giorno;
           if (typeof giorno !== 'number' || giorno < 0 || giorno > 6)
             throw new PianoNonValidoError(`piano.settimane[${i}].giorni[${j}].giorno`, 'fuori da 0..6');
+          if (giorniVisti.has(giorno))
+            throw new PianoNonValidoError(`piano.settimane[${i}].giorni[${j}].giorno`, `duplicato nella settimana: ${giorno}`);
+          giorniVisti.add(giorno);
           const pasti = arr(gi.pasti, `piano.settimane[${i}].giorni[${j}].pasti`);
           if (pasti.length === 0) throw new PianoNonValidoError(`piano.settimane[${i}].giorni[${j}].pasti`, 'vuoto');
           return { giorno, pasti: pasti.map((pa, k) => validaPasto(pa, `piano.settimane[${i}].giorni[${j}].pasti[${k}]`)) };
         }),
       };
     }),
+  };
+}
+
+const PASSI_REVISIONE = new Set<string>(['revisione', 'formati', 'riepilogo']);
+
+/**
+ * Validazione strutturale minima di uno `StatoRevisione` letto dal jsonb (mai tipizzato
+ * a garanzia dal database): serve solo a distinguere "bozza rivalidabile" da "bozza
+ * corrotta", non a rivalidare in profondità ogni `PastoEstratto` dentro `correzioni` (quello
+ * lo fa comunque `traduciBozza` a valle, che fallisce onestamente con `BozzaIncompletaError`
+ * se una correzione è malformata). Controlla solo: `passo` fra i tre ammessi,
+ * `mappaturaPasti` un oggetto di stringhe, `pastiConfermati` un array di stringhe,
+ * `correzioni` un oggetto, `ingredientiNuovi` un array.
+ */
+export function validaStatoRevisione(v: unknown): StatoRevisione {
+  const s = ogg(v, 'statoRevisione');
+  const passo = str(s.passo, 'statoRevisione.passo');
+  if (!PASSI_REVISIONE.has(passo)) throw new PianoNonValidoError('statoRevisione.passo', `sconosciuto: ${passo}`);
+  const mappaturaPasti = ogg(s.mappaturaPasti, 'statoRevisione.mappaturaPasti');
+  for (const [chiave, valore] of Object.entries(mappaturaPasti)) {
+    str(valore, `statoRevisione.mappaturaPasti.${chiave}`);
+  }
+  const pastiConfermati = arr(s.pastiConfermati, 'statoRevisione.pastiConfermati').map((p, i) =>
+    str(p, `statoRevisione.pastiConfermati[${i}]`),
+  );
+  const correzioni = ogg(s.correzioni, 'statoRevisione.correzioni');
+  arr(s.ingredientiNuovi, 'statoRevisione.ingredientiNuovi');
+  return {
+    passo: passo as PassoRevisione,
+    mappaturaPasti: mappaturaPasti as Record<string, string>,
+    pastiConfermati,
+    correzioni: correzioni as Record<string, PastoEstratto>,
+    ingredientiNuovi: s.ingredientiNuovi as IngredienteProposto[],
   };
 }
 

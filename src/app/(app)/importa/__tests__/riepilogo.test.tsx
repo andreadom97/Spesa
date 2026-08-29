@@ -116,4 +116,45 @@ describe('Riepilogo', () => {
     expect(await screen.findByText(/qualcosa si è fermato/i)).toBeInTheDocument();
     expect(push).not.toHaveBeenCalled();
   });
+
+  it('retry dopo un errore: ricalcola le scritture con dati freschi invece di riusare le vecchie', async () => {
+    vi.mocked(leggiBozzaImport).mockResolvedValue({ piano: PIANO_SEMPLICE, statoRevisione: STATO_OK });
+    const ESISTENTE: Ingredient = {
+      id: 'i-pasta-gia-creata', nome: 'Pasta di semola', unitaBase: 'g',
+      area: 'cereali', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500,
+    };
+    // page.tsx legge leggiIngredienti una volta al mount (per i formati); Riepilogo la
+    // rilegge da sé nel suo effect. Tre chiamate in tutto prima del retry: mount, calcolo
+    // iniziale di Riepilogo (nessun esistente -> nuovoAlimento, eseguiScritture fallisce),
+    // e il ricalcolo automatico scatenato dall'errore — qui l'ingrediente esiste già (come
+    // se il primo giro l'avesse davvero creato prima di fermarsi): se il retry riusasse
+    // l'oggetto scritture calcolato la prima volta invece di rileggere, continuerebbe a
+    // proporlo come nuovo invece di agganciarlo per id.
+    vi.mocked(leggiIngredienti).mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValueOnce([ESISTENTE]);
+    vi.mocked(eseguiScritture).mockRejectedValueOnce(new Error('scrittura fallita'));
+    await riprendiBozza();
+
+    fireEvent.click(await screen.findByRole('button', { name: /sostituisci il piano/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /sì, sostituisci/i }));
+    expect(await screen.findByText(/qualcosa si è fermato/i)).toBeInTheDocument();
+
+    // Il ricalcolo è automatico (scatenato dall'errore, non da un'altra azione dell'utente):
+    // attende solo che leggiIngredienti sia stato richiamato una terza volta e che il
+    // pulsante torni disponibile prima di procedere.
+    await waitFor(() => expect(leggiIngredienti).toHaveBeenCalledTimes(3));
+    const bottoneRetry = await screen.findByRole('button', { name: /sì, sostituisci/i });
+    await waitFor(() => expect(bottoneRetry).not.toBeDisabled());
+
+    vi.mocked(eseguiScritture).mockResolvedValue(undefined);
+    fireEvent.click(bottoneRetry);
+
+    // 2 chiamate in tutto: il primo tentativo fallito + questo retry.
+    await waitFor(() => expect(eseguiScritture).toHaveBeenCalledTimes(2));
+    const scrittureRicalcolate = vi.mocked(eseguiScritture).mock.calls[1][0];
+    expect(scrittureRicalcolate.ingredientiDaCreare).toHaveLength(0);
+    expect(scrittureRicalcolate.piattiDaCreare[0].righe).toContainEqual({
+      ingredientId: 'i-pasta-gia-creata', quantita: 80, unita: 'g',
+    });
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/settimana'));
+  });
 });
