@@ -39,6 +39,17 @@ bottone ESTRAI LA DIETA. Quando la chiave sarà configurata, il blocco mock in
 `src/app/api/import/estrai/route.ts` va sostituito dalla chiamata all'estrattore vero
 (stessa firma della route, altra implementazione).
 
+## Spunta pasti
+
+Il piano assume che ogni pasto avvenga com'è scritto; la spunta corregge le
+eccezioni. Dalla Settimana, per i giorni già passati (e per la settimana
+precedente, dal link "‹ settimana scorsa"): **Saltato**, **Ho mangiato
+altro**, oppure **Ho mangiato un altro piatto** scegliendolo dal repertorio.
+Un pasto saltato riporta subito i suoi ingredienti nel residuo; un piatto
+sostituito storna il previsto e addebita il sostituto. Il default resta
+"mangiato come da piano": si spuntano solo le eccezioni, niente streak né
+diari.
+
 ### Le alternative (29/08/2026)
 
 Le diete vere sono piene di "oppure": dal 29/08 il dominio le rappresenta. Due piatti

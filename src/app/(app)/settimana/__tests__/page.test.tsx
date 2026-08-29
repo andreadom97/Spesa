@@ -8,6 +8,7 @@ import { lunediDi, giorniDellaSettimana } from '@/domain/date';
 
 vi.mock('@/data/settimana', () => ({
   leggiSettimanaCorrente: vi.fn(),
+  leggiSettimana: vi.fn(),
   creaSettimana: vi.fn(),
   aggiornaSlot: vi.fn(),
   confermaSettimana: vi.fn(),
@@ -31,6 +32,7 @@ vi.mock('next/navigation', () => ({
 
 import {
   leggiSettimanaCorrente,
+  leggiSettimana,
   creaSettimana,
   aggiornaSlot,
   confermaSettimana,
@@ -38,6 +40,7 @@ import {
 import { leggiRepertorio, leggiIngredienti } from '@/data/repertorio';
 import { leggiSlotDefs, leggiImpostazioni } from '@/data/impostazioni';
 import { generaListe } from '@/data/lista';
+import { sommaGiorni } from '@/domain/date';
 import Settimana from '../page';
 
 // "Oggi" reale: evita di mockare l'orologio di sistema, che confligge con i
@@ -388,5 +391,116 @@ describe('Settimana (piano alimentare)', () => {
     // Piatto senza componenti (colazione): nessun sottotitolo, la riga resta identica a prima.
     const rigaColazione = (await screen.findByText('Yogurt e frutta')).closest('button');
     expect(rigaColazione?.textContent).not.toMatch(/\+|·/);
+  });
+});
+
+describe('spunta pasti', () => {
+  it('a settimana confermata la zona destra di oggi apre il foglio e "Saltato" spunta lo slot', async () => {
+    const settimana: SettimanaCorrente = { id: 'w-1', dataInizio: LUNEDI, stato: 'confermata', slots: buildSlots() };
+    vi.mocked(leggiSettimanaCorrente).mockResolvedValue(settimana);
+    vi.mocked(aggiornaSlot).mockResolvedValue(undefined);
+    vi.mocked(leggiSlotDefs).mockResolvedValue(SLOT_DEFS);
+    vi.mocked(leggiRepertorio).mockResolvedValue([DISH_COLAZIONE, DISH_CENA]);
+    vi.mocked(leggiIngredienti).mockResolvedValue([ING_YOGURT, ING_POLLO]);
+    vi.mocked(leggiImpostazioni).mockResolvedValue({
+      moltiplicatorePorzioni: 1,
+      ordineAree: [...ORDINE_AREE_TEST],
+      settimaneCiclo: 1,
+      cicloOrigine: null,
+    });
+
+    render(<StrictMode><Settimana /></StrictMode>);
+    await screen.findByText('Yogurt e frutta');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Azioni per Cena' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Saltato' }));
+
+    await waitFor(() => {
+      expect(aggiornaSlot).toHaveBeenCalledWith(`${OGGI}:sd-3`, { stato: 'saltato' }, 'checkin');
+    });
+    expect(screen.getByText('Saltato')).toBeInTheDocument();
+  });
+
+  it('a settimana bozza la zona destra resta il link a Scegli', async () => {
+    const settimana: SettimanaCorrente = { id: 'w-1', dataInizio: LUNEDI, stato: 'bozza', slots: buildSlots() };
+    vi.mocked(leggiSettimanaCorrente).mockResolvedValue(settimana);
+    vi.mocked(leggiSlotDefs).mockResolvedValue(SLOT_DEFS);
+    vi.mocked(leggiRepertorio).mockResolvedValue([DISH_COLAZIONE, DISH_CENA]);
+    vi.mocked(leggiIngredienti).mockResolvedValue([ING_YOGURT, ING_POLLO]);
+    vi.mocked(leggiImpostazioni).mockResolvedValue({
+      moltiplicatorePorzioni: 1,
+      ordineAree: [...ORDINE_AREE_TEST],
+      settimaneCiclo: 1,
+      cicloOrigine: null,
+    });
+
+    render(<StrictMode><Settimana /></StrictMode>);
+    await screen.findByText('Yogurt e frutta');
+
+    expect(screen.queryByRole('button', { name: 'Azioni per Cena' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Scegli il piatto per Cena' })).toBeInTheDocument();
+  });
+});
+
+describe('settimana precedente', () => {
+  const LUNEDI_PREC = sommaGiorni(LUNEDI, -7);
+  const GIORNI_PREC = giorniDellaSettimana(LUNEDI_PREC);
+
+  function slotsPrecedenti(): MealSlot[] {
+    return GIORNI_PREC.map((data) => ({
+      id: `${data}:sd-1`, data, slotDefId: 'sd-1', stato: 'casa' as const,
+      dishId: DISH_COLAZIONE.id, fonteStato: 'default' as const, scelte: {},
+    }));
+  }
+
+  it('il link carica la settimana di sette giorni fa, senza bottone di conferma', async () => {
+    const corrente: SettimanaCorrente = { id: 'w-1', dataInizio: LUNEDI, stato: 'confermata', slots: buildSlots() };
+    const precedente: SettimanaCorrente = { id: 'w-0', dataInizio: LUNEDI_PREC, stato: 'chiusa', slots: slotsPrecedenti() };
+    vi.mocked(leggiSettimanaCorrente).mockResolvedValue(corrente);
+    vi.mocked(leggiSettimana).mockResolvedValue(precedente);
+    vi.mocked(leggiSlotDefs).mockResolvedValue(SLOT_DEFS);
+    vi.mocked(leggiRepertorio).mockResolvedValue([DISH_COLAZIONE, DISH_CENA]);
+    vi.mocked(leggiIngredienti).mockResolvedValue([ING_YOGURT, ING_POLLO]);
+    vi.mocked(leggiImpostazioni).mockResolvedValue({
+      moltiplicatorePorzioni: 1,
+      ordineAree: [...ORDINE_AREE_TEST],
+      settimaneCiclo: 1,
+      cicloOrigine: null,
+    });
+
+    render(<StrictMode><Settimana /></StrictMode>);
+    await screen.findByText('Yogurt e frutta');
+
+    fireEvent.click(screen.getByRole('button', { name: '‹ SETTIMANA SCORSA' }));
+
+    await waitFor(() => expect(leggiSettimana).toHaveBeenCalledWith(LUNEDI_PREC));
+    await screen.findByRole('button', { name: 'SETTIMANA CORRENTE ›' });
+    expect(screen.queryByText('CONFERMA E CREA LA LISTA')).not.toBeInTheDocument();
+    expect(screen.queryByText('VAI ALLA LISTA')).not.toBeInTheDocument();
+    // Tutti i giorni della precedente sono passati: la zona destra è ad azioni.
+    expect(screen.getAllByRole('button', { name: 'Azioni per Colazione' }).length).toBeGreaterThan(0);
+  });
+
+  it('precedente mai creata: stato vuoto, nessuna creaSettimana', async () => {
+    const corrente: SettimanaCorrente = { id: 'w-1', dataInizio: LUNEDI, stato: 'confermata', slots: buildSlots() };
+    vi.mocked(leggiSettimanaCorrente).mockResolvedValue(corrente);
+    vi.mocked(leggiSettimana).mockResolvedValue(null);
+    vi.mocked(leggiSlotDefs).mockResolvedValue(SLOT_DEFS);
+    vi.mocked(leggiRepertorio).mockResolvedValue([DISH_COLAZIONE, DISH_CENA]);
+    vi.mocked(leggiIngredienti).mockResolvedValue([ING_YOGURT, ING_POLLO]);
+    vi.mocked(leggiImpostazioni).mockResolvedValue({
+      moltiplicatorePorzioni: 1,
+      ordineAree: [...ORDINE_AREE_TEST],
+      settimaneCiclo: 1,
+      cicloOrigine: null,
+    });
+
+    render(<StrictMode><Settimana /></StrictMode>);
+    await screen.findByText('Yogurt e frutta');
+
+    fireEvent.click(screen.getByRole('button', { name: '‹ SETTIMANA SCORSA' }));
+
+    await screen.findByText('Questa settimana non è mai stata creata: non c’è nulla da correggere.');
+    expect(creaSettimana).not.toHaveBeenCalled();
   });
 });

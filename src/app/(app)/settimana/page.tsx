@@ -5,14 +5,15 @@ import { useRouter } from 'next/navigation';
 import type { AreaId, Dish, Ingredient, MealSlot, MealSlotDef, StatoSlot } from '@/domain/types';
 import { applicaStato } from '@/domain/week-shape';
 import { descriviScelte } from '@/domain/opzioni';
-import { giorniDellaSettimana, lunediDi } from '@/domain/date';
-import { leggiSettimanaCorrente, creaSettimana, aggiornaSlot, confermaSettimana } from '@/data/settimana';
+import { giorniDellaSettimana, lunediDi, sommaGiorni } from '@/domain/date';
+import { leggiSettimanaCorrente, leggiSettimana, creaSettimana, aggiornaSlot, confermaSettimana } from '@/data/settimana';
 import { leggiRepertorio, leggiIngredienti } from '@/data/repertorio';
 import { leggiSlotDefs, leggiImpostazioni } from '@/data/impostazioni';
 import { generaListe } from '@/data/lista';
 import { Testata } from '@/components/Testata';
 import { StrisciaGiorni } from '@/components/StrisciaGiorni';
 import { RigaPasto } from '@/components/RigaPasto';
+import { FoglioAzioniPasto } from '@/components/FoglioAzioniPasto';
 
 const LUNGHI = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
 
@@ -49,6 +50,13 @@ export default function Settimana() {
   const [confermando, setConfermando] = useState(false);
   const [erroreConferma, setErroreConferma] = useState<string | null>(null);
 
+  // 'corrente' | 'precedente': la spunta arriva fino alla settimana scorsa
+  // (spec spunta-pasti §6) — il lunedì "ieri" è domenica, e senza la
+  // precedente il weekend sarebbe incorreggibile.
+  const [vista, setVista] = useState<'corrente' | 'precedente'>('corrente');
+  const [precedenteVuota, setPrecedenteVuota] = useState(false);
+  const [foglio, setFoglio] = useState<{ slot: MealSlot; def: MealSlotDef } | null>(null);
+
   // Tiene la promise di creaSettimana in corso, condivisa fra le due
   // esecuzioni dell'effetto che React Strict Mode innesca in sviluppo: senza
   // questo, entrambe leggerebbero "nessuna settimana" e proverebbero a
@@ -59,31 +67,45 @@ export default function Settimana() {
 
   useEffect(() => {
     let vivo = true;
+    setDati(null);
+    setPrecedenteVuota(false);
+    setFoglio(null);
 
     async function carica() {
       try {
-        let corrente = await leggiSettimanaCorrente();
-        if (!corrente) {
-          if (!creazioneInCorsoRef.current) {
-            // Primo accesso della settimana: creaSettimana genera i default
-            // (ogni pasto a casa tranne le assenze abituali) e assegna i
-            // piatti. L'utente trova la settimana già compilata.
-            creazioneInCorsoRef.current = creaSettimana(lunediDi(oggiIso())).then(() => undefined);
+        let corrente: Awaited<ReturnType<typeof leggiSettimanaCorrente>> = null;
+        if (vista === 'precedente') {
+          // Mai creaSettimana per il passato: se non esiste, non c'è nulla
+          // da correggere (spec §6).
+          corrente = await leggiSettimana(sommaGiorni(lunediDi(oggiIso()), -7));
+          if (!corrente) {
+            if (vivo) setPrecedenteVuota(true);
+            return;
           }
-          try {
-            await creazioneInCorsoRef.current;
-            corrente = await leggiSettimanaCorrente();
-          } catch (erroreCreazione) {
-            // L'unique (user_id, data_inizio) blocca un doppione lato
-            // database: se la settimana esiste già — creata da un'altra
-            // scheda, o da un tentativo precedente dopo una ricarica a metà —
-            // si rilegge e si prosegue in silenzio invece di mostrare un
-            // errore bloccante quando in realtà non c'è nulla di rotto.
-            corrente = await leggiSettimanaCorrente();
-            if (!corrente) throw erroreCreazione;
+        } else {
+          corrente = await leggiSettimanaCorrente();
+          if (!corrente) {
+            if (!creazioneInCorsoRef.current) {
+              // Primo accesso della settimana: creaSettimana genera i default
+              // (ogni pasto a casa tranne le assenze abituali) e assegna i
+              // piatti. L'utente trova la settimana già compilata.
+              creazioneInCorsoRef.current = creaSettimana(lunediDi(oggiIso())).then(() => undefined);
+            }
+            try {
+              await creazioneInCorsoRef.current;
+              corrente = await leggiSettimanaCorrente();
+            } catch (erroreCreazione) {
+              // L'unique (user_id, data_inizio) blocca un doppione lato
+              // database: se la settimana esiste già — creata da un'altra
+              // scheda, o da un tentativo precedente dopo una ricarica a metà —
+              // si rilegge e si prosegue in silenzio invece di mostrare un
+              // errore bloccante quando in realtà non c'è nulla di rotto.
+              corrente = await leggiSettimanaCorrente();
+              if (!corrente) throw erroreCreazione;
+            }
           }
+          if (!corrente) throw new Error('Settimana non disponibile dopo la creazione.');
         }
-        if (!corrente) throw new Error('Settimana non disponibile dopo la creazione.');
 
         const [slotDefs, piatti, ingredienti, impostazioni] = await Promise.all([
           leggiSlotDefs(),
@@ -102,8 +124,13 @@ export default function Settimana() {
         });
 
         const giorni = giorniDellaSettimana(corrente.dataInizio);
-        const indiceOggi = giorni.indexOf(oggiIso());
-        setSelezionato(indiceOggi >= 0 ? indiceOggi : 0);
+        if (vista === 'precedente') {
+          // Si arriva qui quasi sempre per il weekend appena passato.
+          setSelezionato(6);
+        } else {
+          const indiceOggi = giorni.indexOf(oggiIso());
+          setSelezionato(indiceOggi >= 0 ? indiceOggi : 0);
+        }
       } catch (errore) {
         console.error('settimana: caricamento fallito.', errore);
         if (vivo) setErroreCaricamento('Non riusciamo a caricare la settimana. Riprova più tardi.');
@@ -114,12 +141,34 @@ export default function Settimana() {
     return () => {
       vivo = false;
     };
-  }, []);
+  }, [vista]);
 
   if (erroreCaricamento) {
     return (
       <Cornice>
         <p style={{ margin: '20px 18px', color: 'var(--sec)' }}>{erroreCaricamento}</p>
+      </Cornice>
+    );
+  }
+
+  if (precedenteVuota) {
+    return (
+      <Cornice>
+        <p style={{ margin: '20px 18px', color: 'var(--sec)' }}>
+          Questa settimana non è mai stata creata: non c&rsquo;è nulla da correggere.
+        </p>
+        <div style={{ padding: '0 16px' }}>
+          <button
+            type="button"
+            onClick={() => setVista('corrente')}
+            style={{
+              fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700,
+              letterSpacing: '0.11em', color: 'var(--ter)', padding: '4px 2px',
+            }}
+          >
+            SETTIMANA CORRENTE ›
+          </button>
+        </div>
       </Cornice>
     );
   }
@@ -181,6 +230,25 @@ export default function Settimana() {
     }
   }
 
+  /**
+   * La spunta: saltato / sostituito / ritorno a casa, fonte 'checkin'.
+   * Ottimistico come toggleStato; aggiornaSlot scrive da solo ledger e
+   * residuo quando la settimana non è bozza (spec spunta-pasti §5.1).
+   */
+  async function spuntaStato(slot: MealSlot, stato: StatoSlot) {
+    setFoglio(null);
+    const risultato = applicaStato(slot, stato, 'checkin');
+    setErroreCheckin(null);
+    aggiornaSlotLocale(risultato);
+    try {
+      await aggiornaSlot(slot.id, { stato }, 'checkin');
+    } catch (errore) {
+      console.error('settimana: spunta fallita.', errore);
+      aggiornaSlotLocale(slot);
+      setErroreCheckin('Non siamo riusciti a salvare il cambiamento. Riprova.');
+    }
+  }
+
   function apriPiatto(dishId: string) {
     router.push(`/piatti/${dishId}`);
   }
@@ -220,6 +288,19 @@ export default function Settimana() {
 
   return (
     <Cornice>
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '2px 16px 0' }}>
+        <button
+          type="button"
+          onClick={() => setVista((v) => (v === 'corrente' ? 'precedente' : 'corrente'))}
+          style={{
+            fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700,
+            letterSpacing: '0.11em', color: 'var(--ter)', padding: '4px 2px',
+          }}
+        >
+          {vista === 'corrente' ? '‹ SETTIMANA SCORSA' : 'SETTIMANA CORRENTE ›'}
+        </button>
+      </div>
+
       <div style={{ padding: '2px 16px 14px' }}>
         <StrisciaGiorni
           giorni={giorni}
@@ -275,6 +356,7 @@ export default function Settimana() {
             const slot = settimana.slots.find((s) => s.data === dataSelezionata && s.slotDefId === def.id);
             if (!slot) return null;
             const piatto = slot.dishId ? piattiPerId.get(slot.dishId) ?? null : null;
+            const spuntabile = settimana.stato !== 'bozza' && dataSelezionata <= oggi;
             return (
               <RigaPasto
                 key={def.id}
@@ -286,38 +368,53 @@ export default function Settimana() {
                 onToggleStato={() => toggleStato(slot)}
                 onApriPiatto={piatto ? () => apriPiatto(piatto.id) : undefined}
                 hrefScegli={`/settimana/${dataSelezionata}/${def.id}/scegli`}
+                onApriAzioni={spuntabile ? () => setFoglio({ slot, def }) : undefined}
               />
             );
           })}
         </div>
       </div>
 
-      <div style={{ padding: '6px 16px 0', display: 'flex', flexDirection: 'column', gap: 9 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '0 4px' }}>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.11em', color: 'var(--ink)' }}>
-            {nCasaSettimana} PASTI A CASA IN SETTIMANA
-          </span>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.09em', color: 'var(--ter)' }}>
-            CASA = A CASA · › APRE IL PIATTO
-          </span>
+      {vista === 'corrente' && (
+        <div style={{ padding: '6px 16px 0', display: 'flex', flexDirection: 'column', gap: 9 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '0 4px' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.11em', color: 'var(--ink)' }}>
+              {nCasaSettimana} PASTI A CASA IN SETTIMANA
+            </span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.09em', color: 'var(--ter)' }}>
+              CASA = A CASA · › APRE IL PIATTO
+            </span>
+          </div>
+          {erroreConferma && (
+            <p style={{ margin: '0 4px', fontSize: 12.5, color: 'var(--sec)' }}>{erroreConferma}</p>
+          )}
+          <button
+            type="button"
+            onClick={confermaEVaiLista}
+            disabled={confermando}
+            style={{
+              width: '100%', height: 54, borderRadius: 18, textAlign: 'center',
+              fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700, letterSpacing: '0.09em',
+              background: '#14163A', boxShadow: '0 3px 10px rgba(20,22,58,0.24)', color: '#FFFFFF',
+              opacity: confermando ? 0.7 : 1,
+            }}
+          >
+            {testoConferma}
+          </button>
         </div>
-        {erroreConferma && (
-          <p style={{ margin: '0 4px', fontSize: 12.5, color: 'var(--sec)' }}>{erroreConferma}</p>
-        )}
-        <button
-          type="button"
-          onClick={confermaEVaiLista}
-          disabled={confermando}
-          style={{
-            width: '100%', height: 54, borderRadius: 18, textAlign: 'center',
-            fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700, letterSpacing: '0.09em',
-            background: '#14163A', boxShadow: '0 3px 10px rgba(20,22,58,0.24)', color: '#FFFFFF',
-            opacity: confermando ? 0.7 : 1,
-          }}
-        >
-          {testoConferma}
-        </button>
-      </div>
+      )}
+
+      {foglio && (
+        <FoglioAzioniPasto
+          nomePasto={foglio.def.nome}
+          spuntato={foglio.slot.stato === 'saltato' || foglio.slot.stato === 'sostituito'}
+          hrefScegli={`/settimana/${foglio.slot.data}/${foglio.def.id}/scegli`}
+          onSaltato={() => spuntaStato(foglio.slot, 'saltato')}
+          onMangiatoAltro={() => spuntaStato(foglio.slot, 'sostituito')}
+          onTornaAlPiano={() => spuntaStato(foglio.slot, 'casa')}
+          onChiudi={() => setFoglio(null)}
+        />
+      )}
     </Cornice>
   );
 }
