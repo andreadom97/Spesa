@@ -300,8 +300,12 @@ export function traduciBozza(
   // esistente ma resta inutilizzato è già escluso: risolviRiga non lo tocca mai) e il cui
   // nome non abbina già un ingrediente esistente (rete di sicurezza esplicita per il
   // re-run: se il fallback per nome in risolviRiga avesse un buco, qui si blocca comunque).
+  // L'unità passata deve essere la stessa di risolviRiga (`i.unitaBase`, non null):
+  // un'unità unit-agnostic farebbe matchare un omonimo per inclusione con un'unità
+  // diversa, escludendo dai-da-creare un ingrediente che una riga ha comunque risolto
+  // come nuovoAlimento — l'ingrediente referenziato non verrebbe mai creato.
   const ingredientiDaCreare = stato.ingredientiNuovi.filter(
-    (i) => usati.has(normalizza(i.alimento)) && !abbina(i.nome, null, ingredientiEsistenti),
+    (i) => usati.has(normalizza(i.alimento)) && !abbina(i.nome, i.unitaBase, ingredientiEsistenti),
   );
 
   const cicloOrigine = sommaGiorni(lunediDi(oggi), 7);

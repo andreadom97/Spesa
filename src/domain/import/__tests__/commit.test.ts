@@ -149,6 +149,40 @@ describe('traduciBozza', () => {
     expect(() => traduciBozza(piano, stato, [], [], '2026-08-29')).toThrow(BozzaIncompletaError);
   });
 
+  it('la rete di sicurezza della regola 2 rispetta l\'unità: un omonimo per inclusione con unità diversa non esclude il nuovo', () => {
+    // Repro della review: proposta 'zenzero fresco'/pz, esistente 'Zenzero in polvere'/g.
+    // Il nome pulito ('Zenzero') è incluso in quello dell'esistente per inclusione, ma le
+    // unità sono diverse: la riga si risolve come nuovoAlimento (nessun match compatibile
+    // per unità) e il proposto NON deve sparire da ingredientiDaCreare.
+    const piano = {
+      archetipo: 'giornata_unica' as const,
+      fonte: 'test',
+      noteEstrazione: [],
+      settimane: [{
+        numero: 1,
+        giorni: [{
+          giorno: 0,
+          pasti: [{
+            nomeOriginale: 'pranzo',
+            piatti: [{
+              nome: 'Riso allo zenzero', descrizione: null, componenti: [],
+              righeFisse: [{ alimento: 'zenzero fresco', quantita: 1, unita: 'pz' as const, testoOriginale: '1 pz zenzero fresco' }],
+            }],
+          }],
+        }],
+      }],
+    };
+    const zenzeroInPolvere: Ingredient = { id: 'i-zenzero-polvere', nome: 'Zenzero in polvere', unitaBase: 'g', area: 'dispensa', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 50 };
+    const stato: StatoRevisione = {
+      passo: 'riepilogo', mappaturaPasti: { pranzo: 's-pranzo' }, pastiConfermati: [], correzioni: {},
+      ingredientiNuovi: [{ alimento: 'zenzero fresco', nome: 'Zenzero', unitaBase: 'pz', area: 'ortofrutta', classeResiduo: 'stima', deperibile: true, formatoConfezione: 1 }],
+    };
+    const s = traduciBozza(piano, stato, [zenzeroInPolvere], [], '2026-08-29');
+    const riso = s.piattiDaCreare.find((p) => p.nome === 'Riso allo zenzero')!;
+    expect(riso.righe).toContainEqual({ nuovoAlimento: 'zenzero fresco', quantita: 1, unita: 'pz' });
+    expect(s.ingredientiDaCreare.some((i) => i.alimento === 'zenzero fresco')).toBe(true);
+  });
+
   it('una quantità non risolta dentro un\'opzione di componente ferma tutto', () => {
     const stato = statoCompleto();
     // giorni[0].pasti[1] = cena di lunedì sett.1 ("Tacchino con pane"), col componente 'pane'.
