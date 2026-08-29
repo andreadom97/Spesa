@@ -90,6 +90,19 @@ const SETTIMANA_BASE: SettimanaCorrente = {
   id: 'week-1', dataInizio: '2026-08-24', stato: 'bozza', slots: [SLOT_COLAZIONE, SLOT_CENA],
 };
 
+// Slot 'saltato'/'sostituito' (fix round 2, Important): il flusso "Ho
+// mangiato un altro piatto" dal FoglioAzioniPasto arriva qui con lo slot già
+// spuntato da 'checkin'. Scegliere un piatto deve riportarlo a 'casa' con
+// fonte 'correzione', o il sostituto non verrebbe mai addebitato.
+const SLOT_CENA_SALTATO: MealSlot = { id: 'slot-cena', data: DATA, slotDefId: 'sd-3', stato: 'saltato', dishId: 'd-1', fonteStato: 'checkin', scelte: {} };
+const SLOT_CENA_SOSTITUITO: MealSlot = { id: 'slot-cena', data: DATA, slotDefId: 'sd-3', stato: 'sostituito', dishId: 'd-1', fonteStato: 'checkin', scelte: {} };
+const SETTIMANA_SALTATA: SettimanaCorrente = {
+  id: 'week-1', dataInizio: '2026-08-24', stato: 'bozza', slots: [SLOT_COLAZIONE, SLOT_CENA_SALTATO],
+};
+const SETTIMANA_SOSTITUITA: SettimanaCorrente = {
+  id: 'week-1', dataInizio: '2026-08-24', stato: 'bozza', slots: [SLOT_COLAZIONE, SLOT_CENA_SOSTITUITO],
+};
+
 // Piatto con un componente a due opzioni, per i test del Task 9 (ciclo al
 // tap, chip IN CASA). Nessun ingrediente fisso: quello che conta qui sono le
 // righe delle opzioni.
@@ -164,6 +177,34 @@ const ORDINE_AREE_TEST = ['surgelati', 'dispensa', 'cereali', 'latticini', 'mace
 
 function mockCarico() {
   vi.mocked(leggiSettimana).mockResolvedValue(SETTIMANA_BASE);
+  vi.mocked(leggiSlotDefs).mockResolvedValue(SLOT_DEFS);
+  vi.mocked(leggiRepertorio).mockResolvedValue([DISH_COLAZIONE, DISH_POLLO, DISH_MERLUZZO]);
+  vi.mocked(leggiIngredienti).mockResolvedValue([ING_POLLO, ING_RISO, ING_YOGURT]);
+  vi.mocked(leggiImpostazioni).mockResolvedValue({
+    moltiplicatorePorzioni: 1,
+    ordineAree: [...ORDINE_AREE_TEST],
+    settimaneCiclo: 1,
+    cicloOrigine: null,
+  });
+  vi.mocked(leggiDispensa).mockResolvedValue([]);
+}
+
+// Varianti di mockCarico() con lo slot cena già 'saltato'/'sostituito'.
+function mockCaricoSaltato() {
+  vi.mocked(leggiSettimana).mockResolvedValue(SETTIMANA_SALTATA);
+  vi.mocked(leggiSlotDefs).mockResolvedValue(SLOT_DEFS);
+  vi.mocked(leggiRepertorio).mockResolvedValue([DISH_COLAZIONE, DISH_POLLO, DISH_MERLUZZO]);
+  vi.mocked(leggiIngredienti).mockResolvedValue([ING_POLLO, ING_RISO, ING_YOGURT]);
+  vi.mocked(leggiImpostazioni).mockResolvedValue({
+    moltiplicatorePorzioni: 1,
+    ordineAree: [...ORDINE_AREE_TEST],
+    settimaneCiclo: 1,
+    cicloOrigine: null,
+  });
+  vi.mocked(leggiDispensa).mockResolvedValue([]);
+}
+function mockCaricoSostituito() {
+  vi.mocked(leggiSettimana).mockResolvedValue(SETTIMANA_SOSTITUITA);
   vi.mocked(leggiSlotDefs).mockResolvedValue(SLOT_DEFS);
   vi.mocked(leggiRepertorio).mockResolvedValue([DISH_COLAZIONE, DISH_POLLO, DISH_MERLUZZO]);
   vi.mocked(leggiIngredienti).mockResolvedValue([ING_POLLO, ING_RISO, ING_YOGURT]);
@@ -276,7 +317,7 @@ describe('Scegli il piatto', () => {
     expect(bottone).toBeDisabled();
   });
 
-  it('selezionare un altro piatto attiva conferma, cambia la nota, e la conferma scrive solo dishId sullo slot', async () => {
+  it('selezionare un altro piatto attiva conferma, cambia la nota, e la conferma scrive solo dishId sullo slot (slot "casa": nessun campo stato nel patch)', async () => {
     mockCarico();
     vi.mocked(aggiornaSlot).mockResolvedValue(undefined);
     render(<ScegliPiatto />);
@@ -294,6 +335,40 @@ describe('Scegli il piatto', () => {
 
     await waitFor(() =>
       expect(aggiornaSlot).toHaveBeenCalledWith('slot-cena', { dishId: 'd-2' }, 'correzione'),
+    );
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/settimana'));
+  });
+
+  // Fix round 2 (Important): il flusso "Ho mangiato un altro piatto" dal
+  // FoglioAzioniPasto arriva su uno slot già 'saltato'/'sostituito' (fonte
+  // 'checkin'). Senza riportare lo stato a 'casa' nel patch, consumoDopo in
+  // aggiornaSlot resta vuoto e il sostituto non viene mai addebitato.
+  it('slot già "saltato": la conferma riporta lo stato a casa con fonte correzione', async () => {
+    mockCaricoSaltato();
+    vi.mocked(aggiornaSlot).mockResolvedValue(undefined);
+    render(<ScegliPiatto />);
+    await screen.findByText('Pollo e riso');
+
+    fireEvent.click(screen.getByText('Merluzzo e piselli'));
+    fireEvent.click(screen.getByText('SOSTITUISCI'));
+
+    await waitFor(() =>
+      expect(aggiornaSlot).toHaveBeenCalledWith('slot-cena', { dishId: 'd-2', stato: 'casa' }, 'correzione'),
+    );
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/settimana'));
+  });
+
+  it('slot già "sostituito": la conferma riporta lo stato a casa con fonte correzione', async () => {
+    mockCaricoSostituito();
+    vi.mocked(aggiornaSlot).mockResolvedValue(undefined);
+    render(<ScegliPiatto />);
+    await screen.findByText('Pollo e riso');
+
+    fireEvent.click(screen.getByText('Merluzzo e piselli'));
+    fireEvent.click(screen.getByText('SOSTITUISCI'));
+
+    await waitFor(() =>
+      expect(aggiornaSlot).toHaveBeenCalledWith('slot-cena', { dishId: 'd-2', stato: 'casa' }, 'correzione'),
     );
     await waitFor(() => expect(push).toHaveBeenCalledWith('/settimana'));
   });

@@ -3,7 +3,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import type { AreaId, ClasseResiduo, Componente, Dish, Ingredient, OpzioneComponente, PantryState, Scelta } from '@/domain/types';
+import type { AreaId, ClasseResiduo, Componente, Dish, Ingredient, OpzioneComponente, PantryState, Scelta, StatoSlot } from '@/domain/types';
 import { leggiRepertorio, leggiIngredienti } from '@/data/repertorio';
 import { leggiSettimana, aggiornaSlot } from '@/data/settimana';
 import { leggiSlotDefs, leggiImpostazioni } from '@/data/impostazioni';
@@ -20,6 +20,14 @@ interface DatiScegli {
   slotId: string;
   /** Piatto assegnato allo slot al caricamento: mostra il badge "ORA IN PROGRAMMA" e serve da riferimento per capire se qualcosa è cambiato. */
   dishIdOriginale: string | null;
+  /**
+   * Stato dello slot al caricamento. Serve solo a `confermaScelta`: su uno
+   * slot 'saltato' o 'sostituito', scegliere un piatto qui è "ho mangiato
+   * un altro piatto" (dal FoglioAzioniPasto) — il patch deve riportare lo
+   * slot a 'casa', altrimenti il sostituto non viene mai addebitato e la
+   * riga in Settimana continua a dire "Saltato".
+   */
+  statoOriginale: StatoSlot;
   nomePasto: string;
   piatti: Dish[];
   areePerPiatto: Map<string, AreaId[]>;
@@ -268,6 +276,7 @@ export default function ScegliPiatto() {
         setDati({
           slotId: slot.id,
           dishIdOriginale: slot.dishId,
+          statoOriginale: slot.stato,
           nomePasto: def.nome,
           piatti,
           areePerPiatto,
@@ -303,13 +312,24 @@ export default function ScegliPiatto() {
     setErroreSalva(null);
     try {
       const dishScelto = dati.piatti.find((p) => p.id === scelto) ?? null;
-      const patch: { dishId: string | null; scelte?: Record<string, Scelta> } = { dishId: scelto };
+      const patch: { stato?: StatoSlot; dishId: string | null; scelte?: Record<string, Scelta> } = { dishId: scelto };
       const scelteDaMandare = dishScelto ? scelteManualiDaMandare(dishScelto, scelteCorrenti, dati.scelteOriginali) : undefined;
       if (scelteDaMandare !== undefined) patch.scelte = scelteDaMandare;
-      // 'correzione' qui è inerte: aggiornaSlot usa `fonte` solo per un patch
-      // di `stato` (gerarchia delle fonti). Un patch che tocca solo `dishId`
-      // (e `scelte`) si applica sempre e non scrive `fonte_stato` — scegliere
-      // un piatto non è una transizione di stato casa/fuori.
+      // Slot 'saltato'/'sostituito': questo è il flusso "Ho mangiato un altro
+      // piatto" dal FoglioAzioniPasto. Senza riportare lo stato a 'casa' qui,
+      // consumoDopo in aggiornaSlot resterebbe vuoto (stato non-casa) e il
+      // sostituto non verrebbe mai addebitato — la riga in Settimana
+      // continuerebbe a dire "Saltato". 'correzione' vince sempre nella
+      // gerarchia delle fonti (src/domain/week-shape.ts), quindi passa il
+      // cancello anche su uno slot già scritto da 'checkin'.
+      if (dati.statoOriginale === 'saltato' || dati.statoOriginale === 'sostituito') {
+        patch.stato = 'casa';
+      }
+      // 'correzione' qui è inerte quando il patch non tocca `stato`:
+      // aggiornaSlot usa `fonte` solo per quel campo (gerarchia delle fonti).
+      // Un patch che tocca solo `dishId` (e `scelte`) si applica sempre e non
+      // scrive `fonte_stato` — scegliere un piatto non è di per sé una
+      // transizione di stato casa/fuori.
       await aggiornaSlot(dati.slotId, patch, 'correzione');
       router.push('/settimana');
     } catch (errore) {
