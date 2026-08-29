@@ -2,16 +2,20 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import type { MealSlotDef } from '@/domain/types';
-import type { StatoRevisione } from '@/domain/import/types';
-import { leggiBozzaImport, salvaBozzaImport, cancellaBozzaImport, type BozzaImport } from '@/data/importa';
+import { useRouter } from 'next/navigation';
+import type { Ingredient, MealSlotDef } from '@/domain/types';
+import type { PianoEstratto, StatoRevisione } from '@/domain/import/types';
+import { leggiBozzaImport, salvaBozzaImport, cancellaBozzaImport, eseguiScritture, type BozzaImport } from '@/data/importa';
 import { leggiSlotDefs } from '@/data/impostazioni';
+import { leggiIngredienti, leggiRepertorio } from '@/data/repertorio';
 import { validaEsito } from '@/domain/import/valida';
 import { proponiSlot, normalizza } from '@/domain/import/mapping';
+import { traduciBozza, BozzaIncompletaError, type ScrittureImport } from '@/domain/import/commit';
 import { Testata } from '@/components/Testata';
 import { Segmento } from '@/components/Segmento';
 import { Camera } from './Camera';
 import { Revisione } from './Revisione';
+import { Formati } from './Formati';
 
 type Vista =
   | 'caricamento'
@@ -67,10 +71,12 @@ function mappaturaPastiIniziale(
 export default function Importa() {
   const [vista, setVista] = useState<Vista>('caricamento');
   const [bozza, setBozza] = useState<BozzaImport | null>(null);
-  // Servono alla revisione (etichette e opzioni dello slot per pasto): letti una volta
-  // al mount, indipendentemente dalla vista corrente, così sono già pronti quando si
-  // riprende una bozza salvata (che non rifà il giro di estrazione).
+  // Servono alla revisione (etichette e opzioni dello slot per pasto) e al passo
+  // formati (ingredienti esistenti da abbinare o proporre come "è lo stesso di…"):
+  // letti una volta al mount, indipendentemente dalla vista corrente, così sono già
+  // pronti quando si riprende una bozza salvata (che non rifà il giro di estrazione).
   const [slotDefs, setSlotDefs] = useState<MealSlotDef[]>([]);
+  const [ingredientiEsistenti, setIngredientiEsistenti] = useState<Ingredient[]>([]);
 
   // Acquisizione: stato indipendente dalla vista corrente, così un errore o
   // un giro di estrazione non fanno perdere le foto già scelte.
@@ -83,10 +89,11 @@ export default function Importa() {
 
   useEffect(() => {
     let vivo = true;
-    Promise.all([leggiBozzaImport(), leggiSlotDefs()])
-      .then(([b, defs]) => {
+    Promise.all([leggiBozzaImport(), leggiSlotDefs(), leggiIngredienti()])
+      .then(([b, defs, ingredienti]) => {
         if (!vivo) return;
         setSlotDefs(defs);
+        setIngredientiEsistenti(ingredienti);
         if (b) {
           setBozza(b);
           setVista('ripresa');
@@ -225,7 +232,12 @@ export default function Importa() {
   if (vista === 'bozza' && bozza) {
     return (
       <Cornice>
-        <ContenutoBozza bozza={bozza} slotDefs={slotDefs} onStatoRevisione={aggiornaStatoRevisione} />
+        <ContenutoBozza
+          bozza={bozza}
+          slotDefs={slotDefs}
+          ingredientiEsistenti={ingredientiEsistenti}
+          onStatoRevisione={aggiornaStatoRevisione}
+        />
       </Cornice>
     );
   }
@@ -444,17 +456,15 @@ function SchermataErrore({ messaggio, onRiprova }: { messaggio: string; onRiprov
   );
 }
 
-/**
- * Segnaposto per i passi successivi: Task 11 sostituisce 'formati'. 'riepilogo'
- * non ha ancora un task assegnato.
- */
 function ContenutoBozza({
   bozza,
   slotDefs,
+  ingredientiEsistenti,
   onStatoRevisione,
 }: {
   bozza: BozzaImport;
   slotDefs: MealSlotDef[];
+  ingredientiEsistenti: Ingredient[];
   onStatoRevisione: (s: StatoRevisione) => void;
 }) {
   switch (bozza.statoRevisione.passo) {
@@ -463,10 +473,177 @@ function ContenutoBozza({
         <Revisione piano={bozza.piano} stato={bozza.statoRevisione} slotDefs={slotDefs} onStato={onStatoRevisione} />
       );
     case 'formati':
-      return <p style={{ margin: '20px 16px', color: 'var(--sec)' }}>Formati — in arrivo.</p>;
+      return (
+        <Formati
+          piano={bozza.piano}
+          stato={bozza.statoRevisione}
+          ingredientiEsistenti={ingredientiEsistenti}
+          onStato={onStatoRevisione}
+        />
+      );
     case 'riepilogo':
-      return <p style={{ margin: '20px 16px', color: 'var(--sec)' }}>Riepilogo — in arrivo.</p>;
+      return <Riepilogo piano={bozza.piano} stato={bozza.statoRevisione} onStato={onStatoRevisione} />;
   }
+}
+
+/**
+ * Il riepilogo finale: traduce la bozza in scritture concrete (`traduciBozza`,
+ * con ingredienti e repertorio riletti freschi — non quelli in memoria dal
+ * mount del wizard, che potrebbero essere stati superati da un commit
+ * parziale precedente) e mostra il conto prima di eseguirle davvero.
+ *
+ * `BozzaIncompletaError` è un difetto di dati risolvibile solo tornando alla
+ * revisione (una mappatura mancante, una quantità mai risolta…): si mostra il
+ * messaggio esatto dell'errore, con un link indietro, invece di un errore
+ * generico che non direbbe cosa correggere.
+ */
+function Riepilogo({
+  piano,
+  stato,
+  onStato,
+}: {
+  piano: PianoEstratto;
+  stato: StatoRevisione;
+  onStato: (s: StatoRevisione) => void;
+}) {
+  const router = useRouter();
+  const [scritture, setScritture] = useState<ScrittureImport | null>(null);
+  const [erroreBozza, setErroreBozza] = useState<string | null>(null);
+  const [erroreCaricamento, setErroreCaricamento] = useState<string | null>(null);
+  const [confermaSostituzione, setConfermaSostituzione] = useState(false);
+  const [eseguendo, setEseguendo] = useState(false);
+  const [erroreEsecuzione, setErroreEsecuzione] = useState<string | null>(null);
+
+  useEffect(() => {
+    let vivo = true;
+    (async () => {
+      try {
+        const [ingredientiEsistenti, repertorioEsistente] = await Promise.all([leggiIngredienti(), leggiRepertorio()]);
+        if (!vivo) return;
+        const oggi = new Date().toISOString().slice(0, 10);
+        const s = traduciBozza(piano, stato, ingredientiEsistenti, repertorioEsistente, oggi);
+        setScritture(s);
+      } catch (e) {
+        if (!vivo) return;
+        if (e instanceof BozzaIncompletaError) {
+          setErroreBozza(e.message);
+        } else {
+          console.error('importa: preparazione del riepilogo fallita.', e);
+          setErroreCaricamento('Non siamo riusciti a preparare il riepilogo. Riprova più tardi.');
+        }
+      }
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [piano, stato]);
+
+  async function confermaSostituisci() {
+    if (!scritture) return;
+    setEseguendo(true);
+    setErroreEsecuzione(null);
+    try {
+      await eseguiScritture(scritture);
+      router.push('/settimana');
+    } catch (e) {
+      console.error('importa: esecuzione dell’import fallita.', e);
+      setErroreEsecuzione('Qualcosa si è fermato: riprova, l’import riprende da dove era.');
+      setEseguendo(false);
+    }
+  }
+
+  if (erroreBozza) {
+    return (
+      <div style={{ margin: '20px 16px', padding: '18px 16px', borderRadius: 18, background: 'var(--superficie)', border: '1px solid var(--bordo)' }}>
+        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)', marginBottom: 8 }}>
+          C&apos;è ancora qualcosa da sistemare
+        </div>
+        <div style={{ fontSize: 13.5, lineHeight: 1.45, color: 'var(--sec)', marginBottom: 16 }}>{erroreBozza}</div>
+        <button
+          type="button"
+          onClick={() => onStato({ ...stato, passo: 'revisione' })}
+          style={{
+            width: '100%', height: 48, borderRadius: 14, border: 'none', background: 'var(--ink)',
+            fontFamily: 'var(--font-mono)', fontSize: 11.5, fontWeight: 700, letterSpacing: '0.08em', color: '#FFFFFF',
+          }}
+        >
+          TORNA ALLA REVISIONE
+        </button>
+      </div>
+    );
+  }
+
+  if (erroreCaricamento) {
+    return <p style={{ margin: '20px 16px', color: 'var(--sec)' }}>{erroreCaricamento}</p>;
+  }
+
+  if (!scritture) return null;
+
+  const nPiatti = scritture.piattiDaCreare.length;
+  const mSettimane = scritture.impostazioni.settimaneCiclo;
+  const kIngredienti = scritture.ingredientiDaCreare.length;
+  const xDisattivati = scritture.piattiDaDisattivare.length;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+      <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 16px 16px' }}>
+        <div style={{ padding: '16px 15px', borderRadius: 18, background: 'var(--superficie)', border: '1px solid var(--bordo)', fontSize: 14.5, lineHeight: 1.5, color: 'var(--ink)' }}>
+          {nPiatti} piatti su {mSettimane} settimane · {kIngredienti} ingredienti nuovi · {xDisattivati} piatti del piano attuale verranno disattivati
+        </div>
+
+        {confermaSostituzione && (
+          <div style={{ marginTop: 14, padding: '15px 15px 16px', borderRadius: 18, background: 'var(--superficie)', border: '1px solid var(--bordo)' }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)', marginBottom: 8 }}>Sostituire il piano attuale?</div>
+            <div style={{ fontSize: 13, lineHeight: 1.45, color: 'var(--sec)', marginBottom: 14 }}>
+              I piatti del nutrizionista non più presenti nella nuova dieta verranno disattivati; questa azione non si annulla.
+            </div>
+            <div style={{ display: 'flex', gap: 9 }}>
+              <button
+                type="button"
+                onClick={() => setConfermaSostituzione(false)}
+                disabled={eseguendo}
+                style={{
+                  flex: 1, height: 48, borderRadius: 14, border: '1px solid var(--bordo)', background: 'transparent',
+                  fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--ink)',
+                }}
+              >
+                ANNULLA
+              </button>
+              <button
+                type="button"
+                onClick={confermaSostituisci}
+                disabled={eseguendo}
+                style={{
+                  flex: 1, height: 48, borderRadius: 14, border: 'none', background: 'var(--ink)',
+                  fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: '#FFFFFF',
+                }}
+              >
+                Sì, sostituisci
+              </button>
+            </div>
+          </div>
+        )}
+
+        {erroreEsecuzione && <p style={{ margin: '14px 4px 0', fontSize: 13, color: 'var(--sec)' }}>{erroreEsecuzione}</p>}
+      </div>
+
+      {!confermaSostituzione && (
+        <div style={{ padding: '4px 16px 22px' }}>
+          <button
+            type="button"
+            onClick={() => setConfermaSostituzione(true)}
+            style={{
+              width: '100%', height: 54, borderRadius: 18,
+              fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700, letterSpacing: '0.09em',
+              background: 'var(--ink)', color: '#FFFFFF',
+            }}
+          >
+            SOSTITUISCI IL PIANO
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 /** Colonna a tutta altezza con la testata fissa in cima, come le altre pagine dell'app. */

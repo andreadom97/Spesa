@@ -1,10 +1,17 @@
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-vi.mock('@/data/importa', () => ({ leggiBozzaImport: vi.fn(), salvaBozzaImport: vi.fn(), cancellaBozzaImport: vi.fn() }));
+vi.mock('@/data/importa', () => ({
+  leggiBozzaImport: vi.fn(),
+  salvaBozzaImport: vi.fn(),
+  cancellaBozzaImport: vi.fn(),
+  eseguiScritture: vi.fn(),
+}));
 vi.mock('@/data/impostazioni', () => ({ leggiSlotDefs: vi.fn() }));
+vi.mock('@/data/repertorio', () => ({ leggiIngredienti: vi.fn(), leggiRepertorio: vi.fn() }));
 import { leggiBozzaImport, salvaBozzaImport, cancellaBozzaImport } from '@/data/importa';
 import { leggiSlotDefs } from '@/data/impostazioni';
+import { leggiIngredienti } from '@/data/repertorio';
 import { FIXTURE_MENU_SETTIMANALE, FIXTURE_RIFIUTO_MACRO } from '@/domain/import/fixtures';
 import type { PianoEstratto } from '@/domain/import/types';
 import Importa from '../page';
@@ -27,6 +34,7 @@ beforeEach(() => {
   URL.revokeObjectURL = vi.fn();
   vi.mocked(leggiBozzaImport).mockResolvedValue(null);
   vi.mocked(leggiSlotDefs).mockResolvedValue(SLOTS);
+  vi.mocked(leggiIngredienti).mockResolvedValue([]);
 });
 
 // `findByLabelText` (non `getByLabelText`) apposta: la vista acquisizione è già

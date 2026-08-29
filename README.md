@@ -12,6 +12,33 @@ a un eventuale prodotto.
 quattordici schermate, PWA installabile con guscio offline sulla lista, in produzione
 su Vercel.
 
+### Importa la dieta (29/08/2026)
+
+Da `/impostazioni` → **Importa la dieta**: acquisisci le pagine della dieta del
+nutrizionista (foto o PDF), un wizard guida la revisione pasto per pasto, propone i
+formati di confezione per gli ingredienti nuovi, e al riepilogo **sostituisce il piano
+attuale** — i piatti del nutrizionista disattivati, i nuovi creati, il ciclo settimane
+riallineato. L'esecuzione (`eseguiScritture`) è idempotente per costruzione: un errore a
+metà si ripara riprovando, non lascia il piano a metà strada.
+
+**Stato: l'estrazione è mockata.** Non c'è ancora una `ANTHROPIC_API_KEY` configurata, quindi
+`/api/import/estrai` serve sempre un fixture invece di leggere davvero le foto/il PDF
+caricati (che vengono comunque ricevuti e scartati, per tenere la firma della route
+identica a quella futura). Il mock si sceglie con la variabile d'ambiente `IMPORT_MOCK`:
+
+| `IMPORT_MOCK` | Cosa serve |
+|---|---|
+| *(non impostata)* | `diete/estrazioni/piani/dieta6.json` (default) |
+| `sintetico` | Il fixture di menu settimanale sintetico usato nei test (`FIXTURE_MENU_SETTIMANALE`) |
+| `rifiuto` | Il rifiuto onesto di una dieta solo-macro, senza menu (`FIXTURE_RIFIUTO_MACRO`) |
+| un altro nome | `diete/estrazioni/piani/<nome>.json`; 503 se il file non esiste |
+
+Per provarlo in locale: `IMPORT_MOCK=dieta6 npm run dev`, poi aprire `/importa` — le foto
+o il PDF scelti nella schermata di acquisizione sono ignorati dal mock, basta arrivare al
+bottone ESTRAI LA DIETA. Quando la chiave sarà configurata, il blocco mock in
+`src/app/api/import/estrai/route.ts` va sostituito dalla chiamata all'estrattore vero
+(stessa firma della route, altra implementazione).
+
 ### Le alternative (29/08/2026)
 
 Le diete vere sono piene di "oppure": dal 29/08 il dominio le rappresenta. Due piatti

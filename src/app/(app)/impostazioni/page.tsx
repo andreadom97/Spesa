@@ -404,6 +404,25 @@ export default function Impostazioni() {
             <path d="M6 3.2 10.4 8 6 12.8" stroke="var(--ter)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </Link>
+
+        <Etichetta margine="26px 4px 10px">DIETA DEL NUTRIZIONISTA</Etichetta>
+        <Link
+          href="/importa"
+          style={{
+            width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: 16, borderRadius: 18,
+            background: 'var(--superficie)', border: '1px solid var(--bordo)',
+          }}
+        >
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)' }}>Importa la dieta</div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--sec)', marginTop: 5 }}>
+              DA FOTO O PDF, SOSTITUISCE IL PIANO ATTUALE
+            </div>
+          </div>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <path d="M6 3.2 10.4 8 6 12.8" stroke="var(--ter)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </Link>
       </div>
     </Cornice>
   );
