@@ -91,7 +91,16 @@ function risolviPiatto(p: PiattoDaCreare, idPerAlimento: Map<string, string>): O
  */
 export async function eseguiScritture(s: ScrittureImport): Promise<void> {
   const idPerAlimento = new Map<string, string>();
+  // Deduplica per `alimento`: due proposte per lo stesso alimento (bozza jsonb
+  // riscrivibile dal client, non è garantito che traduciBozza sia l'unica
+  // fonte) creerebbero due ingredienti invece di uno, e la seconda voce nella
+  // Map sovrascriverebbe la prima lasciando un ingrediente orfano in database.
+  // Vince la prima occorrenza.
+  const daCreare = new Map<string, (typeof s.ingredientiDaCreare)[number]>();
   for (const ing of s.ingredientiDaCreare) {
+    if (!daCreare.has(ing.alimento)) daCreare.set(ing.alimento, ing);
+  }
+  for (const ing of daCreare.values()) {
     const id = await salvaIngrediente({
       nome: ing.nome,
       unitaBase: ing.unitaBase,

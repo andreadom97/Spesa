@@ -66,4 +66,17 @@ describe('eseguiScritture', () => {
     expect(vi.mocked(salvaPiatto).mock.calls[0][0].id).toBe('d-gia');
     expect(salvaImpostazioni).toHaveBeenCalledWith(expect.objectContaining({ moltiplicatorePorzioni: 1, settimaneCiclo: 1, cicloOrigine: '2026-08-31' }));
   });
+
+  it('una riga con nuovoAlimento senza corrispondente in ingredientiDaCreare fa fallire con un errore esplicito', async () => {
+    await expect(eseguiScritture({ ...SCRITTURE, ingredientiDaCreare: [] })).rejects.toThrow('nessun id creato');
+  });
+
+  it('un doppione per alimento in ingredientiDaCreare crea un solo ingrediente, riusato da tutte le righe', async () => {
+    const duplicato = SCRITTURE.ingredientiDaCreare[0];
+    await eseguiScritture({ ...SCRITTURE, ingredientiDaCreare: [duplicato, { ...duplicato, nome: 'Pasta (doppione)' }] });
+    expect(salvaIngrediente).toHaveBeenCalledTimes(1);
+    const piatto = vi.mocked(salvaPiatto).mock.calls[0][0];
+    expect(piatto.ingredienti).toEqual([{ ingredientId: 'i-pasta-nuovo', quantita: 80, unita: 'g' }]);
+    expect(piatto.componenti[0].opzioni[0].righe).toEqual([{ ingredientId: 'i-pasta-nuovo', quantita: 10, unita: 'g' }]);
+  });
 });
