@@ -52,6 +52,118 @@ describe('traduciBozza', () => {
     delete stato.mappaturaPasti['condimenti'];
     const s = traduciBozza(PIANO_MENU_SETTIMANALE, stato, [AVENA], [], '2026-08-29');
     expect(s.piattiDaCreare.every((p) => !p.righe.some((r) => 'nuovoAlimento' in r && r.nuovoAlimento === 'olio extravergine di oliva'))).toBe(true);
+    // Il pasto svuotato non deve far sparire gli altri piatti dello stesso giorno.
+    expect(s.piattiDaCreare.some((p) => p.nome === 'Porridge')).toBe(true);
+    expect(s.piattiDaCreare.some((p) => p.nome === 'Tacchino con pane')).toBe(true);
+  });
+
+  it('condimenti senza sorella nello slot mappato diventano un piatto a sé', () => {
+    const piano = {
+      archetipo: 'giornata_unica' as const,
+      fonte: 'test',
+      noteEstrazione: [],
+      settimane: [{
+        numero: 1,
+        giorni: [{
+          giorno: 0,
+          pasti: [{
+            nomeOriginale: 'condimenti',
+            piatti: [{
+              nome: 'Condimenti', descrizione: null, componenti: [],
+              righeFisse: [{ alimento: 'olio extravergine di oliva', quantita: 20, unita: 'ml' as const, testoOriginale: '20ml olio' }],
+            }],
+          }],
+        }],
+      }],
+    };
+    const stato: StatoRevisione = {
+      passo: 'riepilogo', mappaturaPasti: { condimenti: 's-pranzo' }, pastiConfermati: [], correzioni: {},
+      ingredientiNuovi: [{ alimento: 'olio extravergine di oliva', nome: 'Olio EVO', unitaBase: 'ml', area: 'dispensa', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 1000 }],
+    };
+    const s = traduciBozza(piano, stato, [], [], '2026-08-29');
+    expect(s.piattiDaCreare).toHaveLength(1);
+    expect(s.piattiDaCreare[0]).toMatchObject({ nome: 'Condimenti', slotDefId: 's-pranzo' });
+    expect(s.piattiDaCreare[0].righe).toContainEqual({ nuovoAlimento: 'olio extravergine di oliva', quantita: 20, unita: 'ml' });
+  });
+
+  it('fonde le righe con la stessa chiave (fissa + condimenti) sommando le quantità', () => {
+    const piano = {
+      archetipo: 'giornata_unica' as const,
+      fonte: 'test',
+      noteEstrazione: [],
+      settimane: [{
+        numero: 1,
+        giorni: [{
+          giorno: 0,
+          pasti: [
+            {
+              nomeOriginale: 'pranzo',
+              piatti: [{
+                nome: 'Riso', descrizione: null, componenti: [],
+                righeFisse: [{ alimento: 'olio extravergine di oliva', quantita: 10, unita: 'ml' as const, testoOriginale: '10ml olio' }],
+              }],
+            },
+            {
+              nomeOriginale: 'condimenti',
+              piatti: [{
+                nome: 'Condimenti', descrizione: null, componenti: [],
+                righeFisse: [{ alimento: 'olio extravergine di oliva', quantita: 5, unita: 'ml' as const, testoOriginale: '5ml olio' }],
+              }],
+            },
+          ],
+        }],
+      }],
+    };
+    const stato: StatoRevisione = {
+      passo: 'riepilogo', mappaturaPasti: { pranzo: 's-pranzo', condimenti: 's-pranzo' }, pastiConfermati: [], correzioni: {},
+      ingredientiNuovi: [{ alimento: 'olio extravergine di oliva', nome: 'Olio EVO', unitaBase: 'ml', area: 'dispensa', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 1000 }],
+    };
+    const s = traduciBozza(piano, stato, [], [], '2026-08-29');
+    const riso = s.piattiDaCreare.find((p) => p.nome === 'Riso')!;
+    expect(riso.righe).toEqual([{ nuovoAlimento: 'olio extravergine di oliva', quantita: 15, unita: 'ml' }]);
+  });
+
+  it('un alimento nuovo con unità diversa dalla proposta ferma tutto', () => {
+    const piano = {
+      archetipo: 'giornata_unica' as const,
+      fonte: 'test',
+      noteEstrazione: [],
+      settimane: [{
+        numero: 1,
+        giorni: [{
+          giorno: 0,
+          pasti: [{
+            nomeOriginale: 'pranzo',
+            piatti: [{
+              nome: 'Riso', descrizione: null, componenti: [],
+              righeFisse: [{ alimento: 'zenzero fresco', quantita: 5, unita: 'g' as const, testoOriginale: '5g zenzero' }],
+            }],
+          }],
+        }],
+      }],
+    };
+    const stato: StatoRevisione = {
+      passo: 'riepilogo', mappaturaPasti: { pranzo: 's-pranzo' }, pastiConfermati: [], correzioni: {},
+      ingredientiNuovi: [{ alimento: 'zenzero fresco', nome: 'Zenzero fresco', unitaBase: 'pz', area: 'ortofrutta', classeResiduo: 'stima', deperibile: true, formatoConfezione: 1 }],
+    };
+    expect(() => traduciBozza(piano, stato, [], [], '2026-08-29')).toThrow(BozzaIncompletaError);
+  });
+
+  it('una quantità non risolta dentro un\'opzione di componente ferma tutto', () => {
+    const stato = statoCompleto();
+    // giorni[0].pasti[1] = cena di lunedì sett.1 ("Tacchino con pane"), col componente 'pane'.
+    const cenaConOpzioneRotta = structuredClone(PIANO_MENU_SETTIMANALE.settimane[0].giorni[0].pasti[1]);
+    cenaConOpzioneRotta.piatti[0].componenti[0].opzioni[0][0] = { alimento: 'pane integrale', quantita: null, unita: null, testoOriginale: 'una fetta' };
+    stato.correzioni['1-0-1'] = cenaConOpzioneRotta;
+    expect(() => traduciBozza(PIANO_MENU_SETTIMANALE, stato, [AVENA], [], '2026-08-29')).toThrow(BozzaIncompletaError);
+  });
+
+  it('re-run: un ingrediente già creato con il nome pulito si aggancia per nome, non ricrea', () => {
+    const latteEsistente: Ingredient = { id: 'i-latte', nome: 'Latte parz. scremato', unitaBase: 'ml', area: 'latticini', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 1000 };
+    const s = traduciBozza(PIANO_MENU_SETTIMANALE, statoCompleto(), [AVENA, latteEsistente], [], '2026-08-29');
+    const colazione = s.piattiDaCreare.find((p) => p.nome === 'Porridge' && p.settimanaCiclo === 1)!;
+    expect(colazione.righe).toContainEqual({ ingredientId: 'i-latte', quantita: 150, unita: 'ml' });
+    expect(s.ingredientiDaCreare.some((i) => i.alimento === 'latte parzialmente scremato')).toBe(false);
   });
 
   it('i condimenti si accodano ai piatti dello slot mappato, non diventano sorelle', () => {
@@ -76,7 +188,16 @@ describe('traduciBozza', () => {
     expect(colazioni[0].giornoCiclo).toBeNull();
     // Le cene di lun e mar sono diverse: restano per giorno. Martedì ha due sorelle.
     const cene = s.piattiDaCreare.filter((p) => p.slotDefId === 's-cena' && p.settimanaCiclo === 1);
-    expect(cene.map((p) => p.giornoCiclo).sort()).toEqual([0, 1, 1]);
+    expect(cene.map((p) => p.giornoCiclo).sort((a, b) => a! - b!)).toEqual([0, 1, 1]);
+  });
+
+  it('uno slot presente in un solo giorno della settimana non si compatta (settimana da 1 giorno)', () => {
+    const s = traduciBozza(PIANO_MENU_SETTIMANALE, statoCompleto(), [AVENA], [], '2026-08-29');
+    // Sett.2 ha un solo giorno: anche se lo slot ricorre "in tutti i giorni che ce l'hanno"
+    // (uno solo), non è una vera compattazione - il planner lo servirebbe ogni giorno.
+    const yogurt = s.piattiDaCreare.find((p) => p.nome === 'Yogurt e frutta')!;
+    expect(yogurt.settimanaCiclo).toBe(2);
+    expect(yogurt.giornoCiclo).toBe(0);
   });
 
   it('multi-settimana: settimanaCiclo dal numero, settimaneCiclo dal conteggio, origine il lunedì prossimo', () => {
@@ -96,6 +217,40 @@ describe('traduciBozza', () => {
     expect(s.piattiDaCreare[0].riusaDishId).toBe('d-gia');
     expect(s.piattiDaDisattivare).toHaveLength(0);
     expect(s.ingredientiDaCreare).toHaveLength(0);
+  });
+
+  it('riuso: due piatti sorella identici sullo stesso slot non consumano lo stesso dishId', () => {
+    const piano = {
+      archetipo: 'giornata_unica' as const,
+      fonte: 'test',
+      noteEstrazione: [],
+      settimane: [{
+        numero: 1,
+        giorni: [{
+          giorno: 0,
+          pasti: [{
+            nomeOriginale: 'pranzo',
+            piatti: [
+              { nome: 'Pasta al pomodoro', descrizione: null, componenti: [], righeFisse: [{ alimento: 'pasta di semola', quantita: 80, unita: 'g' as const, testoOriginale: 'pasta 80g' }] },
+              { nome: 'Pasta al pomodoro', descrizione: null, componenti: [], righeFisse: [{ alimento: 'pasta di semola', quantita: 80, unita: 'g' as const, testoOriginale: 'pasta 80g' }] },
+            ],
+          }],
+        }],
+      }],
+    };
+    // Settimana da 1 giorno: non si compatta (regola 4), quindi entrambe le sorelle
+    // escono con giornoCiclo 0 - il gemello in repertorio deve avere lo stesso pin.
+    const gemello: Dish = {
+      id: 'd-gia', nome: 'Pasta al pomodoro', slotDefId: 's-pranzo', fonte: 'nutrizionista', attivo: true,
+      descrizione: null, settimanaCiclo: null, giornoCiclo: 0, ingredienti: [], componenti: [],
+    };
+    const pasta: Ingredient = { id: 'i-pasta', nome: 'Pasta di semola', unitaBase: 'g', area: 'cereali', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500 };
+    const stato: StatoRevisione = { passo: 'riepilogo', mappaturaPasti: { pranzo: 's-pranzo' }, pastiConfermati: [], correzioni: {}, ingredientiNuovi: [] };
+    const s = traduciBozza(piano, stato, [pasta], [gemello], '2026-08-29');
+    const sorelle = s.piattiDaCreare.filter((p) => p.nome === 'Pasta al pomodoro');
+    expect(sorelle).toHaveLength(2);
+    expect(sorelle.map((p) => p.riusaDishId).sort()).toEqual(['d-gia', null]);
+    expect(s.piattiDaDisattivare).toHaveLength(0);
   });
 
   it('disattiva i piatti nutrizionista non riusati, mai i propri', () => {

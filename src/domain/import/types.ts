@@ -25,8 +25,11 @@ export interface PiattoEstratto {
   descrizione: string | null;
 }
 
+/** Il nome sintetico del pasto condimenti: condiviso fra mapping.ts e commit.ts, mai duplicato come stringa letterale. */
+export const NOME_PASTO_CONDIMENTI = 'condimenti';
+
 export interface PastoEstratto {
-  /** Il nome del pasto come scritto nella dieta; 'condimenti' è il pasto sintetico giornaliero. */
+  /** Il nome del pasto come scritto nella dieta; 'condimenti' (v. NOME_PASTO_CONDIMENTI) è il pasto sintetico giornaliero. */
   nomeOriginale: string;
   /** >1 = piatti sorella (alternative fra pasti, come nel dominio). */
   piatti: PiattoEstratto[];

@@ -1,6 +1,6 @@
 import type { Ingredient, MealSlotDef, UnitaBase } from '@/domain/types';
 import type { PastoEstratto, PianoEstratto, RigaEstratta } from './types';
-import { pastoEffettivo } from './types';
+import { NOME_PASTO_CONDIMENTI, pastoEffettivo } from './types';
 
 export function normalizza(s: string): string {
   return s
@@ -47,7 +47,7 @@ const SINONIMI_SLOT: Record<string, string[]> = {
  */
 export function proponiSlot(nomeOriginale: string, slotDefs: MealSlotDef[]): string | null {
   const norm = normalizza(nomeOriginale.replace(/_/g, ' '));
-  if (norm === 'condimenti') return null;
+  if (norm === NOME_PASTO_CONDIMENTI) return null;
   const parole = new Set(norm.split(' '));
   let migliore: { id: string; punteggio: number } | null = null;
   for (const def of slotDefs) {
