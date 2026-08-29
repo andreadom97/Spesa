@@ -1,5 +1,5 @@
 import type {
-  AreaId, ClasseResiduo, FonteStato, Ingredient, MealSlot,
+  AreaId, ClasseResiduo, Componente, FonteStato, Ingredient, MealSlot,
   MealSlotDef, PantryState, StatoSlot, UnitaBase, UnitaMisura,
 } from '@/domain/types';
 
@@ -64,4 +64,28 @@ export function aDishIngredient(r: Record<string, unknown>) {
     quantita: num(r.quantita),
     unita: r.unita as UnitaMisura,
   };
+}
+
+/**
+ * Raggruppa le righe di dish_option per componente_id, ordinando le opzioni
+ * per posizione (0 = default) e agganciando a ciascuna le sue righe
+ * dish_ingredient (quelle con option_id valorizzato: le righe fisse hanno
+ * option_id null e restano fuori, tornano in Dish.ingredienti).
+ */
+export function aComponenti(
+  opzioni: Record<string, unknown>[],
+  righe: Record<string, unknown>[],
+): Componente[] {
+  const perComponente = new Map<string, Componente>();
+  for (const o of [...opzioni].sort((a, b) => num(a.posizione) - num(b.posizione))) {
+    const componenteId = String(o.componente_id);
+    const componente = perComponente.get(componenteId)
+      ?? { id: componenteId, nome: String(o.componente_nome), opzioni: [] };
+    componente.opzioni.push({
+      id: String(o.id),
+      righe: righe.filter((r) => r.option_id === o.id).map(aDishIngredient),
+    });
+    perComponente.set(componenteId, componente);
+  }
+  return [...perComponente.values()];
 }

@@ -1,6 +1,6 @@
 import type { Dish, Ingredient } from '@/domain/types';
 import { client } from './supabase';
-import { aDishIngredient, aIngrediente } from './mappers';
+import { aComponenti, aDishIngredient, aIngrediente } from './mappers';
 
 export async function leggiIngredienti(): Promise<Ingredient[]> {
   const { data, error } = await client().from('ingredient').select('*').order('nome');
@@ -12,7 +12,7 @@ export async function leggiIngredienti(): Promise<Ingredient[]> {
 export async function leggiRepertorio(): Promise<Dish[]> {
   const { data, error } = await client()
     .from('dish')
-    .select('id, nome, slot_def_id, fonte, attivo, descrizione, settimana_ciclo, giorno_ciclo, dish_ingredient(ingredient_id, quantita, unita)')
+    .select('id, nome, slot_def_id, fonte, attivo, descrizione, settimana_ciclo, giorno_ciclo, dish_ingredient(ingredient_id, quantita, unita, option_id), dish_option(id, componente_id, componente_nome, posizione)')
     .eq('attivo', true)
     .order('created_at');
   if (error) throw error;
@@ -25,8 +25,10 @@ export async function leggiRepertorio(): Promise<Dish[]> {
     descrizione: r.descrizione === null || r.descrizione === undefined ? null : String(r.descrizione),
     settimanaCiclo: r.settimana_ciclo === null || r.settimana_ciclo === undefined ? null : Number(r.settimana_ciclo),
     giornoCiclo: r.giorno_ciclo === null || r.giorno_ciclo === undefined ? null : Number(r.giorno_ciclo),
-    ingredienti: (r.dish_ingredient ?? []).map(aDishIngredient),
-    componenti: [],
+    ingredienti: (r.dish_ingredient ?? [])
+      .filter((ri: Record<string, unknown>) => ri.option_id == null)
+      .map(aDishIngredient),
+    componenti: aComponenti(r.dish_option ?? [], r.dish_ingredient ?? []),
   }));
 }
 
@@ -55,7 +57,10 @@ export async function salvaPiatto(
   if (error) throw error;
 
   const dishId = String(riga.id);
-  // Le righe ingrediente si riscrivono in blocco: sono poche e la diff non vale il codice.
+  // Le righe ingrediente (fisse) e le opzioni si riscrivono in blocco: sono
+  // poche e la diff non vale il codice. Ordine obbligato dalla FK
+  // dish_ingredient.option_id -> dish_option.id: prima le fisse (che non
+  // dipendono da nessuna opzione), poi dish_option, poi le righe di opzione.
   const { error: eDel } = await sb.from('dish_ingredient').delete().eq('dish_id', dishId);
   if (eDel) throw eDel;
   if (piatto.ingredienti.length > 0) {
@@ -70,7 +75,52 @@ export async function salvaPiatto(
     );
     if (eIns) throw eIns;
   }
+
+  // Cancellare dish_option del piatto porta via in cascata (on delete
+  // cascade) sia le righe di opzione rimaste in dish_ingredient sia le
+  // meal_slot_choice che vi puntavano: un piatto modificato invalida le
+  // scelte registrate per quel componente, righeEffettive ripiega sul
+  // default. Voluto: vedi nota nella migrazione 0006.
+  const { error: eDelOpz } = await sb.from('dish_option').delete().eq('dish_id', dishId);
+  if (eDelOpz) throw eDelOpz;
+  for (const componente of piatto.componenti) {
+    // componente_id arriva dall'editor: se il componente è nuovo non è un
+    // uuid valido per la colonna, se esisteva già è l'uuid da riusare.
+    const componenteId = isUuid(componente.id) ? componente.id : crypto.randomUUID();
+    const { data: opzioniInserite, error: eOpz } = await sb
+      .from('dish_option')
+      .insert(
+        componente.opzioni.map((o, posizione) => ({
+          user_id: userId,
+          dish_id: dishId,
+          componente_id: componenteId,
+          componente_nome: componente.nome,
+          posizione,
+        })),
+      )
+      .select('id');
+    if (eOpz) throw eOpz;
+
+    const righeOpzione = componente.opzioni.flatMap((o, i) =>
+      o.righe.map((r) => ({
+        user_id: userId,
+        dish_id: dishId,
+        ingredient_id: r.ingredientId,
+        quantita: r.quantita,
+        unita: r.unita,
+        option_id: String(opzioniInserite[i].id),
+      })));
+    if (righeOpzione.length > 0) {
+      const { error: eRighe } = await sb.from('dish_ingredient').insert(righeOpzione);
+      if (eRighe) throw eRighe;
+    }
+  }
   return dishId;
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isUuid(v: string): boolean {
+  return UUID_RE.test(v);
 }
 
 /**

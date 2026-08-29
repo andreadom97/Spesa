@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { aIngrediente, aMealSlot, aPantryState } from '../mappers';
+import { aComponenti, aIngrediente, aMealSlot, aPantryState } from '../mappers';
 
 describe('aIngrediente', () => {
   it('converte una riga in un ingrediente di dominio', () => {
@@ -60,5 +60,31 @@ describe('aPantryState', () => {
       ingredient_id: 'a', residuo: 10, ultimo_acquisto: null,
       giorni_stimati: 90, ultimo_check: null,
     }).congelato).toBe(false);
+  });
+});
+
+describe('aComponenti', () => {
+  const opzioni = [
+    { id: 'o2', componente_id: 'c1', componente_nome: 'farcitura', posizione: 1 },
+    { id: 'o1', componente_id: 'c1', componente_nome: 'farcitura', posizione: 0 },
+  ];
+  const righe = [
+    { ingredient_id: 'yogurt', quantita: '100', unita: 'g', option_id: 'o1' },
+    { ingredient_id: 'uova', quantita: '2', unita: 'pz', option_id: 'o2' },
+    { ingredient_id: 'avena', quantita: '80', unita: 'g', option_id: null },
+  ];
+
+  it('raggruppa per componente e ordina le opzioni per posizione (la 0 è il default)', () => {
+    expect(aComponenti(opzioni, righe)).toEqual([{
+      id: 'c1', nome: 'farcitura',
+      opzioni: [
+        { id: 'o1', righe: [{ ingredientId: 'yogurt', quantita: 100, unita: 'g' }] },
+        { id: 'o2', righe: [{ ingredientId: 'uova', quantita: 2, unita: 'pz' }] },
+      ],
+    }]);
+  });
+
+  it('ignora le righe fisse (option_id null): quelle restano in Dish.ingredienti', () => {
+    expect(aComponenti([], righe)).toEqual([]);
   });
 });
