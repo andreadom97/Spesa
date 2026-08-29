@@ -1,8 +1,9 @@
 import type {
-  AreaId, Dish, Impostazioni, Ingredient, MealSlot, PantryState, UnitaBase,
+  AreaId, Dish, Impostazioni, Ingredient, MealSlot, PantryState, UnitaBase, ClasseResiduo,
 } from './types';
 import { convertiInUnitaBase } from './unita';
 import { residuoUtilizzabile, serveControllo } from './pantry';
+import { confezioniNecessarie } from './confezioni';
 // Unica eccezione al divieto di importare da ./aree: qui serve solo l'elenco
 // canonico delle sei aree per validare l'input, non nomi né colori.
 import { ORDINE_AREE_DEFAULT } from './aree';
@@ -120,11 +121,13 @@ export function costruisciLista(input: ListaInput): ListaRisultato {
       congelato: statoDispensa?.congelato ?? false,
       oggi,
     });
-    const daComprare = Math.max(0, fabbisogno - residuo);
-    const formato = ing.classeResiduo === 'intero' ? 1 : ing.formatoConfezione;
-    const confezioni = Math.ceil(daComprare / formato);
+    const { daComprare, confezioni, quantitaTotale } = confezioniNecessarie({
+      fabbisogno,
+      residuo,
+      classeResiduo: ing.classeResiduo as Exclude<ClasseResiduo, 'stima'>, // regola 7: 'stima' esclusa sopra
+      formatoConfezione: ing.formatoConfezione,
+    });
     if (confezioni === 0) continue; // il residuo copre già tutto
-    const quantitaTotale = confezioni * formato;
     voci.push({
       ingredientId, nome: ing.nome, area: ing.area, unita: ing.unitaBase,
       fabbisogno, residuo, daComprare, confezioni, quantitaTotale,
