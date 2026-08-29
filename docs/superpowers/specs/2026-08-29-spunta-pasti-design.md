@@ -232,6 +232,12 @@ con una variante `leggiSettimana(lunedi)` del data layer — stessa lettura di
   decaduti e la correzione non sposta quasi nulla — navigare uno storico è
   roba da tracker.
 - **Cumulo a zero**: la riga di ledger si cancella; la tabella resta piccola.
+- **Piatto eliminato o riscritto fra lista e spunta**: `leggiRepertorio` filtra
+  i piatti attivi, quindi lo storno di un piatto soft-deleted viene saltato in
+  silenzio — il residuo resta addebitato. È lo stesso comportamento di
+  `costruisciLista` (`if (!piatto) continue`): l'invariante telescopica
+  assume un repertorio stabile fra generazione della lista e spunta, e
+  l'errore residuo si corregge dalla Dispensa. Accettato.
 - **Doppio tap / due schede**: leggi-somma-scrivi non è atomico, ma l'app è
   mono-utente e il danno peggiore è uno storno doppio, visibile in Dispensa
   e invertibile con "Torna al piano". Nessun RPC per questo.
