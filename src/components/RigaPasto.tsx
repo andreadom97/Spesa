@@ -1,14 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import type { AreaId } from '@/domain/types';
+import type { AreaId, StatoSlot } from '@/domain/types';
 import { coloreArea } from '@/domain/aree';
 
 interface Props {
   /** Nome del meal_slot_def, es. "Colazione". */
   nomePasto: string;
-  /** true se lo stato dello slot è 'casa'. */
-  aCasa: boolean;
+  /** Stato dello slot: pilota etichetta e accensione della riga. */
+  stato: StatoSlot;
   /** Nome del piatto assegnato, o null se nessuno (slot fuori casa, o repertorio vuoto per quel pasto). */
   nomePiatto: string | null;
   /** Le aree distinte del piatto, nell'ordine dell'utente. Vuoto se nomePiatto è null. */
@@ -21,7 +21,19 @@ interface Props {
   onApriPiatto?: () => void;
   /** Zona destra 44px: apre "Scegli il piatto" per questo slot. */
   hrefScegli: string;
+  /**
+   * Se presente, la zona destra apre l'action sheet della spunta invece di
+   * navigare a Scegli (giorni ≤ oggi a settimana non-bozza, spec §6).
+   */
+  onApriAzioni?: () => void;
 }
+
+/** Cosa dice la riga spenta, per ciascun modo di non mangiare il piatto. */
+const ETICHETTA_SPENTO: Record<Exclude<StatoSlot, 'casa'>, string> = {
+  fuori: 'Fuori casa',
+  saltato: 'Saltato',
+  sostituito: 'Ho mangiato altro',
+};
 
 /**
  * Una riga pasto della Settimana: tre zone, tre comportamenti — il punto
@@ -33,7 +45,8 @@ interface Props {
  * contorno l'icona sparisce sul fondo chiaro — è l'errore già commesso una
  * volta, non va ripetuto.
  */
-export function RigaPasto({ nomePasto, aCasa, nomePiatto, aree, sottotitolo, onToggleStato, onApriPiatto, hrefScegli }: Props) {
+export function RigaPasto({ nomePasto, stato, nomePiatto, aree, sottotitolo, onToggleStato, onApriPiatto, hrefScegli, onApriAzioni }: Props) {
+  const aCasa = stato === 'casa';
   return (
     <div
       style={{
@@ -115,7 +128,7 @@ export function RigaPasto({ nomePasto, aCasa, nomePiatto, aree, sottotitolo, onT
             textDecorationThickness: aCasa ? undefined : '1.5px',
           }}
         >
-          {aCasa ? (nomePiatto ?? 'Nessun piatto assegnato') : 'Fuori casa'}
+          {aCasa ? (nomePiatto ?? 'Nessun piatto assegnato') : ETICHETTA_SPENTO[stato as Exclude<StatoSlot, 'casa'>]}
         </span>
         {aCasa && sottotitolo && (
           <span
@@ -145,22 +158,44 @@ export function RigaPasto({ nomePasto, aCasa, nomePiatto, aree, sottotitolo, onT
         )}
       </button>
 
-      <Link
-        href={hrefScegli}
-        aria-label={`Scegli il piatto per ${nomePasto}`}
-        style={{
-          width: 44,
-          alignSelf: 'stretch',
-          flex: 'none',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-          <path d="M6 3.2 10.4 8 6 12.8" stroke="#C4C4CE" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </Link>
+      {onApriAzioni ? (
+        <button
+          type="button"
+          onClick={onApriAzioni}
+          aria-label={`Azioni per ${nomePasto}`}
+          style={{
+            width: 44,
+            alignSelf: 'stretch',
+            flex: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="3" r="1.5" fill="#C4C4CE" />
+            <circle cx="8" cy="8" r="1.5" fill="#C4C4CE" />
+            <circle cx="8" cy="13" r="1.5" fill="#C4C4CE" />
+          </svg>
+        </button>
+      ) : (
+        <Link
+          href={hrefScegli}
+          aria-label={`Scegli il piatto per ${nomePasto}`}
+          style={{
+            width: 44,
+            alignSelf: 'stretch',
+            flex: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+            <path d="M6 3.2 10.4 8 6 12.8" stroke="#C4C4CE" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </Link>
+      )}
     </div>
   );
 }

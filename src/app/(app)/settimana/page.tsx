@@ -279,7 +279,7 @@ export default function Settimana() {
               <RigaPasto
                 key={def.id}
                 nomePasto={def.nome}
-                aCasa={slot.stato === 'casa'}
+                stato={slot.stato}
                 nomePiatto={piatto?.nome ?? null}
                 aree={piatto ? areeDelPiatto(piatto) : []}
                 sottotitolo={piatto ? descriviScelte(piatto, slot.scelte, nomePerIngrediente) : null}
