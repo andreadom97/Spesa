@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import type { AreaId, ClasseResiduo, Componente, Dish, Ingredient, OpzioneComponente, PantryState, Scelta } from '@/domain/types';
 import { leggiRepertorio, leggiIngredienti } from '@/data/repertorio';
-import { leggiSettimanaCorrente, aggiornaSlot } from '@/data/settimana';
+import { leggiSettimana, aggiornaSlot } from '@/data/settimana';
 import { leggiSlotDefs, leggiImpostazioni } from '@/data/impostazioni';
 import { leggiDispensa } from '@/data/dispensa';
 import { giorniTra, lunediDi } from '@/domain/date';
@@ -237,7 +237,7 @@ export default function ScegliPiatto() {
     async function carica() {
       try {
         const [settimana, repertorio, slotDefs, ingredienti, impostazioni, dispensa] = await Promise.all([
-          leggiSettimanaCorrente(),
+          leggiSettimana(lunediDi(dataParam)),
           leggiRepertorio(),
           leggiSlotDefs(),
           leggiIngredienti(),

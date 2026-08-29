@@ -17,22 +17,20 @@ export interface SettimanaCorrente {
 }
 
 /**
- * La settimana corrente è quella che **contiene oggi**, non l'ultima creata:
- * se Andrea non apre l'app per due settimane, "l'ultima creata" sarebbe una
- * settimana passata, e `generaListe` costruirebbe la lista sugli slot sbagliati.
- * `data_inizio` è sempre un lunedì (vedi `creaSettimana`), quindi il filtro è
- * `data_inizio = lunediDi(oggi)`: l'unique `(user_id, data_inizio)` dello
- * schema garantisce al più una riga.
+ * La settimana che inizia al lunedì passato. `data_inizio` è sempre un lunedì
+ * (vedi creaSettimana) e l'unique `(user_id, data_inizio)` garantisce al più
+ * una riga. Parametrica dal 2026-08-29: la spunta pasti arriva anche alla
+ * settimana precedente (spec spunta-pasti §6), e Scegli deve caricare la
+ * settimana della SUA data, non quella di oggi.
  */
-export async function leggiSettimanaCorrente(): Promise<SettimanaCorrente | null> {
+export async function leggiSettimana(lunedi: string): Promise<SettimanaCorrente | null> {
   const sb = client();
   const { data: utente } = await sb.auth.getUser();
-  const oggi = new Date().toISOString().slice(0, 10);
   const { data: settimana, error } = await sb
     .from('week')
     .select('id, data_inizio, stato')
     .eq('user_id', utente.user!.id)
-    .eq('data_inizio', lunediDi(oggi))
+    .eq('data_inizio', lunedi)
     .maybeSingle();
   if (error) throw error;
   if (!settimana) return null;
@@ -45,6 +43,16 @@ export async function leggiSettimanaCorrente(): Promise<SettimanaCorrente | null
     stato: settimana.stato as SettimanaCorrente['stato'],
     slots,
   };
+}
+
+/**
+ * La settimana corrente è quella che **contiene oggi**, non l'ultima creata:
+ * se Andrea non apre l'app per due settimane, "l'ultima creata" sarebbe una
+ * settimana passata, e `generaListe` costruirebbe la lista sugli slot sbagliati.
+ */
+export async function leggiSettimanaCorrente(): Promise<SettimanaCorrente | null> {
+  const oggi = new Date().toISOString().slice(0, 10);
+  return leggiSettimana(lunediDi(oggi));
 }
 
 /** Genera i default con generaSettimana + assegnaPiatti e li scrive. Restituisce il week id. */

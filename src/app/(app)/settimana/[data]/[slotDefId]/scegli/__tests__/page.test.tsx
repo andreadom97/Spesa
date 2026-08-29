@@ -5,7 +5,7 @@ import type { Dish, Ingredient, MealSlot, MealSlotDef, PantryState } from '@/dom
 import type { SettimanaCorrente } from '@/data/settimana';
 
 vi.mock('@/data/settimana', () => ({
-  leggiSettimanaCorrente: vi.fn(),
+  leggiSettimana: vi.fn(),
   aggiornaSlot: vi.fn(),
 }));
 vi.mock('@/data/repertorio', () => ({
@@ -30,7 +30,7 @@ vi.mock('next/navigation', () => ({
   useParams: () => paramsMock,
 }));
 
-import { leggiSettimanaCorrente, aggiornaSlot } from '@/data/settimana';
+import { leggiSettimana, aggiornaSlot } from '@/data/settimana';
 import { leggiRepertorio, leggiIngredienti } from '@/data/repertorio';
 import { leggiSlotDefs, leggiImpostazioni } from '@/data/impostazioni';
 import { leggiDispensa } from '@/data/dispensa';
@@ -163,7 +163,7 @@ const SETTIMANA_TORTA_DUE: SettimanaCorrente = {
 const ORDINE_AREE_TEST = ['surgelati', 'dispensa', 'cereali', 'latticini', 'macelleria', 'ortofrutta'] as const;
 
 function mockCarico() {
-  vi.mocked(leggiSettimanaCorrente).mockResolvedValue(SETTIMANA_BASE);
+  vi.mocked(leggiSettimana).mockResolvedValue(SETTIMANA_BASE);
   vi.mocked(leggiSlotDefs).mockResolvedValue(SLOT_DEFS);
   vi.mocked(leggiRepertorio).mockResolvedValue([DISH_COLAZIONE, DISH_POLLO, DISH_MERLUZZO]);
   vi.mocked(leggiIngredienti).mockResolvedValue([ING_POLLO, ING_RISO, ING_YOGURT]);
@@ -179,7 +179,7 @@ function mockCarico() {
 // Variante di mockCarico() per i test del componente a scelta: un solo
 // piatto (Torta salata), la sua dispensa mockata copre solo Ricotta.
 function mockCaricoConComponenti() {
-  vi.mocked(leggiSettimanaCorrente).mockResolvedValue(SETTIMANA_TORTA);
+  vi.mocked(leggiSettimana).mockResolvedValue(SETTIMANA_TORTA);
   vi.mocked(leggiSlotDefs).mockResolvedValue(SLOT_DEFS);
   vi.mocked(leggiRepertorio).mockResolvedValue([DISH_TORTA]);
   vi.mocked(leggiIngredienti).mockResolvedValue([ING_RICOTTA, ING_NOCI]);
@@ -194,7 +194,7 @@ function mockCaricoConComponenti() {
 
 // Variante con un piatto a DUE componenti, per il test del ciclo no-op (fix round 1).
 function mockCaricoConDueComponenti() {
-  vi.mocked(leggiSettimanaCorrente).mockResolvedValue(SETTIMANA_TORTA_DUE);
+  vi.mocked(leggiSettimana).mockResolvedValue(SETTIMANA_TORTA_DUE);
   vi.mocked(leggiSlotDefs).mockResolvedValue(SLOT_DEFS);
   vi.mocked(leggiRepertorio).mockResolvedValue([DISH_TORTA_DUE]);
   vi.mocked(leggiIngredienti).mockResolvedValue([ING_RICOTTA, ING_NOCI, ING_PREZZEMOLO, ING_BASILICO]);
