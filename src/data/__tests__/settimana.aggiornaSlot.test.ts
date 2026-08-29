@@ -76,6 +76,38 @@ function rigaSlot(stato: string, dishId: string | null = 'd-1') {
   };
 }
 
+/** Come rigaSlot, ma con righe di meal_slot_choice embedded (piatto a componenti). */
+function rigaSlotConScelta(
+  stato: string,
+  dishId: string,
+  scelte: Array<{ componente_id: string; option_id: string; fonte: string }>,
+) {
+  return { ...rigaSlot(stato, dishId), meal_slot_choice: scelte };
+}
+
+/**
+ * Un piatto a un componente con due opzioni su ingredienti diversi.
+ * L'opzione di default (indice 0, `opt-riso`) è DIVERSA da quella che i test
+ * registrano in `meal_slot_choice` (`opt-pollo`, indice 1): se la
+ * ricostruzione di `attuale.scelte` dalle righe embedded si rompe (torna
+ * `{}` invece della scelta vera), `righeEffettive` cade sul default e il
+ * test lo scopre — i delta calcolati sarebbero su `i-riso`, non su `i-pollo`.
+ */
+const DISH_COMPONENTI: Dish = {
+  id: 'd-3', nome: 'A scelta', slotDefId: 'sd-1', fonte: 'proprio', attivo: true,
+  descrizione: null, settimanaCiclo: null, giornoCiclo: null,
+  ingredienti: [],
+  componenti: [
+    {
+      id: 'comp1', nome: 'Proteina',
+      opzioni: [
+        { id: 'opt-riso', righe: [{ ingredientId: 'i-riso', quantita: 80, unita: 'g' }] },
+        { id: 'opt-pollo', righe: [{ ingredientId: 'i-pollo', quantita: 150, unita: 'g' }] },
+      ],
+    },
+  ],
+};
+
 /**
  * Risolutore standard: slot come da `riga`, week con lo stato dato, ledger
  * esistente come da `ledger`, pantry_state con le righe date. Le scritture
@@ -182,6 +214,38 @@ describe('aggiornaSlot e il ledger degli storni', () => {
     }));
     expect(residui.get('i-pollo')).toBe(240);
     expect(residui.get('i-riso')).toBe(0); // nessuna riga pantry: 0 − 100 clampato
+  });
+
+  it('piatto a componenti: la scelta registrata in meal_slot_choice viene stornata, quella nuova del patch viene addebitata', async () => {
+    vi.mocked(leggiRepertorio).mockResolvedValue([DISH_COMPONENTI]);
+    const riga = rigaSlotConScelta('casa', 'd-3', [
+      { componente_id: 'comp1', option_id: 'opt-pollo', fonte: 'manuale' },
+    ]);
+    const { sb, scritture } = creaClientMock(risolutore({
+      riga, statoWeek: 'confermata',
+      pantry: [{ ingredient_id: 'i-pollo', residuo: 40 }],
+    }));
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    await aggiornaSlot('s-1', { scelte: { comp1: { opzioneId: 'opt-riso', fonte: 'manuale' } } }, 'checkin');
+
+    const ledger = scrittureDi(scritture, 'meal_slot_storno', 'upsert');
+    const perIngrediente = new Map(ledger.map((c) => {
+      const r = c.args[0] as Record<string, unknown>;
+      return [r.ingredient_id, r.delta];
+    }));
+    // Se attuale.scelte non fosse ricostruita dalle righe embedded, il "prima"
+    // cadrebbe già sul default (opt-riso) e questi due delta sparirebbero.
+    expect(perIngrediente.get('i-pollo')).toBe(150); // storno dell'opzione registrata (opt-pollo)
+    expect(perIngrediente.get('i-riso')).toBe(-80); // addebito della nuova opzione dal patch (opt-riso)
+
+    const pantry = scrittureDi(scritture, 'pantry_state', 'upsert');
+    const residui = new Map(pantry.map((c) => {
+      const r = c.args[0] as Record<string, unknown>;
+      return [r.ingredient_id, r.residuo];
+    }));
+    expect(residui.get('i-pollo')).toBe(190); // 40 + 150
+    expect(residui.get('i-riso')).toBe(0); // nessuna riga pantry: 0 − 80 clampato
   });
 
   it('una fonte troppo debole non cambia lo stato, quindi niente storno', async () => {
