@@ -26,6 +26,7 @@ Decisioni chiuse in chat (29/08):
 | Timing dell'aggiustamento | Subito, al tap; reversibile |
 | Conferma dei pasti fatti | No: il default resta "fatto", si spuntano solo le eccezioni |
 | Dove vive la spunta | Pagina Settimana, nessuna schermata nuova |
+| Quanto indietro | Settimana corrente + precedente (il lunedì "ieri" è domenica: senza la precedente, il weekend sarebbe incorreggibile) |
 
 ## 2. L'invariante
 
@@ -199,6 +200,19 @@ uno slot saltato/sostituito mostra la casa spenta (lo slot non consuma).
 di `dishId` passa da `aggiornaSlot`, che genera da solo la coppia
 storno/addebito. Nessuna logica di residuo nella UI.
 
+**Settimana precedente.** La pagina guadagna un link "‹ settimana scorsa"
+(e il ritorno alla corrente) che carica la settimana di `lunediDi(oggi) − 7`
+con una variante `leggiSettimana(lunedi)` del data layer — stessa lettura di
+`leggiSettimanaCorrente`, lunedì parametrico. Vista in sola correzione:
+
+- tutti i giorni sono ≤ oggi, quindi ogni riga ha l'action sheet;
+- nessuna creazione: se la settimana precedente non esiste su DB (app mai
+  aperta), stato vuoto con una riga di spiegazione — `creaSettimana` non si
+  chiama mai per il passato;
+- niente bottone di conferma né rigenerazione lista: la settimana passata è
+  tipicamente `chiusa`, e gli storni si applicano direttamente al residuo
+  vivo (il caso già coperto dall'invariante §2).
+
 ## 7. Errori e casi limite
 
 - **Ingrediente mancante durante lo storno**: `IngredienteMancanteError`,
@@ -210,10 +224,10 @@ storno/addebito. Nessuna logica di residuo nella UI.
   oltre soglia — il pollo del martedì saltato spesso vale zero la settimana
   dopo, ed è il comportamento voluto (asimmetria dichiarata).
 - **Settimana `bozza`**: nessun ledger; il toggle resta pianificazione.
-- **Settimane passate**: la spunta vive nella pagina Settimana, che mostra
-  solo la settimana corrente — le settimane precedenti non sono
-  raggiungibili né spuntabili. Accettato: correggere ieri sì, correggere la
-  settimana scorsa no.
+- **Settimane passate**: spuntabili la corrente e la precedente (§6); più
+  indietro no. Accettato: a distanza di due settimane i deperibili sono
+  decaduti e la correzione non sposta quasi nulla — navigare uno storico è
+  roba da tracker.
 - **Cumulo a zero**: la riga di ledger si cancella; la tabella resta piccola.
 - **Doppio tap / due schede**: leggi-somma-scrivi non è atomico, ma l'app è
   mono-utente e il danno peggiore è uno storno doppio, visibile in Dispensa
@@ -232,11 +246,13 @@ storno/addebito. Nessuna logica di residuo nella UI.
   (upsert).
 - **UI**: action sheet visibile solo per giorni ≤ oggi a settimana
   non-bozza; etichette "Saltato"/"Ho mangiato altro"; "Torna al piano" solo
-  su slot spuntato.
+  su slot spuntato; settimana precedente in sola correzione (niente
+  conferma, niente creazione se assente, stato vuoto con spiegazione).
 
 ## 9. Fuori scope (esclusioni vincolanti)
 
 Streak, grafici, foto pasti, punteggi di aderenza; conferma esplicita dei
-pasti fatti come da piano; spunta su settimane passate; modifica manuale del
-ledger; qualunque forma di notifica o promemoria. Il backlog le esclude e
-questa spec le conferma escluse.
+pasti fatti come da piano; spunta oltre la settimana precedente e ogni
+navigazione libera dello storico; modifica manuale del ledger; qualunque
+forma di notifica o promemoria. Il backlog le esclude e questa spec le
+conferma escluse.
