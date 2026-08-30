@@ -109,6 +109,7 @@ describe('costruisciLista — residuo e confezioni', () => {
       id: 'c1', data: '2026-08-31', slotDefId: 'cen', stato: 'casa' as const,
       dishId: 'cena-frittata', fonteStato: 'default' as const,
       scelte: {},
+      porzioniPreparate: 0, daPronti: false,
     }];
     const v = voce(base({ slots }), 'uova')!;
     expect(v.confezioni).toBe(3);
@@ -121,6 +122,7 @@ describe('costruisciLista — residuo e confezioni', () => {
       id: 'c1', data: '2026-08-31', slotDefId: 'cen', stato: 'casa' as const,
       dishId: 'cena-frittata', fonteStato: 'default' as const,
       scelte: {},
+      porzioniPreparate: 0, daPronti: false,
     }];
     expect(voce(base({ slots }), 'olio')).toBeUndefined();
   });
@@ -165,7 +167,8 @@ describe('costruisciLista — split e ordinamento', () => {
     const slots = [
       ...cinqueColazioni(),
       { id: 'c1', data: '2026-08-31', slotDefId: 'cen', stato: 'casa' as const,
-        dishId: 'cena-frittata', fonteStato: 'default' as const, scelte: {} },
+        dishId: 'cena-frittata', fonteStato: 'default' as const, scelte: {},
+        porzioniPreparate: 0, daPronti: false },
     ];
     const r = costruisciLista({
       slots, dishes: PIATTI, ingredients: INGREDIENTI, pantry,
@@ -185,7 +188,8 @@ describe('costruisciLista — split e ordinamento', () => {
     const slots = [
       ...cinqueColazioni(),
       { id: 'c1', data: '2026-08-31', slotDefId: 'cen', stato: 'casa' as const,
-        dishId: 'cena-frittata', fonteStato: 'default' as const, scelte: {} },
+        dishId: 'cena-frittata', fonteStato: 'default' as const, scelte: {},
+        porzioniPreparate: 0, daPronti: false },
     ];
     // Nella stessa area: uova 3 confezioni (3 pezzi), yogurt 2 (2 × 500 g).
     // L'ordine è per confezioni, non per importanza percepita dell'ingrediente.
@@ -259,6 +263,7 @@ describe('costruisciLista — componenti a scelta', () => {
       id: 's1', data: '2026-08-31', slotDefId: 'pra', stato: 'casa' as const,
       dishId: 'pranzo-wrap', fonteStato: 'default' as const,
       scelte: { farcitura: { opzioneId: 'farcitura-uova', fonte: 'planner' as const } },
+      porzioniPreparate: 0, daPronti: false,
     }];
     const r = base({ slots, dishes: [...PIATTI, wrap], pantry: dispensaVuota() });
     expect(voce(r, 'avena')).toBeDefined();
@@ -272,6 +277,7 @@ describe('costruisciLista — componenti a scelta', () => {
       id: 's1', data: '2026-08-31', slotDefId: 'pra', stato: 'casa' as const,
       dishId: 'pranzo-wrap', fonteStato: 'default' as const,
       scelte: {},
+      porzioniPreparate: 0, daPronti: false,
     }];
     const r = base({ slots, dishes: [...PIATTI, wrap], pantry: dispensaVuota() });
     expect(voce(r, 'avena')).toBeDefined();

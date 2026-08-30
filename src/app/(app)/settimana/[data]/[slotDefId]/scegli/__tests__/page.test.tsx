@@ -83,8 +83,8 @@ const DISH_MERLUZZO: Dish = {
   componenti: [],
 };
 
-const SLOT_CENA: MealSlot = { id: 'slot-cena', data: DATA, slotDefId: 'sd-3', stato: 'casa', dishId: 'd-1', fonteStato: 'default', scelte: {} };
-const SLOT_COLAZIONE: MealSlot = { id: 'slot-colazione', data: DATA, slotDefId: 'sd-1', stato: 'casa', dishId: 'd-0', fonteStato: 'default', scelte: {} };
+const SLOT_CENA: MealSlot = { id: 'slot-cena', data: DATA, slotDefId: 'sd-3', stato: 'casa', dishId: 'd-1', fonteStato: 'default', scelte: {}, porzioniPreparate: 0, daPronti: false };
+const SLOT_COLAZIONE: MealSlot = { id: 'slot-colazione', data: DATA, slotDefId: 'sd-1', stato: 'casa', dishId: 'd-0', fonteStato: 'default', scelte: {}, porzioniPreparate: 0, daPronti: false };
 
 const SETTIMANA_BASE: SettimanaCorrente = {
   id: 'week-1', dataInizio: '2026-08-24', stato: 'bozza', slots: [SLOT_COLAZIONE, SLOT_CENA],
@@ -94,8 +94,8 @@ const SETTIMANA_BASE: SettimanaCorrente = {
 // mangiato un altro piatto" dal FoglioAzioniPasto arriva qui con lo slot già
 // spuntato da 'checkin'. Scegliere un piatto deve riportarlo a 'casa' con
 // fonte 'correzione', o il sostituto non verrebbe mai addebitato.
-const SLOT_CENA_SALTATO: MealSlot = { id: 'slot-cena', data: DATA, slotDefId: 'sd-3', stato: 'saltato', dishId: 'd-1', fonteStato: 'checkin', scelte: {} };
-const SLOT_CENA_SOSTITUITO: MealSlot = { id: 'slot-cena', data: DATA, slotDefId: 'sd-3', stato: 'sostituito', dishId: 'd-1', fonteStato: 'checkin', scelte: {} };
+const SLOT_CENA_SALTATO: MealSlot = { id: 'slot-cena', data: DATA, slotDefId: 'sd-3', stato: 'saltato', dishId: 'd-1', fonteStato: 'checkin', scelte: {}, porzioniPreparate: 0, daPronti: false };
+const SLOT_CENA_SOSTITUITO: MealSlot = { id: 'slot-cena', data: DATA, slotDefId: 'sd-3', stato: 'sostituito', dishId: 'd-1', fonteStato: 'checkin', scelte: {}, porzioniPreparate: 0, daPronti: false };
 const SETTIMANA_SALTATA: SettimanaCorrente = {
   id: 'week-1', dataInizio: '2026-08-24', stato: 'bozza', slots: [SLOT_COLAZIONE, SLOT_CENA_SALTATO],
 };
@@ -121,7 +121,7 @@ const DISH_TORTA: Dish = {
   ],
 };
 
-const SLOT_TORTA: MealSlot = { id: 'slot-torta', data: DATA, slotDefId: 'sd-3', stato: 'casa', dishId: 'd-3', fonteStato: 'default', scelte: {} };
+const SLOT_TORTA: MealSlot = { id: 'slot-torta', data: DATA, slotDefId: 'sd-3', stato: 'casa', dishId: 'd-3', fonteStato: 'default', scelte: {}, porzioniPreparate: 0, daPronti: false };
 const SETTIMANA_TORTA: SettimanaCorrente = {
   id: 'week-2', dataInizio: '2026-08-24', stato: 'bozza', slots: [SLOT_TORTA],
 };
@@ -165,7 +165,7 @@ const DISH_TORTA_DUE: Dish = {
     },
   ],
 };
-const SLOT_TORTA_DUE: MealSlot = { id: 'slot-torta-due', data: DATA, slotDefId: 'sd-3', stato: 'casa', dishId: 'd-4', fonteStato: 'default', scelte: {} };
+const SLOT_TORTA_DUE: MealSlot = { id: 'slot-torta-due', data: DATA, slotDefId: 'sd-3', stato: 'casa', dishId: 'd-4', fonteStato: 'default', scelte: {}, porzioniPreparate: 0, daPronti: false };
 const SETTIMANA_TORTA_DUE: SettimanaCorrente = {
   id: 'week-3', dataInizio: '2026-08-24', stato: 'bozza', slots: [SLOT_TORTA_DUE],
 };

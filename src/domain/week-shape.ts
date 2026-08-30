@@ -34,6 +34,8 @@ export function generaSettimana(input: GeneraSettimanaInput): MealSlot[] {
         dishId: null,
         fonteStato: 'default',
         scelte: {},
+        porzioniPreparate: 0,
+        daPronti: false,
       });
     });
   }

@@ -52,6 +52,7 @@ describe('applicaStato', () => {
     id: 's1', data: '2026-08-31', slotDefId: 'cen',
     stato: 'casa', dishId: null, fonteStato: 'checkin',
     scelte: {},
+    porzioniPreparate: 0, daPronti: false,
   };
 
   it('una fonte più forte sovrascrive', () => {

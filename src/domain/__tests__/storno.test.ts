@@ -46,7 +46,10 @@ const CON_COMPONENTE: Dish = {
 };
 
 function slot(stato: StatoSlot, dishId: string | null, scelte: MealSlot['scelte'] = {}): MealSlot {
-  return { id: 's-1', data: '2026-08-26', slotDefId: 'sd-cena', stato, dishId, fonteStato: 'checkin', scelte };
+  return {
+    id: 's-1', data: '2026-08-26', slotDefId: 'sd-cena', stato, dishId, fonteStato: 'checkin', scelte,
+    porzioniPreparate: 0, daPronti: false,
+  };
 }
 
 describe('consumoSlot', () => {

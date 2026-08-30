@@ -115,7 +115,10 @@ function buildSlots(): MealSlot[] {
       if (def.id === 'sd-1') dishId = DISH_COLAZIONE.id;
       if (def.id === 'sd-3') dishId = DISH_CENA.id;
       if (data === OGGI && def.id === 'sd-2') stato = 'fuori';
-      slots.push({ id: `${data}:${def.id}`, data, slotDefId: def.id, stato, dishId, fonteStato: 'default', scelte: {} });
+      slots.push({
+        id: `${data}:${def.id}`, data, slotDefId: def.id, stato, dishId, fonteStato: 'default', scelte: {},
+        porzioniPreparate: 0, daPronti: false,
+      });
     }
   }
   return slots;
@@ -458,6 +461,7 @@ describe('settimana precedente', () => {
     return GIORNI_PREC.map((data) => ({
       id: `${data}:sd-1`, data, slotDefId: 'sd-1', stato: 'casa' as const,
       dishId: DISH_COLAZIONE.id, fonteStato: 'default' as const, scelte: {},
+      porzioniPreparate: 0, daPronti: false,
     }));
   }
 

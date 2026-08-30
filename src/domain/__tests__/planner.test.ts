@@ -233,6 +233,7 @@ describe('piatti sorella sullo stesso giorno', () => {
     return {
       id: 'spu-lun', data: '2026-08-31', slotDefId: 'spu', stato: 'casa',
       dishId: null, fonteStato: 'default', scelte: {},
+      porzioniPreparate: 0, daPronti: false,
     };
   }
 
@@ -302,8 +303,14 @@ describe('piatti sorella sullo stesso giorno', () => {
       componenti: [],
     };
     const slots: MealSlot[] = [
-      { id: 'lun', data: '2026-08-31', slotDefId: 'pasto', stato: 'casa', dishId: null, fonteStato: 'default', scelte: {} },
-      { id: 'mar', data: '2026-09-01', slotDefId: 'pasto', stato: 'casa', dishId: null, fonteStato: 'default', scelte: {} },
+      {
+        id: 'lun', data: '2026-08-31', slotDefId: 'pasto', stato: 'casa', dishId: null, fonteStato: 'default', scelte: {},
+        porzioniPreparate: 0, daPronti: false,
+      },
+      {
+        id: 'mar', data: '2026-09-01', slotDefId: 'pasto', stato: 'casa', dishId: null, fonteStato: 'default', scelte: {},
+        porzioniPreparate: 0, daPronti: false,
+      },
     ];
     const dishes = [lunediLibero, mCioccolato, zNoci];
     const martediDi = (r: MealSlot[]) => r.find((s) => s.data === '2026-09-01')!.dishId;
@@ -321,6 +328,7 @@ describe('risoluzione dei componenti', () => {
     return {
       id: 'pra-lun', data: '2026-08-31', slotDefId: 'pra', stato: 'casa',
       dishId: null, fonteStato: 'default', scelte: {},
+      porzioniPreparate: 0, daPronti: false,
     };
   }
 
@@ -376,6 +384,7 @@ describe('risoluzione dei componenti', () => {
       return {
         id: `mer-${data}`, data, slotDefId: 'mer', stato: 'casa',
         dishId: null, fonteStato: 'default', scelte: {},
+        porzioniPreparate: 0, daPronti: false,
       };
     }
 
@@ -425,6 +434,7 @@ describe('risoluzione dei componenti', () => {
       return {
         id: `mer-${data}`, data, slotDefId: 'mer', stato: 'casa',
         dishId: null, fonteStato: 'default', scelte,
+        porzioniPreparate: 0, daPronti: false,
       };
     }
 

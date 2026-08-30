@@ -1,5 +1,5 @@
 import type {
-  AreaId, ClasseResiduo, Componente, FonteStato, Ingredient, MealSlot,
+  AreaId, ClasseResiduo, Componente, FonteStato, Ingredient, LottoPronto, MealSlot,
   MealSlotDef, PantryState, StatoSlot, UnitaBase, UnitaMisura,
 } from '@/domain/types';
 
@@ -35,6 +35,10 @@ export function aMealSlot(r: Record<string, unknown>): MealSlot {
     dishId: r.dish_id ? String(r.dish_id) : null,
     fonteStato: r.fonte_stato as FonteStato,
     scelte: {},
+    // `?? 0` / Boolean: le righe di mock nei test non portano le colonne nuove,
+    // e un undefined qui diventerebbe NaN/undefined nel dominio.
+    porzioniPreparate: num(r.porzioni_preparate ?? 0),
+    daPronti: Boolean(r.da_pronti),
   };
 }
 
@@ -46,6 +50,17 @@ export function aPantryState(r: Record<string, unknown>): PantryState {
     giorniStimati: num(r.giorni_stimati),
     ultimoCheck: r.ultimo_check ? data(r.ultimo_check) : null,
     congelato: Boolean(r.congelato),
+  };
+}
+
+export function aLottoPronto(r: Record<string, unknown>): LottoPronto {
+  return {
+    id: String(r.id),
+    dishId: String(r.dish_id),
+    porzioni: num(r.porzioni),
+    congelato: Boolean(r.congelato),
+    preparataIl: data(r.preparata_il),
+    mealSlotId: r.meal_slot_id ? String(r.meal_slot_id) : null,
   };
 }
 

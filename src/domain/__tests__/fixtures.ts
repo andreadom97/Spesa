@@ -73,6 +73,7 @@ export function cinqueColazioni(): MealSlot[] {
     id: `col-${i}`, data, slotDefId: 'col', stato: 'casa' as const,
     dishId: 'colazione-yogurt', fonteStato: 'default' as const,
     scelte: {},
+    porzioniPreparate: 0, daPronti: false,
   }));
 }
 

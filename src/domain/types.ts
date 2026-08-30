@@ -93,6 +93,10 @@ export interface MealSlot {
    * componente e lasciare gli altri al planner.
    */
   scelte: Record<string, Scelta>;
+  /** Porzioni EXTRA che questo slot cucina (entrano nei Pronti). 0 = pasto normale. */
+  porzioniPreparate: number;
+  /** Il pasto è coperto da una porzione già pronta: niente consumo di crudo. */
+  daPronti: boolean;
 }
 
 export interface PantryState {
@@ -107,6 +111,18 @@ export interface PantryState {
   congelato: boolean;
   /** ISO yyyy-mm-dd dell'ultima risposta "sì" a un controllo. */
   ultimoCheck: string | null;
+}
+
+export interface LottoPronto {
+  id: string;
+  dishId: string;
+  /** > 0; il lotto a 0 si cancella. */
+  porzioni: number;
+  congelato: boolean;
+  /** ISO yyyy-mm-dd: il giorno dello slot che l'ha creato. Può essere futuro (batch pianificato). */
+  preparataIl: string;
+  /** Lo slot della dichiarazione, null per i lotti manuali della Dispensa. */
+  mealSlotId: string | null;
 }
 
 export interface Impostazioni {

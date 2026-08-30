@@ -200,9 +200,18 @@ describe('Piatto (editor)', () => {
       dataInizio: '2026-08-24', // lunedì
       stato: 'confermata',
       slots: [
-        { id: 's-lun', data: '2026-08-24', slotDefId: 'sd-1', stato: 'casa', dishId: 'd-1', fonteStato: 'default', scelte: {} },
-        { id: 's-mar', data: '2026-08-25', slotDefId: 'sd-1', stato: 'casa', dishId: 'd-1', fonteStato: 'default', scelte: {} },
-        { id: 's-mer', data: '2026-08-26', slotDefId: 'sd-1', stato: 'fuori', dishId: 'd-1', fonteStato: 'default', scelte: {} },
+        {
+          id: 's-lun', data: '2026-08-24', slotDefId: 'sd-1', stato: 'casa', dishId: 'd-1', fonteStato: 'default', scelte: {},
+          porzioniPreparate: 0, daPronti: false,
+        },
+        {
+          id: 's-mar', data: '2026-08-25', slotDefId: 'sd-1', stato: 'casa', dishId: 'd-1', fonteStato: 'default', scelte: {},
+          porzioniPreparate: 0, daPronti: false,
+        },
+        {
+          id: 's-mer', data: '2026-08-26', slotDefId: 'sd-1', stato: 'fuori', dishId: 'd-1', fonteStato: 'default', scelte: {},
+          porzioniPreparate: 0, daPronti: false,
+        },
       ],
     };
     vi.mocked(leggiSettimanaCorrente).mockResolvedValue(settimana);
@@ -222,7 +231,10 @@ describe('Piatto (editor)', () => {
       dataInizio: '2026-08-24',
       stato: 'confermata',
       slots: [
-        { id: 's-lun', data: '2026-08-24', slotDefId: 'sd-1', stato: 'fuori', dishId: 'd-1', fonteStato: 'default', scelte: {} },
+        {
+          id: 's-lun', data: '2026-08-24', slotDefId: 'sd-1', stato: 'fuori', dishId: 'd-1', fonteStato: 'default', scelte: {},
+          porzioniPreparate: 0, daPronti: false,
+        },
       ],
     };
     vi.mocked(leggiSettimanaCorrente).mockResolvedValue(settimana);
