@@ -31,7 +31,7 @@ function tutteLeChiavi(): string[] {
  */
 function statoConTuttiConfermati(): StatoRevisione {
   const oliveRisolte = structuredClone(PIANO_MENU_SETTIMANALE.settimane[0].giorni[1].pasti[1]);
-  oliveRisolte.piatti[0].righeFisse[1] = { alimento: 'olive taggiasche', quantita: 3, unita: 'pz', testoOriginale: '2-3 olive taggiasche' };
+  oliveRisolte.piatti[0].righeFisse[1] = { alimento: 'olive taggiasche', quantita: 3, unita: 'pz', quantitaInferita: false, testoOriginale: '2-3 olive taggiasche' };
   return { ...STATO, pastiConfermati: tutteLeChiavi(), correzioni: { '1-1-1': oliveRisolte } };
 }
 

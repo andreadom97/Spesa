@@ -11,14 +11,15 @@ export const PIANO_MENU_SETTIMANALE: PianoEstratto = {
       giorni: [
         {
           giorno: 0,
+          titolo: null,
           pasti: [
             {
               nomeOriginale: 'colazione',
               piatti: [{
                 nome: 'Porridge', descrizione: null, componenti: [],
                 righeFisse: [
-                  { alimento: "fiocchi d'avena", quantita: 30, unita: 'g', testoOriginale: "30g fiocchi d'avena" },
-                  { alimento: 'latte parzialmente scremato', quantita: 150, unita: 'ml', testoOriginale: '150ml latte parz. scremato' },
+                  { alimento: "fiocchi d'avena", quantita: 30, unita: 'g', quantitaInferita: false, testoOriginale: "30g fiocchi d'avena" },
+                  { alimento: 'latte parzialmente scremato', quantita: 150, unita: 'ml', quantitaInferita: false, testoOriginale: '150ml latte parz. scremato' },
                 ],
               }],
             },
@@ -26,12 +27,13 @@ export const PIANO_MENU_SETTIMANALE: PianoEstratto = {
               nomeOriginale: 'cena',
               piatti: [{
                 nome: 'Tacchino con pane', descrizione: null,
-                righeFisse: [{ alimento: 'fesa di tacchino', quantita: 120, unita: 'g', testoOriginale: 'Fesa di tacchino (120g)' }],
+                righeFisse: [{ alimento: 'fesa di tacchino', quantita: 120, unita: 'g', quantitaInferita: false, testoOriginale: 'Fesa di tacchino (120g)' }],
                 componenti: [{
                   nome: 'pane',
+                  nota: null,
                   opzioni: [
-                    [{ alimento: 'pane integrale', quantita: 60, unita: 'g', testoOriginale: 'pane integrale (60g)' }],
-                    [{ alimento: 'pane di segale', quantita: 60, unita: 'g', testoOriginale: 'o di segale (60g)' }],
+                    [{ alimento: 'pane integrale', quantita: 60, unita: 'g', quantitaInferita: false, testoOriginale: 'pane integrale (60g)' }],
+                    [{ alimento: 'pane di segale', quantita: 60, unita: 'g', quantitaInferita: false, testoOriginale: 'o di segale (60g)' }],
                   ],
                 }],
               }],
@@ -40,21 +42,22 @@ export const PIANO_MENU_SETTIMANALE: PianoEstratto = {
               nomeOriginale: 'condimenti',
               piatti: [{
                 nome: 'Condimenti', descrizione: null, componenti: [],
-                righeFisse: [{ alimento: 'olio extravergine di oliva', quantita: 20, unita: 'ml', testoOriginale: 'Olio EVO (20ml - 4 cucchiaini)' }],
+                righeFisse: [{ alimento: 'olio extravergine di oliva', quantita: 20, unita: 'ml', quantitaInferita: false, testoOriginale: 'Olio EVO (20ml - 4 cucchiaini)' }],
               }],
             },
           ],
         },
         {
           giorno: 1,
+          titolo: null,
           pasti: [
             {
               nomeOriginale: 'colazione',
               piatti: [{
                 nome: 'Porridge', descrizione: null, componenti: [],
                 righeFisse: [
-                  { alimento: "fiocchi d'avena", quantita: 30, unita: 'g', testoOriginale: "30g fiocchi d'avena" },
-                  { alimento: 'latte parzialmente scremato', quantita: 150, unita: 'ml', testoOriginale: '150ml latte parz. scremato' },
+                  { alimento: "fiocchi d'avena", quantita: 30, unita: 'g', quantitaInferita: false, testoOriginale: "30g fiocchi d'avena" },
+                  { alimento: 'latte parzialmente scremato', quantita: 150, unita: 'ml', quantitaInferita: false, testoOriginale: '150ml latte parz. scremato' },
                 ],
               }],
             },
@@ -64,13 +67,13 @@ export const PIANO_MENU_SETTIMANALE: PianoEstratto = {
                 {
                   nome: 'Merluzzo', descrizione: null, componenti: [],
                   righeFisse: [
-                    { alimento: 'filetto di merluzzo', quantita: 120, unita: 'g', testoOriginale: 'Filetto di merluzzo (120g)' },
-                    { alimento: 'olive taggiasche', quantita: null, unita: null, testoOriginale: '2-3 olive taggiasche' },
+                    { alimento: 'filetto di merluzzo', quantita: 120, unita: 'g', quantitaInferita: false, testoOriginale: 'Filetto di merluzzo (120g)' },
+                    { alimento: 'olive taggiasche', quantita: null, unita: null, quantitaInferita: false, testoOriginale: '2-3 olive taggiasche' },
                   ],
                 },
                 {
                   nome: 'Tonno in insalata', descrizione: null, componenti: [],
-                  righeFisse: [{ alimento: 'tonno al naturale', quantita: 50, unita: 'g', testoOriginale: 'tonno al naturale (50g)' }],
+                  righeFisse: [{ alimento: 'tonno al naturale', quantita: 50, unita: 'g', quantitaInferita: false, testoOriginale: 'tonno al naturale (50g)' }],
                 },
               ],
             },
@@ -82,11 +85,12 @@ export const PIANO_MENU_SETTIMANALE: PianoEstratto = {
       numero: 2,
       giorni: [{
         giorno: 0,
+        titolo: null,
         pasti: [{
           nomeOriginale: 'colazione',
           piatti: [{
             nome: 'Yogurt e frutta', descrizione: null, componenti: [],
-            righeFisse: [{ alimento: 'yogurt greco', quantita: 150, unita: 'g', testoOriginale: 'Yogurt greco (150g)' }],
+            righeFisse: [{ alimento: 'yogurt greco', quantita: 150, unita: 'g', quantitaInferita: false, testoOriginale: 'Yogurt greco (150g)' }],
           }],
         }],
       }],
@@ -105,11 +109,12 @@ export const PIANO_GIORNATA_UNICA: PianoEstratto = {
     numero: 1,
     giorni: [0, 1].map((giorno) => ({
       giorno,
+      titolo: null,
       pasti: [{
         nomeOriginale: 'pranzo',
         piatti: [{
           nome: 'Pasta al pomodoro', descrizione: null, componenti: [],
-          righeFisse: [{ alimento: 'pasta di semola', quantita: 80, unita: 'g', testoOriginale: 'pasta 80g' }],
+          righeFisse: [{ alimento: 'pasta di semola', quantita: 80, unita: 'g', quantitaInferita: false, testoOriginale: 'pasta 80g' }],
         }],
       }],
     })),

@@ -78,7 +78,7 @@ describe('ingredientiDaAbbinare', () => {
   });
   it('le correzioni sostituiscono il pasto originale', () => {
     const correzione = structuredClone(PIANO_MENU_SETTIMANALE.settimane[0].giorni[0].pasti[0]);
-    correzione.piatti[0].righeFisse = [{ alimento: 'muesli', quantita: 40, unita: 'g', testoOriginale: '40g muesli' }];
+    correzione.piatti[0].righeFisse = [{ alimento: 'muesli', quantita: 40, unita: 'g', quantitaInferita: false, testoOriginale: '40g muesli' }];
     const voci = ingredientiDaAbbinare(PIANO_MENU_SETTIMANALE, { '1-0-0': correzione });
     expect(voci.map((v) => v.alimento)).toContain('muesli');
   });

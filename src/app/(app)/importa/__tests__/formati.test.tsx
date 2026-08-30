@@ -38,9 +38,9 @@ describe('Formati', () => {
       piatti: [{
         nome: 'Porridge', descrizione: null, componenti: [],
         righeFisse: [
-          { alimento: "fiocchi d'avena", quantita: 30, unita: 'g', testoOriginale: "30g fiocchi d'avena" },
-          { alimento: 'latte parzialmente scremato', quantita: 150, unita: 'ml', testoOriginale: '150ml latte parz. scremato' },
-          { alimento: 'farina di mandorle', quantita: 20, unita: 'g', testoOriginale: '20g farina di mandorle' },
+          { alimento: "fiocchi d'avena", quantita: 30, unita: 'g', quantitaInferita: false, testoOriginale: "30g fiocchi d'avena" },
+          { alimento: 'latte parzialmente scremato', quantita: 150, unita: 'ml', quantitaInferita: false, testoOriginale: '150ml latte parz. scremato' },
+          { alimento: 'farina di mandorle', quantita: 20, unita: 'g', quantitaInferita: false, testoOriginale: '20g farina di mandorle' },
         ],
       }],
     };

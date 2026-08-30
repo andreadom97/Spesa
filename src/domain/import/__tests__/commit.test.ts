@@ -9,7 +9,7 @@ const AVENA: Ingredient = { id: 'i-avena', nome: "Fiocchi d'avena", unitaBase: '
 function statoCompleto(): StatoRevisione {
   // Mappa tutti i nomi pasto del fixture, risolve la riga "2-3 olive" e dichiara i nuovi.
   const oliveRisolte = structuredClone(PIANO_MENU_SETTIMANALE.settimane[0].giorni[1].pasti[1]);
-  oliveRisolte.piatti[0].righeFisse[1] = { alimento: 'olive taggiasche', quantita: 3, unita: 'pz', testoOriginale: '2-3 olive taggiasche' };
+  oliveRisolte.piatti[0].righeFisse[1] = { alimento: 'olive taggiasche', quantita: 3, unita: 'pz', quantitaInferita: false, testoOriginale: '2-3 olive taggiasche' };
   return {
     passo: 'riepilogo',
     mappaturaPasti: { colazione: 's-col', cena: 's-cena', condimenti: 's-cena' },
@@ -66,11 +66,12 @@ describe('traduciBozza', () => {
         numero: 1,
         giorni: [{
           giorno: 0,
+          titolo: null,
           pasti: [{
             nomeOriginale: 'condimenti',
             piatti: [{
               nome: 'Condimenti', descrizione: null, componenti: [],
-              righeFisse: [{ alimento: 'olio extravergine di oliva', quantita: 20, unita: 'ml' as const, testoOriginale: '20ml olio' }],
+              righeFisse: [{ alimento: 'olio extravergine di oliva', quantita: 20, unita: 'ml' as const, quantitaInferita: false, testoOriginale: '20ml olio' }],
             }],
           }],
         }],
@@ -95,19 +96,20 @@ describe('traduciBozza', () => {
         numero: 1,
         giorni: [{
           giorno: 0,
+          titolo: null,
           pasti: [
             {
               nomeOriginale: 'pranzo',
               piatti: [{
                 nome: 'Riso', descrizione: null, componenti: [],
-                righeFisse: [{ alimento: 'olio extravergine di oliva', quantita: 10, unita: 'ml' as const, testoOriginale: '10ml olio' }],
+                righeFisse: [{ alimento: 'olio extravergine di oliva', quantita: 10, unita: 'ml' as const, quantitaInferita: false, testoOriginale: '10ml olio' }],
               }],
             },
             {
               nomeOriginale: 'condimenti',
               piatti: [{
                 nome: 'Condimenti', descrizione: null, componenti: [],
-                righeFisse: [{ alimento: 'olio extravergine di oliva', quantita: 5, unita: 'ml' as const, testoOriginale: '5ml olio' }],
+                righeFisse: [{ alimento: 'olio extravergine di oliva', quantita: 5, unita: 'ml' as const, quantitaInferita: false, testoOriginale: '5ml olio' }],
               }],
             },
           ],
@@ -132,11 +134,12 @@ describe('traduciBozza', () => {
         numero: 1,
         giorni: [{
           giorno: 0,
+          titolo: null,
           pasti: [{
             nomeOriginale: 'pranzo',
             piatti: [{
               nome: 'Riso', descrizione: null, componenti: [],
-              righeFisse: [{ alimento: 'zenzero fresco', quantita: 5, unita: 'g' as const, testoOriginale: '5g zenzero' }],
+              righeFisse: [{ alimento: 'zenzero fresco', quantita: 5, unita: 'g' as const, quantitaInferita: false, testoOriginale: '5g zenzero' }],
             }],
           }],
         }],
@@ -162,11 +165,12 @@ describe('traduciBozza', () => {
         numero: 1,
         giorni: [{
           giorno: 0,
+          titolo: null,
           pasti: [{
             nomeOriginale: 'pranzo',
             piatti: [{
               nome: 'Riso allo zenzero', descrizione: null, componenti: [],
-              righeFisse: [{ alimento: 'zenzero fresco', quantita: 1, unita: 'pz' as const, testoOriginale: '1 pz zenzero fresco' }],
+              righeFisse: [{ alimento: 'zenzero fresco', quantita: 1, unita: 'pz' as const, quantitaInferita: false, testoOriginale: '1 pz zenzero fresco' }],
             }],
           }],
         }],
@@ -187,7 +191,7 @@ describe('traduciBozza', () => {
     const stato = statoCompleto();
     // giorni[0].pasti[1] = cena di lunedì sett.1 ("Tacchino con pane"), col componente 'pane'.
     const cenaConOpzioneRotta = structuredClone(PIANO_MENU_SETTIMANALE.settimane[0].giorni[0].pasti[1]);
-    cenaConOpzioneRotta.piatti[0].componenti[0].opzioni[0][0] = { alimento: 'pane integrale', quantita: null, unita: null, testoOriginale: 'una fetta' };
+    cenaConOpzioneRotta.piatti[0].componenti[0].opzioni[0][0] = { alimento: 'pane integrale', quantita: null, unita: null, quantitaInferita: false, testoOriginale: 'una fetta' };
     stato.correzioni['1-0-1'] = cenaConOpzioneRotta;
     expect(() => traduciBozza(PIANO_MENU_SETTIMANALE, stato, [AVENA], [], '2026-08-29')).toThrow(BozzaIncompletaError);
   });
@@ -262,11 +266,12 @@ describe('traduciBozza', () => {
         numero: 1,
         giorni: [{
           giorno: 0,
+          titolo: null,
           pasti: [{
             nomeOriginale: 'pranzo',
             piatti: [
-              { nome: 'Pasta al pomodoro', descrizione: null, componenti: [], righeFisse: [{ alimento: 'pasta di semola', quantita: 80, unita: 'g' as const, testoOriginale: 'pasta 80g' }] },
-              { nome: 'Pasta al pomodoro', descrizione: null, componenti: [], righeFisse: [{ alimento: 'pasta di semola', quantita: 80, unita: 'g' as const, testoOriginale: 'pasta 80g' }] },
+              { nome: 'Pasta al pomodoro', descrizione: null, componenti: [], righeFisse: [{ alimento: 'pasta di semola', quantita: 80, unita: 'g' as const, quantitaInferita: false, testoOriginale: 'pasta 80g' }] },
+              { nome: 'Pasta al pomodoro', descrizione: null, componenti: [], righeFisse: [{ alimento: 'pasta di semola', quantita: 80, unita: 'g' as const, quantitaInferita: false, testoOriginale: 'pasta 80g' }] },
             ],
           }],
         }],
@@ -303,18 +308,20 @@ describe('traduciBozza', () => {
         numero: 1,
         giorni: [{
           giorno: 0,
+          titolo: null,
           pasti: [{
             nomeOriginale: 'pranzo',
             piatti: [{
               nome: 'Riso con condimento', descrizione: null, righeFisse: [],
               componenti: [{
                 nome: 'condimento',
+                nota: null,
                 opzioni: [
                   [
-                    { alimento: 'olio extravergine di oliva', quantita: 10, unita: 'ml' as const, testoOriginale: '10ml olio' },
-                    { alimento: 'olio extravergine di oliva', quantita: 5, unita: 'ml' as const, testoOriginale: '5ml olio' },
+                    { alimento: 'olio extravergine di oliva', quantita: 10, unita: 'ml' as const, quantitaInferita: false, testoOriginale: '10ml olio' },
+                    { alimento: 'olio extravergine di oliva', quantita: 5, unita: 'ml' as const, quantitaInferita: false, testoOriginale: '5ml olio' },
                   ],
-                  [{ alimento: 'olio extravergine di oliva', quantita: 8, unita: 'ml' as const, testoOriginale: '8ml olio' }],
+                  [{ alimento: 'olio extravergine di oliva', quantita: 8, unita: 'ml' as const, quantitaInferita: false, testoOriginale: '8ml olio' }],
                 ],
               }],
             }],

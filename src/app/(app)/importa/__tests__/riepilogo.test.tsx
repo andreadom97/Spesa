@@ -36,11 +36,12 @@ const PIANO_SEMPLICE: PianoEstratto = {
     numero: 1,
     giorni: [{
       giorno: 0,
+      titolo: null,
       pasti: [{
         nomeOriginale: 'pranzo',
         piatti: [{
           nome: 'Pasta al pomodoro', descrizione: null, componenti: [],
-          righeFisse: [{ alimento: 'pasta di semola', quantita: 80, unita: 'g', testoOriginale: '80g pasta' }],
+          righeFisse: [{ alimento: 'pasta di semola', quantita: 80, unita: 'g', quantitaInferita: false, testoOriginale: '80g pasta' }],
         }],
       }],
     }],
