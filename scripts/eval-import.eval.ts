@@ -6,7 +6,9 @@ import { validaEsito } from '../src/domain/import/valida';
 import { normalizza } from '../src/domain/import/mapping';
 import type { PianoEstratto, RigaEstratta } from '../src/domain/import/types';
 
-const DIR_FOTO = join(process.cwd(), 'diete/Dieta 6');
+// Override per misurare set alternativi (es. le stesse foto compresse come
+// fa la Camera): il default resta la dieta 6 originale.
+const DIR_FOTO = process.env.EVAL_IMPORT_DIR_FOTO ?? join(process.cwd(), 'diete/Dieta 6');
 const GROUND_TRUTH = join(process.cwd(), 'diete/estrazioni/piani/dieta6.json');
 const MODELLI = (process.env.EVAL_IMPORT_MODELLI ?? 'claude-sonnet-5').split(',').map((m) => m.trim()).filter(Boolean);
 
