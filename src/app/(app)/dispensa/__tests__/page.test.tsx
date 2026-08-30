@@ -261,6 +261,28 @@ describe('Dispensa', () => {
     expect(screen.getAllByText('Farrotto ai funghi')).toHaveLength(1);
   });
 
+  it('con due lotti utilizzabili dello stesso piatto, "impegnata" compare una sola volta', async () => {
+    // impegniPerPiatto e' per dishId ma il layout resta per lotto: senza
+    // deduplica, due tessere dello stesso piatto avrebbero mostrato ognuna
+    // "1 impegnata", facendo leggere all'utente il doppio degli impegni veri.
+    mockBase(statoDispensa([{ ingredientId: 'i-riso', residuo: 920 }]));
+    vi.mocked(leggiPronti).mockResolvedValue([
+      lottoPronto({ id: 'lp-fresco', dishId: FARROTTO.id, porzioni: 1, congelato: false, preparataIl: sommaGiorni(OGGI, -1) }),
+      lottoPronto({ id: 'lp-freezer', dishId: FARROTTO.id, porzioni: 3, congelato: true, preparataIl: sommaGiorni(OGGI, -20) }),
+    ]);
+    vi.mocked(leggiRepertorio).mockResolvedValue([FARROTTO]);
+    vi.mocked(leggiSettimanaCorrente).mockResolvedValue({
+      id: 'w-1', dataInizio: OGGI, stato: 'confermata',
+      slots: [slotDaPronti({ id: 'ms-futuro', data: sommaGiorni(OGGI, 2) })],
+    });
+
+    render(<Dispensa />);
+
+    await screen.findByText('PRONTI');
+    expect(screen.getAllByText('Farrotto ai funghi')).toHaveLength(2);
+    expect(screen.getAllByText('1 impegnata')).toHaveLength(1);
+  });
+
   it('senza lotti utilizzabili la sezione non compare', async () => {
     mockBase(statoDispensa([{ ingredientId: 'i-riso', residuo: 920 }]));
     vi.mocked(leggiPronti).mockResolvedValue([]);

@@ -106,7 +106,7 @@ mesi), decadimento del fresco e congelatore su dati veri (nessun deperibile ha a
 residuo), riordino delle aree, lettura offline — che **non funziona** ed è un traguardo
 a sé, vedi sotto.
 
-### Meal prepping
+## Meal prepping
 
 Cucinare oggi quello che mangi un altro giorno. Dal foglio azioni di un
 pasto: **Ne preparo di più** (le porzioni extra escono subito dal residuo ed

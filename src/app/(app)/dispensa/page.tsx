@@ -353,17 +353,29 @@ function SezionePronti({ lotti, nomiPiatti, impegniPerPiatto, onCorreggi, onCong
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-        {lotti.map((lotto) => (
-          <TesseraPronto
-            key={`${lotto.id}:${lotto.porzioni}:${lotto.congelato}`}
-            lotto={lotto}
-            nome={nomiPiatti.get(lotto.dishId) ?? 'Piatto eliminato'}
-            impegnate={impegniPerPiatto.get(lotto.dishId) ?? 0}
-            onCorreggi={onCorreggi}
-            onCongela={onCongela}
-            onElimina={onElimina}
-          />
-        ))}
+        {(() => {
+          // La spec parla di una tessera per piatto; qui il layout resta per
+          // lotto (semplificazione accettata). Con più lotti dello stesso
+          // piatto mostrare "N impegnate" su ognuno raddoppierebbe il numero
+          // letto dall'utente: la riga compare solo sulla prima tessera di
+          // quel dishId nell'ordine di rendering.
+          const dishGiaMostrati = new Set<string>();
+          return lotti.map((lotto) => {
+            const primaVolta = !dishGiaMostrati.has(lotto.dishId);
+            dishGiaMostrati.add(lotto.dishId);
+            return (
+              <TesseraPronto
+                key={`${lotto.id}:${lotto.porzioni}:${lotto.congelato}`}
+                lotto={lotto}
+                nome={nomiPiatti.get(lotto.dishId) ?? 'Piatto eliminato'}
+                impegnate={primaVolta ? impegniPerPiatto.get(lotto.dishId) ?? 0 : 0}
+                onCorreggi={onCorreggi}
+                onCongela={onCongela}
+                onElimina={onElimina}
+              />
+            );
+          });
+        })()}
       </div>
     </div>
   );
