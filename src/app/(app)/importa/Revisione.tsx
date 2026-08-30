@@ -19,6 +19,8 @@ interface Props {
 interface Tappa {
   settimana: number;
   giorno: number;
+  /** Solo per archetipo 'giorni_tipo': il nome dello scenario ("Piano 1"). null per gli altri archetipi. */
+  titolo: string | null;
   /** Il piano non cambia mai: qui solo per sapere quanti pasti (e in che ordine) ci sono in questo giorno. */
   pastiOriginali: PastoEstratto[];
 }
@@ -29,7 +31,7 @@ function flattenGiorni(piano: PianoEstratto): Tappa[] {
   const tappe: Tappa[] = [];
   for (const s of settimane) {
     const giorni = [...s.giorni].sort((a, b) => a.giorno - b.giorno);
-    for (const g of giorni) tappe.push({ settimana: s.numero, giorno: g.giorno, pastiOriginali: g.pasti });
+    for (const g of giorni) tappe.push({ settimana: s.numero, giorno: g.giorno, titolo: g.titolo, pastiOriginali: g.pasti });
   }
   return tappe;
 }
@@ -238,7 +240,9 @@ export function Revisione({ piano, stato, slotDefs, onStato }: Props) {
           </svg>
         </button>
         <span style={{ flex: 1, textAlign: 'center', fontSize: 14.5, fontWeight: 700, letterSpacing: '-0.01em', color: 'var(--ink)' }}>
-          {GIORNI_LUNGHI[tappa.giorno]} — giorno {indice + 1} di {tappe.length} · settimana {tappa.settimana} di {piano.settimane.length}
+          {tappa.titolo !== null
+            ? `${tappa.titolo} — scenario ${indice + 1} di ${tappe.length}`
+            : `${GIORNI_LUNGHI[tappa.giorno]} — giorno ${indice + 1} di ${tappe.length} · settimana ${tappa.settimana} di ${piano.settimane.length}`}
         </span>
         <button
           type="button"
@@ -357,6 +361,7 @@ export function Revisione({ piano, stato, slotDefs, onStato }: Props) {
                     <div key={indiceComponente} style={{ marginTop: 10 }}>
                       <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--sec)', marginBottom: 4 }}>
                         {componente.nome || 'Componente senza nome'}
+                        {componente.nota && <span style={{ marginLeft: 6, fontStyle: 'italic', textTransform: 'none', letterSpacing: 0 }}>· {componente.nota}</span>}
                       </div>
                       {componente.opzioni.map((opzione, indiceOpzione) => (
                         <div key={indiceOpzione}>
@@ -460,12 +465,13 @@ function RigaEditor({
   onRimuovi: () => void;
 }) {
   const nonRisolta = riga.quantita === null;
+  const inferita = riga.quantitaInferita && !nonRisolta;
   return (
     <div
       style={{
         display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 6, padding: '7px 8px', borderRadius: 10,
-        border: nonRisolta ? '1.5px solid #C77700' : '1px solid transparent',
-        background: nonRisolta ? 'rgba(199,119,0,0.06)' : 'transparent',
+        border: nonRisolta || inferita ? '1.5px solid #C77700' : '1px solid transparent',
+        background: nonRisolta || inferita ? 'rgba(199,119,0,0.06)' : 'transparent',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -483,11 +489,11 @@ function RigaEditor({
           onChange={(e) => {
             const v = e.target.value;
             if (v === '') {
-              onCambia({ quantita: null, unita: null });
+              onCambia({ quantita: null, unita: null, quantitaInferita: false });
               return;
             }
             const n = Number(v);
-            onCambia({ quantita: Number.isFinite(n) ? n : null, unita: riga.unita ?? 'g' });
+            onCambia({ quantita: Number.isFinite(n) ? n : null, unita: riga.unita ?? 'g', quantitaInferita: false });
           }}
           style={{ width: 60, height: 34, padding: '0 6px', borderRadius: 8, border: '1px solid var(--bordo)', background: 'var(--fondo)', fontSize: 13.5 }}
         />
@@ -517,6 +523,11 @@ function RigaEditor({
       {nonRisolta && (
         <div aria-live="polite" style={{ fontSize: 11.5, color: '#C77700', padding: '0 2px' }}>
           quantità da indicare
+        </div>
+      )}
+      {inferita && (
+        <div aria-live="polite" style={{ fontSize: 11.5, color: '#C77700', padding: '0 2px' }}>
+          quantità proposta: controllala
         </div>
       )}
     </div>

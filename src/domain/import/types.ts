@@ -1,19 +1,23 @@
 import type { AreaId, ClasseResiduo, UnitaBase } from '@/domain/types';
 
 /** 'solo_macro' non produce mai un piano: è l'archetipo del rifiuto onesto. */
-export type ArchetipoImportabile = 'menu_settimanale' | 'giornata_unica' | 'griglia_alternative';
+export type ArchetipoImportabile = 'menu_settimanale' | 'giornata_unica' | 'griglia_alternative' | 'giorni_tipo';
 
 export interface RigaEstratta {
   alimento: string;
   /** null = quantità non in grammi/ml/pz ("q.b.", "1 scatoletta piccola"): la risolve l'utente in revisione. */
   quantita: number | null;
   unita: UnitaBase | null;
+  /** true = quantità proposta dal modello per una riga senza grammatura scritta ("q.b."): in revisione va evidenziata e confermata. */
+  quantitaInferita: boolean;
   /** Il testo letto dal foglio, mai riscritto: è la garanzia anti-fabbricazione mostrata in revisione. */
   testoOriginale: string;
 }
 
 export interface ComponenteEstratto {
   nome: string;
+  /** Vincolo letto accanto alle alternative ("1 vv sett"); v1 lo mostra in revisione e basta. */
+  nota: string | null;
   /** Ogni opzione è >=1 righe ("ricotta 50g + noci 20g" è UNA opzione). */
   opzioni: RigaEstratta[][];
 }
@@ -38,6 +42,8 @@ export interface PastoEstratto {
 export interface GiornoEstratto {
   /** 0 = lunedì, come ovunque nel dominio. */
   giorno: number;
+  /** Solo per archetipo 'giorni_tipo': il nome dello scenario ("Piano 1"). null per gli altri archetipi. */
+  titolo: string | null;
   pasti: PastoEstratto[];
 }
 

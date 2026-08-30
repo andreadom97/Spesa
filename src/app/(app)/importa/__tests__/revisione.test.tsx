@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { Revisione } from '../Revisione';
 import { PIANO_MENU_SETTIMANALE } from '@/domain/import/fixtures';
-import type { StatoRevisione } from '@/domain/import/types';
+import type { PianoEstratto, StatoRevisione } from '@/domain/import/types';
 
 const SLOTS = [
   { id: 's-col', nome: 'Colazione', posizione: 0, assenzeAbituali: Array(7).fill(false) },
@@ -31,7 +31,7 @@ function tutteLeChiavi(): string[] {
  */
 function statoConTuttiConfermati(): StatoRevisione {
   const oliveRisolte = structuredClone(PIANO_MENU_SETTIMANALE.settimane[0].giorni[1].pasti[1]);
-  oliveRisolte.piatti[0].righeFisse[1] = { alimento: 'olive taggiasche', quantita: 3, unita: 'pz', testoOriginale: '2-3 olive taggiasche' };
+  oliveRisolte.piatti[0].righeFisse[1] = { alimento: 'olive taggiasche', quantita: 3, unita: 'pz', quantitaInferita: false, testoOriginale: '2-3 olive taggiasche' };
   return { ...STATO, pastiConfermati: tutteLeChiavi(), correzioni: { '1-1-1': oliveRisolte } };
 }
 
@@ -141,5 +141,91 @@ describe('Revisione', () => {
     fireEvent.click(within(screen.getByDisplayValue('Porridge speciale').closest('section')!).getByRole('button', { name: /conferma pasto/i }));
     const stato = onStato.mock.calls.at(-1)![0] as StatoRevisione;
     expect(stato.correzioni['1-0-0'].piatti[0].nome).toBe('Porridge speciale');
+  });
+
+  const PIANO_GIORNI_TIPO: PianoEstratto = {
+    archetipo: 'giorni_tipo',
+    fonte: 'fixture sintetico',
+    noteEstrazione: [],
+    settimane: [{
+      numero: 1,
+      giorni: [{
+        giorno: 0,
+        titolo: 'Piano 1',
+        pasti: [{
+          nomeOriginale: 'pranzo',
+          piatti: [{
+            nome: 'Pasta al pomodoro', descrizione: null, componenti: [],
+            righeFisse: [{ alimento: 'pasta di semola', quantita: 80, unita: 'g', quantitaInferita: false, testoOriginale: 'pasta 80g' }],
+          }],
+        }],
+      }],
+    }],
+  };
+
+  it('giorni_tipo: l’intestazione mostra il titolo dello scenario, non il giorno della settimana', () => {
+    render(<Revisione piano={PIANO_GIORNI_TIPO} stato={STATO} slotDefs={SLOTS as never} onStato={() => {}} />);
+    expect(screen.getByText(/Piano 1 — scenario 1 di 1/)).toBeInTheDocument();
+    expect(screen.queryByText(/Lunedì/)).toBeNull();
+  });
+
+  const PIANO_CON_INFERITA: PianoEstratto = {
+    archetipo: 'menu_settimanale',
+    fonte: 'fixture sintetico',
+    noteEstrazione: [],
+    settimane: [{
+      numero: 1,
+      giorni: [{
+        giorno: 0,
+        titolo: null,
+        pasti: [{
+          nomeOriginale: 'pranzo',
+          piatti: [{
+            nome: 'Insalata', descrizione: null, componenti: [],
+            righeFisse: [{ alimento: 'olio', quantita: 10, unita: 'g', quantitaInferita: true, testoOriginale: 'olio q.b.' }],
+          }],
+        }],
+      }],
+    }],
+  };
+
+  it('riga inferita: mostra l’avviso e correggere la quantità toglie il flag', () => {
+    render(<Revisione piano={PIANO_CON_INFERITA} stato={STATO} slotDefs={SLOTS as never} onStato={() => {}} />);
+    expect(screen.getByText('quantità proposta: controllala')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Quantità di olio'), { target: { value: '15' } });
+    // il flag cade con la correzione: l’avviso sparisce
+    expect(screen.queryByText('quantità proposta: controllala')).toBeNull();
+  });
+
+  const PIANO_CON_NOTA: PianoEstratto = {
+    archetipo: 'menu_settimanale',
+    fonte: 'fixture sintetico',
+    noteEstrazione: [],
+    settimane: [{
+      numero: 1,
+      giorni: [{
+        giorno: 0,
+        titolo: null,
+        pasti: [{
+          nomeOriginale: 'cena',
+          piatti: [{
+            nome: 'Tacchino con pane', descrizione: null,
+            righeFisse: [{ alimento: 'fesa di tacchino', quantita: 120, unita: 'g', quantitaInferita: false, testoOriginale: 'Fesa di tacchino (120g)' }],
+            componenti: [{
+              nome: 'pane',
+              nota: '1 vv sett',
+              opzioni: [
+                [{ alimento: 'pane integrale', quantita: 60, unita: 'g', quantitaInferita: false, testoOriginale: 'pane integrale (60g)' }],
+              ],
+            }],
+          }],
+        }],
+      }],
+    }],
+  };
+
+  it('la nota del componente è visibile accanto al nome', () => {
+    render(<Revisione piano={PIANO_CON_NOTA} stato={STATO} slotDefs={SLOTS as never} onStato={() => {}} />);
+    expect(screen.getByText(/1 vv sett/)).toBeInTheDocument();
   });
 });

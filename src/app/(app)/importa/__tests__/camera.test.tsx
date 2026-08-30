@@ -30,6 +30,27 @@ describe('Camera', () => {
     expect(screen.getByText('pag. 2')).toBeInTheDocument();
   });
 
+  it('la scelta dei file non aggiorna il genitore durante il render (E2E 30/08: miniature visibili ma ESTRAI spento)', async () => {
+    // Regressione: onFoto chiamato dentro l'updater di setPagine è un
+    // setState-during-render del genitore — React lo segnala con "Cannot
+    // update a component" e l'aggiornamento del genitore può andare perso.
+    // NOTA: in jsdom il warning del codice pre-fix non si riproduce (visto
+    // solo nel browser vero, E2E 30/08); questo test è una guardia, la
+    // prova del fix è la verifica manuale nel browser.
+    const errori: string[] = [];
+    const spia = vi.spyOn(console, 'error').mockImplementation((...args) => {
+      errori.push(args.map(String).join(' '));
+    });
+    const onFoto = vi.fn();
+    render(<Camera onFoto={onFoto} />);
+    const input = await screen.findByLabelText(/scegli le foto/i);
+    const f1 = new File(['a'], 'p1.jpg', { type: 'image/jpeg' });
+    fireEvent.change(input, { target: { files: [f1] } });
+    await waitFor(() => expect(onFoto).toHaveBeenLastCalledWith([f1]));
+    spia.mockRestore();
+    expect(errori.filter((m) => m.includes('Cannot update a component'))).toEqual([]);
+  });
+
   it('eliminare una pagina aggiorna elenco e numerazione', async () => {
     const onFoto = vi.fn();
     render(<Camera onFoto={onFoto} />);
