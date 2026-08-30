@@ -50,4 +50,15 @@ describe('mockCorrezione — l\'interprete a regole', () => {
   it('nota vuota o di soli separatori → esito vuoto', () => {
     expect(mockCorrezione('  ,, ', CONTESTO)).toEqual({ proposte: [], nonRiconosciuti: [] });
   });
+
+  it('ingrediente con metacaratteri regex nel nome non lancia errore (es. "Passata (senza sale)")', () => {
+    const contestoConPassata: ContestoDispensa = [
+      { id: 'i-passata', nome: 'Passata (senza sale)', unitaBase: 'g', formatoConfezione: 500, residuo: 250, congelato: false },
+    ];
+    const esito = mockCorrezione('finita la passata (senza sale)', contestoConPassata);
+    expect(esito.proposte).toHaveLength(1);
+    expect(esito.proposte[0]).toMatchObject({
+      ingredientId: 'i-passata', campo: 'residuo', valoreNuovo: 0,
+    });
+  });
 });

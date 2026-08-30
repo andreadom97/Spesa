@@ -22,12 +22,18 @@ export function mockCorrezione(nota: string, contesto: ContestoDispensa): EsitoC
   return { proposte, nonRiconosciuti };
 }
 
+/** Escapa i metacaratteri regex in una stringa. */
+function escapaRegex(testo: string): string {
+  return testo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /** Match esatto di una parola col nome → 0.95; nome contenuto nella frase → 0.7. */
 function abbina(minuscola: string, contesto: ContestoDispensa): { voce: VoceContesto; confidence: number } | null {
   for (const voce of contesto) {
     const nome = voce.nome.toLowerCase();
     if (!minuscola.includes(nome)) continue;
-    const parolaEsatta = new RegExp(`(^|\\s)${nome}($|\\s)`).test(minuscola);
+    const nomeEscapato = escapaRegex(nome);
+    const parolaEsatta = new RegExp(`(^|\\s)${nomeEscapato}($|\\s)`).test(minuscola);
     return { voce, confidence: parolaEsatta ? 0.95 : 0.7 };
   }
   // Secondo giro: la PRIMA PAROLA del nome dell'ingrediente ("olio" per
