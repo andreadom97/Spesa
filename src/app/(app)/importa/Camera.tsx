@@ -65,10 +65,13 @@ function scattaDaVideo(video: HTMLVideoElement): Promise<Blob | null> {
  * miniature — l'utente sceglie le foto dei fogli dalla galleria o scattandole
  * con la fotocamera di sistema.
  *
- * `onFoto` è chiamato dentro le funzioni che aggiornano `pagine` (aggiungi,
- * rimuovi, sposta), mai da un effect sulla lista: un effect scatterebbe anche
- * al mount con la lista vuota, un `onFoto([])` che il chiamante non si
- * aspetta finché l'utente non ha davvero cambiato qualcosa.
+ * `onFoto` è chiamato dagli event handler DOPO il setState, mai dentro
+ * l'updater di `setPagine` (sarebbe un setState del genitore durante il
+ * render: React lo segnala con "Cannot update Importa while rendering
+ * Camera" e l'aggiornamento può andare perso — miniature visibili ma stato
+ * del genitore vuoto, visto nell'E2E del 30/08) e mai da un effect sulla
+ * lista: un effect scatterebbe anche al mount, un `onFoto([])` che il
+ * chiamante non si aspetta finché l'utente non ha davvero cambiato qualcosa.
  */
 export function Camera({ onFoto, iniziali = [] }: Props) {
   // Lazy initializer: gira una sola volta, al mount — nessun accesso a
@@ -81,10 +84,13 @@ export function Camera({ onFoto, iniziali = [] }: Props) {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [modo, setModo] = useState<Modo>('rilevamento');
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  // Rif. sempre allineato a `pagine`, per revocare gli object URL residui
-  // allo smontaggio senza mettere `pagine` fra le dipendenze dell'effect di
-  // cleanup (che altrimenti scatterebbe — e revocherebbe — a ogni cambio).
-  const pagineRef = useRef<Pagina[]>([]);
+  // Rif. sempre allineato a `pagine`: base di calcolo delle mutazioni (così
+  // gli handler compongono la lista nuova FUORI dall'updater e possono
+  // chiamare `onFoto` senza setState-during-render) e fonte per revocare gli
+  // object URL residui allo smontaggio senza mettere `pagine` fra le
+  // dipendenze dell'effect di cleanup (che altrimenti scatterebbe — e
+  // revocherebbe — a ogni cambio).
+  const pagineRef = useRef<Pagina[]>(pagine);
   useEffect(() => {
     pagineRef.current = pagine;
   }, [pagine]);
@@ -144,12 +150,15 @@ export function Camera({ onFoto, iniziali = [] }: Props) {
     };
   }, []);
 
+  /** Unico punto di mutazione: allinea ref e stato, poi avvisa il genitore. */
+  function applicaPagine(nuove: Pagina[]) {
+    pagineRef.current = nuove;
+    setPagine(nuove);
+    onFoto(nuove.map((p) => p.blob));
+  }
+
   function aggiungiBlob(blob: Blob) {
-    setPagine((prev) => {
-      const nuove = [...prev, { blob, url: URL.createObjectURL(blob) }];
-      onFoto(nuove.map((p) => p.blob));
-      return nuove;
-    });
+    applicaPagine([...pagineRef.current, { blob, url: URL.createObjectURL(blob) }]);
   }
 
   async function scatta() {
@@ -162,33 +171,25 @@ export function Camera({ onFoto, iniziali = [] }: Props) {
   function scegliFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files;
     if (!file || file.length === 0) return;
-    setPagine((prev) => {
-      const nuove = [...prev, ...Array.from(file).map((f) => ({ blob: f, url: URL.createObjectURL(f) }))];
-      onFoto(nuove.map((p) => p.blob));
-      return nuove;
-    });
+    applicaPagine([
+      ...pagineRef.current,
+      ...Array.from(file).map((f) => ({ blob: f, url: URL.createObjectURL(f) })),
+    ]);
     e.target.value = '';
   }
 
   function elimina(indice: number) {
-    setPagine((prev) => {
-      const rimossa = prev[indice];
-      if (rimossa) URL.revokeObjectURL(rimossa.url);
-      const nuove = prev.filter((_, i) => i !== indice);
-      onFoto(nuove.map((p) => p.blob));
-      return nuove;
-    });
+    const rimossa = pagineRef.current[indice];
+    if (rimossa) URL.revokeObjectURL(rimossa.url);
+    applicaPagine(pagineRef.current.filter((_, i) => i !== indice));
   }
 
   function sposta(indice: number, delta: number) {
-    setPagine((prev) => {
-      const dest = indice + delta;
-      if (dest < 0 || dest >= prev.length) return prev;
-      const nuove = [...prev];
-      [nuove[indice], nuove[dest]] = [nuove[dest], nuove[indice]];
-      onFoto(nuove.map((p) => p.blob));
-      return nuove;
-    });
+    const dest = indice + delta;
+    if (dest < 0 || dest >= pagineRef.current.length) return;
+    const nuove = [...pagineRef.current];
+    [nuove[indice], nuove[dest]] = [nuove[dest], nuove[indice]];
+    applicaPagine(nuove);
   }
 
   if (modo === 'rilevamento') {
