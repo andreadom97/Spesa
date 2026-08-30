@@ -11,6 +11,7 @@ import { leggiIngredienti, leggiRepertorio } from '@/data/repertorio';
 import { validaEsito } from '@/domain/import/valida';
 import { proponiSlot, normalizza } from '@/domain/import/mapping';
 import { traduciBozza, BozzaIncompletaError, type ScrittureImport } from '@/domain/import/commit';
+import { client } from '@/data/supabase';
 import { Testata } from '@/components/Testata';
 import { Segmento } from '@/components/Segmento';
 import { Camera } from './Camera';
@@ -31,6 +32,8 @@ const SPIEGAZIONE_RIFIUTO =
 
 const MESSAGGIO_503 = "L'estrazione non è disponibile su questo ambiente.";
 const MESSAGGIO_ERRORE_GENERICO = 'Non siamo riusciti a leggere la dieta. Riprova.';
+const MESSAGGIO_422 = 'Non ho capito la dieta: riprova, magari con foto più nitide.';
+const MESSAGGIO_SENZA_SESSIONE = 'Serve l’accesso: riapri l’app ed entra di nuovo.';
 
 /**
  * La data di oggi in locale, come yyyy-mm-dd: `toISOString` converte a UTC, quindi vicino
@@ -153,6 +156,13 @@ export default function Importa() {
     setMessaggioErrore(null);
     setVista('estrazione');
     try {
+      const { data } = await client().auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) {
+        setMessaggioErrore(MESSAGGIO_SENZA_SESSIONE);
+        setVista('errore');
+        return;
+      }
       // Solo la tab attiva finisce nel FormData: le due modalità non si
       // mescolano mai (un PDF scelto e poi abbandonato per tornare alle foto
       // non deve rispuntare in un invio successivo, e viceversa). Lo stato
@@ -164,9 +174,24 @@ export default function Importa() {
       } else if (pdf) {
         body.append('documento', pdf);
       }
-      const res = await fetch('/api/import/estrai', { method: 'POST', body });
+      const res = await fetch('/api/import/estrai', {
+        method: 'POST',
+        body,
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (res.status === 503) {
         setMessaggioErrore(MESSAGGIO_503);
+        setVista('errore');
+        return;
+      }
+      if (res.status === 413) {
+        const corpo = await res.json().catch(() => null);
+        setMessaggioErrore((corpo as { errore?: string } | null)?.errore ?? MESSAGGIO_ERRORE_GENERICO);
+        setVista('errore');
+        return;
+      }
+      if (res.status === 422) {
+        setMessaggioErrore(MESSAGGIO_422);
         setVista('errore');
         return;
       }

@@ -9,6 +9,13 @@ vi.mock('@/data/importa', () => ({
 }));
 vi.mock('@/data/impostazioni', () => ({ leggiSlotDefs: vi.fn() }));
 vi.mock('@/data/repertorio', () => ({ leggiIngredienti: vi.fn(), leggiRepertorio: vi.fn() }));
+// `getSessionMock` reconfigurabile per test (pattern copiato da NotaDispensa.test.tsx):
+// di default risolve una sessione con token 'tok' (vedi beforeEach sotto), e il solo test
+// "senza sessione" la sovrascrive per restituire `session: null`.
+const { getSessionMock } = vi.hoisted(() => ({ getSessionMock: vi.fn() }));
+vi.mock('@/data/supabase', () => ({
+  client: () => ({ auth: { getSession: getSessionMock } }),
+}));
 import { leggiBozzaImport, salvaBozzaImport, cancellaBozzaImport } from '@/data/importa';
 import { leggiSlotDefs } from '@/data/impostazioni';
 import { leggiIngredienti } from '@/data/repertorio';
@@ -35,6 +42,7 @@ beforeEach(() => {
   vi.mocked(leggiBozzaImport).mockResolvedValue(null);
   vi.mocked(leggiSlotDefs).mockResolvedValue(SLOTS);
   vi.mocked(leggiIngredienti).mockResolvedValue([]);
+  getSessionMock.mockResolvedValue({ data: { session: { access_token: 'tok' } } });
 });
 
 // `findByLabelText` (non `getByLabelText`) apposta: la vista acquisizione è già
@@ -110,6 +118,59 @@ describe('Importa', () => {
     await waitFor(() => expect(vi.mocked(global.fetch)).toHaveBeenCalledTimes(2));
     const secondoBody = vi.mocked(global.fetch).mock.calls[1][1]?.body as FormData;
     expect(secondoBody.getAll('immagini')).toHaveLength(2);
+  });
+
+  it('l’estrazione manda il Bearer della sessione', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => FIXTURE_MENU_SETTIMANALE });
+    global.fetch = fetchMock;
+    render(<Importa />);
+    await screen.findByRole('button', { name: /estrai la dieta/i });
+    await caricaUnaFoto();
+    fireEvent.click(screen.getByRole('button', { name: /estrai la dieta/i }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    const [, init] = fetchMock.mock.calls[0]!;
+    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer tok');
+  });
+
+  it('413 mostra il messaggio della route e non perde le foto', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 413,
+      json: async () => ({ errore: 'troppe pagine: la v1 accetta fino a 12 foto' }),
+    });
+    render(<Importa />);
+    await screen.findByRole('button', { name: /estrai la dieta/i });
+    await caricaUnaFoto();
+    fireEvent.click(screen.getByRole('button', { name: /estrai la dieta/i }));
+    expect(await screen.findByText('troppe pagine: la v1 accetta fino a 12 foto')).toBeInTheDocument();
+    // RIPROVA riporta all'acquisizione con le foto ancora selezionate: basta
+    // verificare che il bottone sia abilitato, lo stato delle foto non è toccato dall'errore.
+    expect(screen.getByRole('button', { name: /riprova/i })).toBeEnabled();
+  });
+
+  it('422 mostra il messaggio dedicato', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 422,
+      json: async () => ({ errore: 'non ho capito la dieta, riprova' }),
+    });
+    render(<Importa />);
+    await screen.findByRole('button', { name: /estrai la dieta/i });
+    await caricaUnaFoto();
+    fireEvent.click(screen.getByRole('button', { name: /estrai la dieta/i }));
+    expect(await screen.findByText('Non ho capito la dieta: riprova, magari con foto più nitide.')).toBeInTheDocument();
+  });
+
+  it('senza sessione: errore onesto senza fetch', async () => {
+    getSessionMock.mockResolvedValue({ data: { session: null } });
+    const fetchMock = vi.fn();
+    global.fetch = fetchMock;
+    render(<Importa />);
+    await screen.findByRole('button', { name: /estrai la dieta/i });
+    await caricaUnaFoto();
+    fireEvent.click(screen.getByRole('button', { name: /estrai la dieta/i }));
+    expect(await screen.findByText('Serve l’accesso: riapri l’app ed entra di nuovo.')).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('bozza esistente: riprendi/ricomincia; ricominciare la cancella', async () => {

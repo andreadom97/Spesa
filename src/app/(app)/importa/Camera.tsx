@@ -32,11 +32,11 @@ interface Pagina {
  */
 type Modo = 'rilevamento' | 'camera' | 'fallback';
 
-const LATO_MAX = 2048;
+const LATO_MAX = 1568;
 
 /**
  * Ridisegna il frame corrente del video su un canvas ridimensionato (max
- * 2048px sul lato lungo) e produce un jpeg allo 0.8 di qualità. Ritorna null
+ * 1568px sul lato lungo) e produce un jpeg allo 0.75 di qualità. Ritorna null
  * se il canvas non riesce a produrre un blob (fotocamera nera, browser
  * esotico): in quel caso lo scatto va scartato invece di aggiungere una
  * pagina vuota.
@@ -53,7 +53,7 @@ function scattaDaVideo(video: HTMLVideoElement): Promise<Blob | null> {
   if (!ctx) return Promise.resolve(null);
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
   return new Promise((resolve) => {
-    canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.8);
+    canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.75);
   });
 }
 
