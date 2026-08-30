@@ -134,8 +134,11 @@ rete/503 con messaggio e nota preservata, recap come da §4.
 Il modello è **configurazione**: env `DISPENSA_AI_MODEL`, default
 `claude-haiku-4-5` — cambiarlo è un edit su Vercel, zero deploy di codice.
 La chiamata usa l'SDK ufficiale `@anthropic-ai/sdk` (dipendenza aggiunta con
-questo lavoro) con structured output (`output_config.format`), niente
-thinking. I candidati [fonte: reference API, cache 06/2026; costi = stime
+questo lavoro), niente thinking. **v1 senza structured output**: il JSON si
+chiede nel prompt e si estrae dal testo, con `validaProposte` come rete —
+l'upgrade a `output_config.format` si valuta al primo giro reale, quando è
+collaudabile con la chiave (ruling 30/08: niente forme API non verificabili
+in un codice che nasce spento). I candidati [fonte: reference API, cache 06/2026; costi = stime
 da validare con l'harness]:
 
 | Modello | $/MTok in/out | ~Costo per correzione* | Quando |
@@ -150,13 +153,17 @@ qualità, non di costo.*
 
 ## 6bis. Eval harness — la valutazione dei modelli
 
-`scripts/eval-dispensa.ts`: una batteria di ~10 note sintetiche con esiti
-attesi (`{ nota, contesto, attesi: { ingredientId, campo, valoreNuovo }[],
-attesiNonRiconosciuti }`), che gira la stessa `interpretaNota` su uno o più
-modelli (`--modelli claude-haiku-4-5,claude-sonnet-5`) e stampa per ciascuno:
-abbinamenti corretti/sbagliati/mancati, quantità esatte, calibrazione del
-confidence (le proposte sbagliate DEVONO stare sotto 0.9), costo dal campo
-`usage`. Richiede `ANTHROPIC_API_KEY` nell'ambiente: **senza chiave lo
+`scripts/eval-dispensa.eval.ts`, invocato con `npm run eval:dispensa` (un
+config vitest dedicato: il file NON entra mai nella suite normale): una
+batteria di ~10 note sintetiche con esiti attesi (`{ nota, attesi:
+{ ingredientId, campo, valoreNuovo }[], attesiNonRiconosciuti }` su un
+contesto sintetico condiviso), che gira la stessa `interpretaNota` su uno o
+più modelli (env `EVAL_MODELLI=claude-haiku-4-5,claude-sonnet-5`) e stampa
+per ciascuno: abbinamenti corretti/mancati, quantità esatte, calibrazione
+del confidence (le proposte sbagliate DEVONO stare sotto 0.9 — unica
+asserzione dura), esiti invalidi. Il costo resta stimato dalla tabella di
+§6 (il report dal campo `usage` è un'estensione da fare col primo giro
+reale, se serve). Richiede `ANTHROPIC_API_KEY` nell'ambiente: **senza chiave lo
 script esce subito spiegandolo — alla consegna è NON ESEGUITO**, ed è
 l'esatto strumento con cui Andrea sceglie il modello quando la mette. Le
 fixture sono sintetiche e committate (nessun dato reale necessario).
