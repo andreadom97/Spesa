@@ -57,6 +57,9 @@ export async function estraiPiano(files: FileEstrazione[], modello: string): Pro
     .stream({
       model: modello,
       max_tokens: 32000,
+      // Trascrizione, non creatività: temperature 0 riduce i glitch di sampling
+      // nel JSON lungo (osservati come SyntaxError intermittenti in eval).
+      temperature: 0,
       system: PROMPT_SISTEMA_IMPORT,
       messages: [{
         role: 'user',
