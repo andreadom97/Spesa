@@ -190,8 +190,10 @@ export function traduciBozza(
     const settimanaCiclo = unicaSettimana ? null : settimana.numero;
     // giorno -> slotDefId -> piatti sorella (nell'ordine di estrazione).
     const perGiorno = new Map<number, Map<string, PiattoInterno[]>>();
+    const titoloDi = new Map<number, string>();
 
     for (const giorno of settimana.giorni) {
+      if (giorno.titolo !== null) titoloDi.set(giorno.giorno, giorno.titolo);
       const slotMap = new Map<string, PiattoInterno[]>();
       // Più pasti 'condimenti' nello stesso giorno sono un caso limite ma non vanno
       // persi: si accumulano e si fondono tutti verso lo stesso slot mappato.
@@ -236,32 +238,51 @@ export function traduciBozza(
       perGiorno.set(giorno.giorno, slotMap);
     }
 
-    const tuttiGliSlot = new Set<string>();
-    for (const slotMap of perGiorno.values()) for (const slot of slotMap.keys()) tuttiGliSlot.add(slot);
-
-    for (const slotDefId of tuttiGliSlot) {
-      const giorniConSlot = [...perGiorno.entries()]
-        .filter(([, slotMap]) => (slotMap.get(slotDefId)?.length ?? 0) > 0)
-        .map(([g]) => g)
-        .sort((a, b) => a - b);
-
-      const canoniche = giorniConSlot.map((g) => formaCanonicaLista(perGiorno.get(g)!.get(slotDefId)!));
-      // Regola 4 (spec): si compatta solo se lo slot è identico in TUTTI i giorni della
-      // settimana e la settimana ha almeno 2 giorni. Una settimana da 1 giorno (o uno
-      // slot che non ricorre in ogni giorno) non è mai una compattazione vera: il
-      // planner lo servirebbe comunque ogni giorno, quindi resta pinnato per giorno.
-      const inTuttiIGiorni = giorniConSlot.length === settimana.giorni.length;
-      const compattabile = settimana.giorni.length >= 2 && inTuttiIGiorni && canoniche.every((c) => c === canoniche[0]);
-
-      if (compattabile) {
-        const rappresentante = giorniConSlot[0];
-        for (const piatto of perGiorno.get(rappresentante)!.get(slotDefId)!) {
-          emessi.push({ settimanaCiclo, giornoCiclo: null, slotDefId, piatto });
+    if (piano.archetipo === 'giorni_tipo') {
+      // Ogni scenario è un giorno-tipo: i piatti valgono sempre (cicli null),
+      // col titolo dello scenario nel nome così restano distinguibili nel
+      // planner e nelle chiavi di riuso.
+      for (const [g, slotMap] of perGiorno) {
+        const titolo = titoloDi.get(g);
+        for (const [slotDefId, piatti] of slotMap) {
+          for (const piatto of piatti) {
+            emessi.push({
+              settimanaCiclo: null,
+              giornoCiclo: null,
+              slotDefId,
+              piatto: titolo ? { ...piatto, nome: `${titolo} — ${piatto.nome}` } : piatto,
+            });
+          }
         }
-      } else {
-        for (const g of giorniConSlot) {
-          for (const piatto of perGiorno.get(g)!.get(slotDefId)!) {
-            emessi.push({ settimanaCiclo, giornoCiclo: g, slotDefId, piatto });
+      }
+    } else {
+      const tuttiGliSlot = new Set<string>();
+      for (const slotMap of perGiorno.values()) for (const slot of slotMap.keys()) tuttiGliSlot.add(slot);
+
+      for (const slotDefId of tuttiGliSlot) {
+        const giorniConSlot = [...perGiorno.entries()]
+          .filter(([, slotMap]) => (slotMap.get(slotDefId)?.length ?? 0) > 0)
+          .map(([g]) => g)
+          .sort((a, b) => a - b);
+
+        const canoniche = giorniConSlot.map((g) => formaCanonicaLista(perGiorno.get(g)!.get(slotDefId)!));
+        // Regola 4 (spec): si compatta solo se lo slot è identico in TUTTI i giorni della
+        // settimana e la settimana ha almeno 2 giorni. Una settimana da 1 giorno (o uno
+        // slot che non ricorre in ogni giorno) non è mai una compattazione vera: il
+        // planner lo servirebbe comunque ogni giorno, quindi resta pinnato per giorno.
+        const inTuttiIGiorni = giorniConSlot.length === settimana.giorni.length;
+        const compattabile = settimana.giorni.length >= 2 && inTuttiIGiorni && canoniche.every((c) => c === canoniche[0]);
+
+        if (compattabile) {
+          const rappresentante = giorniConSlot[0];
+          for (const piatto of perGiorno.get(rappresentante)!.get(slotDefId)!) {
+            emessi.push({ settimanaCiclo, giornoCiclo: null, slotDefId, piatto });
+          }
+        } else {
+          for (const g of giorniConSlot) {
+            for (const piatto of perGiorno.get(g)!.get(slotDefId)!) {
+              emessi.push({ settimanaCiclo, giornoCiclo: g, slotDefId, piatto });
+            }
           }
         }
       }

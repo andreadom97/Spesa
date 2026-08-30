@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Dish, Ingredient } from '@/domain/types';
 import { traduciBozza, BozzaIncompletaError } from '../commit';
-import type { StatoRevisione } from '../types';
+import type { StatoRevisione, PianoEstratto } from '../types';
 import { PIANO_MENU_SETTIMANALE, PIANO_GIORNATA_UNICA } from '../fixtures';
 
 const AVENA: Ingredient = { id: 'i-avena', nome: "Fiocchi d'avena", unitaBase: 'g', area: 'cereali', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500 };
@@ -344,5 +344,49 @@ describe('traduciBozza', () => {
     stato.ingredientiNuovi.push({ alimento: 'zafferano', nome: 'Zafferano', unitaBase: 'g', area: 'dispensa', classeResiduo: 'stima', deperibile: false, formatoConfezione: 1 });
     const s = traduciBozza(PIANO_MENU_SETTIMANALE, stato, [AVENA], [], '2026-08-29');
     expect(s.ingredientiDaCreare.some((i) => i.alimento === 'zafferano')).toBe(false);
+  });
+});
+
+describe('giorni_tipo', () => {
+  it('ogni scenario emette piatti sempre validi (cicli null) col titolo nel nome', () => {
+    const piano: PianoEstratto = {
+      archetipo: 'giorni_tipo' as const,
+      fonte: 'test',
+      noteEstrazione: [],
+      settimane: [{
+        numero: 1,
+        giorni: [
+          {
+            giorno: 0,
+            titolo: 'Piano 1',
+            pasti: [{ nomeOriginale: 'pranzo', piatti: [{ nome: 'Riso e pollo', descrizione: null, componenti: [], righeFisse: [
+              { alimento: 'riso', quantita: 80, unita: 'g', quantitaInferita: false, testoOriginale: 'riso 80g' },
+            ] }] }],
+          },
+          {
+            giorno: 1,
+            titolo: 'Allenamento',
+            pasti: [{ nomeOriginale: 'pranzo', piatti: [{ nome: 'Pasta e tonno', descrizione: null, componenti: [], righeFisse: [
+              { alimento: 'riso', quantita: 120, unita: 'g', quantitaInferita: false, testoOriginale: 'riso 120g' },
+            ] }] }],
+          },
+        ],
+      }],
+    };
+    const stato: StatoRevisione = {
+      passo: 'riepilogo',
+      mappaturaPasti: { pranzo: 's-pranzo' },
+      pastiConfermati: [],
+      correzioni: {},
+      ingredientiNuovi: [{ alimento: 'riso', nome: 'Riso', unitaBase: 'g', area: 'dispensa', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 1000 }],
+    };
+    const scritture = traduciBozza(piano, stato, [], [], '2026-08-30');
+    expect(scritture.impostazioni.settimaneCiclo).toBe(1);
+    expect(scritture.piattiDaCreare).toHaveLength(2);
+    for (const p of scritture.piattiDaCreare) {
+      expect(p.settimanaCiclo).toBeNull();
+      expect(p.giornoCiclo).toBeNull();
+    }
+    expect(scritture.piattiDaCreare.map((p) => p.nome).sort()).toEqual(['Allenamento — Pasta e tonno', 'Piano 1 — Riso e pollo']);
   });
 });
