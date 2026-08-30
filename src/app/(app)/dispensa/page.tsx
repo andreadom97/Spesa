@@ -11,6 +11,7 @@ import { leggiSettimanaCorrente } from '@/data/settimana';
 import { coloreArea, nomeArea } from '@/domain/aree';
 import { residuoUtilizzabile } from '@/domain/pantry';
 import { porzioniUtilizzabili } from '@/domain/pronti';
+import { NotaDispensa } from '@/components/NotaDispensa';
 
 interface Riga {
   ingrediente: Ingredient;
@@ -49,8 +50,14 @@ export default function Dispensa() {
   const [nomiPiatti, setNomiPiatti] = useState<Map<string, string>>(new Map());
   const [impegniPerPiatto, setImpegniPerPiatto] = useState<Map<string, number>>(new Map());
 
-  useEffect(() => {
-    let vivo = true;
+  /**
+   * Il corpo del caricamento, richiamabile: la nota alla dispensa (sotto)
+   * cambia residui e flag congelato scrivendo direttamente sul server, e
+   * dopo un'applicazione questa schermata deve rileggerli — non le basta
+   * aggiornare lo stato locale come fanno `salva`/`cambiaCongelato`, perché
+   * non sa quali proposte la nota ha applicato.
+   */
+  function carica(vivo: () => boolean) {
     Promise.all([
       leggiIngredienti(),
       leggiDispensa(),
@@ -60,7 +67,7 @@ export default function Dispensa() {
       leggiSettimanaCorrente(),
     ])
       .then(([ingredienti, dispensa, impostazioni, pronti, repertorio, settimana]) => {
-        if (!vivo) return;
+        if (!vivo()) return;
         const perId = new Map<string, PantryState>(dispensa.map((p) => [p.ingredientId, p]));
         setRighe(
           ingredienti.map((ingrediente) => {
@@ -90,12 +97,22 @@ export default function Dispensa() {
       })
       .catch((e) => {
         console.error('dispensa: caricamento fallito.', e);
-        if (vivo) setErrore('Non riusciamo a caricare la dispensa. Riprova più tardi.');
+        if (vivo()) setErrore('Non riusciamo a caricare la dispensa. Riprova più tardi.');
       });
+  }
+
+  useEffect(() => {
+    let vivo = true;
+    carica(() => vivo);
     return () => {
       vivo = false;
     };
   }, []);
+
+  /** Richiamata dopo che la nota alla dispensa ha applicato le sue proposte: qui il componente è già montato, quindi nessun cleanup da rispettare. */
+  function ricarica() {
+    carica(() => true);
+  }
 
   /**
    * Salva e, se fallisce, riporta il valore di prima: una correzione persa in
@@ -170,6 +187,16 @@ export default function Dispensa() {
     }
   }
 
+  const contestoNota =
+    righe?.map((r) => ({
+      id: r.ingrediente.id,
+      nome: r.ingrediente.nome,
+      unitaBase: r.ingrediente.unitaBase,
+      formatoConfezione: r.ingrediente.formatoConfezione,
+      residuo: r.residuo,
+      congelato: r.congelato,
+    })) ?? [];
+
   if (errore) {
     return (
       <Cornice>
@@ -207,6 +234,8 @@ export default function Dispensa() {
   return (
     <Cornice>
       <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 16px 20px' }}>
+        <NotaDispensa contesto={contestoNota} onDatiCambiati={ricarica} />
+
         <p style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', margin: '0 6px 16px' }}>
           Questi numeri li calcola l’app da quello che hai comprato e da quello che il piano consuma:
           non c’è niente da tenere aggiornato. Correggili solo quando il conto non torna con la realtà.
