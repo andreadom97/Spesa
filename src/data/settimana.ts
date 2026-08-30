@@ -267,6 +267,17 @@ export async function aggiornaSlot(
     lottoDaScalare = { id: utilizzabile.id, porzioni: utilizzabile.porzioni };
   }
 
+  // Gate preventivo del lotto legato: se il blocco Pronti più sotto dovrà
+  // scriverlo (porzioni cambiate, o solo il congelato con porzioni > 0), il
+  // piatto deve esistere ORA — o l'update di meal_slot qui sotto scriverebbe
+  // porzioni_preparate senza che il lotto possa mai nascere.
+  const prontiSlotCambia = porzioniPreparateDopo !== attuale.porzioniPreparate
+    || (patch.prontiCongelato !== undefined && porzioniPreparateDopo > 0);
+  let dishIdPerLottoPreparato: string | undefined;
+  if (prontiSlotCambia && porzioniPreparateDopo > 0) {
+    dishIdPerLottoPreparato = dishIdDopoPerLotto(patch, attuale);
+  }
+
   if (cambioPiatto) {
     // Il piatto sta per cambiare: le scelte registrate sul piatto vecchio non
     // hanno più significato. Si ripulisce PRIMA dell'update di meal_slot, così
@@ -328,8 +339,10 @@ export async function aggiornaSlot(
   }
 
   // ── I Pronti (spec meal-prepping §5): sempre, anche a settimana bozza ───
-  // Il lotto legato allo slot segue porzioniPreparate.
-  if (porzioniPreparateDopo !== attuale.porzioniPreparate) {
+  // Il lotto legato allo slot segue porzioniPreparate (e il solo congelato,
+  // se cambia da solo — I1: altrimenti il flip "metti nel freezer" si
+  // perderebbe in silenzio quando N non cambia).
+  if (prontiSlotCambia) {
     if (porzioniPreparateDopo > 0) {
       const { data: lottoLegato, error: eLeggi } = await sb
         .from('porzione_pronta')
@@ -338,16 +351,26 @@ export async function aggiornaSlot(
         .maybeSingle();
       if (eLeggi) throw eLeggi;
       if (lottoLegato) {
-        const patchLotto: Record<string, unknown> = { porzioni: porzioniPreparateDopo };
+        const patchLotto: Record<string, unknown> = {};
+        if (porzioniPreparateDopo !== attuale.porzioniPreparate) patchLotto.porzioni = porzioniPreparateDopo;
         if (patch.prontiCongelato !== undefined) patchLotto.congelato = patch.prontiCongelato;
-        const { error: eUpd } = await sb.from('porzione_pronta')
-          .update(patchLotto).eq('id', String(lottoLegato.id)).eq('user_id', userId);
-        if (eUpd) throw eUpd;
+        if (Object.keys(patchLotto).length > 0) {
+          const { error: eUpd } = await sb.from('porzione_pronta')
+            .update(patchLotto).eq('id', String(lottoLegato.id)).eq('user_id', userId);
+          if (eUpd) throw eUpd;
+        }
+        // I2 — lost update: il gate FIFO qui sopra può aver già catturato
+        // QUESTO stesso lotto (stesso dish, prima della riscrittura). Se è
+        // così, il decremento sotto deve ripartire dal valore appena
+        // scritto, non da quello letto prima dell'update.
+        if (lottoDaScalare && lottoDaScalare.id === String(lottoLegato.id)) {
+          lottoDaScalare = { ...lottoDaScalare, porzioni: porzioniPreparateDopo };
+        }
       } else {
         const { error: eIns } = await sb.from('porzione_pronta').insert({
           user_id: userId,
           meal_slot_id: slotId,
-          dish_id: dishIdDopoPerLotto(patch, attuale),
+          dish_id: dishIdPerLottoPreparato!,
           porzioni: porzioniPreparateDopo,
           preparata_il: attuale.data,
           congelato: patch.prontiCongelato ?? false,

@@ -326,6 +326,10 @@ describe('aggiornaSlot e il ledger degli storni', () => {
     // Il consumo passa da 1× a 0: riaccredito del pollo.
     expect(scrittureDi(scritture, 'meal_slot_storno', 'upsert')[0]!.args[0]).toMatchObject({ ingredient_id: 'i-pollo', delta: 200 });
     expect(scrittureDi(scritture, 'pantry_state', 'upsert')[0]!.args[0]).toMatchObject({ ingredient_id: 'i-pollo', residuo: 240 });
+    // FIFO = più vecchio prima: senza questo controllo, invertire l'ordine
+    // dell'.order() non farebbe fallire nessun altro assert (il mock non
+    // ordina da sé — ritorna sempre `lotti` nell'ordine dato dal test).
+    expect(scrittureDi(scritture, 'porzione_pronta', 'order')[0]!.args).toEqual(['preparata_il']);
   });
 
   it('daPronti senza porzioni utilizzabili fallisce con il messaggio esatto, senza scrivere nulla', async () => {
@@ -338,6 +342,7 @@ describe('aggiornaSlot e il ledger degli storni', () => {
     await expect(aggiornaSlot('s-1', { daPronti: true }, 'checkin'))
       .rejects.toThrow('Nessuna porzione pronta di questo piatto.');
     expect(scritture['meal_slot']?.flat().filter((c) => c.metodo === 'update') ?? []).toHaveLength(0);
+    expect(scrittureDi(scritture, 'porzione_pronta', 'order')[0]!.args).toEqual(['preparata_il']);
   });
 
   it('togliere daPronti restituisce la porzione al lotto utilizzabile più recente', async () => {
@@ -354,14 +359,26 @@ describe('aggiornaSlot e il ledger degli storni', () => {
     expect(scrittureDi(scritture, 'porzione_pronta', 'update')[0]!.args[0]).toEqual({ porzioni: 2 });
     // Torna a consumare crudo: addebito.
     expect(scrittureDi(scritture, 'pantry_state', 'upsert')[0]!.args[0]).toMatchObject({ ingredient_id: 'i-pollo', residuo: 40 });
+    // Il più RECENTE prima: senza questo controllo, invertire l'ordine
+    // dell'.order() non farebbe fallire nessun altro assert (unico lotto qui).
+    expect(scrittureDi(scritture, 'porzione_pronta', 'order')[0]!.args).toEqual(['preparata_il', { ascending: false }]);
   });
 
   it('il cambio piatto azzera daPronti (con restituzione) e cancella il lotto legato', async () => {
-    const riga = { ...rigaSlot('casa'), da_pronti: true, porzioni_preparate: 1 };
+    // l-legato è FRESCO (oggi-1: entro i 3gg del frigo) e più RECENTE di
+    // l-libero: l'unico motivo per cui la restituzione lo scarta è
+    // l.mealSlotId === slotId, non la decadenza — con date fisse decadute
+    // (com'era prima) il test passava anche senza quell'esclusione.
+    const riga = { ...rigaSlot('casa'), da_pronti: true, porzioni_preparate: 1, data: FRESCO_IERI };
     const { sb, scritture } = creaClientMock(risolutore({
       riga, statoWeek: 'chiusa',
       lotti: [
-        { id: 'l-legato', dish_id: 'd-1', porzioni: 1, congelato: false, preparata_il: '2026-08-26', meal_slot_id: 's-1' },
+        // Porzioni diverse dal lotto giusto: se l'esclusione sparisse, il
+        // update finale sarebbe { porzioni: 4 } (da l-legato) invece di
+        // { porzioni: 2 } (da l-libero) — la sola uguaglianza qui sotto
+        // (l-libero e l-legato avessero avuto lo stesso valore) non lo
+        // avrebbe distinto.
+        { id: 'l-legato', dish_id: 'd-1', porzioni: 3, congelato: false, preparata_il: FRESCO_IERI, meal_slot_id: 's-1' },
         { id: 'l-libero', dish_id: 'd-1', porzioni: 1, congelato: true, preparata_il: CONGELATO_9GG, meal_slot_id: null },
       ],
     }));
@@ -369,11 +386,62 @@ describe('aggiornaSlot e il ledger degli storni', () => {
 
     await aggiornaSlot('s-1', { dishId: 'd-2' }, 'checkin');
 
-    // Restituzione della porzione del piatto vecchio + cancellazione del lotto legato.
+    // Restituzione della porzione del piatto vecchio (a l-libero, il solo
+    // utilizzabile ESCLUSO il legato) + cancellazione del lotto legato.
     expect(scrittureDi(scritture, 'porzione_pronta', 'update')[0]!.args[0]).toEqual({ porzioni: 2 });
     expect(scrittureDi(scritture, 'porzione_pronta', 'delete')).toHaveLength(1);
+    expect(scrittureDi(scritture, 'porzione_pronta', 'order')[0]!.args).toEqual(['preparata_il', { ascending: false }]);
     const upd = scritture['meal_slot']!.flat().find((c) => c.metodo === 'update')!.args[0] as Record<string, unknown>;
     expect(upd).toMatchObject({ da_pronti: false, porzioni_preparate: 0, dish_id: 'd-2' });
+  });
+
+  it('prontiCongelato da solo aggiorna il congelato del lotto legato senza toccare le porzioni (I1)', async () => {
+    const riga = { ...rigaSlot('casa'), porzioni_preparate: 2 };
+    const { sb, scritture } = creaClientMock(risolutore({
+      riga, statoWeek: 'chiusa',
+      lotti: [{ id: 'l-1', dish_id: 'd-1', porzioni: 2, congelato: false, preparata_il: '2026-08-26', meal_slot_id: 's-1' }],
+    }));
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    await aggiornaSlot('s-1', { prontiCongelato: true }, 'checkin');
+
+    // Senza il fix questo blocco non gira affatto (N invariato): il lotto
+    // resterebbe fresco, decade in 3gg invece di 90.
+    expect(scrittureDi(scritture, 'porzione_pronta', 'update')[0]!.args[0]).toEqual({ congelato: true });
+    expect(scrittureDi(scritture, 'porzione_pronta', 'insert')).toHaveLength(0);
+    expect(scrittureDi(scritture, 'porzione_pronta', 'delete')).toHaveLength(0);
+  });
+
+  it('patch misto porzioniPreparate+daPronti che pesca dal proprio lotto legato non perde la riscrittura (I2)', async () => {
+    const riga = { ...rigaSlot('casa'), porzioni_preparate: 2 };
+    const { sb, scritture } = creaClientMock(risolutore({
+      riga, statoWeek: 'chiusa',
+      lotti: [{ id: 'l-1', dish_id: 'd-1', porzioni: 2, congelato: false, preparata_il: FRESCO_IERI, meal_slot_id: 's-1' }],
+    }));
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    await aggiornaSlot('s-1', { porzioniPreparate: 3, daPronti: true }, 'checkin');
+
+    // Il gate FIFO cattura il lotto legato (unico utilizzabile per d-1) con
+    // porzioni=2 PRIMA che il blocco porzioniPreparate lo riscriva a 3. Senza
+    // il fix, il decremento FIFO riparte dal valore stantio (2 − 1 = 1)
+    // invece che da quello appena scritto (3 − 1 = 2).
+    const upd = scrittureDi(scritture, 'porzione_pronta', 'update');
+    expect(upd).toHaveLength(2);
+    expect(upd[0]!.args[0]).toEqual({ porzioni: 3 });
+    expect(upd[1]!.args[0]).toEqual({ porzioni: 2 });
+  });
+
+  it('porzioniPreparate su uno slot senza piatto fallisce PRIMA di scrivere lo slot (I4)', async () => {
+    const riga = rigaSlot('casa', null);
+    const { sb, scritture } = creaClientMock(risolutore({ riga, statoWeek: 'chiusa' }));
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    await expect(aggiornaSlot('s-1', { porzioniPreparate: 2 }, 'checkin'))
+      .rejects.toThrow('Questo pasto non ha un piatto: niente porzioni da preparare.');
+    // Nessuno stato incoerente: niente update su meal_slot (porzioni_preparate
+    // non resta scritto senza che il lotto corrispondente possa mai nascere).
+    expect(scritture['meal_slot']?.flat().filter((c) => c.metodo === 'update') ?? []).toHaveLength(0);
   });
 
   it('a settimana bozza i Pronti si scrivono comunque, ledger e pantry no', async () => {
