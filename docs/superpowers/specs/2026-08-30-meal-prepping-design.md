@@ -149,8 +149,8 @@ fatto fisico, si correggono col gesto porzioni o dalla Dispensa.
   frigo/freezer; per i giorni futuri l'etichetta è la stessa (dichiarazione
   anticipata: la lista comprerà per tutte).
 - *"Uso una porzione pronta"* → visibile solo se il piatto dello slot ha
-  porzioni utilizzabili; mostra quante ("2 pronte, la più vecchia di
-  martedì").
+  porzioni utilizzabili; mostra quante ("2 pronte"). Se lo slot è già
+  coperto, la voce diventa *"Non uso la porzione pronta"* (restituzione).
 - *"Cucinato ma non mangiato"* → solo per giorni ≤ oggi: stato saltato +
   porzione nei Pronti.
 
