@@ -188,6 +188,13 @@ compaiono (come il residuo decaduto).
   inattivo. Un piatto hard-deleted cascadera il lotto.
 - **Due schede / doppio tap**: leggi-somma-scrivi come il ledger P2; danno
   massimo un lotto sbagliato di 1, correggibile. Mono-utente, accettato.
+- **Il lotto legato è un set assoluto (limite noto, 30/08)**: se un altro
+  slot consuma FIFO una porzione dal lotto legato dello slot A, una
+  successiva modifica di `porzioniPreparate` su A riscrive il lotto al
+  valore dichiarato e "resuscita" la porzione consumata (sovrastima di 1
+  per porzione consumata da terzi). Percorso raro, visibile in Dispensa,
+  correggibile in due tap — coerente con "il calcolo si corregge, non si
+  tiene un diario". Un'eventuale semantica a delta è a backlog.
 
 ## 8. Test
 
