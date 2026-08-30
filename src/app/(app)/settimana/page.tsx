@@ -437,10 +437,19 @@ export default function Settimana() {
         <FoglioAzioniPasto
           nomePasto={foglio.def.nome}
           spuntato={foglio.slot.stato === 'saltato' || foglio.slot.stato === 'sostituito'}
+          passato={foglio.slot.data <= oggi}
+          aCasa={foglio.slot.stato === 'casa'}
+          porzioniPreparate={foglio.slot.porzioniPreparate}
+          daPronti={foglio.slot.daPronti}
+          prontiDisponibili={0}
           hrefScegli={`/settimana/${foglio.slot.data}/${foglio.def.id}/scegli`}
           onSaltato={() => spuntaStato(foglio.slot, 'saltato')}
           onMangiatoAltro={() => spuntaStato(foglio.slot, 'sostituito')}
           onTornaAlPiano={() => spuntaStato(foglio.slot, 'casa')}
+          onCucinatoNonMangiato={() => {}}
+          onPreparaPorzioni={() => {}}
+          onUsaPronta={() => {}}
+          onNonUsarePronta={() => {}}
           onChiudi={() => setFoglio(null)}
         />
       )}

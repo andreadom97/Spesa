@@ -3,51 +3,88 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { FoglioAzioniPasto } from '../FoglioAzioniPasto';
 
-function renderFoglio(spuntato: boolean) {
-  const onSaltato = vi.fn();
-  const onMangiatoAltro = vi.fn();
-  const onTornaAlPiano = vi.fn();
-  const onChiudi = vi.fn();
+function renderFoglio(sovrascrivi: Partial<Parameters<typeof FoglioAzioniPasto>[0]> = {}) {
+  const handlers = {
+    onSaltato: vi.fn(), onMangiatoAltro: vi.fn(), onTornaAlPiano: vi.fn(),
+    onCucinatoNonMangiato: vi.fn(), onPreparaPorzioni: vi.fn(),
+    onUsaPronta: vi.fn(), onNonUsarePronta: vi.fn(), onChiudi: vi.fn(),
+  };
   render(
     <FoglioAzioniPasto
       nomePasto="Cena"
-      spuntato={spuntato}
+      spuntato={false}
+      passato
+      aCasa
+      porzioniPreparate={0}
+      daPronti={false}
+      prontiDisponibili={0}
       hrefScegli="/settimana/2026-08-26/sd-3/scegli"
-      onSaltato={onSaltato}
-      onMangiatoAltro={onMangiatoAltro}
-      onTornaAlPiano={onTornaAlPiano}
-      onChiudi={onChiudi}
+      {...handlers}
+      {...sovrascrivi}
     />,
   );
-  return { onSaltato, onMangiatoAltro, onTornaAlPiano, onChiudi };
+  return handlers;
 }
 
 describe('FoglioAzioniPasto', () => {
-  it('mostra le tre azioni; "Torna al piano" solo se lo slot è già spuntato', () => {
-    renderFoglio(false);
+  it('giorno passato: spunte visibili, link "Ho mangiato un altro piatto"', () => {
+    renderFoglio();
     expect(screen.getByRole('button', { name: 'Saltato' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Ho mangiato altro' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Ho mangiato un altro piatto' }))
-      .toHaveAttribute('href', '/settimana/2026-08-26/sd-3/scegli');
-    expect(screen.queryByRole('button', { name: 'Torna al piano' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Ho mangiato un altro piatto' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cucinato ma non mangiato' })).toBeInTheDocument();
   });
 
-  it('su uno slot spuntato compare "Torna al piano" e invoca il suo handler', () => {
-    const { onTornaAlPiano } = renderFoglio(true);
-    fireEvent.click(screen.getByRole('button', { name: 'Torna al piano' }));
-    expect(onTornaAlPiano).toHaveBeenCalledTimes(1);
+  it('giorno futuro: niente spunte, il link diventa "Cambia piatto"', () => {
+    renderFoglio({ passato: false });
+    expect(screen.queryByRole('button', { name: 'Saltato' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Cucinato ma non mangiato' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Cambia piatto' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ne preparo di più' })).toBeInTheDocument();
   });
 
-  it('le azioni invocano i rispettivi handler', () => {
-    const { onSaltato, onMangiatoAltro } = renderFoglio(false);
-    fireEvent.click(screen.getByRole('button', { name: 'Saltato' }));
-    expect(onSaltato).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByRole('button', { name: 'Ho mangiato altro' }));
-    expect(onMangiatoAltro).toHaveBeenCalledTimes(1);
+  it('"Cucinato ma non mangiato" solo se lo slot è a casa', () => {
+    renderFoglio({ aCasa: false, spuntato: true });
+    expect(screen.queryByRole('button', { name: 'Cucinato ma non mangiato' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Torna al piano' })).toBeInTheDocument();
+  });
+
+  it('"Uso una porzione pronta" compare solo con disponibilità, col numero', () => {
+    renderFoglio({ prontiDisponibili: 0 });
+    expect(screen.queryByText(/Uso una porzione pronta/)).not.toBeInTheDocument();
+  });
+
+  it('con disponibilità la voce mostra il numero e invoca il gesto', () => {
+    const { onUsaPronta } = renderFoglio({ prontiDisponibili: 2 });
+    fireEvent.click(screen.getByRole('button', { name: 'Uso una porzione pronta (2 pronte)' }));
+    expect(onUsaPronta).toHaveBeenCalledTimes(1);
+  });
+
+  it('slot già daPronti: la voce diventa "Non uso la porzione pronta"', () => {
+    const { onNonUsarePronta } = renderFoglio({ daPronti: true });
+    fireEvent.click(screen.getByRole('button', { name: 'Non uso la porzione pronta' }));
+    expect(onNonUsarePronta).toHaveBeenCalledTimes(1);
+  });
+
+  it('lo stepper parte dalle porzioni dichiarate e salva n + congelato', () => {
+    const { onPreparaPorzioni } = renderFoglio({ porzioniPreparate: 2 });
+    fireEvent.click(screen.getByRole('button', { name: 'Ne preparo di più' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Aggiungi una porzione' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Freezer' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Salva porzioni' }));
+    expect(onPreparaPorzioni).toHaveBeenCalledWith(3, true);
+  });
+
+  it('lo stepper a zero salva la rimozione', () => {
+    const { onPreparaPorzioni } = renderFoglio({ porzioniPreparate: 1 });
+    fireEvent.click(screen.getByRole('button', { name: 'Ne preparo di più' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Togli una porzione' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Salva porzioni' }));
+    expect(onPreparaPorzioni).toHaveBeenCalledWith(0, false);
   });
 
   it('il tap sul fondale chiude', () => {
-    const { onChiudi } = renderFoglio(false);
+    const { onChiudi } = renderFoglio();
     fireEvent.click(screen.getByRole('dialog'));
     expect(onChiudi).toHaveBeenCalledTimes(1);
   });
