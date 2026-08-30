@@ -103,6 +103,18 @@ describe('consumoSlot', () => {
       ingredients: [ING_RISO, ING_OLIO], moltiplicatorePorzioni: 1,
     })).toThrow(IngredienteMancanteError);
   });
+
+  it('le porzioni preparate moltiplicano il consumo; daPronti lo azzera', () => {
+    const base = { dish: POLLO_E_RISO, ingredients: INGREDIENTI, moltiplicatorePorzioni: 1 };
+    const doppio = consumoSlot({ slot: { ...slot('casa', 'd-1'), porzioniPreparate: 2 }, ...base });
+    expect(doppio.get('i-pollo')).toBe(600); // (1 + 2) × 200
+
+    const daPronti = consumoSlot({ slot: { ...slot('casa', 'd-1'), daPronti: true }, ...base });
+    expect(daPronti.size).toBe(0);
+
+    const cucinatoNonMangiato = consumoSlot({ slot: { ...slot('saltato', 'd-1'), porzioniPreparate: 1 }, ...base });
+    expect(cucinatoNonMangiato.get('i-pollo')).toBe(200); // 0 mangiate + 1 preparata
+  });
 });
 
 describe('deltaStorno', () => {

@@ -46,6 +46,21 @@ describe('costruisciLista — aggregazione', () => {
     expect(voce(base({ impostazioni }), 'yogurt')!.fabbisogno).toBe(1500);
   });
 
+  it('il fabbisogno segue fattoreConsumo: porzioni preparate moltiplicano, daPronti azzera', () => {
+    // Fixture: cinqueColazioni() sono 5 slot 'casa' col piatto colazione-yogurt
+    // (150 g yogurt ciascuno) → fabbisogno base 750 (visto sopra). Qui si
+    // altera un solo slot per volta e si osserva lo scarto.
+    const conPreparate = cinqueColazioni();
+    conPreparate[0].porzioniPreparate = 2; // fattore 1 + 2 = 3 invece di 1
+    // quello slot contribuisce 150×3=450 anziché 150: 450 + 150×4 = 1050
+    expect(voce(base({ slots: conPreparate }), 'yogurt')!.fabbisogno).toBe(1050);
+
+    const conDaPronti = cinqueColazioni();
+    conDaPronti[0].daPronti = true; // fattore 0 + 0 = 0: quello slot non consuma
+    // 150×4 = 600 (il quinto slot non contribuisce più nulla)
+    expect(voce(base({ slots: conDaPronti }), 'yogurt')!.fabbisogno).toBe(600);
+  });
+
   it('normalizza le unità miste sullo stesso ingrediente', () => {
     const dishes = [{
       ...colazione,

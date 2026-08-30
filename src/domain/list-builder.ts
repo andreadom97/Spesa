@@ -5,6 +5,7 @@ import { convertiInUnitaBase } from './unita';
 import { residuoUtilizzabile, serveControllo } from './pantry';
 import { confezioniNecessarie } from './confezioni';
 import { righeEffettive } from './opzioni';
+import { fattoreConsumo } from './pronti';
 // Unica eccezione al divieto di importare da ./aree: qui serve solo l'elenco
 // canonico delle sei aree per validare l'input, non nomi né colori.
 import { ORDINE_AREE_DEFAULT } from './aree';
@@ -93,14 +94,15 @@ export function costruisciLista(input: ListaInput): ListaRisultato {
   // Regole 1-3: solo gli slot a casa, espansi in ingredienti e aggregati.
   const fabbisogni = new Map<string, number>();
   for (const slot of slots) {
-    if (slot.stato !== 'casa' || !slot.dishId) continue;
+    const fattore = fattoreConsumo(slot);
+    if (fattore === 0 || !slot.dishId) continue;
     const piatto = piattoPerId.get(slot.dishId);
     if (!piatto) continue;
     for (const riga of righeEffettive(piatto, slot.scelte)) {
       const ing = perId.get(riga.ingredientId);
       if (!ing) throw new IngredienteMancanteError(riga.ingredientId);
       const q = convertiInUnitaBase(riga.quantita, riga.unita, ing.unitaBase)
-        * impostazioni.moltiplicatorePorzioni;
+        * impostazioni.moltiplicatorePorzioni * fattore;
       fabbisogni.set(ing.id, (fabbisogni.get(ing.id) ?? 0) + q);
     }
   }

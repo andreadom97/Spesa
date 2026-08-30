@@ -2,6 +2,7 @@ import type { Dish, Ingredient, MealSlot } from './types';
 import { righeEffettive } from './opzioni';
 import { convertiInUnitaBase } from './unita';
 import { IngredienteMancanteError } from './list-builder';
+import { fattoreConsumo } from './pronti';
 
 export interface ConsumoSlotInput {
   slot: MealSlot;
@@ -13,7 +14,7 @@ export interface ConsumoSlotInput {
 
 /**
  * Cosa consuma questo slot, in unità base per ingrediente. Vuota se lo slot
- * non consuma (stato ≠ 'casa', o nessun piatto). Stessa aritmetica di
+ * non consuma (fattoreConsumo zero, o nessun piatto). Stessa aritmetica di
  * costruisciLista — righeEffettive rispetta le scelte dei componenti, il
  * moltiplicatore si applica riga per riga — o lo storno non pareggerebbe mai
  * il fabbisogno che la lista ha consumato. La classe 'stima' resta fuori:
@@ -21,14 +22,15 @@ export interface ConsumoSlotInput {
  */
 export function consumoSlot(i: ConsumoSlotInput): Map<string, number> {
   const consumo = new Map<string, number>();
-  if (i.slot.stato !== 'casa' || !i.dish) return consumo;
+  const fattore = fattoreConsumo(i.slot);
+  if (fattore === 0 || !i.dish) return consumo;
   const perId = new Map(i.ingredients.map((x) => [x.id, x]));
   for (const riga of righeEffettive(i.dish, i.slot.scelte)) {
     const ing = perId.get(riga.ingredientId);
     if (!ing) throw new IngredienteMancanteError(riga.ingredientId);
     if (ing.classeResiduo === 'stima') continue;
     const q = convertiInUnitaBase(riga.quantita, riga.unita, ing.unitaBase)
-      * i.moltiplicatorePorzioni;
+      * i.moltiplicatorePorzioni * fattore;
     consumo.set(ing.id, (consumo.get(ing.id) ?? 0) + q);
   }
   return consumo;
