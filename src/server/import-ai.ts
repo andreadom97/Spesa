@@ -31,7 +31,8 @@ Scelta dell'archetipo:
 
 Regole non negoziabili:
 - Trascrivi solo ciò che è scritto: MAI inventare alimenti, pasti, giorni o quantità. Ciò che non riesci a leggere va segnalato in noteEstrazione, mai riempito.
-- "testoOriginale" è il testo letto dal foglio per quella riga, copiato fedelmente.
+- "testoOriginale" è il testo letto dal foglio per quella riga, copiato fedelmente: sempre una stringa, mai null.
+- Lo schema è rigido: ogni piatto ha SEMPRE i campi "righeFisse" e "componenti", entrambi array (usa [] se vuoto); ogni RIGA ha SEMPRE tutti e cinque i campi; ogni giorno ha SEMPRE "titolo" (null fuori da giorni_tipo); ogni piatto ha SEMPRE "descrizione" (null se assente).
 - Quantità scritta sul foglio → trascritta, con quantitaInferita false. Quantità assente o non convertibile in g/ml/pz ("q.b.", "una tazza", "a piacere") → o quantita null e unita null, oppure una proposta tipica ragionevole con quantitaInferita true. Mai una proposta senza il flag, e mai il flag senza proposta: quantitaInferita true esige una quantita numerica — se non proponi nulla, quantita null e quantitaInferita false.
 - Catene di alternative ("oppure") → un componente con un'opzione per alternativa (un'opzione può avere più righe). Un vincolo di frequenza o d'uso accanto alle alternative ("1 vv sett", "max 2 volte") va nel campo "nota" del componente.
 - Nomi dei pasti in "nomeOriginale" come scritti ("colazione", "spuntino"...). Condimenti giornalieri generali (olio, sale del giorno) in un pasto con nomeOriginale "condimenti".
