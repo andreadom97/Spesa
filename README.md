@@ -118,6 +118,18 @@ da sole. Dichiarare il prep prima di confermare la settimana fa comprare
 alla lista le quantità giuste; dopo la spesa, ci pensa il registro degli
 storni.
 
+## Correggi la dispensa con una nota
+
+In cima alla Dispensa: scrivi (o detti col microfono) "ho finito il riso,
+l'olio è a metà" e l'AI propone le correzioni — quelle sicure si applicano
+subito con un tasto Annulla, quelle dubbie chiedono conferma, i nomi
+sconosciuti vengono segnalati e mai inventati. In produzione la funzione si
+accende impostando `ANTHROPIC_API_KEY` (il modello si sceglie con
+`DISPENSA_AI_MODEL`, default `claude-haiku-4-5`); prima di scegliere, gira
+`npm run eval:dispensa` con la chiave nell'ambiente per confrontare i
+modelli sulla batteria di note di prova. In locale, `DISPENSA_AI_MOCK=1` in
+`.env.local` accende un interprete a regole per lo sviluppo.
+
 ## Dove sta cosa
 
 | File | Cosa contiene |
