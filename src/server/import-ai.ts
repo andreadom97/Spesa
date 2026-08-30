@@ -41,6 +41,10 @@ Regole non negoziabili:
  * La chiamata vera, condivisa fra route ed eval harness. Restituisce l'esito
  * GREZZO: la validazione è di validaEsito, a valle. v1 senza structured
  * output (stesso ruling della dispensa-AI, spec §4).
+ *
+ * max_tokens: 32000 è oltre i 10 minuti teorici di output che l'SDK ammette
+ * in non-streaming (32000/128000 × 60min = 15min > cap 10min) → l'SDK lancia
+ * "Streaming is required..." su ogni richiesta reale. Streaming obbligatorio.
  */
 export async function estraiPiano(files: FileEstrazione[], modello: string): Promise<unknown> {
   const client = clientAnthropic();
@@ -49,15 +53,17 @@ export async function estraiPiano(files: FileEstrazione[], modello: string): Pro
       ? { type: 'image', source: { type: 'base64', media_type: f.mime as 'image/jpeg' | 'image/png' | 'image/webp', data: f.base64 } }
       : { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: f.base64 } },
   );
-  const risposta = await client.messages.create({
-    model: modello,
-    max_tokens: 32000,
-    system: PROMPT_SISTEMA_IMPORT,
-    messages: [{
-      role: 'user',
-      content: [...blocchi, { type: 'text', text: 'Trascrivi la dieta in queste pagine nel JSON dello schema, in ordine di pagina.' }],
-    }],
-  });
+  const risposta = await client.messages
+    .stream({
+      model: modello,
+      max_tokens: 32000,
+      system: PROMPT_SISTEMA_IMPORT,
+      messages: [{
+        role: 'user',
+        content: [...blocchi, { type: 'text', text: 'Trascrivi la dieta in queste pagine nel JSON dello schema, in ordine di pagina.' }],
+      }],
+    })
+    .finalMessage();
   const testo = risposta.content
     .filter((b): b is Anthropic.TextBlock => b.type === 'text')
     .map((b) => b.text)
