@@ -78,6 +78,55 @@ describe('NotaDispensa', () => {
     expect(screen.getByRole('textbox')).toHaveValue('finito il riso');
   });
 
+  it('fetch che rigetta (offline) → messaggio generico e nota preservata', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
+    invia('finito il riso');
+    await screen.findByText('Non siamo riusciti a correggere. Riprova.');
+    expect(screen.getByRole('textbox')).toHaveValue('finito il riso');
+  });
+
+  it('se una applicazione automatica fallisce a metà, il recap non mente', async () => {
+    const CONTESTO_DUE = [
+      { id: 'i-riso', nome: 'Riso', unitaBase: 'g' as const, formatoConfezione: 1000, residuo: 400, congelato: false },
+      { id: 'i-olio', nome: 'Olio', unitaBase: 'ml' as const, formatoConfezione: 1000, residuo: 500, congelato: false },
+    ];
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(rispostaOk({
+      proposte: [
+        { ingredientId: 'i-riso', campo: 'residuo', valoreNuovo: 0, valoreAttuale: 400, confidence: 0.95, motivazione: 'finito il riso' },
+        { ingredientId: 'i-olio', campo: 'residuo', valoreNuovo: 100, valoreAttuale: 500, confidence: 0.95, motivazione: 'quasi finito l’olio' },
+      ],
+      nonRiconosciuti: [],
+    })));
+    vi.mocked(correggiResiduo).mockImplementation(async (id) => {
+      if (id === 'i-olio') throw new Error('scrittura fallita');
+    });
+
+    render(<NotaDispensa contesto={CONTESTO_DUE} onDatiCambiati={onDatiCambiati} />);
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'finito il riso e quasi finito l’olio' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Correggi' }));
+
+    await screen.findByText('Non siamo riusciti a correggere. Riprova.');
+    expect(onDatiCambiati).toHaveBeenCalled();
+    expect(screen.getAllByRole('button', { name: 'Annulla' })).toHaveLength(1);
+    expect(screen.getByText(/Riso/)).toBeInTheDocument();
+  });
+
+  it('conferma che fallisce mostra errore e la riga resta fra le DA CONFERMARE', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(rispostaOk({
+      proposte: [{ ingredientId: 'i-riso', campo: 'residuo', valoreNuovo: 500, valoreAttuale: 400, confidence: 0.7, motivazione: '«il riso è a metà» → 500 g' }],
+      nonRiconosciuti: [],
+    })));
+    vi.mocked(correggiResiduo).mockRejectedValue(new Error('scrittura fallita'));
+
+    invia('il riso è a metà');
+    await screen.findByText('DA CONFERMARE');
+    fireEvent.click(screen.getByRole('button', { name: 'Conferma' }));
+
+    await screen.findByText('Non siamo riusciti a correggere. Riprova.');
+    expect(screen.getByText('DA CONFERMARE')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Conferma' })).toBeInTheDocument();
+  });
+
   it('la fetch porta il Bearer della sessione', async () => {
     const fetchMock = vi.fn().mockResolvedValue(rispostaOk({ proposte: [], nonRiconosciuti: [] }));
     vi.stubGlobal('fetch', fetchMock);

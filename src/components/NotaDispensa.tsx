@@ -52,6 +52,10 @@ export function NotaDispensa({ contesto, onDatiCambiati }: Props) {
   const [errore, setErrore] = useState<string | null>(null);
   const [esito, setEsito] = useState<EsitoCorrezione | null>(null);
   const [stati, setStati] = useState<Map<number, StatoProposta>>(new Map());
+  // Indici la cui riga ha un annulla/conferma in volo: guardia contro il
+  // doppio tap (doppia scrittura, doppio onDatiCambiati) mentre l'await
+  // sulla singola riga non è ancora tornato.
+  const [righeInCorso, setRigheInCorso] = useState<Set<number>>(new Set());
   const [dettaturaDisponibile, setDettaturaDisponibile] = useState(false);
   const riconoscitoreRef = useRef<SpeechRecognitionLike | null>(null);
 
@@ -92,58 +96,125 @@ export function NotaDispensa({ contesto, onDatiCambiati }: Props) {
         return;
       }
 
-      const risposta = await fetch('/api/dispensa/correggi', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ nota, contesto }),
-      });
+      // fetch che rigetta (offline) e json() che esplode (corpo non JSON)
+      // sono entrambi errori non gestiti dai rami di stato sotto: senza
+      // questo catch diventano un unhandled rejection e la nota resta
+      // com'è ma senza nessun messaggio (C1).
+      let nuovoEsito: EsitoCorrezione;
+      try {
+        const risposta = await fetch('/api/dispensa/correggi', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ nota, contesto }),
+        });
 
-      if (!risposta.ok) {
-        if (risposta.status === 503) setErrore('La correzione non è disponibile.');
-        else if (risposta.status === 422) setErrore('Non ho capito la nota, riprova.');
-        else setErrore('Non siamo riusciti a correggere. Riprova.');
+        if (!risposta.ok) {
+          if (risposta.status === 503) setErrore('La correzione non è disponibile.');
+          else if (risposta.status === 422) setErrore('Non ho capito la nota, riprova.');
+          else setErrore('Non siamo riusciti a correggere. Riprova.');
+          return;
+        }
+
+        nuovoEsito = (await risposta.json()) as EsitoCorrezione;
+      } catch (e) {
+        console.error('dispensa: nota, richiesta fallita.', e);
+        setErrore('Non siamo riusciti a correggere. Riprova.');
         return;
       }
 
-      const nuovoEsito = (await risposta.json()) as EsitoCorrezione;
-      setEsito(nuovoEsito);
-
+      // Le proposte sopra soglia si applicano in sequenza: se una scrittura
+      // fallisce a metà ci si ferma subito — le successive restano
+      // "mai scritte", e non devono comparire come applicate nel recap
+      // (C2). esito e stati si impostano insieme, dopo il giro, non prima:
+      // altrimenti c'è una finestra in cui il recap è già montato con uno
+      // stato ancora vuoto o (al secondo invio) quello della nota precedente
+      // (I1).
       const nuoviStati = new Map<number, StatoProposta>();
+      let erroreApplicazione = false;
       for (let i = 0; i < nuovoEsito.proposte.length; i++) {
         const p = nuovoEsito.proposte[i]!;
         if (p.confidence >= CONFIDENCE_SOGLIA) {
-          await applica(p, p.valoreNuovo);
-          nuoviStati.set(i, 'applicata');
+          try {
+            await applica(p, p.valoreNuovo);
+            nuoviStati.set(i, 'applicata');
+          } catch (e) {
+            console.error('dispensa: nota, applicazione automatica fallita.', e);
+            erroreApplicazione = true;
+            break;
+          }
         } else {
           nuoviStati.set(i, 'daConfermare');
         }
       }
+
+      setEsito(nuovoEsito);
       setStati(nuoviStati);
       onDatiCambiati();
-      // Svuota il campo solo quando la nota è stata capita: sugli errori
-      // resta, perché altrimenti l'utente dovrebbe riscriverla da capo dopo
-      // un 503 o un 422 (spec §5). Serve anche a non far apparire due volte
-      // lo stesso testo — quello appena scritto e quello del recap.
-      setNota('');
+
+      if (erroreApplicazione) {
+        setErrore('Non siamo riusciti a correggere. Riprova.');
+      } else {
+        // Svuota il campo solo quando la nota è stata capita e applicata
+        // per intero: sugli errori resta, perché altrimenti l'utente
+        // dovrebbe riscriverla da capo (spec §5). Serve anche a non far
+        // apparire due volte lo stesso testo — quello appena scritto e
+        // quello del recap.
+        setNota('');
+      }
     } finally {
       setInviando(false);
     }
   }
 
   async function annulla(indice: number, p: ModificaProposta) {
-    await applica(p, p.valoreAttuale);
-    setStati((prev) => new Map(prev).set(indice, 'annullata'));
-    onDatiCambiati();
+    if (righeInCorso.has(indice)) return;
+    setRigheInCorso((prev) => new Set(prev).add(indice));
+    setErrore(null);
+    try {
+      await applica(p, p.valoreAttuale);
+      setStati((prev) => new Map(prev).set(indice, 'annullata'));
+      onDatiCambiati();
+    } catch (e) {
+      console.error('dispensa: nota, annulla fallito.', e);
+      setErrore('Non siamo riusciti a correggere. Riprova.');
+    } finally {
+      setRigheInCorso((prev) => {
+        const successivo = new Set(prev);
+        successivo.delete(indice);
+        return successivo;
+      });
+    }
   }
 
   async function conferma(indice: number, p: ModificaProposta) {
-    await applica(p, p.valoreNuovo);
-    setStati((prev) => new Map(prev).set(indice, 'applicata'));
-    onDatiCambiati();
+    if (righeInCorso.has(indice)) return;
+    setRigheInCorso((prev) => new Set(prev).add(indice));
+    setErrore(null);
+    try {
+      await applica(p, p.valoreNuovo);
+      setStati((prev) => new Map(prev).set(indice, 'applicata'));
+      onDatiCambiati();
+    } catch (e) {
+      console.error('dispensa: nota, conferma fallita.', e);
+      setErrore('Non siamo riusciti a correggere. Riprova.');
+    } finally {
+      setRigheInCorso((prev) => {
+        const successivo = new Set(prev);
+        successivo.delete(indice);
+        return successivo;
+      });
+    }
   }
 
-  const applicate = esito ? esito.proposte.map((p, i) => [i, p] as const).filter(([i]) => stati.get(i) !== 'daConfermare') : [];
-  const daConfermare = esito ? esito.proposte.map((p, i) => [i, p] as const).filter(([i]) => stati.get(i) === 'daConfermare') : [];
+  // Classificazione esplicita (I1): un indice senza stato riconosciuto (mai
+  // applicato, per esempio perché l'applicazione automatica si è fermata su
+  // di lui) non deve finire in nessuno dei due gruppi per default.
+  const applicate = esito
+    ? esito.proposte.map((p, i) => [i, p] as const).filter(([i]) => stati.get(i) === 'applicata' || stati.get(i) === 'annullata')
+    : [];
+  const daConfermare = esito
+    ? esito.proposte.map((p, i) => [i, p] as const).filter(([i]) => stati.get(i) === 'daConfermare')
+    : [];
 
   return (
     <div style={{ marginBottom: 22 }}>
@@ -234,7 +305,7 @@ export function NotaDispensa({ contesto, onDatiCambiati }: Props) {
                     azione={
                       stati.get(i) === 'annullata'
                         ? undefined
-                        : { etichetta: 'Annulla', onClick: () => annulla(i, p) }
+                        : { etichetta: 'Annulla', onClick: () => annulla(i, p), disabilitato: righeInCorso.has(i) }
                     }
                   />
                 ))}
@@ -248,7 +319,7 @@ export function NotaDispensa({ contesto, onDatiCambiati }: Props) {
                     key={i}
                     proposta={p}
                     voce={perId.get(p.ingredientId)}
-                    azione={{ etichetta: 'Conferma', onClick: () => conferma(i, p) }}
+                    azione={{ etichetta: 'Conferma', onClick: () => conferma(i, p), disabilitato: righeInCorso.has(i) }}
                   />
                 ))}
               </GruppoRecap>
@@ -303,7 +374,7 @@ function RigaProposta({
   proposta: ModificaProposta;
   voce: VoceContesto | undefined;
   annullata?: boolean;
-  azione?: { etichetta: string; onClick: () => void };
+  azione?: { etichetta: string; onClick: () => void; disabilitato?: boolean };
 }) {
   const nome = voce?.nome ?? proposta.ingredientId;
   return (
@@ -325,10 +396,12 @@ function RigaProposta({
         <button
           type="button"
           onClick={azione.onClick}
+          disabled={azione.disabilitato}
           style={{
             minHeight: 36, padding: '0 12px', borderRadius: 999, flex: 'none',
             fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em',
             background: 'var(--superficie)', color: 'var(--ink)',
+            opacity: azione.disabilitato ? 0.5 : 1,
           }}
         >
           {azione.etichetta}
