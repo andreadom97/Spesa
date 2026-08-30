@@ -2,13 +2,15 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import type { AreaId, Dish, Ingredient, MealSlot, MealSlotDef, StatoSlot } from '@/domain/types';
+import type { AreaId, Dish, Ingredient, LottoPronto, MealSlot, MealSlotDef, StatoSlot } from '@/domain/types';
 import { applicaStato } from '@/domain/week-shape';
 import { descriviScelte } from '@/domain/opzioni';
 import { giorniDellaSettimana, lunediDi, sommaGiorni } from '@/domain/date';
+import { porzioniUtilizzabili } from '@/domain/pronti';
 import { leggiSettimanaCorrente, leggiSettimana, creaSettimana, aggiornaSlot, confermaSettimana } from '@/data/settimana';
 import { leggiRepertorio, leggiIngredienti } from '@/data/repertorio';
 import { leggiSlotDefs, leggiImpostazioni } from '@/data/impostazioni';
+import { leggiPronti } from '@/data/pronti';
 import { generaListe } from '@/data/lista';
 import { Testata } from '@/components/Testata';
 import { StrisciaGiorni } from '@/components/StrisciaGiorni';
@@ -56,6 +58,7 @@ export default function Settimana() {
   const [vista, setVista] = useState<'corrente' | 'precedente'>('corrente');
   const [precedenteVuota, setPrecedenteVuota] = useState(false);
   const [foglio, setFoglio] = useState<{ slot: MealSlot; def: MealSlotDef } | null>(null);
+  const [lotti, setLotti] = useState<LottoPronto[]>([]);
 
   // Tiene la promise di creaSettimana in corso, condivisa fra le due
   // esecuzioni dell'effetto che React Strict Mode innesca in sviluppo: senza
@@ -122,11 +125,12 @@ export default function Settimana() {
           if (!corrente) throw new Error('Settimana non disponibile dopo la creazione.');
         }
 
-        const [slotDefs, piatti, ingredienti, impostazioni] = await Promise.all([
+        const [slotDefs, piatti, ingredienti, impostazioni, lottiCaricati] = await Promise.all([
           leggiSlotDefs(),
           leggiRepertorio(),
           leggiIngredienti(),
           leggiImpostazioni(),
+          leggiPronti(),
         ]);
         if (!vivo) return;
 
@@ -137,6 +141,7 @@ export default function Settimana() {
           ingredienti,
           ordineAree: impostazioni.ordineAree,
         });
+        setLotti(lottiCaricati);
 
         const giorni = giorniDellaSettimana(corrente.dataInizio);
         if (vista === 'precedente') {
@@ -216,6 +221,14 @@ export default function Settimana() {
   const areaPerIngrediente = new Map(ingredienti.map((i) => [i.id, i.area]));
   const nomePerIngrediente = new Map(ingredienti.map((i) => [i.id, i.nome]));
 
+  const prontiPerPiatto = new Map<string, number>();
+  for (const lotto of lotti) {
+    prontiPerPiatto.set(
+      lotto.dishId,
+      (prontiPerPiatto.get(lotto.dishId) ?? 0) + porzioniUtilizzabili(lotto, oggi),
+    );
+  }
+
   function areeDelPiatto(piatto: Dish): AreaId[] {
     const presenti = new Set(
       piatto.ingredienti
@@ -273,6 +286,78 @@ export default function Settimana() {
       await aggiornaSlot(slot.id, { stato }, 'checkin');
     } catch (errore) {
       console.error('settimana: spunta fallita.', errore);
+      aggiornaSlotLocale(slot);
+      setErroreCheckin('Non siamo riusciti a salvare il cambiamento. Riprova.');
+    }
+  }
+
+  async function preparaPorzioni(slot: MealSlot, n: number, congelato: boolean) {
+    setFoglio(null);
+    setErroreCheckin(null);
+    aggiornaSlotLocale({ ...slot, porzioniPreparate: n });
+    try {
+      await aggiornaSlot(slot.id, { porzioniPreparate: n, prontiCongelato: congelato }, 'checkin');
+      setLotti(await leggiPronti());
+    } catch (errore) {
+      console.error('settimana: preparazione porzioni fallita.', errore);
+      aggiornaSlotLocale(slot);
+      setErroreCheckin('Non siamo riusciti a salvare il cambiamento. Riprova.');
+    }
+  }
+
+  async function usaPronta(slot: MealSlot) {
+    setFoglio(null);
+    setErroreCheckin(null);
+    aggiornaSlotLocale({ ...slot, daPronti: true, stato: 'casa' });
+    try {
+      await aggiornaSlot(slot.id, { daPronti: true, stato: 'casa' }, 'checkin');
+      setLotti(await leggiPronti());
+    } catch (errore) {
+      console.error('settimana: uso porzione pronta fallito.', errore);
+      aggiornaSlotLocale(slot);
+      setErroreCheckin('Non siamo riusciti a salvare il cambiamento. Riprova.');
+    }
+  }
+
+  async function nonUsarePronta(slot: MealSlot) {
+    setFoglio(null);
+    setErroreCheckin(null);
+    aggiornaSlotLocale({ ...slot, daPronti: false });
+    try {
+      await aggiornaSlot(slot.id, { daPronti: false }, 'checkin');
+      setLotti(await leggiPronti());
+    } catch (errore) {
+      console.error('settimana: restituzione porzione fallita.', errore);
+      aggiornaSlotLocale(slot);
+      setErroreCheckin('Non siamo riusciti a salvare il cambiamento. Riprova.');
+    }
+  }
+
+  async function cucinatoNonMangiato(slot: MealSlot) {
+    setFoglio(null);
+    setErroreCheckin(null);
+    const risultato = { ...applicaStato(slot, 'saltato', 'checkin'), porzioniPreparate: slot.porzioniPreparate + 1 };
+    aggiornaSlotLocale(risultato);
+    try {
+      await aggiornaSlot(slot.id, { stato: 'saltato', porzioniPreparate: slot.porzioniPreparate + 1 }, 'checkin');
+      setLotti(await leggiPronti());
+    } catch (errore) {
+      console.error('settimana: cucinato-non-mangiato fallito.', errore);
+      aggiornaSlotLocale(slot);
+      setErroreCheckin('Non siamo riusciti a salvare il cambiamento. Riprova.');
+    }
+  }
+
+  async function tornaAlPiano(slot: MealSlot) {
+    setFoglio(null);
+    setErroreCheckin(null);
+    const risultato = { ...applicaStato(slot, 'casa', 'checkin'), daPronti: false };
+    aggiornaSlotLocale(risultato);
+    try {
+      await aggiornaSlot(slot.id, { stato: 'casa', daPronti: false }, 'checkin');
+      setLotti(await leggiPronti());
+    } catch (errore) {
+      console.error('settimana: torna al piano fallito.', errore);
       aggiornaSlotLocale(slot);
       setErroreCheckin('Non siamo riusciti a salvare il cambiamento. Riprova.');
     }
@@ -385,7 +470,7 @@ export default function Settimana() {
             const slot = settimana.slots.find((s) => s.data === dataSelezionata && s.slotDefId === def.id);
             if (!slot) return null;
             const piatto = slot.dishId ? piattiPerId.get(slot.dishId) ?? null : null;
-            const spuntabile = settimana.stato !== 'bozza' && dataSelezionata <= oggi;
+            const apribile = settimana.stato !== 'bozza';
             return (
               <RigaPasto
                 key={def.id}
@@ -393,11 +478,15 @@ export default function Settimana() {
                 stato={slot.stato}
                 nomePiatto={piatto?.nome ?? null}
                 aree={piatto ? areeDelPiatto(piatto) : []}
-                sottotitolo={piatto ? descriviScelte(piatto, slot.scelte, nomePerIngrediente) : null}
+                sottotitolo={[
+                  slot.daPronti ? 'Porzione pronta' : null,
+                  piatto ? descriviScelte(piatto, slot.scelte, nomePerIngrediente) : null,
+                  slot.porzioniPreparate > 0 ? `+${slot.porzioniPreparate} porzioni` : null,
+                ].filter(Boolean).join(' · ') || null}
                 onToggleStato={() => toggleStato(slot)}
                 onApriPiatto={piatto ? () => apriPiatto(piatto.id) : undefined}
                 hrefScegli={`/settimana/${dataSelezionata}/${def.id}/scegli`}
-                onApriAzioni={spuntabile ? () => setFoglio({ slot, def }) : undefined}
+                onApriAzioni={apribile ? () => setFoglio({ slot, def }) : undefined}
               />
             );
           })}
@@ -441,15 +530,15 @@ export default function Settimana() {
           aCasa={foglio.slot.stato === 'casa'}
           porzioniPreparate={foglio.slot.porzioniPreparate}
           daPronti={foglio.slot.daPronti}
-          prontiDisponibili={0}
+          prontiDisponibili={foglio.slot.dishId ? prontiPerPiatto.get(foglio.slot.dishId) ?? 0 : 0}
           hrefScegli={`/settimana/${foglio.slot.data}/${foglio.def.id}/scegli`}
           onSaltato={() => spuntaStato(foglio.slot, 'saltato')}
           onMangiatoAltro={() => spuntaStato(foglio.slot, 'sostituito')}
-          onTornaAlPiano={() => spuntaStato(foglio.slot, 'casa')}
-          onCucinatoNonMangiato={() => {}}
-          onPreparaPorzioni={() => {}}
-          onUsaPronta={() => {}}
-          onNonUsarePronta={() => {}}
+          onTornaAlPiano={() => tornaAlPiano(foglio.slot)}
+          onCucinatoNonMangiato={() => cucinatoNonMangiato(foglio.slot)}
+          onPreparaPorzioni={(n, congelato) => preparaPorzioni(foglio.slot, n, congelato)}
+          onUsaPronta={() => usaPronta(foglio.slot)}
+          onNonUsarePronta={() => nonUsarePronta(foglio.slot)}
           onChiudi={() => setFoglio(null)}
         />
       )}

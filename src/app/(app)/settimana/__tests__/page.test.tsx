@@ -24,6 +24,9 @@ vi.mock('@/data/impostazioni', () => ({
 vi.mock('@/data/lista', () => ({
   generaListe: vi.fn(),
 }));
+vi.mock('@/data/pronti', () => ({
+  leggiPronti: vi.fn(),
+}));
 
 const push = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -40,6 +43,7 @@ import {
 import { leggiRepertorio, leggiIngredienti } from '@/data/repertorio';
 import { leggiSlotDefs, leggiImpostazioni } from '@/data/impostazioni';
 import { generaListe } from '@/data/lista';
+import { leggiPronti } from '@/data/pronti';
 import { sommaGiorni } from '@/domain/date';
 import Settimana from '../page';
 
@@ -137,6 +141,7 @@ function mockCarico(settimana: SettimanaCorrente = SETTIMANA_BASE) {
     settimaneCiclo: 1,
     cicloOrigine: null,
   });
+  vi.mocked(leggiPronti).mockResolvedValue([]);
 }
 
 describe('Settimana (piano alimentare)', () => {
@@ -168,6 +173,7 @@ describe('Settimana (piano alimentare)', () => {
       settimaneCiclo: 1,
       cicloOrigine: null,
     });
+    vi.mocked(leggiPronti).mockResolvedValue([]);
 
     render(<Settimana />);
 
@@ -272,6 +278,7 @@ describe('Settimana (piano alimentare)', () => {
       settimaneCiclo: 1,
       cicloOrigine: null,
     });
+    vi.mocked(leggiPronti).mockResolvedValue([]);
 
     render(
       <StrictMode>
@@ -415,6 +422,7 @@ describe('spunta pasti', () => {
       settimaneCiclo: 1,
       cicloOrigine: null,
     });
+    vi.mocked(leggiPronti).mockResolvedValue([]);
 
     render(<StrictMode><Settimana /></StrictMode>);
     await screen.findByText('Yogurt e frutta');
@@ -440,12 +448,106 @@ describe('spunta pasti', () => {
       settimaneCiclo: 1,
       cicloOrigine: null,
     });
+    vi.mocked(leggiPronti).mockResolvedValue([]);
 
     render(<StrictMode><Settimana /></StrictMode>);
     await screen.findByText('Yogurt e frutta');
 
     expect(screen.queryByRole('button', { name: 'Azioni per Cena' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Scegli il piatto per Cena' })).toBeInTheDocument();
+  });
+
+  it.skipIf(INDICE_OGGI === 6)('a settimana confermata il foglio si apre anche sui giorni futuri, senza spunte', async () => {
+    const settimana: SettimanaCorrente = { id: 'w-1', dataInizio: LUNEDI, stato: 'confermata', slots: buildSlots() };
+    mockCarico(settimana);
+
+    render(<Settimana />);
+    await screen.findByText('Yogurt e frutta');
+
+    // GIORNI è una settimana consecutiva e INDICE_OGGI < 6 (altrimenti il
+    // test è saltato): un solo "Giorno successivo" basta per finire su un
+    // giorno futuro.
+    fireEvent.click(screen.getByLabelText('Giorno successivo'));
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Azioni per Cena' }));
+
+    expect(await screen.findByText('Cambia piatto')).toBeInTheDocument();
+    expect(screen.getByText('Ne preparo di più')).toBeInTheDocument();
+    expect(screen.queryByText('Saltato')).not.toBeInTheDocument();
+  });
+
+  it('"Ne preparo di più" salva porzioni e congelato via aggiornaSlot', async () => {
+    const settimana: SettimanaCorrente = { id: 'w-1', dataInizio: LUNEDI, stato: 'confermata', slots: buildSlots() };
+    mockCarico(settimana);
+    vi.mocked(aggiornaSlot).mockResolvedValue(undefined);
+
+    render(<Settimana />);
+    await screen.findByText('Yogurt e frutta');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Azioni per Cena' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Ne preparo di più' }));
+    fireEvent.click(screen.getByLabelText('Aggiungi una porzione'));
+    fireEvent.click(screen.getByRole('button', { name: 'Freezer' }));
+    fireEvent.click(screen.getByLabelText('Salva porzioni'));
+
+    await waitFor(() => {
+      expect(aggiornaSlot).toHaveBeenCalledWith(`${OGGI}:sd-3`, { porzioniPreparate: 1, prontiCongelato: true }, 'checkin');
+    });
+  });
+
+  it('"Uso una porzione pronta" manda daPronti e stato casa; il sottotitolo mostra "Porzione pronta"', async () => {
+    const settimana: SettimanaCorrente = { id: 'w-1', dataInizio: LUNEDI, stato: 'confermata', slots: buildSlots() };
+    mockCarico(settimana);
+    vi.mocked(aggiornaSlot).mockResolvedValue(undefined);
+    vi.mocked(leggiPronti).mockResolvedValue([
+      { id: 'l-1', dishId: DISH_CENA.id, porzioni: 2, congelato: true, preparataIl: sommaGiorni(OGGI, -1), mealSlotId: null },
+    ]);
+
+    render(<Settimana />);
+    await screen.findByText('Yogurt e frutta');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Azioni per Cena' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Uso una porzione pronta (2 pronte)' }));
+
+    await waitFor(() => {
+      expect(aggiornaSlot).toHaveBeenCalledWith(`${OGGI}:sd-3`, { daPronti: true, stato: 'casa' }, 'checkin');
+    });
+    await screen.findByText(/Porzione pronta/);
+  });
+
+  it('"Cucinato ma non mangiato" manda saltato + una porzione in più', async () => {
+    const settimana: SettimanaCorrente = { id: 'w-1', dataInizio: LUNEDI, stato: 'confermata', slots: buildSlots() };
+    mockCarico(settimana);
+    vi.mocked(aggiornaSlot).mockResolvedValue(undefined);
+
+    render(<Settimana />);
+    await screen.findByText('Yogurt e frutta');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Azioni per Cena' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Cucinato ma non mangiato' }));
+
+    await waitFor(() => {
+      expect(aggiornaSlot).toHaveBeenCalledWith(`${OGGI}:sd-3`, { stato: 'saltato', porzioniPreparate: 1 }, 'checkin');
+    });
+  });
+
+  it('"Torna al piano" azzera anche daPronti', async () => {
+    const slots = buildSlots().map((s) =>
+      s.data === OGGI && s.slotDefId === 'sd-3' ? { ...s, stato: 'saltato' as const } : s,
+    );
+    const settimana: SettimanaCorrente = { id: 'w-1', dataInizio: LUNEDI, stato: 'confermata', slots };
+    mockCarico(settimana);
+    vi.mocked(aggiornaSlot).mockResolvedValue(undefined);
+
+    render(<Settimana />);
+    await screen.findByText('Yogurt e frutta');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Azioni per Cena' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Torna al piano' }));
+
+    await waitFor(() => {
+      expect(aggiornaSlot).toHaveBeenCalledWith(`${OGGI}:sd-3`, { stato: 'casa', daPronti: false }, 'checkin');
+    });
   });
 });
 
@@ -479,6 +581,7 @@ describe('settimana precedente', () => {
       settimaneCiclo: 1,
       cicloOrigine: null,
     });
+    vi.mocked(leggiPronti).mockResolvedValue([]);
 
     render(<StrictMode><Settimana /></StrictMode>);
     await screen.findByText('Yogurt e frutta');
@@ -506,6 +609,7 @@ describe('settimana precedente', () => {
       settimaneCiclo: 1,
       cicloOrigine: null,
     });
+    vi.mocked(leggiPronti).mockResolvedValue([]);
 
     render(<StrictMode><Settimana /></StrictMode>);
     await screen.findByText('Yogurt e frutta');
@@ -529,6 +633,7 @@ describe('settimana precedente', () => {
       settimaneCiclo: 1,
       cicloOrigine: null,
     });
+    vi.mocked(leggiPronti).mockResolvedValue([]);
 
     render(<StrictMode><Settimana /></StrictMode>);
     await screen.findByText('Yogurt e frutta');
