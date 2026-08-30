@@ -291,18 +291,35 @@ export default function Settimana() {
     }
   }
 
+  /**
+   * Ricarica i lotti dopo un gesto prep riuscito. Fuori dal try/catch del
+   * salvataggio apposta: se aggiornaSlot va a buon fine ma questa ricarica
+   * fallisce, lo slot NON va revertito e non deve comparire l'errore di
+   * salvataggio — sarebbe falso, lo slot è salvato. Un fallimento qui è solo
+   * una vista sui pronti non aggiornata, non una scrittura persa; lo si logga
+   * e basta, la prossima ricarica di pagina o gesto la sistema da sola.
+   */
+  async function ricaricaLotti() {
+    try {
+      setLotti(await leggiPronti());
+    } catch (errore) {
+      console.error('settimana: ricarica lotti pronti fallita.', errore);
+    }
+  }
+
   async function preparaPorzioni(slot: MealSlot, n: number, congelato: boolean) {
     setFoglio(null);
     setErroreCheckin(null);
     aggiornaSlotLocale({ ...slot, porzioniPreparate: n });
     try {
       await aggiornaSlot(slot.id, { porzioniPreparate: n, prontiCongelato: congelato }, 'checkin');
-      setLotti(await leggiPronti());
     } catch (errore) {
       console.error('settimana: preparazione porzioni fallita.', errore);
       aggiornaSlotLocale(slot);
       setErroreCheckin('Non siamo riusciti a salvare il cambiamento. Riprova.');
+      return;
     }
+    await ricaricaLotti();
   }
 
   async function usaPronta(slot: MealSlot) {
@@ -311,12 +328,13 @@ export default function Settimana() {
     aggiornaSlotLocale({ ...slot, daPronti: true, stato: 'casa' });
     try {
       await aggiornaSlot(slot.id, { daPronti: true, stato: 'casa' }, 'checkin');
-      setLotti(await leggiPronti());
     } catch (errore) {
       console.error('settimana: uso porzione pronta fallito.', errore);
       aggiornaSlotLocale(slot);
       setErroreCheckin('Non siamo riusciti a salvare il cambiamento. Riprova.');
+      return;
     }
+    await ricaricaLotti();
   }
 
   async function nonUsarePronta(slot: MealSlot) {
@@ -325,12 +343,13 @@ export default function Settimana() {
     aggiornaSlotLocale({ ...slot, daPronti: false });
     try {
       await aggiornaSlot(slot.id, { daPronti: false }, 'checkin');
-      setLotti(await leggiPronti());
     } catch (errore) {
       console.error('settimana: restituzione porzione fallita.', errore);
       aggiornaSlotLocale(slot);
       setErroreCheckin('Non siamo riusciti a salvare il cambiamento. Riprova.');
+      return;
     }
+    await ricaricaLotti();
   }
 
   async function cucinatoNonMangiato(slot: MealSlot) {
@@ -340,12 +359,13 @@ export default function Settimana() {
     aggiornaSlotLocale(risultato);
     try {
       await aggiornaSlot(slot.id, { stato: 'saltato', porzioniPreparate: slot.porzioniPreparate + 1 }, 'checkin');
-      setLotti(await leggiPronti());
     } catch (errore) {
       console.error('settimana: cucinato-non-mangiato fallito.', errore);
       aggiornaSlotLocale(slot);
       setErroreCheckin('Non siamo riusciti a salvare il cambiamento. Riprova.');
+      return;
     }
+    await ricaricaLotti();
   }
 
   async function tornaAlPiano(slot: MealSlot) {
@@ -355,12 +375,13 @@ export default function Settimana() {
     aggiornaSlotLocale(risultato);
     try {
       await aggiornaSlot(slot.id, { stato: 'casa', daPronti: false }, 'checkin');
-      setLotti(await leggiPronti());
     } catch (errore) {
       console.error('settimana: torna al piano fallito.', errore);
       aggiornaSlotLocale(slot);
       setErroreCheckin('Non siamo riusciti a salvare il cambiamento. Riprova.');
+      return;
     }
+    await ricaricaLotti();
   }
 
   function apriPiatto(dishId: string) {
@@ -478,11 +499,18 @@ export default function Settimana() {
                 stato={slot.stato}
                 nomePiatto={piatto?.nome ?? null}
                 aree={piatto ? areeDelPiatto(piatto) : []}
-                sottotitolo={[
-                  slot.daPronti ? 'Porzione pronta' : null,
-                  piatto ? descriviScelte(piatto, slot.scelte, nomePerIngrediente) : null,
-                  slot.porzioniPreparate > 0 ? `+${slot.porzioniPreparate} porzioni` : null,
-                ].filter(Boolean).join(' · ') || null}
+                sottotitolo={(slot.stato === 'casa'
+                  ? [
+                    slot.daPronti ? 'Porzione pronta' : null,
+                    piatto ? descriviScelte(piatto, slot.scelte, nomePerIngrediente) : null,
+                    slot.porzioniPreparate > 0 ? `+${slot.porzioniPreparate} porzioni` : null,
+                  ]
+                  // Riga spenta (fuori/saltato/sostituito): niente scelte né
+                  // "Porzione pronta" (senza senso fuori da 'casa'), ma le
+                  // porzioni preparate restano visibili — consumano a
+                  // prescindere dallo stato (fattoreConsumo, spec §6).
+                  : [slot.porzioniPreparate > 0 ? `+${slot.porzioniPreparate} porzioni` : null]
+                ).filter(Boolean).join(' · ') || null}
                 onToggleStato={() => toggleStato(slot)}
                 onApriPiatto={piatto ? () => apriPiatto(piatto.id) : undefined}
                 hrefScegli={`/settimana/${dataSelezionata}/${def.id}/scegli`}

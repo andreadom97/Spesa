@@ -549,6 +549,54 @@ describe('spunta pasti', () => {
       expect(aggiornaSlot).toHaveBeenCalledWith(`${OGGI}:sd-3`, { stato: 'casa', daPronti: false }, 'checkin');
     });
   });
+
+  // I1 (review Task 7): la ricarica dei lotti dopo un gesto prep riuscito
+  // viveva DENTRO il try del salvataggio — se falliva solo leggiPronti, il
+  // catch revertiva uno slot già scritto sul server e mostrava l'errore di
+  // salvataggio, falso perché il DB aveva già scritto.
+  it('un fallimento della sola ricarica dei lotti non reverte il salvataggio riuscito né mostra l\'errore di salvataggio', async () => {
+    const settimana: SettimanaCorrente = { id: 'w-1', dataInizio: LUNEDI, stato: 'confermata', slots: buildSlots() };
+    mockCarico(settimana);
+    vi.mocked(aggiornaSlot).mockResolvedValue(undefined);
+    // Primo leggiPronti (caricamento iniziale della pagina): ok.
+    // Secondo leggiPronti (ricarica dopo il gesto): fallisce.
+    vi.mocked(leggiPronti).mockResolvedValueOnce([]).mockRejectedValueOnce(new Error('rete assente'));
+
+    render(<Settimana />);
+    await screen.findByText('Yogurt e frutta');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Azioni per Cena' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Cucinato ma non mangiato' }));
+
+    await waitFor(() => {
+      expect(aggiornaSlot).toHaveBeenCalledWith(`${OGGI}:sd-3`, { stato: 'saltato', porzioniPreparate: 1 }, 'checkin');
+    });
+    // Lo slot resta aggiornato (niente revert): la riga mostra "Saltato".
+    await waitFor(() => {
+      expect(screen.getByText('Saltato')).toBeInTheDocument();
+    });
+    // E non compare il messaggio d'errore di salvataggio: aggiornaSlot è
+    // andato a buon fine, solo la ricarica dei lotti è fallita.
+    expect(screen.queryByText('Non siamo riusciti a salvare il cambiamento. Riprova.')).not.toBeInTheDocument();
+  });
+
+  // I2 (review Task 7): il sottotitolo era renderizzato solo con aCasa, quindi
+  // dopo "Cucinato ma non mangiato" (stato saltato + porzioniPreparate ≥ 1) le
+  // porzioni sparivano dalla riga pur continuando a consumare (fattoreConsumo
+  // le conta a prescindere dallo stato, spec meal-prepping §6).
+  it('slot spento con porzioni preparate mostra sia l\'etichetta di stato che "+N porzioni"', async () => {
+    const slots = buildSlots().map((s) =>
+      s.data === OGGI && s.slotDefId === 'sd-3' ? { ...s, stato: 'saltato' as const, porzioniPreparate: 1 } : s,
+    );
+    const settimana: SettimanaCorrente = { id: 'w-1', dataInizio: LUNEDI, stato: 'confermata', slots };
+    mockCarico(settimana);
+
+    render(<Settimana />);
+    await screen.findByText('Yogurt e frutta');
+
+    expect(screen.getByText('Saltato')).toBeInTheDocument();
+    expect(screen.getByText('+1 porzioni')).toBeInTheDocument();
+  });
 });
 
 describe('settimana precedente', () => {

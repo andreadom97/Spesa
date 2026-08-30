@@ -13,7 +13,13 @@ interface Props {
   nomePiatto: string | null;
   /** Le aree distinte del piatto, nell'ordine dell'utente. Vuoto se nomePiatto è null. */
   aree: AreaId[];
-  /** Le opzioni scelte per i componenti del piatto ("Uova + Passata di pomodoro"), da `descriviScelte`. null = niente da mostrare (piatto senza componenti). */
+  /**
+   * Riga composta dal chiamante (scelte componenti, "Porzione pronta",
+   * "+N porzioni"...), null = niente da mostrare. Renderizzata a prescindere
+   * da `stato`: le porzioni preparate da uno slot spento continuano a
+   * consumare (fattoreConsumo le conta comunque), quindi restano visibili
+   * anche a riga spenta — solo attenuate come il resto della riga.
+   */
   sottotitolo?: string | null;
   /** Zona sinistra 60px: accende/spegne. Un tap solo, sempre disponibile. */
   onToggleStato: () => void;
@@ -130,7 +136,7 @@ export function RigaPasto({ nomePasto, stato, nomePiatto, aree, sottotitolo, onT
         >
           {aCasa ? (nomePiatto ?? 'Nessun piatto assegnato') : ETICHETTA_SPENTO[stato as Exclude<StatoSlot, 'casa'>]}
         </span>
-        {aCasa && sottotitolo && (
+        {sottotitolo && (
           <span
             style={{
               fontFamily: 'var(--font-mono)',
@@ -140,7 +146,7 @@ export function RigaPasto({ nomePasto, stato, nomePiatto, aree, sottotitolo, onT
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               maxWidth: '100%',
-              color: '#8A8A96',
+              color: aCasa ? '#8A8A96' : '#C4C4CE',
             }}
           >
             {sottotitolo}
