@@ -5,6 +5,7 @@ const streamMock = vi.fn();
 vi.mock('@anthropic-ai/sdk', () => ({
   default: class Anthropic {
     messages = { create: createMock, stream: streamMock };
+    beta = { messages: { stream: streamMock } };
   },
 }));
 
@@ -28,6 +29,9 @@ describe('estraiPiano', () => {
     expect(args.system).toContain('giorni_tipo');       // lo schema esteso è nel prompt
     expect(args.system).toContain('quantitaInferita');
     expect(args.system).toContain('compatto');           // il vincolo sul JSON compatto
+    expect(args.output_config.format.type).toBe('json_schema');   // structured output
+    expect(args.output_config.format.schema.anyOf).toHaveLength(2); // le due forme piano/rifiuto
+    expect(args.betas).toContain('structured-outputs-2025-12-15');
     const contenuto = args.messages[0].content;
     expect(contenuto[0]).toEqual({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: 'QUJD' } });
     expect(contenuto[contenuto.length - 1].type).toBe('text');
@@ -56,7 +60,7 @@ describe('estraiPiano', () => {
   });
 
   it('JSON malformato due volte → l\'errore propaga (niente terzo tentativo)', async () => {
-    streamMock.mockReturnValue({ finalMessage: async () => ({ content: [{ type: 'text', text: '{"a":[1,2' }] }) });
+    streamMock.mockReturnValue({ finalMessage: async () => ({ content: [{ type: 'text', text: '{"a":[1,2}' }] }) });
     await expect(estraiPiano(FOTO, 'claude-sonnet-5')).rejects.toThrow(SyntaxError);
     expect(streamMock).toHaveBeenCalledTimes(2);
   });
