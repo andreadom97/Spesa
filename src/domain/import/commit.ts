@@ -255,6 +255,18 @@ export function traduciBozza(
           }
         }
       }
+    } else if (piano.archetipo === 'giornata_unica' || piano.archetipo === 'griglia_alternative') {
+      // Questi archetipi impongono all'estrazione un solo giorno (giorno: 0) il cui
+      // significato è "vale ogni giorno": niente compattazione da verificare (non c'è
+      // altro giorno con cui confrontarsi), il piatto esce sempre con cicli null. Niente
+      // prefisso di titolo: quello è solo per giorni_tipo, dove il titolo distingue scenari.
+      for (const slotMap of perGiorno.values()) {
+        for (const [slotDefId, piatti] of slotMap) {
+          for (const piatto of piatti) {
+            emessi.push({ settimanaCiclo, giornoCiclo: null, slotDefId, piatto });
+          }
+        }
+      }
     } else {
       const tuttiGliSlot = new Set<string>();
       for (const slotMap of perGiorno.values()) for (const slot of slotMap.keys()) tuttiGliSlot.add(slot);

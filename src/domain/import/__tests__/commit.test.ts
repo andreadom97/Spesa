@@ -212,7 +212,7 @@ describe('traduciBozza', () => {
     expect(s.piattiDaCreare.some((p) => p.nome === 'Condimenti')).toBe(false);
   });
 
-  it('compatta i giorni identici: la giornata unica produce un piatto con giornoCiclo null', () => {
+  it('la giornata unica (un solo giorno) produce un piatto con giornoCiclo null', () => {
     const stato: StatoRevisione = { passo: 'riepilogo', mappaturaPasti: { pranzo: 's-pranzo' }, pastiConfermati: [], correzioni: {}, ingredientiNuovi: [{ alimento: 'pasta di semola', nome: 'Pasta', unitaBase: 'g', area: 'cereali', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500 }] };
     const s = traduciBozza(PIANO_GIORNATA_UNICA, stato, [], [], '2026-08-29');
     expect(s.piattiDaCreare).toHaveLength(1);
@@ -277,11 +277,11 @@ describe('traduciBozza', () => {
         }],
       }],
     };
-    // Settimana da 1 giorno: non si compatta (regola 4), quindi entrambe le sorelle
-    // escono con giornoCiclo 0 - il gemello in repertorio deve avere lo stesso pin.
+    // archetipo 'giornata_unica': il singolo giorno vale ogni giorno, quindi entrambe le
+    // sorelle escono con giornoCiclo null - il gemello in repertorio deve avere lo stesso pin.
     const gemello: Dish = {
       id: 'd-gia', nome: 'Pasta al pomodoro', slotDefId: 's-pranzo', fonte: 'nutrizionista', attivo: true,
-      descrizione: null, settimanaCiclo: null, giornoCiclo: 0, ingredienti: [], componenti: [],
+      descrizione: null, settimanaCiclo: null, giornoCiclo: null, ingredienti: [], componenti: [],
     };
     const pasta: Ingredient = { id: 'i-pasta', nome: 'Pasta di semola', unitaBase: 'g', area: 'cereali', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500 };
     const stato: StatoRevisione = { passo: 'riepilogo', mappaturaPasti: { pranzo: 's-pranzo' }, pastiConfermati: [], correzioni: {}, ingredientiNuovi: [] };
@@ -388,5 +388,39 @@ describe('giorni_tipo', () => {
       expect(p.giornoCiclo).toBeNull();
     }
     expect(scritture.piattiDaCreare.map((p) => p.nome).sort()).toEqual(['Allenamento — Pasta e tonno', 'Piano 1 — Riso e pollo']);
+  });
+});
+
+describe('giornata_unica e griglia_alternative: un solo giorno vale ogni giorno', () => {
+  it('la giornata unica con un solo giorno emette cicli null, senza prefisso nel nome', () => {
+    const piano: PianoEstratto = {
+      archetipo: 'giornata_unica' as const,
+      fonte: 'test',
+      noteEstrazione: [],
+      settimane: [{
+        numero: 1,
+        giorni: [{
+          giorno: 0,
+          titolo: null,
+          pasti: [{
+            nomeOriginale: 'pranzo',
+            piatti: [{
+              nome: 'Riso e pollo', descrizione: null, componenti: [],
+              righeFisse: [{ alimento: 'riso', quantita: 80, unita: 'g', quantitaInferita: false, testoOriginale: 'riso 80g' }],
+            }],
+          }],
+        }],
+      }],
+    };
+    const stato: StatoRevisione = {
+      passo: 'riepilogo',
+      mappaturaPasti: { pranzo: 's-pranzo' },
+      pastiConfermati: [],
+      correzioni: {},
+      ingredientiNuovi: [{ alimento: 'riso', nome: 'Riso', unitaBase: 'g', area: 'dispensa', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 1000 }],
+    };
+    const scritture = traduciBozza(piano, stato, [], [], '2026-08-30');
+    expect(scritture.piattiDaCreare).toHaveLength(1);
+    expect(scritture.piattiDaCreare[0]).toMatchObject({ nome: 'Riso e pollo', settimanaCiclo: null, giornoCiclo: null });
   });
 });

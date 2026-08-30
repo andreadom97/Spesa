@@ -195,6 +195,13 @@ export default function Importa() {
         setVista('errore');
         return;
       }
+      // Il token era valido a getSession() ma è scaduto prima che il server lo
+      // controllasse: stesso messaggio del caso "niente token", non l'errore generico.
+      if (res.status === 401) {
+        setMessaggioErrore(MESSAGGIO_SENZA_SESSIONE);
+        setVista('errore');
+        return;
+      }
       if (!res.ok) {
         setMessaggioErrore(MESSAGGIO_ERRORE_GENERICO);
         setVista('errore');

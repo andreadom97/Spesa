@@ -161,6 +161,19 @@ describe('Importa', () => {
     expect(await screen.findByText('Non ho capito la dieta: riprova, magari con foto più nitide.')).toBeInTheDocument();
   });
 
+  it('401 dalla route (token scaduto tra getSession e il controllo server): messaggio di sessione', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ errore: 'non autorizzato' }),
+    });
+    render(<Importa />);
+    await screen.findByRole('button', { name: /estrai la dieta/i });
+    await caricaUnaFoto();
+    fireEvent.click(screen.getByRole('button', { name: /estrai la dieta/i }));
+    expect(await screen.findByText('Serve l’accesso: riapri l’app ed entra di nuovo.')).toBeInTheDocument();
+  });
+
   it('senza sessione: errore onesto senza fetch', async () => {
     getSessionMock.mockResolvedValue({ data: { session: null } });
     const fetchMock = vi.fn();

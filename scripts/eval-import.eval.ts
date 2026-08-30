@@ -8,7 +8,7 @@ import type { PianoEstratto, RigaEstratta } from '../src/domain/import/types';
 
 const DIR_FOTO = join(process.cwd(), 'diete/Dieta 6');
 const GROUND_TRUTH = join(process.cwd(), 'diete/estrazioni/piani/dieta6.json');
-const MODELLI = (process.env.EVAL_IMPORT_MODELLI ?? 'claude-sonnet-5').split(',').map((m) => m.trim());
+const MODELLI = (process.env.EVAL_IMPORT_MODELLI ?? 'claude-sonnet-5').split(',').map((m) => m.trim()).filter(Boolean);
 
 const pronto = Boolean(process.env.ANTHROPIC_API_KEY) && existsSync(DIR_FOTO) && existsSync(GROUND_TRUTH);
 

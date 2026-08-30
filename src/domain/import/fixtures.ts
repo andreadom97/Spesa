@@ -100,15 +100,15 @@ export const PIANO_MENU_SETTIMANALE: PianoEstratto = {
 
 export const FIXTURE_MENU_SETTIMANALE: EsitoEstrazione = { tipo: 'piano', piano: PIANO_MENU_SETTIMANALE };
 
-/** Giornata unica già espansa dall'estrattore in 7 giorni identici (qui 2 per brevità dei test). */
+/** Giornata unica: un solo giorno (giorno: 0), il cui significato è "vale ogni giorno". */
 export const PIANO_GIORNATA_UNICA: PianoEstratto = {
   archetipo: 'giornata_unica',
   fonte: 'fixture sintetico',
   noteEstrazione: [],
   settimane: [{
     numero: 1,
-    giorni: [0, 1].map((giorno) => ({
-      giorno,
+    giorni: [{
+      giorno: 0,
       titolo: null,
       pasti: [{
         nomeOriginale: 'pranzo',
@@ -117,7 +117,7 @@ export const PIANO_GIORNATA_UNICA: PianoEstratto = {
           righeFisse: [{ alimento: 'pasta di semola', quantita: 80, unita: 'g', quantitaInferita: false, testoOriginale: 'pasta 80g' }],
         }],
       }],
-    })),
+    }],
   }],
 };
 
