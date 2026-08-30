@@ -5,7 +5,8 @@ import { consumoSlot, deltaStorno } from '@/domain/storno';
 import { settimanaDelCiclo, settimaneTrascorse } from '@/domain/ciclo';
 import { lunediDi } from '@/domain/date';
 import { client } from './supabase';
-import { aMealSlot } from './mappers';
+import { aMealSlot, aLottoPronto } from './mappers';
+import { porzioniUtilizzabili } from '@/domain/pronti';
 import { leggiImpostazioni, leggiSlotDefs } from './impostazioni';
 import { leggiRepertorio, leggiIngredienti } from './repertorio';
 import { leggiDispensa } from './dispensa';
@@ -199,9 +200,22 @@ export async function creaSettimana(lunedi: string): Promise<string> {
  * storno visibile e correggibile dalla Dispensa, mai in uno stato slot
  * incoerente.
  */
+/** Il piatto a cui appartiene il lotto della dichiarazione: quello del patch se presente, altrimenti quello registrato. */
+function dishIdDopoPerLotto(
+  patch: { dishId?: string | null },
+  attuale: MealSlot,
+): string {
+  const dishId = patch.dishId !== undefined ? patch.dishId : attuale.dishId;
+  if (!dishId) throw new Error('Questo pasto non ha un piatto: niente porzioni da preparare.');
+  return dishId;
+}
+
 export async function aggiornaSlot(
   slotId: string,
-  patch: { stato?: StatoSlot; dishId?: string | null; scelte?: Record<string, Scelta> },
+  patch: {
+    stato?: StatoSlot; dishId?: string | null; scelte?: Record<string, Scelta>;
+    porzioniPreparate?: number; daPronti?: boolean; prontiCongelato?: boolean;
+  },
   fonte: FonteStato,
 ): Promise<void> {
   const sb = client();
@@ -227,6 +241,32 @@ export async function aggiornaSlot(
   };
 
   const cambioPiatto = patch.dishId !== undefined && patch.dishId !== attuale.dishId;
+
+  // I valori prep "dopo": il cambio piatto li azzera sempre (spec §5 — i
+  // valori del piatto vecchio non hanno significato sul nuovo).
+  const daProntiDopo = cambioPiatto ? false : (patch.daPronti ?? attuale.daPronti);
+  const porzioniPreparateDopo = cambioPiatto ? 0 : (patch.porzioniPreparate ?? attuale.porzioniPreparate);
+  const oggi = new Date().toISOString().slice(0, 10);
+
+  // Gate preventivo di daPronti: la porzione deve esistere PRIMA di toccare
+  // lo slot — sola lettura, nessuno stato incoerente se fallisce.
+  let lottoDaScalare: { id: string; porzioni: number } | null = null;
+  if (daProntiDopo && !attuale.daPronti) {
+    const dishPerPorzione = patch.dishId !== undefined ? patch.dishId : attuale.dishId;
+    if (!dishPerPorzione) throw new Error('Nessuna porzione pronta di questo piatto.');
+    const { data: righeLotti, error: eLotti } = await sb
+      .from('porzione_pronta')
+      .select('*')
+      .eq('dish_id', dishPerPorzione)
+      .eq('user_id', userId)
+      .order('preparata_il');
+    if (eLotti) throw eLotti;
+    const utilizzabile = (righeLotti ?? []).map(aLottoPronto)
+      .find((l) => porzioniUtilizzabili(l, oggi) > 0);
+    if (!utilizzabile) throw new Error('Nessuna porzione pronta di questo piatto.');
+    lottoDaScalare = { id: utilizzabile.id, porzioni: utilizzabile.porzioni };
+  }
+
   if (cambioPiatto) {
     // Il piatto sta per cambiare: le scelte registrate sul piatto vecchio non
     // hanno più significato. Si ripulisce PRIMA dell'update di meal_slot, così
@@ -257,6 +297,11 @@ export async function aggiornaSlot(
     aggiornamento.dish_id = patch.dishId;
   }
 
+  if (daProntiDopo !== attuale.daPronti) aggiornamento.da_pronti = daProntiDopo;
+  if (porzioniPreparateDopo !== attuale.porzioniPreparate) {
+    aggiornamento.porzioni_preparate = porzioniPreparateDopo;
+  }
+
   if (Object.keys(aggiornamento).length > 0) {
     const { error: eUpd } = await sb
       .from('meal_slot')
@@ -279,6 +324,82 @@ export async function aggiornaSlot(
         .from('meal_slot_choice')
         .upsert(righe, { onConflict: 'meal_slot_id,componente_id' });
       if (eUps) throw eUps;
+    }
+  }
+
+  // ── I Pronti (spec meal-prepping §5): sempre, anche a settimana bozza ───
+  // Il lotto legato allo slot segue porzioniPreparate.
+  if (porzioniPreparateDopo !== attuale.porzioniPreparate) {
+    if (porzioniPreparateDopo > 0) {
+      const { data: lottoLegato, error: eLeggi } = await sb
+        .from('porzione_pronta')
+        .select('id')
+        .eq('meal_slot_id', slotId)
+        .maybeSingle();
+      if (eLeggi) throw eLeggi;
+      if (lottoLegato) {
+        const patchLotto: Record<string, unknown> = { porzioni: porzioniPreparateDopo };
+        if (patch.prontiCongelato !== undefined) patchLotto.congelato = patch.prontiCongelato;
+        const { error: eUpd } = await sb.from('porzione_pronta')
+          .update(patchLotto).eq('id', String(lottoLegato.id)).eq('user_id', userId);
+        if (eUpd) throw eUpd;
+      } else {
+        const { error: eIns } = await sb.from('porzione_pronta').insert({
+          user_id: userId,
+          meal_slot_id: slotId,
+          dish_id: dishIdDopoPerLotto(patch, attuale),
+          porzioni: porzioniPreparateDopo,
+          preparata_il: attuale.data,
+          congelato: patch.prontiCongelato ?? false,
+        });
+        if (eIns) throw eIns;
+      }
+    } else {
+      const { error: eDel } = await sb.from('porzione_pronta')
+        .delete().eq('meal_slot_id', slotId).eq('user_id', userId);
+      if (eDel) throw eDel;
+    }
+  }
+
+  // daPronti che si accende: scala FIFO dal lotto trovato nel gate.
+  if (daProntiDopo && !attuale.daPronti && lottoDaScalare) {
+    if (lottoDaScalare.porzioni <= 1) {
+      const { error: eDel } = await sb.from('porzione_pronta')
+        .delete().eq('id', lottoDaScalare.id).eq('user_id', userId);
+      if (eDel) throw eDel;
+    } else {
+      const { error: eUpd } = await sb.from('porzione_pronta')
+        .update({ porzioni: lottoDaScalare.porzioni - 1 })
+        .eq('id', lottoDaScalare.id).eq('user_id', userId);
+      if (eUpd) throw eUpd;
+    }
+  }
+
+  // daPronti che si spegne (ripensamento, o cambio piatto): restituzione al
+  // lotto utilizzabile più RECENTE del piatto vecchio; se non ne esiste più
+  // uno (decaduto nel frattempo), si ricrea un lotto datato allo slot —
+  // best-effort dichiarato in spec §5, la Dispensa corregge in due tap.
+  if (!daProntiDopo && attuale.daPronti && attuale.dishId) {
+    const { data: righeLotti, error: eLotti } = await sb
+      .from('porzione_pronta')
+      .select('*')
+      .eq('dish_id', attuale.dishId)
+      .eq('user_id', userId)
+      .order('preparata_il', { ascending: false });
+    if (eLotti) throw eLotti;
+    const destinazione = (righeLotti ?? []).map(aLottoPronto)
+      .find((l) => porzioniUtilizzabili(l, oggi) > 0 && l.mealSlotId !== slotId);
+    if (destinazione) {
+      const { error: eUpd } = await sb.from('porzione_pronta')
+        .update({ porzioni: destinazione.porzioni + 1 })
+        .eq('id', destinazione.id).eq('user_id', userId);
+      if (eUpd) throw eUpd;
+    } else {
+      const { error: eIns } = await sb.from('porzione_pronta').insert({
+        user_id: userId, meal_slot_id: null, dish_id: attuale.dishId,
+        porzioni: 1, preparata_il: attuale.data, congelato: false,
+      });
+      if (eIns) throw eIns;
     }
   }
 
@@ -320,7 +441,10 @@ export async function aggiornaSlot(
     moltiplicatorePorzioni: impostazioni.moltiplicatorePorzioni,
   });
   const dopo = consumoSlot({
-    slot: { ...attuale, stato: statoDopo, dishId: dishIdDopo, scelte: scelteDopo },
+    slot: {
+      ...attuale, stato: statoDopo, dishId: dishIdDopo, scelte: scelteDopo,
+      daPronti: daProntiDopo, porzioniPreparate: porzioniPreparateDopo,
+    },
     dish: dishIdDopo ? piattoPerId.get(dishIdDopo) ?? null : null,
     ingredients: ingredienti,
     moltiplicatorePorzioni: impostazioni.moltiplicatorePorzioni,

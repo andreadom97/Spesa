@@ -6,6 +6,7 @@ vi.mock('../repertorio', () => ({ leggiRepertorio: vi.fn(), leggiIngredienti: vi
 vi.mock('../dispensa', () => ({ leggiDispensa: vi.fn() }));
 
 import type { Dish, Ingredient } from '@/domain/types';
+import { sommaGiorni } from '@/domain/date';
 import { client } from '../supabase';
 import { leggiImpostazioni } from '../impostazioni';
 import { leggiRepertorio, leggiIngredienti } from '../repertorio';
@@ -118,6 +119,7 @@ function risolutore(opts: {
   statoWeek: string;
   ledger?: Array<{ ingredient_id: string; delta: number }>;
   pantry?: Array<{ ingredient_id: string; residuo: number }>;
+  lotti?: Array<Record<string, unknown>>;
 }) {
   return (tabella: string, chiamate: Chiamata[]) => {
     const legge = chiamate.some((c) => c.metodo === 'select');
@@ -125,6 +127,13 @@ function risolutore(opts: {
     if (tabella === 'week' && legge) return { data: { stato: opts.statoWeek }, error: null };
     if (tabella === 'meal_slot_storno' && legge) return { data: opts.ledger ?? [], error: null };
     if (tabella === 'pantry_state' && legge) return { data: opts.pantry ?? [], error: null };
+    if (tabella === 'porzione_pronta' && legge) {
+      const perSlot = chiamate.some((c) => c.metodo === 'eq' && c.args[0] === 'meal_slot_id');
+      if (perSlot) {
+        return { data: (opts.lotti ?? []).find((l) => l.meal_slot_id === 's-1') ?? null, error: null };
+      }
+      return { data: opts.lotti ?? [], error: null };
+    }
     return { data: null, error: null };
   };
 }
@@ -132,6 +141,11 @@ function risolutore(opts: {
 function scrittureDi(scritture: Record<string, Chiamata[][]>, tabella: string, metodo: string) {
   return (scritture[tabella] ?? []).flat().filter((c) => c.metodo === metodo);
 }
+
+const OGGI_REALE = new Date().toISOString().slice(0, 10);
+const FRESCO_IERI = sommaGiorni(OGGI_REALE, -1);        // utilizzabile
+const CONGELATO_9GG = sommaGiorni(OGGI_REALE, -9);      // utilizzabile (congelato)
+const FRESCO_SCADUTO = sommaGiorni(OGGI_REALE, -10);    // decaduto
 
 describe('aggiornaSlot e il ledger degli storni', () => {
   beforeEach(() => {
@@ -255,6 +269,121 @@ describe('aggiornaSlot e il ledger degli storni', () => {
 
     await aggiornaSlot('s-1', { stato: 'saltato' }, 'default');
 
+    expect(scritture['meal_slot_storno']).toBeUndefined();
+    expect(scritture['pantry_state']).toBeUndefined();
+  });
+
+  it('porzioniPreparate crea il lotto legato allo slot e il ledger addebita le porzioni extra', async () => {
+    const { sb, scritture } = creaClientMock(risolutore({
+      riga: rigaSlot('casa'), statoWeek: 'chiusa',
+      pantry: [{ ingredient_id: 'i-pollo', residuo: 500 }],
+    }));
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    await aggiornaSlot('s-1', { porzioniPreparate: 2 }, 'checkin');
+
+    const lotti = scrittureDi(scritture, 'porzione_pronta', 'insert');
+    expect(lotti).toHaveLength(1);
+    expect(lotti[0]!.args[0]).toMatchObject({
+      meal_slot_id: 's-1', dish_id: 'd-1', porzioni: 2,
+      preparata_il: '2026-08-26', congelato: false,
+    });
+    // Consumo da 1× a 3×: il ledger addebita 2 porzioni di pollo (−400).
+    const ledger = scrittureDi(scritture, 'meal_slot_storno', 'upsert');
+    expect(ledger[0]!.args[0]).toMatchObject({ ingredient_id: 'i-pollo', delta: -400 });
+    const pantry = scrittureDi(scritture, 'pantry_state', 'upsert');
+    expect(pantry[0]!.args[0]).toMatchObject({ ingredient_id: 'i-pollo', residuo: 100 });
+  });
+
+  it('porzioniPreparate a zero cancella il lotto legato', async () => {
+    const riga = { ...rigaSlot('casa'), porzioni_preparate: 2 };
+    const { sb, scritture } = creaClientMock(risolutore({
+      riga, statoWeek: 'chiusa',
+      lotti: [{ id: 'l-1', dish_id: 'd-1', porzioni: 2, congelato: false, preparata_il: '2026-08-26', meal_slot_id: 's-1' }],
+    }));
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    await aggiornaSlot('s-1', { porzioniPreparate: 0 }, 'checkin');
+
+    expect(scrittureDi(scritture, 'porzione_pronta', 'delete')).toHaveLength(1);
+  });
+
+  it('daPronti scala FIFO dal lotto utilizzabile più vecchio e il ledger accredita il crudo', async () => {
+    const { sb, scritture } = creaClientMock(risolutore({
+      riga: rigaSlot('casa'), statoWeek: 'chiusa',
+      lotti: [
+        { id: 'l-vecchio', dish_id: 'd-1', porzioni: 1, congelato: true, preparata_il: CONGELATO_9GG, meal_slot_id: null },
+        { id: 'l-nuovo', dish_id: 'd-1', porzioni: 2, congelato: false, preparata_il: FRESCO_IERI, meal_slot_id: null },
+      ],
+      pantry: [{ ingredient_id: 'i-pollo', residuo: 40 }],
+    }));
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    await aggiornaSlot('s-1', { daPronti: true }, 'checkin');
+
+    // l-vecchio ha 1 porzione: si cancella (FIFO).
+    expect(scrittureDi(scritture, 'porzione_pronta', 'delete')).toHaveLength(1);
+    // Il consumo passa da 1× a 0: riaccredito del pollo.
+    expect(scrittureDi(scritture, 'meal_slot_storno', 'upsert')[0]!.args[0]).toMatchObject({ ingredient_id: 'i-pollo', delta: 200 });
+    expect(scrittureDi(scritture, 'pantry_state', 'upsert')[0]!.args[0]).toMatchObject({ ingredient_id: 'i-pollo', residuo: 240 });
+  });
+
+  it('daPronti senza porzioni utilizzabili fallisce con il messaggio esatto, senza scrivere nulla', async () => {
+    const { sb, scritture } = creaClientMock(risolutore({
+      riga: rigaSlot('casa'), statoWeek: 'chiusa',
+      lotti: [{ id: 'l-scaduto', dish_id: 'd-1', porzioni: 2, congelato: false, preparata_il: FRESCO_SCADUTO, meal_slot_id: null }],
+    }));
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    await expect(aggiornaSlot('s-1', { daPronti: true }, 'checkin'))
+      .rejects.toThrow('Nessuna porzione pronta di questo piatto.');
+    expect(scritture['meal_slot']?.flat().filter((c) => c.metodo === 'update') ?? []).toHaveLength(0);
+  });
+
+  it('togliere daPronti restituisce la porzione al lotto utilizzabile più recente', async () => {
+    const riga = { ...rigaSlot('casa'), da_pronti: true };
+    const { sb, scritture } = creaClientMock(risolutore({
+      riga, statoWeek: 'chiusa',
+      lotti: [{ id: 'l-1', dish_id: 'd-1', porzioni: 1, congelato: true, preparata_il: CONGELATO_9GG, meal_slot_id: null }],
+      pantry: [{ ingredient_id: 'i-pollo', residuo: 240 }],
+    }));
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    await aggiornaSlot('s-1', { daPronti: false }, 'checkin');
+
+    expect(scrittureDi(scritture, 'porzione_pronta', 'update')[0]!.args[0]).toEqual({ porzioni: 2 });
+    // Torna a consumare crudo: addebito.
+    expect(scrittureDi(scritture, 'pantry_state', 'upsert')[0]!.args[0]).toMatchObject({ ingredient_id: 'i-pollo', residuo: 40 });
+  });
+
+  it('il cambio piatto azzera daPronti (con restituzione) e cancella il lotto legato', async () => {
+    const riga = { ...rigaSlot('casa'), da_pronti: true, porzioni_preparate: 1 };
+    const { sb, scritture } = creaClientMock(risolutore({
+      riga, statoWeek: 'chiusa',
+      lotti: [
+        { id: 'l-legato', dish_id: 'd-1', porzioni: 1, congelato: false, preparata_il: '2026-08-26', meal_slot_id: 's-1' },
+        { id: 'l-libero', dish_id: 'd-1', porzioni: 1, congelato: true, preparata_il: CONGELATO_9GG, meal_slot_id: null },
+      ],
+    }));
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    await aggiornaSlot('s-1', { dishId: 'd-2' }, 'checkin');
+
+    // Restituzione della porzione del piatto vecchio + cancellazione del lotto legato.
+    expect(scrittureDi(scritture, 'porzione_pronta', 'update')[0]!.args[0]).toEqual({ porzioni: 2 });
+    expect(scrittureDi(scritture, 'porzione_pronta', 'delete')).toHaveLength(1);
+    const upd = scritture['meal_slot']!.flat().find((c) => c.metodo === 'update')!.args[0] as Record<string, unknown>;
+    expect(upd).toMatchObject({ da_pronti: false, porzioni_preparate: 0, dish_id: 'd-2' });
+  });
+
+  it('a settimana bozza i Pronti si scrivono comunque, ledger e pantry no', async () => {
+    const { sb, scritture } = creaClientMock(risolutore({ riga: rigaSlot('casa'), statoWeek: 'bozza' }));
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    await aggiornaSlot('s-1', { porzioniPreparate: 2, prontiCongelato: true }, 'checkin');
+
+    const lotti = scrittureDi(scritture, 'porzione_pronta', 'insert');
+    expect(lotti[0]!.args[0]).toMatchObject({ porzioni: 2, congelato: true });
     expect(scritture['meal_slot_storno']).toBeUndefined();
     expect(scritture['pantry_state']).toBeUndefined();
   });
