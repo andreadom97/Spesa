@@ -106,6 +106,18 @@ mesi), decadimento del fresco e congelatore su dati veri (nessun deperibile ha a
 residuo), riordino delle aree, lettura offline — che **non funziona** ed è un traguardo
 a sé, vedi sotto.
 
+### Meal prepping
+
+Cucinare oggi quello che mangi un altro giorno. Dal foglio azioni di un
+pasto: **Ne preparo di più** (le porzioni extra escono subito dal residuo ed
+entrano nei Pronti, frigo o freezer), **Uso una porzione pronta** (il pasto
+non consuma ingredienti crudi), **Cucinato ma non mangiato** (la tua
+porzione finisce nei Pronti). La sezione **Pronti** della Dispensa mostra i
+lotti: le porzioni fresche durano 3 giorni, le congelate 90, poi spariscono
+da sole. Dichiarare il prep prima di confermare la settimana fa comprare
+alla lista le quantità giuste; dopo la spesa, ci pensa il registro degli
+storni.
+
 ## Dove sta cosa
 
 | File | Cosa contiene |

@@ -1,15 +1,25 @@
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import type { Ingredient, PantryState } from '@/domain/types';
+import type { Dish, Ingredient, LottoPronto, MealSlot, PantryState } from '@/domain/types';
+import { sommaGiorni } from '@/domain/date';
 
-vi.mock('@/data/repertorio', () => ({ leggiIngredienti: vi.fn() }));
+vi.mock('@/data/repertorio', () => ({ leggiIngredienti: vi.fn(), leggiRepertorio: vi.fn() }));
 vi.mock('@/data/dispensa', () => ({ leggiDispensa: vi.fn(), correggiResiduo: vi.fn(), impostaCongelato: vi.fn() }));
 vi.mock('@/data/impostazioni', () => ({ leggiImpostazioni: vi.fn() }));
+vi.mock('@/data/pronti', () => ({
+  leggiPronti: vi.fn(),
+  correggiLotto: vi.fn(),
+  impostaCongelatoLotto: vi.fn(),
+  eliminaLotto: vi.fn(),
+}));
+vi.mock('@/data/settimana', () => ({ leggiSettimanaCorrente: vi.fn() }));
 
-import { leggiIngredienti } from '@/data/repertorio';
+import { leggiIngredienti, leggiRepertorio } from '@/data/repertorio';
 import { leggiDispensa, correggiResiduo, impostaCongelato } from '@/data/dispensa';
 import { leggiImpostazioni } from '@/data/impostazioni';
+import { leggiPronti, correggiLotto, impostaCongelatoLotto, eliminaLotto } from '@/data/pronti';
+import { leggiSettimanaCorrente } from '@/data/settimana';
 import Dispensa from '../page';
 
 const ORDINE = ['ortofrutta', 'macelleria', 'latticini', 'cereali', 'dispensa', 'surgelati'] as const;
@@ -35,6 +45,33 @@ function mockBase(dispensa: PantryState[], ingredienti: Ingredient[] = [RISO, BA
   vi.mocked(leggiIngredienti).mockResolvedValue(ingredienti);
   vi.mocked(leggiDispensa).mockResolvedValue(dispensa);
   vi.mocked(leggiImpostazioni).mockResolvedValue({ moltiplicatorePorzioni: 1, ordineAree: [...ORDINE], settimaneCiclo: 1, cicloOrigine: null });
+  vi.mocked(leggiPronti).mockResolvedValue([]);
+  vi.mocked(leggiRepertorio).mockResolvedValue([]);
+  vi.mocked(leggiSettimanaCorrente).mockResolvedValue(null);
+}
+
+const OGGI = new Date().toISOString().slice(0, 10);
+
+const FARROTTO: Dish = {
+  id: 'd-farrotto', nome: 'Farrotto ai funghi', slotDefId: 'sd-cena', fonte: 'proprio',
+  attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
+  ingredienti: [], componenti: [],
+};
+
+function lottoPronto(overrides: Partial<LottoPronto>): LottoPronto {
+  return {
+    id: 'lp-1', dishId: FARROTTO.id, porzioni: 2, congelato: false,
+    preparataIl: OGGI, mealSlotId: null,
+    ...overrides,
+  };
+}
+
+function slotDaPronti(overrides: Partial<MealSlot>): MealSlot {
+  return {
+    id: 'ms-1', data: OGGI, slotDefId: 'sd-cena', stato: 'casa', dishId: FARROTTO.id,
+    fonteStato: 'default', scelte: {}, porzioniPreparate: 0, daPronti: true,
+    ...overrides,
+  };
 }
 
 describe('Dispensa', () => {
@@ -199,5 +236,62 @@ describe('Dispensa', () => {
     render(<Dispensa />);
 
     expect(await screen.findByText('Ancora niente in dispensa')).toBeInTheDocument();
+  });
+
+  it('la sezione PRONTI mostra i lotti utilizzabili col nome del piatto e gli impegni', async () => {
+    mockBase(statoDispensa([{ ingredientId: 'i-riso', residuo: 920 }]));
+    vi.mocked(leggiPronti).mockResolvedValue([
+      lottoPronto({ id: 'lp-farrotto', dishId: FARROTTO.id, porzioni: 2, congelato: true, preparataIl: OGGI }),
+      // Fresco, preparato 10 giorni fa: oltre i 3 giorni di GIORNI_PRONTO_FRESCO, quindi decaduto.
+      lottoPronto({ id: 'lp-scaduto', dishId: FARROTTO.id, porzioni: 1, congelato: false, preparataIl: sommaGiorni(OGGI, -10) }),
+    ]);
+    vi.mocked(leggiRepertorio).mockResolvedValue([FARROTTO]);
+    vi.mocked(leggiSettimanaCorrente).mockResolvedValue({
+      id: 'w-1', dataInizio: OGGI, stato: 'confermata',
+      slots: [slotDaPronti({ id: 'ms-futuro', data: sommaGiorni(OGGI, 2) })],
+    });
+
+    render(<Dispensa />);
+
+    expect(await screen.findByText('PRONTI')).toBeInTheDocument();
+    expect(screen.getByText('Farrotto ai funghi')).toBeInTheDocument();
+    expect(screen.getByLabelText('Porzioni di Farrotto ai funghi')).toHaveValue(2);
+    expect(screen.getByText('1 impegnata')).toBeInTheDocument();
+    // Il lotto scaduto non ha porzioni utilizzabili: una sola tessera, non due.
+    expect(screen.getAllByText('Farrotto ai funghi')).toHaveLength(1);
+  });
+
+  it('senza lotti utilizzabili la sezione non compare', async () => {
+    mockBase(statoDispensa([{ ingredientId: 'i-riso', residuo: 920 }]));
+    vi.mocked(leggiPronti).mockResolvedValue([]);
+
+    render(<Dispensa />);
+
+    await screen.findByLabelText('Residuo di Riso');
+    expect(screen.queryByText('PRONTI')).not.toBeInTheDocument();
+  });
+
+  it('correzione del numero e toggle freezer chiamano il data layer', async () => {
+    mockBase(statoDispensa([{ ingredientId: 'i-riso', residuo: 920 }]));
+    vi.mocked(leggiPronti).mockResolvedValue([
+      lottoPronto({ id: 'lp-farrotto', dishId: FARROTTO.id, porzioni: 2, congelato: false, preparataIl: OGGI }),
+    ]);
+    vi.mocked(leggiRepertorio).mockResolvedValue([FARROTTO]);
+    vi.mocked(correggiLotto).mockResolvedValue(undefined);
+    vi.mocked(impostaCongelatoLotto).mockResolvedValue(undefined);
+    vi.mocked(eliminaLotto).mockResolvedValue(undefined);
+
+    render(<Dispensa />);
+    const campo = await screen.findByLabelText('Porzioni di Farrotto ai funghi');
+
+    fireEvent.change(campo, { target: { value: '3' } });
+    fireEvent.blur(campo);
+    await waitFor(() => expect(correggiLotto).toHaveBeenCalledWith('lp-farrotto', 3));
+
+    fireEvent.click(screen.getByLabelText(/Farrotto ai funghi: metti in congelatore/));
+    await waitFor(() => expect(impostaCongelatoLotto).toHaveBeenCalledWith('lp-farrotto', true));
+
+    fireEvent.click(screen.getByLabelText('Elimina il lotto di Farrotto ai funghi'));
+    await waitFor(() => expect(eliminaLotto).toHaveBeenCalledWith('lp-farrotto'));
   });
 });

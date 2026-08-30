@@ -2,12 +2,15 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import type { AreaId, Ingredient, PantryState } from '@/domain/types';
-import { leggiIngredienti } from '@/data/repertorio';
+import type { AreaId, Ingredient, LottoPronto, PantryState } from '@/domain/types';
+import { leggiIngredienti, leggiRepertorio } from '@/data/repertorio';
 import { leggiDispensa, correggiResiduo, impostaCongelato } from '@/data/dispensa';
 import { leggiImpostazioni } from '@/data/impostazioni';
+import { leggiPronti, correggiLotto, impostaCongelatoLotto, eliminaLotto } from '@/data/pronti';
+import { leggiSettimanaCorrente } from '@/data/settimana';
 import { coloreArea, nomeArea } from '@/domain/aree';
 import { residuoUtilizzabile } from '@/domain/pantry';
+import { porzioniUtilizzabili } from '@/domain/pronti';
 
 interface Riga {
   ingrediente: Ingredient;
@@ -42,11 +45,21 @@ export default function Dispensa() {
   const [ordineAree, setOrdineAree] = useState<AreaId[]>([]);
   const [errore, setErrore] = useState<string | null>(null);
   const [erroreSalvataggio, setErroreSalvataggio] = useState<string | null>(null);
+  const [lotti, setLotti] = useState<LottoPronto[]>([]);
+  const [nomiPiatti, setNomiPiatti] = useState<Map<string, string>>(new Map());
+  const [impegniPerPiatto, setImpegniPerPiatto] = useState<Map<string, number>>(new Map());
 
   useEffect(() => {
     let vivo = true;
-    Promise.all([leggiIngredienti(), leggiDispensa(), leggiImpostazioni()])
-      .then(([ingredienti, dispensa, impostazioni]) => {
+    Promise.all([
+      leggiIngredienti(),
+      leggiDispensa(),
+      leggiImpostazioni(),
+      leggiPronti(),
+      leggiRepertorio(),
+      leggiSettimanaCorrente(),
+    ])
+      .then(([ingredienti, dispensa, impostazioni, pronti, repertorio, settimana]) => {
         if (!vivo) return;
         const perId = new Map<string, PantryState>(dispensa.map((p) => [p.ingredientId, p]));
         setRighe(
@@ -61,6 +74,19 @@ export default function Dispensa() {
           }),
         );
         setOrdineAree(impostazioni.ordineAree);
+        setLotti(pronti);
+        setNomiPiatti(new Map(repertorio.map((d) => [d.id, d.nome])));
+
+        // Quante porzioni di quel piatto sono già promesse a uno slot
+        // futuro: un lotto "disponibile" che in realtà è già impegnato per
+        // dopodomani non è la stessa cosa di uno libero.
+        const oggi = new Date().toISOString().slice(0, 10);
+        const impegni = new Map<string, number>();
+        for (const slot of settimana?.slots ?? []) {
+          if (!slot.daPronti || slot.dishId === null || slot.data < oggi) continue;
+          impegni.set(slot.dishId, (impegni.get(slot.dishId) ?? 0) + 1);
+        }
+        setImpegniPerPiatto(impegni);
       })
       .catch((e) => {
         console.error('dispensa: caricamento fallito.', e);
@@ -102,6 +128,48 @@ export default function Dispensa() {
     }
   }
 
+  /** Come `salva`, sul lotto: ottimistico, con ritorno al valore di prima se fallisce. */
+  async function correggiLottoOttimistico(id: string, nuovo: number) {
+    const precedenti = lotti;
+    setErroreSalvataggio(null);
+    setLotti((prev) => prev.map((l) => (l.id === id ? { ...l, porzioni: nuovo } : l)));
+    try {
+      await correggiLotto(id, nuovo);
+    } catch (e) {
+      console.error('dispensa: correzione del lotto fallita.', e);
+      setLotti(precedenti);
+      setErroreSalvataggio('Non siamo riusciti a salvare la correzione. Riprova.');
+    }
+  }
+
+  /** Come `cambiaCongelato`, sul lotto. */
+  async function congelaLottoOttimistico(id: string, congelato: boolean) {
+    const precedenti = lotti;
+    setErroreSalvataggio(null);
+    setLotti((prev) => prev.map((l) => (l.id === id ? { ...l, congelato } : l)));
+    try {
+      await impostaCongelatoLotto(id, congelato);
+    } catch (e) {
+      console.error('dispensa: cambio congelatore del lotto fallito.', e);
+      setLotti(precedenti);
+      setErroreSalvataggio('Non siamo riusciti a salvare. Riprova.');
+    }
+  }
+
+  /** Come le altre due, ma senza ripristino parziale: il lotto sparisce e torna se l'eliminazione fallisce. */
+  async function eliminaLottoOttimistico(id: string) {
+    const precedenti = lotti;
+    setErroreSalvataggio(null);
+    setLotti((prev) => prev.filter((l) => l.id !== id));
+    try {
+      await eliminaLotto(id);
+    } catch (e) {
+      console.error('dispensa: eliminazione del lotto fallita.', e);
+      setLotti(precedenti);
+      setErroreSalvataggio('Non siamo riusciti a salvare. Riprova.');
+    }
+  }
+
   if (errore) {
     return (
       <Cornice>
@@ -127,6 +195,7 @@ export default function Dispensa() {
     );
   }
 
+  const oggi = new Date().toISOString().slice(0, 10);
   const inCasa = righe.filter((r) => r.residuo > 0);
   // "Finito" e "mai avuto" non sono la stessa cosa: il primo e' un
   // ingrediente che usi e che si e' esaurito — informazione utile, sono
@@ -146,6 +215,15 @@ export default function Dispensa() {
         {erroreSalvataggio && (
           <p style={{ fontSize: 13, color: 'var(--sec)', margin: '0 6px 12px' }}>{erroreSalvataggio}</p>
         )}
+
+        <SezionePronti
+          lotti={lotti.filter((l) => porzioniUtilizzabili(l, oggi) > 0)}
+          nomiPiatti={nomiPiatti}
+          impegniPerPiatto={impegniPerPiatto}
+          onCorreggi={correggiLottoOttimistico}
+          onCongela={congelaLottoOttimistico}
+          onElimina={eliminaLottoOttimistico}
+        />
 
         <Gruppo titolo="IN CASA" righe={inCasa} ordineAree={ordineAree} onSalva={salva} onCongela={cambiaCongelato} />
         <Gruppo titolo="FINITI" righe={finiti} ordineAree={ordineAree} onSalva={salva} onCongela={cambiaCongelato} />
@@ -235,6 +313,191 @@ function Gruppo({ titolo, righe, ordineAree, onSalva, onCongela, chiusoDaSubito 
           />
         ))}
       </div>
+    </div>
+  );
+}
+
+interface PropsSezionePronti {
+  lotti: LottoPronto[];
+  nomiPiatti: Map<string, string>;
+  impegniPerPiatto: Map<string, number>;
+  onCorreggi: (id: string, nuovo: number) => void;
+  onCongela: (id: string, congelato: boolean) => void;
+  onElimina: (id: string) => void;
+}
+
+/**
+ * I lotti del meal prepping: porzioni già cucinate, in frigo o freezer, in
+ * attesa di uno slot che le usi. Assente finché non esiste nessun lotto
+ * utilizzabile — un titolo di sezione sempre vuoto sarebbe solo rumore prima
+ * ancora che il meal prepping venga usato.
+ */
+function SezionePronti({ lotti, nomiPiatti, impegniPerPiatto, onCorreggi, onCongela, onElimina }: PropsSezionePronti) {
+  if (lotti.length === 0) return null;
+
+  return (
+    <div style={{ marginBottom: 22 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 7, margin: '0 0 9px', padding: '0 4px' }}>
+        <span
+          style={{
+            fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700,
+            letterSpacing: '0.16em', color: 'var(--ink)',
+          }}
+        >
+          PRONTI
+        </span>
+        <span style={{ flex: 1 }} />
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--ter)' }}>
+          {lotti.length}
+        </span>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+        {lotti.map((lotto) => (
+          <TesseraPronto
+            key={`${lotto.id}:${lotto.porzioni}:${lotto.congelato}`}
+            lotto={lotto}
+            nome={nomiPiatti.get(lotto.dishId) ?? 'Piatto eliminato'}
+            impegnate={impegniPerPiatto.get(lotto.dishId) ?? 0}
+            onCorreggi={onCorreggi}
+            onCongela={onCongela}
+            onElimina={onElimina}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TesseraPronto({
+  lotto,
+  nome,
+  impegnate,
+  onCorreggi,
+  onCongela,
+  onElimina,
+}: {
+  lotto: LottoPronto;
+  nome: string;
+  impegnate: number;
+  onCorreggi: PropsSezionePronti['onCorreggi'];
+  onCongela: PropsSezionePronti['onCongela'];
+  onElimina: PropsSezionePronti['onElimina'];
+}) {
+  const [testo, setTesto] = useState(String(lotto.porzioni));
+
+  function conferma() {
+    const n = Number(testo);
+    if (testo.trim() === '' || Number.isNaN(n) || n < 0) {
+      setTesto(String(lotto.porzioni));
+      return;
+    }
+    onCorreggi(lotto.id, n);
+  }
+
+  return (
+    <div
+      style={{
+        display: 'flex', alignItems: 'center', gap: 12, minHeight: 62,
+        padding: '11px 14px', borderRadius: 16,
+        background: 'var(--superficie)', border: '1px solid var(--bordo)',
+      }}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)',
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}
+        >
+          {nome}
+        </div>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 8.5, letterSpacing: '0.09em', color: 'var(--ter)', marginTop: 4 }}>
+          PREPARATO IL {dataBreve(lotto.preparataIl).toUpperCase()}
+          {lotto.congelato ? ' · IN CONGELATORE' : ''}
+        </div>
+        {impegnate > 0 && (
+          <div style={{ fontSize: 12, lineHeight: 1.35, color: 'var(--sec)', marginTop: 5 }}>
+            {impegnate === 1 ? '1 impegnata' : `${impegnate} impegnate`}
+          </div>
+        )}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => onCongela(lotto.id, !lotto.congelato)}
+        aria-pressed={lotto.congelato}
+        aria-label={`${nome}: ${lotto.congelato ? 'togli dal congelatore' : 'metti in congelatore'}`}
+        style={{
+          width: 44, height: 44, flex: 'none', borderRadius: 13,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: lotto.congelato ? 'rgba(156,199,242,0.30)' : 'transparent',
+        }}
+      >
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+          <path
+            d="M12 2v20M12 6.5 8.5 4M12 6.5 15.5 4M12 17.5 8.5 20M12 17.5l3.5 2.5M3.3 7l17.4 10M6.8 8.2 5.9 4.1M6.8 8.2 3 9.3M17.2 15.8l.9 4.1M17.2 15.8 21 14.7M20.7 7 3.3 17M17.2 8.2l.9-4.1M17.2 8.2 21 9.3M6.8 15.8l-.9 4.1M6.8 15.8 3 14.7"
+            stroke={lotto.congelato ? '#4A90D9' : 'var(--ter)'}
+            strokeWidth="1.7"
+            strokeLinecap="round"
+          />
+        </svg>
+      </button>
+
+      <label
+        style={{
+          display: 'flex', alignItems: 'center', gap: 5, flex: 'none',
+          minHeight: 44, cursor: 'text',
+        }}
+      >
+        <input
+          type="number"
+          inputMode="decimal"
+          min={0}
+          value={testo}
+          onChange={(e) => setTesto(e.target.value)}
+          onBlur={conferma}
+          aria-label={`Porzioni di ${nome}`}
+          className="residuo-input"
+          style={{
+            width: 46, height: 38, borderRadius: 11, textAlign: 'right',
+            border: '1px solid rgba(20,22,58,0.12)', background: '#FFFFFF',
+            padding: '0 8px', outline: 'none',
+            fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 700, color: 'var(--ink)',
+          }}
+        />
+      </label>
+
+      <button
+        type="button"
+        onClick={() => onElimina(lotto.id)}
+        aria-label={`Elimina il lotto di ${nome}`}
+        style={{
+          width: 44, height: 44, flex: 'none', borderRadius: 13,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path
+            d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"
+            stroke="var(--ter)"
+            strokeWidth="1.7"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
+      <style jsx>{`
+        .residuo-input::-webkit-outer-spin-button,
+        .residuo-input::-webkit-inner-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        .residuo-input {
+          -moz-appearance: textfield;
+          appearance: textfield;
+        }
+      `}</style>
     </div>
   );
 }
