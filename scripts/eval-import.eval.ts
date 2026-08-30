@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync, writeFileSync } from 'node:fs';
 import { join, extname } from 'node:path';
 import { describe, it, expect } from 'vitest';
 import { estraiPiano, type FileEstrazione } from '../src/server/import-ai';
@@ -75,6 +75,7 @@ describe('eval estrattore', () => {
 
         const righe = tutteLeRighe(esito.piano);
         let abbinate = 0, quantitaEsatte = 0, fabbricate = 0, inferite = 0, estranei = 0;
+        const righeFabbricate: RigaEstratta[] = [];
         const vistiVeri = new Set(righeVere.map((r) => normalizza(r.alimento)));
         const vistiEstratti = new Set<string>();
         for (const r of righe) {
@@ -86,7 +87,10 @@ describe('eval estrattore', () => {
             estranei += 1;
             continue;
           }
-          if (r.quantita !== null && !r.quantitaInferita && !vere.has(r.quantita)) fabbricate += 1;
+          if (r.quantita !== null && !r.quantitaInferita && !vere.has(r.quantita)) {
+            fabbricate += 1;
+            righeFabbricate.push(r);
+          }
           if (r.quantita !== null && vere.has(r.quantita)) quantitaEsatte += 1;
         }
         for (const k of vistiVeri) if (vistiEstratti.has(k)) abbinate += 1;
@@ -99,6 +103,16 @@ describe('eval estrattore', () => {
           `righe con quantità esatta ${quantitaEsatte}/${righe.length} · inferite ${inferite} · ` +
           `QUANTITÀ FABBRICATE: ${fabbricate}`,
         );
+        // Debug locale opzionale: le righe incriminate finiscono in un file
+        // DENTRO diete/ (gitignored, stessa classe di riservatezza dei dati) —
+        // mai stampate. Serve a distinguere invenzione vera da ground truth
+        // incompleto senza violare la regola contatori-soltanto del report.
+        if (righeFabbricate.length > 0 && process.env.EVAL_IMPORT_DEBUG) {
+          writeFileSync(
+            join(process.cwd(), 'diete/estrazioni/debug-eval.json'),
+            JSON.stringify({ modello, righeFabbricate, grezzo }, null, 1),
+          );
+        }
         // Gate duro anti-fabbricazione: una quantità inventata non marcata è il difetto
         // che l'intero formato esiste per impedire.
         expect(fabbricate).toBe(0);
