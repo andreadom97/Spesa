@@ -58,6 +58,27 @@ describe('POST /api/dispensa/correggi', () => {
     expect((await res.json()).errore).toBe('richiesta non valida');
   });
 
+  it('body JSON null → 400', async () => {
+    const res = await POST(richiesta(null));
+    expect(res.status).toBe(400);
+    expect((await res.json()).errore).toBe('richiesta non valida');
+  });
+
+  it('nota oltre 2000 caratteri → 400', async () => {
+    const res = await POST(richiesta({ nota: 'x'.repeat(2001), contesto: CONTESTO }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).errore).toBe('richiesta non valida');
+  });
+
+  it('contesto oltre 500 voci → 400', async () => {
+    const contestoGonfiato = Array.from({ length: 501 }, (_, i) => ({
+      id: `i-${i}`, nome: `Voce ${i}`, unitaBase: 'g', formatoConfezione: 1000, residuo: 400, congelato: false,
+    }));
+    const res = await POST(richiesta({ nota: 'x', contesto: contestoGonfiato }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).errore).toBe('richiesta non valida');
+  });
+
   it('senza chiave e senza flag mock → 503', async () => {
     const res = await POST(richiesta({ nota: 'finito il riso', contesto: CONTESTO }));
     expect(res.status).toBe(503);

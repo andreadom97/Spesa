@@ -27,17 +27,20 @@ export async function POST(request: Request): Promise<Response> {
   const { data, error } = await sb.auth.getUser(token);
   if (error || !data.user) return Response.json({ errore: 'non autorizzato' }, { status: 401 });
 
-  let corpo: Record<string, unknown>;
+  let corpo: unknown;
   try {
     corpo = await request.json();
   } catch {
     return Response.json({ errore: 'richiesta non valida' }, { status: 400 });
   }
-  const nota = corpo.nota;
-  const contesto = corpo.contesto;
+  if (typeof corpo !== 'object' || corpo === null) {
+    return Response.json({ errore: 'richiesta non valida' }, { status: 400 });
+  }
+  const nota = (corpo as Record<string, unknown>).nota;
+  const contesto = (corpo as Record<string, unknown>).contesto;
   if (
-    typeof nota !== 'string' || nota.trim().length === 0 ||
-    !Array.isArray(contesto) ||
+    typeof nota !== 'string' || nota.trim().length === 0 || nota.trim().length > 2000 ||
+    !Array.isArray(contesto) || contesto.length > 500 ||
     !contesto.every((v) => typeof v === 'object' && v !== null && typeof (v as Record<string, unknown>).id === 'string')
   ) {
     return Response.json({ errore: 'richiesta non valida' }, { status: 400 });
