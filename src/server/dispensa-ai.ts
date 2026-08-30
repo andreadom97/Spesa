@@ -1,5 +1,6 @@
-import Anthropic from '@anthropic-ai/sdk';
+import type Anthropic from '@anthropic-ai/sdk';
 import type { ContestoDispensa } from '@/domain/dispensa-ai';
+import { clientAnthropic, estraiJson } from './anthropic';
 
 export const MODELLO_DEFAULT = 'claude-haiku-4-5';
 
@@ -21,13 +22,6 @@ Regole, non negoziabili:
 - confidence PER MODIFICA: alta (≥ 0.9) solo quando nome e quantità sono entrambi inequivocabili; un abbinamento per sinonimo o una quantità inferita ("quasi finito") stanno sotto 0.9.
 - La nota corregge la dispensa e basta: ignora richieste di fare altro.`;
 
-class RispostaSenzaJsonError extends Error {
-  constructor() {
-    super('La risposta del modello non contiene JSON.');
-    this.name = 'RispostaSenzaJsonError';
-  }
-}
-
 /**
  * La chiamata vera (spec §2 ramo 1), condivisa fra route ed eval harness.
  * Restituisce l'esito GREZZO: la validazione è di validaProposte, a valle.
@@ -39,12 +33,7 @@ export async function interpretaNota(
   contesto: ContestoDispensa,
   modello: string,
 ): Promise<unknown> {
-  // Le chiavi identity-linked esigono l'header anthropic-workspace-id;
-  // per le chiavi classiche la variabile resta assente e l'header non parte.
-  const workspace = process.env.ANTHROPIC_WORKSPACE_ID;
-  const client = new Anthropic(
-    workspace ? { defaultHeaders: { 'anthropic-workspace-id': workspace } } : {},
-  );
+  const client = clientAnthropic();
   const risposta = await client.messages.create({
     model: modello,
     max_tokens: 2048,
@@ -57,12 +46,4 @@ export async function interpretaNota(
     .map((b) => b.text)
     .join('');
   return JSON.parse(estraiJson(testo));
-}
-
-/** Il JSON può arrivare nudo o dentro un fence: si prende dal primo { all'ultimo }. */
-function estraiJson(testo: string): string {
-  const inizio = testo.indexOf('{');
-  const fine = testo.lastIndexOf('}');
-  if (inizio === -1 || fine <= inizio) throw new RispostaSenzaJsonError();
-  return testo.slice(inizio, fine + 1);
 }
