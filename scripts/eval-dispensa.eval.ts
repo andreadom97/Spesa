@@ -48,6 +48,9 @@ describe('eval dispensa-AI', () => {
         // e così una proposta attesa ma mal calibrata (confidence sopra soglia
         // su un valore che il caso marca come inferito, non dichiarato).
         expect(sbagliateSopraSoglia + miscalibrate).toBe(0);
+        // Se ogni caso è finito in "invalidi" (chiave rifiutata, rete giù) il
+        // gate sopra passa a vuoto: un eval che non ha misurato nulla fallisce.
+        expect(invalidi, 'tutte le chiamate fallite: eval non ha misurato nulla').toBeLessThan(CASI_EVAL.length);
       });
     }
   });

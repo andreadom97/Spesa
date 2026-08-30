@@ -9,7 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "eval:dispensa": "vitest run --config vitest.eval.config.ts"
+    "eval:dispensa": "vitest run --config vitest.eval.config.ts --reporter=verbose --disable-console-intercept"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.122.0",

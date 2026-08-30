@@ -39,7 +39,12 @@ export async function interpretaNota(
   contesto: ContestoDispensa,
   modello: string,
 ): Promise<unknown> {
-  const client = new Anthropic();
+  // Le chiavi identity-linked esigono l'header anthropic-workspace-id;
+  // per le chiavi classiche la variabile resta assente e l'header non parte.
+  const workspace = process.env.ANTHROPIC_WORKSPACE_ID;
+  const client = new Anthropic(
+    workspace ? { defaultHeaders: { 'anthropic-workspace-id': workspace } } : {},
+  );
   const risposta = await client.messages.create({
     model: modello,
     max_tokens: 2048,

@@ -4,6 +4,9 @@ import { validaProposte, EsitoNonValidoError } from '@/domain/dispensa-ai';
 import { mockCorrezione } from '@/domain/dispensa-ai-mock';
 import { interpretaNota, modelloConfigurato } from '@/server/dispensa-ai';
 
+// Il default Vercel (10s su Hobby) può troncare una chiamata lenta al modello.
+export const maxDuration = 60;
+
 /**
  * POST /api/dispensa/correggi — { nota, contesto } → EsitoCorrezione.
  *
