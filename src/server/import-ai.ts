@@ -1,5 +1,5 @@
 import type Anthropic from '@anthropic-ai/sdk';
-import { clientAnthropic, estraiJson } from './anthropic';
+import { clientAnthropic, estraiJson, RispostaSenzaJsonError } from './anthropic';
 
 export const MODELLO_DEFAULT_IMPORT = 'claude-sonnet-5';
 
@@ -45,6 +45,10 @@ Regole non negoziabili:
  * max_tokens: 32000 è oltre i 10 minuti teorici di output che l'SDK ammette
  * in non-streaming (32000/128000 × 60min = 15min > cap 10min) → l'SDK lancia
  * "Streaming is required..." su ogni richiesta reale. Streaming obbligatorio.
+ *
+ * Un output così lungo ogni tanto esce come JSON malformato (misurato in eval:
+ * ~1 run su 3-4 con Haiku): su errore di parse si ritenta UNA volta. Gli errori
+ * di rete/API propagano subito — non sono flake di sampling.
  */
 export async function estraiPiano(files: FileEstrazione[], modello: string): Promise<unknown> {
   const client = clientAnthropic();
@@ -53,20 +57,28 @@ export async function estraiPiano(files: FileEstrazione[], modello: string): Pro
       ? { type: 'image', source: { type: 'base64', media_type: f.mime as 'image/jpeg' | 'image/png' | 'image/webp', data: f.base64 } }
       : { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: f.base64 } },
   );
-  const risposta = await client.messages
-    .stream({
-      model: modello,
-      max_tokens: 32000,
-      system: PROMPT_SISTEMA_IMPORT,
-      messages: [{
-        role: 'user',
-        content: [...blocchi, { type: 'text', text: 'Trascrivi la dieta in queste pagine nel JSON dello schema, in ordine di pagina.' }],
-      }],
-    })
-    .finalMessage();
-  const testo = risposta.content
-    .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-    .map((b) => b.text)
-    .join('');
-  return JSON.parse(estraiJson(testo));
+  const unTentativo = async (): Promise<unknown> => {
+    const risposta = await client.messages
+      .stream({
+        model: modello,
+        max_tokens: 32000,
+        system: PROMPT_SISTEMA_IMPORT,
+        messages: [{
+          role: 'user',
+          content: [...blocchi, { type: 'text', text: 'Trascrivi la dieta in queste pagine nel JSON dello schema, in ordine di pagina.' }],
+        }],
+      })
+      .finalMessage();
+    const testo = risposta.content
+      .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+      .map((b) => b.text)
+      .join('');
+    return JSON.parse(estraiJson(testo));
+  };
+  try {
+    return await unTentativo();
+  } catch (err) {
+    if (err instanceof SyntaxError || err instanceof RispostaSenzaJsonError) return unTentativo();
+    throw err;
+  }
 }

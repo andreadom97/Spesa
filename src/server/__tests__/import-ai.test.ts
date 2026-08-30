@@ -47,6 +47,26 @@ describe('estraiPiano', () => {
     await expect(estraiPiano(FOTO, 'claude-sonnet-5')).rejects.toThrow();
   });
 
+  it('JSON malformato al primo colpo → ritenta una volta e riesce', async () => {
+    streamMock
+      .mockReturnValueOnce({ finalMessage: async () => ({ content: [{ type: 'text', text: '{"a":[1,2' }] }) })
+      .mockReturnValueOnce({ finalMessage: async () => ({ content: [{ type: 'text', text: '{"a":1}' }] }) });
+    expect(await estraiPiano(FOTO, 'claude-sonnet-5')).toEqual({ a: 1 });
+    expect(streamMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('JSON malformato due volte → l\'errore propaga (niente terzo tentativo)', async () => {
+    streamMock.mockReturnValue({ finalMessage: async () => ({ content: [{ type: 'text', text: '{"a":[1,2' }] }) });
+    await expect(estraiPiano(FOTO, 'claude-sonnet-5')).rejects.toThrow(SyntaxError);
+    expect(streamMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('errore API → propaga subito senza retry', async () => {
+    streamMock.mockReturnValue({ finalMessage: async () => { throw new Error('rete'); } });
+    await expect(estraiPiano(FOTO, 'claude-sonnet-5')).rejects.toThrow('rete');
+    expect(streamMock).toHaveBeenCalledTimes(1);
+  });
+
   it('modelloImportConfigurato: env batte il default', () => {
     expect(modelloImportConfigurato()).toBe(MODELLO_DEFAULT_IMPORT);
     process.env.IMPORT_AI_MODEL = 'claude-haiku-4-5';
