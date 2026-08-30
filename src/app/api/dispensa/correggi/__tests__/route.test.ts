@@ -79,6 +79,15 @@ describe('POST /api/dispensa/correggi', () => {
     expect((await res.json()).errore).toBe('richiesta non valida');
   });
 
+  it('contesto con una voce enorme (nome da 1 MB) → 400', async () => {
+    const contestoGonfiato = [
+      { id: 'i-riso', nome: 'x'.repeat(1_000_000), unitaBase: 'g', formatoConfezione: 1000, residuo: 400, congelato: false },
+    ];
+    const res = await POST(richiesta({ nota: 'x', contesto: contestoGonfiato }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).errore).toBe('richiesta non valida');
+  });
+
   it('senza chiave e senza flag mock → 503', async () => {
     const res = await POST(richiesta({ nota: 'finito il riso', contesto: CONTESTO }));
     expect(res.status).toBe(503);
@@ -115,12 +124,18 @@ describe('POST /api/dispensa/correggi', () => {
     delete process.env.ANTHROPIC_API_KEY;
   });
 
-  it('interpretaNota che esplode (rete) → 502', async () => {
+  it('interpretaNota che esplode (rete) → 502, loggato in console.error', async () => {
     process.env.ANTHROPIC_API_KEY = 'test-non-vera';
-    interpretaNotaMock.mockRejectedValue(new Error('rete giù'));
+    const erroreRete = new Error('rete giù');
+    interpretaNotaMock.mockRejectedValue(erroreRete);
+    const spyConsoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
     const res = await POST(richiesta({ nota: 'x', contesto: CONTESTO }));
+
     expect(res.status).toBe(502);
     expect((await res.json()).errore).toBe('correzione non riuscita, riprova');
+    expect(spyConsoleError).toHaveBeenCalledWith('dispensa-ai: interpretazione fallita.', erroreRete);
+    spyConsoleError.mockRestore();
     delete process.env.ANTHROPIC_API_KEY;
   });
 });

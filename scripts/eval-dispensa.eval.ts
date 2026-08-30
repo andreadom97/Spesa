@@ -16,7 +16,7 @@ describe('eval dispensa-AI', () => {
   describe.skipIf(!process.env.ANTHROPIC_API_KEY)('confronto modelli', () => {
     for (const modello of MODELLI) {
       it(`modello ${modello}`, async () => {
-        let abbinamentiOk = 0, valoriOk = 0, sbagliateSopraSoglia = 0, invalidi = 0;
+        let abbinamentiOk = 0, valoriOk = 0, sbagliateSopraSoglia = 0, invalidi = 0, miscalibrate = 0;
         let attesiTotali = 0;
 
     for (const caso of CASI_EVAL) {
@@ -32,6 +32,9 @@ describe('eval dispensa-AI', () => {
         const trovata = esito.proposte.find((p) => p.ingredientId === atteso.ingredientId && p.campo === atteso.campo);
         if (trovata) abbinamentiOk += 1;
         if (trovata && trovata.valoreNuovo === atteso.valoreNuovo) valoriOk += 1;
+        if (caso.richiedeSottoSoglia && trovata && trovata.valoreNuovo === atteso.valoreNuovo && trovata.confidence >= CONFIDENCE_SOGLIA) {
+          miscalibrate += 1;
+        }
       }
       for (const p of esito.proposte) {
         const attesa = caso.attesi.some((a) => a.ingredientId === p.ingredientId && a.campo === p.campo && a.valoreNuovo === p.valoreNuovo);
@@ -39,10 +42,12 @@ describe('eval dispensa-AI', () => {
       }
     }
 
-        console.log(`\n[${modello}] abbinamenti ${abbinamentiOk}/${attesiTotali} · valori esatti ${valoriOk}/${attesiTotali} · proposte sbagliate SOPRA soglia: ${sbagliateSopraSoglia} · esiti invalidi: ${invalidi}`);
+        console.log(`\n[${modello}] abbinamenti ${abbinamentiOk}/${attesiTotali} · valori esatti ${valoriOk}/${attesiTotali} · proposte sbagliate SOPRA soglia: ${sbagliateSopraSoglia} · proposte attese ma MAL CALIBRATE (sopra soglia dove doveva stare sotto): ${miscalibrate} · esiti invalidi: ${invalidi}`);
         // L'harness è un report, non un gate: l'unica asserzione dura è la
-        // calibrazione — una proposta sbagliata sopra soglia si auto-applica.
-        expect(sbagliateSopraSoglia).toBe(0);
+        // calibrazione — una proposta sbagliata sopra soglia si auto-applica,
+        // e così una proposta attesa ma mal calibrata (confidence sopra soglia
+        // su un valore che il caso marca come inferito, non dichiarato).
+        expect(sbagliateSopraSoglia + miscalibrate).toBe(0);
       });
     }
   });

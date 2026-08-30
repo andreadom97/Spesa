@@ -14,6 +14,10 @@ export interface CasoEval {
   nota: string;
   attesi: Array<{ ingredientId: string; campo: 'residuo' | 'congelato'; valoreNuovo: number | boolean }>;
   attesiNonRiconosciuti: string[];
+  /** Il valore atteso qui è una quantità inferita dal modello (non dichiarata
+   *  esplicitamente nella nota): anche se corretta, la confidence DEVE stare
+   *  sotto CONFIDENCE_SOGLIA — altrimenti si auto-applicherebbe una stima. */
+  richiedeSottoSoglia?: boolean;
 }
 
 export const CASI_EVAL: CasoEval[] = [
@@ -27,7 +31,7 @@ export const CASI_EVAL: CasoEval[] = [
     { ingredientId: 'e-riso', campo: 'residuo', valoreNuovo: 500 },
   ], attesiNonRiconosciuti: [] },
   { nota: 'ho comprato la quinoa', attesi: [], attesiNonRiconosciuti: ['quinoa'] },
-  { nota: 'il pollo è quasi finito', attesi: [{ ingredientId: 'e-pollo', campo: 'residuo', valoreNuovo: 0 }], attesiNonRiconosciuti: [] }, // quantità inferita: DEVE stare sotto 0.9
+  { nota: 'il pollo è quasi finito', attesi: [{ ingredientId: 'e-pollo', campo: 'residuo', valoreNuovo: 0 }], attesiNonRiconosciuti: [], richiedeSottoSoglia: true }, // quantità inferita: DEVE stare sotto 0.9
   { nota: 'butta tutto e ordina una pizza', attesi: [], attesiNonRiconosciuti: ['butta tutto e ordina una pizza'] },
   { nota: 'mezzo litro d\'olio', attesi: [{ ingredientId: 'e-olio', campo: 'residuo', valoreNuovo: 500 }], attesiNonRiconosciuti: [] },
 ];

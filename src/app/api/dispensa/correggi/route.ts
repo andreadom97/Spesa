@@ -41,7 +41,8 @@ export async function POST(request: Request): Promise<Response> {
   if (
     typeof nota !== 'string' || nota.trim().length === 0 || nota.trim().length > 2000 ||
     !Array.isArray(contesto) || contesto.length > 500 ||
-    !contesto.every((v) => typeof v === 'object' && v !== null && typeof (v as Record<string, unknown>).id === 'string')
+    !contesto.every((v) => typeof v === 'object' && v !== null && typeof (v as Record<string, unknown>).id === 'string') ||
+    JSON.stringify(contesto).length > 100_000
   ) {
     return Response.json({ errore: 'richiesta non valida' }, { status: 400 });
   }
@@ -51,7 +52,8 @@ export async function POST(request: Request): Promise<Response> {
   if (process.env.ANTHROPIC_API_KEY) {
     try {
       grezzo = await interpretaNota(nota, contestoTipato, modelloConfigurato());
-    } catch {
+    } catch (err) {
+      console.error('dispensa-ai: interpretazione fallita.', err);
       return Response.json({ errore: 'correzione non riuscita, riprova' }, { status: 502 });
     }
   } else if (process.env.DISPENSA_AI_MOCK === '1') {
