@@ -1,6 +1,8 @@
 # Correzioni alla dispensa via AI — design
 
-Data: 2026-08-30 · Stato: spec approvata in chat, **costruzione rimandata** (vedi §9)
+Data: 2026-08-30 · Stato: spec approvata; **si costruisce ora, col mock dietro
+la route** — la chiave API è l'interruttore che accende la chiamata vera
+(decisione di Andrea, 30/08 pomeriggio)
 Origine: richiesta di Andrea del 30/08. Precede: `2026-08-29-spunta-pasti-design.md` (P2, spedito).
 
 ## 1. Obiettivo
@@ -15,7 +17,8 @@ Decisioni chiuse in chat (30/08):
 
 | Bivio | Decisione |
 |---|---|
-| Chiave API | **Non ancora**: la spec si scrive ora, la costruzione parte quando Andrea mette ANTHROPIC_API_KEY |
+| Chiave API | **Si costruisce ora** con un mock deterministico dietro la route (pattern dell'import); `ANTHROPIC_API_KEY` è l'interruttore della chiamata vera |
+| Modello | Configurazione, non codice: env `DISPENSA_AI_MODEL`, default `claude-haiku-4-5`; scelta finale con l'eval harness (§6bis) quando la chiave c'è |
 | Scope | Solo `residuo` e `congelato` su **ingredienti esistenti**; nomi non riconosciuti segnalati, mai creati |
 | Confidence | Per singola modifica: ≥90% applica subito + recap con Annulla; <90% proposta da confermare |
 | Audio | Dettatura del browser (Web Speech API) → converge sul percorso testuale; **nessun upload audio, nessuno STT esterno** (la Messages API non accetta audio in input [fonte: skill claude-api, cache 2026-06]) |
@@ -25,11 +28,18 @@ Decisioni chiuse in chat (30/08):
 Nessun agente che scrive sul database. Il flusso:
 
 ```
-nota (testo) → POST /api/dispensa/correggi → modello con structured output
+nota + contesto → POST /api/dispensa/correggi (JWT Supabase obbligatorio)
+  → ramo: chiave → Claude · DISPENSA_AI_MOCK=1 → interprete a regole · altrimenti 503
   → { proposte: ModificaProposta[], nonRiconosciuti: string[] }
   → validaProposte (dominio puro) → UI: applica/propone/segnala
   → scritture via correggiResiduo / impostaCongelato esistenti
 ```
+
+Il **contesto lo manda il client** nel body: la pagina Dispensa ha già in
+mano ingredienti e residui, e la route resta senza accesso al database —
+niente service key, niente letture server-side. La route valida solo il JWT
+della sessione Supabase (header `Authorization: Bearer`, verificato con
+`auth.getUser(token)` su un client server con la anon key): senza, `401`.
 
 ```ts
 interface ModificaProposta {
@@ -46,19 +56,36 @@ interface ModificaProposta {
 }
 ```
 
-Stesso pattern della route import (`/api/import/estrai`): senza
-`ANTHROPIC_API_KEY` la route risponde `503 { errore: 'correzione non
-disponibile' }`; il branch sulla chiave è esplicito. Ogni esito del modello
-passa da `validaProposte` in `src/domain/dispensa-ai.ts` (puro): ingredientId
-esistente, campo ammesso, tipo del valore coerente col campo, residuo finito
-e ≥ 0, confidence in [0,1], `valoreAttuale` coerente con lo stato letto.
-Un esito non valido è un errore mostrato, mai applicato in parte.
+I tre rami della route, in ordine di controllo (pattern dell'import, col
+branch sulla chiave esplicito):
+
+1. **`ANTHROPIC_API_KEY` presente** → chiamata vera al modello
+   (`DISPENSA_AI_MODEL`, default `claude-haiku-4-5` — vedi §6) con
+   structured output. La chiamata (prompt compreso) vive in
+   `interpretaNota(nota, contesto, modello)` in `src/server/dispensa-ai.ts`
+   — fuori dal dominio (fa rete), condivisa fra route ed eval harness.
+2. **`DISPENSA_AI_MOCK=1`** (solo `.env.local`, MAI su Vercel) →
+   `mockCorrezione(nota, contesto)`: un interprete deterministico a regole
+   nel dominio puro — match del nome case-insensitive (esatto → confidence
+   0.95, per inclusione → 0.7), "finito/finita" → residuo 0, "a metà" →
+   `formatoConfezione × 0.5`, "N confezioni" → `formatoConfezione × N`,
+   "congelato/in freezer" → congelato true, tutto il resto →
+   `nonRiconosciuti`. Serve a E2E e sviluppo, ed è onestamente stupido:
+   nessuno lo scambia per AI.
+3. **Nessuno dei due** → `503 { errore: 'correzione non disponibile' }` —
+   lo stato di produzione finché la chiave non c'è.
+
+Ogni esito (vero o mock) passa da `validaProposte` in
+`src/domain/dispensa-ai.ts` (puro): ingredientId esistente nel contesto,
+campo ammesso, tipo del valore coerente col campo, residuo finito e ≥ 0,
+confidence in [0,1], `valoreAttuale` coerente col contesto. Un esito non
+valido è un errore mostrato, mai applicato in parte.
 
 ## 3. Il contesto nel prompt
 
-La route legge repertorio e dispensa e passa al modello l'elenco degli
-ingredienti dell'utente: `nome, unitaBase, formatoConfezione, residuo
-attuale, congelato`. Così:
+Il client costruisce il contesto dai dati che la pagina Dispensa ha già
+caricato e lo manda nel body: l'elenco degli ingredienti dell'utente con
+`id, nome, unitaBase, formatoConfezione, residuo attuale, congelato`. Così:
 
 - l'**abbinamento avviene nel modello** ("riso" → l'ingrediente Riso), non
   con string-matching fragile lato codice;
@@ -104,17 +131,43 @@ rete/503 con messaggio e nota preservata, recap come da §4.
 
 ## 6. Modello ed economia
 
-Default in spec: **Haiku 4.5** (`claude-haiku-4-5`, $1/$5 per MTok
-[fonte: skill claude-api, cache 2026-06]) — estrazione strutturata da una
-nota breve con contesto di ~100 ingredienti, structured output
-(`output_config.format`), niente thinking. Costo per correzione nell'ordine
-dei decimi di centesimo. [ipotesi, non testata: da validare col primo giro
-reale; se l'abbinamento sbaglia, salire di modello è un cambio di stringa]
+Il modello è **configurazione**: env `DISPENSA_AI_MODEL`, default
+`claude-haiku-4-5` — cambiarlo è un edit su Vercel, zero deploy di codice.
+La chiamata usa l'SDK ufficiale `@anthropic-ai/sdk` (dipendenza aggiunta con
+questo lavoro) con structured output (`output_config.format`), niente
+thinking. I candidati [fonte: reference API, cache 06/2026; costi = stime
+da validare con l'harness]:
+
+| Modello | $/MTok in/out | ~Costo per correzione* | Quando |
+|---|---|---|---|
+| `claude-haiku-4-5` | 1 / 5 | ~$0.004 | Default: estrazione strutturata da nota breve |
+| `claude-sonnet-5` | 2 / 10 | ~$0.008 | Se Haiku sbaglia gli abbinamenti sui sinonimi |
+| `claude-opus-5` | 5 / 25 | ~$0.02 | Overkill qui; sensato per l'estrattore diete (vision) |
+
+*\*~2.5k token di contesto (~100 ingredienti + prompt + nota) + ~300 di
+output. A ~30 note/mese, sotto 1€ con qualunque modello: la scelta è di
+qualità, non di costo.*
+
+## 6bis. Eval harness — la valutazione dei modelli
+
+`scripts/eval-dispensa.ts`: una batteria di ~10 note sintetiche con esiti
+attesi (`{ nota, contesto, attesi: { ingredientId, campo, valoreNuovo }[],
+attesiNonRiconosciuti }`), che gira la stessa `interpretaNota` su uno o più
+modelli (`--modelli claude-haiku-4-5,claude-sonnet-5`) e stampa per ciascuno:
+abbinamenti corretti/sbagliati/mancati, quantità esatte, calibrazione del
+confidence (le proposte sbagliate DEVONO stare sotto 0.9), costo dal campo
+`usage`. Richiede `ANTHROPIC_API_KEY` nell'ambiente: **senza chiave lo
+script esce subito spiegandolo — alla consegna è NON ESEGUITO**, ed è
+l'esatto strumento con cui Andrea sceglie il modello quando la mette. Le
+fixture sono sintetiche e committate (nessun dato reale necessario).
 
 ## 7. Errori e limiti
 
-- **Route senza chiave**: 503, messaggio "correzione non disponibile" (lo
-  stato di produzione finché la chiave non c'è).
+- **Route senza chiave né mock**: 503, messaggio "correzione non
+  disponibile" (lo stato di produzione finché la chiave non c'è; il mock si
+  accende solo con `DISPENSA_AI_MOCK=1` in `.env.local`, mai su Vercel).
+- **Route senza JWT valido**: 401 — la chiamata costa denaro e legge il
+  contesto dell'utente, non esiste percorso anonimo.
 - **Esito malformato dal modello**: `validaProposte` rifiuta tutto, la UI
   mostra "non ho capito la nota, riprova" — mai applicazioni parziali di un
   esito invalido.
@@ -125,27 +178,36 @@ reale; se l'abbinamento sbaglia, salire di modello è un cambio di stringa]
 - **La nota non è un inventario**: lo scope resta la correzione puntuale
   (spec Fase 1, riga 53: «l'utente non conta niente»). Note-fiume da 30
   righe funzionano ma non sono il caso di design.
-- **Auth sulla route**: obbligatoria dal primo giorno (stesso requisito già
-  a backlog per la route import — qui non si spedisce senza).
+- **Auth sulla route**: obbligatoria dal primo giorno, e siccome si spedisce
+  ora, si costruisce ora (la route import resta senza auth a backlog: oggi è
+  solo mock e non costa nulla — si allinea quando arriverà estrattoreClaude).
 
 ## 8. Test
 
 - **Dominio** (`dispensa-ai.test.ts`): `validaProposte` — id inesistente,
   campo/tipo incoerenti, residuo negativo/NaN, confidence fuori range,
-  conflitto stesso ingrediente+campo (vince l'ultima), esito vuoto valido.
-- **Route** (mock del client Anthropic): branch senza chiave → 503; esito
-  valido → pass-through validato; esito malformato → errore.
+  conflitto stesso ingrediente+campo (vince l'ultima), esito vuoto valido;
+  `mockCorrezione` — le regole di §2 una per una, incluso il non
+  riconosciuto.
+- **Route** (SDK Anthropic mockato con vi.mock): 401 senza JWT; ordine dei
+  rami (chiave batte mock batte 503); esito valido → pass-through validato;
+  esito malformato → errore; il corpo della richiesta al modello contiene
+  contesto e nota.
 - **UI**: tre gruppi del recap; Annulla riscrive `valoreAttuale`; conferma
   applica; microfono nascosto senza SpeechRecognition; nota preservata su
   errore.
-- **Prompt/abbinamento**: NON ESEGUIBILI senza chiave — al primo giro
-  reale, un piccolo set di note vere di Andrea come casi di collaudo.
+- **Prompt/abbinamento reale + eval harness**: NON ESEGUIBILI senza chiave
+  — dichiarati NON ESEGUITI alla consegna; l'harness (§6bis) è lo strumento
+  del primo giro reale.
 
 ## 9. Prerequisiti e fuori scope
 
-**Si costruisce quando**: (1) Andrea mette `ANTHROPIC_API_KEY` (Vercel +
-`.env.local`, mai in git né in chat); (2) auth sulla route. Sblocca anche
-estrattoreClaude (stessa infrastruttura: chiave, branch esplicito, auth).
+**Si costruisce ora, tutto**: dominio, route (con auth), UI, mock, harness.
+La `ANTHROPIC_API_KEY` (Vercel + `.env.local`, mai in git né in chat) è
+solo l'interruttore finale: quando Andrea la mette, la produzione passa da
+503 alla chiamata vera senza deploy, e l'harness diventa eseguibile per la
+scelta del modello. La stessa infrastruttura (chiave, SDK, branch esplicito,
+pattern auth) sblocca estrattoreClaude.
 
 **Fuori scope**: creazione di ingredienti nuovi via AI; upload di file
 audio e STT esterni; correzioni a piatti, piani o liste via nota; cronologia
