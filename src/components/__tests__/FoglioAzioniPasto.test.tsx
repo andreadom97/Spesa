@@ -16,6 +16,7 @@ function renderFoglio(sovrascrivi: Partial<Parameters<typeof FoglioAzioniPasto>[
       passato
       aCasa
       porzioniPreparate={0}
+      prontiCongelato={false}
       daPronti={false}
       prontiDisponibili={0}
       hrefScegli="/settimana/2026-08-26/sd-3/scegli"
@@ -81,6 +82,18 @@ describe('FoglioAzioniPasto', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Togli una porzione' }));
     fireEvent.click(screen.getByRole('button', { name: 'Salva porzioni' }));
     expect(onPreparaPorzioni).toHaveBeenCalledWith(0, false);
+  });
+
+  // F1 (review meal-prepping): il lotto legato allo slot era in freezer, ma
+  // lo stepper partiva sempre da congelato=false — riaprire e correggere solo
+  // N (senza toccare Frigo/Freezer) riportava il lotto in frigo in silenzio.
+  // congelatoIniziale deve seminare lo stato del toggle dal lotto legato.
+  it('lotto legato congelato: riapri lo stepper e salva senza toccare il toggle preserva il freezer', () => {
+    const { onPreparaPorzioni } = renderFoglio({ porzioniPreparate: 3, prontiCongelato: true });
+    fireEvent.click(screen.getByRole('button', { name: 'Ne preparo di più' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Aggiungi una porzione' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Salva porzioni' }));
+    expect(onPreparaPorzioni).toHaveBeenCalledWith(4, true);
   });
 
   it('il tap sul fondale chiude', () => {

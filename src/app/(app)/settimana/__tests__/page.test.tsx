@@ -595,7 +595,7 @@ describe('spunta pasti', () => {
     await screen.findByText('Yogurt e frutta');
 
     expect(screen.getByText('Saltato')).toBeInTheDocument();
-    expect(screen.getByText('+1 porzioni')).toBeInTheDocument();
+    expect(screen.getByText('+1 porzione')).toBeInTheDocument();
   });
 });
 

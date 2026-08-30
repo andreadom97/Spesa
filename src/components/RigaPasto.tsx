@@ -29,7 +29,7 @@ interface Props {
   hrefScegli: string;
   /**
    * Se presente, la zona destra apre l'action sheet della spunta invece di
-   * navigare a Scegli (giorni ≤ oggi a settimana non-bozza, spec §6).
+   * navigare a Scegli (tutti i giorni a settimana non-bozza, spec §6).
    */
   onApriAzioni?: () => void;
 }

@@ -14,6 +14,8 @@ interface Props {
   aCasa: boolean;
   /** Porzioni extra già dichiarate sullo slot (0 = nessuna): valore iniziale dello stepper. */
   porzioniPreparate: number;
+  /** true se il lotto legato a questo slot è in freezer: valore iniziale del toggle Frigo/Freezer dello stepper. */
+  prontiCongelato: boolean;
   /** true se lo slot è già coperto da una porzione pronta. */
   daPronti: boolean;
   /** Porzioni utilizzabili del piatto dello slot (0 nasconde "Uso una porzione pronta"). */
@@ -62,9 +64,11 @@ function Voce({ onClick, children }: { onClick: () => void; children: ReactNode 
   );
 }
 
-function Stepper({ iniziale, onSalva }: { iniziale: number; onSalva: (n: number, congelato: boolean) => void }) {
+function Stepper({
+  iniziale, congelatoIniziale, onSalva,
+}: { iniziale: number; congelatoIniziale: boolean; onSalva: (n: number, congelato: boolean) => void }) {
   const [n, setN] = useState(iniziale);
-  const [congelato, setCongelato] = useState(false);
+  const [congelato, setCongelato] = useState(congelatoIniziale);
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 2px' }}>
       <button type="button" aria-label="Togli una porzione" onClick={() => setN((v) => Math.max(0, v - 1))} style={{ ...stileVoce, width: 44, minHeight: 44 }}>−</button>
@@ -86,7 +90,7 @@ function Stepper({ iniziale, onSalva }: { iniziale: number; onSalva: (n: number,
  * passato o futuro.
  */
 export function FoglioAzioniPasto({
-  nomePasto, spuntato, passato, aCasa, porzioniPreparate, daPronti, prontiDisponibili,
+  nomePasto, spuntato, passato, aCasa, porzioniPreparate, prontiCongelato, daPronti, prontiDisponibili,
   hrefScegli, onSaltato, onMangiatoAltro, onTornaAlPiano, onCucinatoNonMangiato,
   onPreparaPorzioni, onUsaPronta, onNonUsarePronta, onChiudi,
 }: Props) {
@@ -95,7 +99,7 @@ export function FoglioAzioniPasto({
   return (
     <div
       role="dialog"
-      aria-label={`Com'è andata: ${nomePasto}`}
+      aria-label={`${passato ? "Com'è andata" : 'Prossimamente'}: ${nomePasto}`}
       onClick={onChiudi}
       style={{
         position: 'fixed', inset: 0, zIndex: 50,
@@ -145,6 +149,7 @@ export function FoglioAzioniPasto({
         {stepperAperto && (
           <Stepper
             iniziale={porzioniPreparate}
+            congelatoIniziale={prontiCongelato}
             onSalva={(n, congelato) => onPreparaPorzioni(n, congelato)}
           />
         )}

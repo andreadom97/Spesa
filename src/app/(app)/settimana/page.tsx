@@ -503,13 +503,13 @@ export default function Settimana() {
                   ? [
                     slot.daPronti ? 'Porzione pronta' : null,
                     piatto ? descriviScelte(piatto, slot.scelte, nomePerIngrediente) : null,
-                    slot.porzioniPreparate > 0 ? `+${slot.porzioniPreparate} porzioni` : null,
+                    slot.porzioniPreparate > 0 ? `+${slot.porzioniPreparate} ${slot.porzioniPreparate === 1 ? 'porzione' : 'porzioni'}` : null,
                   ]
                   // Riga spenta (fuori/saltato/sostituito): niente scelte né
                   // "Porzione pronta" (senza senso fuori da 'casa'), ma le
                   // porzioni preparate restano visibili — consumano a
                   // prescindere dallo stato (fattoreConsumo, spec §6).
-                  : [slot.porzioniPreparate > 0 ? `+${slot.porzioniPreparate} porzioni` : null]
+                  : [slot.porzioniPreparate > 0 ? `+${slot.porzioniPreparate} ${slot.porzioniPreparate === 1 ? 'porzione' : 'porzioni'}` : null]
                 ).filter(Boolean).join(' · ') || null}
                 onToggleStato={() => toggleStato(slot)}
                 onApriPiatto={piatto ? () => apriPiatto(piatto.id) : undefined}
@@ -557,6 +557,7 @@ export default function Settimana() {
           passato={foglio.slot.data <= oggi}
           aCasa={foglio.slot.stato === 'casa'}
           porzioniPreparate={foglio.slot.porzioniPreparate}
+          prontiCongelato={lotti.find((l) => l.mealSlotId === foglio.slot.id)?.congelato ?? false}
           daPronti={foglio.slot.daPronti}
           prontiDisponibili={foglio.slot.dishId ? prontiPerPiatto.get(foglio.slot.dishId) ?? 0 : 0}
           hrefScegli={`/settimana/${foglio.slot.data}/${foglio.def.id}/scegli`}

@@ -194,11 +194,14 @@ export async function creaSettimana(lunedi: string): Promise<string> {
  * dei due (un option_id che punta a un componente/opzione di un altro
  * piatto).
  *
- * In coda, dopo tutte le scritture su `meal_slot`/`meal_slot_choice`, il
- * ledger degli storni (spec spunta-pasti §5.1): scritture slot → ledger →
- * pantry, sempre in quest'ordine. Un fallimento a metà degenera in uno
- * storno visibile e correggibile dalla Dispensa, mai in uno stato slot
- * incoerente.
+ * In coda, dopo tutte le scritture su `meal_slot`/`meal_slot_choice`, prima i
+ * Pronti (spec meal-prepping §5, anche a settimana bozza) e poi il ledger
+ * degli storni (spec spunta-pasti §5.1): scritture slot → Pronti (anche a
+ * settimana bozza) → ledger → pantry, sempre in quest'ordine. Un fallimento a
+ * metà di questa coda lascia lo slot avanti rispetto ai lotti — non uno stato
+ * incoerente in senso stretto, ma visibile e correggibile dalla Dispensa; un
+ * retry ripete la stessa `patch` e per le transizioni già scritte (slot già
+ * aggiornato, lotto già scritto) è un no-op parziale, non un doppio effetto.
  */
 /** Il piatto a cui appartiene il lotto della dichiarazione: quello del patch se presente, altrimenti quello registrato. */
 function dishIdDopoPerLotto(
