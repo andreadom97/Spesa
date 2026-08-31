@@ -98,6 +98,7 @@ export function RigaPasto({ nomePasto, stato, nomePiatto, aree, sottotitolo, onT
         type="button"
         onClick={onApriPiatto}
         disabled={!onApriPiatto}
+        aria-label={nomePiatto ? `Apri ${nomePiatto}` : undefined}
         style={{
           flex: 1,
           minWidth: 0,

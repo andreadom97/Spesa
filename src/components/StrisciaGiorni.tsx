@@ -3,6 +3,7 @@
 import type { MealSlot, MealSlotDef } from '@/domain/types';
 
 const LABEL_GIORNO = ['LUN', 'MAR', 'MER', 'GIO', 'VEN', 'SAB', 'DOM'];
+const NOME_GIORNO = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
 
 interface Props {
   /** Le sette date della settimana, lunedì primo (vedi giorniDellaSettimana). */
@@ -36,6 +37,7 @@ export function StrisciaGiorni({ giorni, slotDefs, slots, oggi, selezionato, onS
             type="button"
             onClick={() => onSeleziona(indice)}
             aria-pressed={sel}
+            aria-label={`${NOME_GIORNO[indice]} ${numero}${sel ? ', selezionato' : ''}`}
             data-giorno={data}
             data-oggi={isOggi}
             style={{

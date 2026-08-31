@@ -527,9 +527,6 @@ export default function Settimana() {
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.11em', color: 'var(--ink)' }}>
               {nCasaSettimana} PASTI A CASA IN SETTIMANA
             </span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.09em', color: 'var(--ter)' }}>
-              CASA = A CASA · › APRE IL PIATTO
-            </span>
           </div>
           {erroreConferma && (
             <p style={{ margin: '0 4px', fontSize: 12.5, color: 'var(--sec)' }}>{erroreConferma}</p>
