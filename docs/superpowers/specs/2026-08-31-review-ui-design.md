@@ -31,15 +31,12 @@
 
 ## B. Settimana
 
-File: `src/app/(app)/settimana/page.tsx`, `src/components/RigaPasto.tsx`, `src/components/StrisciaGiorni.tsx`, `src/components/FoglioAzioniPasto.tsx`.
+File: `src/app/(app)/settimana/page.tsx`, `src/components/RigaPasto.tsx`, `src/components/StrisciaGiorni.tsx`.
 
-**Gesti sulla card pasto:**
-- Tap sulla card → naviga al piatto assegnato (vista, sezione C); se il pasto non ha piatto, apre il foglio azioni. La card diventa semanticamente un bottone "Apri" col nome del pasto e del piatto.
-- La casetta a sinistra diventa un bottone dedicato al toggle casa/fuori, bersaglio ≥44×44px, `aria-label` con lo schema attuale ("Colazione: a casa, tocca per segnare fuori") + `aria-pressed`.
-- Il kebab ⋮ resta per il foglio "Com'è andata" / meal prep, invariato nelle funzioni.
-- Il bersaglio `›` separato sparisce: il suo compito passa al tap sulla card.
+**ERRATA (31/08, in sede di piano):** il finding critico 1 dell'audit era una lettura sbagliata dell'albero di accessibilità. `RigaPasto.tsx` ha GIÀ le tre zone del design approvato: casetta 60px = toggle con `aria-label` e `aria-pressed`, corpo centrale = `onApriPiatto`, zona destra 44px = kebab azioni o link Scegli. Il modello di gesti deciso con Andrea è già implementato; la sezione si riduce alle rifiniture reali:
 
-**Striscia giorni:** ogni giorno prende `aria-label` "Domenica 30, selezionato" / "Venerdì 28" (nome giorno esteso + numero + stato). L'`aria-pressed` esistente resta.
+- **Nome accessibile sul corpo centrale** (`RigaPasto.tsx:97-110`): oggi il bottone che apre il piatto è anonimo. Prende `aria-label` "Apri {nomePiatto}" quando c'è un piatto; quando `onApriPiatto` è assente resta `disabled` com'è oggi.
+- **Striscia giorni** (`StrisciaGiorni.tsx`): ogni giorno prende `aria-label` "Domenica 30, selezionato" / "Venerdì 28" (nome giorno esteso + numero + stato). L'`aria-pressed` esistente resta.
 
 **Pillola settimana** (`src/components/Testata.tsx`): la freccetta ⌄ viene rimossa; la pillola resta testo non interattivo. Il commento sul debito si aggiorna: il selettore, se mai, avrà una spec sua.
 
@@ -93,7 +90,7 @@ Vietato: animazioni di ingresso pagina, parallax, delay a cascata, qualunque ani
 
 ## G. Test e verifica
 
-- Test di componente per i pattern nuovi: la vista piatto non emette scritture; il tap sulla card pasto naviga (o apre il foglio) e NON cambia lo stato casa/fuori; la casetta lo cambia; conferma richiesta per cestino e riparti; la ricerca Piatti filtra.
+- Test di componente per i pattern nuovi: la vista piatto non emette scritture; il corpo centrale di RigaPasto ha il nome accessibile "Apri {piatto}" e la casetta resta l'unico toggle (regressione sull'errata dell'audit); conferma richiesta per cestino e riparti; la ricerca Piatti filtra.
 - Test esistenti aggiornati dove cambiano gesti, label e copy (camera.test, revisione, lista, settimana).
 - `/` reindirizza a /lista (test di route o verifica manuale).
 - Verifica finale nel browser su viewport mobile, stessa procedura dell'audit, con giro `read_page` per il censimento dei nomi accessibili.
