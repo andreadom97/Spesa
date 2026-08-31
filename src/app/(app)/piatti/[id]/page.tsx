@@ -8,7 +8,7 @@ import { salvaPiatto, leggiRepertorio, leggiIngredienti, eliminaPiatto } from '@
 import { leggiImpostazioni, leggiSlotDefs } from '@/data/impostazioni';
 import { leggiSettimanaCorrente } from '@/data/settimana';
 import { giorniDellaSettimana } from '@/domain/date';
-import { coloreArea } from '@/domain/aree';
+import { coloreArea, nomeArea } from '@/domain/aree';
 import { Segmento } from '@/components/Segmento';
 import { TesseraIngrediente } from '@/components/TesseraIngrediente';
 import { raccogliIngredienteCreato, riprendiBozza, salvaBozza, scartaBozza } from './bozza';
@@ -500,6 +500,11 @@ export default function Piatto() {
           componenti: componentiEffettivi,
         });
         setModalita('vista');
+        // Sul ramo nuovo si naviga via (router.push) e la pagina si
+        // smonta: qui invece si resta, quindi `salvando` va azzerato a
+        // mano — altrimenti il secondo SALVA (dopo un MODIFICA) resta
+        // per sempre disabilitato: bottone disabled + guardia in salva().
+        setSalvando(false);
       }
     } catch (errore) {
       console.error('piatto: salvataggio fallito.', errore);
@@ -522,9 +527,12 @@ export default function Piatto() {
   const catalogoPerId = new Map(catalogo.map((i) => [i.id, i]));
 
   if (modalita === 'vista') {
+    // Spec §C: "quantità + nome + area", stessi tre dati che l'editor mostra
+    // già sulla tessera (TesseraIngrediente), solo su una riga sola invece
+    // che su tre righe di pillola.
     const testoRiga = (r: DishIngredient) => {
       const ing = catalogoPerId.get(r.ingredientId);
-      return ing ? `${r.quantita} ${r.unita} · ${ing.nome}` : null;
+      return ing ? `${r.quantita} ${r.unita} · ${ing.nome} · ${nomeArea(ing.area)}` : null;
     };
     const righeIngredienti = ingredienti
       .map((r) => ({ id: r.ingredientId, testo: testoRiga(r) }))
@@ -692,6 +700,7 @@ export default function Piatto() {
             valore={giornoCiclo}
             onCambia={setGiornoCiclo}
             gruppo="Giorno fisso"
+            aCapo
           />
         </div>
 
@@ -1242,6 +1251,12 @@ function VistaPiatto({ nome, pasto, settimana, giorno, righe, onModifica, onIndi
       <p style={{ margin: 0, fontFamily: 'var(--font-mono)', fontSize: 10.5, letterSpacing: '0.08em', color: 'var(--sec)' }}>
         {[pasto, settimana, giorno].filter(Boolean).join(' · ').toUpperCase()}
       </p>
+      {/* Spec §C: "per 1 porzione" accanto all'elenco, stesso stile
+          mono-uppercase della riga meta sopra (mai la stessa riga: qui non
+          c'è un'intestazione INGREDIENTI come nell'editor da cui pendere). */}
+      <p style={{ margin: '-8px 0 0', fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.1em', color: 'var(--sec)' }}>
+        PER 1 PORZIONE
+      </p>
       <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
         {righe.map((r) => (
           <li
@@ -1282,15 +1297,22 @@ interface OpzionePillola {
  * Segmento: la regola dei bersagli vale ovunque, non solo dove il disegno è
  * già abbastanza alto.
  */
-function Pillole({ opzioni, valore, onCambia, gruppo }: {
+function Pillole({ opzioni, valore, onCambia, gruppo, aCapo = false }: {
   opzioni: OpzionePillola[];
   valore: number | null;
   onCambia: (v: number | null) => void;
   gruppo: string;
+  /**
+   * Spec §C sui chip giorno: "tutti visibili senza scroll orizzontale (due
+   * righe se serve)". Prop dedicata invece di cambiare il default: le
+   * pillole di SETTIMANA DEL GIRO stanno comode su una riga con lo scroll
+   * attuale, e non c'è motivo di toccarne il comportamento.
+   */
+  aCapo?: boolean;
 }) {
   return (
-    <div className="sc" style={{ overflowX: 'auto' }}>
-      <div style={{ display: 'flex', gap: 6, width: 'max-content' }}>
+    <div className="sc" style={aCapo ? undefined : { overflowX: 'auto' }}>
+      <div style={{ display: 'flex', flexWrap: aCapo ? 'wrap' : 'nowrap', gap: 6, width: aCapo ? '100%' : 'max-content' }}>
         {opzioni.map((o) => {
           const attivo = o.valore === valore;
           return (

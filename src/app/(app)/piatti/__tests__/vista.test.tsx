@@ -137,10 +137,12 @@ describe('dettaglio piatto: vista prima, modifica su richiesta', () => {
     render(<Piatto />);
     await screen.findByText('Riso e pane');
 
-    expect(screen.getByText('80 g · Riso')).toBeInTheDocument();
-    expect(screen.getByText('Pane: 50 g · Farina')).toBeInTheDocument();
+    // Spec §C: "quantità + nome + area", più la label "per 1 porzione".
+    expect(screen.getByText('80 g · Riso · PASTA, RISO E CEREALI')).toBeInTheDocument();
+    expect(screen.getByText('Pane: 50 g · Farina · DISPENSA E CONSERVE')).toBeInTheDocument();
     expect(screen.getByText('oppure')).toBeInTheDocument();
-    expect(screen.getByText('40 g · Pane integrale')).toBeInTheDocument();
+    expect(screen.getByText('40 g · Pane integrale · PASTA, RISO E CEREALI')).toBeInTheDocument();
+    expect(screen.getByText('PER 1 PORZIONE')).toBeInTheDocument();
   });
 
   it('un piatto nuovo (id assente) apre direttamente in modifica: non c’è niente da consultare', async () => {
@@ -229,6 +231,58 @@ describe('dettaglio piatto: vista prima, modifica su richiesta', () => {
     expect(await screen.findByRole('button', { name: 'MODIFICA' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /SALVA PIATTO/ })).not.toBeInTheDocument();
     expect(push).not.toHaveBeenCalled();
+  });
+
+  // Review finale (finding critico): `salvando` non si azzerava sul ramo
+  // successo di un piatto ESISTENTE (solo il ramo `nuovo` naviga via e
+  // smonta la pagina; questo resta). Senza il fix il secondo SALVA
+  // resterebbe disabled per sempre — bottone disabled + guardia in salva().
+  it('SALVA→MODIFICA→SALVA: il secondo salvataggio parte e riesce', async () => {
+    vi.mocked(salvaPiatto).mockResolvedValue('d-1');
+    render(<Piatto />);
+    (await screen.findByRole('button', { name: 'MODIFICA' })).click();
+    await screen.findByDisplayValue('Riso e pane');
+
+    fireEvent.click(screen.getByRole('button', { name: 'SALVA PIATTO' }));
+    await waitFor(() => expect(salvaPiatto).toHaveBeenCalledTimes(1));
+    expect(await screen.findByRole('button', { name: 'MODIFICA' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'MODIFICA' }));
+    const nomeInput = await screen.findByDisplayValue('Riso e pane');
+    fireEvent.change(nomeInput, { target: { value: 'Riso e pane, seconda modifica' } });
+
+    // Se `salvando` fosse rimasto true dal primo giro, questo bottone
+    // sarebbe ancora disabled e il click sotto non partirebbe.
+    const salvaBtn = screen.getByRole('button', { name: 'SALVA PIATTO' });
+    expect(salvaBtn).toBeEnabled();
+    fireEvent.click(salvaBtn);
+
+    await waitFor(() => expect(salvaPiatto).toHaveBeenCalledTimes(2));
+    expect(await screen.findByRole('button', { name: 'MODIFICA' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /SALVA PIATTO/ })).not.toBeInTheDocument();
+  });
+
+  it('SALVA→MODIFICA→ANNULLA ripristina dallo stato appena salvato, non da quello precedente', async () => {
+    vi.mocked(salvaPiatto).mockResolvedValue('d-1');
+    render(<Piatto />);
+    (await screen.findByRole('button', { name: 'MODIFICA' })).click();
+    const nomeInput = await screen.findByDisplayValue('Riso e pane');
+    fireEvent.change(nomeInput, { target: { value: 'Riso e pane aggiornato' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'SALVA PIATTO' }));
+    await waitFor(() => expect(salvaPiatto).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText('Riso e pane aggiornato')).toBeInTheDocument();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'MODIFICA' }));
+    const nomeInput2 = await screen.findByDisplayValue('Riso e pane aggiornato');
+    fireEvent.change(nomeInput2, { target: { value: 'Modifica scartata' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Annulla modifiche' }));
+
+    // ANNULLA riporta al piatto salvato appena prima, non a quello di
+    // prima del primo SALVA: `piattoOriginale` deve seguire il salvataggio.
+    expect(await screen.findByText('Riso e pane aggiornato')).toBeInTheDocument();
+    expect(screen.queryByText('Modifica scartata')).not.toBeInTheDocument();
   });
 
   it('Indietro nella vista chiama router.back(), non push', async () => {

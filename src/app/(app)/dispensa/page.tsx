@@ -278,7 +278,23 @@ export default function Dispensa() {
             che la schermata serve davvero a mostrare. Resta una card
             compressa finche' non serve, e monta NotaDispensa solo al tap. */}
         {notaAperta ? (
-          <div className="anim-foglio">
+          <div className="anim-foglio" style={{ position: 'relative' }}>
+            {/* Chiusura discreta senza toccare la firma di NotaDispensa: un
+                bottone sovrapposto, stesso disegno della X di rimozione
+                ingrediente (TesseraIngrediente), stessa area di tap 44px. */}
+            <button
+              type="button"
+              onClick={() => setNotaAperta(false)}
+              aria-label="Chiudi correzione con una nota"
+              style={{
+                position: 'absolute', top: 0, right: 0, width: 44, height: 44, zIndex: 1,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent',
+              }}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+                <path d="M5 5l14 14M19 5 5 19" stroke="#C4C4CE" strokeWidth="2.2" strokeLinecap="round" />
+              </svg>
+            </button>
             <NotaDispensa contesto={contestoNota} onDatiCambiati={ricarica} />
           </div>
         ) : (

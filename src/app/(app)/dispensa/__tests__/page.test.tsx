@@ -340,4 +340,22 @@ describe('Dispensa', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Il conto non torna? Correggi con una nota' }));
     expect(await screen.findByRole('textbox')).toBeInTheDocument();
   });
+
+  // Review finale, finding MINOR: la card si apriva ma non si richiudeva
+  // mai (notaAperta senza via di ritorno).
+  it('la card di correzione con nota si può richiudere', async () => {
+    mockBase(statoDispensa([{ ingredientId: 'i-riso', residuo: 920 }]));
+
+    render(<Dispensa />);
+    await screen.findByText('IN CASA');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Il conto non torna? Correggi con una nota' }));
+    expect(await screen.findByRole('textbox')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Chiudi correzione con una nota' }));
+
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    // La card compressa torna disponibile per riaprirla.
+    expect(screen.getByRole('button', { name: 'Il conto non torna? Correggi con una nota' })).toBeInTheDocument();
+  });
 });

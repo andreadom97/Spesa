@@ -602,4 +602,32 @@ describe('Piatto (editor)', () => {
       { id: 'c-1', nome: 'Pane', opzioni: [{ id: 'o-1', righe: [{ ingredientId: 'i-2', quantita: 40, unita: 'g' }] }] },
     ]);
   });
+
+  // Review finale, finding IMPORTANT: spec §C sui chip GIORNO FISSO —
+  // "tutti visibili senza scroll orizzontale (due righe se serve)". Test
+  // strutturale (il jsdom di Vitest non calcola un vero layout, quindi non
+  // può verificare l'assenza di scroll): verifica che il contenitore dei
+  // chip vada a capo (flexWrap) e non scorra più in orizzontale, mentre i
+  // chip di SETTIMANA DEL GIRO — un altro uso dello stesso componente
+  // Pillole — restano sul comportamento a scroll di prima.
+  it('i chip GIORNO FISSO vanno a capo invece di scorrere in orizzontale; i chip SETTIMANA restano a scroll', async () => {
+    paramsId = 'd-1';
+    vi.mocked(leggiRepertorio).mockResolvedValue([PIATTO_ESISTENTE]);
+    mockBase(2); // settimaneCiclo > 1: mostra anche la fila SETTIMANA DEL GIRO
+    render(<Piatto />);
+    await entraInModifica();
+    await screen.findByDisplayValue('Yogurt e avena');
+
+    const libero = screen.getByRole('button', { name: /Giorno fisso: Lo sceglie l.app, ruotando/ });
+    const contenitoreGiorno = libero.parentElement;
+    expect(contenitoreGiorno).toHaveStyle({ flexWrap: 'wrap' });
+    // Il div scrollabile che avvolgeva la fila ('.sc' + overflowX auto) non
+    // deve più limitare la larghezza quando va a capo.
+    expect(contenitoreGiorno?.parentElement).not.toHaveStyle({ overflowX: 'auto' });
+
+    const tutte = screen.getByRole('button', { name: /Settimana del giro: Va bene in ogni settimana del giro/ });
+    const contenitoreSettimana = tutte.parentElement;
+    expect(contenitoreSettimana).toHaveStyle({ flexWrap: 'nowrap' });
+    expect(contenitoreSettimana?.parentElement).toHaveStyle({ overflowX: 'auto' });
+  });
 });
