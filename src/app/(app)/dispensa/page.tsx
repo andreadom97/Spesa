@@ -278,7 +278,9 @@ export default function Dispensa() {
             che la schermata serve davvero a mostrare. Resta una card
             compressa finche' non serve, e monta NotaDispensa solo al tap. */}
         {notaAperta ? (
-          <NotaDispensa contesto={contestoNota} onDatiCambiati={ricarica} />
+          <div className="anim-foglio">
+            <NotaDispensa contesto={contestoNota} onDatiCambiati={ricarica} />
+          </div>
         ) : (
           <button
             type="button"

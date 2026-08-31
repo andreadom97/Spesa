@@ -110,6 +110,7 @@ export function FoglioAzioniPasto({
       }}
     >
       <div
+        className="anim-foglio"
         onClick={(e) => e.stopPropagation()}
         style={{
           width: '100%', background: '#FFFFFF',

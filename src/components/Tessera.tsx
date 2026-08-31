@@ -96,6 +96,7 @@ export function Tessera({
       onClick={onToggle}
       aria-pressed={spuntato}
       aria-label={`${nome}: ${acceso ? 'da prendere, tocca per segnare presa' : 'presa, tocca per rimetterla da prendere'}`}
+      className="anim-stato"
       style={{
         gridColumn: protagonista ? 'span 2' : undefined,
         display: 'flex',

@@ -486,7 +486,7 @@ export default function Settimana() {
           <p style={{ margin: '0 4px 9px', fontSize: 12.5, color: 'var(--sec)' }}>{erroreCheckin}</p>
         )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+        <div key={dataSelezionata} className="anim-giorno" style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
           {pastiOrdinati.map((def) => {
             const slot = settimana.slots.find((s) => s.data === dataSelezionata && s.slotDefId === def.id);
             if (!slot) return null;

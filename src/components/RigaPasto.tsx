@@ -55,6 +55,7 @@ export function RigaPasto({ nomePasto, stato, nomePiatto, aree, sottotitolo, onT
   const aCasa = stato === 'casa';
   return (
     <div
+      className="anim-stato"
       style={{
         display: 'flex',
         alignItems: 'stretch',
@@ -139,6 +140,7 @@ export function RigaPasto({ nomePasto, stato, nomePiatto, aree, sottotitolo, onT
         </span>
         {sottotitolo && (
           <span
+            className="anim-apparsa"
             style={{
               fontFamily: 'var(--font-mono)',
               fontSize: 9,
