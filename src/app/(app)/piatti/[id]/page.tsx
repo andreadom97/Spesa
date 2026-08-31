@@ -450,28 +450,52 @@ export default function Piatto() {
       // scelto uno: la schermata non blocca il salvataggio su questo (solo
       // sugli ingredienti, per Step 4), ma dish.slot_def_id non è nullable.
       const slotEffettivo = slotDefId || slotDefs[0]?.id || '';
+      const nomeEffettivo = nome.trim();
+      const descrizioneEffettiva = descrizione.trim() || null;
+      // Una settimana del ciclo che il ciclo non contiene più (si è passati
+      // da quattro settimane a due) filtrerebbe via il piatto per sempre: si
+      // scrive solo quello che il ciclo corrente può ancora usare.
+      const settimanaEffettiva = settimanaCiclo !== null && settimanaCiclo <= settimaneCiclo ? settimanaCiclo : null;
+      const componentiEffettivi = componenti.map((c) => ({
+        id: c.id,
+        nome: c.nome.trim(),
+        opzioni: c.opzioni.map((o) => ({ id: o.id, righe: o.righe })),
+      }));
       await salvaPiatto({
         id: nuovo ? undefined : id,
-        nome: nome.trim(),
+        nome: nomeEffettivo,
         slotDefId: slotEffettivo,
         fonte: piattoOriginale?.fonte ?? 'proprio',
         attivo: piattoOriginale?.attivo ?? true,
-        descrizione: descrizione.trim() || null,
-        // Una settimana del ciclo che il ciclo non contiene più (si è passati
-        // da quattro settimane a due) filtrerebbe via il piatto per sempre:
-        // si scrive solo quello che il ciclo corrente può ancora usare.
-        settimanaCiclo: settimanaCiclo !== null && settimanaCiclo <= settimaneCiclo ? settimanaCiclo : null,
+        descrizione: descrizioneEffettiva,
+        settimanaCiclo: settimanaEffettiva,
         giornoCiclo,
         ingredienti,
-        componenti: componenti.map((c) => ({
-          id: c.id,
-          nome: c.nome.trim(),
-          opzioni: c.opzioni.map((o) => ({ id: o.id, righe: o.righe })),
-        })),
+        componenti: componentiEffettivi,
       });
       scartaBozza(id);
-      setModalita('vista');
-      router.push('/piatti');
+      if (nuovo) {
+        router.push('/piatti');
+      } else {
+        // Spec §C: "SALVA salva e torna alla vista" — su un piatto esistente
+        // non si naviga più via, si resta sulla pagina. `piattoOriginale` si
+        // aggiorna con quanto appena scritto: senza questo, un successivo
+        // MODIFICA -> ANNULLA ripristinerebbe i dati precedenti al
+        // salvataggio, buttando via ciò che è appena stato persistito.
+        setPiattoOriginale({
+          id,
+          nome: nomeEffettivo,
+          slotDefId: slotEffettivo,
+          fonte: piattoOriginale?.fonte ?? 'proprio',
+          attivo: piattoOriginale?.attivo ?? true,
+          descrizione: descrizioneEffettiva,
+          settimanaCiclo: settimanaEffettiva,
+          giornoCiclo,
+          ingredienti,
+          componenti: componentiEffettivi,
+        });
+        setModalita('vista');
+      }
     } catch (errore) {
       console.error('piatto: salvataggio fallito.', errore);
       setErrore('Non siamo riusciti a salvare il piatto. Riprova.');

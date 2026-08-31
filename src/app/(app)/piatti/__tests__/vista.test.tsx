@@ -4,7 +4,7 @@
 // ha niente da consultare — apre direttamente in modifica.
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import type { Dish, Ingredient, MealSlotDef } from '@/domain/types';
 
 vi.mock('@/data/repertorio', () => ({
@@ -185,6 +185,24 @@ describe('dettaglio piatto: vista prima, modifica su richiesta', () => {
     expect(push).not.toHaveBeenCalled();
     expect(salvaPiatto).not.toHaveBeenCalled();
     expect(scartaBozza).toHaveBeenCalledWith('d-1');
+  });
+
+  // Spec §C: "SALVA salva e torna alla vista" — su un piatto esistente il
+  // salvataggio riuscito non naviga più via, resta sulla stessa pagina.
+  it('SALVA su piatto esistente torna alla vista senza navigare', async () => {
+    vi.mocked(salvaPiatto).mockResolvedValue('d-1');
+    render(<Piatto />);
+    (await screen.findByRole('button', { name: 'MODIFICA' })).click();
+    await screen.findByDisplayValue('Riso e pane');
+
+    fireEvent.click(screen.getByRole('button', { name: 'SALVA PIATTO' }));
+
+    await waitFor(() => expect(salvaPiatto).toHaveBeenCalled());
+    // Di nuovo in vista (MODIFICA riappare, niente più SALVA PIATTO), senza
+    // essere mai usciti dalla pagina.
+    expect(await screen.findByRole('button', { name: 'MODIFICA' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /SALVA PIATTO/ })).not.toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
   });
 
   it('Indietro nella vista chiama router.back(), non push', async () => {

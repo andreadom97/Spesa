@@ -423,7 +423,10 @@ describe('Piatto (editor)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'SALVA PIATTO' }));
 
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/piatti'));
+    // Spec §C: su un piatto esistente SALVA salva e torna alla vista, non
+    // naviga più via — il ritorno a /piatti resta solo per il piatto nuovo.
+    await waitFor(() => expect(screen.getByRole('button', { name: 'MODIFICA' })).toBeInTheDocument());
+    expect(push).not.toHaveBeenCalled();
     expect(riprendiBozza('d-1')).toBeNull();
   });
 
