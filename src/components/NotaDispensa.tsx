@@ -284,7 +284,9 @@ export function NotaDispensa({ contesto, onDatiCambiati }: Props) {
             alignSelf: 'flex-start', minHeight: 44, padding: '0 18px', borderRadius: 999,
             fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
             background: '#FFFFFF', color: 'var(--ink)',
-            opacity: inviando || nota.trim().length === 0 ? 0.5 : 1,
+            // Allineato al pattern di RIPARTI in Impostazioni: 0.35 distingue
+            // chiaramente il ramo disabilitato da quello attivo.
+            opacity: inviando || nota.trim().length === 0 ? 0.35 : 1,
           }}
         >
           Correggi

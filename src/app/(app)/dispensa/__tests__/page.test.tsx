@@ -316,4 +316,28 @@ describe('Dispensa', () => {
     fireEvent.click(screen.getByLabelText('Elimina il lotto di Farrotto ai funghi'));
     await waitFor(() => expect(eliminaLotto).toHaveBeenCalledWith('lp-farrotto'));
   });
+
+  it('mostra prima l\'inventario, poi mai comprati, e la nota AI compressa in fondo', async () => {
+    // L'inventario (quello che l'utente e' venuto a controllare) precede la
+    // correzione via AI, che e' un ripiego per quando il calcolo non torna:
+    // in cima distraeva da cio' che la schermata serve davvero a mostrare.
+    mockBase(statoDispensa([{ ingredientId: 'i-riso', residuo: 920 }]));
+
+    const { container } = render(<Dispensa />);
+    await screen.findByText('IN CASA');
+
+    const testo = container.textContent ?? '';
+    const posInCasa = testo.indexOf('IN CASA');
+    const posMaiComprati = testo.indexOf('MAI COMPRATI');
+    const posNota = testo.indexOf('Il conto non torna? Correggi con una nota');
+    expect(posInCasa).toBeGreaterThanOrEqual(0);
+    expect(posMaiComprati).toBeGreaterThan(posInCasa);
+    expect(posNota).toBeGreaterThan(posMaiComprati);
+
+    // Compressa: niente textarea finche' non si tocca la card.
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Il conto non torna? Correggi con una nota' }));
+    expect(await screen.findByRole('textbox')).toBeInTheDocument();
+  });
 });
