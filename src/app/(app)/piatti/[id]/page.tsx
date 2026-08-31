@@ -386,6 +386,10 @@ export default function Piatto() {
    * 'vista' senza navigare via. Scarta anche una bozza pendente: senza
    * questo, un ANNULLA seguito da un giro completo (uscita e rientro sulla
    * pagina) risuscita modifiche che l'utente ha appena scelto di buttare.
+   * Azzera anche `errore`: un salvataggio fallito lo aveva scritto per
+   * l'editor che si sta abbandonando, e senza questo resterebbe appeso allo
+   * stato — un fantasma che ricompare al prossimo MODIFICA senza che sia
+   * successo niente di nuovo (review Task 5, finding media).
    */
   function annulla() {
     if (nuovo) {
@@ -402,6 +406,7 @@ export default function Piatto() {
       setComponenti(piattoOriginale.componenti);
     }
     scartaBozza(id);
+    setErrore(null);
     setModalita('vista');
   }
 
@@ -546,7 +551,14 @@ export default function Piatto() {
         settimana={settimaneCiclo > 1 && settimanaCiclo !== null ? `Settimana ${settimanaCiclo} del giro` : null}
         giorno={giornoCiclo !== null ? GIORNI_LUNGHI[giornoCiclo] : null}
         righe={[...righeIngredienti, ...righeComponenti]}
-        onModifica={() => setModalita('modifica')}
+        // Azzera anche qui, non solo in annulla(): MODIFICA è l'altro punto
+        // da cui si entra nell'editor, e un errore di un salvataggio fallito
+        // di un giro precedente non deve riapparire su un editor che
+        // ricomincia pulito (stesso finding di annulla(), stesso rimedio).
+        onModifica={() => {
+          setErrore(null);
+          setModalita('modifica');
+        }}
         onIndietro={() => router.back()}
       />
     );

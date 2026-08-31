@@ -187,6 +187,32 @@ describe('dettaglio piatto: vista prima, modifica su richiesta', () => {
     expect(scartaBozza).toHaveBeenCalledWith('d-1');
   });
 
+  // Review Task 5, finding media: un salvataggio fallito scrive `errore` per
+  // l'editor corrente; senza azzerarlo, ANNULLA lo lascia appeso allo stato e
+  // ricompare come fantasma al prossimo MODIFICA, senza che sia successo
+  // niente di nuovo.
+  it('un salvataggio fallito non lascia un errore fantasma: ANNULLA lo azzera, anche rientrando in modifica', async () => {
+    vi.mocked(salvaPiatto).mockRejectedValue(new Error('boom'));
+    render(<Piatto />);
+    (await screen.findByRole('button', { name: 'MODIFICA' })).click();
+    await screen.findByDisplayValue('Riso e pane');
+
+    fireEvent.click(screen.getByRole('button', { name: 'SALVA PIATTO' }));
+    expect(await screen.findByText('Non siamo riusciti a salvare il piatto. Riprova.')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Annulla modifiche' }));
+
+    // Di nuovo in vista: l'errore del salvataggio fallito non c'è più.
+    expect(await screen.findByRole('button', { name: 'MODIFICA' })).toBeInTheDocument();
+    expect(screen.queryByText('Non siamo riusciti a salvare il piatto. Riprova.')).not.toBeInTheDocument();
+
+    // E non riappare nemmeno rientrando in modifica: non è successo niente
+    // di nuovo da quando è stato scartato.
+    fireEvent.click(screen.getByRole('button', { name: 'MODIFICA' }));
+    await screen.findByDisplayValue('Riso e pane');
+    expect(screen.queryByText('Non siamo riusciti a salvare il piatto. Riprova.')).not.toBeInTheDocument();
+  });
+
   // Spec §C: "SALVA salva e torna alla vista" — su un piatto esistente il
   // salvataggio riuscito non naviga più via, resta sulla stessa pagina.
   it('SALVA su piatto esistente torna alla vista senza navigare', async () => {
