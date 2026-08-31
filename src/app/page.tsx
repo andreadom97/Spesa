@@ -1,7 +1,6 @@
+import { redirect } from 'next/navigation';
+
+/** La root non ha contenuto suo: l'app comincia dalla Lista (come il manifest PWA). */
 export default function Home() {
-  return (
-    <main className="flex flex-1 items-center justify-center">
-      <p>Spesa</p>
-    </main>
-  );
+  redirect('/lista');
 }
