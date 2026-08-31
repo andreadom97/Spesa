@@ -8,35 +8,65 @@ interface Props {
   settimana?: string;
   /** Le aree in cui manca ancora qualcosa. Solo la Lista la calcola: altrove il default è marchio pieno. */
   aree?: AreaId[];
+  /** Modalità indietro: mostra freccia di ritorno invece del marchio, niente ingranaggio. */
+  indietro?: boolean;
 }
 
 /**
- * Testata condivisa: marchio + titolo a sinistra, burger verso le impostazioni
- * a destra, ed eventualmente sotto la pillola della settimana.
+ * Testata condivisa: marchio (avvolto in link a /lista) + titolo a sinistra,
+ * ingranaggio verso le impostazioni a destra, ed eventualmente sotto la pillola
+ * della settimana.
  *
- * La pillola ha una freccetta ma è debito dichiarato: la v1 conosce solo la
- * settimana corrente, quindi non naviga e non ha onClick.
+ * Modalità `indietro`: mostra una freccia di ritorno a /impostazioni al posto del
+ * marchio, niente ingranaggio. Usata da Importa per tornare da Impostazioni.
+ *
+ * La pillola è testo informativo: niente freccetta (non è un selettore naviga).
  */
-export function Testata({ titolo, settimana, aree = [] }: Props) {
+export function Testata({ titolo, settimana, aree = [], indietro = false }: Props) {
   return (
     <div style={{ padding: '20px 18px 12px', display: 'flex', flexDirection: 'column', gap: 15 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 13, minWidth: 0 }}>
           <div style={{ marginTop: 8 }}>
-            <Marchio aree={aree} />
+            {indietro ? (
+              <Link
+                href="/impostazioni"
+                aria-label="Indietro"
+                style={{ width: 44, height: 44, margin: '-4px -10px 0 0', flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                  <path d="m12 4-8 6 8 6" stroke="var(--ink)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </Link>
+            ) : (
+              <Link
+                href="/lista"
+                aria-label="Vai alla lista"
+                style={{ display: 'flex', alignItems: 'flex-start' }}
+              >
+                <Marchio aree={aree} />
+              </Link>
+            )}
           </div>
           <span style={{ fontSize: 52, fontWeight: 800, letterSpacing: '-0.05em', lineHeight: 1, color: 'var(--ink)' }}>
             {titolo}
           </span>
         </div>
-        <Link
-          href="/impostazioni"
-          style={{ width: 44, height: 44, margin: '-4px -10px 0 0', flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <svg width="25" height="25" viewBox="0 0 25 25" fill="none">
-            <path d="M3.5 7.2h18M3.5 12.5h18M3.5 17.8h18" stroke="var(--ink)" strokeWidth="2.1" strokeLinecap="round" />
-          </svg>
-        </Link>
+        {!indietro && (
+          <Link
+            href="/impostazioni"
+            aria-label="Impostazioni"
+            style={{ width: 44, height: 44, margin: '-4px -10px 0 0', flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="12" cy="12" r="3.1" stroke="var(--ink)" strokeWidth="1.9" />
+              <path
+                d="M12 2.8v2.4M12 18.8v2.4M21.2 12h-2.4M5.2 12H2.8M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2 5.5 5.5"
+                stroke="var(--ink)" strokeWidth="1.9" strokeLinecap="round"
+              />
+            </svg>
+          </Link>
+        )}
       </div>
       {settimana && (
         <div
@@ -48,9 +78,6 @@ export function Testata({ titolo, settimana, aree = [] }: Props) {
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.13em', color: '#FFFFFF' }}>
             {settimana}
           </span>
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-            <path d="M4 6.2 8 10.2 12 6.2" stroke="#FFFFFF" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
         </div>
       )}
     </div>

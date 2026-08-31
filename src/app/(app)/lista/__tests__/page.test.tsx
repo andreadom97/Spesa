@@ -182,6 +182,27 @@ describe('Lista', () => {
     expect(screen.getByText('Niente da comprare qui.')).toBeInTheDocument();
   });
 
+  it('il conteggio delle voci è singolare con una sola voce, plurale altrimenti', async () => {
+    const lista = buildLista();
+    lista.base[0].voci = [VOCE_RISO]; // cereali: una sola voce
+    // dispensa (buildLista) ha zero voci: resta plurale, "0 VOCI".
+    vi.mocked(leggiListe).mockResolvedValue(lista);
+    render(<Lista />);
+    await screen.findByText('Riso Carnaroli');
+
+    expect(screen.getByText('1 VOCE')).toBeInTheDocument();
+    expect(screen.getByText('0 VOCI')).toBeInTheDocument();
+  });
+
+  it('i pulsanti BASE e TOP-UP hanno un nome accessibile col conteggio da prendere', async () => {
+    vi.mocked(leggiListe).mockResolvedValue(buildLista());
+    render(<Lista />);
+    await screen.findByText('Riso Carnaroli');
+
+    expect(screen.getByRole('button', { name: 'Base, 2 da prendere' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Top-up, 0 da prendere' })).toBeInTheDocument();
+  });
+
   it('i pulsanti SÌ/NO del controllo hanno un\'area di tap di almeno 44px', async () => {
     vi.mocked(leggiListe).mockResolvedValue(buildLista());
     render(<Lista />);

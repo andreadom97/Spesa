@@ -418,7 +418,7 @@ function CartaSezione({
           </span>
         </div>
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 500, letterSpacing: '0.1em', color: MUT }}>
-          {sezione.voci.length} VOCI
+          {sezione.voci.length} {sezione.voci.length === 1 ? 'VOCE' : 'VOCI'}
         </span>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, padding: '0 12px 12px' }}>
@@ -474,7 +474,12 @@ function SelettoreTab({
 
   return (
     <div style={{ padding: '8px 16px 0', display: 'flex', gap: 8, alignItems: 'center' }}>
-      <button type="button" onClick={() => onCambia('base')} style={tab === 'base' ? acceso : spento}>
+      <button
+        type="button"
+        onClick={() => onCambia('base')}
+        aria-label={`Base, ${daPrendereBase} da prendere`}
+        style={tab === 'base' ? acceso : spento}
+      >
         <div style={tab === 'base' ? rigaAccesa : rigaSpenta}>
           <span style={tab === 'base' ? etichettaAccesa : etichettaSpenta}>BASE</span>
           <span style={tab === 'base' ? contoAcceso : contoSpento}>
@@ -482,7 +487,12 @@ function SelettoreTab({
           </span>
         </div>
       </button>
-      <button type="button" onClick={() => onCambia('topup')} style={tab === 'topup' ? acceso : spento}>
+      <button
+        type="button"
+        onClick={() => onCambia('topup')}
+        aria-label={`Top-up, ${daPrendereTopup} da prendere`}
+        style={tab === 'topup' ? acceso : spento}
+      >
         <div style={tab === 'topup' ? rigaAccesa : rigaSpenta}>
           <span style={tab === 'topup' ? etichettaAccesa : etichettaSpenta}>TOP-UP</span>
           <span style={tab === 'topup' ? contoAcceso : contoSpento}>

@@ -18,6 +18,16 @@ describe('Camera', () => {
     expect(await screen.findByLabelText(/scegli le foto/i)).toBeInTheDocument();
   });
 
+  // L'input reale resta accessibile (nome accessibile invariato, verificato
+  // sopra) ma visivamente nascosto: il tap va sul finto bottone testuale,
+  // vestito come gli altri bottoni dell'app.
+  it('il picker di fallback mostra un bottone "SCEGLI LE FOTO", non l\'input di sistema', async () => {
+    render(<Camera onFoto={() => {}} />);
+    expect(await screen.findByText('SCEGLI LE FOTO')).toBeInTheDocument();
+    const input = screen.getByLabelText(/scegli le foto/i);
+    expect(input).toHaveStyle({ opacity: '0' });
+  });
+
   it('le foto scelte dal picker producono miniature e arrivano a onFoto', async () => {
     const onFoto = vi.fn();
     render(<Camera onFoto={onFoto} />);

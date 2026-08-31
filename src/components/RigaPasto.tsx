@@ -38,7 +38,7 @@ interface Props {
 const ETICHETTA_SPENTO: Record<Exclude<StatoSlot, 'casa'>, string> = {
   fuori: 'Fuori casa',
   saltato: 'Saltato',
-  sostituito: 'Ho mangiato altro',
+  sostituito: 'Ho mangiato fuori piano',
 };
 
 /**
@@ -55,6 +55,7 @@ export function RigaPasto({ nomePasto, stato, nomePiatto, aree, sottotitolo, onT
   const aCasa = stato === 'casa';
   return (
     <div
+      className="anim-stato"
       style={{
         display: 'flex',
         alignItems: 'stretch',
@@ -98,6 +99,7 @@ export function RigaPasto({ nomePasto, stato, nomePiatto, aree, sottotitolo, onT
         type="button"
         onClick={onApriPiatto}
         disabled={!onApriPiatto}
+        aria-label={nomePiatto ? `Apri ${nomePiatto}` : undefined}
         style={{
           flex: 1,
           minWidth: 0,
@@ -138,6 +140,7 @@ export function RigaPasto({ nomePasto, stato, nomePiatto, aree, sottotitolo, onT
         </span>
         {sottotitolo && (
           <span
+            className="anim-apparsa"
             style={{
               fontFamily: 'var(--font-mono)',
               fontSize: 9,

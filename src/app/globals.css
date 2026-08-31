@@ -45,3 +45,14 @@
 /* Righe/colonne scrollabili senza scrollbar visibile (filtri, liste...). */
 .sc { scrollbar-width: none; }
 .sc::-webkit-scrollbar { width: 0; height: 0; }
+
+/* Animazioni causa-effetto (spec review UI §F). Tutte e sole qui, e tutte
+   dentro il media: chi chiede meno moto non ne riceve nessuno. */
+@media (prefers-reduced-motion: no-preference) {
+  .anim-stato { transition: background 180ms ease, color 180ms ease, opacity 180ms ease, border-color 180ms ease; }
+  .anim-foglio { animation: anim-sali 200ms ease; }
+  .anim-apparsa { animation: anim-fade 180ms ease; }
+  .anim-giorno { animation: anim-fade 160ms ease; }
+  @keyframes anim-sali { from { transform: translateY(14px); opacity: 0.6; } to { transform: none; opacity: 1; } }
+  @keyframes anim-fade { from { opacity: 0; } to { opacity: 1; } }
+}

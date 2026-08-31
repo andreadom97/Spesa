@@ -486,7 +486,7 @@ export default function Settimana() {
           <p style={{ margin: '0 4px 9px', fontSize: 12.5, color: 'var(--sec)' }}>{erroreCheckin}</p>
         )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+        <div key={dataSelezionata} className="anim-giorno" style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
           {pastiOrdinati.map((def) => {
             const slot = settimana.slots.find((s) => s.data === dataSelezionata && s.slotDefId === def.id);
             if (!slot) return null;
@@ -527,9 +527,6 @@ export default function Settimana() {
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.11em', color: 'var(--ink)' }}>
               {nCasaSettimana} PASTI A CASA IN SETTIMANA
             </span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.09em', color: 'var(--ter)' }}>
-              CASA = A CASA · › APRE IL PIATTO
-            </span>
           </div>
           {erroreConferma && (
             <p style={{ margin: '0 4px', fontSize: 12.5, color: 'var(--sec)' }}>{erroreConferma}</p>
@@ -556,6 +553,7 @@ export default function Settimana() {
           spuntato={foglio.slot.stato === 'saltato' || foglio.slot.stato === 'sostituito'}
           passato={foglio.slot.data <= oggi}
           aCasa={foglio.slot.stato === 'casa'}
+          haPiatto={foglio.slot.dishId !== null}
           porzioniPreparate={foglio.slot.porzioniPreparate}
           prontiCongelato={lotti.find((l) => l.mealSlotId === foglio.slot.id)?.congelato ?? false}
           daPronti={foglio.slot.daPronti}

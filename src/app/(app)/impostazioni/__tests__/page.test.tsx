@@ -27,6 +27,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 import { leggiImpostazioni, salvaImpostazioni, leggiSlotDefs, salvaSlotDefs } from '@/data/impostazioni';
+import { lunediDi } from '@/domain/date';
 import Impostazioni from '../page';
 
 const ASSENZE_VUOTE = [false, false, false, false, false, false, false];
@@ -298,5 +299,100 @@ describe('Impostazioni', () => {
       expect(screen.getByText('Non siamo riusciti a salvare. Riprova.')).toBeInTheDocument(),
     );
     expect(screen.getByRole('button', { name: 'NESSUNA' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('il copy del giro con origine futura dice "comincia"', async () => {
+    mockDati();
+    vi.mocked(leggiImpostazioni).mockResolvedValue({
+      moltiplicatorePorzioni: 1,
+      ordineAree: [...ORDINE_AREE_TEST],
+      settimaneCiclo: 2,
+      cicloOrigine: '2099-03-09', // nel futuro rispetto a qualunque "oggi" reale
+    });
+    render(<Impostazioni />);
+
+    expect(await screen.findByText(/^Il giro comincia lunedì 9 marzo\b/)).toBeInTheDocument();
+  });
+
+  it('il copy del giro con origine passata (o oggi) dice "è cominciato"', async () => {
+    mockDati();
+    vi.mocked(leggiImpostazioni).mockResolvedValue({
+      moltiplicatorePorzioni: 1,
+      ordineAree: [...ORDINE_AREE_TEST],
+      settimaneCiclo: 2,
+      cicloOrigine: '2000-01-03', // nel passato rispetto a qualunque "oggi" reale
+    });
+    render(<Impostazioni />);
+
+    expect(await screen.findByText(/^Il giro è cominciato lunedì 3 gennaio\b/)).toBeInTheDocument();
+  });
+
+  it('RIPARTI da lunedì richiede due tocchi: il primo arma senza salvare, il secondo salva davvero', async () => {
+    mockDati();
+    vi.mocked(leggiImpostazioni).mockResolvedValue({
+      moltiplicatorePorzioni: 1,
+      ordineAree: [...ORDINE_AREE_TEST],
+      settimaneCiclo: 2,
+      cicloOrigine: '2000-01-03', // lontano dal lunedì corrente: il bottone è attivo
+    });
+    render(<Impostazioni />);
+
+    const bottone = await screen.findByRole('button', { name: 'RIPARTI DALLA SETTIMANA 1' });
+    fireEvent.click(bottone);
+
+    // Primo tap: solo l'armamento, nessuna scrittura.
+    expect(salvaImpostazioni).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'SICURO? RIPARTI DA LUNEDÌ' })).toBeInTheDocument();
+
+    // Secondo tap sullo stesso bottone: ora esegue persistiCiclo davvero.
+    fireEvent.click(screen.getByRole('button', { name: 'SICURO? RIPARTI DA LUNEDÌ' }));
+
+    await waitFor(() => expect(salvaImpostazioni).toHaveBeenCalledTimes(1));
+    const salvato = vi.mocked(salvaImpostazioni).mock.calls[0][0];
+    expect(salvato.cicloOrigine).toBe(lunediDi(new Date().toISOString().slice(0, 10)));
+  });
+
+  it('RIPARTI armato: un tap fuori dal bottone annulla senza salvare', async () => {
+    mockDati();
+    vi.mocked(leggiImpostazioni).mockResolvedValue({
+      moltiplicatorePorzioni: 1,
+      ordineAree: [...ORDINE_AREE_TEST],
+      settimaneCiclo: 2,
+      cicloOrigine: '2000-01-03',
+    });
+    render(<Impostazioni />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'RIPARTI DALLA SETTIMANA 1' }));
+    expect(screen.getByRole('button', { name: 'SICURO? RIPARTI DA LUNEDÌ' })).toBeInTheDocument();
+
+    fireEvent.click(document.body);
+
+    expect(screen.getByRole('button', { name: 'RIPARTI DALLA SETTIMANA 1' })).toBeInTheDocument();
+    expect(salvaImpostazioni).not.toHaveBeenCalled();
+  });
+
+  it('RIPARTI armato: un cambio di stato altrove (la rotazione) lo disarma', async () => {
+    mockDati();
+    vi.mocked(leggiImpostazioni).mockResolvedValue({
+      moltiplicatorePorzioni: 1,
+      ordineAree: [...ORDINE_AREE_TEST],
+      settimaneCiclo: 2,
+      cicloOrigine: '2000-01-03',
+    });
+    render(<Impostazioni />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'RIPARTI DALLA SETTIMANA 1' }));
+    expect(screen.getByRole('button', { name: 'SICURO? RIPARTI DA LUNEDÌ' })).toBeInTheDocument();
+
+    vi.mocked(leggiImpostazioni).mockResolvedValue({
+      moltiplicatorePorzioni: 1,
+      ordineAree: [...ORDINE_AREE_TEST],
+      settimaneCiclo: 3,
+      cicloOrigine: '2000-01-03',
+    });
+    fireEvent.click(screen.getByRole('button', { name: '3 SETT.' }));
+
+    await waitFor(() => expect(salvaImpostazioni).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole('button', { name: 'RIPARTI DALLA SETTIMANA 1' })).toBeInTheDocument();
   });
 });

@@ -8,19 +8,13 @@ import { salvaPiatto, leggiRepertorio, leggiIngredienti, eliminaPiatto } from '@
 import { leggiImpostazioni, leggiSlotDefs } from '@/data/impostazioni';
 import { leggiSettimanaCorrente } from '@/data/settimana';
 import { giorniDellaSettimana } from '@/domain/date';
-import { coloreArea } from '@/domain/aree';
+import { coloreArea, nomeArea } from '@/domain/aree';
 import { Segmento } from '@/components/Segmento';
 import { TesseraIngrediente } from '@/components/TesseraIngrediente';
 import { raccogliIngredienteCreato, riprendiBozza, salvaBozza, scartaBozza } from './bozza';
 
 const GIORNI_LABEL = ['LUN', 'MAR', 'MER', 'GIO', 'VEN', 'SAB', 'DOM'];
 const GIORNI_LUNGHI = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
-// Iniziali, non LUN/MAR come nella striscia "in questa settimana": sono due
-// cose diverse nella stessa schermata (qui si sceglie, là si legge cosa è
-// già in programma) e due strisce identiche si confonderebbero. È anche la
-// stessa forma dei giorni "abitualmente fuori casa" in Impostazioni, dove
-// pure si sceglie.
-const GIORNI_INIZIALE = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
 
 const TESTO_SENZA_INGREDIENTI =
   'Un piatto senza ingredienti non entra nella lista della spesa: è la grammatura di ogni ' +
@@ -113,6 +107,12 @@ export default function Piatto() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const nuovo = id === 'nuovo';
+
+  // 'vista' di default: il piano si apre per essere letto, non per essere
+  // toccato — coerente con l'obiettivo del task (niente scritture accidentali
+  // da chi sta solo consultando). Un piatto nuovo non ha niente da
+  // consultare, quindi apre già in 'modifica' (stesso ramo di `nuovo` sopra).
+  const [modalita, setModalita] = useState<'vista' | 'modifica'>(nuovo ? 'modifica' : 'vista');
 
   const [caricamento, setCaricamento] = useState(true);
   const [errore, setErrore] = useState<string | null>(null);
@@ -218,6 +218,10 @@ export default function Piatto() {
           setGiornoCiclo(bozza.giornoCiclo);
           setIngredienti(bozza.ingredienti);
           setComponenti(bozza.componenti);
+          // Una bozza pendente è lavoro non ancora salvato: si apre già in
+          // 'modifica', non in 'vista', altrimenti chi ha lasciato a metà una
+          // modifica se la vede sostituita dalla sola lettura.
+          setModalita('modifica');
         }
 
         // Chi è appena tornato dalla creazione di un ingrediente lo aveva
@@ -374,6 +378,39 @@ export default function Piatto() {
   }
 
   /**
+   * ANNULLA nell'editor. Su un piatto nuovo (mai esistito) non c'è niente a
+   * cui tornare: esce dalla pagina, come ha sempre fatto. Su un piatto
+   * esistente invece c'è una vista a cui tornare — si ripristina lo stato dal
+   * `piattoOriginale` già in pagina (stessa assegnazione di campi di
+   * `carica()`, per non tenere due copie della stessa logica) e si torna a
+   * 'vista' senza navigare via. Scarta anche una bozza pendente: senza
+   * questo, un ANNULLA seguito da un giro completo (uscita e rientro sulla
+   * pagina) risuscita modifiche che l'utente ha appena scelto di buttare.
+   * Azzera anche `errore`: un salvataggio fallito lo aveva scritto per
+   * l'editor che si sta abbandonando, e senza questo resterebbe appeso allo
+   * stato — un fantasma che ricompare al prossimo MODIFICA senza che sia
+   * successo niente di nuovo (review Task 5, finding media).
+   */
+  function annulla() {
+    if (nuovo) {
+      router.push('/piatti');
+      return;
+    }
+    if (piattoOriginale) {
+      setNome(piattoOriginale.nome);
+      setSlotDefId(piattoOriginale.slotDefId);
+      setDescrizione(piattoOriginale.descrizione ?? '');
+      setSettimanaCiclo(piattoOriginale.settimanaCiclo);
+      setGiornoCiclo(piattoOriginale.giornoCiclo);
+      setIngredienti(piattoOriginale.ingredienti);
+      setComponenti(piattoOriginale.componenti);
+    }
+    scartaBozza(id);
+    setErrore(null);
+    setModalita('vista');
+  }
+
+  /**
    * Il cestino nell'header è quello dell'artboard: deve fare qualcosa di
    * vero, non solo esserci. Su un piatto nuovo (mai salvato) non c'è ancora
    * niente da eliminare: equivale ad annullare, senza bisogno di conferma
@@ -418,27 +455,57 @@ export default function Piatto() {
       // scelto uno: la schermata non blocca il salvataggio su questo (solo
       // sugli ingredienti, per Step 4), ma dish.slot_def_id non è nullable.
       const slotEffettivo = slotDefId || slotDefs[0]?.id || '';
+      const nomeEffettivo = nome.trim();
+      const descrizioneEffettiva = descrizione.trim() || null;
+      // Una settimana del ciclo che il ciclo non contiene più (si è passati
+      // da quattro settimane a due) filtrerebbe via il piatto per sempre: si
+      // scrive solo quello che il ciclo corrente può ancora usare.
+      const settimanaEffettiva = settimanaCiclo !== null && settimanaCiclo <= settimaneCiclo ? settimanaCiclo : null;
+      const componentiEffettivi = componenti.map((c) => ({
+        id: c.id,
+        nome: c.nome.trim(),
+        opzioni: c.opzioni.map((o) => ({ id: o.id, righe: o.righe })),
+      }));
       await salvaPiatto({
         id: nuovo ? undefined : id,
-        nome: nome.trim(),
+        nome: nomeEffettivo,
         slotDefId: slotEffettivo,
         fonte: piattoOriginale?.fonte ?? 'proprio',
         attivo: piattoOriginale?.attivo ?? true,
-        descrizione: descrizione.trim() || null,
-        // Una settimana del ciclo che il ciclo non contiene più (si è passati
-        // da quattro settimane a due) filtrerebbe via il piatto per sempre:
-        // si scrive solo quello che il ciclo corrente può ancora usare.
-        settimanaCiclo: settimanaCiclo !== null && settimanaCiclo <= settimaneCiclo ? settimanaCiclo : null,
+        descrizione: descrizioneEffettiva,
+        settimanaCiclo: settimanaEffettiva,
         giornoCiclo,
         ingredienti,
-        componenti: componenti.map((c) => ({
-          id: c.id,
-          nome: c.nome.trim(),
-          opzioni: c.opzioni.map((o) => ({ id: o.id, righe: o.righe })),
-        })),
+        componenti: componentiEffettivi,
       });
       scartaBozza(id);
-      router.push('/piatti');
+      if (nuovo) {
+        router.push('/piatti');
+      } else {
+        // Spec §C: "SALVA salva e torna alla vista" — su un piatto esistente
+        // non si naviga più via, si resta sulla pagina. `piattoOriginale` si
+        // aggiorna con quanto appena scritto: senza questo, un successivo
+        // MODIFICA -> ANNULLA ripristinerebbe i dati precedenti al
+        // salvataggio, buttando via ciò che è appena stato persistito.
+        setPiattoOriginale({
+          id,
+          nome: nomeEffettivo,
+          slotDefId: slotEffettivo,
+          fonte: piattoOriginale?.fonte ?? 'proprio',
+          attivo: piattoOriginale?.attivo ?? true,
+          descrizione: descrizioneEffettiva,
+          settimanaCiclo: settimanaEffettiva,
+          giornoCiclo,
+          ingredienti,
+          componenti: componentiEffettivi,
+        });
+        setModalita('vista');
+        // Sul ramo nuovo si naviga via (router.push) e la pagina si
+        // smonta: qui invece si resta, quindi `salvando` va azzerato a
+        // mano — altrimenti il secondo SALVA (dopo un MODIFICA) resta
+        // per sempre disabilitato: bottone disabled + guardia in salva().
+        setSalvando(false);
+      }
     } catch (errore) {
       console.error('piatto: salvataggio fallito.', errore);
       setErrore('Non siamo riusciti a salvare il piatto. Riprova.');
@@ -458,6 +525,53 @@ export default function Piatto() {
   if (caricamento) return <Cornice cestinoAttivo={false} />;
 
   const catalogoPerId = new Map(catalogo.map((i) => [i.id, i]));
+
+  if (modalita === 'vista') {
+    // Spec §C: "quantità + nome + area", stessi tre dati che l'editor mostra
+    // già sulla tessera (TesseraIngrediente), solo su una riga sola invece
+    // che su tre righe di pillola.
+    const testoRiga = (r: DishIngredient) => {
+      const ing = catalogoPerId.get(r.ingredientId);
+      return ing ? `${r.quantita} ${r.unita} · ${ing.nome} · ${nomeArea(ing.area)}` : null;
+    };
+    const righeIngredienti = ingredienti
+      .map((r) => ({ id: r.ingredientId, testo: testoRiga(r) }))
+      .filter((r): r is { id: string; testo: string } => r.testo !== null);
+    // Una riga per opzione, non per ingrediente della singola riga:
+    // "ricotta 50g + noci 20g" è UNA opzione (stesso vincolo di
+    // OpzioneComponente in domain/types). Il nome del componente apre la
+    // prima opzione; "oppure" separa le successive, stesso lessico usato in
+    // Revisione.tsx per lo stesso concetto.
+    const righeComponenti = componenti.flatMap((c) =>
+      c.opzioni.flatMap((o, i) => {
+        const testoOpzione = o.righe
+          .map(testoRiga)
+          .filter((t): t is string => t !== null)
+          .join(' + ');
+        const riga = { id: `${c.id}:${o.id}`, testo: i === 0 ? `${c.nome}: ${testoOpzione}` : testoOpzione };
+        return i === 0 ? [riga] : [{ id: `${c.id}:${o.id}:oppure`, testo: 'oppure' }, riga];
+      }),
+    );
+    return (
+      <VistaPiatto
+        nome={nome}
+        pasto={slotDefs.find((s) => s.id === slotDefId)?.nome ?? ''}
+        settimana={settimaneCiclo > 1 && settimanaCiclo !== null ? `Settimana ${settimanaCiclo} del giro` : null}
+        giorno={giornoCiclo !== null ? GIORNI_LUNGHI[giornoCiclo] : null}
+        righe={[...righeIngredienti, ...righeComponenti]}
+        // Azzera anche qui, non solo in annulla(): MODIFICA è l'altro punto
+        // da cui si entra nell'editor, e un errore di un salvataggio fallito
+        // di un giro precedente non deve riapparire su un editor che
+        // ricomincia pulito (stesso finding di annulla(), stesso rimedio).
+        onModifica={() => {
+          setErrore(null);
+          setModalita('modifica');
+        }}
+        onIndietro={() => router.back()}
+      />
+    );
+  }
+
   // La lista da cui il selettore esclude ciò che c'è già dipende dal target
   // aperto: `ingredienti` per il selettore principale, le righe della
   // singola opzione per quello aperto da un componente. Stesso selettore,
@@ -581,11 +695,12 @@ export default function Piatto() {
           <Pillole
             opzioni={[
               { valore: null, label: 'LIBERO', descrizione: 'Lo sceglie l’app, ruotando' },
-              ...GIORNI_INIZIALE.map((label, i) => ({ valore: i, label, descrizione: GIORNI_LUNGHI[i] })),
+              ...GIORNI_LABEL.map((label, i) => ({ valore: i, label, descrizione: GIORNI_LUNGHI[i] })),
             ]}
             valore={giornoCiclo}
             onCambia={setGiornoCiclo}
             gruppo="Giorno fisso"
+            aCapo
           />
         </div>
 
@@ -911,8 +1026,15 @@ export default function Piatto() {
       </div>
 
       <div style={{ padding: '8px 16px 22px', display: 'flex', gap: 9 }}>
-        <Link
-          href="/piatti"
+        <button
+          type="button"
+          onClick={annulla}
+          // Nome accessibile diverso dal testo visibile "ANNULLA": è quello
+          // che distingue questo bottone dall'ANNULLA della conferma di
+          // eliminazione, che può essere aperta sopra l'editor (stesso testo,
+          // due controlli diversi — senza aria-label sarebbero ambigui per
+          // chi naviga a nome accessibile, screen reader compresi).
+          aria-label="Annulla modifiche"
           style={{
             flex: 'none',
             width: 104,
@@ -930,7 +1052,7 @@ export default function Piatto() {
           }}
         >
           ANNULLA
-        </Link>
+        </button>
         <button
           type="button"
           onClick={salva}
@@ -1089,6 +1211,69 @@ export default function Piatto() {
 }
 
 
+/** Sola consultazione: il piano del nutrizionista si legge senza rischiare di cambiarlo. */
+function VistaPiatto({ nome, pasto, settimana, giorno, righe, onModifica, onIndietro }: {
+  nome: string;
+  pasto: string;
+  settimana: string | null;
+  giorno: string | null;
+  righe: { id: string; testo: string }[];
+  onModifica: () => void;
+  onIndietro: () => void;
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '16px 18px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <button
+          type="button"
+          onClick={onIndietro}
+          aria-label="Indietro"
+          style={{ width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M12.5 4 6.5 10l6 6" stroke="var(--ink)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          onClick={onModifica}
+          style={{
+            height: 40, padding: '0 18px', borderRadius: 999, background: 'var(--ink)',
+            fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.1em', color: '#FFFFFF',
+          }}
+        >
+          MODIFICA
+        </button>
+      </div>
+      <h1 style={{ margin: 0, fontSize: 34, fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.05, color: 'var(--ink)' }}>
+        {nome}
+      </h1>
+      <p style={{ margin: 0, fontFamily: 'var(--font-mono)', fontSize: 10.5, letterSpacing: '0.08em', color: 'var(--sec)' }}>
+        {[pasto, settimana, giorno].filter(Boolean).join(' · ').toUpperCase()}
+      </p>
+      {/* Spec §C: "per 1 porzione" accanto all'elenco, stesso stile
+          mono-uppercase della riga meta sopra (mai la stessa riga: qui non
+          c'è un'intestazione INGREDIENTI come nell'editor da cui pendere). */}
+      <p style={{ margin: '-8px 0 0', fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.1em', color: 'var(--sec)' }}>
+        PER 1 PORZIONE
+      </p>
+      <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {righe.map((r) => (
+          <li
+            key={r.id}
+            style={{
+              padding: '12px 14px', borderRadius: 14, background: '#FFFFFF',
+              border: '1px solid rgba(20,22,58,0.07)', fontSize: 15.5, fontWeight: 600, color: 'var(--ink)',
+            }}
+          >
+            {r.testo}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function EtichettaCampo({ children, margine = '0 0 7px' }: { children: ReactNode; margine?: string }) {
   return (
     <div style={{ margin: margine, fontFamily: 'var(--font-mono)', fontSize: 8.5, letterSpacing: '0.11em', color: 'var(--ter)' }}>
@@ -1112,15 +1297,22 @@ interface OpzionePillola {
  * Segmento: la regola dei bersagli vale ovunque, non solo dove il disegno è
  * già abbastanza alto.
  */
-function Pillole({ opzioni, valore, onCambia, gruppo }: {
+function Pillole({ opzioni, valore, onCambia, gruppo, aCapo = false }: {
   opzioni: OpzionePillola[];
   valore: number | null;
   onCambia: (v: number | null) => void;
   gruppo: string;
+  /**
+   * Spec §C sui chip giorno: "tutti visibili senza scroll orizzontale (due
+   * righe se serve)". Prop dedicata invece di cambiare il default: le
+   * pillole di SETTIMANA DEL GIRO stanno comode su una riga con lo scroll
+   * attuale, e non c'è motivo di toccarne il comportamento.
+   */
+  aCapo?: boolean;
 }) {
   return (
-    <div className="sc" style={{ overflowX: 'auto' }}>
-      <div style={{ display: 'flex', gap: 6, width: 'max-content' }}>
+    <div className="sc" style={aCapo ? undefined : { overflowX: 'auto' }}>
+      <div style={{ display: 'flex', flexWrap: aCapo ? 'wrap' : 'nowrap', gap: 6, width: aCapo ? '100%' : 'max-content' }}>
         {opzioni.map((o) => {
           const attivo = o.valore === valore;
           return (

@@ -49,6 +49,9 @@ export default function Dispensa() {
   const [lotti, setLotti] = useState<LottoPronto[]>([]);
   const [nomiPiatti, setNomiPiatti] = useState<Map<string, string>>(new Map());
   const [impegniPerPiatto, setImpegniPerPiatto] = useState<Map<string, number>>(new Map());
+  // La nota AI e' un ripiego per quando il calcolo non torna, non la prima
+  // cosa da vedere: parte compressa in una card, si monta solo al tap.
+  const [notaAperta, setNotaAperta] = useState(false);
 
   /**
    * Il corpo del caricamento, richiamabile: la nota alla dispensa (sotto)
@@ -234,16 +237,19 @@ export default function Dispensa() {
   return (
     <Cornice>
       <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 16px 20px' }}>
-        <NotaDispensa contesto={contestoNota} onDatiCambiati={ricarica} />
-
-        <p style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', margin: '0 6px 16px' }}>
-          Questi numeri li calcola l’app da quello che hai comprato e da quello che il piano consuma:
-          non c’è niente da tenere aggiornato. Correggili solo quando il conto non torna con la realtà.
-        </p>
-
         {erroreSalvataggio && (
           <p style={{ fontSize: 13, color: 'var(--sec)', margin: '0 6px 12px' }}>{erroreSalvataggio}</p>
         )}
+
+        <Gruppo
+          titolo="IN CASA"
+          righe={inCasa}
+          ordineAree={ordineAree}
+          onSalva={salva}
+          onCongela={cambiaCongelato}
+          sottotitolo="Calcolato da spesa e piano: correggi solo se non torna con la realtà."
+        />
+        <Gruppo titolo="FINITI" righe={finiti} ordineAree={ordineAree} onSalva={salva} onCongela={cambiaCongelato} />
 
         <SezionePronti
           lotti={lotti.filter((l) => porzioniUtilizzabili(l, oggi) > 0)}
@@ -254,8 +260,6 @@ export default function Dispensa() {
           onElimina={eliminaLottoOttimistico}
         />
 
-        <Gruppo titolo="IN CASA" righe={inCasa} ordineAree={ordineAree} onSalva={salva} onCongela={cambiaCongelato} />
-        <Gruppo titolo="FINITI" righe={finiti} ordineAree={ordineAree} onSalva={salva} onCongela={cambiaCongelato} />
         {/* Chiuso di partenza: e' l'intero catalogo di quello che non hai mai
             preso, serve solo quando cerchi qualcosa di preciso per dire che
             ce l'hai gia' in casa. Aperto sarebbe la parte piu' lunga della
@@ -268,6 +272,44 @@ export default function Dispensa() {
           onCongela={cambiaCongelato}
           chiusoDaSubito
         />
+
+        {/* La correzione via AI e' un ripiego per quando il calcolo non
+            torna, non la prima cosa da vedere: in cima distraeva da quello
+            che la schermata serve davvero a mostrare. Resta una card
+            compressa finche' non serve, e monta NotaDispensa solo al tap. */}
+        {notaAperta ? (
+          <div className="anim-foglio" style={{ position: 'relative' }}>
+            {/* Chiusura discreta senza toccare la firma di NotaDispensa: un
+                bottone sovrapposto, stesso disegno della X di rimozione
+                ingrediente (TesseraIngrediente), stessa area di tap 44px. */}
+            <button
+              type="button"
+              onClick={() => setNotaAperta(false)}
+              aria-label="Chiudi correzione con una nota"
+              style={{
+                position: 'absolute', top: 0, right: 0, width: 44, height: 44, zIndex: 1,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent',
+              }}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+                <path d="M5 5l14 14M19 5 5 19" stroke="#C4C4CE" strokeWidth="2.2" strokeLinecap="round" />
+              </svg>
+            </button>
+            <NotaDispensa contesto={contestoNota} onDatiCambiati={ricarica} />
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setNotaAperta(true)}
+            style={{
+              width: '100%', padding: '15px 16px', borderRadius: 18, background: '#FFFFFF',
+              border: '1px solid rgba(20,22,58,0.07)', textAlign: 'left',
+              fontSize: 14.5, fontWeight: 600, color: 'var(--ink)',
+            }}
+          >
+            Il conto non torna? Correggi con una nota
+          </button>
+        )}
       </div>
     </Cornice>
   );
@@ -281,9 +323,11 @@ interface PropsGruppo {
   onCongela: (ingredientId: string, congelato: boolean) => void;
   /** Parte richiuso, con il solo titolo cliccabile. */
   chiusoDaSubito?: boolean;
+  /** Riga di spiegazione sotto l'intestazione — solo IN CASA la usa. */
+  sottotitolo?: string;
 }
 
-function Gruppo({ titolo, righe, ordineAree, onSalva, onCongela, chiusoDaSubito = false }: PropsGruppo) {
+function Gruppo({ titolo, righe, ordineAree, onSalva, onCongela, chiusoDaSubito = false, sottotitolo }: PropsGruppo) {
   const [aperto, setAperto] = useState(!chiusoDaSubito);
   if (righe.length === 0) return null;
 
@@ -327,6 +371,10 @@ function Gruppo({ titolo, righe, ordineAree, onSalva, onCongela, chiusoDaSubito 
           {ordinate.length}
         </span>
       </button>
+
+      {sottotitolo && (
+        <p style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', margin: '0 4px 12px' }}>{sottotitolo}</p>
+      )}
 
       <div style={{ display: aperto ? 'flex' : 'none', flexDirection: 'column', gap: 7 }}>
         {ordinate.map((r) => (

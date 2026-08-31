@@ -718,7 +718,7 @@ function Riepilogo({
 function Cornice({ children }: { children?: ReactNode }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <Testata titolo="Importa la dieta" />
+      <Testata titolo="Importa la dieta" indietro />
       {children}
     </div>
   );
