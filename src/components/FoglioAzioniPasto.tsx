@@ -12,6 +12,8 @@ interface Props {
   passato: boolean;
   /** true se lo slot è 'casa' (serve al gate di "Cucinato ma non mangiato"). */
   aCasa: boolean;
+  /** true se lo slot ha un piatto assegnato: senza piatto "Cucinato ma non mangiato" non ha senso. */
+  haPiatto: boolean;
   /** Porzioni extra già dichiarate sullo slot (0 = nessuna): valore iniziale dello stepper. */
   porzioniPreparate: number;
   /** true se il lotto legato a questo slot è in freezer: valore iniziale del toggle Frigo/Freezer dello stepper. */
@@ -90,7 +92,7 @@ function Stepper({
  * passato o futuro.
  */
 export function FoglioAzioniPasto({
-  nomePasto, spuntato, passato, aCasa, porzioniPreparate, prontiCongelato, daPronti, prontiDisponibili,
+  nomePasto, spuntato, passato, aCasa, haPiatto, porzioniPreparate, prontiCongelato, daPronti, prontiDisponibili,
   hrefScegli, onSaltato, onMangiatoAltro, onTornaAlPiano, onCucinatoNonMangiato,
   onPreparaPorzioni, onUsaPronta, onNonUsarePronta, onChiudi,
 }: Props) {
@@ -121,11 +123,11 @@ export function FoglioAzioniPasto({
         {passato && (
           <>
             <Voce onClick={onSaltato}>Saltato</Voce>
-            <Voce onClick={onMangiatoAltro}>Ho mangiato altro</Voce>
+            <Voce onClick={onMangiatoAltro}>Ho mangiato fuori piano</Voce>
             <Link href={hrefScegli} style={stileVoce}>
               Ho mangiato un altro piatto
             </Link>
-            {aCasa && <Voce onClick={onCucinatoNonMangiato}>Cucinato ma non mangiato</Voce>}
+            {aCasa && haPiatto && <Voce onClick={onCucinatoNonMangiato}>Cucinato ma non mangiato</Voce>}
             {spuntato && <Voce onClick={onTornaAlPiano}>Torna al piano</Voce>}
           </>
         )}

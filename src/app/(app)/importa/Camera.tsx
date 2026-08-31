@@ -215,6 +215,15 @@ export function Camera({ onFoto, iniziali = [] }: Props) {
           }}
         >
           La fotocamera non è disponibile: scegli le foto dei fogli
+          <span
+            style={{
+              alignSelf: 'flex-start', height: 40, padding: '0 18px', borderRadius: 999,
+              display: 'inline-flex', alignItems: 'center', background: 'var(--ink)',
+              fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.1em', color: '#FFFFFF',
+            }}
+          >
+            SCEGLI LE FOTO
+          </span>
           <input
             type="file"
             accept="image/*"
@@ -222,7 +231,7 @@ export function Camera({ onFoto, iniziali = [] }: Props) {
             capture="environment"
             aria-label="scegli le foto dei fogli"
             onChange={scegliFile}
-            style={{ fontSize: 13 }}
+            style={{ position: 'absolute', width: 1, height: 1, opacity: 0, overflow: 'hidden', clipPath: 'inset(50%)' }}
           />
         </label>
       ) : (

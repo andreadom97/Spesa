@@ -62,6 +62,17 @@ export default function Impostazioni() {
   const [dati, setDati] = useState<Dati | null>(null);
   const [erroreCaricamento, setErroreCaricamento] = useState<string | null>(null);
   const [erroreSalvataggio, setErroreSalvataggio] = useState<string | null>(null);
+  // Conferma in due tocchi di RIPARTI: il primo tap arma il bottone (il testo
+  // diventa "SICURO?"), solo il secondo tap esegue davvero persistiCiclo. Un
+  // tap fuori dal bottone o un cambio di stato altrove (es. la rotazione)
+  // annullano l'armamento.
+  const [ripartiArmato, setRipartiArmato] = useState(false);
+  const bottoneRipartiRef = useRef<HTMLButtonElement>(null);
+  // Tiene traccia dell'ultima settimaneCiclo vista per disarmare RIPARTI
+  // quando cambia altrove (es. la rotazione): niente effect, si aggiusta lo
+  // stato durante il render stesso (pattern React consigliato per "adjusting
+  // state when a prop changes", evita il giro extra di un effect).
+  const [settimaneCicloVista, setSettimaneCicloVista] = useState<number | undefined>(undefined);
 
   // Ultimo stato dei pasti confermato dal server: a differenza di `dati.pasti`
   // (che include anche le modifiche non ancora salvate, es. mentre si digita
@@ -94,6 +105,26 @@ export default function Impostazioni() {
       vivo = false;
     };
   }, []);
+
+  // Un cambio di stato altrove (es. la rotazione cambia da un'opzione del
+  // Segmento) disarma RIPARTI: un tap "vecchio" non deve confermare
+  // un'azione diversa da quella che l'utente aveva armato.
+  if (dati && dati.impostazioni.settimaneCiclo !== settimaneCicloVista) {
+    setSettimaneCicloVista(dati.impostazioni.settimaneCiclo);
+    if (ripartiArmato) setRipartiArmato(false);
+  }
+
+  // Un tap fuori dal bottone RIPARTI, mentre è armato, annulla la conferma.
+  useEffect(() => {
+    if (!ripartiArmato) return;
+    function fuoriDalBottone(e: MouseEvent) {
+      if (bottoneRipartiRef.current && !bottoneRipartiRef.current.contains(e.target as Node)) {
+        setRipartiArmato(false);
+      }
+    }
+    document.addEventListener('click', fuoriDalBottone);
+    return () => document.removeEventListener('click', fuoriDalBottone);
+  }, [ripartiArmato]);
 
   /** Persiste l'insieme dei pasti; in caso di errore torna all'ultimo stato salvato dal server. */
   async function persistiPasti(nuovi: MealSlotDef[]) {
@@ -317,12 +348,24 @@ export default function Impostazioni() {
           <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', marginTop: 11 }}>
             {settimaneCiclo === 1
               ? 'I piatti ruotano uno dopo l’altro, senza giro fisso. Scegli due o più settimane se il tuo piano si ripete a blocchi: ogni piatto potrà dire a quale settimana appartiene.'
-              : `Il giro è cominciato lunedì ${dataInParole(dati.impostazioni.cicloOrigine ?? lunediCorrente)}. Ogni piatto può dire a quale delle ${settimaneCiclo} settimane appartiene, e in che giorno: chi non lo dice resta buono per tutte.`}
+              : (() => {
+                  const origine = dati.impostazioni.cicloOrigine ?? lunediCorrente;
+                  const verbo = origine > oggi ? 'comincia' : 'è cominciato';
+                  return `Il giro ${verbo} lunedì ${dataInParole(origine)}. Ogni piatto può dire a quale delle ${settimaneCiclo} settimane appartiene, e in che giorno: chi non lo dice resta buono per tutte.`;
+                })()}
           </div>
           {settimaneCiclo > 1 && (
             <button
+              ref={bottoneRipartiRef}
               type="button"
-              onClick={() => persistiCiclo({ cicloOrigine: lunediCorrente })}
+              onClick={() => {
+                if (ripartiArmato) {
+                  setRipartiArmato(false);
+                  persistiCiclo({ cicloOrigine: lunediCorrente });
+                } else {
+                  setRipartiArmato(true);
+                }
+              }}
               disabled={dati.impostazioni.cicloOrigine === lunediCorrente}
               style={{
                 marginTop: 11, minHeight: 44, width: '100%', borderRadius: 14,
@@ -333,7 +376,7 @@ export default function Impostazioni() {
                 opacity: dati.impostazioni.cicloOrigine === lunediCorrente ? 0.35 : 1,
               }}
             >
-              RIPARTI DALLA SETTIMANA 1
+              {ripartiArmato ? 'SICURO? RIPARTI DA LUNEDÌ' : 'RIPARTI DALLA SETTIMANA 1'}
             </button>
           )}
         </div>
@@ -546,9 +589,8 @@ function Cornice({ children, router }: { children?: ReactNode; router: ReturnTyp
             <path d="M14.5 5 7.8 12l6.7 7" stroke="var(--ink)" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--sec)' }}>
-          IMPOSTAZIONI
-        </span>
+        {/* Niente eyebrow "IMPOSTAZIONI" qui: il titolo grande sotto (H1
+            "Impostazioni") basta, il doppio titolo era ridondante. */}
         <div style={{ width: 44, height: 44 }} />
       </div>
       {children}

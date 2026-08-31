@@ -553,6 +553,7 @@ export default function Settimana() {
           spuntato={foglio.slot.stato === 'saltato' || foglio.slot.stato === 'sostituito'}
           passato={foglio.slot.data <= oggi}
           aCasa={foglio.slot.stato === 'casa'}
+          haPiatto={foglio.slot.dishId !== null}
           porzioniPreparate={foglio.slot.porzioniPreparate}
           prontiCongelato={lotti.find((l) => l.mealSlotId === foglio.slot.id)?.congelato ?? false}
           daPronti={foglio.slot.daPronti}

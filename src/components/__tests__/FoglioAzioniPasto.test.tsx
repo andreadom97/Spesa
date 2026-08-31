@@ -15,6 +15,7 @@ function renderFoglio(sovrascrivi: Partial<Parameters<typeof FoglioAzioniPasto>[
       spuntato={false}
       passato
       aCasa
+      haPiatto
       porzioniPreparate={0}
       prontiCongelato={false}
       daPronti={false}
@@ -31,7 +32,7 @@ describe('FoglioAzioniPasto', () => {
   it('giorno passato: spunte visibili, link "Ho mangiato un altro piatto"', () => {
     renderFoglio();
     expect(screen.getByRole('button', { name: 'Saltato' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Ho mangiato altro' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ho mangiato fuori piano' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Ho mangiato un altro piatto' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cucinato ma non mangiato' })).toBeInTheDocument();
   });
@@ -48,6 +49,14 @@ describe('FoglioAzioniPasto', () => {
     renderFoglio({ aCasa: false, spuntato: true });
     expect(screen.queryByRole('button', { name: 'Cucinato ma non mangiato' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Torna al piano' })).toBeInTheDocument();
+  });
+
+  // "Cucinato ma non mangiato" presuppone un piatto da poter dire cucinato:
+  // senza piatto nello slot (haPiatto=false) la voce non ha senso, anche se
+  // aCasa è vero.
+  it('"Cucinato ma non mangiato" resta nascosto senza un piatto nello slot, anche a casa', () => {
+    renderFoglio({ aCasa: true, haPiatto: false });
+    expect(screen.queryByRole('button', { name: 'Cucinato ma non mangiato' })).not.toBeInTheDocument();
   });
 
   it('"Uso una porzione pronta" compare solo con disponibilità, col numero', () => {

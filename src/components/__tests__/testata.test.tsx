@@ -10,7 +10,7 @@ describe('Testata', () => {
   });
 
   it('la pillola settimana non ha la freccetta di un selettore che non esiste', () => {
-    const { container } = render(<Testata titolo="Lista" settimana="31 AGO — 6 SET" />);
+    render(<Testata titolo="Lista" settimana="31 AGO — 6 SET" />);
     expect(screen.getByText('31 AGO — 6 SET')).toBeInTheDocument();
     // l'unico svg ammesso è l'ingranaggio nel link: dentro la pillola niente svg
     const pillola = screen.getByText('31 AGO — 6 SET').parentElement!;

@@ -12,14 +12,15 @@ import { Segmento } from '@/components/Segmento';
 const TUTTI = 'TUTTI';
 
 /**
- * Normalizza una stringa per la ricerca: minuscole, elimina accenti.
- * Pattern copiato da src/app/(app)/piatti/[id]/page.tsx:98
- * Anche se nessuno lo mette per cercare.
+ * Confronto tollerante agli accenti: chi cerca "caffe" deve trovare "Caffè",
+ * perché sulla tastiera del telefono l'accento costa un tocco in più e
+ * nessuno lo mette per cercare. Pattern copiato da
+ * src/app/(app)/piatti/[id]/page.tsx.
  */
 function normalizza(testo: string): string {
   return testo
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .trim();
 }
