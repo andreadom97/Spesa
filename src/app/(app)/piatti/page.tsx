@@ -11,6 +11,19 @@ import { Segmento } from '@/components/Segmento';
 
 const TUTTI = 'TUTTI';
 
+/**
+ * Normalizza una stringa per la ricerca: minuscole, elimina accenti.
+ * Pattern copiato da src/app/(app)/piatti/[id]/page.tsx:98
+ * Anche se nessuno lo mette per cercare.
+ */
+function normalizza(testo: string): string {
+  return testo
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
 const FONTE_LABEL: Record<Dish['fonte'], string> = {
   nutrizionista: 'NUTRIZIONISTA',
   proprio: 'PROPRIO',
@@ -39,6 +52,7 @@ export default function Piatti() {
   const [repertorio, setRepertorio] = useState<Repertorio | null>(null);
   const [errore, setErrore] = useState<string | null>(null);
   const [filtro, setFiltro] = useState<string>(TUTTI);
+  const [ricerca, setRicerca] = useState<string>('');
 
   useEffect(() => {
     let vivo = true;
@@ -80,11 +94,28 @@ export default function Piatti() {
     ...repertorio.slotDefs.map((s) => ({ id: s.id, label: s.nome })),
   ];
 
-  const mostrati =
-    filtro === TUTTI ? repertorio.piatti : repertorio.piatti.filter((p) => p.slotDefId === filtro);
+  const mostrati = (
+    filtro === TUTTI ? repertorio.piatti : repertorio.piatti.filter((p) => p.slotDefId === filtro)
+  ).filter((p) => normalizza(p.nome).includes(normalizza(ricerca)));
 
   return (
     <Cornice>
+      {/* Campo di ricerca sopra i filtri */}
+      <div style={{ padding: '8px 16px 10px' }}>
+        <input
+          type="search"
+          value={ricerca}
+          onChange={(e) => setRicerca(e.target.value)}
+          placeholder="Cerca un piatto"
+          aria-label="Cerca un piatto"
+          style={{
+            width: '100%', height: 44, padding: '0 14px',
+            borderRadius: 14, border: '1px solid var(--bordo)',
+            background: 'var(--fondo)', color: 'var(--ink)',
+            fontSize: 15, outline: 'none', boxSizing: 'border-box',
+          }}
+        />
+      </div>
       {/* Bottom ridotto a 6px (era 12): il bottone di Segmento è ora alto 44px invece di
           38 (area di tap, non disegno) — si compensano i +6px per non spostare il resto
           della schermata rispetto all'artboard. */}
@@ -177,7 +208,7 @@ function SchedaPiatto({ piatto, nomeSlot, aree }: PropsScheda) {
         <span
           style={{
             fontSize: 19, fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.15, color: 'var(--ink)',
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
           }}
         >
           {piatto.nome}
