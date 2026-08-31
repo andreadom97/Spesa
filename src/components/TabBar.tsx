@@ -35,9 +35,20 @@ const VOCI = [
       </svg>
     ),
   },
+  {
+    href: '/dispensa',
+    etichetta: 'DISPENSA',
+    icona: (colore: string) => (
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
+        <path d="M8 4.5h8M9.5 4.5v-1h5v1" stroke={colore} strokeWidth="1.7" strokeLinecap="round" />
+        <rect x="6.5" y="6.5" width="11" height="14" rx="2.5" stroke={colore} strokeWidth="1.8" />
+        <path d="M6.5 12h11" stroke={colore} strokeWidth="1.7" strokeLinecap="round" />
+      </svg>
+    ),
+  },
 ];
 
-/** Tab bar fissa in fondo: LISTA / SETTIMANA / PIATTI. */
+/** Tab bar fissa in fondo: LISTA / SETTIMANA / PIATTI / DISPENSA. */
 export function TabBar() {
   const pathname = usePathname();
 
