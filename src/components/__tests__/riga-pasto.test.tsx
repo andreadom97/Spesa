@@ -34,4 +34,23 @@ describe('RigaPasto', () => {
     const bottone = screen.getByRole('button', { name: /Nessun piatto assegnato/ });
     expect(bottone).not.toHaveAttribute('aria-label');
   });
+
+  // Stessa azione, stesso copy nei due punti del flusso: il bottone del
+  // foglio azioni che porta a questo stato dice "Ho mangiato fuori piano"
+  // (FoglioAzioniPasto), quindi l'etichetta della riga spenta deve dire
+  // la stessa cosa, non la vecchia "Ho mangiato altro".
+  it('stato sostituito mostra "Ho mangiato fuori piano"', () => {
+    render(
+      <RigaPasto
+        nomePasto="Cena"
+        stato={'sostituito' as StatoSlot}
+        nomePiatto={null}
+        aree={[]}
+        onToggleStato={() => {}}
+        hrefScegli="/x"
+      />,
+    );
+    expect(screen.getByText('Ho mangiato fuori piano')).toBeInTheDocument();
+    expect(screen.queryByText('Ho mangiato altro')).not.toBeInTheDocument();
+  });
 });

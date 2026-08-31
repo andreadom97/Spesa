@@ -38,7 +38,7 @@ interface Props {
 const ETICHETTA_SPENTO: Record<Exclude<StatoSlot, 'casa'>, string> = {
   fuori: 'Fuori casa',
   saltato: 'Saltato',
-  sostituito: 'Ho mangiato altro',
+  sostituito: 'Ho mangiato fuori piano',
 };
 
 /**
