@@ -74,6 +74,16 @@ function nessunaSettimana() {
   vi.mocked(leggiSettimanaCorrente).mockResolvedValue(null);
 }
 
+/**
+ * Da Task 5: un piatto esistente apre in 'vista', non nell'editor. I test
+ * che qui sotto esercitano l'editor su un piatto esistente devono prima
+ * passare da MODIFICA — un piatto nuovo invece apre già in 'modifica' e non
+ * ne ha bisogno.
+ */
+async function entraInModifica() {
+  fireEvent.click(await screen.findByRole('button', { name: 'MODIFICA' }));
+}
+
 /** Ciclo spento: la sezione "settimana del giro" non compare, ed è il default di tutti. */
 function mockBase(settimaneCiclo = 1) {
   vi.mocked(leggiSlotDefs).mockResolvedValue([SLOT_COLAZIONE, SLOT_PRANZO, SLOT_CENA]);
@@ -115,8 +125,12 @@ describe('Piatto (editor)', () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByText('Non ancora in programma. Comparirà qui appena lo assegni a un pasto dalla Settimana.')).toBeInTheDocument();
-    // Non in programma: niente striscia dei sette giorni (sarebbe rumore), solo il riquadro muto.
-    expect(screen.queryByText('LUN')).not.toBeInTheDocument();
+    // Non in programma: niente striscia dei sette giorni (sarebbe rumore), solo
+    // il riquadro muto. 'LUN' resta comunque nei chip "GIORNO FISSO" (Step 5,
+    // sempre presenti): si esclude quel testo, sempre dentro un <button>, per
+    // isolare la sola striscia (uno <span> nudo).
+    const lunNellaStriscia = screen.queryAllByText('LUN').find((el) => el.closest('button') === null);
+    expect(lunNellaStriscia).toBeUndefined();
 
     const salva = screen.getByRole('button', { name: 'SALVA PIATTO' });
     expect(salva).toBeDisabled();
@@ -172,6 +186,7 @@ describe('Piatto (editor)', () => {
     paramsId = 'd-1';
     vi.mocked(leggiRepertorio).mockResolvedValue([PIATTO_ESISTENTE]);
     render(<Piatto />);
+    await entraInModifica();
     await screen.findByDisplayValue('Yogurt e avena');
     expect(screen.getByRole('button', { name: 'SALVA PIATTO' })).toBeEnabled();
 
@@ -185,6 +200,7 @@ describe('Piatto (editor)', () => {
     vi.mocked(leggiRepertorio).mockResolvedValue([PIATTO_ESISTENTE]);
 
     render(<Piatto />);
+    await entraInModifica();
 
     expect(await screen.findByDisplayValue('Yogurt e avena')).toBeInTheDocument();
     expect(screen.getByText('Yogurt greco')).toBeInTheDocument();
@@ -217,10 +233,16 @@ describe('Piatto (editor)', () => {
     vi.mocked(leggiSettimanaCorrente).mockResolvedValue(settimana);
 
     render(<Piatto />);
+    await entraInModifica();
     await screen.findByDisplayValue('Yogurt e avena');
 
     expect(screen.getByText('In casa due volte questa settimana, fuori una volta. Il piatto entra due volte nella lista.')).toBeInTheDocument();
-    expect(screen.getByText('LUN')).toBeInTheDocument();
+    // 'LUN' compare due volte ora: nella striscia "in questa settimana" (uno
+    // <span> nudo) e nei chip "GIORNO FISSO" (Step 5, stessa etichetta a tre
+    // lettere per entrambi, uno <span> dentro un <button>) — si isola quello
+    // della striscia escludendo l'altro.
+    const chipLun = screen.getAllByText('LUN').find((el) => el.closest('button') === null);
+    expect(chipLun).toBeInTheDocument();
   });
 
   it('un piatto assegnato ma sempre fuori casa non entra nella lista', async () => {
@@ -240,6 +262,7 @@ describe('Piatto (editor)', () => {
     vi.mocked(leggiSettimanaCorrente).mockResolvedValue(settimana);
 
     render(<Piatto />);
+    await entraInModifica();
     await screen.findByDisplayValue('Yogurt e avena');
 
     expect(screen.getByText('Fuori casa una volta questa settimana: non entra nella lista.')).toBeInTheDocument();
@@ -292,6 +315,7 @@ describe('Piatto (editor)', () => {
     vi.mocked(eliminaPiatto).mockResolvedValue(undefined);
 
     render(<Piatto />);
+    await entraInModifica();
     await screen.findByDisplayValue('Yogurt e avena');
 
     fireEvent.click(screen.getByRole('button', { name: 'Elimina piatto' }));
@@ -309,6 +333,7 @@ describe('Piatto (editor)', () => {
     vi.mocked(leggiRepertorio).mockResolvedValue([PIATTO_ESISTENTE]);
 
     render(<Piatto />);
+    await entraInModifica();
     await screen.findByDisplayValue('Yogurt e avena');
 
     fireEvent.click(screen.getByRole('button', { name: 'Elimina piatto' }));
@@ -374,6 +399,7 @@ describe('Piatto (editor)', () => {
     vi.mocked(leggiRepertorio).mockResolvedValue([PIATTO_ESISTENTE]);
 
     render(<Piatto />);
+    await entraInModifica();
     await screen.findByDisplayValue('Yogurt e avena');
 
     expect(screen.getByRole('link', { name: 'Modifica Yogurt greco' })).toHaveAttribute(
@@ -388,6 +414,7 @@ describe('Piatto (editor)', () => {
     vi.mocked(salvaPiatto).mockResolvedValue(undefined as never);
 
     render(<Piatto />);
+    await entraInModifica();
     await screen.findByDisplayValue('Yogurt e avena');
     salvaBozza('d-1', {
       nome: 'residuo', slotDefId: 'sd-1',
@@ -455,6 +482,7 @@ describe('Piatto (editor)', () => {
     vi.mocked(leggiRepertorio).mockResolvedValue([PIATTO_CON_COMPONENTI]);
 
     render(<Piatto />);
+    await entraInModifica();
     await screen.findByDisplayValue('Yogurt e avena');
 
     expect(screen.getByDisplayValue('Pane')).toBeInTheDocument();
@@ -560,6 +588,7 @@ describe('Piatto (editor)', () => {
     vi.mocked(salvaPiatto).mockResolvedValue('d-2');
 
     render(<Piatto />);
+    await entraInModifica();
     await screen.findByDisplayValue('Yogurt e avena');
 
     fireEvent.click(screen.getByRole('button', { name: 'SALVA PIATTO' }));

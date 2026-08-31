@@ -15,12 +15,6 @@ import { raccogliIngredienteCreato, riprendiBozza, salvaBozza, scartaBozza } fro
 
 const GIORNI_LABEL = ['LUN', 'MAR', 'MER', 'GIO', 'VEN', 'SAB', 'DOM'];
 const GIORNI_LUNGHI = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
-// Iniziali, non LUN/MAR come nella striscia "in questa settimana": sono due
-// cose diverse nella stessa schermata (qui si sceglie, là si legge cosa è
-// già in programma) e due strisce identiche si confonderebbero. È anche la
-// stessa forma dei giorni "abitualmente fuori casa" in Impostazioni, dove
-// pure si sceglie.
-const GIORNI_INIZIALE = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
 
 const TESTO_SENZA_INGREDIENTI =
   'Un piatto senza ingredienti non entra nella lista della spesa: è la grammatura di ogni ' +
@@ -113,6 +107,12 @@ export default function Piatto() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const nuovo = id === 'nuovo';
+
+  // 'vista' di default: il piano si apre per essere letto, non per essere
+  // toccato — coerente con l'obiettivo del task (niente scritture accidentali
+  // da chi sta solo consultando). Un piatto nuovo non ha niente da
+  // consultare, quindi apre già in 'modifica' (stesso ramo di `nuovo` sopra).
+  const [modalita, setModalita] = useState<'vista' | 'modifica'>(nuovo ? 'modifica' : 'vista');
 
   const [caricamento, setCaricamento] = useState(true);
   const [errore, setErrore] = useState<string | null>(null);
@@ -218,6 +218,10 @@ export default function Piatto() {
           setGiornoCiclo(bozza.giornoCiclo);
           setIngredienti(bozza.ingredienti);
           setComponenti(bozza.componenti);
+          // Una bozza pendente è lavoro non ancora salvato: si apre già in
+          // 'modifica', non in 'vista', altrimenti chi ha lasciato a metà una
+          // modifica se la vede sostituita dalla sola lettura.
+          setModalita('modifica');
         }
 
         // Chi è appena tornato dalla creazione di un ingrediente lo aveva
@@ -374,6 +378,34 @@ export default function Piatto() {
   }
 
   /**
+   * ANNULLA nell'editor. Su un piatto nuovo (mai esistito) non c'è niente a
+   * cui tornare: esce dalla pagina, come ha sempre fatto. Su un piatto
+   * esistente invece c'è una vista a cui tornare — si ripristina lo stato dal
+   * `piattoOriginale` già in pagina (stessa assegnazione di campi di
+   * `carica()`, per non tenere due copie della stessa logica) e si torna a
+   * 'vista' senza navigare via. Scarta anche una bozza pendente: senza
+   * questo, un ANNULLA seguito da un giro completo (uscita e rientro sulla
+   * pagina) risuscita modifiche che l'utente ha appena scelto di buttare.
+   */
+  function annulla() {
+    if (nuovo) {
+      router.push('/piatti');
+      return;
+    }
+    if (piattoOriginale) {
+      setNome(piattoOriginale.nome);
+      setSlotDefId(piattoOriginale.slotDefId);
+      setDescrizione(piattoOriginale.descrizione ?? '');
+      setSettimanaCiclo(piattoOriginale.settimanaCiclo);
+      setGiornoCiclo(piattoOriginale.giornoCiclo);
+      setIngredienti(piattoOriginale.ingredienti);
+      setComponenti(piattoOriginale.componenti);
+    }
+    scartaBozza(id);
+    setModalita('vista');
+  }
+
+  /**
    * Il cestino nell'header è quello dell'artboard: deve fare qualcosa di
    * vero, non solo esserci. Su un piatto nuovo (mai salvato) non c'è ancora
    * niente da eliminare: equivale ad annullare, senza bisogno di conferma
@@ -438,6 +470,7 @@ export default function Piatto() {
         })),
       });
       scartaBozza(id);
+      setModalita('vista');
       router.push('/piatti');
     } catch (errore) {
       console.error('piatto: salvataggio fallito.', errore);
@@ -458,6 +491,43 @@ export default function Piatto() {
   if (caricamento) return <Cornice cestinoAttivo={false} />;
 
   const catalogoPerId = new Map(catalogo.map((i) => [i.id, i]));
+
+  if (modalita === 'vista') {
+    const testoRiga = (r: DishIngredient) => {
+      const ing = catalogoPerId.get(r.ingredientId);
+      return ing ? `${r.quantita} ${r.unita} · ${ing.nome}` : null;
+    };
+    const righeIngredienti = ingredienti
+      .map((r) => ({ id: r.ingredientId, testo: testoRiga(r) }))
+      .filter((r): r is { id: string; testo: string } => r.testo !== null);
+    // Una riga per opzione, non per ingrediente della singola riga:
+    // "ricotta 50g + noci 20g" è UNA opzione (stesso vincolo di
+    // OpzioneComponente in domain/types). Il nome del componente apre la
+    // prima opzione; "oppure" separa le successive, stesso lessico usato in
+    // Revisione.tsx per lo stesso concetto.
+    const righeComponenti = componenti.flatMap((c) =>
+      c.opzioni.flatMap((o, i) => {
+        const testoOpzione = o.righe
+          .map(testoRiga)
+          .filter((t): t is string => t !== null)
+          .join(' + ');
+        const riga = { id: `${c.id}:${o.id}`, testo: i === 0 ? `${c.nome}: ${testoOpzione}` : testoOpzione };
+        return i === 0 ? [riga] : [{ id: `${c.id}:${o.id}:oppure`, testo: 'oppure' }, riga];
+      }),
+    );
+    return (
+      <VistaPiatto
+        nome={nome}
+        pasto={slotDefs.find((s) => s.id === slotDefId)?.nome ?? ''}
+        settimana={settimaneCiclo > 1 && settimanaCiclo !== null ? `Settimana ${settimanaCiclo} del giro` : null}
+        giorno={giornoCiclo !== null ? GIORNI_LUNGHI[giornoCiclo] : null}
+        righe={[...righeIngredienti, ...righeComponenti]}
+        onModifica={() => setModalita('modifica')}
+        onIndietro={() => router.back()}
+      />
+    );
+  }
+
   // La lista da cui il selettore esclude ciò che c'è già dipende dal target
   // aperto: `ingredienti` per il selettore principale, le righe della
   // singola opzione per quello aperto da un componente. Stesso selettore,
@@ -581,7 +651,7 @@ export default function Piatto() {
           <Pillole
             opzioni={[
               { valore: null, label: 'LIBERO', descrizione: 'Lo sceglie l’app, ruotando' },
-              ...GIORNI_INIZIALE.map((label, i) => ({ valore: i, label, descrizione: GIORNI_LUNGHI[i] })),
+              ...GIORNI_LABEL.map((label, i) => ({ valore: i, label, descrizione: GIORNI_LUNGHI[i] })),
             ]}
             valore={giornoCiclo}
             onCambia={setGiornoCiclo}
@@ -911,8 +981,15 @@ export default function Piatto() {
       </div>
 
       <div style={{ padding: '8px 16px 22px', display: 'flex', gap: 9 }}>
-        <Link
-          href="/piatti"
+        <button
+          type="button"
+          onClick={annulla}
+          // Nome accessibile diverso dal testo visibile "ANNULLA": è quello
+          // che distingue questo bottone dall'ANNULLA della conferma di
+          // eliminazione, che può essere aperta sopra l'editor (stesso testo,
+          // due controlli diversi — senza aria-label sarebbero ambigui per
+          // chi naviga a nome accessibile, screen reader compresi).
+          aria-label="Annulla modifiche"
           style={{
             flex: 'none',
             width: 104,
@@ -930,7 +1007,7 @@ export default function Piatto() {
           }}
         >
           ANNULLA
-        </Link>
+        </button>
         <button
           type="button"
           onClick={salva}
@@ -1088,6 +1165,63 @@ export default function Piatto() {
   );
 }
 
+
+/** Sola consultazione: il piano del nutrizionista si legge senza rischiare di cambiarlo. */
+function VistaPiatto({ nome, pasto, settimana, giorno, righe, onModifica, onIndietro }: {
+  nome: string;
+  pasto: string;
+  settimana: string | null;
+  giorno: string | null;
+  righe: { id: string; testo: string }[];
+  onModifica: () => void;
+  onIndietro: () => void;
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '16px 18px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <button
+          type="button"
+          onClick={onIndietro}
+          aria-label="Indietro"
+          style={{ width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M12.5 4 6.5 10l6 6" stroke="var(--ink)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          onClick={onModifica}
+          style={{
+            height: 40, padding: '0 18px', borderRadius: 999, background: 'var(--ink)',
+            fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.1em', color: '#FFFFFF',
+          }}
+        >
+          MODIFICA
+        </button>
+      </div>
+      <h1 style={{ margin: 0, fontSize: 34, fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.05, color: 'var(--ink)' }}>
+        {nome}
+      </h1>
+      <p style={{ margin: 0, fontFamily: 'var(--font-mono)', fontSize: 10.5, letterSpacing: '0.08em', color: 'var(--sec)' }}>
+        {[pasto, settimana, giorno].filter(Boolean).join(' · ').toUpperCase()}
+      </p>
+      <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {righe.map((r) => (
+          <li
+            key={r.id}
+            style={{
+              padding: '12px 14px', borderRadius: 14, background: '#FFFFFF',
+              border: '1px solid rgba(20,22,58,0.07)', fontSize: 15.5, fontWeight: 600, color: 'var(--ink)',
+            }}
+          >
+            {r.testo}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 function EtichettaCampo({ children, margine = '0 0 7px' }: { children: ReactNode; margine?: string }) {
   return (
