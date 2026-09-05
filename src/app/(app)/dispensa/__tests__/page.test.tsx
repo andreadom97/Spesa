@@ -14,12 +14,15 @@ vi.mock('@/data/pronti', () => ({
   eliminaLotto: vi.fn(),
 }));
 vi.mock('@/data/settimana', () => ({ leggiSettimanaCorrente: vi.fn() }));
+vi.mock('@/data/risparmio', () => ({ leggiRisparmioTotale: vi.fn() }));
 
 import { leggiIngredienti, leggiRepertorio } from '@/data/repertorio';
 import { leggiDispensa, correggiResiduo, impostaCongelato } from '@/data/dispensa';
 import { leggiImpostazioni } from '@/data/impostazioni';
 import { leggiPronti, correggiLotto, impostaCongelatoLotto, eliminaLotto } from '@/data/pronti';
 import { leggiSettimanaCorrente } from '@/data/settimana';
+import { leggiRisparmioTotale } from '@/data/risparmio';
+import type { VoceEvitata } from '@/domain/list-builder';
 import Dispensa from '../page';
 
 const ORDINE = ['ortofrutta', 'macelleria', 'latticini', 'cereali', 'dispensa', 'surgelati'] as const;
@@ -48,6 +51,16 @@ function mockBase(dispensa: PantryState[], ingredienti: Ingredient[] = [RISO, BA
   vi.mocked(leggiPronti).mockResolvedValue([]);
   vi.mocked(leggiRepertorio).mockResolvedValue([]);
   vi.mocked(leggiSettimanaCorrente).mockResolvedValue(null);
+  vi.mocked(leggiRisparmioTotale).mockResolvedValue([]);
+}
+
+function voceEvitata(overrides: Partial<VoceEvitata>): VoceEvitata {
+  return {
+    ingredientId: 'ing-x', nome: 'X', unita: 'g', fabbisogno: 500,
+    confezioniIngenue: 1, confezioniReali: 0, confezioniEvitate: 1, quantitaEvitata: 500,
+    prezzoConfezione: null,
+    ...overrides,
+  };
 }
 
 const OGGI = new Date().toISOString().slice(0, 10);
@@ -357,5 +370,71 @@ describe('Dispensa', () => {
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
     // La card compressa torna disponibile per riaprirla.
     expect(screen.getByRole('button', { name: 'Il conto non torna? Correggi con una nota' })).toBeInTheDocument();
+  });
+  // Il totale del non ricomprato (spec 2026-09-05-non-ricomprato-design.md §5):
+  // una riga sotto la testata, solo se le settimane chiuse hanno confezioni > 0.
+  describe('Da quando usi Spesa', () => {
+    it('mostra la riga del totale con confezioni, quantità ed euro', async () => {
+      mockBase(statoDispensa([{ ingredientId: 'i-riso', residuo: 920 }]));
+      vi.mocked(leggiRisparmioTotale).mockResolvedValue([
+        voceEvitata({ ingredientId: 'i-riso', nome: 'Riso', confezioniEvitate: 6, quantitaEvitata: 3000, prezzoConfezione: 3 }),
+        voceEvitata({ ingredientId: 'i-pasta', nome: 'Pasta', confezioniEvitate: 3, quantitaEvitata: 1100, prezzoConfezione: 4.5 }),
+      ]);
+
+      const { container } = render(<Dispensa />);
+
+      expect(await screen.findByText('Da quando usi Spesa: 9 confezioni non ricomprate · 4,1 kg · circa 32 €')).toBeInTheDocument();
+      // Sotto la testata, prima dell'inventario.
+      const testo = container.textContent ?? '';
+      expect(testo.indexOf('Da quando usi Spesa')).toBeLessThan(testo.indexOf('IN CASA'));
+    });
+
+    it('senza prezzi la riga non ha la parte in euro', async () => {
+      mockBase(statoDispensa([{ ingredientId: 'i-riso', residuo: 920 }]));
+      vi.mocked(leggiRisparmioTotale).mockResolvedValue([
+        voceEvitata({ confezioniEvitate: 2, quantitaEvitata: 500 }),
+      ]);
+
+      render(<Dispensa />);
+
+      expect(await screen.findByText('Da quando usi Spesa: 2 confezioni non ricomprate · 500 g')).toBeInTheDocument();
+    });
+
+    it('con una sola confezione usa il singolare', async () => {
+      mockBase(statoDispensa([{ ingredientId: 'i-riso', residuo: 920 }]));
+      vi.mocked(leggiRisparmioTotale).mockResolvedValue([
+        voceEvitata({ confezioniEvitate: 1, quantitaEvitata: 1000, prezzoConfezione: 2.6 }),
+      ]);
+
+      render(<Dispensa />);
+
+      expect(await screen.findByText('Da quando usi Spesa: 1 confezione non ricomprata · 1,0 kg · circa 3 €')).toBeInTheDocument();
+    });
+
+    it('con zero confezioni non fa rumore', async () => {
+      mockBase(statoDispensa([{ ingredientId: 'i-riso', residuo: 920 }]));
+      vi.mocked(leggiRisparmioTotale).mockResolvedValue([
+        voceEvitata({ confezioniIngenue: 1, confezioniReali: 1, confezioniEvitate: 0, quantitaEvitata: 0, prezzoConfezione: 3 }),
+      ]);
+
+      render(<Dispensa />);
+
+      await screen.findByText('IN CASA');
+      expect(screen.queryByText(/Da quando usi Spesa/)).not.toBeInTheDocument();
+    });
+
+    it('se la lettura fallisce la pagina resta usabile, senza riga', async () => {
+      const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+      mockBase(statoDispensa([{ ingredientId: 'i-riso', residuo: 920 }]));
+      vi.mocked(leggiRisparmioTotale).mockRejectedValue(new Error('rete'));
+
+      render(<Dispensa />);
+
+      expect(await screen.findByText('IN CASA')).toBeInTheDocument();
+      expect(screen.getByLabelText('Residuo di Riso')).toHaveValue(920);
+      expect(screen.queryByText(/Da quando usi Spesa/)).not.toBeInTheDocument();
+      expect(errore).toHaveBeenCalled();
+      errore.mockRestore();
+    });
   });
 });

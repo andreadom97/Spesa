@@ -8,6 +8,9 @@ import { leggiDispensa, correggiResiduo, impostaCongelato } from '@/data/dispens
 import { leggiImpostazioni } from '@/data/impostazioni';
 import { leggiPronti, correggiLotto, impostaCongelatoLotto, eliminaLotto } from '@/data/pronti';
 import { leggiSettimanaCorrente } from '@/data/settimana';
+import { leggiRisparmioTotale } from '@/data/risparmio';
+import type { VoceEvitata } from '@/domain/list-builder';
+import { riassumiEvitato, formattaQuantita, formattaEuro } from '@/domain/risparmio';
 import { coloreArea, nomeArea } from '@/domain/aree';
 import { residuoUtilizzabile } from '@/domain/pantry';
 import { porzioniUtilizzabili } from '@/domain/pronti';
@@ -25,6 +28,34 @@ const MESI = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ot
 function dataBreve(iso: string): string {
   const d = new Date(`${iso}T00:00:00Z`);
   return `${d.getUTCDate()} ${MESI[d.getUTCMonth()]}`;
+}
+
+/**
+ * Il totale del non ricomprato sulle settimane chiuse è un di più: se la
+ * lettura fallisce la dispensa resta usabile e la riga non compare.
+ */
+async function leggiRisparmioSenzaBloccare(): Promise<VoceEvitata[]> {
+  try {
+    return await leggiRisparmioTotale();
+  } catch (e) {
+    console.error('dispensa: lettura del non ricomprato fallita.', e);
+    return [];
+  }
+}
+
+/**
+ * "Da quando usi Spesa: 9 confezioni non ricomprate · 4,1 kg · circa 32 €"
+ * (spec §5). Null con zero confezioni: la Dispensa non fa rumore. Quantità ed
+ * euro compaiono solo se c'è qualcosa da dire.
+ */
+function rigaTotaleNonRicomprato(voci: VoceEvitata[]): string | null {
+  const r = riassumiEvitato(voci);
+  if (r.confezioni === 0) return null;
+  const segmenti = [r.confezioni === 1 ? '1 confezione non ricomprata' : `${r.confezioni} confezioni non ricomprate`];
+  const quantita = formattaQuantita(r.quantita);
+  if (quantita) segmenti.push(quantita);
+  if (r.euro !== null) segmenti.push(formattaEuro(r.euro));
+  return `Da quando usi Spesa: ${segmenti.join(' · ')}`;
 }
 
 /**
@@ -49,6 +80,7 @@ export default function Dispensa() {
   const [lotti, setLotti] = useState<LottoPronto[]>([]);
   const [nomiPiatti, setNomiPiatti] = useState<Map<string, string>>(new Map());
   const [impegniPerPiatto, setImpegniPerPiatto] = useState<Map<string, number>>(new Map());
+  const [totaleNonRicomprato, setTotaleNonRicomprato] = useState<string | null>(null);
   // La nota AI e' un ripiego per quando il calcolo non torna, non la prima
   // cosa da vedere: parte compressa in una card, si monta solo al tap.
   const [notaAperta, setNotaAperta] = useState(false);
@@ -68,8 +100,9 @@ export default function Dispensa() {
       leggiPronti(),
       leggiRepertorio(),
       leggiSettimanaCorrente(),
+      leggiRisparmioSenzaBloccare(),
     ])
-      .then(([ingredienti, dispensa, impostazioni, pronti, repertorio, settimana]) => {
+      .then(([ingredienti, dispensa, impostazioni, pronti, repertorio, settimana, risparmio]) => {
         if (!vivo()) return;
         const perId = new Map<string, PantryState>(dispensa.map((p) => [p.ingredientId, p]));
         setRighe(
@@ -86,6 +119,7 @@ export default function Dispensa() {
         setOrdineAree(impostazioni.ordineAree);
         setLotti(pronti);
         setNomiPiatti(new Map(repertorio.map((d) => [d.id, d.nome])));
+        setTotaleNonRicomprato(rigaTotaleNonRicomprato(risparmio));
 
         // Quante porzioni di quel piatto sono già promesse a uno slot
         // futuro: un lotto "disponibile" che in realtà è già impegnato per
@@ -237,6 +271,12 @@ export default function Dispensa() {
   return (
     <Cornice>
       <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 16px 20px' }}>
+        {/* Il residuo derivato, sommato sulle settimane chiuse: una riga e
+            basta, e solo quando c'è qualcosa da dire. */}
+        {totaleNonRicomprato && (
+          <p style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', margin: '0 4px 14px' }}>{totaleNonRicomprato}</p>
+        )}
+
         {erroreSalvataggio && (
           <p style={{ fontSize: 13, color: 'var(--sec)', margin: '0 6px 12px' }}>{erroreSalvataggio}</p>
         )}
