@@ -22,11 +22,11 @@ const SLOT_PRANZO: MealSlotDef = { id: 'sd-2', nome: 'Pranzo', posizione: 1, ass
 
 const ING_LATTE: Ingredient = {
   id: 'i-1', nome: 'Latte', unitaBase: 'ml', area: 'latticini',
-  classeResiduo: 'stima', deperibile: true, formatoConfezione: 1000,
+  classeResiduo: 'stima', deperibile: true, formatoConfezione: 1000, prezzoConfezione: null,
 };
 const ING_PANE: Ingredient = {
   id: 'i-2', nome: 'Pane', unitaBase: 'g', area: 'cereali',
-  classeResiduo: 'intero', deperibile: false, formatoConfezione: 500,
+  classeResiduo: 'intero', deperibile: false, formatoConfezione: 500, prezzoConfezione: null,
 };
 
 const PIATTO_COLAZIONE: Dish = {

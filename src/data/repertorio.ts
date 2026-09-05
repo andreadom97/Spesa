@@ -176,6 +176,9 @@ export async function salvaIngrediente(
       classe_residuo: ing.classeResiduo,
       deperibile: ing.deperibile,
       formato_confezione: ing.formatoConfezione,
+      // Sempre scritto, anche null: su un upsert ometterlo lascerebbe in
+      // piedi il prezzo vecchio invece di cancellarlo.
+      prezzo_confezione: ing.prezzoConfezione,
     })
     .select('id')
     .single();

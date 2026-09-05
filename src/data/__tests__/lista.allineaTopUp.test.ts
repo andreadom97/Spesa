@@ -51,11 +51,11 @@ function creaClientMock(risolvi: (tabella: string, chiamate: Chiamata[]) => { da
 
 const BANANA: Ingredient = {
   id: 'ing-banana', nome: 'Banana', unitaBase: 'pz', area: 'ortofrutta',
-  classeResiduo: 'intero', deperibile: true, formatoConfezione: 1,
+  classeResiduo: 'intero', deperibile: true, formatoConfezione: 1, prezzoConfezione: null,
 };
 const RISO: Ingredient = {
   id: 'ing-riso', nome: 'Riso', unitaBase: 'g', area: 'cereali',
-  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 1000,
+  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 1000, prezzoConfezione: null,
 };
 
 const PIATTO: Dish = {

@@ -44,26 +44,26 @@ const SLOT_DEFS = [SD_COLAZIONE, SD_CENA];
 
 const ING_POLLO: Ingredient = {
   id: 'i-1', nome: 'Pollo', unitaBase: 'g', area: 'macelleria',
-  classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 1000,
+  classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 1000, prezzoConfezione: null,
 };
 const ING_RISO: Ingredient = {
   id: 'i-2', nome: 'Riso', unitaBase: 'g', area: 'cereali',
-  classeResiduo: 'stima', deperibile: false, formatoConfezione: 1000,
+  classeResiduo: 'stima', deperibile: false, formatoConfezione: 1000, prezzoConfezione: null,
 };
 const ING_YOGURT: Ingredient = {
   id: 'i-3', nome: 'Yogurt', unitaBase: 'g', area: 'latticini',
-  classeResiduo: 'stima', deperibile: true, formatoConfezione: 500,
+  classeResiduo: 'stima', deperibile: true, formatoConfezione: 500, prezzoConfezione: null,
 };
 // Ingredienti delle due opzioni del componente di prova (Task 9): Ricotta
 // coperta dalla dispensa mockata (chip IN CASA sul default), Noci no
 // (nessuna riga in leggiDispensa → residuo 0 → costa una confezione).
 const ING_RICOTTA: Ingredient = {
   id: 'i-4', nome: 'Ricotta', unitaBase: 'g', area: 'latticini',
-  classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 250,
+  classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 250, prezzoConfezione: null,
 };
 const ING_NOCI: Ingredient = {
   id: 'i-5', nome: 'Noci', unitaBase: 'g', area: 'dispensa',
-  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 200,
+  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 200, prezzoConfezione: null,
 };
 
 // Piatto di colazione: non deve mai comparire nella lista dello slot cena.
@@ -137,11 +137,11 @@ const PANTRY_RICOTTA_COPERTA: PantryState = {
 // manuale, mentre un cambio vero sull'altro componente sì.
 const ING_PREZZEMOLO: Ingredient = {
   id: 'i-6', nome: 'Prezzemolo', unitaBase: 'g', area: 'ortofrutta',
-  classeResiduo: 'stima', deperibile: true, formatoConfezione: 30,
+  classeResiduo: 'stima', deperibile: true, formatoConfezione: 30, prezzoConfezione: null,
 };
 const ING_BASILICO: Ingredient = {
   id: 'i-7', nome: 'Basilico', unitaBase: 'g', area: 'ortofrutta',
-  classeResiduo: 'stima', deperibile: true, formatoConfezione: 30,
+  classeResiduo: 'stima', deperibile: true, formatoConfezione: 30, prezzoConfezione: null,
 };
 const DISH_TORTA_DUE: Dish = {
   id: 'd-4', nome: 'Torta salata doppia', slotDefId: 'sd-3', fonte: 'proprio', attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,

@@ -6,7 +6,7 @@ import { PIANO_MENU_SETTIMANALE } from '../fixtures';
 
 const ing = (nome: string, unitaBase: Ingredient['unitaBase'] = 'g'): Ingredient => ({
   id: `i-${normalizza(nome)}`, nome, unitaBase, area: 'dispensa',
-  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500,
+  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500, prezzoConfezione: null,
 });
 
 describe('normalizza', () => {

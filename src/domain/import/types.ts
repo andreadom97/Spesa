@@ -78,6 +78,8 @@ export interface IngredienteProposto {
   classeResiduo: ClasseResiduo;
   deperibile: boolean;
   formatoConfezione: number;
+  /** Facoltativo, euro per confezione; null nelle bozze legacy (v. validaStatoRevisione) e quando l'utente non lo mette. */
+  prezzoConfezione: number | null;
 }
 
 export type PassoRevisione = 'revisione' | 'formati' | 'riepilogo';

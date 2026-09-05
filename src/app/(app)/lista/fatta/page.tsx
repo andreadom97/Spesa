@@ -6,6 +6,9 @@ import { useRouter } from 'next/navigation';
 import { ORDINE_MARCHIO, coloreArea } from '@/domain/aree';
 import { leggiSettimanaCorrente } from '@/data/settimana';
 import { leggiListe, chiudiSpesa, type ListaSalvata, type SezioneSalvata } from '@/data/lista';
+import { leggiRisparmioSettimana } from '@/data/risparmio';
+import type { VoceEvitata } from '@/domain/list-builder';
+import { riassumiEvitato, formattaQuantita, formattaEuro } from '@/domain/risparmio';
 import { Testata } from '@/components/Testata';
 
 const MESI = ['GEN', 'FEB', 'MAR', 'APR', 'MAG', 'GIU', 'LUG', 'AGO', 'SET', 'OTT', 'NOV', 'DIC'];
@@ -46,6 +49,45 @@ interface Stato {
   weekId: string;
   settimanaLabel: string;
   totaleVoci: number;
+  /** Il non ricomprato fissato alla generazione della lista; vuoto se la settimana non ha piano o la lettura è fallita. */
+  evitato: VoceEvitata[];
+}
+
+/**
+ * Il contatore è un di più rispetto a "Hai preso tutto": se la lettura
+ * fallisce la scheda semplicemente non compare, e la chiusura resta possibile.
+ */
+async function leggiEvitatoSenzaBloccare(weekId: string): Promise<VoceEvitata[]> {
+  try {
+    return await leggiRisparmioSettimana(weekId);
+  } catch (errore) {
+    console.error('lista/fatta: lettura del non ricomprato fallita.', errore);
+    return [];
+  }
+}
+
+/**
+ * La riga principale e quella secondaria della scheda "NON RICOMPRATO QUESTA
+ * SETTIMANA" (spec §5). Il segmento in euro c'è solo se almeno un ingrediente
+ * evitato ha un prezzo; la quantità solo se non è tutta a zero.
+ */
+function testoNonRicomprato(voci: VoceEvitata[]): { principale: string; secondaria: string | null } {
+  const r = riassumiEvitato(voci);
+  if (r.confezioni === 0) {
+    return { principale: 'Niente, questa settimana: il residuo si costruisce spesa dopo spesa', secondaria: null };
+  }
+  const segmenti = [r.confezioni === 1 ? '1 confezione' : `${r.confezioni} confezioni`];
+  const quantita = formattaQuantita(r.quantita);
+  if (quantita) segmenti.push(quantita);
+  if (r.euro !== null) segmenti.push(formattaEuro(r.euro));
+
+  let secondaria: string | null = null;
+  if (r.euro === null) {
+    secondaria = 'metti un prezzo agli ingredienti per vederlo in euro';
+  } else if (r.ingredientiConPrezzo < r.ingredientiEvitati) {
+    secondaria = `su ${r.ingredientiConPrezzo} ingredienti con prezzo`;
+  }
+  return { principale: segmenti.join(' · '), secondaria };
 }
 
 /**
@@ -81,11 +123,13 @@ export default function ListaFatta() {
           router.replace('/lista');
           return;
         }
+        const evitato = await leggiEvitatoSenzaBloccare(settimana.id);
         if (!vivo) return;
         setStato({
           weekId: settimana.id,
           settimanaLabel: formattaPillola(settimana.dataInizio),
           totaleVoci: esito.totale,
+          evitato,
         });
       } catch (errore) {
         console.error('lista/fatta: caricamento fallito.', errore);
@@ -126,6 +170,8 @@ export default function ListaFatta() {
     return <Cornice />;
   }
 
+  const nonRicomprato = stato.evitato.length > 0 ? testoNonRicomprato(stato.evitato) : null;
+
   return (
     <Cornice settimana={stato.settimanaLabel}>
       <div
@@ -149,6 +195,25 @@ export default function ListaFatta() {
             alto è tutto pieno: ogni area è a posto, non ti manca niente.
           </div>
         </div>
+
+        {/* Il residuo derivato reso visibile: quante confezioni la lista non
+            ha chiesto perché c'erano già. Assente senza righe (settimana
+            senza piano): niente scheda vuota. */}
+        {nonRicomprato && (
+          <div style={{ padding: '16px 18px', borderRadius: 20, background: 'rgba(20,22,58,0.045)' }}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', color: '#8A8A96', marginBottom: 7 }}>
+              NON RICOMPRATO QUESTA SETTIMANA
+            </div>
+            <div style={{ fontSize: 13.5, lineHeight: 1.5, color: 'var(--ink)' }}>
+              {nonRicomprato.principale}
+            </div>
+            {nonRicomprato.secondaria && (
+              <div style={{ fontSize: 12, lineHeight: 1.45, color: '#8A8A96', marginTop: 3 }}>
+                {nonRicomprato.secondaria}
+              </div>
+            )}
+          </div>
+        )}
 
         <div style={{ padding: '16px 18px', borderRadius: 20, background: 'rgba(20,22,58,0.045)' }}>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', color: '#8A8A96', marginBottom: 7 }}>

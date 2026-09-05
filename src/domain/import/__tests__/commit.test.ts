@@ -4,7 +4,7 @@ import { traduciBozza, BozzaIncompletaError } from '../commit';
 import type { StatoRevisione, PianoEstratto } from '../types';
 import { PIANO_MENU_SETTIMANALE, PIANO_GIORNATA_UNICA } from '../fixtures';
 
-const AVENA: Ingredient = { id: 'i-avena', nome: "Fiocchi d'avena", unitaBase: 'g', area: 'cereali', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500 };
+const AVENA: Ingredient = { id: 'i-avena', nome: "Fiocchi d'avena", unitaBase: 'g', area: 'cereali', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500 , prezzoConfezione: null};
 
 function statoCompleto(): StatoRevisione {
   // Mappa tutti i nomi pasto del fixture, risolve la riga "2-3 olive" e dichiara i nuovi.
@@ -16,15 +16,15 @@ function statoCompleto(): StatoRevisione {
     pastiConfermati: [],
     correzioni: { '1-1-1': oliveRisolte },
     ingredientiNuovi: [
-      { alimento: 'latte parzialmente scremato', nome: 'Latte parz. scremato', unitaBase: 'ml', area: 'latticini', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 1000 },
-      { alimento: 'fesa di tacchino', nome: 'Fesa di tacchino', unitaBase: 'g', area: 'macelleria', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 300 },
-      { alimento: 'pane integrale', nome: 'Pane integrale', unitaBase: 'g', area: 'cereali', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 500 },
-      { alimento: 'pane di segale', nome: 'Pane di segale', unitaBase: 'g', area: 'cereali', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 500 },
-      { alimento: 'olio extravergine di oliva', nome: 'Olio EVO', unitaBase: 'ml', area: 'dispensa', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 1000 },
-      { alimento: 'filetto di merluzzo', nome: 'Filetto di merluzzo', unitaBase: 'g', area: 'surgelati', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 300 },
-      { alimento: 'olive taggiasche', nome: 'Olive taggiasche', unitaBase: 'pz', area: 'dispensa', classeResiduo: 'stima', deperibile: false, formatoConfezione: 30 },
-      { alimento: 'tonno al naturale', nome: 'Tonno al naturale', unitaBase: 'g', area: 'dispensa', classeResiduo: 'intero', deperibile: false, formatoConfezione: 160 },
-      { alimento: 'yogurt greco', nome: 'Yogurt greco', unitaBase: 'g', area: 'latticini', classeResiduo: 'intero', deperibile: true, formatoConfezione: 170 },
+      { alimento: 'latte parzialmente scremato', nome: 'Latte parz. scremato', unitaBase: 'ml', area: 'latticini', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 1000 , prezzoConfezione: null},
+      { alimento: 'fesa di tacchino', nome: 'Fesa di tacchino', unitaBase: 'g', area: 'macelleria', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 300 , prezzoConfezione: null},
+      { alimento: 'pane integrale', nome: 'Pane integrale', unitaBase: 'g', area: 'cereali', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 500 , prezzoConfezione: null},
+      { alimento: 'pane di segale', nome: 'Pane di segale', unitaBase: 'g', area: 'cereali', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 500 , prezzoConfezione: null},
+      { alimento: 'olio extravergine di oliva', nome: 'Olio EVO', unitaBase: 'ml', area: 'dispensa', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 1000 , prezzoConfezione: null},
+      { alimento: 'filetto di merluzzo', nome: 'Filetto di merluzzo', unitaBase: 'g', area: 'surgelati', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 300 , prezzoConfezione: null},
+      { alimento: 'olive taggiasche', nome: 'Olive taggiasche', unitaBase: 'pz', area: 'dispensa', classeResiduo: 'stima', deperibile: false, formatoConfezione: 30 , prezzoConfezione: null},
+      { alimento: 'tonno al naturale', nome: 'Tonno al naturale', unitaBase: 'g', area: 'dispensa', classeResiduo: 'intero', deperibile: false, formatoConfezione: 160 , prezzoConfezione: null},
+      { alimento: 'yogurt greco', nome: 'Yogurt greco', unitaBase: 'g', area: 'latticini', classeResiduo: 'intero', deperibile: true, formatoConfezione: 170 , prezzoConfezione: null},
     ],
   };
 }
@@ -79,7 +79,7 @@ describe('traduciBozza', () => {
     };
     const stato: StatoRevisione = {
       passo: 'riepilogo', mappaturaPasti: { condimenti: 's-pranzo' }, pastiConfermati: [], correzioni: {},
-      ingredientiNuovi: [{ alimento: 'olio extravergine di oliva', nome: 'Olio EVO', unitaBase: 'ml', area: 'dispensa', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 1000 }],
+      ingredientiNuovi: [{ alimento: 'olio extravergine di oliva', nome: 'Olio EVO', unitaBase: 'ml', area: 'dispensa', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 1000 , prezzoConfezione: null}],
     };
     const s = traduciBozza(piano, stato, [], [], '2026-08-29');
     expect(s.piattiDaCreare).toHaveLength(1);
@@ -118,7 +118,7 @@ describe('traduciBozza', () => {
     };
     const stato: StatoRevisione = {
       passo: 'riepilogo', mappaturaPasti: { pranzo: 's-pranzo', condimenti: 's-pranzo' }, pastiConfermati: [], correzioni: {},
-      ingredientiNuovi: [{ alimento: 'olio extravergine di oliva', nome: 'Olio EVO', unitaBase: 'ml', area: 'dispensa', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 1000 }],
+      ingredientiNuovi: [{ alimento: 'olio extravergine di oliva', nome: 'Olio EVO', unitaBase: 'ml', area: 'dispensa', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 1000 , prezzoConfezione: null}],
     };
     const s = traduciBozza(piano, stato, [], [], '2026-08-29');
     const riso = s.piattiDaCreare.find((p) => p.nome === 'Riso')!;
@@ -147,7 +147,7 @@ describe('traduciBozza', () => {
     };
     const stato: StatoRevisione = {
       passo: 'riepilogo', mappaturaPasti: { pranzo: 's-pranzo' }, pastiConfermati: [], correzioni: {},
-      ingredientiNuovi: [{ alimento: 'zenzero fresco', nome: 'Zenzero fresco', unitaBase: 'pz', area: 'ortofrutta', classeResiduo: 'stima', deperibile: true, formatoConfezione: 1 }],
+      ingredientiNuovi: [{ alimento: 'zenzero fresco', nome: 'Zenzero fresco', unitaBase: 'pz', area: 'ortofrutta', classeResiduo: 'stima', deperibile: true, formatoConfezione: 1 , prezzoConfezione: null}],
     };
     expect(() => traduciBozza(piano, stato, [], [], '2026-08-29')).toThrow(BozzaIncompletaError);
   });
@@ -176,10 +176,10 @@ describe('traduciBozza', () => {
         }],
       }],
     };
-    const zenzeroInPolvere: Ingredient = { id: 'i-zenzero-polvere', nome: 'Zenzero in polvere', unitaBase: 'g', area: 'dispensa', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 50 };
+    const zenzeroInPolvere: Ingredient = { id: 'i-zenzero-polvere', nome: 'Zenzero in polvere', unitaBase: 'g', area: 'dispensa', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 50 , prezzoConfezione: null};
     const stato: StatoRevisione = {
       passo: 'riepilogo', mappaturaPasti: { pranzo: 's-pranzo' }, pastiConfermati: [], correzioni: {},
-      ingredientiNuovi: [{ alimento: 'zenzero fresco', nome: 'Zenzero', unitaBase: 'pz', area: 'ortofrutta', classeResiduo: 'stima', deperibile: true, formatoConfezione: 1 }],
+      ingredientiNuovi: [{ alimento: 'zenzero fresco', nome: 'Zenzero', unitaBase: 'pz', area: 'ortofrutta', classeResiduo: 'stima', deperibile: true, formatoConfezione: 1 , prezzoConfezione: null}],
     };
     const s = traduciBozza(piano, stato, [zenzeroInPolvere], [], '2026-08-29');
     const riso = s.piattiDaCreare.find((p) => p.nome === 'Riso allo zenzero')!;
@@ -197,7 +197,7 @@ describe('traduciBozza', () => {
   });
 
   it('re-run: un ingrediente già creato con il nome pulito si aggancia per nome, non ricrea', () => {
-    const latteEsistente: Ingredient = { id: 'i-latte', nome: 'Latte parz. scremato', unitaBase: 'ml', area: 'latticini', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 1000 };
+    const latteEsistente: Ingredient = { id: 'i-latte', nome: 'Latte parz. scremato', unitaBase: 'ml', area: 'latticini', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 1000 , prezzoConfezione: null};
     const s = traduciBozza(PIANO_MENU_SETTIMANALE, statoCompleto(), [AVENA, latteEsistente], [], '2026-08-29');
     const colazione = s.piattiDaCreare.find((p) => p.nome === 'Porridge' && p.settimanaCiclo === 1)!;
     expect(colazione.righe).toContainEqual({ ingredientId: 'i-latte', quantita: 150, unita: 'ml' });
@@ -212,8 +212,14 @@ describe('traduciBozza', () => {
     expect(s.piattiDaCreare.some((p) => p.nome === 'Condimenti')).toBe(false);
   });
 
+  it('il prezzo per confezione dichiarato al passo formati arriva intatto in ingredientiDaCreare', () => {
+    const stato: StatoRevisione = { passo: 'riepilogo', mappaturaPasti: { pranzo: 's-pranzo' }, pastiConfermati: [], correzioni: {}, ingredientiNuovi: [{ alimento: 'pasta di semola', nome: 'Pasta', unitaBase: 'g', area: 'cereali', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500, prezzoConfezione: 1.2 }] };
+    const s = traduciBozza(PIANO_GIORNATA_UNICA, stato, [], [], '2026-08-29');
+    expect(s.ingredientiDaCreare).toEqual([expect.objectContaining({ alimento: 'pasta di semola', prezzoConfezione: 1.2 })]);
+  });
+
   it('la giornata unica (un solo giorno) produce un piatto con giornoCiclo null', () => {
-    const stato: StatoRevisione = { passo: 'riepilogo', mappaturaPasti: { pranzo: 's-pranzo' }, pastiConfermati: [], correzioni: {}, ingredientiNuovi: [{ alimento: 'pasta di semola', nome: 'Pasta', unitaBase: 'g', area: 'cereali', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500 }] };
+    const stato: StatoRevisione = { passo: 'riepilogo', mappaturaPasti: { pranzo: 's-pranzo' }, pastiConfermati: [], correzioni: {}, ingredientiNuovi: [{ alimento: 'pasta di semola', nome: 'Pasta', unitaBase: 'g', area: 'cereali', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500 , prezzoConfezione: null}] };
     const s = traduciBozza(PIANO_GIORNATA_UNICA, stato, [], [], '2026-08-29');
     expect(s.piattiDaCreare).toHaveLength(1);
     expect(s.piattiDaCreare[0]).toMatchObject({ nome: 'Pasta al pomodoro', giornoCiclo: null, settimanaCiclo: null });
@@ -249,8 +255,8 @@ describe('traduciBozza', () => {
       id: 'd-gia', nome: 'Pasta al pomodoro', slotDefId: 's-pranzo', fonte: 'nutrizionista', attivo: true,
       descrizione: null, settimanaCiclo: null, giornoCiclo: null, ingredienti: [], componenti: [],
     };
-    const pasta: Ingredient = { id: 'i-pasta', nome: 'Pasta di semola', unitaBase: 'g', area: 'cereali', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500 };
-    const stato: StatoRevisione = { passo: 'riepilogo', mappaturaPasti: { pranzo: 's-pranzo' }, pastiConfermati: [], correzioni: {}, ingredientiNuovi: [{ alimento: 'pasta di semola', nome: 'Pasta', unitaBase: 'g', area: 'cereali', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500 }] };
+    const pasta: Ingredient = { id: 'i-pasta', nome: 'Pasta di semola', unitaBase: 'g', area: 'cereali', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500 , prezzoConfezione: null};
+    const stato: StatoRevisione = { passo: 'riepilogo', mappaturaPasti: { pranzo: 's-pranzo' }, pastiConfermati: [], correzioni: {}, ingredientiNuovi: [{ alimento: 'pasta di semola', nome: 'Pasta', unitaBase: 'g', area: 'cereali', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500 , prezzoConfezione: null}] };
     const s = traduciBozza(PIANO_GIORNATA_UNICA, stato, [pasta], [gemello], '2026-08-29');
     expect(s.piattiDaCreare[0].riusaDishId).toBe('d-gia');
     expect(s.piattiDaDisattivare).toHaveLength(0);
@@ -283,7 +289,7 @@ describe('traduciBozza', () => {
       id: 'd-gia', nome: 'Pasta al pomodoro', slotDefId: 's-pranzo', fonte: 'nutrizionista', attivo: true,
       descrizione: null, settimanaCiclo: null, giornoCiclo: null, ingredienti: [], componenti: [],
     };
-    const pasta: Ingredient = { id: 'i-pasta', nome: 'Pasta di semola', unitaBase: 'g', area: 'cereali', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500 };
+    const pasta: Ingredient = { id: 'i-pasta', nome: 'Pasta di semola', unitaBase: 'g', area: 'cereali', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500 , prezzoConfezione: null};
     const stato: StatoRevisione = { passo: 'riepilogo', mappaturaPasti: { pranzo: 's-pranzo' }, pastiConfermati: [], correzioni: {}, ingredientiNuovi: [] };
     const s = traduciBozza(piano, stato, [pasta], [gemello], '2026-08-29');
     const sorelle = s.piattiDaCreare.filter((p) => p.nome === 'Pasta al pomodoro');
@@ -331,7 +337,7 @@ describe('traduciBozza', () => {
     };
     const stato: StatoRevisione = {
       passo: 'riepilogo', mappaturaPasti: { pranzo: 's-pranzo' }, pastiConfermati: [], correzioni: {},
-      ingredientiNuovi: [{ alimento: 'olio extravergine di oliva', nome: 'Olio EVO', unitaBase: 'ml', area: 'dispensa', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 1000 }],
+      ingredientiNuovi: [{ alimento: 'olio extravergine di oliva', nome: 'Olio EVO', unitaBase: 'ml', area: 'dispensa', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 1000 , prezzoConfezione: null}],
     };
     const s = traduciBozza(piano, stato, [], [], '2026-08-29');
     const piatto = s.piattiDaCreare.find((p) => p.nome === 'Riso con condimento')!;
@@ -341,7 +347,7 @@ describe('traduciBozza', () => {
 
   it('gli ingredienti nuovi non usati da nessuna riga non si creano', () => {
     const stato = statoCompleto();
-    stato.ingredientiNuovi.push({ alimento: 'zafferano', nome: 'Zafferano', unitaBase: 'g', area: 'dispensa', classeResiduo: 'stima', deperibile: false, formatoConfezione: 1 });
+    stato.ingredientiNuovi.push({ alimento: 'zafferano', nome: 'Zafferano', unitaBase: 'g', area: 'dispensa', classeResiduo: 'stima', deperibile: false, formatoConfezione: 1 , prezzoConfezione: null});
     const s = traduciBozza(PIANO_MENU_SETTIMANALE, stato, [AVENA], [], '2026-08-29');
     expect(s.ingredientiDaCreare.some((i) => i.alimento === 'zafferano')).toBe(false);
   });
@@ -378,7 +384,7 @@ describe('giorni_tipo', () => {
       mappaturaPasti: { pranzo: 's-pranzo' },
       pastiConfermati: [],
       correzioni: {},
-      ingredientiNuovi: [{ alimento: 'riso', nome: 'Riso', unitaBase: 'g', area: 'dispensa', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 1000 }],
+      ingredientiNuovi: [{ alimento: 'riso', nome: 'Riso', unitaBase: 'g', area: 'dispensa', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 1000 , prezzoConfezione: null}],
     };
     const scritture = traduciBozza(piano, stato, [], [], '2026-08-30');
     expect(scritture.impostazioni.settimaneCiclo).toBe(1);
@@ -417,7 +423,7 @@ describe('giornata_unica e griglia_alternative: un solo giorno vale ogni giorno'
       mappaturaPasti: { pranzo: 's-pranzo' },
       pastiConfermati: [],
       correzioni: {},
-      ingredientiNuovi: [{ alimento: 'riso', nome: 'Riso', unitaBase: 'g', area: 'dispensa', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 1000 }],
+      ingredientiNuovi: [{ alimento: 'riso', nome: 'Riso', unitaBase: 'g', area: 'dispensa', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 1000 , prezzoConfezione: null}],
     };
     const scritture = traduciBozza(piano, stato, [], [], '2026-08-30');
     expect(scritture.piattiDaCreare).toHaveLength(1);

@@ -5,19 +5,19 @@ import { IngredienteMancanteError } from '../list-builder';
 
 const ING_POLLO: Ingredient = {
   id: 'i-pollo', nome: 'Pollo', unitaBase: 'g', area: 'macelleria',
-  classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 1000,
+  classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 1000, prezzoConfezione: null,
 };
 const ING_RISO: Ingredient = {
   id: 'i-riso', nome: 'Riso', unitaBase: 'g', area: 'cereali',
-  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500,
+  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500, prezzoConfezione: null,
 };
 const ING_OLIO: Ingredient = {
   id: 'i-olio', nome: 'Olio', unitaBase: 'ml', area: 'dispensa',
-  classeResiduo: 'stima', deperibile: false, formatoConfezione: 1000,
+  classeResiduo: 'stima', deperibile: false, formatoConfezione: 1000, prezzoConfezione: null,
 };
 const ING_UOVA: Ingredient = {
   id: 'i-uova', nome: 'Uova', unitaBase: 'pz', area: 'latticini',
-  classeResiduo: 'intero', deperibile: true, formatoConfezione: 6,
+  classeResiduo: 'intero', deperibile: true, formatoConfezione: 6, prezzoConfezione: null,
 };
 const INGREDIENTI = [ING_POLLO, ING_RISO, ING_OLIO, ING_UOVA];
 

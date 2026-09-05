@@ -105,6 +105,30 @@ export async function generaListe(weekId: string): Promise<void> {
       if (e) throw e;
     }
   }
+
+  // Il non ricomprato della settimana, fissato qui e non ricalcolato dopo
+  // (spec 2026-09-05-non-ricomprato-design.md §1 e §3): stesso residuo e
+  // stessa aritmetica delle voci appena scritte. Rigenerare sostituisce le
+  // righe della settimana, anche a zero voci: un piano svuotato non deve
+  // continuare a raccontare il risparmio della generazione precedente.
+  const { error: eRisparmioDel } = await sb
+    .from('risparmio_settimana')
+    .delete()
+    .eq('week_id', weekId)
+    .eq('user_id', userId);
+  if (eRisparmioDel) throw eRisparmioDel;
+  if (risultato.evitato.length > 0) {
+    const { error: eRisparmioIns } = await sb.from('risparmio_settimana').insert(
+      risultato.evitato.map((v) => ({
+        user_id: userId, week_id: weekId, ingredient_id: v.ingredientId,
+        fabbisogno: v.fabbisogno, confezioni_ingenue: v.confezioniIngenue,
+        confezioni_reali: v.confezioniReali, confezioni_evitate: v.confezioniEvitate,
+        quantita_evitata: v.quantitaEvitata, unita: v.unita,
+        prezzo_confezione: v.prezzoConfezione,
+      })),
+    );
+    if (eRisparmioIns) throw eRisparmioIns;
+  }
 }
 
 /**
