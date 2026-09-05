@@ -8,7 +8,7 @@ a un eventuale prodotto.
 
 **Stato: Fase 1 completa e provata sul campo il 28/08/2026.** Dominio puro
 (`list-builder`, `pantry`, `planner`, `ciclo`, `week-shape`, `chiusura`, `opzioni`,
-`confezioni`), 338 test automatici verdi, schema su un progetto Supabase vero,
+`confezioni`), 793 test automatici verdi, schema su un progetto Supabase vero,
 quattordici schermate, PWA installabile con guscio offline sulla lista, in produzione
 su Vercel.
 
@@ -223,6 +223,44 @@ dieta × set di foto e righe per modello × pipeline: solo contatori,
 percentuali, token e costo stimato, mai un testo della dieta. La regola di decisione sul
 modello è scritta nella spec 05/09, §4.
 
+## Quanto non hai ricomprato (05/09/2026)
+
+Il residuo derivato è il vantaggio che nessun'altra app ha, e fino al 05/09 era muto. Ora
+ha un numero: per ogni ingrediente del piano l'app confronta la lista **senza memoria**
+(quella che darebbe qualunque altra app: tutto il fabbisogno della settimana, come se in
+casa non ci fosse niente) con la lista **con residuo** che genera davvero, e conta le
+confezioni che non ha chiesto perché c'erano già. Il conteggio si fissa **alla
+generazione della lista**, con lo stesso `costruisciLista` che produce le voci — stesso
+residuo, stesso istante, stessa aritmetica — e finisce in `risparmio_settimana`
+(migrazione 0011), una riga per settimana e ingrediente, col prezzo com'era in quel
+momento.
+
+**Dove si vede.** In "Hai preso tutto" una scheda `NON RICOMPRATO QUESTA SETTIMANA`
+sopra "CHIUDENDO LA SPESA": `3 confezioni · 1,4 kg · circa 11 €`, con sotto `su 4
+ingredienti con prezzo` quando non tutti gli evitati hanno un prezzo, o l'invito a
+metterlo quando nessuno ce l'ha; con zero evitate, `Niente, questa settimana: il residuo
+si costruisce spesa dopo spesa`; senza piano, nessuna scheda. In Dispensa una riga sotto
+la testata, `Da quando usi Spesa: 9 confezioni non ricomprate · 4,1 kg · circa 32 €`,
+sommata **solo sulle settimane chiuse** — il totale racconta spese fatte davvero, non
+liste generate e abbandonate — e assente finché il totale è zero.
+
+**Dove si mette il prezzo.** Facoltativo, in euro per una confezione: nell'editor
+dell'ingrediente (campo "Prezzo di una confezione", sotto il formato) e nel passo formati
+dell'import (colonna "Prezzo" accanto al formato). Serve solo a valorizzare in euro le
+confezioni non ricomprate: non entra in nessun calcolo della lista né del residuo. Vuoto
+= nessun prezzo; se compilato dev'essere maggiore di zero.
+
+**Limiti dichiarati** (non bug): il conteggio è fissato alla generazione, un piano
+cambiato dopo, un top-up allineato o un pasto saltato non lo aggiornano (rigenerare la
+lista prima della chiusura sovrascrive la riga della settimana); la classe `stima` non
+conta, perché per contratto non tiene residuo; il prezzo è a mano, nessuna proposta
+automatica e nessun listino, e la stima in euro copre solo gli ingredienti con prezzo e lo
+dice; la baseline "senza memoria" è una convenzione — assume che senza Spesa si
+ricomprerebbe ogni settimana tutto il fabbisogno, generosa per chi ha buona memoria e
+giusta per chi compra a caso; le settimane chiuse prima della migrazione 0011 non hanno
+righe, il totale parte da lì. Spec:
+[`docs/superpowers/specs/2026-09-05-non-ricomprato-design.md`](docs/superpowers/specs/2026-09-05-non-ricomprato-design.md).
+
 ## Dove sta cosa
 
 | File | Cosa contiene |
@@ -232,6 +270,7 @@ modello è scritta nella spec 05/09, §4.
 | [`docs/superpowers/specs/2026-08-26-spesa-design.md`](docs/superpowers/specs/2026-08-26-spesa-design.md) | **La spec.** Modello dati, componenti, fasi, e tutte le decisioni prese durante il design con il loro perché |
 | [`docs/superpowers/specs/DESIGN-SYSTEM.md`](docs/superpowers/specs/DESIGN-SYSTEM.md) | Colori, tipografia, forme, regole di stato — valori estratti dalle schermate reali |
 | [`docs/superpowers/specs/2026-09-05-import-in-produzione-design.md`](docs/superpowers/specs/2026-09-05-import-in-produzione-design.md) | Import in produzione: estrazione a pagine in parallelo, tetto per utente, eval che decide il modello, checklist locale |
+| [`docs/superpowers/specs/2026-09-05-non-ricomprato-design.md`](docs/superpowers/specs/2026-09-05-non-ricomprato-design.md) | Contatore "non hai ricomprato": la definizione (lista senza memoria contro lista con residuo), `risparmio_settimana`, il prezzo per confezione, le due righe di UI e i limiti dichiarati |
 | `design/*.dc.html` | 69 artboard. Le 12 definitive sono elencate sotto; il resto è l'archivio delle direzioni esplorate |
 | `design/canvas.json` | Impaginazione del canvas: pagina 1 = v1 definitiva, pagina 2 = archivio |
 | `design/build.sh` | Rigenera il canvas da tutti gli artboard |
@@ -311,6 +350,13 @@ non c'è repertorio):
 4. **Solo ora aprire l'app per usarla davvero.** Senza questo passo, le Impostazioni
    seminano comunque quattro pasti di default al primo accesso (vedi C3 nel report della
    revisione finale), ma repertorio e dispensa restano vuoti finché non li popoli a mano.
+
+**Migrazioni di questo branch (05/09/2026).** Prima di ripubblicare, applicare
+nell'SQL Editor, in ordine, `supabase/migrations/0010_import_uso.sql` (il tetto di import
+per utente) e `supabase/migrations/0011_prezzo_e_risparmio.sql` (colonna
+`prezzo_confezione` e tabella `risparmio_settimana`). La 0011 non è rimandabile:
+`generaListe` scrive nella tabella nuova a ogni generazione della lista, e senza la
+tabella la generazione della lista fallisce.
 
 Per il deploy vero e proprio:
 

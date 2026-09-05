@@ -1,6 +1,6 @@
 # Contatore "non hai ricomprato" — design
 
-**Data:** 05/09/2026 · **Stato:** bozza scritta in remoto, approvata a voce con il "parti" su P2
+**Data:** 05/09/2026 · **Stato:** approvata e implementata il 05/09 (piano omonimo); da provare in locale dopo la migrazione 0011
 **Deriva da:** [spesa-backlog-nicchia.md](../../../spesa-backlog-nicchia.md) (P2, revisione 05/09),
 [2026-08-26-spesa-design.md](2026-08-26-spesa-design.md) (le regole di `list-builder`)
 
