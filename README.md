@@ -72,10 +72,12 @@ singola di prima (`estraiPiano`), che è anche la baseline dell'eval. Il disegno
 con la stima dei costi, è in
 [`docs/superpowers/specs/2026-09-05-import-in-produzione-design.md`](docs/superpowers/specs/2026-09-05-import-in-produzione-design.md).
 
-Consegnato: indice e validatore, `validaPianoParziale`, fusione, `dividiPdf`, tabella
-`import_uso`. [in costruzione]: l'orchestratore `estraiPianoAPagine` in
-`src/server/import-ai.ts` (indice → pagine con cache → fusione, con `usage` aggregato), la
-route che compone tutto (limite → PDF diviso → pipeline a pagine) e l'eval con report.
+Consegnato il 05/09: indice e validatore, `validaPianoParziale`, fusione, `dividiPdf`,
+tabella `import_uso`, l'orchestratore `estraiPianoAPagine` in `src/server/import-ai.ts`
+(indice → pagine con cache → fusione, con `usage` aggregato), la route che compone tutto
+(limite → PDF diviso → pipeline a pagine) e l'eval con report. Non ancora provato con una
+chiave vera: la checklist locale è in coda al piano
+[`docs/superpowers/plans/2026-09-05-import-in-produzione.md`](docs/superpowers/plans/2026-09-05-import-in-produzione.md).
 
 ### Tetto di import per utente
 
@@ -94,8 +96,8 @@ raggiungibile da chiunque abbia un account. Il tetto è una difesa, e va dichiar
   fallito consuma comunque uno slot. Il mock e il 503 non consumano niente.
 - **Oltre il limite**: 429 con `hai già fatto 3 import negli ultimi 30 giorni: il prossimo dal 12/09/2026`,
   dove la data è il più vecchio import nella finestra più 30 giorni; la pagina Importa lo
-  mostra così com'è, come già fa per il 413. Controllo e registrazione nella route:
-  [in costruzione].
+  mostra così com'è, come già fa per il 413. Controllo e registrazione vivono nella route,
+  dentro il ramo con la chiave, prima di qualunque chiamata al modello.
 - **Rete di sicurezza fuori dal codice**: spend limit mensile sul workspace Anthropic,
   impostato dal pannello prima di mettere la chiave su Vercel. Il tetto contiene un
   utente; lo spend limit contiene tutti.
@@ -206,9 +208,11 @@ modelli sulla batteria di note di prova. In locale, `DISPENSA_AI_MOCK=1` in
 Lo stesso vale per l'estrattore della dieta: `npm run eval:import` gira solo in locale,
 con la cartella `diete/` (gitignored, dati sanitari veri) e la chiave nell'ambiente —
 senza, stampa NON ESEGUITO ed esce 0. Confronta i modelli elencati in
-`EVAL_IMPORT_MODELLI` (es. `claude-sonnet-5,claude-opus-5`) sulla dieta 6 con ground
-truth, e [in costruzione] produce un report in `diete/estrazioni/` con una tabella per
-dieta × set di foto (originali, compresse) e righe per modello × pipeline: solo contatori,
+`EVAL_IMPORT_MODELLI` (es. `claude-sonnet-5,claude-opus-5`) sulle diete del manifest
+`diete/eval-manifest.json` (senza manifest: la dieta 6), con `EVAL_IMPORT_PIPELINE`
+(`pagine`, `singola`, `entrambe`) e `EVAL_IMPORT_SET` (`originali`, `compresse`,
+`entrambi`), e produce un report in `diete/estrazioni/` con una tabella per
+dieta × set di foto e righe per modello × pipeline: solo contatori,
 percentuali, token e costo stimato, mai un testo della dieta. La regola di decisione sul
 modello è scritta nella spec 05/09, §4.
 

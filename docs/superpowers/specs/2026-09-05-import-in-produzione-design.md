@@ -1,6 +1,6 @@
 # Import in produzione: estrazione a pagine, limite per utente, confronto modelli — design
 
-**Data:** 05/09/2026 · **Stato:** bozza scritta in remoto, da approvare
+**Data:** 05/09/2026 · **Stato:** approvata da Andrea il 05/09, implementata in remoto lo stesso giorno (piano omonimo); da provare in locale con la chiave
 **Deriva da:** [spesa-backlog-nicchia.md](../../../spesa-backlog-nicchia.md) (P0 e P1, revisione 05/09),
 [2026-08-30-estrattore-claude-design.md](2026-08-30-estrattore-claude-design.md) (la v1 che questa spec completa)
 

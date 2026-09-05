@@ -37,7 +37,7 @@
 - Consumes: `ArchetipoImportabile`, `RifiutoImport` da `types.ts`; `PianoNonValidoError` da `valida.ts`.
 - Produces: `VocePagina`, `PaginaIndice`, `IndiceEstrazione`, `EsitoIndice`, `validaIndice(v: unknown): EsitoIndice`.
 
-- [ ] **Step 1: Test che falliscono**
+- [x] **Step 1: Test che falliscono**
 
 ```ts
 // src/domain/import/__tests__/indice.test.ts
@@ -83,8 +83,8 @@ describe('validaIndice', () => {
 });
 ```
 
-- [ ] **Step 2: Implementare `indice.ts`** con i tipi di spec §2.1 e `validaIndice` che lancia `PianoNonValidoError` con messaggi `indice.pagine: non contigue`, `indice.pagine[k].contenuto[i].titolo: ...`, `...giorno: fuori intervallo`.
-- [ ] **Step 3: Suite verde, commit** `feat(import): indice di estrazione — tipi e validatore`.
+- [x] **Step 2: Implementare `indice.ts`** con i tipi di spec §2.1 e `validaIndice` che lancia `PianoNonValidoError` con messaggi `indice.pagine: non contigue`, `indice.pagine[k].contenuto[i].titolo: ...`, `...giorno: fuori intervallo`.
+- [x] **Step 3: Suite verde, commit** `feat(import): indice di estrazione — tipi e validatore`.
 
 ### Task 2: `validaPianoParziale`
 
@@ -95,9 +95,9 @@ describe('validaIndice', () => {
 **Interfaces:**
 - Produces: `validaPianoParziale(v: unknown): PianoEstratto` — stessa forma e stesse normalizzazioni legacy di `validaPiano`, senza le regole d'insieme (contiguità settimane, un solo giorno per `giornata_unica`, ecc.).
 
-- [ ] **Step 1: Test che falliscono**: una pagina con la sola settimana 2 passa `validaPianoParziale` e fallisce `validaEsito`; una riga senza `testoOriginale` fallisce entrambe; `quantitaInferita` assente si normalizza a `false`.
-- [ ] **Step 2: Implementare** estraendo da `validaPiano` la parte di forma in una funzione interna condivisa; `validaPiano` = forma + regole d'insieme.
-- [ ] **Step 3: Suite verde, commit** `feat(import): validaPianoParziale — la forma senza le regole d'insieme`.
+- [x] **Step 1: Test che falliscono**: una pagina con la sola settimana 2 passa `validaPianoParziale` e fallisce `validaEsito`; una riga senza `testoOriginale` fallisce entrambe; `quantitaInferita` assente si normalizza a `false`.
+- [x] **Step 2: Implementare** estraendo da `validaPiano` la parte di forma in una funzione interna condivisa; `validaPiano` = forma + regole d'insieme.
+- [x] **Step 3: Suite verde, commit** `feat(import): validaPianoParziale — la forma senza le regole d'insieme`.
 
 ### Task 3: Fusione delle pagine
 
@@ -109,7 +109,7 @@ describe('validaIndice', () => {
 - Consumes: `IndiceEstrazione`, `PianoEstratto`, `normalizza` da `mapping.ts`.
 - Produces: `fondiPagine(indice, pagine: { pagina: number; piano: PianoEstratto }[]): PianoEstratto` (spec §2.3).
 
-- [ ] **Step 1: Test che falliscono** (costruire i piani parziali a partire da `PIANO_MENU_SETTIMANALE` in `fixtures.ts`, spezzandolo per giorni):
+- [x] **Step 1: Test che falliscono** (costruire i piani parziali a partire da `PIANO_MENU_SETTIMANALE` in `fixtures.ts`, spezzandolo per giorni):
 
 ```ts
 it('due pagine con giorni diversi si accodano in ordine di giorno', ...)
@@ -123,8 +123,8 @@ it('settimane e giorni ordinati anche se le pagine arrivano in disordine', ...)
 it('il risultato della dieta spezzata e rifusa passa validaEsito ed è deep-equal all\'originale', ...)
 ```
 
-- [ ] **Step 2: Implementare** come da spec §2.3, senza mutare gli input.
-- [ ] **Step 3: Suite verde, commit** `feat(import): fondiPagine — la fusione deterministica delle pagine`.
+- [x] **Step 2: Implementare** come da spec §2.3, senza mutare gli input.
+- [x] **Step 3: Suite verde, commit** `feat(import): fondiPagine — la fusione deterministica delle pagine`.
 
 ---
 
@@ -150,7 +150,7 @@ it('il risultato della dieta spezzata e rifusa passa validaEsito ed è deep-equa
   `estraiPianoAPagine`: 1 file → `estraiPiano` avvolto con `uso`; N file → indice (se `rifiuto` ritorna subito) → pagine con `contenuto` non vuoto in parallelo con concorrenza limitata → `validaPianoParziale` su ognuna → `fondiPagine` → ritorna il piano fuso come `grezzo` (la route lo passa a `validaEsito` come oggi). Una pagina fallita dopo i retry → l'errore propaga.
 - Consumes: `clientAnthropic` (mockato nei test), `validaIndice`, `validaPianoParziale`, `fondiPagine`.
 
-- [ ] **Step 1: Test che falliscono** con un finto client (`vi.mock('@/server/anthropic')`) il cui `beta.messages.stream(...).finalMessage()` risponde per turno con contenuti preparati e `usage` finti:
+- [x] **Step 1: Test che falliscono** con un finto client (`vi.mock('@/server/anthropic')`) il cui `beta.messages.stream(...).finalMessage()` risponde per turno con contenuti preparati e `usage` finti:
   - i blocchi della richiesta sono `system → N pagine → testo`, con `cache_control` SOLO sull'ultimo blocco pagina, identico fra indice e pagine;
   - l'indice usa `max_tokens` 4000 e lo schema dell'indice; le pagine usano lo schema della v1;
   - con concorrenza 2 e 5 pagine, non più di 2 chiamate sono in volo insieme (contatore nel mock);
@@ -159,8 +159,8 @@ it('il risultato della dieta spezzata e rifusa passa validaEsito ed è deep-equa
   - una pagina che lancia → `estraiPianoAPagine` lancia (nessun piano parziale);
   - `uso` somma token e chiamate; `cacheLetti` prende `cache_read_input_tokens`;
   - 1 file → una sola chiamata, schema v1.
-- [ ] **Step 2: Implementare.** Prompt dell'indice (nuova costante): stesse regole anti-invenzione, output = solo l'indice, "una pagina senza pasti va dichiarata con contenuto vuoto". Prompt di pagina = `PROMPT_SISTEMA_IMPORT` invariato + istruzione utente che nomina la pagina k, l'archetipo e le voci attese. Helper interno `limitaConcorrenza(n, tasks)`. Se `IMPORT_AI_EFFORT` è impostata, `output_config.effort` su tutte le chiamate (utile con Opus: `low`). `maxRetries: 4` via `client.withOptions` (o opzione equivalente dell'SDK: verificare nel `node_modules/@anthropic-ai/sdk`) sulle chiamate di pagina.
-- [ ] **Step 3: Suite verde, commit** `feat(import-ai): estrazione a pagine — indice, pagine in parallelo con cache, fusione, usage`.
+- [x] **Step 2: Implementare.** Prompt dell'indice (nuova costante): stesse regole anti-invenzione, output = solo l'indice, "una pagina senza pasti va dichiarata con contenuto vuoto". Prompt di pagina = `PROMPT_SISTEMA_IMPORT` invariato + istruzione utente che nomina la pagina k, l'archetipo e le voci attese. Helper interno `limitaConcorrenza(n, tasks)`. Se `IMPORT_AI_EFFORT` è impostata, `output_config.effort` su tutte le chiamate (utile con Opus: `low`). `maxRetries: 4` via `client.withOptions` (o opzione equivalente dell'SDK: verificare nel `node_modules/@anthropic-ai/sdk`) sulle chiamate di pagina.
+- [x] **Step 3: Suite verde, commit** `feat(import-ai): estrazione a pagine — indice, pagine in parallelo con cache, fusione, usage`.
 
 ### Task 5: Divisione del PDF
 
@@ -172,9 +172,9 @@ it('il risultato della dieta spezzata e rifusa passa validaEsito ed è deep-equa
 **Interfaces:**
 - Produces: `dividiPdf(base64: string): Promise<string[]>` (una stringa base64 per pagina; 1 pagina → array di 1); `PdfIllegibileError`.
 
-- [ ] **Step 1: Test che falliscono**: un PDF a 3 pagine generato nel test con `PDFDocument.create()` → 3 base64 ciascuno con `getPageCount() === 1`; un PDF a 1 pagina → 1; byte casuali → `PdfIllegibileError`.
-- [ ] **Step 2: Implementare** con `PDFDocument.load` (`ignoreEncryption: false`), `copyPages` in un nuovo documento per pagina, `saveAsBase64()`.
-- [ ] **Step 3: Suite verde, commit** `feat(import): dividiPdf — un documento per pagina con pdf-lib`.
+- [x] **Step 1: Test che falliscono**: un PDF a 3 pagine generato nel test con `PDFDocument.create()` → 3 base64 ciascuno con `getPageCount() === 1`; un PDF a 1 pagina → 1; byte casuali → `PdfIllegibileError`.
+- [x] **Step 2: Implementare** con `PDFDocument.load` (`ignoreEncryption: false`), `copyPages` in un nuovo documento per pagina, `saveAsBase64()`.
+- [x] **Step 3: Suite verde, commit** `feat(import): dividiPdf — un documento per pagina con pdf-lib`.
 
 ---
 
@@ -196,7 +196,7 @@ it('il risultato della dieta spezzata e rifusa passa validaEsito ed è deep-equa
   ```
   Il client `sb` è quello costruito nella route con il JWT dell'utente negli header (`global.headers.Authorization`), così la RLS vale: la route NON usa una service key.
 
-- [ ] **Step 1: Migrazione**
+- [x] **Step 1: Migrazione**
 
 ```sql
 -- Tetto di import per utente (spec 2026-09-05-import-in-produzione-design.md §3).
@@ -219,8 +219,8 @@ begin
 end $$;
 ```
 
-- [ ] **Step 2: Test che falliscono** con un mock del client Supabase (stile `src/data/__tests__/importa.test.ts`): `contaImportRecenti` filtra `avviato_il >= adesso - 30 giorni` e restituisce conteggio e più vecchio; `registraImport` inserisce `user_id, pagine, modello`; `limiteImport30ggConfigurato` legge l'env a ogni chiamata, `0` e valori non numerici → `0` e `3`.
-- [ ] **Step 3: Implementare, suite verde, commit** `feat(data): import_uso — tetto di import per utente con RLS senza update/delete`.
+- [x] **Step 2: Test che falliscono** con un mock del client Supabase (stile `src/data/__tests__/importa.test.ts`): `contaImportRecenti` filtra `avviato_il >= adesso - 30 giorni` e restituisce conteggio e più vecchio; `registraImport` inserisce `user_id, pagine, modello`; `limiteImport30ggConfigurato` legge l'env a ogni chiamata, `0` e valori non numerici → `0` e `3`.
+- [x] **Step 3: Implementare, suite verde, commit** `feat(data): import_uso — tetto di import per utente con RLS senza update/delete`.
 
 ### Task 7: Route: limite, PDF diviso, pipeline a pagine
 
@@ -233,16 +233,16 @@ end $$;
 - Ordine nella route: auth → parsing → cap → **limite** (se `limite > 0`: `contaImportRecenti`; `conteggio >= limite` → 429 col messaggio della spec, data = `piuVecchio + 30 giorni` in `it-IT` `gg/mm/aaaa`) → `registraImport` → rami chiave/mock/503 → per la chiave: PDF → `dividiPdf` (errore → 400) → `FileEstrazione[]` → `estraiPianoAPagine(files, modello, { concorrenza })` → `validaEsito` come oggi.
 - Mock e 503 NON consumano slot né registrano: `registraImport` sta dentro il ramo chiave, prima della chiamata.
 
-- [ ] **Step 1: Test che falliscono** (mock di `estraiPianoAPagine`, `dividiPdf`, `contaImportRecenti`, `registraImport`):
+- [x] **Step 1: Test che falliscono** (mock di `estraiPianoAPagine`, `dividiPdf`, `contaImportRecenti`, `registraImport`):
   - sotto il limite: `registraImport` chiamato una volta con `pagine` = numero di immagini, poi `estraiPianoAPagine`;
   - al limite: 429, messaggio con la data giusta, nessuna registrazione né chiamata;
   - `IMPORT_LIMITE_30GG=0`: nessun conteggio;
   - PDF a 3 pagine: `dividiPdf` → 3 `FileEstrazione` tipo `pdf`; `PdfIllegibileError` → 400 `richiesta non valida`;
   - ramo mock: né conteggio né registrazione;
   - i test esistenti restano verdi (aggiornare i mock da `estraiPiano` a `estraiPianoAPagine`).
-- [ ] **Step 2: Implementare.**
-- [ ] **Step 3: Pagina Importa**: 429 → messaggio della route verbatim (stesso ramo del 413); test in `src/app/(app)/importa/__tests__/page.test.tsx`.
-- [ ] **Step 4: Suite verde, commit** `feat(import): route con tetto per utente, PDF diviso e pipeline a pagine`.
+- [x] **Step 2: Implementare.**
+- [x] **Step 3: Pagina Importa**: 429 → messaggio della route verbatim (stesso ramo del 413); test in `src/app/(app)/importa/__tests__/page.test.tsx`.
+- [x] **Step 4: Suite verde, commit** `feat(import): route con tetto per utente, PDF diviso e pipeline a pagine`.
 
 ---
 
@@ -265,17 +265,17 @@ end $$;
 - Report: `formattaReport(casi: CasoEval[]): string` → markdown con una tabella per dieta × set; colonne: modello, pipeline, durata s, settimane, abbinati (n/N e %), estranei, esatte (n/N), inferite, fabbricate, token in, token out, cache letti, costo stimato €. Prezzi in una costante `PREZZI_EUR_PER_MILIONE` con data nel commento. Scritto in `diete/estrazioni/report-<aaaammgg-hhmm>.md`.
 - Gate invariati: `validaEsito`, `fabbricate === 0`, fallimento se tutte le chiamate falliscono.
 
-- [ ] **Step 1: Test che falliscono** su `formattaReport` e sulla stima costi (nessuna rete, casi finti): la tabella ha una riga per caso, la percentuale è arrotondata a intero, il costo con due decimali, nessun campo testuale della dieta compare.
-- [ ] **Step 2: Implementare** l'harness: caricamento manifest o default, prodotto cartesiano modelli × pipeline × set, `estraiPianoAPagine` o `estraiPiano` secondo la pipeline, metriche come oggi + `uso`, report su console e su file.
-- [ ] **Step 3: Suite verde (`npm test` non esegue l'eval), `npm run eval:import` senza chiave stampa NON ESEGUITO ed esce 0, commit** `feat(eval-import): manifest, pipeline e set a confronto, report con costi`.
+- [x] **Step 1: Test che falliscono** su `formattaReport` e sulla stima costi (nessuna rete, casi finti): la tabella ha una riga per caso, la percentuale è arrotondata a intero, il costo con due decimali, nessun campo testuale della dieta compare.
+- [x] **Step 2: Implementare** l'harness: caricamento manifest o default, prodotto cartesiano modelli × pipeline × set, `estraiPianoAPagine` o `estraiPiano` secondo la pipeline, metriche come oggi + `uso`, report su console e su file.
+- [x] **Step 3: Suite verde (`npm test` non esegue l'eval), `npm run eval:import` senza chiave stampa NON ESEGUITO ed esce 0, commit** `feat(eval-import): manifest, pipeline e set a confronto, report con costi`.
 
 ### Task 9: README e stato reale
 
 **Files:**
 - Modify: `README.md` (sezione "Importa la dieta": il paragrafo "Stato: l'estrazione è mockata" e la tabella `IMPORT_MOCK`; nuova sottosezione "Estrazione a pagine" e "Tetto di import"; sezione eval)
 
-- [ ] **Step 1:** Riscrivere il paragrafo: l'estrattore è in codice (`src/server/import-ai.ts`), si accende con `ANTHROPIC_API_KEY`, il modello con `IMPORT_AI_MODEL`, il tetto con `IMPORT_LIMITE_30GG`, la concorrenza con `IMPORT_CONCORRENZA`; il mock resta solo per lo sviluppo. Rimandare alla spec 05/09 per la pipeline.
-- [ ] **Step 2: Commit** `docs(readme): stato reale dell'import — estrattore vero, chiave, tetto, eval`.
+- [x] **Step 1:** Riscrivere il paragrafo: l'estrattore è in codice (`src/server/import-ai.ts`), si accende con `ANTHROPIC_API_KEY`, il modello con `IMPORT_AI_MODEL`, il tetto con `IMPORT_LIMITE_30GG`, la concorrenza con `IMPORT_CONCORRENZA`; il mock resta solo per lo sviluppo. Rimandare alla spec 05/09 per la pipeline.
+- [x] **Step 2: Commit** `docs(readme): stato reale dell'import — estrattore vero, chiave, tetto, eval`.
 
 ---
 
