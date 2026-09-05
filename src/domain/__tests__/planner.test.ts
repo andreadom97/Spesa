@@ -211,11 +211,11 @@ describe('piatti sorella sullo stesso giorno', () => {
   // prima nell'array dei piatti.
   const cioccolato: Ingredient = {
     id: 'cioccolato', nome: 'Cioccolato fondente', unitaBase: 'g', area: 'dispensa',
-    classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 100,
+    classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 100, prezzoConfezione: null,
   };
   const noci: Ingredient = {
     id: 'noci', nome: 'Noci', unitaBase: 'g', area: 'dispensa',
-    classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 200,
+    classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 200, prezzoConfezione: null,
   };
 
   function spuntino(id: string, ingredientId: string, quantita: number): Dish {
@@ -366,7 +366,7 @@ describe('risoluzione dei componenti', () => {
     // Dispensa: succo 200, avena 500. Tre slot merenda: lun, mar, mer.
     const succo: Ingredient = {
       id: 'succo', nome: 'Succo di frutta', unitaBase: 'g', area: 'dispensa',
-      classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 200,
+      classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 200, prezzoConfezione: null,
     };
     const merenda: Dish = {
       id: 'merenda', nome: 'Merenda', slotDefId: 'mer',
@@ -416,7 +416,7 @@ describe('risoluzione dei componenti', () => {
     // mercoledì l'avena vince ancora (ha ancora residuo, il succo no).
     const succo: Ingredient = {
       id: 'succo', nome: 'Succo di frutta', unitaBase: 'g', area: 'dispensa',
-      classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 200,
+      classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 200, prezzoConfezione: null,
     };
     const merenda: Dish = {
       id: 'merenda', nome: 'Merenda', slotDefId: 'mer',

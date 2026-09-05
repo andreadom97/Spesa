@@ -3,27 +3,27 @@ import { ORDINE_AREE_DEFAULT } from '../aree';
 
 export const yogurt: Ingredient = {
   id: 'yogurt', nome: 'Yogurt greco', unitaBase: 'g', area: 'latticini',
-  classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 500,
+  classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 500, prezzoConfezione: null,
 };
 
 export const avena: Ingredient = {
   id: 'avena', nome: "Fiocchi d'avena", unitaBase: 'g', area: 'cereali',
-  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500,
+  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500, prezzoConfezione: null,
 };
 
 export const uova: Ingredient = {
   id: 'uova', nome: 'Uova', unitaBase: 'pz', area: 'latticini',
-  classeResiduo: 'intero', deperibile: true, formatoConfezione: 1,
+  classeResiduo: 'intero', deperibile: true, formatoConfezione: 1, prezzoConfezione: null,
 };
 
 export const olio: Ingredient = {
   id: 'olio', nome: 'Olio extravergine', unitaBase: 'ml', area: 'dispensa',
-  classeResiduo: 'stima', deperibile: false, formatoConfezione: 1000,
+  classeResiduo: 'stima', deperibile: false, formatoConfezione: 1000, prezzoConfezione: null,
 };
 
 export const passata: Ingredient = {
   id: 'passata', nome: 'Passata di pomodoro', unitaBase: 'g', area: 'dispensa',
-  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 700,
+  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 700, prezzoConfezione: null,
 };
 
 export const INGREDIENTI = [yogurt, avena, uova, olio, passata];

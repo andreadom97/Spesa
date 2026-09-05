@@ -110,6 +110,7 @@ export async function eseguiScritture(s: ScrittureImport): Promise<void> {
       classeResiduo: ing.classeResiduo,
       deperibile: ing.deperibile,
       formatoConfezione: ing.formatoConfezione,
+      prezzoConfezione: ing.prezzoConfezione,
     });
     idPerAlimento.set(ing.alimento, id);
   }

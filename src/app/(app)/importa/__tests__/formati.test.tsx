@@ -6,7 +6,7 @@ import { PIANO_MENU_SETTIMANALE } from '@/domain/import/fixtures';
 import type { Ingredient } from '@/domain/types';
 import type { PastoEstratto, StatoRevisione } from '@/domain/import/types';
 
-const AVENA: Ingredient = { id: 'i-avena', nome: "Fiocchi d'avena", unitaBase: 'g', area: 'cereali', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500 };
+const AVENA: Ingredient = { id: 'i-avena', nome: "Fiocchi d'avena", unitaBase: 'g', area: 'cereali', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500 , prezzoConfezione: null};
 const STATO: StatoRevisione = { passo: 'formati', mappaturaPasti: { colazione: 's-col', cena: 's-cena', condimenti: 's-cena' }, pastiConfermati: [], correzioni: {}, ingredientiNuovi: [] };
 
 describe('Formati', () => {
@@ -51,8 +51,8 @@ describe('Formati', () => {
       // questo stesso passo; "alimento fantasma" non serve più al piano
       // (nessuna riga lo referenzia più) e deve sparire dalla fusione.
       ingredientiNuovi: [
-        { alimento: 'latte parzialmente scremato', nome: 'Latte scremato bio', unitaBase: 'ml', area: 'latticini', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 750 },
-        { alimento: 'alimento fantasma', nome: 'Fantasma', unitaBase: 'g', area: 'dispensa', classeResiduo: 'stima', deperibile: false, formatoConfezione: 1 },
+        { alimento: 'latte parzialmente scremato', nome: 'Latte scremato bio', unitaBase: 'ml', area: 'latticini', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 750 , prezzoConfezione: null},
+        { alimento: 'alimento fantasma', nome: 'Fantasma', unitaBase: 'g', area: 'dispensa', classeResiduo: 'stima', deperibile: false, formatoConfezione: 1 , prezzoConfezione: null},
       ],
     };
 
@@ -64,8 +64,8 @@ describe('Formati', () => {
   });
 
   it('"usa l\'ingrediente esistente" offre solo esistenti con unità compatibile, e la scelta rinomina la proposta', async () => {
-    const LATTE_ESISTENTE: Ingredient = { id: 'i-latte', nome: 'Latte intero', unitaBase: 'ml', area: 'latticini', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 1000 };
-    const PARMIGIANO_ESISTENTE: Ingredient = { id: 'i-parm', nome: 'Parmigiano', unitaBase: 'g', area: 'latticini', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 200 };
+    const LATTE_ESISTENTE: Ingredient = { id: 'i-latte', nome: 'Latte intero', unitaBase: 'ml', area: 'latticini', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 1000 , prezzoConfezione: null};
+    const PARMIGIANO_ESISTENTE: Ingredient = { id: 'i-parm', nome: 'Parmigiano', unitaBase: 'g', area: 'latticini', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 200 , prezzoConfezione: null};
 
     render(
       <Formati

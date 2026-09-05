@@ -18,6 +18,12 @@ export interface Ingredient {
   deperibile: boolean;
   /** Quantità di una confezione, espressa in unitaBase. */
   formatoConfezione: number;
+  /**
+   * Facoltativo: euro per una confezione, null = nessun prezzo. Serve solo al
+   * contatore del non ricomprato (spec 2026-09-05): non entra in nessun
+   * calcolo della lista né del residuo.
+   */
+  prezzoConfezione: number | null;
 }
 
 export interface DishIngredient {

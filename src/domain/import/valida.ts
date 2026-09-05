@@ -191,7 +191,10 @@ const PASSI_REVISIONE = new Set<string>(['revisione', 'formati', 'riepilogo']);
  * lo fa comunque `traduciBozza` a valle, che fallisce onestamente con `BozzaIncompletaError`
  * se una correzione è malformata). Controlla solo: `passo` fra i tre ammessi,
  * `mappaturaPasti` un oggetto di stringhe, `pastiConfermati` un array di stringhe,
- * `correzioni` un oggetto, `ingredientiNuovi` un array.
+ * `correzioni` un oggetto, `ingredientiNuovi` un array di oggetti. L'unica
+ * normalizzazione legacy è `prezzoConfezione` degli ingredienti nuovi: assente nelle
+ * bozze salvate prima della migrazione 0011 → `null`; se presente dev'essere `null` o
+ * un numero positivo, come il `check (prezzo_confezione > 0)` della colonna.
  */
 export function validaStatoRevisione(v: unknown): StatoRevisione {
   const s = ogg(v, 'statoRevisione');
@@ -205,13 +208,20 @@ export function validaStatoRevisione(v: unknown): StatoRevisione {
     str(p, `statoRevisione.pastiConfermati[${i}]`),
   );
   const correzioni = ogg(s.correzioni, 'statoRevisione.correzioni');
-  arr(s.ingredientiNuovi, 'statoRevisione.ingredientiNuovi');
+  const ingredientiNuovi = arr(s.ingredientiNuovi, 'statoRevisione.ingredientiNuovi').map((i, k) => {
+    const percorso = `statoRevisione.ingredientiNuovi[${k}]`;
+    const ing = ogg(i, percorso);
+    const prezzo = ing.prezzoConfezione;
+    if (prezzo !== undefined && prezzo !== null && (typeof prezzo !== 'number' || !Number.isFinite(prezzo) || prezzo <= 0))
+      throw new PianoNonValidoError(`${percorso}.prezzoConfezione`, 'non è un numero positivo');
+    return { ...ing, prezzoConfezione: prezzo ?? null } as IngredienteProposto;
+  });
   return {
     passo: passo as PassoRevisione,
     mappaturaPasti: mappaturaPasti as Record<string, string>,
     pastiConfermati,
     correzioni: correzioni as Record<string, PastoEstratto>,
-    ingredientiNuovi: s.ingredientiNuovi as IngredienteProposto[],
+    ingredientiNuovi,
   };
 }
 

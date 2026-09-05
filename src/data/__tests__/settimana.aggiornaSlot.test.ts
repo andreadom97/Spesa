@@ -42,15 +42,15 @@ function creaClientMock(risolvi: (tabella: string, chiamate: Chiamata[]) => { da
 
 const ING_POLLO: Ingredient = {
   id: 'i-pollo', nome: 'Pollo', unitaBase: 'g', area: 'macelleria',
-  classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 1000,
+  classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 1000, prezzoConfezione: null,
 };
 const ING_RISO: Ingredient = {
   id: 'i-riso', nome: 'Riso', unitaBase: 'g', area: 'cereali',
-  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500,
+  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500, prezzoConfezione: null,
 };
 const ING_OLIO: Ingredient = {
   id: 'i-olio', nome: 'Olio', unitaBase: 'ml', area: 'dispensa',
-  classeResiduo: 'stima', deperibile: false, formatoConfezione: 1000,
+  classeResiduo: 'stima', deperibile: false, formatoConfezione: 1000, prezzoConfezione: null,
 };
 
 const DISH_POLLO: Dish = {

@@ -23,6 +23,9 @@ export function aIngrediente(r: Record<string, unknown>): Ingredient {
     classeResiduo: r.classe_residuo as ClasseResiduo,
     deperibile: Boolean(r.deperibile),
     formatoConfezione: num(r.formato_confezione),
+    // `== null` copre sia il null del database (prezzo facoltativo) sia la
+    // colonna assente (riga di mock, o deploy prima della migrazione 0011).
+    prezzoConfezione: r.prezzo_confezione == null ? null : num(r.prezzo_confezione),
   };
 }
 

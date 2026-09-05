@@ -10,7 +10,7 @@ import { eseguiScritture } from '../importa';
 import type { ScrittureImport } from '@/domain/import/commit';
 
 const SCRITTURE: ScrittureImport = {
-  ingredientiDaCreare: [{ alimento: 'pasta di semola', nome: 'Pasta', unitaBase: 'g', area: 'cereali', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500 }],
+  ingredientiDaCreare: [{ alimento: 'pasta di semola', nome: 'Pasta', unitaBase: 'g', area: 'cereali', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500, prezzoConfezione: 1.2 }],
   piattiDaDisattivare: ['d-old'],
   piattiDaCreare: [{
     riusaDishId: null, nome: 'Pasta al pomodoro', slotDefId: 's-pranzo',
@@ -44,6 +44,19 @@ describe('eseguiScritture', () => {
   it('crea gli ingredienti, poi sostituisce nuovoAlimento con gli id veri nelle righe e nelle opzioni', async () => {
     await eseguiScritture(SCRITTURE);
     expect(salvaIngrediente).toHaveBeenCalledWith(expect.objectContaining({ nome: 'Pasta' }));
+  });
+
+  it("l'ingrediente creato riceve il prezzo per confezione della proposta (null se non c'è)", async () => {
+    await eseguiScritture(SCRITTURE);
+    expect(salvaIngrediente).toHaveBeenCalledWith(expect.objectContaining({ nome: 'Pasta', prezzoConfezione: 1.2 }));
+
+    vi.mocked(salvaIngrediente).mockClear();
+    const senzaPrezzo: ScrittureImport = {
+      ...SCRITTURE,
+      ingredientiDaCreare: [{ ...SCRITTURE.ingredientiDaCreare[0], prezzoConfezione: null }],
+    };
+    await eseguiScritture(senzaPrezzo);
+    expect(salvaIngrediente).toHaveBeenCalledWith(expect.objectContaining({ nome: 'Pasta', prezzoConfezione: null }));
     const piatto = vi.mocked(salvaPiatto).mock.calls[0][0];
     expect(piatto.ingredienti).toEqual([{ ingredientId: 'i-pasta-nuovo', quantita: 80, unita: 'g' }]);
     expect(piatto.componenti[0].opzioni[0].righe).toEqual([{ ingredientId: 'i-pasta-nuovo', quantita: 10, unita: 'g' }]);

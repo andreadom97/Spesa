@@ -54,15 +54,15 @@ const SLOT_PRANZO: MealSlotDef = { id: 'sd-1', nome: 'Pranzo', posizione: 0, ass
 
 const ING_RISO: Ingredient = {
   id: 'i-1', nome: 'Riso', unitaBase: 'g', area: 'cereali',
-  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 1000,
+  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 1000, prezzoConfezione: null,
 };
 const ING_FARINA: Ingredient = {
   id: 'i-2', nome: 'Farina', unitaBase: 'g', area: 'dispensa',
-  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 1000,
+  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 1000, prezzoConfezione: null,
 };
 const ING_PANE_INTEGRALE: Ingredient = {
   id: 'i-3', nome: 'Pane integrale', unitaBase: 'g', area: 'cereali',
-  classeResiduo: 'intero', deperibile: true, formatoConfezione: 500,
+  classeResiduo: 'intero', deperibile: true, formatoConfezione: 500, prezzoConfezione: null,
 };
 
 const PIATTO_ESISTENTE: Dish = {

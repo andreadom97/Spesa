@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validaEsito, validaPianoParziale, PianoNonValidoError } from '../valida';
+import { validaEsito, validaPianoParziale, validaStatoRevisione, PianoNonValidoError } from '../valida';
 import { FIXTURE_MENU_SETTIMANALE, FIXTURE_GIORNATA_UNICA, FIXTURE_RIFIUTO_MACRO, PIANO_MENU_SETTIMANALE } from '../fixtures';
 import type { EsitoEstrazione } from '../types';
 
@@ -258,3 +258,34 @@ describe('validaPianoParziale', () => {
   });
 });
 /* eslint-enable @typescript-eslint/no-explicit-any */
+
+describe('validaStatoRevisione — prezzo per confezione degli ingredienti nuovi', () => {
+  const proposta = {
+    alimento: 'riso', nome: 'Riso', unitaBase: 'g', area: 'cereali',
+    classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 1000,
+  };
+  function stato(ingrediente: Record<string, unknown>): unknown {
+    return { passo: 'formati', mappaturaPasti: {}, pastiConfermati: [], correzioni: {}, ingredientiNuovi: [ingrediente] };
+  }
+
+  it('una bozza legacy senza prezzoConfezione viene normalizzata a null', () => {
+    const s = validaStatoRevisione(stato(proposta));
+    expect(s.ingredientiNuovi[0].prezzoConfezione).toBeNull();
+    expect(s.ingredientiNuovi[0]).toMatchObject({ alimento: 'riso', formatoConfezione: 1000 });
+  });
+
+  it('accetta null esplicito e un numero positivo', () => {
+    expect(validaStatoRevisione(stato({ ...proposta, prezzoConfezione: null })).ingredientiNuovi[0].prezzoConfezione).toBeNull();
+    expect(validaStatoRevisione(stato({ ...proposta, prezzoConfezione: 2.5 })).ingredientiNuovi[0].prezzoConfezione).toBe(2.5);
+  });
+
+  it('rifiuta un prezzo zero, negativo, non finito o non numerico', () => {
+    for (const prezzo of [0, -1, Number.NaN, Number.POSITIVE_INFINITY, '2.5']) {
+      expect(() => validaStatoRevisione(stato({ ...proposta, prezzoConfezione: prezzo }))).toThrow(PianoNonValidoError);
+    }
+  });
+
+  it('rifiuta un ingrediente nuovo che non è un oggetto', () => {
+    expect(() => validaStatoRevisione(stato('riso' as unknown as Record<string, unknown>))).toThrow(PianoNonValidoError);
+  });
+});

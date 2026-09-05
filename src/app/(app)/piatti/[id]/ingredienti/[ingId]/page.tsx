@@ -105,6 +105,10 @@ export default function IngredienteEditor() {
   // nella lista base settimanale.
   const [deperibile, setDeperibile] = useState(true);
   const [formatoTesto, setFormatoTesto] = useState('');
+  // Il prezzo per confezione si conserva com'è: un salvataggio da questa
+  // scheda non deve cancellare in silenzio il prezzo di un ingrediente che
+  // ce l'ha (salvaIngrediente scrive sempre la colonna, anche null).
+  const [prezzoConfezione, setPrezzoConfezione] = useState<number | null>(null);
 
   useEffect(() => {
     let vivo = true;
@@ -126,6 +130,7 @@ export default function IngredienteEditor() {
           setClasseResiduo(trovato.classeResiduo);
           setDeperibile(trovato.deperibile);
           setFormatoTesto(String(trovato.formatoConfezione));
+          setPrezzoConfezione(trovato.prezzoConfezione);
           // Non blocca il caricamento della scheda se fallisce: al peggio la
           // conferma di eliminazione mostra o no la frase sullo storico.
           // Fail-safe invertito di proposito: se non sappiamo se ci sono
@@ -200,6 +205,7 @@ export default function IngredienteEditor() {
         classeResiduo,
         deperibile,
         formatoConfezione: formatoEffettivo,
+        prezzoConfezione,
       });
       // Solo su un ingrediente nuovo: chi apre questa scheda per correggere
       // un ingrediente già nel piatto non vuole vederselo aggiungere due volte.
