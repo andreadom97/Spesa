@@ -148,6 +148,19 @@ describe('Importa', () => {
     expect(screen.getByRole('button', { name: /riprova/i })).toBeEnabled();
   });
 
+  it('429 (tetto di import) mostra il messaggio della route verbatim', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      json: async () => ({ errore: 'hai già fatto 3 import negli ultimi 30 giorni: il prossimo dal 12/09/2026' }),
+    });
+    render(<Importa />);
+    await screen.findByRole('button', { name: /estrai la dieta/i });
+    await caricaUnaFoto();
+    fireEvent.click(screen.getByRole('button', { name: /estrai la dieta/i }));
+    expect(await screen.findByText('hai già fatto 3 import negli ultimi 30 giorni: il prossimo dal 12/09/2026')).toBeInTheDocument();
+  });
+
   it('422 mostra il messaggio dedicato', async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: false,
