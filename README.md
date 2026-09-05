@@ -21,10 +21,19 @@ attuale** — i piatti del nutrizionista disattivati, i nuovi creati, il ciclo s
 riallineato. L'esecuzione (`eseguiScritture`) è idempotente per costruzione: un errore a
 metà si ripara riprovando, non lascia il piano a metà strada.
 
-**Stato: l'estrazione è mockata.** Non c'è ancora una `ANTHROPIC_API_KEY` configurata, quindi
-`/api/import/estrai` serve sempre un fixture invece di leggere davvero le foto/il PDF
-caricati (che vengono comunque ricevuti e scartati, per tenere la firma della route
-identica a quella futura). Il mock si sceglie con la variabile d'ambiente `IMPORT_MOCK`:
+**Stato: estrattore vero in codice, chiave non ancora su Vercel.** Dal 30/08 l'estrattore
+esiste in `src/server/import-ai.ts` (structured output, streaming) e `/api/import/estrai`
+ha tre rami, in quest'ordine:
+
+1. `ANTHROPIC_API_KEY` presente → estrazione vera delle foto o del PDF caricati, con il
+   modello di `IMPORT_AI_MODEL` (default `claude-sonnet-5`). Su Vercel la chiave non è
+   ancora impostata: si accende dopo il run dell'eval che decide il modello (sotto).
+2. Altrimenti `IMPORT_MOCK` (solo sviluppo, mai su Vercel) → un fixture al posto della
+   lettura; i file caricati vengono ricevuti e scartati, così la firma della route è la
+   stessa dell'estrazione vera.
+3. Altrimenti 503 `estrazione non disponibile`: è la risposta di produzione oggi.
+
+In sviluppo, senza chiave, il mock si sceglie con la variabile d'ambiente `IMPORT_MOCK`:
 
 | `IMPORT_MOCK` | Cosa serve |
 |---|---|
@@ -35,9 +44,73 @@ identica a quella futura). Il mock si sceglie con la variabile d'ambiente `IMPOR
 
 Per provarlo in locale: `IMPORT_MOCK=dieta6 npm run dev`, poi aprire `/importa` — le foto
 o il PDF scelti nella schermata di acquisizione sono ignorati dal mock, basta arrivare al
-bottone ESTRAI LA DIETA. Quando la chiave sarà configurata, il blocco mock in
-`src/app/api/import/estrai/route.ts` va sostituito dalla chiamata all'estrattore vero
-(stessa firma della route, altra implementazione).
+bottone ESTRAI LA DIETA.
+
+### Estrazione a pagine (05/09/2026)
+
+**Perché.** Con una chiamata sola per l'intero piano, la dieta 6 (7 foto) ha impiegato
+453 s contro i 300 s di `maxDuration` della funzione Vercel. Il tempo è l'output, non il
+modello: un piano intero sono 20–25k token di JSON in uscita, le immagini in ingresso si
+leggono in pochi secondi e Opus non scrive più veloce di Sonnet. Dividere l'output divide
+il tempo.
+
+**Come.** Tre passaggi. Una chiamata di **indice** con tutte le pagine in ingresso e un
+output piccolo: l'archetipo deciso una volta sola, cosa contiene ogni pagina, il rifiuto
+immediato di una dieta di soli macro (`src/domain/import/indice.ts`). Poi **una chiamata
+per pagina, in parallelo** (al massimo `IMPORT_CONCORRENZA` in volo, default 4), ognuna
+con tutte le pagine in ingresso ma l'istruzione di trascrivere solo la sua, nello stesso
+schema della chiamata singola: il prefisso `system → pagine` è identico fra le chiamate e
+va in cache (`cache_control` sull'ultimo blocco pagina), così l'indice la scrive e le
+pagine la leggono al 10% del prezzo. Infine la **fusione in codice**
+(`src/domain/import/fusione.ts`, funzione pura: giorni identificati da `(settimana, giorno)`,
+pasti spezzati fra due pagine ricomposti se l'indice li segnala), il cui risultato passa da
+`validaEsito` come qualsiasi estrazione. Una pagina che fallisce dopo i retry fa fallire
+l'import intero: mai un piano parziale spacciato per intero. Un PDF multipagina si divide
+server-side in PDF a pagina singola con `pdf-lib` (`src/server/pdf-pagine.ts`) e segue la
+stessa pipeline; una pagina sola (una foto, o un PDF a una pagina) resta la chiamata
+singola di prima (`estraiPiano`), che è anche la baseline dell'eval. Il disegno completo,
+con la stima dei costi, è in
+[`docs/superpowers/specs/2026-09-05-import-in-produzione-design.md`](docs/superpowers/specs/2026-09-05-import-in-produzione-design.md).
+
+Consegnato: indice e validatore, `validaPianoParziale`, fusione, `dividiPdf`, tabella
+`import_uso`. [in costruzione]: l'orchestratore `estraiPianoAPagine` in
+`src/server/import-ai.ts` (indice → pagine con cache → fusione, con `usage` aggregato), la
+route che compone tutto (limite → PDF diviso → pipeline a pagine) e l'eval con report.
+
+### Tetto di import per utente
+
+Il costo di un import non giustifica un limite: lo giustifica una chiave in produzione
+raggiungibile da chiunque abbia un account. Il tetto è una difesa, e va dichiarato.
+
+- **Tabella `import_uso`** (migrazione `supabase/migrations/0010_import_uso.sql`, modulo
+  `src/data/import-uso.ts`): `id`, `user_id`, `avviato_il`, `pagine`, `modello`. Solo
+  metadati, mai contenuto della dieta. RLS abilitata e forzata, policy `select` e `insert`
+  per il proprietario e **nessuna policy di update o delete**: un utente non può azzerarsi
+  il contatore (Andrea può, dal pannello Supabase).
+- **Regola**: al massimo `IMPORT_LIMITE_30GG` import (default 3) nei 30 giorni precedenti;
+  `0` disattiva il limite (solo sviluppo). La riga si scrive prima delle chiamate al
+  modello, con il client Supabase che porta il JWT dell'utente così che la RLS valga: si
+  contano i tentativi, non i successi, quindi due invii concorrenti contano due e un import
+  fallito consuma comunque uno slot. Il mock e il 503 non consumano niente.
+- **Oltre il limite**: 429 con `hai già fatto 3 import negli ultimi 30 giorni: il prossimo dal 12/09/2026`,
+  dove la data è il più vecchio import nella finestra più 30 giorni; la pagina Importa lo
+  mostra così com'è, come già fa per il 413. Controllo e registrazione nella route:
+  [in costruzione].
+- **Rete di sicurezza fuori dal codice**: spend limit mensile sul workspace Anthropic,
+  impostato dal pannello prima di mettere la chiave su Vercel. Il tetto contiene un
+  utente; lo spend limit contiene tutti.
+
+### Variabili d'ambiente dell'import
+
+| Variabile | Default | Cosa fa |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | *(assente)* | Accende l'estrazione vera. Non ancora su Vercel |
+| `ANTHROPIC_WORKSPACE_ID` | *(assente)* | Opzionale: header `anthropic-workspace-id` per le chiavi identity-linked (`src/server/anthropic.ts`); con una chiave di workspace non serve |
+| `IMPORT_AI_MODEL` | `claude-sonnet-5` | Il modello dell'estrattore. È configurazione, non codice |
+| `IMPORT_AI_EFFORT` | *(assente)* | Opzionale, `low`/`medium`/`high` → `output_config.effort` su tutte le chiamate. Consigliato `low` con Opus: è trascrizione, non ragionamento |
+| `IMPORT_LIMITE_30GG` | `3` | Import massimi per utente nei 30 giorni precedenti; `0` disattiva (solo sviluppo). Letta a ogni richiesta |
+| `IMPORT_CONCORRENZA` | `4` | Chiamate di pagina in volo insieme. Un'ipotesi sul tier API: la verifica è il primo run reale |
+| `IMPORT_MOCK` | *(assente)* | Solo sviluppo, mai su Vercel: un fixture al posto del modello (tabella sopra). Ignorata se c'è la chiave |
 
 ## Spunta pasti
 
@@ -130,13 +203,24 @@ accende impostando `ANTHROPIC_API_KEY` (il modello si sceglie con
 modelli sulla batteria di note di prova. In locale, `DISPENSA_AI_MOCK=1` in
 `.env.local` accende un interprete a regole per lo sviluppo.
 
+Lo stesso vale per l'estrattore della dieta: `npm run eval:import` gira solo in locale,
+con la cartella `diete/` (gitignored, dati sanitari veri) e la chiave nell'ambiente —
+senza, stampa NON ESEGUITO ed esce 0. Confronta i modelli elencati in
+`EVAL_IMPORT_MODELLI` (es. `claude-sonnet-5,claude-opus-5`) sulla dieta 6 con ground
+truth, e [in costruzione] produce un report in `diete/estrazioni/` con una tabella per
+dieta × set di foto (originali, compresse) e righe per modello × pipeline: solo contatori,
+percentuali, token e costo stimato, mai un testo della dieta. La regola di decisione sul
+modello è scritta nella spec 05/09, §4.
+
 ## Dove sta cosa
 
 | File | Cosa contiene |
 |---|---|
 | [`spesa-one-pager.md`](spesa-one-pager.md) | Analisi di mercato e go/no-go. Conclusione: no-go come business allo stato attuale, go come strumento personale |
+| [`spesa-backlog-nicchia.md`](spesa-backlog-nicchia.md) | Backlog della nicchia "dieta dal nutrizionista", rivisto il 05/09: ordine di costruzione delle feature e priorità |
 | [`docs/superpowers/specs/2026-08-26-spesa-design.md`](docs/superpowers/specs/2026-08-26-spesa-design.md) | **La spec.** Modello dati, componenti, fasi, e tutte le decisioni prese durante il design con il loro perché |
 | [`docs/superpowers/specs/DESIGN-SYSTEM.md`](docs/superpowers/specs/DESIGN-SYSTEM.md) | Colori, tipografia, forme, regole di stato — valori estratti dalle schermate reali |
+| [`docs/superpowers/specs/2026-09-05-import-in-produzione-design.md`](docs/superpowers/specs/2026-09-05-import-in-produzione-design.md) | Import in produzione: estrazione a pagine in parallelo, tetto per utente, eval che decide il modello, checklist locale |
 | `design/*.dc.html` | 69 artboard. Le 12 definitive sono elencate sotto; il resto è l'archivio delle direzioni esplorate |
 | `design/canvas.json` | Impaginazione del canvas: pagina 1 = v1 definitiva, pagina 2 = archivio |
 | `design/build.sh` | Rigenera il canvas da tutti gli artboard |
