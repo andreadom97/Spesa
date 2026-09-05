@@ -84,4 +84,46 @@ describe('Formati', () => {
     fireEvent.change(select, { target: { value: 'i-latte' } });
     expect(await screen.findByDisplayValue(/latte intero/i)).toBeInTheDocument();
   });
+
+  describe('prezzo di una confezione (facoltativo)', () => {
+    async function statoAlRiepilogo(onStato: ReturnType<typeof vi.fn>): Promise<StatoRevisione> {
+      fireEvent.click(screen.getByRole('button', { name: /vai al riepilogo/i }));
+      await waitFor(() => expect((onStato.mock.calls.at(-1)![0] as StatoRevisione).passo).toBe('riepilogo'));
+      return onStato.mock.calls.at(-1)![0] as StatoRevisione;
+    }
+
+    it('ogni ingrediente nuovo ha il suo campo prezzo, accanto al formato', async () => {
+      render(<Formati piano={PIANO_MENU_SETTIMANALE} stato={STATO} ingredientiEsistenti={[AVENA]} onStato={() => {}} />);
+      const formati = await screen.findAllByLabelText(/formato confezione di/i);
+      const prezzi = screen.getAllByLabelText(/prezzo di una confezione di/i);
+      expect(prezzi).toHaveLength(formati.length);
+      expect(screen.getAllByText('PREZZO')).toHaveLength(formati.length);
+      expect(screen.getAllByText('facoltativo')).toHaveLength(formati.length);
+    });
+
+    it('digitando "1,2" (virgola) ingredientiNuovi[i].prezzoConfezione diventa 1.2; lasciato vuoto resta null', async () => {
+      const onStato = vi.fn();
+      render(<Formati piano={PIANO_MENU_SETTIMANALE} stato={STATO} ingredientiEsistenti={[AVENA]} onStato={onStato} />);
+      const prezzi = await screen.findAllByLabelText(/prezzo di una confezione di/i);
+      expect(prezzi.length).toBeGreaterThan(1);
+      fireEvent.change(prezzi[0], { target: { value: '1,2' } });
+
+      const stato = await statoAlRiepilogo(onStato);
+      expect(stato.ingredientiNuovi[0].prezzoConfezione).toBe(1.2);
+      expect(stato.ingredientiNuovi.slice(1).every((i) => i.prezzoConfezione === null)).toBe(true);
+    });
+
+    it('un prezzo "0" blocca VAI AL RIEPILOGO come un formato non valido; svuotarlo lo sblocca', async () => {
+      render(<Formati piano={PIANO_MENU_SETTIMANALE} stato={STATO} ingredientiEsistenti={[AVENA]} onStato={() => {}} />);
+      const prezzo = (await screen.findAllByLabelText(/prezzo di una confezione di/i))[0];
+      const avanti = screen.getByRole('button', { name: /vai al riepilogo/i });
+      expect(avanti).toBeEnabled();
+
+      fireEvent.change(prezzo, { target: { value: '0' } });
+      expect(avanti).toBeDisabled();
+
+      fireEvent.change(prezzo, { target: { value: '' } });
+      expect(avanti).toBeEnabled();
+    });
+  });
 });

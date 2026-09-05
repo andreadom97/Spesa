@@ -53,6 +53,24 @@ const OPZIONI_CLASSE = [
   { id: 'stima', label: 'A STIMA' },
 ];
 
+/**
+ * Il prezzo si digita in un campo di testo (non `type="number"`): il tastierino
+ * decimale di iOS in italiano offre la virgola, e un input numerico la
+ * rifiuterebbe in silenzio. Vuoto = nessun prezzo (`null`); altrimenti si
+ * accetta virgola o punto e si lascia al chiamante decidere se il numero è
+ * valido (NaN o ≤ 0 bloccano il salvataggio, come per il formato).
+ */
+function analizzaPrezzo(testo: string): number | null {
+  const pulito = testo.trim();
+  if (!pulito) return null;
+  return Number(pulito.replace(',', '.'));
+}
+
+/** Da numero a testo del campo: con la virgola, come lo si scriverebbe. */
+function prezzoInTesto(prezzo: number | null): string {
+  return prezzo === null ? '' : String(prezzo).replace('.', ',');
+}
+
 /** Stessa conversione hex->rgba duplicata in TesseraIngrediente.tsx: qui serve
  * per lo sfondo al 22% della cella d'area selezionata. */
 function rgba(hex: string, alpha: number): string {
@@ -105,10 +123,11 @@ export default function IngredienteEditor() {
   // nella lista base settimanale.
   const [deperibile, setDeperibile] = useState(true);
   const [formatoTesto, setFormatoTesto] = useState('');
-  // Il prezzo per confezione si conserva com'è: un salvataggio da questa
-  // scheda non deve cancellare in silenzio il prezzo di un ingrediente che
-  // ce l'ha (salvaIngrediente scrive sempre la colonna, anche null).
-  const [prezzoConfezione, setPrezzoConfezione] = useState<number | null>(null);
+  // Testo del campo prezzo, non numero: così "2," resta "2," mentre si
+  // digita. Caricato dall'ingrediente esistente perché salvaIngrediente
+  // scrive sempre la colonna, anche null: un salvataggio da questa scheda
+  // non deve cancellare in silenzio un prezzo già messo.
+  const [prezzoTesto, setPrezzoTesto] = useState('');
 
   useEffect(() => {
     let vivo = true;
@@ -130,7 +149,7 @@ export default function IngredienteEditor() {
           setClasseResiduo(trovato.classeResiduo);
           setDeperibile(trovato.deperibile);
           setFormatoTesto(String(trovato.formatoConfezione));
-          setPrezzoConfezione(trovato.prezzoConfezione);
+          setPrezzoTesto(prezzoInTesto(trovato.prezzoConfezione));
           // Non blocca il caricamento della scheda se fallisce: al peggio la
           // conferma di eliminazione mostra o no la frase sullo storico.
           // Fail-safe invertito di proposito: se non sappiamo se ci sono
@@ -176,12 +195,19 @@ export default function IngredienteEditor() {
   }
 
   const formatoConfezione = Number(formatoTesto);
+  // Il prezzo è facoltativo, ma se c'è dev'essere un numero positivo: un
+  // "0" o un "abc" bloccano il salvataggio come un formato non valido,
+  // invece di finire in tabella (che ha comunque un check > 0).
+  const prezzoConfezione = analizzaPrezzo(prezzoTesto);
+  const prezzoNonValido =
+    prezzoConfezione !== null && (!Number.isFinite(prezzoConfezione) || prezzoConfezione <= 0);
   const nonValido =
     !nome.trim() ||
     area === null ||
     !formatoTesto.trim() ||
     Number.isNaN(formatoConfezione) ||
-    formatoConfezione <= 0;
+    formatoConfezione <= 0 ||
+    prezzoNonValido;
 
   async function salva() {
     if (nonValido || salvando || area === null) return;
@@ -464,6 +490,48 @@ export default function IngredienteEditor() {
           Quanto ne vendono in una confezione. Serve a sapere quante confezioni comprare, non quanti grammi.
           Dove il peso varia — carne, pesce, formaggio al banco — basta un valore indicativo: lo scarto lo
           correggi dalla Dispensa quando il conto non torna.
+        </div>
+
+        {/* Sotto il formato, perché è il prezzo di QUELLA confezione: serve
+            solo al contatore del non ricomprato (spec §4), non alla lista. */}
+        <Etichetta margine="24px 4px 10px">PREZZO DI UNA CONFEZIONE</Etichetta>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div
+            style={{
+              flex: 1,
+              height: 56,
+              borderRadius: 16,
+              background: '#FFFFFF',
+              border: '1px solid rgba(20,22,58,0.12)',
+              display: 'flex',
+              alignItems: 'center',
+              padding: '0 16px',
+            }}
+          >
+            <input
+              type="text"
+              inputMode="decimal"
+              value={prezzoTesto}
+              onChange={(e) => setPrezzoTesto(e.target.value)}
+              aria-label="Prezzo di una confezione"
+              style={{
+                width: '100%',
+                border: 'none',
+                outline: 'none',
+                background: 'transparent',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 22,
+                fontWeight: 700,
+                color: 'var(--ink)',
+              }}
+            />
+          </div>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 16, fontWeight: 700, color: 'var(--sec)', width: 34 }}>
+            €
+          </span>
+        </div>
+        <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', marginTop: 8 }}>
+          Facoltativo, in euro: serve solo a contare quanto non ricompri
         </div>
 
         <Etichetta margine="24px 4px 10px">COME SI CONSUMA</Etichetta>

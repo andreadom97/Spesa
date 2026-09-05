@@ -25,9 +25,11 @@ vi.mock('next/navigation', () => ({
 import { salvaIngrediente, leggiIngredienti, eliminaIngrediente, haAcquistiRegistrati, IngredienteInUsoError } from '@/data/repertorio';
 import IngredienteEditor from '../page';
 
+// Con un prezzo salvato (2.5): serve a verificare che l'editor lo mostri
+// alla lettura, con la virgola italiana, e che lo tolga se il campo si svuota.
 const ING_YOGURT: Ingredient = {
   id: 'i-1', nome: 'Yogurt greco', unitaBase: 'g', area: 'latticini',
-  classeResiduo: 'stima', deperibile: true, formatoConfezione: 500, prezzoConfezione: null,
+  classeResiduo: 'stima', deperibile: true, formatoConfezione: 500, prezzoConfezione: 2.5,
 };
 
 // Dato "sporco" come quello che la Important 1 della review permetteva di
@@ -304,5 +306,71 @@ describe('Ingrediente (editor)', () => {
     // Il dialogo si chiude e il messaggio resta visibile nella pagina, stessa
     // convenzione già usata per l'eliminazione del piatto.
     expect(screen.queryByText('Eliminare questo ingrediente?')).not.toBeInTheDocument();
+  });
+
+  describe('prezzo di una confezione', () => {
+    it('modifica: mostra il prezzo esistente con la virgola decimale (2.5 → "2,5")', async () => {
+      paramsIngId = 'i-1';
+
+      render(<IngredienteEditor />);
+      await screen.findByDisplayValue('Yogurt greco');
+
+      expect(screen.getByText('PREZZO DI UNA CONFEZIONE')).toBeInTheDocument();
+      expect(screen.getByText('Facoltativo, in euro: serve solo a contare quanto non ricompri')).toBeInTheDocument();
+      expect(screen.getByLabelText('Prezzo di una confezione')).toHaveValue('2,5');
+    });
+
+    it('campo vuoto: salva prezzoConfezione null, anche su un ingrediente che un prezzo ce l\'aveva', async () => {
+      paramsIngId = 'i-1';
+      vi.mocked(salvaIngrediente).mockResolvedValue('i-1');
+
+      render(<IngredienteEditor />);
+      await screen.findByDisplayValue('Yogurt greco');
+
+      fireEvent.change(screen.getByLabelText('Prezzo di una confezione'), { target: { value: '' } });
+      fireEvent.click(screen.getByRole('button', { name: 'SALVA INGREDIENTE' }));
+
+      await waitFor(() => expect(salvaIngrediente).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'i-1', prezzoConfezione: null }),
+      ));
+    });
+
+    it('"2,5" con la virgola si salva come 2.5', async () => {
+      vi.mocked(salvaIngrediente).mockResolvedValue('i-nuovo');
+      render(<IngredienteEditor />);
+      await screen.findByPlaceholderText("Dai un nome all'ingrediente");
+
+      fireEvent.change(screen.getByPlaceholderText("Dai un nome all'ingrediente"), { target: { value: 'Riso' } });
+      fireEvent.click(screen.getByRole('button', { name: 'PASTA, RISO E CEREALI' }));
+      fireEvent.change(screen.getByLabelText('Formato della confezione'), { target: { value: '1000' } });
+      fireEvent.change(screen.getByLabelText('Prezzo di una confezione'), { target: { value: '2,5' } });
+      fireEvent.click(screen.getByRole('button', { name: 'SALVA INGREDIENTE' }));
+
+      await waitFor(() => expect(salvaIngrediente).toHaveBeenCalledWith(
+        expect.objectContaining({ nome: 'Riso', formatoConfezione: 1000, prezzoConfezione: 2.5 }),
+      ));
+    });
+
+    it('un prezzo compilato ma non positivo ("0") o non numerico ("abc") blocca il salvataggio, come il formato non valido', async () => {
+      paramsIngId = 'i-1';
+
+      render(<IngredienteEditor />);
+      await screen.findByDisplayValue('Yogurt greco');
+      const salva = screen.getByRole('button', { name: 'SALVA INGREDIENTE' });
+      const prezzo = screen.getByLabelText('Prezzo di una confezione');
+      expect(salva).toBeEnabled();
+
+      fireEvent.change(prezzo, { target: { value: '0' } });
+      expect(salva).toBeDisabled();
+
+      fireEvent.change(prezzo, { target: { value: 'abc' } });
+      expect(salva).toBeDisabled();
+
+      fireEvent.change(prezzo, { target: { value: '3' } });
+      expect(salva).toBeEnabled();
+
+      fireEvent.click(salva);
+      expect(salvaIngrediente).toHaveBeenCalledTimes(1);
+    });
   });
 });
