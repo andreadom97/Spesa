@@ -366,7 +366,7 @@ async function chiamaModello(client: Anthropic, parametri: ParametriStream): Pro
 }
 
 /** La v1 con l'usage: `estraiPiano` ne restituisce il solo grezzo, `estraiPianoAPagine` la usa per il caso a una pagina. */
-function estraiPianoConUso(files: FileEstrazione[], modello: string): Promise<EstrazioneConUso> {
+export function estraiPianoConUso(files: FileEstrazione[], modello: string): Promise<EstrazioneConUso> {
   return chiamaModello(clientAnthropic(), parametriRichiesta(files, modello, 32000, SCHEMA_ESITO, ISTRUZIONE_V1));
 }
 
