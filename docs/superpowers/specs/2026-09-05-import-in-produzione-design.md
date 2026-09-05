@@ -90,7 +90,12 @@ attesa: 15–30 s [ipotesi, l'eval misura].
 `validaIndice` (in `indice.ts`, stessa disciplina di `valida.ts`): pagine numerate
 1..N contigue e tutte presenti; per gli archetipi settimanali `giorno` in 0..6 e
 `titolo` null; per `giorni_tipo` `titolo` non vuoto; una pagina può essere vuota
-(`contenuto: []`, per copertine e regolamenti) ma dev'essere dichiarata.
+(`contenuto: []`, per copertine e regolamenti) ma dev'essere dichiarata; `fonte` e note
+al massimo 500 caratteri, titoli e nomi dei pasti al massimo 120 (sono testo del modello
+che rientra nel prompt di pagina, dove passano anche da una pulizia: niente a capo né
+virgolette, troncati a 80). L'orchestratore, che conosce N, esige poi che l'indice abbia
+esattamente N pagine e almeno una con contenuto: altrimenti 422, mai un piano parziale
+o vuoto spacciato per intero.
 
 ### 2.2 Passaggio B — una chiamata per pagina, in parallelo
 
@@ -123,8 +128,9 @@ export function fondiPagine(indice: IndiceEstrazione, pagine: { pagina: number; 
 
 Regole, nell'ordine:
 
-1. `archetipo` e `fonte` vengono dall'indice; le pagine che li contraddicono
-   producono una nota, non un errore.
+1. `archetipo` e `fonte` vengono dall'indice; una pagina con un archetipo diverso
+   produce una nota, non un errore; una `fonte` diversa non produce nulla (è testo
+   libero, diverso a ogni chiamata: l'indice vince in silenzio).
 2. I giorni si identificano per `(settimana.numero, giorno)`. Stesso giorno su due
    pagine → i pasti della pagina successiva si accodano a quelli della precedente.
 3. Se la pagina k ha `continuaDallaPrecedente: true` e il suo primo pasto ha lo stesso
@@ -148,10 +154,17 @@ contenere solo la settimana 2, e la contiguità è una regola del tutto): passan
   dell'eval.
 - **PDF multipagina**: si divide server-side in PDF a pagina singola con `pdf-lib`
   (JavaScript puro, nessuna dipendenza nativa, gira nelle funzioni Vercel), ogni
-  pagina diventa un blocco `document`. Pipeline identica alle foto. Se `pdf-lib` non
-  riesce a leggere il file (cifrato, corrotto), 400 `richiesta non valida` con
-  messaggio in pagina "il PDF non si apre: prova con le foto". I PDF di sole
-  immagini (scansioni) funzionano come documenti, non serve OCR a monte.
+  pagina diventa un blocco `document`. Pipeline identica alle foto. Il numero di
+  pagine si controlla **prima** di materializzarle (`getPageCount()` subito dopo
+  `load`): un PDF sotto i 4 MB può avere centinaia di pagine che condividono
+  un'immagine pesante, e copiarle tutte per poi scartarle mandava la funzione in
+  out-of-memory; oltre le 12 pagine → 413 `troppe pagine: la v1 accetta fino a 12 foto`
+  senza produrre nulla. Se `pdf-lib` non riesce a leggere il file (cifrato, corrotto,
+  senza pagine), 400 `{ errore: 'il PDF non si apre: prova con le foto' }`, mostrato
+  in pagina così com'è. La divisione avviene **dopo** la registrazione e il tetto
+  (§3): aprire un PDF può costare memoria, quindi consuma uno slot come ogni altro
+  tentativo, e chi è oltre il limite non la spende affatto. I PDF di sole immagini
+  (scansioni) funzionano come documenti, non serve OCR a monte.
 
 ### 2.5 Costo e cache
 
@@ -183,19 +196,26 @@ stima non è più un'ipotesi.
 Il costo di un import non giustifica un limite: lo giustifica una chiave in produzione
 raggiungibile da chiunque abbia un account. Il limite è una difesa, e va dichiarato.
 
-- **Tabella `import_uso`** (migrazione 0010): `id`, `user_id`, `avviato_il`, `pagine`,
+- **Tabella `import_uso`** (migrazione 0010): `id`, `user_id`, `avviato_il`, `pagine`
+  (0..12: `0` è un PDF, il cui numero di pagine non è noto alla registrazione),
   `modello`. Nessun contenuto della dieta. RLS abilitata e forzata; policy `select` e
   `insert` per il proprietario; **nessuna policy di update o delete**: un utente non
-  può azzerarsi il contatore.
-- **Regola**: al massimo `IMPORT_LIMITE_30GG` import (default 3) nei 30 giorni
-  precedenti, contati sulle righe di `import_uso`. `0` disattiva il limite (solo
-  sviluppo). Un import si registra **prima** delle chiamate al modello, con il client
-  Supabase che porta il JWT dell'utente (così la RLS vale): due invii concorrenti
-  contano due. Un import fallito per colpa nostra consuma comunque uno slot: è un
-  limite dichiarato, non un bug, e il tetto è generoso rispetto all'uso reale (un
-  import per cambio dieta). Andrea può ripristinare a mano dal pannello Supabase.
-- **Route**: il controllo sta dopo auth e cap dimensione e prima di qualunque chiamata.
-  Oltre il limite → 429 `{ errore: 'hai già fatto 3 import negli ultimi 30 giorni: il prossimo dal 12/09/2026' }`,
+  può azzerarsi il contatore. L'`insert` è concesso solo sulle colonne `user_id`,
+  `pagine`, `modello`: `id` e `avviato_il` li decide il DB, così nessuno retrodata
+  un import per uscire dalla finestra.
+- **Regola**: al massimo `IMPORT_LIMITE_30GG` import (default 3; solo un intero in
+  cifre è un valore, vuota o malformata → 3) nei 30 giorni precedenti, contati sulle
+  righe di `import_uso`. `0` disattiva il limite (solo sviluppo). L'ordine è
+  **registra, poi conta**: la riga si scrive con il client Supabase che porta il JWT
+  dell'utente (così la RLS vale), poi si contano le righe nella finestra, riga nuova
+  inclusa, e se superano il limite → 429. Un controlla-poi-inserisci lasciava passare
+  tutte le richieste concorrenti; così al più `limite` passano, le altre consumano uno
+  slot e ricevono 429. Un import fallito per colpa nostra, un PDF che non si apre o
+  con troppe pagine consumano comunque uno slot: è un limite dichiarato, non un bug,
+  e il tetto è generoso rispetto all'uso reale (un import per cambio dieta). Andrea
+  può ripristinare a mano dal pannello Supabase.
+- **Route**: registrazione e controllo stanno dopo auth e cap dimensione, prima della
+  divisione del PDF e di qualunque chiamata al modello. Oltre il limite → 429 `{ errore: 'hai già fatto 3 import negli ultimi 30 giorni: il prossimo dal 12/09/2026' }`,
   con la data = il più vecchio import nella finestra + 30 giorni, in `it-IT`.
 - **Pagina Importa**: 429 mostra il messaggio della route così com'è, come già fa
   per il 413.
@@ -239,7 +259,7 @@ cosa produce.
 | File | Cambia |
 |---|---|
 | `src/server/import-ai.ts` | Nascono `estraiIndice`, `estraiPagina`, `estraiPianoAPagine` (orchestratore con concorrenza e `usage`); `estraiPiano` resta per il caso a una pagina e per la baseline dell'eval; `cache_control` sull'ultimo blocco pagina in tutte le chiamate; `IMPORT_AI_EFFORT` opzionale → `output_config.effort` |
-| `src/server/pdf-pagine.ts` | Nuovo: `dividiPdf(base64) → base64[]` con `pdf-lib` |
+| `src/server/pdf-pagine.ts` | Nuovo: `dividiPdf(bytes, maxPagine) → base64[]` con `pdf-lib`; `TroppePagineError` prima di copiare le pagine |
 | `src/domain/import/indice.ts`, `fusione.ts` | Nuovi, puri, testati senza rete |
 | `src/domain/import/valida.ts` | `validaPianoParziale` esportata (forma sola) |
 | `src/app/api/import/estrai/route.ts` | Limite per utente (429) dopo i cap; PDF diviso; `estraiPianoAPagine` al posto di `estraiPiano` oltre una pagina; `maxDuration` resta 300 |
@@ -278,7 +298,8 @@ le pagine divise del PDF vivono in memoria per la durata della richiesta.
 - Un pasto spezzato su due pagine si ricompone solo se l'indice lo segnala
   (`continuaDallaPrecedente`) e i nomi coincidono; altrimenti compare come due pasti
   con lo stesso nome, correggibili in revisione.
-- Il limite per utente conta i tentativi, non i successi.
+- Il limite per utente conta i tentativi, non i successi: anche i 429 concorrenti, i
+  PDF illeggibili e quelli con troppe pagine consumano uno slot.
 - I prezzi nel report sono costanti nel codice, con la data: se il listino cambia,
   cambiano a mano.
 - `IMPORT_CONCORRENZA` è un'ipotesi sul tier API: la verifica è il primo run reale.

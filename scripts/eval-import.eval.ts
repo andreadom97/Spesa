@@ -198,8 +198,9 @@ describe('eval estrattore', () => {
   }
   /** Il PDF intero per la singola; una pagina per file per la pipeline a pagine (come fa la route). */
   async function caricaPdf(percorso: string, pipeline: PipelineEval): Promise<FileEstrazione[]> {
-    const intero = readFileSync(percorso).toString('base64');
-    const pagine = pipeline === 'pagine' ? await dividiPdf(intero) : [intero];
+    const byte = readFileSync(percorso);
+    // Stesso cap della route (12 pagine): l'eval misura ciò che la produzione accetta.
+    const pagine = pipeline === 'pagine' ? await dividiPdf(new Uint8Array(byte), 12) : [byte.toString('base64')];
     return pagine.map((base64) => ({ tipo: 'pdf' as const, mime: 'application/pdf', base64 }));
   }
   function caricaFile(caso: CasoDaEseguire, pipeline: PipelineEval): Promise<FileEstrazione[]> {

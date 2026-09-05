@@ -29,7 +29,7 @@ vi.mock('@/data/import-uso', async (importOriginal) => ({
 import { POST, maxDuration } from '../route';
 import { FIXTURE_MENU_SETTIMANALE, FIXTURE_RIFIUTO_MACRO } from '@/domain/import/fixtures';
 import { PianoNonValidoError } from '@/domain/import/valida';
-import { PdfIllegibileError } from '@/server/pdf-pagine';
+import { PdfIllegibileError, TroppePagineError } from '@/server/pdf-pagine';
 import { MODELLO_DEFAULT_IMPORT } from '@/server/import-ai';
 
 const USO = { chiamate: 1, inputTokens: 10, outputTokens: 5, cacheLetti: 0, cacheScritti: 0, durataMs: 1 };
@@ -68,7 +68,7 @@ describe('POST /api/import/estrai', () => {
     createClientMock.mockImplementation(() => ({ auth: { getUser: getUserMock } }));
     estraiPianoAPagineMock.mockReset();
     dividiPdfMock.mockReset();
-    dividiPdfMock.mockImplementation(async (base64: string) => [base64]);
+    dividiPdfMock.mockImplementation(async (bytes: Uint8Array) => [Buffer.from(bytes).toString('base64')]);
     contaImportRecentiMock.mockReset();
     contaImportRecentiMock.mockResolvedValue({ conteggio: 0, piuVecchio: null });
     registraImportMock.mockReset();
@@ -196,18 +196,19 @@ describe('POST /api/import/estrai', () => {
       estraiPianoAPagineMock.mockResolvedValue(conUso(FIXTURE_RIFIUTO_MACRO));
     });
 
-    it('sotto il limite: registra una volta con pagine = n immagini, poi estrae con la concorrenza configurata', async () => {
+    it('sotto il limite: registra PRIMA di contare (pagine = n immagini), poi estrae con la concorrenza configurata', async () => {
       process.env.IMPORT_CONCORRENZA = '2';
-      contaImportRecentiMock.mockResolvedValue({ conteggio: 2, piuVecchio: new Date('2026-08-20T08:00:00Z') });
+      // Il conteggio include la riga appena inserita: 2 vecchie + questa = 3, cioè il limite → passa.
+      contaImportRecentiMock.mockResolvedValue({ conteggio: 3, piuVecchio: new Date('2026-08-20T08:00:00Z') });
       const res = await POST(richiesta({ nImmagini: 5 }));
       expect(res.status).toBe(200);
 
       const sbUtente = clientUtente();
       expect(sbUtente).toBeDefined();
-      expect(contaImportRecentiMock).toHaveBeenCalledTimes(1);
-      expect(contaImportRecentiMock).toHaveBeenCalledWith(sbUtente, 'u1', expect.any(Date));
       expect(registraImportMock).toHaveBeenCalledTimes(1);
       expect(registraImportMock).toHaveBeenCalledWith(sbUtente, 'u1', 5, MODELLO_DEFAULT_IMPORT);
+      expect(contaImportRecentiMock).toHaveBeenCalledTimes(1);
+      expect(contaImportRecentiMock).toHaveBeenCalledWith(sbUtente, 'u1', expect.any(Date));
 
       expect(estraiPianoAPagineMock).toHaveBeenCalledTimes(1);
       const [files, modello, opzioni] = estraiPianoAPagineMock.mock.calls[0]!;
@@ -215,17 +216,32 @@ describe('POST /api/import/estrai', () => {
       expect(files.every((f: { tipo: string }) => f.tipo === 'immagine')).toBe(true);
       expect(modello).toBe(MODELLO_DEFAULT_IMPORT);
       expect(opzioni).toEqual({ concorrenza: 2 });
-      // La registrazione precede le chiamate al modello: si contano i tentativi.
-      expect(registraImportMock.mock.invocationCallOrder[0]).toBeLessThan(estraiPianoAPagineMock.mock.invocationCallOrder[0]!);
+      // Registra → conta → modello: la riga si scrive prima del controllo, così due
+      // invii concorrenti non passano entrambi sullo stesso slot (si contano i tentativi).
+      expect(registraImportMock.mock.invocationCallOrder[0]).toBeLessThan(contaImportRecentiMock.mock.invocationCallOrder[0]!);
+      expect(contaImportRecentiMock.mock.invocationCallOrder[0]).toBeLessThan(estraiPianoAPagineMock.mock.invocationCallOrder[0]!);
     });
 
-    it('al limite: 429 con la data del più vecchio + 30 giorni, nessuna registrazione né chiamata', async () => {
-      contaImportRecentiMock.mockResolvedValue({ conteggio: 3, piuVecchio: new Date('2026-08-13T10:00:00Z') });
+    it('oltre il limite (conteggio = limite + 1, riga nuova inclusa): 429 con la data del più vecchio + 30 giorni, slot consumato, nessuna chiamata', async () => {
+      contaImportRecentiMock.mockResolvedValue({ conteggio: 4, piuVecchio: new Date('2026-08-13T10:00:00Z') });
       const res = await POST(richiesta({ nImmagini: 2 }));
       expect(res.status).toBe(429);
       expect((await res.json()).errore).toBe('hai già fatto 3 import negli ultimi 30 giorni: il prossimo dal 12/09/2026');
-      expect(registraImportMock).not.toHaveBeenCalled();
+      expect(registraImportMock).toHaveBeenCalledTimes(1);
+      expect(registraImportMock.mock.invocationCallOrder[0]).toBeLessThan(contaImportRecentiMock.mock.invocationCallOrder[0]!);
       expect(estraiPianoAPagineMock).not.toHaveBeenCalled();
+      expect(dividiPdfMock).not.toHaveBeenCalled();
+    });
+
+    it('IMPORT_LIMITE_30GG=5: conteggio 5 passa, conteggio 6 è 429 col 5 nel messaggio', async () => {
+      process.env.IMPORT_LIMITE_30GG = '5';
+      contaImportRecentiMock.mockResolvedValue({ conteggio: 5, piuVecchio: new Date('2026-08-13T10:00:00Z') });
+      expect((await POST(richiesta({ nImmagini: 2 }))).status).toBe(200);
+      contaImportRecentiMock.mockResolvedValue({ conteggio: 6, piuVecchio: new Date('2026-08-13T10:00:00Z') });
+      const res = await POST(richiesta({ nImmagini: 2 }));
+      expect(res.status).toBe(429);
+      expect((await res.json()).errore).toBe('hai già fatto 5 import negli ultimi 30 giorni: il prossimo dal 12/09/2026');
+      expect(estraiPianoAPagineMock).toHaveBeenCalledTimes(1);
     });
 
     it('IMPORT_LIMITE_30GG=0: né conteggio né registrazione, ma si estrae', async () => {
@@ -237,52 +253,68 @@ describe('POST /api/import/estrai', () => {
       expect(estraiPianoAPagineMock).toHaveBeenCalledTimes(1);
     });
 
-    it('PDF a 3 pagine: dividiPdf, tre FileEstrazione tipo pdf, registrazione con pagine 3', async () => {
+    it('PDF a 3 pagine: registrazione con pagine 0 (PDF non ancora diviso), poi dividiPdf(byte, 12), tre FileEstrazione tipo pdf', async () => {
       dividiPdfMock.mockResolvedValue(['p1', 'p2', 'p3']);
       const res = await POST(richiesta({ documento: true }));
       expect(res.status).toBe(200);
+      expect(registraImportMock).toHaveBeenCalledWith(clientUtente(), 'u1', 0, MODELLO_DEFAULT_IMPORT);
       expect(dividiPdfMock).toHaveBeenCalledTimes(1);
-      expect(typeof dividiPdfMock.mock.calls[0]![0]).toBe('string');
+      const [byte, maxPagine] = dividiPdfMock.mock.calls[0]!;
+      expect(byte).toBeInstanceOf(Uint8Array);
+      expect(Buffer.from(byte).toString()).toBe('pdf');
+      expect(maxPagine).toBe(12);
+      // La registrazione e il conteggio precedono la divisione: il PDF non si materializza per chi è oltre il tetto.
+      expect(registraImportMock.mock.invocationCallOrder[0]).toBeLessThan(dividiPdfMock.mock.invocationCallOrder[0]!);
+      expect(contaImportRecentiMock.mock.invocationCallOrder[0]).toBeLessThan(dividiPdfMock.mock.invocationCallOrder[0]!);
       const files = estraiPianoAPagineMock.mock.calls[0]![0];
       expect(files).toEqual([
         { tipo: 'pdf', mime: 'application/pdf', base64: 'p1' },
         { tipo: 'pdf', mime: 'application/pdf', base64: 'p2' },
         { tipo: 'pdf', mime: 'application/pdf', base64: 'p3' },
       ]);
-      expect(registraImportMock).toHaveBeenCalledWith(clientUtente(), 'u1', 3, MODELLO_DEFAULT_IMPORT);
     });
 
-    it('PdfIllegibileError → 400 richiesta non valida, nessuna registrazione', async () => {
+    it('PdfIllegibileError → 400 col messaggio della spec; lo slot è già consumato', async () => {
       dividiPdfMock.mockRejectedValue(new PdfIllegibileError());
       const res = await POST(richiesta({ documento: true }));
       expect(res.status).toBe(400);
-      expect((await res.json()).errore).toBe('richiesta non valida');
-      expect(registraImportMock).not.toHaveBeenCalled();
+      expect((await res.json()).errore).toBe('il PDF non si apre: prova con le foto');
+      expect(registraImportMock).toHaveBeenCalledTimes(1);
       expect(estraiPianoAPagineMock).not.toHaveBeenCalled();
     });
 
-    it('PDF che divide in 13 pagine → 413 col messaggio delle pagine, nessuna registrazione', async () => {
-      dividiPdfMock.mockResolvedValue(Array.from({ length: 13 }, (_, i) => `p${i}`));
+    it('TroppePagineError da dividiPdf → 413 col messaggio delle pagine; lo slot è già consumato', async () => {
+      dividiPdfMock.mockRejectedValue(new TroppePagineError(13));
       const res = await POST(richiesta({ documento: true }));
       expect(res.status).toBe(413);
       expect((await res.json()).errore).toBe('troppe pagine: la v1 accetta fino a 12 foto');
-      expect(registraImportMock).not.toHaveBeenCalled();
+      expect(registraImportMock).toHaveBeenCalledTimes(1);
       expect(estraiPianoAPagineMock).not.toHaveBeenCalled();
     });
 
-    it('Supabase che fallisce su contaImportRecenti → 502, nessuna registrazione né chiamata', async () => {
-      contaImportRecentiMock.mockRejectedValue({ message: 'connessione rifiutata', code: '08001' });
-      const res = await POST(richiesta({ nImmagini: 2 }));
-      expect(res.status).toBe(502);
-      expect((await res.json()).errore).toBe('estrazione non riuscita, riprova');
-      expect(registraImportMock).not.toHaveBeenCalled();
+    it('PDF oltre il tetto: 429 senza mai dividere il PDF', async () => {
+      contaImportRecentiMock.mockResolvedValue({ conteggio: 4, piuVecchio: new Date('2026-08-13T10:00:00Z') });
+      const res = await POST(richiesta({ documento: true }));
+      expect(res.status).toBe(429);
+      expect(registraImportMock).toHaveBeenCalledWith(clientUtente(), 'u1', 0, MODELLO_DEFAULT_IMPORT);
+      expect(dividiPdfMock).not.toHaveBeenCalled();
       expect(estraiPianoAPagineMock).not.toHaveBeenCalled();
     });
 
-    it('Supabase che fallisce su registraImport → 502, nessuna chiamata al modello', async () => {
+    it('Supabase che fallisce su registraImport → 502, nessun conteggio né chiamata al modello', async () => {
       registraImportMock.mockRejectedValue({ message: 'connessione rifiutata', code: '08001' });
       const res = await POST(richiesta({ nImmagini: 2 }));
       expect(res.status).toBe(502);
+      expect((await res.json()).errore).toBe('estrazione non riuscita, riprova');
+      expect(contaImportRecentiMock).not.toHaveBeenCalled();
+      expect(estraiPianoAPagineMock).not.toHaveBeenCalled();
+    });
+
+    it('Supabase che fallisce su contaImportRecenti → 502, nessuna chiamata al modello', async () => {
+      contaImportRecentiMock.mockRejectedValue({ message: 'connessione rifiutata', code: '08001' });
+      const res = await POST(richiesta({ nImmagini: 2 }));
+      expect(res.status).toBe(502);
+      expect(registraImportMock).toHaveBeenCalledTimes(1);
       expect(estraiPianoAPagineMock).not.toHaveBeenCalled();
     });
   });

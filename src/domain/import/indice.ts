@@ -55,8 +55,18 @@ function intero(v: unknown, percorso: string): number {
   if (typeof v !== 'number' || !Number.isInteger(v)) throw new PianoNonValidoError(percorso, 'non è un intero');
   return v;
 }
+/** Le stringhe libere dell'indice rientrano nel prompt di pagina: un tetto di lunghezza contiene ciò che il modello vi mette. */
+function strCorta(v: unknown, percorso: string, max: number): string {
+  const s = str(v, percorso);
+  if (s.length > max) throw new PianoNonValidoError(percorso, 'troppo lungo');
+  return s;
+}
 
 const ARCHETIPI = new Set(['menu_settimanale', 'giornata_unica', 'griglia_alternative', 'giorni_tipo']);
+/** Testo libero descrittivo (fonte, note). */
+const MAX_TESTO_LIBERO = 500;
+/** Titolo dello scenario e nomi dei pasti: sul foglio sono una manciata di parole. */
+const MAX_NOME = 120;
 
 function validaVoce(v: unknown, percorso: string, giorniTipo: boolean): VocePagina {
   const vo = ogg(v, percorso);
@@ -64,13 +74,13 @@ function validaVoce(v: unknown, percorso: string, giorniTipo: boolean): VocePagi
   if (settimana < 1 || settimana > 4) throw new PianoNonValidoError(`${percorso}.settimana`, 'fuori da 1..4');
   const giorno = intero(vo.giorno, `${percorso}.giorno`);
   if (giorno < 0 || (!giorniTipo && giorno > 6)) throw new PianoNonValidoError(`${percorso}.giorno`, 'fuori intervallo');
-  const titoloGrezzo = vo.titolo === undefined || vo.titolo === null ? null : str(vo.titolo, `${percorso}.titolo`);
+  const titoloGrezzo = vo.titolo === undefined || vo.titolo === null ? null : strCorta(vo.titolo, `${percorso}.titolo`, MAX_NOME);
   if (giorniTipo && (titoloGrezzo === null || titoloGrezzo.trim() === ''))
     throw new PianoNonValidoError(`${percorso}.titolo`, 'obbligatorio per giorni_tipo');
   if (!giorniTipo && titoloGrezzo !== null)
     throw new PianoNonValidoError(`${percorso}.titolo`, 'ammesso solo per giorni_tipo');
   const pasti = arr(vo.pasti, `${percorso}.pasti`).map((p, i) => {
-    const nome = str(p, `${percorso}.pasti[${i}]`);
+    const nome = strCorta(p, `${percorso}.pasti[${i}]`, MAX_NOME);
     if (nome.trim() === '') throw new PianoNonValidoError(`${percorso}.pasti[${i}]`, 'vuoto');
     return nome;
   });
@@ -100,9 +110,9 @@ function validaIndiceEstrazione(v: unknown): IndiceEstrazione {
     throw new PianoNonValidoError('indice.pagine', 'non contigue');
   return {
     archetipo: archetipo as ArchetipoImportabile,
-    fonte: str(ind.fonte, 'indice.fonte'),
+    fonte: strCorta(ind.fonte, 'indice.fonte', MAX_TESTO_LIBERO),
     pagine: pagineValidate,
-    noteEstrazione: arr(ind.noteEstrazione, 'indice.noteEstrazione').map((n, i) => str(n, `indice.noteEstrazione[${i}]`)),
+    noteEstrazione: arr(ind.noteEstrazione, 'indice.noteEstrazione').map((n, i) => strCorta(n, `indice.noteEstrazione[${i}]`, MAX_TESTO_LIBERO)),
   };
 }
 

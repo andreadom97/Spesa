@@ -311,6 +311,21 @@ describe('estraiIndice ed estraiPagina', () => {
     expect(esito.grezzo).toEqual(pianoDelGiorno(1, 1));
   });
 
+  it('titoli e nomi dei pasti dall\'indice entrano nell\'istruzione puliti: niente a capo né virgolette, troncati a 80', async () => {
+    const lungo = 'x'.repeat(300);
+    const giorniTipo = indiceDi([{
+      contenuto: [{ settimana: 1, giorno: 0, titolo: 'Piano\n"uno"', pasti: ['cola\r\nzione   "vera"', lungo] }],
+    }], { archetipo: 'giorni_tipo' });
+    finto.stato.risposte.push({ corpo: RIFIUTO });
+    await estraiPagina(foto(1), giorniTipo.indice.pagine[0], giorniTipo.indice as IndiceEstrazione, 'claude-sonnet-5');
+    const testo: string = finto.stato.chiamate[0].messages[0].content[1].text;
+    expect(testo).toContain('giorno 0 ("Piano uno")');
+    expect(testo).toContain('pasti: cola zione vera, ' + 'x'.repeat(80) + '.');
+    expect(testo).not.toContain('x'.repeat(81));
+    expect(testo).not.toContain('\r');
+    expect(testo).not.toContain('Piano\n');
+  });
+
   it('pagina senza continuaDallaPrecedente: nessuna istruzione sulla coda; giorni_tipo cita il titolo', async () => {
     const giorniTipo = indiceDi([{ contenuto: [{ settimana: 1, giorno: 0, titolo: 'Piano 1', pasti: ['colazione'] }] }], { archetipo: 'giorni_tipo' });
     finto.stato.risposte.push({ corpo: RIFIUTO });
@@ -397,14 +412,33 @@ describe('estraiPianoAPagine', () => {
     await expect(estraiPianoAPagine(foto(2), 'claude-sonnet-5')).rejects.toThrow('rate limit esaurito');
   });
 
+  it('indice con meno pagine dei file inviati → PianoNonValidoError (attese N), nessuna chiamata di pagina', async () => {
+    // 3 foto, indice di 2 pagine: senza il confronto la terza foto sparirebbe e il piano parziale uscirebbe come intero.
+    finto.stato.risposte.push({ corpo: indiceDi([{ contenuto: [voce(1, 0)] }, { contenuto: [voce(1, 1)] }]) });
+    await expect(estraiPianoAPagine(foto(3), 'claude-sonnet-5')).rejects.toThrow(/\(indice\.pagine\): attese 3, ricevute 2/);
+    expect(finto.stream).toHaveBeenCalledTimes(1);
+  });
+
+  it('indice con più pagine dei file inviati → PianoNonValidoError, nessuna "pagina 4 di 3"', async () => {
+    finto.stato.risposte.push({ corpo: indiceDi(Array.from({ length: 4 }, () => ({ contenuto: [voce(1, 0)] }))) });
+    await expect(estraiPianoAPagine(foto(3), 'claude-sonnet-5')).rejects.toThrow(/\(indice\.pagine\): attese 3, ricevute 4/);
+    expect(finto.stream).toHaveBeenCalledTimes(1);
+  });
+
+  it('indice senza alcuna pagina con contenuto → PianoNonValidoError invece di un piano vuoto', async () => {
+    finto.stato.risposte.push({ corpo: indiceDi([{ contenuto: [] }, { contenuto: [] }]) });
+    await expect(estraiPianoAPagine(foto(2), 'claude-sonnet-5')).rejects.toThrow(/\(indice\.pagine\): nessuna pagina con contenuto/);
+    expect(finto.stream).toHaveBeenCalledTimes(1);
+  });
+
   it('una pagina che risponde con un rifiuto o un piano malformato → PianoNonValidoError', async () => {
-    finto.stato.risposte.push({ corpo: indiceDi([{ contenuto: [voce(1, 0)] }]) }, { corpo: RIFIUTO });
-    await expect(estraiPianoAPagine(foto(1).concat(foto(1)), 'claude-sonnet-5')).rejects.toThrow(/non valido/);
+    finto.stato.risposte.push({ corpo: indiceDi([{ contenuto: [voce(1, 0)] }, { contenuto: [] }]) }, { corpo: RIFIUTO });
+    await expect(estraiPianoAPagine(foto(2), 'claude-sonnet-5')).rejects.toThrow(/\(pagina 1\): atteso un piano/);
   });
 
   it('JSON malformato su una pagina → ritenta quella pagina una volta; chiamate conta le riuscite', async () => {
     finto.stato.risposte.push(
-      { corpo: indiceDi([{ contenuto: [voce(1, 0)] }]) },
+      { corpo: indiceDi([{ contenuto: [voce(1, 0)] }, { contenuto: [] }]) },
       { corpo: '{"tipo":"piano"' },
       { corpo: pianoDelGiorno(1, 0) },
     );

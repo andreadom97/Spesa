@@ -65,6 +65,27 @@ describe('validaIndice: forma dell\'esito', () => {
     const v = clone(); v.indice.archetipo = 'solo_macro';
     expect(() => validaIndice(v)).toThrow(/indice\.archetipo/);
   });
+  it('fonte e noteEstrazione al massimo 500 caratteri: sono testo libero che rientra nel prompt', () => {
+    const ok = clone(); ok.indice.fonte = 'f'.repeat(500); ok.indice.noteEstrazione = ['n'.repeat(500)];
+    expect(validaIndice(ok).tipo).toBe('indice');
+    const v = clone(); v.indice.fonte = 'f'.repeat(501);
+    expect(() => validaIndice(v)).toThrow(PianoNonValidoError);
+    expect(() => validaIndice(v)).toThrow(/\(indice\.fonte\): troppo lungo/);
+    const v2 = clone(); v2.indice.noteEstrazione = ['ok', 'n'.repeat(501)];
+    expect(() => validaIndice(v2)).toThrow(/\(indice\.noteEstrazione\[1\]\): troppo lungo/);
+  });
+  it('titolo e nomi dei pasti al massimo 120 caratteri', () => {
+    const ok = clone(); ok.indice.archetipo = 'giorni_tipo';
+    for (const c of ok.indice.pagine.flatMap((p: { contenuto: { titolo: unknown; pasti: string[] }[] }) => p.contenuto)) {
+      c.titolo = 't'.repeat(120);
+      c.pasti = ['p'.repeat(120)];
+    }
+    expect(validaIndice(ok).tipo).toBe('indice');
+    const t = structuredClone(ok); t.indice.pagine[0].contenuto[0].titolo = 't'.repeat(121);
+    expect(() => validaIndice(t)).toThrow(/\(indice\.pagine\[0\]\.contenuto\[0\]\.titolo\): troppo lungo/);
+    const p = clone(); p.indice.pagine[1].contenuto[0].pasti = ['pranzo', 'p'.repeat(121)];
+    expect(() => validaIndice(p)).toThrow(/\(indice\.pagine\[1\]\.contenuto\[0\]\.pasti\[1\]\): troppo lungo/);
+  });
   it('esige fonte stringa e noteEstrazione array di stringhe', () => {
     const v = clone(); v.indice.fonte = 3;
     expect(() => validaIndice(v)).toThrow(/indice\.fonte/);

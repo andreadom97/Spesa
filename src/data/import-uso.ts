@@ -4,8 +4,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 // Non è una leva di costo: è una difesa per una chiave Anthropic in produzione
 // raggiungibile da chiunque abbia un account, e va dichiarata (il 429 dice
 // quanti import e da quando). Si contano i tentativi, non i successi: la riga
-// si scrive prima delle chiamate al modello, così due invii concorrenti contano
-// due e un import fallito consuma comunque uno slot.
+// si scrive PRIMA del conteggio e delle chiamate al modello (registra → conta →
+// se il conteggio, riga nuova inclusa, supera il limite → 429), così due invii
+// concorrenti non passano entrambi sullo stesso slot e un import fallito
+// consuma comunque uno slot.
 //
 // Il client arriva dal chiamante: la route lo costruisce con il JWT dell'utente
 // negli header, così la RLS vale (select e insert del proprietario, nessun
@@ -14,13 +16,17 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 const LIMITE_DEFAULT = 3;
 const FINESTRA_MS = 30 * 24 * 60 * 60 * 1000;
 
-/** IMPORT_LIMITE_30GG, letta a ogni chiamata: assente o non valida → 3; `0` disattiva il limite. */
+/**
+ * IMPORT_LIMITE_30GG, letta a ogni chiamata: solo un intero in cifre (spazi attorno
+ * ignorati) è un valore; assente, vuota, di soli spazi o qualunque altra cosa → 3.
+ * `Number('')` varrebbe 0 e spegnerebbe il limite per una variabile lasciata vuota
+ * sul pannello: per questo la forma è verificata prima della conversione.
+ * `0` esplicito disattiva il limite (solo sviluppo).
+ */
 export function limiteImport30ggConfigurato(): number {
-  const grezzo = process.env.IMPORT_LIMITE_30GG;
-  if (grezzo === undefined) return LIMITE_DEFAULT;
-  const n = Number(grezzo);
-  if (!Number.isInteger(n) || n < 0) return LIMITE_DEFAULT;
-  return n;
+  const grezzo = (process.env.IMPORT_LIMITE_30GG ?? '').trim();
+  if (!/^\d+$/.test(grezzo)) return LIMITE_DEFAULT;
+  return Number(grezzo);
 }
 
 /** Quanti import ha avviato l'utente negli ultimi 30 giorni, e quando il più vecchio (per dire "il prossimo dal ..."). */
@@ -44,7 +50,12 @@ export async function contaImportRecenti(
   };
 }
 
-/** Registra un tentativo di import: da chiamare prima delle chiamate al modello. */
+/**
+ * Registra un tentativo di import: da chiamare PRIMA del conteggio e delle chiamate al
+ * modello. Solo le tre colonne che il client può scrivere (la migrazione 0010 concede
+ * l'insert su `user_id, pagine, modello` soltanto): `id` e `avviato_il` li decide il DB.
+ * `pagine` è 0 per un PDF non ancora diviso.
+ */
 export async function registraImport(
   sb: SupabaseClient,
   userId: string,

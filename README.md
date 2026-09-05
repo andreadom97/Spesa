@@ -67,7 +67,10 @@ pasti spezzati fra due pagine ricomposti se l'indice li segnala), il cui risulta
 `validaEsito` come qualsiasi estrazione. Una pagina che fallisce dopo i retry fa fallire
 l'import intero: mai un piano parziale spacciato per intero. Un PDF multipagina si divide
 server-side in PDF a pagina singola con `pdf-lib` (`src/server/pdf-pagine.ts`) e segue la
-stessa pipeline; una pagina sola (una foto, o un PDF a una pagina) resta la chiamata
+stessa pipeline: le pagine si contano prima di copiarle (oltre 12 → 413 senza produrre
+nulla, così un PDF piccolo con centinaia di pagine non manda la funzione in out-of-memory)
+e la divisione avviene dopo la registrazione e il tetto, quindi consuma uno slot; un PDF che
+non si apre risponde 400 `il PDF non si apre: prova con le foto`, mostrato così com'è. Una pagina sola (una foto, o un PDF a una pagina) resta la chiamata
 singola di prima (`estraiPiano`), che è anche la baseline dell'eval. Il disegno completo,
 con la stima dei costi, è in
 [`docs/superpowers/specs/2026-09-05-import-in-produzione-design.md`](docs/superpowers/specs/2026-09-05-import-in-produzione-design.md).
@@ -75,7 +78,7 @@ con la stima dei costi, è in
 Consegnato il 05/09: indice e validatore, `validaPianoParziale`, fusione, `dividiPdf`,
 tabella `import_uso`, l'orchestratore `estraiPianoAPagine` in `src/server/import-ai.ts`
 (indice → pagine con cache → fusione, con `usage` aggregato), la route che compone tutto
-(limite → PDF diviso → pipeline a pagine) e l'eval con report. Non ancora provato con una
+(registrazione → limite → PDF diviso → pipeline a pagine) e l'eval con report. Non ancora provato con una
 chiave vera: la checklist locale è in coda al piano
 [`docs/superpowers/plans/2026-09-05-import-in-produzione.md`](docs/superpowers/plans/2026-09-05-import-in-produzione.md).
 
@@ -89,15 +92,19 @@ raggiungibile da chiunque abbia un account. Il tetto è una difesa, e va dichiar
   metadati, mai contenuto della dieta. RLS abilitata e forzata, policy `select` e `insert`
   per il proprietario e **nessuna policy di update o delete**: un utente non può azzerarsi
   il contatore (Andrea può, dal pannello Supabase).
-- **Regola**: al massimo `IMPORT_LIMITE_30GG` import (default 3) nei 30 giorni precedenti;
-  `0` disattiva il limite (solo sviluppo). La riga si scrive prima delle chiamate al
-  modello, con il client Supabase che porta il JWT dell'utente così che la RLS valga: si
-  contano i tentativi, non i successi, quindi due invii concorrenti contano due e un import
-  fallito consuma comunque uno slot. Il mock e il 503 non consumano niente.
+- **Regola**: al massimo `IMPORT_LIMITE_30GG` import (default 3; vuota o malformata → 3)
+  nei 30 giorni precedenti; `0` disattiva il limite (solo sviluppo). Prima si scrive la
+  riga, con il client Supabase che porta il JWT dell'utente così che la RLS valga, poi si
+  contano le righe nella finestra (nuova inclusa) e oltre il limite è 429: si contano i
+  tentativi, non i successi, quindi fra invii concorrenti ne passano al più `limite` e gli
+  altri consumano uno slot; un import fallito, un PDF illeggibile o con troppe pagine
+  consumano comunque uno slot. Il mock e il 503 non consumano niente.
 - **Oltre il limite**: 429 con `hai già fatto 3 import negli ultimi 30 giorni: il prossimo dal 12/09/2026`,
   dove la data è il più vecchio import nella finestra più 30 giorni; la pagina Importa lo
-  mostra così com'è, come già fa per il 413. Controllo e registrazione vivono nella route,
-  dentro il ramo con la chiave, prima di qualunque chiamata al modello.
+  mostra così com'è, come già fa per il 413 e il 400 del PDF. Registrazione e controllo
+  vivono nella route, dentro il ramo con la chiave, prima di dividere il PDF e di qualunque
+  chiamata al modello. Solo `user_id`, `pagine` (0 per un PDF) e `modello` sono scrivibili
+  dal client: `avviato_il` lo decide il DB.
 - **Rete di sicurezza fuori dal codice**: spend limit mensile sul workspace Anthropic,
   impostato dal pannello prima di mettere la chiave su Vercel. Il tetto contiene un
   utente; lo spend limit contiene tutti.
@@ -110,7 +117,7 @@ raggiungibile da chiunque abbia un account. Il tetto è una difesa, e va dichiar
 | `ANTHROPIC_WORKSPACE_ID` | *(assente)* | Opzionale: header `anthropic-workspace-id` per le chiavi identity-linked (`src/server/anthropic.ts`); con una chiave di workspace non serve |
 | `IMPORT_AI_MODEL` | `claude-sonnet-5` | Il modello dell'estrattore. È configurazione, non codice |
 | `IMPORT_AI_EFFORT` | *(assente)* | Opzionale, `low`/`medium`/`high` → `output_config.effort` su tutte le chiamate. Consigliato `low` con Opus: è trascrizione, non ragionamento |
-| `IMPORT_LIMITE_30GG` | `3` | Import massimi per utente nei 30 giorni precedenti; `0` disattiva (solo sviluppo). Letta a ogni richiesta |
+| `IMPORT_LIMITE_30GG` | `3` | Import massimi per utente nei 30 giorni precedenti; `0` disattiva (solo sviluppo); vuota o non intera → 3. Letta a ogni richiesta |
 | `IMPORT_CONCORRENZA` | `4` | Chiamate di pagina in volo insieme. Un'ipotesi sul tier API: la verifica è il primo run reale |
 | `IMPORT_MOCK` | *(assente)* | Solo sviluppo, mai su Vercel: un fixture al posto del modello (tabella sopra). Ignorata se c'è la chiave |
 

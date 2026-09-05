@@ -21,6 +21,13 @@ function str(v: unknown, percorso: string): string {
   if (typeof v !== 'string') throw new PianoNonValidoError(percorso, 'non è una stringa');
   return v;
 }
+/** Testo libero del modello (fonte, note, motivazione del rifiuto) che arriva in UI e nella bozza: un tetto di lunghezza. */
+const MAX_TESTO_LIBERO = 500;
+function strCorta(v: unknown, percorso: string, max: number): string {
+  const s = str(v, percorso);
+  if (s.length > max) throw new PianoNonValidoError(percorso, 'troppo lungo');
+  return s;
+}
 
 function validaRiga(v: unknown, percorso: string): RigaEstratta {
   const r = ogg(v, percorso);
@@ -134,8 +141,8 @@ function validaFormaPiano(v: unknown): PianoEstratto {
   });
   return {
     archetipo: archetipo as PianoEstratto['archetipo'],
-    fonte: str(p.fonte, 'piano.fonte'),
-    noteEstrazione: arr(p.noteEstrazione, 'piano.noteEstrazione').map((n, i) => str(n, `piano.noteEstrazione[${i}]`)),
+    fonte: strCorta(p.fonte, 'piano.fonte', MAX_TESTO_LIBERO),
+    noteEstrazione: arr(p.noteEstrazione, 'piano.noteEstrazione').map((n, i) => strCorta(n, `piano.noteEstrazione[${i}]`, MAX_TESTO_LIBERO)),
     settimane: settimaneValidate,
   };
 }
@@ -231,7 +238,7 @@ export function validaEsito(v: unknown): EsitoEstrazione {
   if (e.tipo === 'rifiuto') {
     const r = ogg(e.rifiuto, 'rifiuto');
     if (r.archetipo !== 'solo_macro') throw new PianoNonValidoError('rifiuto.archetipo', 'deve essere solo_macro');
-    return { tipo: 'rifiuto', rifiuto: { archetipo: 'solo_macro', motivazione: str(r.motivazione, 'rifiuto.motivazione') } };
+    return { tipo: 'rifiuto', rifiuto: { archetipo: 'solo_macro', motivazione: strCorta(r.motivazione, 'rifiuto.motivazione', MAX_TESTO_LIBERO) } };
   }
   throw new PianoNonValidoError('esito.tipo', 'né piano né rifiuto');
 }

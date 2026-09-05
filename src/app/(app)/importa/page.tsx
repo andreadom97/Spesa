@@ -184,9 +184,10 @@ export default function Importa() {
         setVista('errore');
         return;
       }
-      // 413 (cap) e 429 (tetto di import): il messaggio della route dice già
-      // cosa fare e da quando, si mostra così com'è.
-      if (res.status === 413 || res.status === 429) {
+      // 400 (PDF che non si apre), 413 (cap) e 429 (tetto di import): il messaggio
+      // della route dice già cosa fare e da quando, si mostra così com'è; senza un
+      // corpo leggibile, il generico.
+      if (res.status === 400 || res.status === 413 || res.status === 429) {
         const corpo = await res.json().catch(() => null);
         setMessaggioErrore((corpo as { errore?: string } | null)?.errore ?? MESSAGGIO_ERRORE_GENERICO);
         setVista('errore');

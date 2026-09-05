@@ -270,9 +270,19 @@ function istruzioneIndice(n: number): string {
 - Ogni pagina inviata compare una volta, nessuna in più: MAI inventare pagine, giorni o pasti che non ci sono; ciò che non leggi va in noteEstrazione.`;
 }
 
+/**
+ * Ciò che dall'output del modello (l'indice) rientra nel prompt di pagina passa di qui:
+ * un titolo o un nome di pasto letto dal foglio potrebbe contenere un'istruzione, e non
+ * deve poter chiudere le virgolette né aprire una riga nuova. A capo e virgolette → spazio,
+ * spazi compressi, al più 80 caratteri (un nome di pasto vero ne ha una manciata).
+ */
+function pulisci(s: string): string {
+  return s.replace(/[\r\n"]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
+}
+
 function descriviVoce(v: PaginaIndice['contenuto'][number]): string {
-  const giorno = v.titolo === null ? `giorno ${v.giorno}` : `giorno ${v.giorno} ("${v.titolo}")`;
-  return `settimana ${v.settimana}, ${giorno}, pasti: ${v.pasti.join(', ')}`;
+  const giorno = v.titolo === null ? `giorno ${v.giorno}` : `giorno ${v.giorno} ("${pulisci(v.titolo)}")`;
+  return `settimana ${v.settimana}, ${giorno}, pasti: ${v.pasti.map(pulisci).join(', ')}`;
 }
 
 /** Il testo finale della chiamata di pagina: cosa aspettarsi, dall'indice. Il system resta quello della v1. */
@@ -442,7 +452,8 @@ function pianoParzialeDa(grezzo: unknown, pagina: number): PianoEstratto {
  * ognuna, `fondiPagine`. Il grezzo del piano fuso ha la forma `{ tipo: 'piano', piano }`
  * che `validaEsito` si aspetta, così la route lo tratta come un'estrazione qualsiasi.
  * Un rifiuto dall'indice torna subito senza chiamate di pagina. Una pagina che fallisce
- * dopo i retry → l'errore propaga. Un indice non valido → PianoNonValidoError propaga.
+ * dopo i retry → l'errore propaga. Un indice non valido, che non copre esattamente gli N
+ * file o senza alcuna pagina con contenuto → PianoNonValidoError propaga (422 in route).
  */
 export async function estraiPianoAPagine(
   files: FileEstrazione[],
@@ -461,7 +472,13 @@ export async function estraiPianoAPagine(
   if (esitoIndice.tipo === 'rifiuto') return { grezzo: indiceGrezzo.grezzo, uso: { ...indiceGrezzo.uso, durataMs: durata() } };
 
   const indice = esitoIndice.indice;
+  // L'indice deve coprire esattamente i file inviati: con meno pagine una foto sparirebbe
+  // in silenzio e il piano parziale uscirebbe come intero; con più pagine partirebbe la
+  // trascrizione di una "pagina 4 di 3". `validaIndice` non conosce N: il confronto è qui.
+  if (indice.pagine.length !== files.length)
+    throw new PianoNonValidoError('indice.pagine', `attese ${files.length}, ricevute ${indice.pagine.length}`);
   const daTrascrivere = indice.pagine.filter((p) => p.contenuto.length > 0);
+  if (daTrascrivere.length === 0) throw new PianoNonValidoError('indice.pagine', 'nessuna pagina con contenuto');
   const concorrenza = opzioni.concorrenza ?? concorrenzaImportConfigurata();
   const esiti = await limitaConcorrenza(concorrenza, daTrascrivere.map((p) => () => estraiPagina(files, p, indice, modello)));
   const pagine = esiti.map((e, i) => ({ pagina: daTrascrivere[i].pagina, piano: pianoParzialeDa(e.grezzo, daTrascrivere[i].pagina) }));

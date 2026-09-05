@@ -9,7 +9,9 @@ import type { GiornoEstratto, PianoEstratto } from './types';
  * `validaEsito` come qualsiasi estrazione. Non muta gli input: ciò che ricompone è clonato.
  *
  * Regole, nell'ordine della spec:
- * 1. archetipo e fonte vengono dall'indice; una pagina che li contraddice produce una nota;
+ * 1. archetipo e fonte vengono dall'indice; una pagina con un archetipo diverso produce una
+ *    nota; una fonte diversa no (è testo libero, diverso a ogni chiamata: l'indice vince in
+ *    silenzio);
  * 2. i giorni si identificano per (settimana, giorno); stesso giorno su più pagine → i pasti
  *    della pagina successiva si accodano; le pagine si processano per numero di pagina,
  *    qualunque sia l'ordine dell'array;
@@ -31,7 +33,6 @@ export function fondiPagine(indice: IndiceEstrazione, pagine: { pagina: number; 
     const prefisso = `pagina ${pagina}: `;
     for (const n of piano.noteEstrazione) note.push(prefisso + n);
     if (piano.archetipo !== indice.archetipo) note.push(`${prefisso}archetipo diverso dall'indice (${piano.archetipo})`);
-    if (piano.fonte !== indice.fonte) note.push(`${prefisso}fonte diversa dall'indice (${piano.fonte})`);
 
     // Una pagina assente dall'indice non continua da nessuna: si fonde come se fosse a sé.
     const continua = indice.pagine.find((p) => p.pagina === pagina)?.continuaDallaPrecedente ?? false;

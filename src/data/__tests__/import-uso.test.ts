@@ -97,4 +97,20 @@ describe('limiteImport30ggConfigurato', () => {
     process.env.IMPORT_LIMITE_30GG = '-1';
     expect(limiteImport30ggConfigurato()).toBe(3);
   });
+
+  it('vuota, di soli spazi o non intera → 3 (mai 0, che spegnerebbe il limite)', () => {
+    process.env.IMPORT_LIMITE_30GG = '';
+    expect(limiteImport30ggConfigurato()).toBe(3);
+    process.env.IMPORT_LIMITE_30GG = ' ';
+    expect(limiteImport30ggConfigurato()).toBe(3);
+    process.env.IMPORT_LIMITE_30GG = '2.5';
+    expect(limiteImport30ggConfigurato()).toBe(3);
+    process.env.IMPORT_LIMITE_30GG = '1e1';
+    expect(limiteImport30ggConfigurato()).toBe(3);
+  });
+
+  it('spazi attorno a un intero si ignorano', () => {
+    process.env.IMPORT_LIMITE_30GG = ' 4 ';
+    expect(limiteImport30ggConfigurato()).toBe(4);
+  });
 });

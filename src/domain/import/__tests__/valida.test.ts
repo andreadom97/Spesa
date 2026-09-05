@@ -18,6 +18,25 @@ describe('validaEsito', () => {
     expect(() => validaEsito({ tipo: 'piano', piano: {} })).toThrow(PianoNonValidoError);
   });
 
+  it('fonte, noteEstrazione e motivazione del rifiuto al massimo 500 caratteri (testo libero del modello)', () => {
+    const ok = structuredClone(FIXTURE_MENU_SETTIMANALE) as PianoEsito;
+    ok.piano.fonte = 'f'.repeat(500);
+    ok.piano.noteEstrazione = ['n'.repeat(500)];
+    expect(validaEsito(ok).tipo).toBe('piano');
+    const fonte = structuredClone(FIXTURE_MENU_SETTIMANALE) as PianoEsito;
+    fonte.piano.fonte = 'f'.repeat(501);
+    expect(() => validaEsito(fonte)).toThrow(PianoNonValidoError);
+    expect(() => validaEsito(fonte)).toThrow(/\(piano\.fonte\): troppo lungo/);
+    expect(() => validaPianoParziale(fonte.piano)).toThrow(/\(piano\.fonte\): troppo lungo/);
+    const nota = structuredClone(FIXTURE_MENU_SETTIMANALE) as PianoEsito;
+    nota.piano.noteEstrazione = ['ok', 'n'.repeat(501)];
+    expect(() => validaEsito(nota)).toThrow(/\(piano\.noteEstrazione\[1\]\): troppo lungo/);
+    const okRifiuto = { tipo: 'rifiuto', rifiuto: { archetipo: 'solo_macro', motivazione: 'm'.repeat(500) } };
+    expect(validaEsito(okRifiuto).tipo).toBe('rifiuto');
+    const rifiuto = { tipo: 'rifiuto', rifiuto: { archetipo: 'solo_macro', motivazione: 'm'.repeat(501) } };
+    expect(() => validaEsito(rifiuto)).toThrow(/\(rifiuto\.motivazione\): troppo lungo/);
+  });
+
   it('rifiuta un giorno fuori 0..6 e una settimana fuori 1..4', () => {
     const rotto = structuredClone(FIXTURE_MENU_SETTIMANALE) as PianoEsito;
     rotto.piano.settimane[0].giorni[0].giorno = 7;

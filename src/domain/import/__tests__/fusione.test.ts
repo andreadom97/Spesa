@@ -109,17 +109,14 @@ describe('fondiPagine', () => {
     expect(fuso.settimane[0].giorni[1]).toEqual(giorno(1, 1));
   });
 
-  it("archetipo e fonte dall'indice; pagina che contraddice → nota", () => {
+  it("archetipo e fonte dall'indice; l'archetipo che contraddice → nota, la fonte diversa no (è testo libero, diverso a ogni chiamata)", () => {
     const fuso = fondiPagine(indice([{}, {}], { fonte: '2 foto' }), [
-      { pagina: 1, piano: piano([settimana(1, [giorno(1, 0)])], { fonte: '2 foto' }) },
+      { pagina: 1, piano: piano([settimana(1, [giorno(1, 0)])], { fonte: 'due fotografie' }) },
       { pagina: 2, piano: piano([settimana(1, [giorno(1, 1)])], { archetipo: 'giornata_unica', fonte: 'una foto' }) },
     ]);
     expect(fuso.archetipo).toBe('menu_settimanale');
     expect(fuso.fonte).toBe('2 foto');
-    expect(fuso.noteEstrazione).toEqual([
-      "pagina 2: archetipo diverso dall'indice (giornata_unica)",
-      "pagina 2: fonte diversa dall'indice (una foto)",
-    ]);
+    expect(fuso.noteEstrazione).toEqual(["pagina 2: archetipo diverso dall'indice (giornata_unica)"]);
   });
 
   it('titolo: primo non nullo vince, secondo diverso → nota', () => {

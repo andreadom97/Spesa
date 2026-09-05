@@ -9,7 +9,7 @@ import {
   concorrenzaImportConfigurata,
   type FileEstrazione,
 } from '@/server/import-ai';
-import { dividiPdf, PdfIllegibileError } from '@/server/pdf-pagine';
+import { dividiPdf, PdfIllegibileError, TroppePagineError } from '@/server/pdf-pagine';
 import { limiteImport30ggConfigurato, contaImportRecenti, registraImport } from '@/data/import-uso';
 
 // Un piano intero è un output lungo: il default Vercel troncherebbe la chiamata.
@@ -21,6 +21,8 @@ const MAX_BYTE_TOTALI = 4 * 1024 * 1024;
 const FINESTRA_LIMITE_MS = 30 * 24 * 60 * 60 * 1000;
 
 const ERRORE_TROPPE_PAGINE = 'troppe pagine: la v1 accetta fino a 12 foto';
+/** Spec §2.4: il messaggio arriva in pagina così com'è. */
+const ERRORE_PDF_ILLEGGIBILE = 'il PDF non si apre: prova con le foto';
 
 /** gg/mm/aaaa nel fuso italiano: la data che l'utente legge è quella del suo calendario, non quella del server. */
 function formattaDataItaliana(d: Date): string {
@@ -33,11 +35,15 @@ function formattaDataItaliana(d: Date): string {
  * denaro e minuti), poi tre rami in ordine: chiave → pipeline a pagine;
  * IMPORT_MOCK (solo sviluppo, mai su Vercel) → mock; altrimenti 503.
  *
- * Nel ramo chiave, nell'ordine: tetto per utente (spec 2026-09-05 §3, 429 con la
+ * Nel ramo chiave, nell'ordine: registrazione del tentativo su `import_uso` col
+ * client che porta il JWT dell'utente (così vale la RLS; `pagine` = numero di
+ * immagini, o 0 per un PDF non ancora diviso), conteggio degli import nella finestra
+ * (spec 2026-09-05 §3: la riga appena scritta conta, oltre il limite → 429 con la
  * data del prossimo import), divisione del PDF in pagine (400 se non si apre; 413
- * oltre le 12 pagine, stesso cap delle foto), registrazione del tentativo su
- * `import_uso` col client che porta il JWT dell'utente (così vale la RLS), e solo
- * dopo le chiamate al modello. Mock e 503 non contano né registrano nulla.
+ * oltre le 12 pagine, stesso cap delle foto, deciso prima di copiarle), e solo dopo
+ * le chiamate al modello. Registrare prima di contare chiude la corsa fra invii
+ * concorrenti; registrare prima di dividere il PDF fa sì che un PDF costoso da
+ * aprire consumi uno slot. Mock e 503 non contano né registrano nulla.
  * Ogni esito passa da validaEsito: o è integralmente valido o non esce.
  */
 export async function POST(request: Request): Promise<Response> {
@@ -83,9 +89,13 @@ export async function POST(request: Request): Promise<Response> {
     const sbUtente = limite > 0 ? createClient(url, anon, { global: { headers: { Authorization: `Bearer ${token}` } } }) : null;
     try {
       if (sbUtente) {
+        // Prima la riga, poi il conteggio: fra un controllo e un inserimento separati
+        // passavano tutte le richieste concorrenti. Così al più `limite` passano, le
+        // altre consumano uno slot e ricevono 429 (si contano i tentativi, §8).
+        await registraImport(sbUtente, userId, pdf ? 0 : immagini.length, modello);
         const adesso = new Date();
         const { conteggio, piuVecchio } = await contaImportRecenti(sbUtente, userId, adesso);
-        if (conteggio >= limite) {
+        if (conteggio > limite) {
           const prossimo = new Date((piuVecchio ?? adesso).getTime() + FINESTRA_LIMITE_MS);
           return Response.json(
             { errore: `hai già fatto ${limite} import negli ultimi 30 giorni: il prossimo dal ${formattaDataItaliana(prossimo)}` },
@@ -94,12 +104,13 @@ export async function POST(request: Request): Promise<Response> {
         }
       }
 
-      // Il PDF si divide PRIMA di registrare: `pagine` dev'essere il numero vero
-      // (check SQL 1..12) e un PDF illeggibile non deve consumare uno slot.
+      // Il PDF si divide DOPO il tetto: aprirlo può costare memoria, e chi è oltre
+      // il limite non deve poterla spendere. `dividiPdf` conta le pagine prima di
+      // copiarle (TroppePagineError → 413) e non produce nulla per un PDF vuoto o
+      // che non si apre (PdfIllegibileError → 400).
       let files: FileEstrazione[];
       if (pdf) {
-        const pagine = await dividiPdf(Buffer.from(await pdf.arrayBuffer()).toString('base64'));
-        if (pagine.length > MAX_IMMAGINI) return Response.json({ errore: ERRORE_TROPPE_PAGINE }, { status: 413 });
+        const pagine = await dividiPdf(new Uint8Array(await pdf.arrayBuffer()), MAX_IMMAGINI);
         files = pagine.map((base64) => ({ tipo: 'pdf' as const, mime: 'application/pdf', base64 }));
       } else {
         files = await Promise.all(
@@ -111,14 +122,16 @@ export async function POST(request: Request): Promise<Response> {
         );
       }
 
-      if (sbUtente) await registraImport(sbUtente, userId, files.length, modello);
-
       const { grezzo } = await estraiPianoAPagine(files, modello, { concorrenza: concorrenzaImportConfigurata() });
       contenutoGrezzo = grezzo;
     } catch (err) {
       if (err instanceof PdfIllegibileError) {
         console.error('import/estrai: PDF illeggibile.');
-        return Response.json({ errore: 'richiesta non valida' }, { status: 400 });
+        return Response.json({ errore: ERRORE_PDF_ILLEGGIBILE }, { status: 400 });
+      }
+      if (err instanceof TroppePagineError) {
+        console.error('import/estrai: PDF con troppe pagine.', err.pagine);
+        return Response.json({ errore: ERRORE_TROPPE_PAGINE }, { status: 413 });
       }
       // Indice o pagina non validi dalla pipeline: è la dieta che non si è capita,
       // non un guasto — stesso 422 dell'esito che non passa validaEsito.
