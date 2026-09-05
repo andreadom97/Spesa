@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { validaEsito, PianoNonValidoError } from '../valida';
-import { FIXTURE_MENU_SETTIMANALE, FIXTURE_GIORNATA_UNICA, FIXTURE_RIFIUTO_MACRO } from '../fixtures';
+import { validaEsito, validaPianoParziale, PianoNonValidoError } from '../valida';
+import { FIXTURE_MENU_SETTIMANALE, FIXTURE_GIORNATA_UNICA, FIXTURE_RIFIUTO_MACRO, PIANO_MENU_SETTIMANALE } from '../fixtures';
 import type { EsitoEstrazione } from '../types';
 
 type PianoEsito = Extract<EsitoEstrazione, { tipo: 'piano' }>;
@@ -156,6 +156,105 @@ describe('formato esteso (giorni_tipo, quantitaInferita, nota, contiguità)', ()
     const s1 = (p.piano as any).settimane[0];
     (p.piano as any).settimane = [s1, { ...structuredClone(s1), numero: 3 }];
     expect(() => validaEsito(p)).toThrow(PianoNonValidoError);
+  });
+});
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+describe('validaPianoParziale', () => {
+  /** Il piano di una pagina in formato legacy (senza titolo/quantitaInferita/nota), settimana a scelta. */
+  function paginaLegacy(numeroSettimana: number): Record<string, unknown> {
+    return {
+      archetipo: 'menu_settimanale',
+      fonte: 'test',
+      noteEstrazione: [],
+      settimane: [{
+        numero: numeroSettimana,
+        giorni: [{
+          giorno: 3,
+          pasti: [{
+            nomeOriginale: 'pranzo',
+            piatti: [{
+              nome: 'Riso', descrizione: null, componenti: [],
+              righeFisse: [{ alimento: 'riso', quantita: 80, unita: 'g', testoOriginale: 'riso 80g' }],
+            }],
+          }],
+        }],
+      }],
+    };
+  }
+
+  it('una pagina con la sola settimana 2 passa validaPianoParziale e fallisce validaEsito', () => {
+    const pagina = paginaLegacy(2);
+    expect(validaPianoParziale(structuredClone(pagina)).settimane[0].numero).toBe(2);
+    expect(() => validaEsito({ tipo: 'piano', piano: structuredClone(pagina) })).toThrow(PianoNonValidoError);
+  });
+
+  it('una riga senza testoOriginale fallisce entrambe', () => {
+    const pagina = paginaLegacy(1);
+    delete (pagina as any).settimane[0].giorni[0].pasti[0].piatti[0].righeFisse[0].testoOriginale;
+    expect(() => validaPianoParziale(structuredClone(pagina))).toThrow(PianoNonValidoError);
+    expect(() => validaEsito({ tipo: 'piano', piano: structuredClone(pagina) })).toThrow(PianoNonValidoError);
+  });
+
+  it('normalizza i legacy come validaPiano: quantitaInferita → false, titolo → null, nota → null', () => {
+    const pagina = paginaLegacy(2);
+    (pagina as any).settimane[0].giorni[0].pasti[0].piatti[0].componenti = [{
+      nome: 'pane',
+      opzioni: [
+        [{ alimento: 'pane integrale', quantita: 60, unita: 'g', testoOriginale: 'pane 60g' }],
+        [{ alimento: 'pane di segale', quantita: 60, unita: 'g', testoOriginale: 'o segale 60g' }],
+      ],
+    }];
+    const piano = validaPianoParziale(pagina);
+    const piatto = piano.settimane[0].giorni[0].pasti[0].piatti[0];
+    expect(piatto.righeFisse[0].quantitaInferita).toBe(false);
+    expect(piatto.componenti[0].nota).toBeNull();
+    expect(piano.settimane[0].giorni[0].titolo).toBeNull();
+  });
+
+  it('un piano completo valido passa entrambe con lo stesso risultato', () => {
+    const parziale = validaPianoParziale(structuredClone(PIANO_MENU_SETTIMANALE));
+    const esito = validaEsito(structuredClone(FIXTURE_MENU_SETTIMANALE));
+    if (esito.tipo !== 'piano') throw new Error('atteso piano');
+    expect(parziale).toEqual(esito.piano);
+    expect(parziale).toEqual(PIANO_MENU_SETTIMANALE);
+  });
+
+  it('tiene le regole di forma della singola riga/pasto/giorno: giorno fuori 0..6, pasto senza piatti, archetipo ignoto', () => {
+    const giorno7 = paginaLegacy(1);
+    (giorno7 as any).settimane[0].giorni[0].giorno = 7;
+    expect(() => validaPianoParziale(giorno7)).toThrow(PianoNonValidoError);
+    const senzaPiatti = paginaLegacy(1);
+    (senzaPiatti as any).settimane[0].giorni[0].pasti[0].piatti = [];
+    expect(() => validaPianoParziale(senzaPiatti)).toThrow(PianoNonValidoError);
+    const ignoto = paginaLegacy(1);
+    (ignoto as any).archetipo = 'boh';
+    expect(() => validaPianoParziale(ignoto)).toThrow(PianoNonValidoError);
+  });
+
+  it('archetipo settimanale con titolo valorizzato resta invalido anche per una pagina', () => {
+    const pagina = paginaLegacy(1);
+    (pagina as any).settimane[0].giorni[0].titolo = 'Piano 1';
+    expect(() => validaPianoParziale(pagina)).toThrow(PianoNonValidoError);
+  });
+
+  it("giorni_tipo: la pagina che continua un giorno può non avere il titolo (lo esige l'insieme), ma non un giorno negativo", () => {
+    const pagina = paginaLegacy(1);
+    (pagina as any).archetipo = 'giorni_tipo';
+    expect(validaPianoParziale(structuredClone(pagina)).settimane[0].giorni[0].titolo).toBeNull();
+    expect(() => validaEsito({ tipo: 'piano', piano: structuredClone(pagina) })).toThrow(PianoNonValidoError);
+    (pagina as any).settimane[0].giorni[0].giorno = -1;
+    expect(() => validaPianoParziale(pagina)).toThrow(PianoNonValidoError);
+  });
+
+  it('le settimane di una pagina non devono essere contigue, ma non possono ripetersi', () => {
+    const pagina = paginaLegacy(1);
+    const s1 = (pagina as any).settimane[0];
+    (pagina as any).settimane = [s1, { ...structuredClone(s1), numero: 3 }];
+    expect(validaPianoParziale(structuredClone(pagina)).settimane.map((s) => s.numero)).toEqual([1, 3]);
+    (pagina as any).settimane[1].numero = 1;
+    expect(() => validaPianoParziale(pagina)).toThrow(PianoNonValidoError);
   });
 });
 /* eslint-enable @typescript-eslint/no-explicit-any */
