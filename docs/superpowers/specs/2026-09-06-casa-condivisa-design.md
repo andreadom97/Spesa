@@ -1,6 +1,6 @@
 # Casa condivisa — design (P6)
 
-**Data:** 06/09/2026 · **Stato:** approvata (P6 del backlog); la parte "per quante persone" è una decisione aperta, §6
+**Data:** 06/09/2026 · **Stato:** approvata e implementata il 06/09 (piano omonimo), tranne "per quante persone" (decisione aperta, §6); da provare con due account dopo la migrazione 0012
 **Deriva da:** [spesa-backlog-nicchia.md](../../../spesa-backlog-nicchia.md) (P6),
 [2026-08-26-spesa-design.md](2026-08-26-spesa-design.md) (RLS con `user_id` su ogni tabella)
 

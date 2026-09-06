@@ -23,31 +23,31 @@
 ## Lotto 1 (in parallelo)
 
 ### Task 1: Migrazione `supabase/migrations/0012_casa.sql`
-- [ ] Tabelle `casa_membro`, `casa_invito` con RLS propria (spec §1).
-- [ ] `casa_id()`; ciclo che elimina e ricrea le policy su ogni tabella `public` con colonna `user_id` (forma `for all` con `using`/`with check` su `casa_id()`; per `import_uso` select e insert separate, nessun update/delete, privilegi di colonna invariati).
-- [ ] Le cinque funzioni RPC (spec §2) con `security definer`, `set search_path = public`, `grant execute to authenticated`, `revoke` da `anon`/`public`.
-- [ ] Riletto due volte; commit `feat(db): casa condivisa — casa_id(), inviti e policy rigenerate`.
+- [x] Tabelle `casa_membro`, `casa_invito` con RLS propria (spec §1).
+- [x] `casa_id()`; ciclo che elimina e ricrea le policy su ogni tabella `public` con colonna `user_id` (forma `for all` con `using`/`with check` su `casa_id()`; per `import_uso` select e insert separate, nessun update/delete, privilegi di colonna invariati).
+- [x] Le cinque funzioni RPC (spec §2) con `security definer`, `set search_path = public`, `grant execute to authenticated`, `revoke` da `anon`/`public`.
+- [x] Riletto due volte; commit `feat(db): casa condivisa — casa_id(), inviti e policy rigenerate`.
 
 ### Task 2: `src/data/casa.ts`
-- [ ] Test: memoria di `idCasa`, `dimenticaIdCasa`, `statoCasa`, errori propagati.
-- [ ] Implementare (spec §3). Commit `feat(data): casa.ts — idCasa memorizzata e le RPC della casa`.
+- [x] Test: memoria di `idCasa`, `dimenticaIdCasa`, `statoCasa`, errori propagati.
+- [x] Implementare (spec §3). Commit `feat(data): casa.ts — idCasa memorizzata e le RPC della casa`.
 
 ## Lotto 2 (in parallelo, dopo il Lotto 1)
 
 ### Task 3: `idCasa()` nel data layer e nella route
 - Modify: gli otto file di `src/data/`, `src/app/api/import/estrai/route.ts`, i loro test.
-- [ ] Ogni `utente.user!.id` usato per `user_id` o per filtri → `await idCasa()`; `auth.getUser()` resta solo dove serve altro. Route: `sbUtente.rpc('casa_id')`.
-- [ ] Test esistenti verdi con `vi.mock('../casa')`. Commit `refactor(data): user_id è la casa, non l'account`.
+- [x] Ogni `utente.user!.id` usato per `user_id` o per filtri → `await idCasa()`; `auth.getUser()` resta solo dove serve altro. Route: `sbUtente.rpc('casa_id')`.
+- [x] Test esistenti verdi con `vi.mock('../casa')`. Commit `refactor(data): user_id è la casa, non l'account`.
 
 ### Task 4: Impostazioni → CASA e Lista in primo piano
 - Modify: `src/app/(app)/impostazioni/page.tsx`, `src/app/(app)/lista/page.tsx`, i loro test.
-- [ ] Test: i tre stati, codice, ENTRA, errori, due tocchi, reload (mock di `window.location.assign`); Lista che rilegge su `visibilitychange`.
-- [ ] Implementare (spec §4, §5). Commit `feat(ui): la casa in Impostazioni; la Lista si aggiorna al ritorno`.
+- [x] Test: i tre stati, codice, ENTRA, errori, due tocchi, reload (mock di `window.location.assign`); Lista che rilegge su `visibilitychange`.
+- [x] Implementare (spec §4, §5). Commit `feat(ui): la casa in Impostazioni; la Lista si aggiorna al ritorno`.
 
 ## Lotto 3
 
 ### Task 5: Documentazione
-- [ ] README (sezione "La casa condivisa", migrazione 0012 nel deploy, decisione aperta §6), backlog (P6 consegnato salvo "per quante persone"), `docs/2026-09-06-ripresa.md`. Commit `docs: casa condivisa consegnata`.
+- [x] README (sezione "La casa condivisa", migrazione 0012 nel deploy, decisione aperta §6), backlog (P6 consegnato salvo "per quante persone"), `docs/2026-09-06-ripresa.md`. Commit `docs: casa condivisa consegnata`.
 
 ## Checklist locale per Andrea
 - [ ] Applicare `0012_casa.sql` sul progetto Supabase **prima** del deploy: le policy vecchie vengono sostituite; senza la migrazione `idCasa()` fallisce (RPC assente) e l'app non carica.

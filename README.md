@@ -8,7 +8,7 @@ a un eventuale prodotto.
 
 **Stato: Fase 1 completa e provata sul campo il 28/08/2026.** Dominio puro
 (`list-builder`, `pantry`, `planner`, `ciclo`, `week-shape`, `chiusura`, `opzioni`,
-`confezioni`), 923 test automatici verdi, schema su un progetto Supabase vero,
+`confezioni`), 1003 test automatici verdi, schema su un progetto Supabase vero,
 quindici schermate, PWA installabile con guscio offline sulla lista, in produzione
 su Vercel.
 
@@ -320,6 +320,35 @@ mini-creazione sono per area e unità, non per ingrediente; la porta dell'import
 503 finché la chiave non è su Vercel. Spec:
 [`docs/superpowers/specs/2026-09-06-due-porte-design.md`](docs/superpowers/specs/2026-09-06-due-porte-design.md).
 
+## La casa condivisa (06/09/2026)
+
+Due persone che fanno la spesa insieme vedono lo stesso piano, la stessa lista, la stessa
+dispensa, e spuntano ognuna dal proprio telefono. Nessuna funzione sociale: una **casa è
+l'account del proprietario**, e un membro è un account autorizzato ad agire su quei dati
+come se fossero i suoi. Il perno è una funzione SQL, `casa_id()`, che restituisce il
+proprietario se chi chiama è membro di una casa e altrimenti chi chiama: **tutte** le
+policy RLS con `user_id` passano da lei (migrazione 0012, che le rigenera in un ciclo su
+`information_schema`), e il data layer scrive e filtra con `idCasa()`
+(`src/data/casa.ts`, una RPC memorizzata per apertura dell'app) al posto dell'id
+dell'account.
+
+**Come si entra.** Impostazioni → CASA: chi è solo crea un codice di sei caratteri, valido
+24 ore; l'altra persona lo inserisce nelle sue Impostazioni ed entra. Il proprietario vede
+chi c'è e lo toglie con due tocchi; il membro vede di chi è la casa ed esce con due tocchi.
+Entrare e uscire ricaricano l'app. Le email dei membri si vedono solo dentro la casa.
+La Lista si rilegge quando torna in primo piano, così due telefoni non si vedono rotti a
+vicenda.
+
+**Limiti dichiarati** (non bug): chi entra in una casa non vede i propri dati finché non
+esce, e non li perde (nessuna fusione, mai); un account è membro di una casa sola e un
+proprietario con membri non può entrare altrove; il tetto di import è per casa; niente
+tempo reale, due spunte contemporanee sulla stessa riga: l'ultima vince; il codice è di
+sei caratteri e dura 24 ore. **Decisione aperta**: il "per quante persone" del backlog non
+è costruito, perché il 28/08 il moltiplicatore porzioni è stato tolto
+dall'interfaccia dopo la prova sul campo; la proposta e le alternative sono nella spec
+§6. Spec:
+[`docs/superpowers/specs/2026-09-06-casa-condivisa-design.md`](docs/superpowers/specs/2026-09-06-casa-condivisa-design.md).
+
 ## Dove sta cosa
 
 | File | Cosa contiene |
@@ -330,6 +359,7 @@ mini-creazione sono per area e unità, non per ingrediente; la porta dell'import
 | [`docs/superpowers/specs/2026-08-26-spesa-design.md`](docs/superpowers/specs/2026-08-26-spesa-design.md) | **La spec.** Modello dati, componenti, fasi, e tutte le decisioni prese durante il design con il loro perché |
 | [`docs/superpowers/specs/DESIGN-SYSTEM.md`](docs/superpowers/specs/DESIGN-SYSTEM.md) | Colori, tipografia, forme, regole di stato — valori estratti dalle schermate reali |
 | [`docs/superpowers/specs/2026-09-05-import-in-produzione-design.md`](docs/superpowers/specs/2026-09-05-import-in-produzione-design.md) | Import in produzione: estrazione a pagine in parallelo, tetto per utente, eval che decide il modello, checklist locale |
+| [`docs/superpowers/specs/2026-09-06-casa-condivisa-design.md`](docs/superpowers/specs/2026-09-06-casa-condivisa-design.md) | La casa condivisa: `casa_id()`, policy rigenerate, inviti con codice, la sezione CASA, la decisione aperta sul "per quante persone" |
 | [`docs/superpowers/specs/2026-09-06-due-porte-design.md`](docs/superpowers/specs/2026-09-06-due-porte-design.md) | Le due porte e il primo avvio: semina automatica, stato vuoto di Piatti, inserimento veloce, stati vuoti collegati |
 | [`docs/superpowers/specs/2026-09-06-scadenza-fresco-design.md`](docs/superpowers/specs/2026-09-06-scadenza-fresco-design.md) | Il fresco che scade: la scadenza del residuo, gli avvisi in Settimana e Dispensa, il conflitto alla sostituzione in Scegli, i limiti dichiarati |
 | [`docs/superpowers/specs/2026-09-05-non-ricomprato-design.md`](docs/superpowers/specs/2026-09-05-non-ricomprato-design.md) | Contatore "non hai ricomprato": la definizione (lista senza memoria contro lista con residuo), `risparmio_settimana`, il prezzo per confezione, le due righe di UI e i limiti dichiarati |
@@ -409,12 +439,16 @@ autenticarsi):
    manuali: il secondo serve a chi ha già un repertorio e vuole aggiungere i mancanti
    senza toccare i suoi (salta quelli che esistono già, per nome).
 
-**Migrazioni di questo branch (05/09/2026).** Prima di ripubblicare, applicare
+**Migrazioni di questo branch (05–06/09/2026).** Prima di ripubblicare, applicare
 nell'SQL Editor, in ordine, `supabase/migrations/0010_import_uso.sql` (il tetto di import
-per utente) e `supabase/migrations/0011_prezzo_e_risparmio.sql` (colonna
-`prezzo_confezione` e tabella `risparmio_settimana`). La 0011 non è rimandabile:
-`generaListe` scrive nella tabella nuova a ogni generazione della lista, e senza la
-tabella la generazione della lista fallisce.
+per utente), `supabase/migrations/0011_prezzo_e_risparmio.sql` (colonna
+`prezzo_confezione` e tabella `risparmio_settimana`) e `supabase/migrations/0012_casa.sql`
+(la casa condivisa: sostituisce tutte le policy RLS con `casa_id()`). Nessuna è
+rimandabile: senza la 0011 la generazione della lista fallisce, senza la 0012 l'app non
+carica (il data layer chiama la RPC `casa_id` a ogni apertura). Dal pannello Supabase
+Auth conviene anche **spegnere le iscrizioni aperte** ("Allow new users to sign up")
+finché l'app è per persone note: dal 06/09 ogni account nuovo semina 147 righe al primo
+accesso, e l'URL di produzione è scopribile dal repo pubblico.
 
 Per il deploy vero e proprio:
 
