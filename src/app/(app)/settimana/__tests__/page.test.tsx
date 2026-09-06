@@ -173,6 +173,33 @@ describe('Settimana (piano alimentare)', () => {
     expect(screen.queryByText('Spuntino'.toUpperCase())).not.toBeInTheDocument();
   });
 
+  // Stato vuoto collegato alle porte (spec due-porte §2.4): a repertorio
+  // vuoto ogni riga direbbe solo "Nessun piatto assegnato", senza dire dove
+  // andare. Una scheda sopra le righe manda ai piatti.
+  it('a repertorio vuoto mostra la scheda "Nessun piatto ancora" con il link ai piatti, sopra le righe', async () => {
+    mockCarico();
+    vi.mocked(leggiRepertorio).mockResolvedValue([]);
+    render(<Settimana />);
+
+    expect(await screen.findByText('Nessun piatto ancora')).toBeInTheDocument();
+    expect(screen.getByText('Le righe si riempiono da sole appena ce n’è qualcuno.')).toBeInTheDocument();
+    const link = screen.getByRole('link', { name: 'COMINCIA DAI PIATTI ›' });
+    expect(link).toHaveAttribute('href', '/piatti');
+    // Le righe del giorno restano sotto la scheda, non spariscono.
+    const righe = document.querySelector('.anim-giorno')!;
+    expect(righe).toBeInTheDocument();
+    expect(screen.getByText('Nessun piatto ancora').compareDocumentPosition(righe) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('con almeno un piatto la scheda "Nessun piatto ancora" non compare', async () => {
+    mockCarico();
+    render(<Settimana />);
+
+    await screen.findByText('Yogurt e frutta');
+    expect(screen.queryByText('Nessun piatto ancora')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'COMINCIA DAI PIATTI ›' })).not.toBeInTheDocument();
+  });
+
   it('al primo accesso, senza settimana esistente, la crea con creaSettimana e poi la ricarica', async () => {
     vi.mocked(leggiSettimanaCorrente)
       .mockResolvedValueOnce(null)

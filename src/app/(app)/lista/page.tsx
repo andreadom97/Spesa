@@ -2,9 +2,10 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import type { AreaId } from '@/domain/types';
+import type { AreaId, Dish } from '@/domain/types';
 import { coloreArea, nomeArea } from '@/domain/aree';
 import { leggiSettimanaCorrente } from '@/data/settimana';
+import { leggiRepertorio } from '@/data/repertorio';
 import { leggiListe, spunta, allineaTopUp, type ListaSalvata, type SezioneSalvata, type VoceSalvata } from '@/data/lista';
 import { rispondiControllo } from '@/data/dispensa';
 import { accodaSpunta, leggiCoda, rimuoviConfermate, applicaCodaSuVoci, type Spunta } from '@/offline/coda';
@@ -82,6 +83,22 @@ function areeMancanti(lista: ListaSalvata): AreaId[] {
     if (sezione.voci.some((v) => !v.spuntato) || sezione.controlli.length > 0) mancanti.add(sezione.area);
   }
   return [...mancanti];
+}
+
+/**
+ * Il repertorio serve solo nel ramo "lista non trovata", per scegliere fra
+ * le due schede vuote (spec due-porte §2.4): senza piatti "vai alla
+ * settimana" sarebbe un vicolo cieco. Lettura tollerante: se fallisce si
+ * mostra la scheda di sempre, che è meglio di una schermata di errore per
+ * una lettura che non serve alla lista.
+ */
+async function leggiRepertorioSenzaBloccare(): Promise<Dish[] | null> {
+  try {
+    return await leggiRepertorio();
+  } catch (e) {
+    console.error('lista: lettura del repertorio fallita.', e);
+    return null;
+  }
 }
 
 function conSpuntaLocale(lista: ListaSalvata, itemId: string, spuntato: boolean): ListaSalvata {
@@ -176,6 +193,7 @@ interface StatoCarico {
 export default function Lista() {
   const [stato, setStato] = useState<StatoCarico | null>(null);
   const [nonTrovata, setNonTrovata] = useState(false);
+  const [repertorioVuoto, setRepertorioVuoto] = useState(false);
   const [settimanaLabelVuoto, setSettimanaLabelVuoto] = useState<string | undefined>(undefined);
   const [erroreCaricamento, setErroreCaricamento] = useState<string | null>(null);
   const [erroreAzione, setErroreAzione] = useState<string | null>(null);
@@ -189,7 +207,11 @@ export default function Lista() {
       try {
         const settimana = await leggiSettimanaCorrente();
         if (!settimana) {
-          if (vivo) setNonTrovata(true);
+          const repertorio = await leggiRepertorioSenzaBloccare();
+          if (vivo) {
+            setRepertorioVuoto(repertorio !== null && repertorio.length === 0);
+            setNonTrovata(true);
+          }
           return;
         }
         const label = formattaPillola(settimana.dataInizio);
@@ -207,8 +229,10 @@ export default function Lista() {
         }
         const lista = await leggiListe(settimana.id);
         if (!lista) {
+          const repertorio = await leggiRepertorioSenzaBloccare();
           if (vivo) {
             setSettimanaLabelVuoto(label);
+            setRepertorioVuoto(repertorio !== null && repertorio.length === 0);
             setNonTrovata(true);
           }
           return;
@@ -280,6 +304,21 @@ export default function Lista() {
   }
 
   if (nonTrovata) {
+    // Due schede per lo stesso vuoto (spec due-porte §2.4): senza piatti la
+    // settimana non avrebbe nulla da assegnare, quindi la porta è /piatti.
+    const vuoto = repertorioVuoto
+      ? {
+        titolo: 'Prima servono i piatti',
+        testo: 'La lista nasce dai piatti che mangi: dicci quali sono e da lì la settimana e la spesa si costruiscono da sole.',
+        href: '/piatti',
+        bottone: 'COMINCIA DAI PIATTI',
+      }
+      : {
+        titolo: 'La lista non c’è ancora',
+        testo: 'Nasce dalla settimana: appena confermi quali pasti farai a casa, qui trovi cosa comprare e quante confezioni.',
+        href: '/settimana',
+        bottone: 'VAI ALLA SETTIMANA',
+      };
     return (
       <Cornice titolo="Spesa" settimana={settimanaLabelVuoto} aree={[]}>
         <div className="sc" style={{ flex: 1, overflowY: 'auto', padding: '6px 16px 16px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
@@ -290,23 +329,23 @@ export default function Lista() {
               </svg>
             </div>
             <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-0.035em', lineHeight: 1.2, color: 'var(--ink)', marginBottom: 8 }}>
-              La lista non c’è ancora
+              {vuoto.titolo}
             </div>
             <div style={{ fontSize: 14, lineHeight: 1.5, color: '#8A8A96' }}>
-              Nasce dalla settimana: appena confermi quali pasti farai a casa, qui trovi cosa comprare e quante confezioni.
+              {vuoto.testo}
             </div>
           </div>
         </div>
         <div style={{ padding: '6px 16px 0' }}>
           <Link
-            href="/settimana"
+            href={vuoto.href}
             style={{
               width: '100%', height: 54, borderRadius: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700, letterSpacing: '0.09em',
               background: '#14163A', boxShadow: '0 3px 10px rgba(20,22,58,0.24)', color: '#FFFFFF',
             }}
           >
-            VAI ALLA SETTIMANA
+            {vuoto.bottone}
           </Link>
         </div>
       </Cornice>

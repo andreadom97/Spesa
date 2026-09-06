@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import type { AreaId, Dish, Ingredient, LottoPronto, MealSlot, MealSlotDef, PantryState, StatoSlot } from '@/domain/types';
 import { applicaStato } from '@/domain/week-shape';
 import { descriviScelte } from '@/domain/opzioni';
@@ -519,6 +520,29 @@ export default function Settimana() {
 
         {erroreCheckin && (
           <p style={{ margin: '0 4px 9px', fontSize: 12.5, color: 'var(--sec)' }}>{erroreCheckin}</p>
+        )}
+
+        {vista === 'corrente' && piatti.length === 0 && (
+          // Repertorio vuoto (spec due-porte §2.4): ogni riga sotto direbbe
+          // solo "Nessun piatto assegnato", senza dire dove andare. Solo nella
+          // vista corrente: il passato non si compila.
+          <div style={{ marginBottom: 10, padding: '14px 16px', borderRadius: 18, background: 'var(--superficie)', border: '1px solid var(--bordo)' }}>
+            <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)', marginBottom: 4 }}>
+              Nessun piatto ancora
+            </div>
+            <div style={{ fontSize: 13, lineHeight: 1.45, color: 'var(--sec)' }}>
+              Le righe si riempiono da sole appena ce n’è qualcuno.
+            </div>
+            <Link
+              href="/piatti"
+              style={{
+                display: 'inline-flex', alignItems: 'center', minHeight: 44, marginTop: 2,
+                fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.11em', color: 'var(--ink)',
+              }}
+            >
+              COMINCIA DAI PIATTI ›
+            </Link>
+          </div>
         )}
 
         <div key={dataSelezionata} className="anim-giorno" style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>

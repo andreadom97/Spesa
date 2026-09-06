@@ -2,6 +2,7 @@ import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import type { ListaSalvata } from '@/data/lista';
+import type { Dish } from '@/domain/types';
 
 // La coda offline (src/offline/coda.ts) NON è mockata: gira per davvero su
 // localStorage/jsdom, così questi test esercitano l'integrazione reale fra
@@ -16,14 +17,26 @@ vi.mock('@/data/lista', () => ({
 vi.mock('@/data/dispensa', () => ({
   rispondiControllo: vi.fn(),
 }));
+// Il repertorio si legge solo nel ramo "lista non trovata", per scegliere fra
+// le due schede vuote (spec due-porte §2.4). Di default un piatto: i test
+// che non parlano di repertorio vedono la scheda di sempre.
+vi.mock('@/data/repertorio', () => ({
+  leggiRepertorio: vi.fn(),
+}));
 
 import { leggiSettimanaCorrente } from '@/data/settimana';
 import { leggiListe, spunta } from '@/data/lista';
 import { rispondiControllo } from '@/data/dispensa';
+import { leggiRepertorio } from '@/data/repertorio';
 import { leggiCoda } from '@/offline/coda';
 import Lista from '../page';
 
 const SETTIMANA = { id: 'week-1', dataInizio: '2026-08-24', stato: 'confermata' as const, slots: [] };
+
+const PIATTO: Dish = {
+  id: 'd-1', nome: 'Pasta al pomodoro', slotDefId: 'sd-1', fonte: 'proprio', attivo: true,
+  descrizione: null, settimanaCiclo: null, giornoCiclo: null, ingredienti: [], componenti: [],
+};
 
 const VOCE_RISO = {
   id: 'item-riso', ingredientId: 'ing-riso', nome: 'Riso Carnaroli', area: 'cereali' as const,
@@ -59,6 +72,7 @@ beforeEach(() => {
   vi.mocked(leggiListe).mockReset();
   vi.mocked(spunta).mockReset().mockResolvedValue(undefined);
   vi.mocked(rispondiControllo).mockReset().mockResolvedValue(undefined);
+  vi.mocked(leggiRepertorio).mockReset().mockResolvedValue([PIATTO]);
 });
 
 describe('Lista', () => {
@@ -292,6 +306,53 @@ describe('Lista', () => {
     // La pillola della settimana è nel formato "24 AGO — 30 AGO": senza
     // settimana non c'è nulla da formattare, quindi niente em-dash in pagina.
     expect(screen.queryByText(/—/)).not.toBeInTheDocument();
+  });
+
+  // Stati vuoti collegati alle porte (spec due-porte §2.4): senza piatti
+  // "vai alla settimana" è un vicolo cieco, perché la settimana non ha nulla
+  // da assegnare. La scheda manda prima ai piatti.
+  it('senza settimana e con repertorio vuoto manda ai piatti, non alla settimana', async () => {
+    vi.mocked(leggiSettimanaCorrente).mockResolvedValue(null);
+    vi.mocked(leggiRepertorio).mockResolvedValue([]);
+    render(<Lista />);
+
+    expect(await screen.findByText('Prima servono i piatti')).toBeInTheDocument();
+    expect(screen.getByText('La lista nasce dai piatti che mangi: dicci quali sono e da lì la settimana e la spesa si costruiscono da sole.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'COMINCIA DAI PIATTI' })).toHaveAttribute('href', '/piatti');
+    expect(screen.queryByText('La lista non c’è ancora')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'VAI ALLA SETTIMANA' })).not.toBeInTheDocument();
+  });
+
+  it('con settimana ma senza lista, a repertorio vuoto, manda comunque ai piatti', async () => {
+    vi.mocked(leggiListe).mockResolvedValue(null);
+    vi.mocked(leggiRepertorio).mockResolvedValue([]);
+    render(<Lista />);
+
+    expect(await screen.findByText('Prima servono i piatti')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'COMINCIA DAI PIATTI' })).toHaveAttribute('href', '/piatti');
+  });
+
+  it('senza settimana ma con almeno un piatto resta la scheda di sempre, verso la settimana', async () => {
+    vi.mocked(leggiSettimanaCorrente).mockResolvedValue(null);
+    vi.mocked(leggiRepertorio).mockResolvedValue([PIATTO]);
+    render(<Lista />);
+
+    expect(await screen.findByText('La lista non c’è ancora')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'VAI ALLA SETTIMANA' })).toHaveAttribute('href', '/settimana');
+    expect(screen.queryByText('Prima servono i piatti')).not.toBeInTheDocument();
+  });
+
+  it('se la lettura del repertorio fallisce si comporta come con piatti: scheda di sempre, nessun errore', async () => {
+    const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(leggiSettimanaCorrente).mockResolvedValue(null);
+    vi.mocked(leggiRepertorio).mockRejectedValue(new Error('rete assente'));
+    render(<Lista />);
+
+    expect(await screen.findByText('La lista non c’è ancora')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'VAI ALLA SETTIMANA' })).toHaveAttribute('href', '/settimana');
+    expect(screen.queryByText('Non riusciamo a caricare la lista. Riprova più tardi.')).not.toBeInTheDocument();
+    expect(errore).toHaveBeenCalledWith('lista: lettura del repertorio fallita.', expect.any(Error));
+    errore.mockRestore();
   });
 
   it('le voci gia prese scendono in fondo, e la grande in cima e la prossima', async () => {
