@@ -2,6 +2,7 @@ import type { AreaId, UnitaBase } from '@/domain/types';
 import { costruisciLista } from '@/domain/list-builder';
 import { calcolaChiusura, type VoceChiusura } from '@/domain/chiusura';
 import { client } from './supabase';
+import { idCasa } from './casa';
 import { leggiImpostazioni } from './impostazioni';
 import { leggiSlotSettimana } from './settimana';
 import { leggiRepertorio, leggiIngredienti } from './repertorio';
@@ -51,8 +52,8 @@ export interface ListaSalvata {
  */
 export async function generaListe(weekId: string): Promise<void> {
   const sb = client();
-  const { data: u } = await sb.auth.getUser();
-  const userId = u.user!.id;
+  // L'id della casa (casa.ts), non dell'account: per un membro è il proprietario. Una chiamata per funzione: è memorizzata.
+  const userId = await idCasa();
 
   // Difesa in profondità (C4): una settimana chiusa non va mai rigenerata,
   // qualunque sia la via per cui si arriva qui. Cancellare e reinserire gli
@@ -159,8 +160,7 @@ export async function generaListe(weekId: string): Promise<void> {
  */
 export async function allineaTopUp(weekId: string): Promise<number> {
   const sb = client();
-  const { data: u } = await sb.auth.getUser();
-  const userId = u.user!.id;
+  const userId = await idCasa();
 
   const { data: liste, error: eListe } = await sb
     .from('shopping_list')
@@ -331,12 +331,12 @@ export async function leggiListe(weekId: string): Promise<ListaSalvata | null> {
 
 export async function spunta(itemId: string, spuntato: boolean): Promise<void> {
   const sb = client();
-  const { data: utente } = await sb.auth.getUser();
+  const userId = await idCasa();
   const { error } = await sb
     .from('shopping_list_item')
     .update({ spuntato, spuntato_il: spuntato ? new Date().toISOString() : null })
     .eq('id', itemId)
-    .eq('user_id', utente.user!.id);
+    .eq('user_id', userId);
   if (error) throw error;
 }
 
@@ -378,8 +378,7 @@ interface RigaChiusuraGrezza {
  */
 export async function chiudiSpesa(weekId: string): Promise<void> {
   const sb = client();
-  const { data: u } = await sb.auth.getUser();
-  const userId = u.user!.id;
+  const userId = await idCasa();
   const oggi = new Date().toISOString().slice(0, 10);
 
   const { data: week, error: eWeek } = await sb

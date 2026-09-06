@@ -35,8 +35,9 @@ function formattaDataItaliana(d: Date): string {
  * denaro e minuti), poi tre rami in ordine: chiave → pipeline a pagine;
  * IMPORT_MOCK (solo sviluppo, mai su Vercel) → mock; altrimenti 503.
  *
- * Nel ramo chiave, nell'ordine: registrazione del tentativo su `import_uso` col
- * client che porta il JWT dell'utente (così vale la RLS; `pagine` = numero di
+ * Nel ramo chiave, nell'ordine: `casa_id` col client che porta il JWT dell'utente
+ * (il tetto è per casa; RPC fallita → 500), registrazione del tentativo su
+ * `import_uso` con lo stesso client (così vale la RLS; `pagine` = numero di
  * immagini, o 0 per un PDF non ancora diviso), conteggio degli import nella finestra
  * (spec 2026-09-05 §3: la riga appena scritta conta, oltre il limite → 429 con la
  * data del prossimo import), divisione del PDF in pagine (400 se non si apre; 413
@@ -55,7 +56,6 @@ export async function POST(request: Request): Promise<Response> {
   const sb = createClient(url, anon);
   const { data, error } = await sb.auth.getUser(token);
   if (error || !data.user) return Response.json({ errore: 'non autorizzato' }, { status: 401 });
-  const userId = data.user.id;
 
   let form: FormData;
   try {
@@ -89,6 +89,15 @@ export async function POST(request: Request): Promise<Response> {
     const sbUtente = limite > 0 ? createClient(url, anon, { global: { headers: { Authorization: `Bearer ${token}` } } }) : null;
     try {
       if (sbUtente) {
+        // Il tetto è per casa (spec casa condivisa §3, §7): `import_uso` si scrive e
+        // si conta con l'id della casa, non dell'account — lo stesso che la RLS
+        // (`user_id = casa_id()`) accetta. La RPC gira col JWT dell'utente.
+        const { data: casa, error: eCasa } = await sbUtente.rpc('casa_id');
+        if (eCasa || !casa) {
+          console.error('import/estrai: casa_id fallita.', eCasa?.code ?? 'vuota');
+          return Response.json({ errore: 'estrazione non riuscita, riprova' }, { status: 500 });
+        }
+        const userId = String(casa);
         // Prima la riga, poi il conteggio: fra un controllo e un inserimento separati
         // passavano tutte le richieste concorrenti. Così al più `limite` passano, le
         // altre consumano uno slot e ricevono 429 (si contano i tentativi, §8).

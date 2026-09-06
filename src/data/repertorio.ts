@@ -1,5 +1,6 @@
 import type { Dish, Ingredient } from '@/domain/types';
 import { client } from './supabase';
+import { idCasa } from './casa';
 import { aComponenti, aDishIngredient, aIngrediente } from './mappers';
 
 export async function leggiIngredienti(): Promise<Ingredient[]> {
@@ -36,8 +37,8 @@ export async function salvaPiatto(
   piatto: Omit<Dish, 'id'> & { id?: string },
 ): Promise<string> {
   const sb = client();
-  const { data: utente } = await sb.auth.getUser();
-  const userId = utente.user!.id;
+  // L'id della casa (casa.ts), non dell'account: per un membro è il proprietario. Una chiamata per funzione: è memorizzata.
+  const userId = await idCasa();
 
   const { data: riga, error } = await sb
     .from('dish')
@@ -151,12 +152,12 @@ function isUuid(v: string): boolean {
  */
 export async function eliminaPiatto(id: string): Promise<void> {
   const sb = client();
-  const { data: utente } = await sb.auth.getUser();
+  const userId = await idCasa();
   const { error } = await sb
     .from('dish')
     .update({ attivo: false })
     .eq('id', id)
-    .eq('user_id', utente.user!.id);
+    .eq('user_id', userId);
   if (error) throw error;
 }
 
@@ -164,12 +165,12 @@ export async function salvaIngrediente(
   ing: Omit<Ingredient, 'id'> & { id?: string },
 ): Promise<string> {
   const sb = client();
-  const { data: utente } = await sb.auth.getUser();
+  const userId = await idCasa();
   const { data, error } = await sb
     .from('ingredient')
     .upsert({
       id: ing.id,
-      user_id: utente.user!.id,
+      user_id: userId,
       nome: ing.nome,
       unita_base: ing.unitaBase,
       area: ing.area,
@@ -187,7 +188,7 @@ export async function salvaIngrediente(
   // Ogni ingrediente ha una riga di dispensa dal primo giorno, a residuo zero:
   // "punto di partenza del residuo: zero" della spec.
   const { error: ePantry } = await sb.from('pantry_state').upsert(
-    { ingredient_id: String(data.id), user_id: utente.user!.id, residuo: 0 },
+    { ingredient_id: String(data.id), user_id: userId, residuo: 0 },
     { onConflict: 'ingredient_id', ignoreDuplicates: true },
   );
   if (ePantry) throw ePantry;
@@ -216,12 +217,12 @@ export class IngredienteInUsoError extends Error {}
  */
 export async function eliminaIngrediente(id: string): Promise<void> {
   const sb = client();
-  const { data: utente } = await sb.auth.getUser();
+  const userId = await idCasa();
   const { error } = await sb
     .from('ingredient')
     .delete()
     .eq('id', id)
-    .eq('user_id', utente.user!.id);
+    .eq('user_id', userId);
   if (error) {
     if (error.code === '23503') {
       throw new IngredienteInUsoError(

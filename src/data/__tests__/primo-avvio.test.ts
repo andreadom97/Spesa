@@ -1,9 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../supabase', () => ({ client: vi.fn() }));
+vi.mock('../casa', () => ({ idCasa: vi.fn() }));
 vi.mock('../impostazioni', () => ({ pastiDiDefault: vi.fn(), salvaSlotDefs: vi.fn() }));
 
 import { client } from '../supabase';
+import { idCasa } from '../casa';
 import { pastiDiDefault, salvaSlotDefs } from '../impostazioni';
 import { assicuraDatiIniziali } from '../primo-avvio';
 import { INGREDIENTI_BASE } from '@/domain/ingredienti-base';
@@ -11,8 +13,10 @@ import { INGREDIENTI_BASE } from '@/domain/ingredienti-base';
 interface Chiamata { metodo: string; args: unknown[] }
 
 interface Opzioni {
-  /** Chi è autenticato; `null` = nessun utente. */
+  /** Chi è autenticato (`auth.getUser`); `null` = nessun utente. */
   utente?: { id: string } | null;
+  /** L'id della casa che `idCasa()` restituisce: per chi è solo è il suo, per un membro quello del proprietario. */
+  casa?: string;
   /** Risposta dei conteggi `select('id', { count: 'exact', head: true })`, tabella per tabella. */
   conteggi?: Record<string, { count: number | null; error?: unknown }>;
   /** Risposta di tutto il resto (scritture), data la tabella e la catena di chiamate. */
@@ -30,11 +34,14 @@ function eConteggio(chiamate: Chiamata[]): boolean {
 /**
  * La controfigura di lista.generaListe.test.ts, estesa ai conteggi: la
  * catena `select(..., { count, head }).eq(...)` risolve `{ count, error }`
- * invece di `{ data, error }`, e `auth.getUser` è configurabile.
+ * invece di `{ data, error }` (e si registra in `letture`, per verificare su
+ * quale `user_id` si è contato); `auth.getUser` e `idCasa()` sono configurabili.
  */
 function creaClientMock(opzioni: Opzioni = {}) {
-  const { utente = { id: 'user-1' }, conteggi = {}, risolvi = () => ({ data: null, error: null }) } = opzioni;
+  const { utente = { id: 'user-1' }, casa = utente?.id ?? 'user-1', conteggi = {}, risolvi = () => ({ data: null, error: null }) } = opzioni;
+  vi.mocked(idCasa).mockResolvedValue(casa);
   const scritture: Record<string, Chiamata[][]> = {};
+  const letture: Record<string, Chiamata[][]> = {};
   const from = vi.fn((tabella: string) => {
     const chiamate: Chiamata[] = [];
     const registra = (metodo: string) => (...args: unknown[]) => {
@@ -51,6 +58,7 @@ function creaClientMock(opzioni: Opzioni = {}) {
       maybeSingle: () => proxy,
       then(onFulfilled: (v: unknown) => unknown, onRejected?: (e: unknown) => unknown) {
         if (eConteggio(chiamate)) {
+          (letture[tabella] ??= []).push(chiamate);
           const c = conteggi[tabella] ?? { count: 0 };
           return Promise.resolve({ count: c.count, error: c.error ?? null }).then(onFulfilled, onRejected);
         }
@@ -63,6 +71,7 @@ function creaClientMock(opzioni: Opzioni = {}) {
   return {
     sb: { auth: { getUser: vi.fn().mockResolvedValue({ data: { user: utente } }) }, from },
     scritture,
+    letture,
   };
 }
 
@@ -76,10 +85,24 @@ describe('assicuraDatiIniziali', () => {
     vi.mocked(client).mockReset();
     vi.mocked(pastiDiDefault).mockReset();
     vi.mocked(salvaSlotDefs).mockReset();
+    vi.mocked(idCasa).mockReset();
   });
 
-  it('senza utente autenticato non tocca nulla', async () => {
+  it('senza utente autenticato non tocca nulla, e non chiede nemmeno la casa', async () => {
     const { sb } = creaClientMock({ utente: null });
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    const esito = await assicuraDatiIniziali();
+
+    expect(esito).toEqual({ pasti: false, ingredienti: false });
+    expect(idCasa).not.toHaveBeenCalled();
+    expect(sb.from).not.toHaveBeenCalled();
+    expect(salvaSlotDefs).not.toHaveBeenCalled();
+  });
+
+  it('idCasa che rigetta con `non autenticato` (sessione sparita) → { false, false } senza scritture', async () => {
+    const { sb } = creaClientMock();
+    vi.mocked(idCasa).mockRejectedValue(new Error('non autenticato'));
     vi.mocked(client).mockReturnValue(sb as never);
 
     const esito = await assicuraDatiIniziali();
@@ -87,6 +110,41 @@ describe('assicuraDatiIniziali', () => {
     expect(esito).toEqual({ pasti: false, ingredienti: false });
     expect(sb.from).not.toHaveBeenCalled();
     expect(salvaSlotDefs).not.toHaveBeenCalled();
+  });
+
+  it('ogni altro errore di idCasa propaga, prima di qualunque scrittura', async () => {
+    const errore = new Error('rete assente');
+    const { sb } = creaClientMock();
+    vi.mocked(idCasa).mockRejectedValue(errore);
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    await expect(assicuraDatiIniziali()).rejects.toBe(errore);
+    expect(sb.from).not.toHaveBeenCalled();
+    expect(salvaSlotDefs).not.toHaveBeenCalled();
+  });
+
+  it("un membro (idCasa ≠ utente) conta e scrive con l'id della casa, che non è vuota: non semina", async () => {
+    const { sb, scritture, letture } = creaClientMock({
+      utente: { id: 'user-2' },
+      casa: 'casa-1',
+      conteggi: { meal_slot_def: { count: 4 }, ingredient: { count: 71 } },
+    });
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    const esito = await assicuraDatiIniziali();
+
+    expect(esito).toEqual({ pasti: false, ingredienti: false });
+    expect(idCasa).toHaveBeenCalledTimes(1);
+    for (const tabella of ['meal_slot_def', 'ingredient']) {
+      expect(letture[tabella]).toHaveLength(1);
+      expect(letture[tabella][0]).toContainEqual({ metodo: 'eq', args: ['user_id', 'casa-1'] });
+      expect(letture[tabella][0]).not.toContainEqual({ metodo: 'eq', args: ['user_id', 'user-2'] });
+    }
+    expect(salvaSlotDefs).not.toHaveBeenCalled();
+    expect(scritture['ingredient']).toBeUndefined();
+    expect(scritture['pantry_state']).toBeUndefined();
+    const [upsert] = scritture['settings'][0];
+    expect(upsert.args[0]).toEqual({ user_id: 'casa-1' });
   });
 
   it('con pasti e ingredienti già presenti scrive solo la riga settings', async () => {

@@ -3,8 +3,9 @@
 /** @vitest-environment node */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-const { getUserMock, createClientMock, estraiPianoAPagineMock, dividiPdfMock, contaImportRecentiMock, registraImportMock } = vi.hoisted(() => ({
+const { getUserMock, rpcMock, createClientMock, estraiPianoAPagineMock, dividiPdfMock, contaImportRecentiMock, registraImportMock } = vi.hoisted(() => ({
   getUserMock: vi.fn(),
+  rpcMock: vi.fn(),
   createClientMock: vi.fn(),
   estraiPianoAPagineMock: vi.fn(),
   dividiPdfMock: vi.fn(),
@@ -64,8 +65,12 @@ describe('POST /api/import/estrai', () => {
   beforeEach(() => {
     getUserMock.mockReset();
     getUserMock.mockResolvedValue({ data: { user: { id: 'u1' } }, error: null });
+    // `rpc('casa_id')` sul client con il JWT: l'id della casa, che per un
+    // membro non è il suo (qui 'casa-1' contro l'utente 'u1', apposta).
+    rpcMock.mockReset();
+    rpcMock.mockResolvedValue({ data: 'casa-1', error: null });
     createClientMock.mockReset();
-    createClientMock.mockImplementation(() => ({ auth: { getUser: getUserMock } }));
+    createClientMock.mockImplementation(() => ({ auth: { getUser: getUserMock }, rpc: rpcMock }));
     estraiPianoAPagineMock.mockReset();
     dividiPdfMock.mockReset();
     dividiPdfMock.mockImplementation(async (bytes: Uint8Array) => [Buffer.from(bytes).toString('base64')]);
@@ -190,10 +195,38 @@ describe('POST /api/import/estrai', () => {
     expect((await res.json()).errore).toBe('non ho capito la dieta, riprova');
   });
 
-  describe('tetto per utente', () => {
+  describe('tetto per casa', () => {
     beforeEach(() => {
       process.env.ANTHROPIC_API_KEY = 'k';
       estraiPianoAPagineMock.mockResolvedValue(conUso(FIXTURE_RIFIUTO_MACRO));
+    });
+
+    it("casa_id sul client con il JWT dell'utente, prima di registrare: registra e conta con l'id della casa, non dell'account", async () => {
+      const res = await POST(richiesta({ nImmagini: 2 }));
+      expect(res.status).toBe(200);
+      expect(rpcMock).toHaveBeenCalledTimes(1);
+      expect(rpcMock).toHaveBeenCalledWith('casa_id');
+      expect(rpcMock.mock.invocationCallOrder[0]).toBeLessThan(registraImportMock.mock.invocationCallOrder[0]!);
+      expect(registraImportMock).toHaveBeenCalledWith(clientUtente(), 'casa-1', 2, MODELLO_DEFAULT_IMPORT);
+      expect(contaImportRecentiMock).toHaveBeenCalledWith(clientUtente(), 'casa-1', expect.any(Date));
+    });
+
+    it('casa_id con errore → 500 generico, senza registrare, contare né estrarre', async () => {
+      rpcMock.mockResolvedValue({ data: null, error: { message: 'permission denied', code: '42501' } });
+      const res = await POST(richiesta({ nImmagini: 2 }));
+      expect(res.status).toBe(500);
+      expect((await res.json()).errore).toBe('estrazione non riuscita, riprova');
+      expect(registraImportMock).not.toHaveBeenCalled();
+      expect(contaImportRecentiMock).not.toHaveBeenCalled();
+      expect(estraiPianoAPagineMock).not.toHaveBeenCalled();
+    });
+
+    it('casa_id vuota (nessun uid nel JWT) → 500, senza registrare', async () => {
+      rpcMock.mockResolvedValue({ data: null, error: null });
+      const res = await POST(richiesta({ nImmagini: 2 }));
+      expect(res.status).toBe(500);
+      expect(registraImportMock).not.toHaveBeenCalled();
+      expect(estraiPianoAPagineMock).not.toHaveBeenCalled();
     });
 
     it('sotto il limite: registra PRIMA di contare (pagine = n immagini), poi estrae con la concorrenza configurata', async () => {
@@ -206,9 +239,9 @@ describe('POST /api/import/estrai', () => {
       const sbUtente = clientUtente();
       expect(sbUtente).toBeDefined();
       expect(registraImportMock).toHaveBeenCalledTimes(1);
-      expect(registraImportMock).toHaveBeenCalledWith(sbUtente, 'u1', 5, MODELLO_DEFAULT_IMPORT);
+      expect(registraImportMock).toHaveBeenCalledWith(sbUtente, 'casa-1', 5, MODELLO_DEFAULT_IMPORT);
       expect(contaImportRecentiMock).toHaveBeenCalledTimes(1);
-      expect(contaImportRecentiMock).toHaveBeenCalledWith(sbUtente, 'u1', expect.any(Date));
+      expect(contaImportRecentiMock).toHaveBeenCalledWith(sbUtente, 'casa-1', expect.any(Date));
 
       expect(estraiPianoAPagineMock).toHaveBeenCalledTimes(1);
       const [files, modello, opzioni] = estraiPianoAPagineMock.mock.calls[0]!;
@@ -244,10 +277,11 @@ describe('POST /api/import/estrai', () => {
       expect(estraiPianoAPagineMock).toHaveBeenCalledTimes(1);
     });
 
-    it('IMPORT_LIMITE_30GG=0: né conteggio né registrazione, ma si estrae', async () => {
+    it('IMPORT_LIMITE_30GG=0: né casa_id, né conteggio né registrazione, ma si estrae', async () => {
       process.env.IMPORT_LIMITE_30GG = '0';
       const res = await POST(richiesta({ nImmagini: 2 }));
       expect(res.status).toBe(200);
+      expect(rpcMock).not.toHaveBeenCalled();
       expect(contaImportRecentiMock).not.toHaveBeenCalled();
       expect(registraImportMock).not.toHaveBeenCalled();
       expect(estraiPianoAPagineMock).toHaveBeenCalledTimes(1);
@@ -257,7 +291,7 @@ describe('POST /api/import/estrai', () => {
       dividiPdfMock.mockResolvedValue(['p1', 'p2', 'p3']);
       const res = await POST(richiesta({ documento: true }));
       expect(res.status).toBe(200);
-      expect(registraImportMock).toHaveBeenCalledWith(clientUtente(), 'u1', 0, MODELLO_DEFAULT_IMPORT);
+      expect(registraImportMock).toHaveBeenCalledWith(clientUtente(), 'casa-1', 0, MODELLO_DEFAULT_IMPORT);
       expect(dividiPdfMock).toHaveBeenCalledTimes(1);
       const [byte, maxPagine] = dividiPdfMock.mock.calls[0]!;
       expect(byte).toBeInstanceOf(Uint8Array);
@@ -296,7 +330,7 @@ describe('POST /api/import/estrai', () => {
       contaImportRecentiMock.mockResolvedValue({ conteggio: 4, piuVecchio: new Date('2026-08-13T10:00:00Z') });
       const res = await POST(richiesta({ documento: true }));
       expect(res.status).toBe(429);
-      expect(registraImportMock).toHaveBeenCalledWith(clientUtente(), 'u1', 0, MODELLO_DEFAULT_IMPORT);
+      expect(registraImportMock).toHaveBeenCalledWith(clientUtente(), 'casa-1', 0, MODELLO_DEFAULT_IMPORT);
       expect(dividiPdfMock).not.toHaveBeenCalled();
       expect(estraiPianoAPagineMock).not.toHaveBeenCalled();
     });
@@ -319,10 +353,11 @@ describe('POST /api/import/estrai', () => {
     });
   });
 
-  it('ramo mock e 503: né conteggio né registrazione', async () => {
+  it('ramo mock e 503: né casa_id, né conteggio né registrazione', async () => {
     process.env.IMPORT_MOCK = 'sintetico';
     expect((await POST(richiesta({ nImmagini: 2 }))).status).toBe(200);
     delete process.env.IMPORT_MOCK;
+    expect(rpcMock).not.toHaveBeenCalled();
     expect((await POST(richiesta({ nImmagini: 2 }))).status).toBe(503);
     expect(contaImportRecentiMock).not.toHaveBeenCalled();
     expect(registraImportMock).not.toHaveBeenCalled();

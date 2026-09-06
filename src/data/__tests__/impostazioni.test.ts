@@ -2,10 +2,20 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Impostazioni, MealSlotDef } from '@/domain/types';
 
 vi.mock('../supabase', () => ({ client: vi.fn() }));
+vi.mock('../casa', () => ({ idCasa: vi.fn() }));
 
 import { client } from '../supabase';
+import { idCasa } from '../casa';
 import { salvaImpostazioni, salvaSlotDefs } from '../impostazioni';
 import { MAX_PASTI, MIN_PASTI } from '@/domain/pasti';
+
+// L'id che finisce in `user_id` non viene più da `auth.getUser` sul client
+// finto ma da `idCasa()` (l'account della casa): lo stesso valore di prima,
+// così i payload attesi non cambiano.
+beforeEach(() => {
+  vi.mocked(idCasa).mockReset();
+  vi.mocked(idCasa).mockResolvedValue('user-1');
+});
 
 function pasto(i: number): MealSlotDef {
   return { id: `p-${i}`, nome: `Pasto ${i}`, posizione: i, assenzeAbituali: Array(7).fill(false) };
@@ -35,7 +45,7 @@ function creaClientMock() {
     return proxy;
   }
   return {
-    sb: { auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }) }, from },
+    sb: { from },
     upsert,
   };
 }

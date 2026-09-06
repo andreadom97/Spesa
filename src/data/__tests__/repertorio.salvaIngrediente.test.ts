@@ -1,9 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../supabase', () => ({ client: vi.fn() }));
+vi.mock('../casa', () => ({ idCasa: vi.fn() }));
 
 import { client } from '../supabase';
+import { idCasa } from '../casa';
 import { salvaIngrediente } from '../repertorio';
+
+// L'id che finisce in `user_id` non viene più da `auth.getUser` sul client
+// finto ma da `idCasa()` (l'account della casa): lo stesso valore di prima,
+// così i payload attesi non cambiano.
+beforeEach(() => {
+  vi.mocked(idCasa).mockReset();
+  vi.mocked(idCasa).mockResolvedValue('user-1');
+});
 
 /** Registra l'ultimo payload passato a upsert, tabella per tabella. */
 function creaClientMock() {
@@ -23,7 +33,7 @@ function creaClientMock() {
     return proxy;
   }
   return {
-    sb: { auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }) }, from },
+    sb: { from },
     upsert,
   };
 }

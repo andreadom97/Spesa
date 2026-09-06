@@ -5,6 +5,7 @@ import { consumoSlot, deltaStorno } from '@/domain/storno';
 import { settimanaDelCiclo, settimaneTrascorse } from '@/domain/ciclo';
 import { lunediDi } from '@/domain/date';
 import { client } from './supabase';
+import { idCasa } from './casa';
 import { aMealSlot, aLottoPronto } from './mappers';
 import { porzioniUtilizzabili } from '@/domain/pronti';
 import { leggiImpostazioni, leggiSlotDefs } from './impostazioni';
@@ -27,11 +28,12 @@ export interface SettimanaCorrente {
  */
 export async function leggiSettimana(lunedi: string): Promise<SettimanaCorrente | null> {
   const sb = client();
-  const { data: utente } = await sb.auth.getUser();
+  // L'id della casa (casa.ts), non dell'account: per un membro è il proprietario. Una chiamata per funzione: è memorizzata.
+  const userId = await idCasa();
   const { data: settimana, error } = await sb
     .from('week')
     .select('id, data_inizio, stato')
-    .eq('user_id', utente.user!.id)
+    .eq('user_id', userId)
     .eq('data_inizio', lunedi)
     .maybeSingle();
   if (error) throw error;
@@ -60,8 +62,7 @@ export async function leggiSettimanaCorrente(): Promise<SettimanaCorrente | null
 /** Genera i default con generaSettimana + assegnaPiatti e li scrive. Restituisce il week id. */
 export async function creaSettimana(lunedi: string): Promise<string> {
   const sb = client();
-  const { data: utente } = await sb.auth.getUser();
-  const userId = utente.user!.id;
+  const userId = await idCasa();
 
   const [slotDefs, repertorio, impostazioni, ingredients, pantry] = await Promise.all([
     leggiSlotDefs(),
@@ -222,8 +223,7 @@ export async function aggiornaSlot(
   fonte: FonteStato,
 ): Promise<void> {
   const sb = client();
-  const { data: utente } = await sb.auth.getUser();
-  const userId = utente.user!.id;
+  const userId = await idCasa();
 
   const { data: riga, error } = await sb
     .from('meal_slot')
@@ -535,12 +535,12 @@ export async function aggiornaSlot(
 
 export async function confermaSettimana(weekId: string): Promise<void> {
   const sb = client();
-  const { data: utente } = await sb.auth.getUser();
+  const userId = await idCasa();
   const { error } = await sb
     .from('week')
     .update({ stato: 'confermata' })
     .eq('id', weekId)
-    .eq('user_id', utente.user!.id);
+    .eq('user_id', userId);
   if (error) throw error;
 }
 

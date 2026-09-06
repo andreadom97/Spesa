@@ -1,5 +1,6 @@
 import type { PantryState } from '@/domain/types';
 import { client } from './supabase';
+import { idCasa } from './casa';
 import { aPantryState } from './mappers';
 
 export async function leggiDispensa(): Promise<PantryState[]> {
@@ -24,8 +25,8 @@ export async function rispondiControllo(
   ancora: boolean,
 ): Promise<void> {
   const sb = client();
-  const { data: utente } = await sb.auth.getUser();
-  const userId = utente.user!.id;
+  // L'id della casa (casa.ts), non dell'account: per un membro è il proprietario. Una chiamata per funzione: è memorizzata.
+  const userId = await idCasa();
 
   if (ancora) {
     const oggi = new Date().toISOString().slice(0, 10);
@@ -107,11 +108,11 @@ export async function correggiResiduo(ingredientId: string, residuo: number): Pr
     throw new Error(`Residuo non valido: ${residuo}. Lo schema ha check (residuo >= 0).`);
   }
   const sb = client();
-  const { data: utente } = await sb.auth.getUser();
+  const userId = await idCasa();
   const { error } = await sb
     .from('pantry_state')
     .upsert(
-      { ingredient_id: ingredientId, user_id: utente.user!.id, residuo },
+      { ingredient_id: ingredientId, user_id: userId, residuo },
       { onConflict: 'ingredient_id' },
     );
   if (error) throw error;
@@ -131,11 +132,11 @@ export async function correggiResiduo(ingredientId: string, residuo: number): Pr
  */
 export async function impostaCongelato(ingredientId: string, congelato: boolean): Promise<void> {
   const sb = client();
-  const { data: utente } = await sb.auth.getUser();
+  const userId = await idCasa();
   const { error } = await sb
     .from('pantry_state')
     .upsert(
-      { ingredient_id: ingredientId, user_id: utente.user!.id, congelato },
+      { ingredient_id: ingredientId, user_id: userId, congelato },
       { onConflict: 'ingredient_id' },
     );
   if (error) throw error;

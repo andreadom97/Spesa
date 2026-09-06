@@ -1,6 +1,7 @@
 import { INGREDIENTI_BASE } from '@/domain/ingredienti-base';
 import { pastiDiDefault, salvaSlotDefs } from './impostazioni';
 import { client } from './supabase';
+import { idCasa } from './casa';
 
 /**
  * Il primo avvio automatico (spec 2026-09-06, §1, P5): senza questo, un
@@ -10,13 +11,21 @@ import { client } from './supabase';
  * dal codice quello che i seed seminavano a mano, alla prima apertura.
  *
  * Idempotente: due sole letture in parallelo (i conteggi di `meal_slot_def` e
- * `ingredient` dell'utente) prima di qualunque scrittura, e ogni scrittura è
+ * `ingredient` della casa) prima di qualunque scrittura, e ogni scrittura è
  * condizionata a una tabella vuota o è un upsert con `ignoreDuplicates`.
  * Chiamarla dieci volte su un utente già seminato costa due conteggi e un
  * upsert a vuoto su `settings`. **Solo a tabella vuota**: chi ha anche un
  * solo ingrediente non riceve nulla, perché le correzioni fatte a mano non si
  * toccano (stessa regola di `seed-ingredienti.sql`, che resta lo strumento
  * per aggiungere i mancanti a un repertorio esistente).
+ *
+ * Conteggi e scritture usano `idCasa()` (spec casa condivisa §3): un membro
+ * che apre l'app conta i dati della casa, che non sono vuoti, e non semina
+ * niente. Un account nuovo semina i propri; entrando in una casa li lascia
+ * da parte. Il controllo "senza utente → non fare nulla" resta su
+ * `auth.getUser`; se poi `idCasa()` trova la sessione sparita nel frattempo
+ * (`non autenticato`), l'esito è lo stesso di "senza utente" — non un crash
+ * all'avvio. Ogni altro errore della RPC propaga, come quelli dei conteggi.
  *
  * La riga `settings` si scrive sempre: costa un upsert che il DB ignora se la
  * riga esiste (i default li mette il DB) e toglie il caso "riga assente" che
@@ -30,8 +39,16 @@ import { client } from './supabase';
 export async function assicuraDatiIniziali(): Promise<{ pasti: boolean; ingredienti: boolean }> {
   const sb = client();
   const { data: utente } = await sb.auth.getUser();
-  const userId = utente.user?.id;
-  if (!userId) return { pasti: false, ingredienti: false };
+  if (!utente.user) return { pasti: false, ingredienti: false };
+
+  // L'id della casa (casa.ts), non dell'account: per un membro è il proprietario. Una chiamata per funzione: è memorizzata.
+  let userId: string;
+  try {
+    userId = await idCasa();
+  } catch (err) {
+    if (err instanceof Error && err.message === 'non autenticato') return { pasti: false, ingredienti: false };
+    throw err;
+  }
 
   const [pasti, ingredienti] = await Promise.all([
     sb.from('meal_slot_def').select('id', { count: 'exact', head: true }).eq('user_id', userId),

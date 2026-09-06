@@ -2,12 +2,22 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('../repertorio', () => ({ salvaIngrediente: vi.fn(), salvaPiatto: vi.fn(), eliminaPiatto: vi.fn() }));
 vi.mock('../impostazioni', () => ({ leggiImpostazioni: vi.fn(), salvaImpostazioni: vi.fn() }));
 vi.mock('../supabase', () => ({ client: vi.fn() }));
+vi.mock('../casa', () => ({ idCasa: vi.fn() }));
 
 import { salvaIngrediente, salvaPiatto, eliminaPiatto } from '../repertorio';
 import { leggiImpostazioni, salvaImpostazioni } from '../impostazioni';
 import { client } from '../supabase';
+import { idCasa } from '../casa';
 import { eseguiScritture } from '../importa';
 import type { ScrittureImport } from '@/domain/import/commit';
+
+// L'id che finisce in `user_id` non viene più da `auth.getUser` sul client
+// finto ma da `idCasa()` (l'account della casa): lo stesso valore di prima,
+// così i payload attesi non cambiano.
+beforeEach(() => {
+  vi.mocked(idCasa).mockReset();
+  vi.mocked(idCasa).mockResolvedValue('u1');
+});
 
 const SCRITTURE: ScrittureImport = {
   ingredientiDaCreare: [{ alimento: 'pasta di semola', nome: 'Pasta', unitaBase: 'g', area: 'cereali', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500, prezzoConfezione: 1.2 }],
@@ -25,7 +35,6 @@ function mockBozzaDelete() {
   const eq = vi.fn().mockResolvedValue({ error: null });
   const del = vi.fn(() => ({ eq }));
   vi.mocked(client).mockReturnValue({
-    auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } }) },
     from: vi.fn(() => ({ delete: del })),
   } as never);
 }

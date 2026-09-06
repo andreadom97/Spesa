@@ -2,17 +2,27 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Dish, Ingredient, MealSlot } from '@/domain/types';
 
 vi.mock('../supabase', () => ({ client: vi.fn() }));
+vi.mock('../casa', () => ({ idCasa: vi.fn() }));
 vi.mock('../settimana', () => ({ leggiSlotSettimana: vi.fn() }));
 vi.mock('../repertorio', () => ({ leggiRepertorio: vi.fn(), leggiIngredienti: vi.fn() }));
 vi.mock('../dispensa', () => ({ leggiDispensa: vi.fn() }));
 vi.mock('../impostazioni', () => ({ leggiImpostazioni: vi.fn() }));
 
 import { client } from '../supabase';
+import { idCasa } from '../casa';
 import { leggiSlotSettimana } from '../settimana';
 import { leggiRepertorio, leggiIngredienti } from '../repertorio';
 import { leggiDispensa } from '../dispensa';
 import { leggiImpostazioni } from '../impostazioni';
 import { allineaTopUp } from '../lista';
+
+// L'id che finisce in `user_id` non viene più da `auth.getUser` sul client
+// finto ma da `idCasa()` (l'account della casa): lo stesso valore di prima,
+// così i payload attesi non cambiano.
+beforeEach(() => {
+  vi.mocked(idCasa).mockReset();
+  vi.mocked(idCasa).mockResolvedValue('user-1');
+});
 
 interface Chiamata { metodo: string; args: unknown[] }
 
@@ -44,7 +54,7 @@ function creaClientMock(risolvi: (tabella: string, chiamate: Chiamata[]) => { da
   }
 
   return {
-    sb: { auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }) }, from },
+    sb: { from },
     scritture,
   };
 }
