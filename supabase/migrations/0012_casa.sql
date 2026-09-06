@@ -58,7 +58,10 @@ revoke all on casa_invito from authenticated, anon;
 -- lascerebbe comunque leggere la propria riga): serve perché casa_id() viene
 -- chiamata DENTRO le policy di tutte le altre tabelle, e una funzione che a sua
 -- volta dipendesse da una policy renderebbe ogni query un castello di carte.
--- stable: una volta per statement, non per riga.
+-- stable, ma non memoizzata: una funzione security definer non è inlinabile e
+-- in un seq scan verrebbe valutata per riga. Per questo le policy la chiamano
+-- come `(select casa_id())`: un InitPlan, valutato una volta per statement,
+-- come Supabase raccomanda per auth.uid().
 create or replace function public.casa_id()
 returns uuid
 language sql
@@ -108,11 +111,11 @@ begin
     execute format('alter table %I force row level security', t);
 
     if t = 'import_uso' then
-      execute 'create policy import_uso_leggi on import_uso for select to authenticated using (user_id = casa_id())';
-      execute 'create policy import_uso_scrivi on import_uso for insert to authenticated with check (user_id = casa_id())';
+      execute 'create policy import_uso_leggi on import_uso for select to authenticated using (user_id = (select casa_id()))';
+      execute 'create policy import_uso_scrivi on import_uso for insert to authenticated with check (user_id = (select casa_id()))';
     else
       execute format(
-        'create policy %I on %I for all to authenticated using (user_id = casa_id()) with check (user_id = casa_id())',
+        'create policy %I on %I for all to authenticated using (user_id = (select casa_id())) with check (user_id = (select casa_id()))',
         t || '_casa', t
       );
     end if;
@@ -142,6 +145,11 @@ begin
   if auth.uid() is null then
     raise exception 'non autenticato';
   end if;
+  -- Un solo ingresso o invito alla volta in tutto il DB: due entra_in_casa
+  -- concorrenti non si vedrebbero l'un l'altro e potrebbero formare una catena
+  -- membro → proprietario → proprietario, che casa_id() per contratto non
+  -- risale. Il lock dura la transazione e costa niente.
+  perform pg_advisory_xact_lock(hashtext('casa_membro'));
   if exists (select 1 from casa_membro where membro = auth.uid()) then
     raise exception 'sei già in una casa: esci prima di invitare';
   end if;
@@ -176,6 +184,9 @@ begin
   if auth.uid() is null then
     raise exception 'non autenticato';
   end if;
+  -- Stesso lock di crea_invito: i controlli qui sotto valgono solo se nessun
+  -- altro ingresso è a metà strada.
+  perform pg_advisory_xact_lock(hashtext('casa_membro'));
 
   select * into invito
   from casa_invito
@@ -260,8 +271,8 @@ begin
   end if;
 
   -- email e id nello stesso ordine (entrato_il): la scheda CASA li accoppia per indice.
-  select coalesce(jsonb_agg(coalesce(u.email, '') order by m.entrato_il), '[]'::jsonb),
-         coalesce(jsonb_agg(m.membro order by m.entrato_il), '[]'::jsonb)
+  select coalesce(jsonb_agg(coalesce(u.email, '') order by m.entrato_il, m.membro), '[]'::jsonb),
+         coalesce(jsonb_agg(m.membro order by m.entrato_il, m.membro), '[]'::jsonb)
     into email_elenco, id_elenco
   from casa_membro m
   join auth.users u on u.id = m.membro
