@@ -25,8 +25,10 @@ create table casa_membro (
 );
 create index casa_membro_proprietario on casa_membro (proprietario);
 
--- Un codice per proprietario alla volta, sei caratteri, 24 ore. Chi lo ha entra:
--- rischio accettato fra persone che vivono insieme (spec §7).
+-- Un codice per proprietario alla volta, otto caratteri (2^40 combinazioni su un
+-- alfabeto di 32), un'ora: si crea e si inserisce subito. Chi lo ha entra, fra
+-- persone che vivono insieme (spec §7); otto caratteri e un'ora rendono la forza
+-- bruta via RPC non redditizia prima che scada.
 create table casa_invito (
   codice text primary key,
   proprietario uuid not null references auth.users(id) on delete cascade,
@@ -158,14 +160,14 @@ begin
 
   loop
     nuovo := '';
-    for i in 1..6 loop
+    for i in 1..8 loop
       nuovo := nuovo || substr(alfabeto, 1 + floor(random() * length(alfabeto))::int, 1);
     end loop;
     exit when not exists (select 1 from casa_invito where codice = nuovo);
   end loop;
 
   insert into casa_invito (codice, proprietario, scade_il)
-  values (nuovo, auth.uid(), now() + interval '24 hours');
+  values (nuovo, auth.uid(), now() + interval '1 hour');
 
   return nuovo;
 end $$;
@@ -188,6 +190,15 @@ begin
   -- altro ingresso è a metà strada.
   perform pg_advisory_xact_lock(hashtext('casa_membro'));
 
+  -- Prima lo stato del chiamante, poi il codice: così chi non potrebbe comunque
+  -- entrare non scopre se un codice esiste (sarebbe un oracolo senza traccia).
+  if exists (select 1 from casa_membro where proprietario = auth.uid()) then
+    raise exception 'hai già una casa con altre persone: toglile prima di entrare altrove';
+  end if;
+  if exists (select 1 from casa_membro where membro = auth.uid()) then
+    raise exception 'sei già in una casa: esci prima';
+  end if;
+
   select * into invito
   from casa_invito
   where casa_invito.codice = upper(trim(entra_in_casa.codice))
@@ -197,12 +208,6 @@ begin
   end if;
   if invito.proprietario = auth.uid() then
     raise exception 'non puoi entrare nella tua stessa casa';
-  end if;
-  if exists (select 1 from casa_membro where proprietario = auth.uid()) then
-    raise exception 'hai già una casa con altre persone: toglile prima di entrare altrove';
-  end if;
-  if exists (select 1 from casa_membro where membro = auth.uid()) then
-    raise exception 'sei già in una casa: esci prima';
   end if;
   if exists (select 1 from casa_membro where membro = invito.proprietario) then
     raise exception 'questa casa non può ospitare: chi ti ha invitato è a sua volta in un''altra casa';
