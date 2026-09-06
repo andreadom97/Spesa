@@ -57,26 +57,31 @@ function mockRepertorioPieno() {
   });
 }
 
+function mockRepertorioVuoto() {
+  vi.mocked(leggiRepertorio).mockResolvedValue([]);
+  vi.mocked(leggiIngredienti).mockResolvedValue([]);
+  vi.mocked(leggiSlotDefs).mockResolvedValue([SLOT_COLAZIONE, SLOT_PRANZO]);
+  vi.mocked(leggiImpostazioni).mockResolvedValue({
+    moltiplicatorePorzioni: 1,
+    ordineAree: [...ORDINE_AREE_TEST],
+    settimaneCiclo: 1,
+    cicloOrigine: null,
+  });
+}
+
 describe('Piatti (repertorio)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("mostra l'onboarding quando leggiRepertorio torna vuoto", async () => {
-    vi.mocked(leggiRepertorio).mockResolvedValue([]);
-    vi.mocked(leggiIngredienti).mockResolvedValue([]);
-    vi.mocked(leggiSlotDefs).mockResolvedValue([SLOT_COLAZIONE, SLOT_PRANZO]);
-    vi.mocked(leggiImpostazioni).mockResolvedValue({
-      moltiplicatorePorzioni: 1,
-      ordineAree: [...ORDINE_AREE_TEST],
-      settimaneCiclo: 1,
-      cicloOrigine: null,
-    });
+  it("mostra l'onboarding (le due porte) quando leggiRepertorio torna vuoto", async () => {
+    mockRepertorioVuoto();
 
     render(<Piatti />);
 
-    expect(await screen.findByText('Non hai ancora nessun piatto')).toBeInTheDocument();
-    expect(screen.getByText('CREA IL PRIMO PIATTO')).toBeInTheDocument();
+    expect(await screen.findByText('Da dove partiamo?')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'IMPORTA LA DIETA' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'SCRIVI I MIEI PIATTI' })).toBeInTheDocument();
   });
 
   it('i filtri sono TUTTI più un\'opzione per ogni meal_slot_def reale, non i quattro cablati nel mock', async () => {
@@ -123,5 +128,68 @@ describe('Piatti (repertorio)', () => {
     render(<Piatti />);
     expect(await screen.findByText('2 INGR. · PROPRIO')).toBeInTheDocument();
     expect(screen.getByText('1 INGR. · NUTRIZIONISTA')).toBeInTheDocument();
+  });
+});
+
+describe('Le due porte', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('titolo e sottotitolo della schermata', async () => {
+    mockRepertorioVuoto();
+    render(<Piatti />);
+
+    expect(await screen.findByText('Da dove partiamo?')).toBeInTheDocument();
+    expect(
+      screen.getByText('Spesa costruisce la lista dai piatti che mangi. Ce li dici una volta sola, in uno di questi due modi.'),
+    ).toBeInTheDocument();
+  });
+
+  it('la porta della dieta porta a /importa', async () => {
+    mockRepertorioVuoto();
+    render(<Piatti />);
+    await screen.findByText('Da dove partiamo?');
+
+    expect(screen.getByText('Ho una dieta')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'IMPORTA LA DIETA' })).toHaveAttribute('href', '/importa');
+  });
+
+  it('la porta di chi cucina sempre le stesse cose porta a /piatti/veloce', async () => {
+    mockRepertorioVuoto();
+    render(<Piatti />);
+    await screen.findByText('Da dove partiamo?');
+
+    expect(screen.getByText('Cucino sempre le stesse cose')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'SCRIVI I MIEI PIATTI' })).toHaveAttribute('href', '/piatti/veloce');
+  });
+
+  it("il link all'editor completo porta a /piatti/nuovo", async () => {
+    mockRepertorioVuoto();
+    render(<Piatti />);
+    await screen.findByText('Da dove partiamo?');
+
+    expect(screen.getByRole('link', { name: "Crea un piatto dall'editor completo" })).toHaveAttribute(
+      'href',
+      '/piatti/nuovo',
+    );
+  });
+
+  it('il vecchio bottone unico non c\'è più', async () => {
+    mockRepertorioVuoto();
+    render(<Piatti />);
+    await screen.findByText('Da dove partiamo?');
+
+    expect(screen.queryByText('CREA IL PRIMO PIATTO')).not.toBeInTheDocument();
+  });
+
+  it('con il repertorio pieno le porte non compaiono', async () => {
+    mockRepertorioPieno();
+    render(<Piatti />);
+    await screen.findByText('Latte e pane');
+
+    expect(screen.queryByText('Da dove partiamo?')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'IMPORTA LA DIETA' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'SCRIVI I MIEI PIATTI' })).not.toBeInTheDocument();
   });
 });

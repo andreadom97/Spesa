@@ -30,12 +30,6 @@ const FONTE_LABEL: Record<Dish['fonte'], string> = {
   proprio: 'PROPRIO',
 };
 
-const PASSI_ONBOARDING = [
-  { titolo: 'Crea i tuoi piatti', testo: 'Quelli che mangi davvero, con le grammature del tuo piano.' },
-  { titolo: 'Dì dove sarai', testo: 'Ogni settimana segni i pasti che non farai a casa.' },
-  { titolo: 'Ricevi la lista', testo: 'Quantità e confezioni calcolate, ordinate come cammini.' },
-];
-
 interface Repertorio {
   piatti: Dish[];
   ingredienti: Ingredient[];
@@ -245,74 +239,91 @@ function SchedaPiatto({ piatto, nomeSlot, aree }: PropsScheda) {
   );
 }
 
-/** Stato vuoto, che è anche l'onboarding: copy alla lettera da design/VuotoPiatti.dc.html. */
+/**
+ * Stato vuoto, che è anche l'onboarding: la schermata delle due porte
+ * (spec docs/superpowers/specs/2026-09-06-due-porte-design.md §2.1).
+ *
+ * Non segue l'artboard design/VuotoPiatti.dc.html: quello è stato disegnato
+ * prima che l'import esistesse e conosce una sola strada, l'editor completo.
+ * Le due porte lo sostituiscono per scelta (spec §5, limite dichiarato: l'artboard
+ * va aggiornato in un secondo momento). Chi ha una dieta la fotografa, chi cucina
+ * sempre le stesse cose le scrive; l'editor completo resta a portata di link.
+ * Nessuna affermazione di salute nel copy: l'app trascrive, non valuta.
+ */
 function VuotoPiatti() {
   return (
     <Cornice>
       <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 16px' }}>
         <div
           style={{
-            padding: '20px 18px 22px', borderRadius: 22,
-            background: 'var(--superficie)', border: '1px solid var(--bordo)',
+            fontSize: 21, fontWeight: 800, letterSpacing: '-0.035em', lineHeight: 1.2,
+            color: 'var(--ink)', margin: '8px 6px 6px',
           }}
         >
-          <div
-            style={{
-              fontSize: 21, fontWeight: 800, letterSpacing: '-0.035em', lineHeight: 1.2,
-              color: 'var(--ink)', marginBottom: 6,
-            }}
-          >
-            Non hai ancora nessun piatto
-          </div>
-          <div style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--sec)', marginBottom: 22 }}>
-            Un piatto è una cosa che mangi, con dentro i suoi ingredienti e quanti grammi ne usi. Serve una
-            volta sola: da lì in poi la lista si costruisce da sé.
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {PASSI_ONBOARDING.map((passo, i) => (
-              <div key={passo.titolo} style={{ display: 'flex', gap: 13, alignItems: 'flex-start' }}>
-                <span
-                  style={{
-                    width: 26, height: 26, flex: 'none', borderRadius: 9,
-                    background: 'var(--ink)', color: '#FFFFFF',
-                    fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}
-                >
-                  {i + 1}
-                </span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)' }}>
-                    {passo.titolo}
-                  </div>
-                  <div style={{ fontSize: 13, lineHeight: 1.45, color: 'var(--sec)', marginTop: 3 }}>
-                    {passo.testo}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          Da dove partiamo?
         </div>
-        <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', margin: '16px 6px 0' }}>
-          Metti in conto una ventina di minuti per i primi piatti. È l’unico momento in cui l’app ti chiede
-          lavoro.
+        <div style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--sec)', margin: '0 6px 16px' }}>
+          Spesa costruisce la lista dai piatti che mangi. Ce li dici una volta sola, in uno di questi due modi.
         </div>
-      </div>
 
-      <div style={{ padding: '6px 16px 0' }}>
-        <Link
-          href="/piatti/nuovo"
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            width: '100%', height: 54, borderRadius: 18,
-            fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700, letterSpacing: '0.09em',
-            background: 'var(--ink)', color: '#FFFFFF',
-            boxShadow: '0 3px 10px rgba(20,22,58,0.24)',
-          }}
-        >
-          CREA IL PRIMO PIATTO
-        </Link>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Porta
+            titolo="Ho una dieta"
+            testo="Fotografa le pagine del piano che ti hanno dato: piatti e grammature li legge l'app, tu controlli e confermi."
+            azione="IMPORTA LA DIETA"
+            href="/importa"
+          />
+          <Porta
+            titolo="Cucino sempre le stesse cose"
+            testo="Scrivi otto o dieci piatti che fai davvero, con gli ingredienti e quanto ne usi. Da lì la settimana gira da sola."
+            azione="SCRIVI I MIEI PIATTI"
+            href="/piatti/veloce"
+          />
+        </div>
+
+        <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', margin: '16px 6px 0' }}>
+          Preferisci fare a modo tuo?{' '}
+          <Link href="/piatti/nuovo" style={{ color: 'var(--ink)', fontWeight: 600, textDecoration: 'underline' }}>
+            {"Crea un piatto dall'editor completo"}
+          </Link>
+        </div>
       </div>
     </Cornice>
+  );
+}
+
+interface PropsPorta {
+  titolo: string;
+  testo: string;
+  azione: string;
+  href: string;
+}
+
+/** Una delle due porte: scheda bianca con titolo, spiegazione e il proprio bottone pieno. */
+function Porta({ titolo, testo, azione, href }: PropsPorta) {
+  return (
+    <div
+      style={{
+        padding: '20px 18px 18px', borderRadius: 22,
+        background: 'var(--superficie)', border: '1px solid var(--bordo)',
+      }}
+    >
+      <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.2, color: 'var(--ink)' }}>
+        {titolo}
+      </div>
+      <div style={{ fontSize: 13.5, lineHeight: 1.45, color: 'var(--sec)', margin: '6px 0 16px' }}>{testo}</div>
+      <Link
+        href={href}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          width: '100%', height: 54, borderRadius: 18,
+          fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700, letterSpacing: '0.09em',
+          background: 'var(--ink)', color: '#FFFFFF',
+          boxShadow: '0 3px 10px rgba(20,22,58,0.24)',
+        }}
+      >
+        {azione}
+      </Link>
+    </div>
   );
 }
