@@ -332,8 +332,8 @@ policy RLS con `user_id` passano da lei (migrazione 0012, che le rigenera in un 
 (`src/data/casa.ts`, una RPC memorizzata per apertura dell'app) al posto dell'id
 dell'account.
 
-**Come si entra.** Impostazioni → CASA: chi è solo crea un codice di sei caratteri, valido
-24 ore; l'altra persona lo inserisce nelle sue Impostazioni ed entra. Il proprietario vede
+**Come si entra.** Impostazioni → CASA: chi è solo crea un codice di otto caratteri, valido
+un'ora; l'altra persona lo inserisce nelle sue Impostazioni ed entra. Il proprietario vede
 chi c'è e lo toglie con due tocchi; il membro vede di chi è la casa ed esce con due tocchi.
 Entrare e uscire ricaricano l'app. Le email dei membri si vedono solo dentro la casa.
 La Lista si rilegge quando torna in primo piano, così due telefoni non si vedono rotti a
@@ -343,10 +343,13 @@ vicenda.
 esce, e non li perde (nessuna fusione, mai); un account è membro di una casa sola e un
 proprietario con membri non può entrare altrove; il tetto di import è per casa; niente
 tempo reale, due spunte contemporanee sulla stessa riga: l'ultima vince; il codice è di
-sei caratteri e dura 24 ore. **Decisione aperta**: il "per quante persone" del backlog non
-è costruito, perché il 28/08 il moltiplicatore porzioni è stato tolto
-dall'interfaccia dopo la prova sul campo; la proposta e le alternative sono nella spec
-§6. Spec:
+otto caratteri e dura un'ora (per annullarne uno dato per sbaglio basta crearne un altro).
+Un membro ha sui dati della casa gli stessi poteri del proprietario (modificare,
+cancellare, importare, consumare il tetto di import); non può invitare, togliere altri
+membri né eliminare l'account: la scheda lo dice prima di dare il codice. **Per quante
+persone**: deciso il 06/09, moltiplicatore a livello di casa (1–4) in Impostazioni →
+CASA, con l'assunzione dichiarata nel copy (vale se a tavola mangiate tutti la stessa
+porzione; spec §6). Spec:
 [`docs/superpowers/specs/2026-09-06-casa-condivisa-design.md`](docs/superpowers/specs/2026-09-06-casa-condivisa-design.md).
 
 ## Dove sta cosa
@@ -359,7 +362,7 @@ dall'interfaccia dopo la prova sul campo; la proposta e le alternative sono nell
 | [`docs/superpowers/specs/2026-08-26-spesa-design.md`](docs/superpowers/specs/2026-08-26-spesa-design.md) | **La spec.** Modello dati, componenti, fasi, e tutte le decisioni prese durante il design con il loro perché |
 | [`docs/superpowers/specs/DESIGN-SYSTEM.md`](docs/superpowers/specs/DESIGN-SYSTEM.md) | Colori, tipografia, forme, regole di stato — valori estratti dalle schermate reali |
 | [`docs/superpowers/specs/2026-09-05-import-in-produzione-design.md`](docs/superpowers/specs/2026-09-05-import-in-produzione-design.md) | Import in produzione: estrazione a pagine in parallelo, tetto per utente, eval che decide il modello, checklist locale |
-| [`docs/superpowers/specs/2026-09-06-casa-condivisa-design.md`](docs/superpowers/specs/2026-09-06-casa-condivisa-design.md) | La casa condivisa: `casa_id()`, policy rigenerate, inviti con codice, la sezione CASA, la decisione aperta sul "per quante persone" |
+| [`docs/superpowers/specs/2026-09-06-casa-condivisa-design.md`](docs/superpowers/specs/2026-09-06-casa-condivisa-design.md) | La casa condivisa: `casa_id()`, policy rigenerate, inviti con codice (otto caratteri, un'ora), la sezione CASA, il moltiplicatore "per quante persone" a livello di casa, i poteri del membro |
 | [`docs/superpowers/specs/2026-09-06-due-porte-design.md`](docs/superpowers/specs/2026-09-06-due-porte-design.md) | Le due porte e il primo avvio: semina automatica, stato vuoto di Piatti, inserimento veloce, stati vuoti collegati |
 | [`docs/superpowers/specs/2026-09-06-scadenza-fresco-design.md`](docs/superpowers/specs/2026-09-06-scadenza-fresco-design.md) | Il fresco che scade: la scadenza del residuo, gli avvisi in Settimana e Dispensa, il conflitto alla sostituzione in Scegli, i limiti dichiarati |
 | [`docs/superpowers/specs/2026-09-05-non-ricomprato-design.md`](docs/superpowers/specs/2026-09-05-non-ricomprato-design.md) | Contatore "non hai ricomprato": la definizione (lista senza memoria contro lista con residuo), `risparmio_settimana`, il prezzo per confezione, le due righe di UI e i limiti dichiarati |

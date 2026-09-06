@@ -519,6 +519,10 @@ describe('Casa', () => {
 
     expect(await screen.findByText('Fai la spesa con qualcuno?')).toBeInTheDocument();
     expect(screen.getByText('CASA')).toBeInTheDocument();
+    // Consenso informato: chi invita deve sapere che l'altro può anche cancellare.
+    expect(screen.getByText(
+      'Chi entra nella tua casa usa i tuoi dati come fossero suoi: vede e cambia lista, piano, dispensa e piatti, e può anche cancellarli. Il suo piano resta da parte finché non esce. Dai il codice solo a chi vive con te.',
+    )).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'CREA UN CODICE' })).toBeInTheDocument();
     expect(screen.getByLabelText('Ho un codice')).toHaveAttribute('placeholder', 'Ho un codice');
     expect(screen.getByRole('button', { name: 'ENTRA' })).toBeDisabled();
@@ -527,14 +531,14 @@ describe('Casa', () => {
 
   it('CREA UN CODICE chiama creaInvito e mostra il codice grande con la sua durata', async () => {
     mockDati();
-    vi.mocked(creaInvito).mockResolvedValue('K7P3QX');
+    vi.mocked(creaInvito).mockResolvedValue('K7P3QX2M');
     render(<Impostazioni />);
 
     fireEvent.click(await screen.findByRole('button', { name: 'CREA UN CODICE' }));
 
-    expect(await screen.findByLabelText('Codice della casa')).toHaveTextContent('K7P3QX');
+    expect(await screen.findByLabelText('Codice della casa')).toHaveTextContent('K7P3QX2M');
     expect(creaInvito).toHaveBeenCalledTimes(1);
-    expect(screen.getByText('Vale 24 ore. Dalle sue Impostazioni, l’altra persona lo inserisce qui sotto.')).toBeInTheDocument();
+    expect(screen.getByText('Vale un’ora. Dalle sue Impostazioni, l’altra persona lo inserisce qui sotto.')).toBeInTheDocument();
   });
 
   it('se creaInvito fallisce lo dice senza rompere la scheda', async () => {
@@ -559,27 +563,58 @@ describe('Casa', () => {
     expect(campo).toHaveValue('K7P3');
     expect(screen.getByRole('button', { name: 'ENTRA' })).toBeDisabled();
 
+    // Sei caratteri erano il formato vecchio (migrazione 0012, prima della
+    // revisione di sicurezza): non bastano più.
     fireEvent.change(campo, { target: { value: 'k7p3qx' } });
     expect(campo).toHaveValue('K7P3QX');
-    expect(campo).toHaveAttribute('maxlength', '6');
+    expect(screen.getByRole('button', { name: 'ENTRA' })).toBeDisabled();
+
+    fireEvent.change(campo, { target: { value: 'k7p3qx2m' } });
+    expect(campo).toHaveValue('K7P3QX2M');
+    expect(campo).toHaveAttribute('maxlength', '8');
     const entra = screen.getByRole('button', { name: 'ENTRA' });
     expect(entra).toBeEnabled();
     fireEvent.click(entra);
 
-    await waitFor(() => expect(entraInCasa).toHaveBeenCalledWith('K7P3QX'));
+    await waitFor(() => expect(entraInCasa).toHaveBeenCalledWith('K7P3QX2M'));
     await waitFor(() => expect(assign).toHaveBeenCalledWith('/lista'));
   });
 
-  it('con un codice sbagliato mostra il messaggio della funzione così com’è', async () => {
+  it('con un codice sbagliato mostra il messaggio della funzione SQL (P0001) così com’è', async () => {
     mockDati();
-    vi.mocked(entraInCasa).mockRejectedValue(new Error('codice non valido o scaduto'));
+    // Un `raise exception` di entra_in_casa arriva come PostgrestError con
+    // SQLSTATE P0001: è l'unico caso in cui il messaggio è scritto per l'utente.
+    vi.mocked(entraInCasa).mockRejectedValue(Object.assign(new Error('codice non valido o scaduto'), { code: 'P0001' }));
+    const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
     render(<Impostazioni />);
 
-    fireEvent.change(await screen.findByLabelText('Ho un codice'), { target: { value: 'AAAAAA' } });
+    fireEvent.change(await screen.findByLabelText('Ho un codice'), { target: { value: 'AAAAAAAA' } });
     fireEvent.click(screen.getByRole('button', { name: 'ENTRA' }));
 
     expect(await screen.findByText('codice non valido o scaduto')).toBeInTheDocument();
     expect(assign).not.toHaveBeenCalled();
+    errore.mockRestore();
+  });
+
+  it('un errore che non è un raise exception della funzione (es. 23505) non mostra il messaggio grezzo di Postgres', async () => {
+    mockDati();
+    vi.mocked(entraInCasa).mockRejectedValue(Object.assign(
+      new Error('duplicate key value violates unique constraint "casa_membro_pkey"'),
+      { code: '23505' },
+    ));
+    const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+    render(<Impostazioni />);
+
+    fireEvent.change(await screen.findByLabelText('Ho un codice'), { target: { value: 'AAAAAAAA' } });
+    fireEvent.click(screen.getByRole('button', { name: 'ENTRA' }));
+
+    expect(await screen.findByText('Non siamo riusciti a entrare. Riprova.')).toBeInTheDocument();
+    expect(screen.queryByText(/duplicate key/)).not.toBeInTheDocument();
+    expect(assign).not.toHaveBeenCalled();
+    // Il campo resta com'era e ENTRA torna attivo: si può riprovare.
+    expect(screen.getByLabelText('Ho un codice')).toHaveValue('AAAAAAAA');
+    expect(screen.getByRole('button', { name: 'ENTRA' })).toBeEnabled();
+    errore.mockRestore();
   });
 
   it('da proprietario: elenca le email dei membri e offre un altro codice, senza ESCI', async () => {
@@ -705,7 +740,7 @@ describe('Casa', () => {
     render(<Impostazioni />);
 
     expect(await screen.findByText('Sei nella casa di a@b.it')).toBeInTheDocument();
-    expect(screen.getByText('Vedi la sua lista, il suo piano e la sua dispensa. I tuoi restano da parte.')).toBeInTheDocument();
+    expect(screen.getByText('Vedi e cambi la sua lista, il suo piano e la sua dispensa, come fossero tuoi. I tuoi restano da parte.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'CREA UN CODICE' })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'ESCI DALLA CASA' }));

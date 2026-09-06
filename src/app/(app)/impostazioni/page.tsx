@@ -37,7 +37,8 @@ function conPosizioni(lista: MealSlotDef[]): MealSlotDef[] {
   return lista.map((p, i) => ({ ...p, posizione: i }));
 }
 
-const LUNGHEZZA_CODICE = 6;
+/** Otto caratteri, come li genera `crea_invito` (migrazione 0012). */
+const LUNGHEZZA_CODICE = 8;
 
 /**
  * "Per quante persone cucini", nella sezione CASA. Il moltiplicatore era
@@ -49,6 +50,23 @@ const LUNGHEZZA_CODICE = 6;
  */
 const MIN_PORZIONI = 1;
 const MAX_PORZIONI = 4;
+
+/**
+ * Il messaggio da mostrare se `entraInCasa` fallisce. Solo un `raise
+ * exception` della funzione SQL (SQLSTATE P0001) porta un messaggio scritto
+ * per l'utente, in italiano (`codice non valido o scaduto`, `sei già in una
+ * casa: esci prima`…): quello si mostra così com'è. Ogni altro errore
+ * (violazione di vincolo, rete, permessi) è un messaggio grezzo di Postgres o
+ * del client, che non va mostrato: dice cose che non aiutano e a volte cose
+ * che non dovrebbe.
+ */
+function messaggioEntrata(errore: unknown): string {
+  if (typeof errore === 'object' && errore !== null) {
+    const { code, message } = errore as { code?: unknown; message?: unknown };
+    if (code === 'P0001' && typeof message === 'string' && message) return message;
+  }
+  return 'Non siamo riusciti a entrare. Riprova.';
+}
 
 /**
  * Ricarica l'app da capo su un percorso. Dopo entra/esci dalla casa l'id su
@@ -594,10 +612,8 @@ function SezioneCasa({ casa, onCambiata }: { casa: StatoCasa; onCambiata: (stato
       await entraInCasa(codiceScritto);
       ricaricaSu('/lista');
     } catch (errore) {
-      // Il messaggio arriva già in italiano dalla funzione SQL
-      // (`codice non valido o scaduto`): si mostra così com'è.
       console.error('impostazioni: entrata nella casa fallita.', errore);
-      setErroreEntrata(errore instanceof Error && errore.message ? errore.message : 'Non siamo riusciti a entrare. Riprova.');
+      setErroreEntrata(messaggioEntrata(errore));
       setEntrando(false);
     }
   }
@@ -654,7 +670,7 @@ function SezioneCasa({ casa, onCambiata }: { casa: StatoCasa; onCambiata: (stato
             {codiceCreato}
           </div>
           <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', textAlign: 'center', marginTop: 6 }}>
-            Vale 24 ore. Dalle sue Impostazioni, l’altra persona lo inserisce qui sotto.
+            Vale un’ora. Dalle sue Impostazioni, l’altra persona lo inserisce qui sotto.
           </div>
         </div>
       ) : (
@@ -673,7 +689,7 @@ function SezioneCasa({ casa, onCambiata }: { casa: StatoCasa; onCambiata: (stato
           Sei nella casa di {casa.email[0]}
         </div>
         <div style={{ fontSize: 13, lineHeight: 1.45, color: 'var(--sec)', marginTop: 6 }}>
-          Vedi la sua lista, il suo piano e la sua dispensa. I tuoi restano da parte.
+          Vedi e cambi la sua lista, il suo piano e la sua dispensa, come fossero tuoi. I tuoi restano da parte.
         </div>
         <BottoneDueTocchi testo="ESCI DALLA CASA" onConferma={esci} style={{ ...BOTTONE_LEGGERO, marginTop: 14 }} />
         {erroreUscita && <p style={{ margin: '10px 0 0', fontSize: 12.5, color: 'var(--sec)' }}>{erroreUscita}</p>}
@@ -714,7 +730,7 @@ function SezioneCasa({ casa, onCambiata }: { casa: StatoCasa; onCambiata: (stato
       <div style={SCHEDA}>
         <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)' }}>Fai la spesa con qualcuno?</div>
         <div style={{ fontSize: 13, lineHeight: 1.45, color: 'var(--sec)', marginTop: 6 }}>
-          Chi entra nella tua casa vede e spunta la tua lista dal suo telefono. Il suo piano resta da parte finché non esce.
+          Chi entra nella tua casa usa i tuoi dati come fossero suoi: vede e cambia lista, piano, dispensa e piatti, e può anche cancellarli. Il suo piano resta da parte finché non esce. Dai il codice solo a chi vive con te.
         </div>
         {creaUnCodice}
       </div>
