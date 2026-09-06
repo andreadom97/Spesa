@@ -260,6 +260,35 @@ export default function Lista() {
     return () => window.removeEventListener('online', alRitornoOnline);
   }, []);
 
+  // La lista in due (spec casa-condivisa §5): due telefoni che spuntano la
+  // stessa lista non si accorgono l'uno dell'altro finché non ricaricano.
+  // Quando la pagina torna in primo piano si rileggono le liste — solo
+  // leggiListe, non allineaTopUp: il piano non è cambiato, sono cambiate le
+  // spunte — con la coda offline applicata sopra come al caricamento, così
+  // una spunta locale ancora in volo non viene "disfatta" dal server.
+  // Tollerante: se la rilettura fallisce la lista che c'è resta. Il
+  // listener vive solo a lista caricata (dipende da `weekId`) e se ne va
+  // allo smontaggio.
+  const weekId = stato?.weekId ?? null;
+  useEffect(() => {
+    if (!weekId) return;
+    let vivo = true;
+    async function alRitornoInPrimoPiano() {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        const fresca = await leggiListe(weekId!);
+        if (vivo && fresca) setStato((p) => (p ? { ...p, lista: applicaCodaLista(fresca) } : p));
+      } catch (errore) {
+        console.error('lista: rilettura al ritorno in primo piano fallita.', errore);
+      }
+    }
+    document.addEventListener('visibilitychange', alRitornoInPrimoPiano);
+    return () => {
+      vivo = false;
+      document.removeEventListener('visibilitychange', alRitornoInPrimoPiano);
+    };
+  }, [weekId]);
+
   function toggleVoce(voce: VoceSalvata) {
     const nuovo = !voce.spuntato;
     setStato((prev) => (prev ? { ...prev, lista: conSpuntaLocale(prev.lista, voce.id, nuovo) } : prev));

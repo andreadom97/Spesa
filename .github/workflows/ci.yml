@@ -9,6 +9,11 @@ on:
     branches: [main]
   pull_request:
 
+# Il token del job serve solo a leggere il repo per il checkout: niente
+# scritture su contenuti, PR o pacchetti anche se un'azione lo chiedesse.
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true

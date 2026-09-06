@@ -9,7 +9,9 @@ import { descriviScelte } from '@/domain/opzioni';
 import { giorniDellaSettimana, lunediDi, sommaGiorni } from '@/domain/date';
 import { porzioniUtilizzabili } from '@/domain/pronti';
 import { avvisiScadenza, etichettaScadenza, type AvvisoScadenza } from '@/domain/scadenza';
-import { leggiSettimanaCorrente, leggiSettimana, creaSettimana, aggiornaSlot, confermaSettimana } from '@/data/settimana';
+import {
+  leggiSettimanaCorrente, leggiSettimana, creaSettimana, completaAssegnazioni, aggiornaSlot, confermaSettimana,
+} from '@/data/settimana';
 import { leggiRepertorio, leggiIngredienti } from '@/data/repertorio';
 import { leggiSlotDefs, leggiImpostazioni } from '@/data/impostazioni';
 import { leggiPronti } from '@/data/pronti';
@@ -141,6 +143,20 @@ export default function Settimana() {
             }
           }
           if (!corrente) throw new Error('Settimana non disponibile dopo la creazione.');
+
+          // Una bozza con righe a casa ancora senza piatto (nata a repertorio
+          // vuoto, spec due-porte §2.4): si prova a compilarla adesso, così
+          // le righe si riempiono da sole appena i piatti ci sono, senza
+          // aspettare il lunedì dopo. Tollerante: se fallisce si mostra la
+          // settimana com'è, non è un errore di caricamento.
+          if (corrente.stato === 'bozza' && corrente.slots.some((s) => s.stato === 'casa' && s.dishId === null)) {
+            try {
+              const compilati = await completaAssegnazioni(corrente.id);
+              if (compilati > 0) corrente = (await leggiSettimanaCorrente()) ?? corrente;
+            } catch (erroreCompletamento) {
+              console.error('settimana: completamento delle assegnazioni fallito.', erroreCompletamento);
+            }
+          }
         }
 
         const [slotDefs, piatti, ingredienti, impostazioni, lottiCaricati, dispensa] = await Promise.all([
@@ -246,11 +262,17 @@ export default function Settimana() {
     ? avvisiScadenza({ slots: settimana.slots, dishes: piatti, ingredients: ingredienti, pantry: dispensa, oggi })
     : [];
 
-  /** Le righe di avviso per il pasto (dataSelezionata, slotDefId): copy esatto della spec §3.1. */
-  function avvisiDelPasto(slotDefId: string): string[] {
+  /**
+   * Le righe di avviso per il pasto (dataSelezionata, slotDefId): copy esatto
+   * della spec §3.1. L'id è l'ingrediente: un avviso per ingrediente, mai due.
+   */
+  function avvisiDelPasto(slotDefId: string): { id: string; testo: string }[] {
     return avvisi
       .filter((a) => a.pastiDopo.some((p) => p.data === dataSelezionata && p.slotDefId === slotDefId))
-      .map((a) => `${a.nome} in casa: scade ${etichettaScadenza(a.scadenza, oggi)}, prima di questo pasto`);
+      .map((a) => ({
+        id: a.ingredientId,
+        testo: `${a.nome} in casa: scade ${etichettaScadenza(a.scadenza, oggi)}, prima di questo pasto`,
+      }));
   }
 
   const piattiPerId = new Map(piatti.map((p) => [p.id, p]));

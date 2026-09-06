@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import type { ListaSalvata } from '@/data/lista';
 import type { Dish } from '@/domain/types';
@@ -13,6 +13,7 @@ vi.mock('@/data/settimana', () => ({
 vi.mock('@/data/lista', () => ({
   leggiListe: vi.fn(),
   spunta: vi.fn(),
+  allineaTopUp: vi.fn(),
 }));
 vi.mock('@/data/dispensa', () => ({
   rispondiControllo: vi.fn(),
@@ -25,7 +26,7 @@ vi.mock('@/data/repertorio', () => ({
 }));
 
 import { leggiSettimanaCorrente } from '@/data/settimana';
-import { leggiListe, spunta } from '@/data/lista';
+import { leggiListe, spunta, allineaTopUp } from '@/data/lista';
 import { rispondiControllo } from '@/data/dispensa';
 import { leggiRepertorio } from '@/data/repertorio';
 import { leggiCoda } from '@/offline/coda';
@@ -71,6 +72,7 @@ beforeEach(() => {
   vi.mocked(leggiSettimanaCorrente).mockReset().mockResolvedValue(SETTIMANA);
   vi.mocked(leggiListe).mockReset();
   vi.mocked(spunta).mockReset().mockResolvedValue(undefined);
+  vi.mocked(allineaTopUp).mockReset().mockResolvedValue(0);
   vi.mocked(rispondiControllo).mockReset().mockResolvedValue(undefined);
   vi.mocked(leggiRepertorio).mockReset().mockResolvedValue([PIATTO]);
 });
@@ -384,5 +386,107 @@ describe('Lista', () => {
       .filter((l): l is string => !!l && (l.startsWith('Riso Carnaroli') || l.startsWith('Pasta integrale')));
     expect(etichette[0]).toMatch(/^Pasta integrale/);
     expect(etichette[1]).toMatch(/^Riso Carnaroli/);
+  });
+
+  // La lista in due (spec casa-condivisa §5): due telefoni sulla stessa
+  // lista non si vedono finché non ricaricano. Al ritorno in primo piano la
+  // pagina rilegge le liste, con la coda offline applicata sopra.
+  describe('ritorno in primo piano', () => {
+    const VOCE_UOVA = {
+      id: 'item-uova', ingredientId: 'ing-uova', nome: 'Uova', area: 'latticini' as const,
+      unita: 'pz' as const, fabbisogno: 6, residuo: 0, confezioni: 1, quantitaTotale: 6,
+      spuntato: false, origine: 'manuale' as const, mostraDettaglio: false,
+    };
+
+    function simulaVisibilita(stato: 'visible' | 'hidden') {
+      Object.defineProperty(document, 'visibilityState', { value: stato, configurable: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+    }
+
+    afterEach(() => {
+      // La proprietà definita sull'istanza nasconde il getter del prototipo: si toglie, così jsdom torna al suo.
+      delete (document as unknown as Record<string, unknown>).visibilityState;
+    });
+
+    it('quando il documento torna visibile rilegge leggiListe (non allineaTopUp) e mostra la nuova voce', async () => {
+      const prima = buildLista();
+      const dopo: ListaSalvata = {
+        ...prima,
+        base: [
+          { area: 'cereali', voci: [VOCE_RISO, { ...VOCE_PASTA, spuntato: true }], controlli: [] },
+          { area: 'dispensa', voci: [], controlli: [CONTROLLO_OLIO] },
+          { area: 'latticini', voci: [VOCE_UOVA], controlli: [] },
+        ],
+      };
+      vi.mocked(leggiListe).mockResolvedValueOnce(prima).mockResolvedValueOnce(dopo);
+      render(<Lista />);
+      await screen.findByText('Riso Carnaroli');
+      expect(screen.queryByText('Uova')).not.toBeInTheDocument();
+      expect(allineaTopUp).toHaveBeenCalledTimes(1);
+
+      simulaVisibilita('visible');
+
+      expect(await screen.findByText('Uova')).toBeInTheDocument();
+      // L'altro telefono ha spuntato la pasta: qui si vede.
+      expect(screen.getByText('Pasta integrale').closest('button')).toHaveAttribute('aria-pressed', 'true');
+      expect(leggiListe).toHaveBeenCalledTimes(2);
+      expect(leggiListe).toHaveBeenLastCalledWith('week-1');
+      expect(allineaTopUp).toHaveBeenCalledTimes(1);
+    });
+
+    it('una spunta locale ancora in coda vince sulla rilettura', async () => {
+      vi.mocked(leggiListe).mockResolvedValue(buildLista());
+      vi.mocked(spunta).mockRejectedValue(new Error('offline'));
+      render(<Lista />);
+      const tessera = await screen.findByText('Riso Carnaroli');
+      fireEvent.click(tessera.closest('button')!);
+      await waitFor(() => expect(spunta).toHaveBeenCalled());
+      expect(leggiCoda()).toHaveLength(1);
+
+      simulaVisibilita('visible');
+
+      await waitFor(() => expect(leggiListe).toHaveBeenCalledTimes(2));
+      // Il server dice "non spuntata", la coda dice "spuntata": la coda ha ragione.
+      await waitFor(() => expect(screen.getByText('Riso Carnaroli').closest('button')).toHaveAttribute('aria-pressed', 'true'));
+    });
+
+    it('se il documento va in secondo piano non rilegge nulla', async () => {
+      vi.mocked(leggiListe).mockResolvedValue(buildLista());
+      render(<Lista />);
+      await screen.findByText('Riso Carnaroli');
+
+      simulaVisibilita('hidden');
+
+      await new Promise((r) => setTimeout(r, 0));
+      expect(leggiListe).toHaveBeenCalledTimes(1);
+    });
+
+    it('se la rilettura fallisce la lista resta com\'è e l\'errore va in console', async () => {
+      const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+      vi.mocked(leggiListe).mockResolvedValueOnce(buildLista()).mockRejectedValueOnce(new Error('rete'));
+      render(<Lista />);
+      await screen.findByText('Riso Carnaroli');
+
+      simulaVisibilita('visible');
+
+      await waitFor(() => expect(leggiListe).toHaveBeenCalledTimes(2));
+      await waitFor(() => expect(errore).toHaveBeenCalledWith('lista: rilettura al ritorno in primo piano fallita.', expect.any(Error)));
+      expect(screen.getByText('Riso Carnaroli')).toBeInTheDocument();
+      expect(screen.getByText('Pasta integrale')).toBeInTheDocument();
+      expect(screen.queryByText('Non riusciamo a caricare la lista. Riprova più tardi.')).not.toBeInTheDocument();
+      errore.mockRestore();
+    });
+
+    it('allo smontaggio il listener se ne va: nessuna rilettura dopo', async () => {
+      vi.mocked(leggiListe).mockResolvedValue(buildLista());
+      const { unmount } = render(<Lista />);
+      await screen.findByText('Riso Carnaroli');
+      unmount();
+
+      simulaVisibilita('visible');
+
+      await new Promise((r) => setTimeout(r, 0));
+      expect(leggiListe).toHaveBeenCalledTimes(1);
+    });
   });
 });

@@ -1,6 +1,6 @@
 import type { FonteStato, MealSlot, Scelta, StatoSlot } from '@/domain/types';
 import { generaSettimana, applicaStato } from '@/domain/week-shape';
-import { assegnaPiatti } from '@/domain/planner';
+import { assegnaPiatti, type AssegnaPiattiInput } from '@/domain/planner';
 import { consumoSlot, deltaStorno } from '@/domain/storno';
 import { settimanaDelCiclo, settimaneTrascorse } from '@/domain/ciclo';
 import { lunediDi } from '@/domain/date';
@@ -59,17 +59,66 @@ export async function leggiSettimanaCorrente(): Promise<SettimanaCorrente | null
   return leggiSettimana(lunediDi(oggi));
 }
 
+/**
+ * Tutto ciò che `assegnaPiatti` vuole oltre agli slot, letto da repertorio,
+ * impostazioni, anagrafica e dispensa. Un solo punto per creaSettimana e
+ * completaAssegnazioni: le due coordinate del ciclo e il criterio del costo
+ * devono essere gli stessi, o una settimana completata a posteriori
+ * ruoterebbe in modo diverso da una nata già piena.
+ */
+async function argomentiPlanner(lunedi: string): Promise<Omit<AssegnaPiattiInput, 'slots'>> {
+  const [repertorio, impostazioni, ingredients, pantry] = await Promise.all([
+    leggiRepertorio(),
+    leggiImpostazioni(),
+    leggiIngredienti(),
+    leggiDispensa(),
+  ]);
+  // Le due coordinate del ciclo: *quale* settimana del giro è questa (filtra
+  // i piatti) e *quante* ne sono passate dall'origine (fa avanzare la
+  // rotazione da un lunedì all'altro, invece di ripartire da zero ogni volta).
+  return {
+    dishes: repertorio,
+    // Con il ciclo spento si passa null, non 1: le etichette rimaste sui
+    // piatti non devono continuare a filtrare dopo che la rotazione è stata
+    // disattivata.
+    settimanaCiclo: impostazioni.settimaneCiclo > 1
+      ? settimanaDelCiclo({
+        lunedi,
+        origine: impostazioni.cicloOrigine,
+        settimaneCiclo: impostazioni.settimaneCiclo,
+      })
+      : null,
+    settimaneTrascorse: settimaneTrascorse(lunedi, impostazioni.cicloOrigine),
+    ingredients,
+    pantry,
+    oggi: new Date().toISOString().slice(0, 10),
+    moltiplicatorePorzioni: impostazioni.moltiplicatorePorzioni,
+  };
+}
+
+/** Le righe di `meal_slot_choice` per uno slot, nella forma che la tabella vuole. */
+function righeScelteDi(
+  userId: string,
+  mealSlotId: string,
+  scelte: Record<string, Scelta>,
+): { user_id: string; meal_slot_id: string; componente_id: string; option_id: string; fonte: Scelta['fonte'] }[] {
+  return Object.entries(scelte).map(([componenteId, scelta]) => ({
+    user_id: userId,
+    meal_slot_id: mealSlotId,
+    componente_id: componenteId,
+    option_id: scelta.opzioneId,
+    fonte: scelta.fonte,
+  }));
+}
+
 /** Genera i default con generaSettimana + assegnaPiatti e li scrive. Restituisce il week id. */
 export async function creaSettimana(lunedi: string): Promise<string> {
   const sb = client();
   const userId = await idCasa();
 
-  const [slotDefs, repertorio, impostazioni, ingredients, pantry] = await Promise.all([
+  const [slotDefs, argomenti] = await Promise.all([
     leggiSlotDefs(),
-    leggiRepertorio(),
-    leggiImpostazioni(),
-    leggiIngredienti(),
-    leggiDispensa(),
+    argomentiPlanner(lunedi),
   ]);
   // Senza pasti configurati non c'è nulla da mettere negli slot: creare la
   // week comunque lascerebbe una settimana vuota che leggiSettimanaCorrente
@@ -89,28 +138,7 @@ export async function creaSettimana(lunedi: string): Promise<string> {
   const weekId = String(settimana.id);
 
   const bozza = generaSettimana({ dataInizio: lunedi, slotDefs });
-  // Le due coordinate del ciclo: *quale* settimana del giro è questa (filtra
-  // i piatti) e *quante* ne sono passate dall'origine (fa avanzare la
-  // rotazione da un lunedì all'altro, invece di ripartire da zero ogni volta).
-  const assegnata = assegnaPiatti({
-    slots: bozza,
-    dishes: repertorio,
-    // Con il ciclo spento si passa null, non 1: le etichette rimaste sui
-    // piatti non devono continuare a filtrare dopo che la rotazione è stata
-    // disattivata.
-    settimanaCiclo: impostazioni.settimaneCiclo > 1
-      ? settimanaDelCiclo({
-        lunedi,
-        origine: impostazioni.cicloOrigine,
-        settimaneCiclo: impostazioni.settimaneCiclo,
-      })
-      : null,
-    settimaneTrascorse: settimaneTrascorse(lunedi, impostazioni.cicloOrigine),
-    ingredients,
-    pantry,
-    oggi: new Date().toISOString().slice(0, 10),
-    moltiplicatorePorzioni: impostazioni.moltiplicatorePorzioni,
-  });
+  const assegnata = assegnaPiatti({ slots: bozza, ...argomenti });
 
   // `.select(...)` sull'insert: senza gli id tornati indietro non si saprebbe
   // a quale meal_slot agganciare le righe di meal_slot_choice qui sotto.
@@ -146,13 +174,7 @@ export async function creaSettimana(lunedi: string): Promise<string> {
         `creaSettimana: nessun meal_slot inserito trovato per data=${s.data} slot_def_id=${s.slotDefId}, impossibile salvare le scelte.`,
       );
     }
-    return Object.entries(s.scelte).map(([componenteId, scelta]) => ({
-      user_id: userId,
-      meal_slot_id: mealSlotId,
-      componente_id: componenteId,
-      option_id: scelta.opzioneId,
-      fonte: scelta.fonte,
-    }));
+    return righeScelteDi(userId, mealSlotId, s.scelte);
   });
   if (righeScelte.length > 0) {
     const { error: eScelte } = await sb.from('meal_slot_choice').insert(righeScelte);
@@ -160,6 +182,80 @@ export async function creaSettimana(lunedi: string): Promise<string> {
   }
 
   return weekId;
+}
+
+/** Uno slot a casa che aspetta ancora un piatto: l'unico che il planner può riempire. */
+function slotVuoto(s: MealSlot): boolean {
+  return s.stato === 'casa' && s.dishId === null;
+}
+
+/**
+ * Riempie gli slot a casa rimasti senza piatto in una settimana ancora bozza.
+ * `assegnaPiatti` gira solo in creaSettimana: una settimana nata a repertorio
+ * vuoto (le porte della spec due-porte lo permettono) resterebbe vuota fino
+ * al lunedì dopo anche se i piatti arrivano il giorno stesso. Qui si
+ * ripassa il planner sugli slot attuali — che per contratto tocca solo gli
+ * slot a casa a `dishId` null, una scelta fatta a mano non viene mai
+ * sovrascritta — con gli stessi argomenti di creaSettimana, e si scrive solo
+ * ciò che è passato da vuoto a pieno: `dish_id` sullo slot e le scelte del
+ * planner sui suoi componenti. Restituisce quanti slot ha compilato.
+ *
+ * Esce con 0 senza leggere nulla di più se la settimana non è bozza (dopo la
+ * conferma la lista è già generata, i piatti non si aggiungono da soli) o se
+ * nessuno slot è vuoto: è chiamata a ogni apertura della Settimana, deve
+ * costare poco nel caso comune. Uno slot già assegnato non si tocca nemmeno
+ * nelle scelte, anche se il planner le ha ricalcolate: quelle restano
+ * affare di aggiornaSlot.
+ */
+export async function completaAssegnazioni(weekId: string): Promise<number> {
+  const sb = client();
+  const userId = await idCasa();
+
+  const { data: settimana, error } = await sb
+    .from('week')
+    .select('data_inizio, stato')
+    .eq('id', weekId)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!settimana || settimana.stato !== 'bozza') return 0;
+
+  const slots = await leggiSlotSettimana(weekId);
+  if (!slots.some(slotVuoto)) return 0;
+
+  const lunedi = String(settimana.data_inizio).slice(0, 10);
+  const assegnati = assegnaPiatti({ slots, ...(await argomentiPlanner(lunedi)) });
+
+  let compilati = 0;
+  for (let i = 0; i < slots.length; i++) {
+    const prima = slots[i];
+    const dopo = assegnati[i];
+    if (!slotVuoto(prima) || dopo.dishId === null) continue;
+
+    const { error: eUpd } = await sb
+      .from('meal_slot')
+      .update({ dish_id: dopo.dishId })
+      .eq('id', prima.id)
+      .eq('user_id', userId);
+    if (eUpd) throw eUpd;
+
+    // Solo le scelte del planner: una manuale, se mai ce ne fosse una su uno
+    // slot senza piatto, è già a database. Upsert e non insert come in
+    // creaSettimana: due schede aperte insieme arrivano allo stesso piano
+    // (il planner è deterministico) e la seconda non deve fallire sull'unique.
+    const scelte = Object.fromEntries(
+      Object.entries(dopo.scelte).filter(([, scelta]) => scelta.fonte === 'planner'),
+    );
+    const righe = righeScelteDi(userId, prima.id, scelte);
+    if (righe.length > 0) {
+      const { error: eScelte } = await sb
+        .from('meal_slot_choice')
+        .upsert(righe, { onConflict: 'meal_slot_id,componente_id' });
+      if (eScelte) throw eScelte;
+    }
+    compilati++;
+  }
+  return compilati;
 }
 
 /**

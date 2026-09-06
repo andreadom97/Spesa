@@ -68,7 +68,7 @@ describe('RigaPasto', () => {
           nomePiatto="Pollo e riso"
           aree={[]}
           sottotitolo="+1 porzione"
-          avvisi={[AVVISO, 'Yogurt in casa: scade domani, prima di questo pasto']}
+          avvisi={[{ id: 'i-pollo', testo: AVVISO }, { id: 'i-yogurt', testo: 'Yogurt in casa: scade domani, prima di questo pasto' }]}
           onToggleStato={() => {}}
           hrefScegli="/x"
         />,
@@ -88,7 +88,7 @@ describe('RigaPasto', () => {
           stato={'fuori' as StatoSlot}
           nomePiatto={null}
           aree={[]}
-          avvisi={[AVVISO]}
+          avvisi={[{ id: 'i-pollo', testo: AVVISO }]}
           onToggleStato={() => {}}
           hrefScegli="/x"
         />,

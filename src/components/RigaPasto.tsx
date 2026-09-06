@@ -31,8 +31,10 @@ interface Props {
    * pasto spento non consuma, quindi non c'è nulla da avvisare. Vuoto o
    * assente = nessun elemento nel DOM. Il testo può andare a capo: a
    * differenza del sottotitolo, un avviso troncato non dice niente.
+   * `id` è la chiave React (l'ingrediente, nella Settimana): il testo non
+   * basta, due avvisi possono coincidere parola per parola.
    */
-  avvisi?: string[];
+  avvisi?: { id: string; testo: string }[];
   /** Zona sinistra 60px: accende/spegne. Un tap solo, sempre disponibile. */
   onToggleStato: () => void;
   /** Zona centrale: apre il dettaglio del piatto. Assente (nessun onClick) se non c'è un piatto da aprire. */
@@ -167,9 +169,9 @@ export function RigaPasto({ nomePasto, stato, nomePiatto, aree, sottotitolo, avv
             {sottotitolo}
           </span>
         )}
-        {aCasa && avvisi?.map((avviso) => (
+        {aCasa && avvisi?.map((a) => (
           <span
-            key={avviso}
+            key={a.id}
             data-avviso=""
             style={{
               fontSize: 12,
@@ -180,7 +182,7 @@ export function RigaPasto({ nomePasto, stato, nomePiatto, aree, sottotitolo, avv
               color: 'var(--ink-2)',
             }}
           >
-            {avviso}
+            {a.testo}
           </span>
         ))}
         {aCasa && aree.length > 0 && (

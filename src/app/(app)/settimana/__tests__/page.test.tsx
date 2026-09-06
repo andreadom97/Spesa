@@ -10,6 +10,7 @@ vi.mock('@/data/settimana', () => ({
   leggiSettimanaCorrente: vi.fn(),
   leggiSettimana: vi.fn(),
   creaSettimana: vi.fn(),
+  completaAssegnazioni: vi.fn(),
   aggiornaSlot: vi.fn(),
   confermaSettimana: vi.fn(),
 }));
@@ -40,6 +41,7 @@ import {
   leggiSettimanaCorrente,
   leggiSettimana,
   creaSettimana,
+  completaAssegnazioni,
   aggiornaSlot,
   confermaSettimana,
 } from '@/data/settimana';
@@ -66,6 +68,10 @@ const INDICE_OGGI = GIORNI.indexOf(OGGI);
 // solo la storia delle chiamate, non questa implementazione.
 beforeEach(() => {
   vi.mocked(leggiDispensa).mockResolvedValue([]);
+  // Il completamento delle assegnazioni (B1) è tollerante e di default non
+  // compila nulla: la settimana base ha i pranzi a casa senza piatto, quindi
+  // scatterebbe in quasi tutti i test — con 0 non c'è una seconda lettura.
+  vi.mocked(completaAssegnazioni).mockResolvedValue(0);
 });
 
 const ASSENZE = [false, false, false, false, false, false, false];
@@ -156,6 +162,7 @@ function mockCarico(settimana: SettimanaCorrente = SETTIMANA_BASE) {
   });
   vi.mocked(leggiPronti).mockResolvedValue([]);
   vi.mocked(leggiDispensa).mockResolvedValue([]);
+  vi.mocked(completaAssegnazioni).mockResolvedValue(0);
 }
 
 describe('Settimana (piano alimentare)', () => {
@@ -823,5 +830,79 @@ describe('Avviso di scadenza del fresco', () => {
     // La precedente apre sulla domenica: la cena di quel giorno è a casa col pollo.
     expect(await screen.findByText('Pollo e riso')).toBeInTheDocument();
     expect(screen.queryByText(/in casa: scade/)).not.toBeInTheDocument();
+  });
+});
+
+// B1: la settimana nata a repertorio vuoto si compila da sola appena i piatti
+// ci sono, senza aspettare il lunedì dopo. La pagina chiede al data layer di
+// completare le assegnazioni e, se ha scritto qualcosa, rilegge.
+describe('completamento delle assegnazioni (settimana bozza con righe vuote)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /** Tutti gli slot a casa, nessun piatto: la settimana com'è nata a repertorio vuoto. */
+  function slotsVuoti(): MealSlot[] {
+    return buildSlots().map((s) => ({ ...s, stato: 'casa', dishId: null }));
+  }
+
+  it('bozza con slot vuoti: chiama completaAssegnazioni e, se ha compilato, rilegge la settimana con i piatti', async () => {
+    mockCarico();
+    const vuota: SettimanaCorrente = { ...SETTIMANA_BASE, slots: slotsVuoti() };
+    vi.mocked(leggiSettimanaCorrente)
+      .mockResolvedValueOnce(vuota)
+      .mockResolvedValueOnce(SETTIMANA_BASE);
+    vi.mocked(completaAssegnazioni).mockResolvedValue(2);
+
+    render(<Settimana />);
+
+    expect(await screen.findByText('Yogurt e frutta')).toBeInTheDocument();
+    expect(screen.getByText('Pollo e riso')).toBeInTheDocument();
+    expect(completaAssegnazioni).toHaveBeenCalledWith('week-1');
+    expect(leggiSettimanaCorrente).toHaveBeenCalledTimes(2);
+  });
+
+  it('senza slot vuoti non chiama completaAssegnazioni', async () => {
+    const piena: SettimanaCorrente = {
+      ...SETTIMANA_BASE,
+      slots: buildSlots().map((s) => (s.stato === 'casa' && s.dishId === null ? { ...s, dishId: DISH_CENA.id } : s)),
+    };
+    mockCarico(piena);
+    render(<Settimana />);
+
+    await screen.findByText('Yogurt e frutta');
+    expect(completaAssegnazioni).not.toHaveBeenCalled();
+    expect(leggiSettimanaCorrente).toHaveBeenCalledTimes(1);
+  });
+
+  it('settimana confermata con slot vuoti: non chiama completaAssegnazioni', async () => {
+    mockCarico({ ...SETTIMANA_BASE, stato: 'confermata', slots: slotsVuoti() });
+    render(<Settimana />);
+
+    await screen.findByText('VAI ALLA LISTA');
+    expect(completaAssegnazioni).not.toHaveBeenCalled();
+  });
+
+  it('completaAssegnazioni che non compila nulla (0): nessuna seconda lettura', async () => {
+    mockCarico({ ...SETTIMANA_BASE, slots: slotsVuoti() });
+    vi.mocked(completaAssegnazioni).mockResolvedValue(0);
+    render(<Settimana />);
+
+    await screen.findByText('CONFERMA E CREA LA LISTA');
+    expect(completaAssegnazioni).toHaveBeenCalledTimes(1);
+    expect(leggiSettimanaCorrente).toHaveBeenCalledTimes(1);
+  });
+
+  it('completaAssegnazioni che rigetta: la schermata è quella normale, senza errore di caricamento', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockCarico({ ...SETTIMANA_BASE, slots: slotsVuoti() });
+    vi.mocked(completaAssegnazioni).mockRejectedValue(new Error('rete'));
+    render(<Settimana />);
+
+    expect(await screen.findByText('CONFERMA E CREA LA LISTA')).toBeInTheDocument();
+    expect(screen.queryByText('Non riusciamo a caricare la settimana. Riprova più tardi.')).not.toBeInTheDocument();
+    expect(screen.getAllByText('Nessun piatto assegnato').length).toBeGreaterThan(0);
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
   });
 });

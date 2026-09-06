@@ -33,17 +33,42 @@ function normalizza(testo: string): string {
 }
 
 /**
+ * Quanti piatti per pasto perché la rotazione abbia qualcosa da alternare:
+ * con uno solo il planner ripete lo stesso piatto ogni giorno di quel pasto.
+ */
+const PIATTI_PER_PASTO = 2;
+
+/**
  * La riga sotto la testata, a tre livelli: `n` piatti nel repertorio (letti
  * all'apertura più quelli salvati in questa sessione). Sotto la soglia dice
- * quanti ne mancano a far girare la settimana; sopra, che si può smettere.
+ * quanti ne mancano a far girare la settimana; sopra, che si può smettere —
+ * ma solo se OGNI pasto ha almeno `PIATTI_PER_PASTO` piatti: il planner
+ * ruota per pasto, otto cene non fanno girare la colazione. Con la soglia
+ * raggiunta ma un pasto scoperto, dice quale (quello con meno piatti; a
+ * parità il primo nell'ordine dei pasti).
  */
-function testoContatore(n: number): string {
-  if (n >= PIATTI_PER_GIRARE) return `Ne hai ${n}: la settimana può girare. Aggiungine quanti vuoi.`;
+function testoContatore(n: number, perPasto: Map<string, number>, slotDefs: MealSlotDef[]): string {
+  if (n >= PIATTI_PER_GIRARE) {
+    let scoperto: MealSlotDef | null = null;
+    for (const def of slotDefs) {
+      const conta = perPasto.get(def.id) ?? 0;
+      if (conta >= PIATTI_PER_PASTO) continue;
+      if (scoperto === null || conta < (perPasto.get(scoperto.id) ?? 0)) scoperto = def;
+    }
+    if (scoperto === null) return `Ne hai ${n}: la settimana può girare. Aggiungine quanti vuoi.`;
+    return `${n} piatti salvati · manca ancora qualcosa per ${scoperto.nome}`;
+  }
   const coda = `ne bastano ${PIATTI_PER_GIRARE} per far girare la settimana`;
   if (n === 0) return `Nessun piatto ancora · ${coda}`;
   if (n === 1) return `1 piatto salvato · ${coda}`;
   return `${n} piatti salvati · ${coda}`;
 }
+
+/** Oltre questo valore una quantità o un formato è un errore di battitura, non una ricetta. */
+const QUANTITA_MASSIMA = 100000;
+
+/** Nome del piatto, ricerca, nome dell'ingrediente: nessuno ha bisogno di più. */
+const LUNGHEZZA_MASSIMA = 80;
 
 /** Una riga del piatto in costruzione: la quantità resta testo finché non si salva ("80," mentre si digita). */
 interface Riga {
@@ -75,6 +100,7 @@ function ragioneNonValido(nome: string, righe: Riga[], nomiPerId: Map<string, st
   for (const r of righe) {
     const q = quantitaNumerica(r.quantita);
     if (!Number.isFinite(q) || q <= 0) return `Manca la quantità di ${nomiPerId.get(r.ingredientId) ?? ''}`;
+    if (q > QUANTITA_MASSIMA) return `Quantità troppo alta per ${nomiPerId.get(r.ingredientId) ?? ''}`;
   }
   return null;
 }
@@ -84,6 +110,15 @@ interface Dati {
   ordineAree: AreaId[];
   /** Piatti già nel repertorio all'apertura: la base del contatore. */
   salvatiPrima: number;
+  /** Gli stessi, per pasto: il contatore guarda che nessun pasto resti scoperto. */
+  perPastoPrima: Map<string, number>;
+}
+
+/** Quanti piatti per `slotDefId`, a partire dai piatti del repertorio. */
+function contaPerPasto(piatti: { slotDefId: string }[]): Map<string, number> {
+  const conta = new Map<string, number>();
+  for (const p of piatti) conta.set(p.slotDefId, (conta.get(p.slotDefId) ?? 0) + 1);
+  return conta;
 }
 
 /**
@@ -98,7 +133,8 @@ export default function PiattiVeloce() {
   const [erroreCaricamento, setErroreCaricamento] = useState<string | null>(null);
   // Elenco locale: cresce con le mini-creazioni senza rileggere dal server.
   const [ingredienti, setIngredienti] = useState<Ingredient[]>([]);
-  const [salvatiOra, setSalvatiOra] = useState(0);
+  // I piatti salvati in questa sessione, per pasto: il totale è la somma.
+  const [salvatiOra, setSalvatiOra] = useState<Map<string, number>>(new Map());
 
   const [nome, setNome] = useState('');
   const [slotDefId, setSlotDefId] = useState('');
@@ -120,7 +156,12 @@ export default function PiattiVeloce() {
       .then(([slotDefs, ingredienti, repertorio, impostazioni]) => {
         if (!vivo) return;
         const ordinati = [...slotDefs].sort((a, b) => a.posizione - b.posizione);
-        setDati({ slotDefs: ordinati, ordineAree: impostazioni.ordineAree, salvatiPrima: repertorio.length });
+        setDati({
+          slotDefs: ordinati,
+          ordineAree: impostazioni.ordineAree,
+          salvatiPrima: repertorio.length,
+          perPastoPrima: contaPerPasto(repertorio),
+        });
         setIngredienti(ingredienti);
         setSlotDefId(ordinati[0]?.id ?? '');
       })
@@ -143,7 +184,12 @@ export default function PiattiVeloce() {
 
   if (!dati) return <Cornice etichetta="PIATTO" />;
 
-  const n = dati.salvatiPrima + salvatiOra;
+  let n = dati.salvatiPrima;
+  const perPasto = new Map(dati.perPastoPrima);
+  for (const [id, conta] of salvatiOra) {
+    n += conta;
+    perPasto.set(id, (perPasto.get(id) ?? 0) + conta);
+  }
   const nomiPerId = new Map(ingredienti.map((i) => [i.id, i.nome]));
   const ragione = ragioneNonValido(nome, righe, nomiPerId);
 
@@ -201,7 +247,7 @@ export default function PiattiVeloce() {
         componenti: [],
       });
       // Il pasto non si tocca: chi scrive tre cene di fila non lo ritocca.
-      setSalvatiOra((v) => v + 1);
+      setSalvatiOra((prev) => new Map(prev).set(slotDefId, (prev.get(slotDefId) ?? 0) + 1));
       setNome('');
       setRighe([]);
       setRicerca('');
@@ -224,7 +270,7 @@ export default function PiattiVeloce() {
   return (
     <Cornice etichetta={`PIATTO ${n + 1}`}>
       <div style={{ padding: '0 16px 8px', fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)' }}>
-        {testoContatore(n)}
+        {testoContatore(n, perPasto, dati.slotDefs)}
       </div>
 
       <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 16px 16px' }}>
@@ -240,6 +286,7 @@ export default function PiattiVeloce() {
           onChange={(e) => cambiaNome(e.target.value)}
           placeholder="Dai un nome al piatto"
           aria-label="Nome del piatto"
+          maxLength={LUNGHEZZA_MASSIMA}
           style={{
             display: 'block', width: '100%', fontFamily: 'inherit',
             fontSize: 26, fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.1,
@@ -263,6 +310,7 @@ export default function PiattiVeloce() {
           onChange={(e) => setRicerca(e.target.value)}
           placeholder="Cerca un ingrediente"
           aria-label="Cerca un ingrediente"
+          maxLength={LUNGHEZZA_MASSIMA}
           style={{
             width: '100%', height: 44, padding: '0 14px',
             borderRadius: 14, border: '1px solid var(--bordo)',
@@ -437,7 +485,11 @@ interface PropsMiniCreazione {
  * unità ai soli campi non ancora toccati a mano: un default che sovrascrive
  * quello che l'utente ha appena scritto sarebbe una correzione a tradimento.
  * Con `pz` il formato è 1 comunque: list-builder forza 1 per gli interi e
- * mostrare altro qui mentirebbe su cosa succede in lista.
+ * mostrare altro qui mentirebbe su cosa succede in lista. Per lo stesso
+ * motivo il passaggio da `pz` a un'altra unità riparte dal default del
+ * formato anche se era stato toccato: quel che c'era scritto era un formato
+ * a pezzi, non ha senso in grammi, e un "1" lasciato lì diventerebbe una
+ * confezione da un grammo.
  */
 function MiniCreazione({ nomeIniziale, ordineAree, onCreato, onAnnulla }: PropsMiniCreazione) {
   const iniziali = predefinitiIngrediente(AREA_INIZIALE, UNITA_INIZIALE);
@@ -451,11 +503,15 @@ function MiniCreazione({ nomeIniziale, ordineAree, onCreato, onAnnulla }: PropsM
   const [creando, setCreando] = useState(false);
   const [errore, setErrore] = useState<string | null>(null);
 
-  /** Riapplica i default ai campi non toccati, con i valori nuovi di area e unità. */
-  function riapplica(areaNuova: AreaId, unitaNuova: UnitaBase) {
+  /**
+   * Riapplica i default ai campi non toccati, con i valori nuovi di area e
+   * unità. `formatoLibero` dice se il formato va considerato non toccato:
+   * di norma è `!formatoToccato`, ma cambiaUnita lo forza quando si lascia `pz`.
+   */
+  function riapplica(areaNuova: AreaId, unitaNuova: UnitaBase, formatoLibero = !formatoToccato) {
     const p = predefinitiIngrediente(areaNuova, unitaNuova);
     if (!deperibileToccato) setDeperibile(p.deperibile);
-    if (!formatoToccato || unitaNuova === 'pz') setFormatoTesto(String(p.formatoConfezione));
+    if (formatoLibero || unitaNuova === 'pz') setFormatoTesto(String(p.formatoConfezione));
   }
 
   function cambiaArea(id: string) {
@@ -466,13 +522,17 @@ function MiniCreazione({ nomeIniziale, ordineAree, onCreato, onAnnulla }: PropsM
 
   function cambiaUnita(id: string) {
     const u = id as UnitaBase;
+    // Da pezzi a peso/volume: il formato scritto prima era a pezzi, si
+    // riparte dal default e si dimentica che era stato toccato.
+    const daPezzi = unita === 'pz' && u !== 'pz';
+    if (daPezzi) setFormatoToccato(false);
     setUnita(u);
-    riapplica(area, u);
+    riapplica(area, u, daPezzi || !formatoToccato);
   }
 
   const aPezzi = unita === 'pz';
   const formato = aPezzi ? 1 : quantitaNumerica(formatoTesto);
-  const nonValido = !nome.trim() || !Number.isFinite(formato) || formato <= 0;
+  const nonValido = !nome.trim() || !Number.isFinite(formato) || formato <= 0 || formato > QUANTITA_MASSIMA;
 
   async function crea() {
     if (nonValido || creando) return;
@@ -512,6 +572,7 @@ function MiniCreazione({ nomeIniziale, ordineAree, onCreato, onAnnulla }: PropsM
         onChange={(e) => setNome(e.target.value)}
         aria-label="Nome dell'ingrediente"
         placeholder="Dai un nome all'ingrediente"
+        maxLength={LUNGHEZZA_MASSIMA}
         style={{
           width: '100%', height: 44, padding: '0 14px', borderRadius: 14,
           border: '1px solid rgba(20,22,58,0.12)', background: '#FFFFFF', color: 'var(--ink)',

@@ -49,9 +49,9 @@ const ING_UOVA: Ingredient = {
 
 const ORDINE_AREE_TEST = ['ortofrutta', 'macelleria', 'latticini', 'cereali', 'dispensa', 'surgelati'] as const;
 
-function piattoFinto(i: number): Dish {
+function piattoFinto(i: number, slotDefId = 'sd-1'): Dish {
   return {
-    id: `d-${i}`, nome: `Piatto ${i}`, slotDefId: 'sd-1', fonte: 'proprio', attivo: true,
+    id: `d-${i}`, nome: `Piatto ${i}`, slotDefId, fonte: 'proprio', attivo: true,
     descrizione: null, settimanaCiclo: null, giornoCiclo: null,
     ingredienti: [{ ingredientId: 'i-pasta', quantita: 80, unita: 'g' }], componenti: [],
   };
@@ -113,13 +113,54 @@ describe('Piatti veloce (/piatti/veloce)', () => {
     });
 
     it('con 3 piatti: "3 piatti salvati"', async () => {
-      await apri([1, 2, 3].map(piattoFinto));
+      await apri([1, 2, 3].map((i) => piattoFinto(i)));
       expect(screen.getByText('PIATTO 4')).toBeInTheDocument();
       expect(screen.getByText('3 piatti salvati · ne bastano 8 per far girare la settimana')).toBeInTheDocument();
     });
 
-    it('con 9 piatti: PIATTO 10 e "Ne hai 9: la settimana può girare"', async () => {
-      await apri([1, 2, 3, 4, 5, 6, 7, 8, 9].map(piattoFinto));
+    // B4: il planner ruota per pasto, quindi "può girare" solo se OGNI pasto
+    // ha almeno due piatti. Nove colazioni non fanno girare pranzo e cena.
+    it('con 9 piatti distribuiti su tutti i pasti: PIATTO 10 e "Ne hai 9: la settimana può girare"', async () => {
+      await apri([
+        piattoFinto(1, 'sd-1'), piattoFinto(2, 'sd-1'), piattoFinto(3, 'sd-1'),
+        piattoFinto(4, 'sd-2'), piattoFinto(5, 'sd-2'), piattoFinto(6, 'sd-2'),
+        piattoFinto(7, 'sd-3'), piattoFinto(8, 'sd-3'), piattoFinto(9, 'sd-3'),
+      ]);
+      expect(screen.getByText('PIATTO 10')).toBeInTheDocument();
+      expect(screen.getByText('Ne hai 9: la settimana può girare. Aggiungine quanti vuoi.')).toBeInTheDocument();
+    });
+
+    it('con 9 piatti tutti a colazione: PIATTO 10 ma "manca ancora qualcosa per Pranzo"', async () => {
+      await apri([1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => piattoFinto(i)));
+      expect(screen.getByText('PIATTO 10')).toBeInTheDocument();
+      expect(screen.getByText('9 piatti salvati · manca ancora qualcosa per Pranzo')).toBeInTheDocument();
+    });
+
+    it('il pasto nominato è quello con meno piatti, non il primo scoperto', async () => {
+      // Pranzo ha 1 piatto (scoperto), Cena 0: si nomina Cena.
+      await apri([
+        piattoFinto(1, 'sd-1'), piattoFinto(2, 'sd-1'), piattoFinto(3, 'sd-1'), piattoFinto(4, 'sd-1'),
+        piattoFinto(5, 'sd-1'), piattoFinto(6, 'sd-1'), piattoFinto(7, 'sd-1'),
+        piattoFinto(8, 'sd-2'),
+      ]);
+      expect(screen.getByText('8 piatti salvati · manca ancora qualcosa per Cena')).toBeInTheDocument();
+    });
+
+    it('i piatti salvati in sessione contano per il loro pasto: coprire l\'ultimo pasto fa girare la settimana', async () => {
+      vi.mocked(salvaPiatto).mockResolvedValue('d-nuovo');
+      await apri([
+        piattoFinto(1, 'sd-1'), piattoFinto(2, 'sd-1'), piattoFinto(3, 'sd-1'),
+        piattoFinto(4, 'sd-2'), piattoFinto(5, 'sd-2'), piattoFinto(6, 'sd-2'),
+        piattoFinto(7, 'sd-3'), piattoFinto(8, 'sd-2'),
+      ]);
+      expect(screen.getByText('8 piatti salvati · manca ancora qualcosa per Cena')).toBeInTheDocument();
+
+      scriviNome('Pollo e riso');
+      fireEvent.click(screen.getByRole('button', { name: 'Cena' }));
+      aggiungi('Pasta', '80');
+      fireEvent.click(screen.getByRole('button', { name: 'SALVA E AVANTI' }));
+
+      expect(await screen.findByText('Salvato: Pollo e riso')).toBeInTheDocument();
       expect(screen.getByText('PIATTO 10')).toBeInTheDocument();
       expect(screen.getByText('Ne hai 9: la settimana può girare. Aggiungine quanti vuoi.')).toBeInTheDocument();
     });
@@ -246,6 +287,25 @@ describe('Piatti veloce (/piatti/veloce)', () => {
       fireEvent.change(screen.getByLabelText('Quantità di Pasta'), { target: { value: 'abc' } });
       expect(screen.getByText('Manca la quantità di Pasta')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'SALVA E AVANTI' })).toBeDisabled();
+    });
+
+    // B6: un tetto alle quantità — oltre 100000 è un errore di battitura.
+    it('rifiuta una quantità oltre 100000 con "Quantità troppo alta"', async () => {
+      await apri();
+      scriviNome('Pasta al pomodoro');
+      aggiungi('Pasta', '100001');
+      expect(screen.getByText('Quantità troppo alta per Pasta')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'SALVA E AVANTI' })).toBeDisabled();
+
+      fireEvent.change(screen.getByLabelText('Quantità di Pasta'), { target: { value: '100000' } });
+      expect(screen.queryByText('Quantità troppo alta per Pasta')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'SALVA E AVANTI' })).toBeEnabled();
+    });
+
+    it('nome del piatto e ricerca hanno maxLength 80', async () => {
+      await apri();
+      expect(screen.getByLabelText('Nome del piatto')).toHaveAttribute('maxlength', '80');
+      expect(screen.getByLabelText('Cerca un ingrediente')).toHaveAttribute('maxlength', '80');
     });
   });
 
@@ -385,6 +445,39 @@ describe('Piatti veloce (/piatti/veloce)', () => {
       // ml → 1000 di default, ma il formato è stato scritto a mano.
       fireEvent.click(screen.getByRole('button', { name: 'ML' }));
       expect(screen.getByLabelText('Formato della confezione')).toHaveValue('250');
+    });
+
+    // B5: tornando da pz a un'altra unità il formato riparte dal default anche
+    // se era stato toccato — altrimenti resterebbe "1", una confezione da un grammo.
+    it('da pz a g il formato torna al default anche se era stato toccato a mano', async () => {
+      await apri();
+      cerca('Tofu');
+      fireEvent.click(screen.getByRole('button', { name: 'Crea «Tofu»' }));
+      fireEvent.change(screen.getByLabelText('Formato della confezione'), { target: { value: '250' } });
+
+      fireEvent.click(screen.getByRole('button', { name: 'PZ' }));
+      expect(screen.getByLabelText('Formato della confezione')).toHaveValue('1');
+
+      fireEvent.click(screen.getByRole('button', { name: 'G' }));
+      const formato = screen.getByLabelText('Formato della confezione');
+      expect(formato).toHaveValue('500');
+      expect(formato).toBeEnabled();
+      // E il flag è azzerato: un cambio di unità successivo riapplica di nuovo il default.
+      fireEvent.click(screen.getByRole('button', { name: 'ML' }));
+      expect(screen.getByLabelText('Formato della confezione')).toHaveValue('1000');
+    });
+
+    it('il nome dell\'ingrediente ha maxLength 80 e un formato oltre 100000 disabilita CREA', async () => {
+      await apri();
+      cerca('Tofu');
+      fireEvent.click(screen.getByRole('button', { name: 'Crea «Tofu»' }));
+      expect(screen.getByLabelText("Nome dell'ingrediente")).toHaveAttribute('maxlength', '80');
+
+      const crea = screen.getByRole('button', { name: 'CREA E AGGIUNGI' });
+      fireEvent.change(screen.getByLabelText('Formato della confezione'), { target: { value: '100001' } });
+      expect(crea).toBeDisabled();
+      fireEvent.change(screen.getByLabelText('Formato della confezione'), { target: { value: '100000' } });
+      expect(crea).toBeEnabled();
     });
 
     it('CREA E AGGIUNGI chiama salvaIngrediente e mette la riga nel piatto', async () => {
