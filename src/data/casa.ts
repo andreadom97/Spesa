@@ -1,5 +1,6 @@
 import { client } from './supabase';
 import { cancellaIstantaneaLista } from '@/offline/lista-cache';
+import { svuotaCoda } from '@/offline/coda';
 
 export type RuoloCasa = 'solo' | 'proprietario' | 'membro';
 
@@ -98,27 +99,33 @@ export async function creaInvito(): Promise<string> {
  * (spazi via, maiuscole) perché lo si scrive a mano sul telefono; gli errori
  * della funzione SQL (`codice non valido o scaduto`…) arrivano già in
  * italiano e si mostrano così come sono. Dopo, l'id della casa cambia:
- * la memoria si scarta e chi chiama ricarica l'app. Con la memoria se ne va
- * anche l'istantanea offline della lista (lista-cache.ts): è di un'altra
- * casa, e senza rete al reload ricomparirebbe la lista sbagliata.
+ * la memoria si scarta e chi chiama ricarica l'app. Con la memoria se ne
+ * vanno anche le due copie locali della lista, entrambe dell'altra casa:
+ * l'istantanea offline (lista-cache.ts), che senza rete al reload farebbe
+ * ricomparire la lista sbagliata, e la coda delle spunte (coda.ts), i cui
+ * itemId sono di righe che nella casa nuova non esistono — una spunta non
+ * ancora sincronizzata al momento del cambio si perde, limite dichiarato in
+ * spec casa-condivisa §7.
  */
 export async function entraInCasa(codice: string): Promise<void> {
   const { error } = await client().rpc('entra_in_casa', { codice: codice.trim().toUpperCase() });
   if (error) throw error;
   dimenticaIdCasa();
   cancellaIstantaneaLista();
+  svuotaCoda();
 }
 
 /**
  * Torna ai propri dati. Come per `entraInCasa`, l'id della casa cambia:
- * memoria scartata, istantanea offline della lista (di un'altra casa)
- * cancellata, poi reload.
+ * memoria scartata, istantanea offline e coda delle spunte (entrambe della
+ * casa che si lascia) cancellate, poi reload.
  */
 export async function esciDallaCasa(): Promise<void> {
   const { error } = await client().rpc('esci_dalla_casa');
   if (error) throw error;
   dimenticaIdCasa();
   cancellaIstantaneaLista();
+  svuotaCoda();
 }
 
 /** Il proprietario toglie un membro (per id utente). L'id di chi chiama non cambia: la memoria resta. */

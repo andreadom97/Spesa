@@ -1,11 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../supabase', () => ({ client: vi.fn() }));
-// L'istantanea offline della lista è di una casa: entra/esci la cancellano.
+// L'istantanea offline della lista e la coda delle spunte sono di una casa:
+// entra/esci le cancellano entrambe.
 vi.mock('@/offline/lista-cache', () => ({ cancellaIstantaneaLista: vi.fn() }));
+vi.mock('@/offline/coda', () => ({ svuotaCoda: vi.fn() }));
 
 import { client } from '../supabase';
 import { cancellaIstantaneaLista } from '@/offline/lista-cache';
+import { svuotaCoda } from '@/offline/coda';
 import {
   creaInvito,
   dimenticaIdCasa,
@@ -165,6 +168,7 @@ describe('inviti e membri', () => {
   beforeEach(() => {
     vi.mocked(client).mockReset();
     vi.mocked(cancellaIstantaneaLista).mockReset();
+    vi.mocked(svuotaCoda).mockReset();
     dimenticaIdCasa();
   });
 
@@ -223,6 +227,26 @@ describe('inviti e membri', () => {
     expect(cancellaIstantaneaLista).not.toHaveBeenCalled();
   });
 
+  // Gli itemId in coda sono righe della lista dell'altra casa: una spunta non
+  // ancora sincronizzata al momento del cambio si perde (spec §7).
+  it('entraInCasa svuota la coda delle spunte offline: è dell\'altra casa', async () => {
+    const rpc = creaClientMock();
+    rpc.mockResolvedValue({ data: 'proprietario-1', error: null });
+
+    await entraInCasa('K7P3QX');
+
+    expect(svuotaCoda).toHaveBeenCalledTimes(1);
+  });
+
+  it('entraInCasa con errore della RPC non tocca la coda', async () => {
+    const rpc = creaClientMock();
+    rpc.mockResolvedValue({ data: null, error: erroreRpc('codice non valido o scaduto') });
+
+    await expect(entraInCasa('XXXXXX')).rejects.toBeDefined();
+
+    expect(svuotaCoda).not.toHaveBeenCalled();
+  });
+
   it('esciDallaCasa chiama la RPC e poi idCasa rifà la RPC', async () => {
     const rpc = creaClientMock();
     rpc.mockImplementation(async (nome: string) => {
@@ -261,6 +285,24 @@ describe('inviti e membri', () => {
     await expect(esciDallaCasa()).rejects.toBeDefined();
 
     expect(cancellaIstantaneaLista).not.toHaveBeenCalled();
+  });
+
+  it('esciDallaCasa svuota la coda delle spunte offline', async () => {
+    const rpc = creaClientMock();
+    rpc.mockResolvedValue({ data: null, error: null });
+
+    await esciDallaCasa();
+
+    expect(svuotaCoda).toHaveBeenCalledTimes(1);
+  });
+
+  it('esciDallaCasa con errore della RPC non tocca la coda', async () => {
+    const rpc = creaClientMock();
+    rpc.mockResolvedValue({ data: null, error: erroreRpc('errore') });
+
+    await expect(esciDallaCasa()).rejects.toBeDefined();
+
+    expect(svuotaCoda).not.toHaveBeenCalled();
   });
 
   it('rimuoviMembro passa p_membro', async () => {

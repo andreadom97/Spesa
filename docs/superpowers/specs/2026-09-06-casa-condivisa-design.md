@@ -1,6 +1,6 @@
 # Casa condivisa — design (P6)
 
-**Data:** 06/09/2026 · **Stato:** approvata e implementata il 06/09 (piano omonimo), tranne "per quante persone" (decisione aperta, §6); da provare con due account dopo la migrazione 0012
+**Data:** 06/09/2026 · **Stato:** approvata e implementata il 06/09 (piano omonimo), compreso "per quante persone" (deciso il 06/09, §6); da provare con due account dopo la migrazione 0012
 **Deriva da:** [spesa-backlog-nicchia.md](../../../spesa-backlog-nicchia.md) (P6),
 [2026-08-26-spesa-design.md](2026-08-26-spesa-design.md) (RLS con `user_id` su ogni tabella)
 
@@ -38,9 +38,11 @@ $$;
   membro di al più una casa. Un proprietario non può essere membro altrove e un membro
   non può avere membri (le funzioni sotto lo impediscono; `casa_id()` non è ricorsiva).
 - `casa_invito(codice text primary key, proprietario uuid not null → auth.users,
-  creato_il timestamptz default now(), scade_il timestamptz not null)`: un codice di sei
-  caratteri (maiuscole e cifre senza `0 O 1 I`), valido 24 ore, uno per proprietario alla
-  volta.
+  creato_il timestamptz default now(), scade_il timestamptz not null)`: un codice di otto
+  caratteri (maiuscole e cifre senza `0 O 1 I`: 2^40 combinazioni), valido un'ora, uno per
+  proprietario alla volta. Erano sei caratteri e 24 ore; la revisione di sicurezza del
+  06/09 li ha portati a otto e un'ora perché la forza bruta via RPC non sia redditizia
+  prima della scadenza.
 - **Tutte le policy** su tutte le tabelle con `user_id` diventano
   `using (user_id = casa_id()) with check (user_id = casa_id())`. La migrazione 0012 le
   rigenera in un ciclo su `information_schema.columns` (`column_name = 'user_id'`,
@@ -59,15 +61,18 @@ nessun dato si mescola.
 
 | Funzione | Cosa fa | Rifiuta se |
 |---|---|---|
-| `crea_invito() returns text` | Cancella gli inviti precedenti del chiamante, ne crea uno nuovo (24 h), restituisce il codice | il chiamante è membro di una casa |
-| `entra_in_casa(codice text) returns uuid` | Valida codice e scadenza, inserisce `casa_membro(auth.uid(), proprietario)`, cancella l'invito, restituisce il proprietario | codice inesistente o scaduto; chiamante = proprietario; il chiamante ha membri; il chiamante è già membro; il proprietario è membro altrove |
+| `crea_invito() returns text` | Cancella gli inviti precedenti del chiamante, ne crea uno nuovo (otto caratteri, 1 h), restituisce il codice | il chiamante è membro di una casa |
+| `entra_in_casa(codice text) returns uuid` | Controlla **prima** lo stato del chiamante, **poi** il codice e la scadenza; inserisce `casa_membro(auth.uid(), proprietario)`, cancella l'invito, restituisce il proprietario | nell'ordine: il chiamante ha membri; il chiamante è già membro; codice inesistente o scaduto; chiamante = proprietario; il proprietario è membro altrove. L'ordine conta: chi non potrebbe comunque entrare non scopre se un codice esiste |
 | `esci_dalla_casa() returns void` | Cancella la riga `casa_membro` del chiamante | (mai: senza riga non fa nulla) |
 | `rimuovi_membro(membro uuid) returns void` | Il proprietario toglie un membro | la riga non ha `proprietario = auth.uid()` |
-| `stato_casa() returns jsonb` | `{ "ruolo": "solo" \| "proprietario" \| "membro", "email": [...] }`: per un proprietario le email dei membri, per un membro quella del proprietario | — |
+| `stato_casa() returns jsonb` | `{ "ruolo": "solo" \| "proprietario" \| "membro", "email": [...], "id": [...] }`: per un proprietario le email dei membri (in ordine di ingresso), per un membro quella del proprietario; `id` sono gli id utente accoppiati per indice alle email — quelli che `rimuovi_membro` vuole | — |
 
 Le email vengono da `auth.users` dentro `security definer`: è l'unico modo per mostrarle
 e restano dentro la casa. Gli errori delle funzioni hanno messaggi in italiano
-(`raise exception 'codice non valido o scaduto'`), mostrati così come sono.
+(`raise exception 'codice non valido o scaduto'`), che arrivano al client con SQLSTATE
+`P0001`: la pagina mostra così com'è solo quelli. Ogni altro errore (violazione di
+vincolo, rete, permessi) ha un messaggio grezzo di Postgres o del client e diventa un
+generico `Non siamo riusciti a entrare. Riprova.` (§4).
 
 ## 3. Il data layer
 
@@ -76,7 +81,8 @@ e restano dentro la casa. Gli errori delle funzioni hanno messaggi in italiano
 ```ts
 export async function idCasa(): Promise<string>;         // rpc('casa_id'), memorizzata per sessione
 export function dimenticaIdCasa(): void;                 // dopo entra/esci, prima del reload
-export async function statoCasa(): Promise<{ ruolo: 'solo' | 'proprietario' | 'membro'; email: string[] }>;
+export interface StatoCasa { ruolo: 'solo' | 'proprietario' | 'membro'; email: string[]; id: string[] } // id accoppiati per indice a email
+export async function statoCasa(): Promise<StatoCasa>;
 export async function creaInvito(): Promise<string>;
 export async function entraInCasa(codice: string): Promise<void>;
 export async function esciDallaCasa(): Promise<void>;
@@ -103,16 +109,22 @@ propri, poi entrando in una casa li lascia da parte.
 Nuova sezione fra REPERTORIO e SUPERMERCATO, etichetta `CASA`, una scheda:
 
 - **Solo** (`ruolo: 'solo'`): titolo `Fai la spesa con qualcuno?`, testo `Chi entra nella
-  tua casa vede e spunta la tua lista dal suo telefono. Il suo piano resta da parte finché
-  non esce.` Bottone `CREA UN CODICE` → mostra il codice grande in mono (`K7P3QX`) con
-  sotto `Vale 24 ore. Dalle sue Impostazioni, l'altra persona lo inserisce qui sotto.`
-  Sotto la scheda, campo `Ho un codice` (6 caratteri, maiuscole automatiche) e bottone
-  `ENTRA`; con codice sbagliato, il messaggio della funzione.
+  tua casa usa i tuoi dati come fossero suoi: vede e cambia lista, piano, dispensa e
+  piatti, e può anche cancellarli. Il suo piano resta da parte finché non esce. Dai il
+  codice solo a chi vive con te.` (consenso informato: chi invita deve sapere che l'altro
+  ha i suoi stessi poteri, §7). Bottone `CREA UN CODICE` → mostra il codice grande in mono
+  (`K7P3QX2M`) con sotto `Vale un'ora. Dalle sue Impostazioni, l'altra persona lo inserisce
+  qui sotto.` Sotto la scheda, campo `Ho un codice` (8 caratteri, `maxLength={8}`,
+  maiuscole automatiche) e bottone `ENTRA`, attivo solo con otto caratteri; se
+  `entra_in_casa` fallisce con SQLSTATE `P0001` si mostra il messaggio della funzione
+  (`codice non valido o scaduto`, `sei già in una casa: esci prima`…), con qualunque
+  altro errore `Non siamo riusciti a entrare. Riprova.` (§2).
 - **Proprietario**: titolo `La tua casa`, elenco delle email dei membri con bottone
   `TOGLI` (conferma in due tocchi, come RIPARTI), testo `Ognuno spunta dal suo telefono.
   La lista si aggiorna quando la riapri.`, e sempre `CREA UN CODICE` per un altro membro.
-- **Membro**: titolo `Sei nella casa di {email}`, testo `Vedi la sua lista, il suo piano e
-  la sua dispensa. I tuoi restano da parte.`, bottone `ESCI DALLA CASA` (due tocchi).
+- **Membro**: titolo `Sei nella casa di {email}`, testo `Vedi e cambi la sua lista, il suo
+  piano e la sua dispensa, come fossero tuoi. I tuoi restano da parte.`, bottone
+  `ESCI DALLA CASA` (due tocchi).
 
 Entrare o uscire → `dimenticaIdCasa()` → `window.location.assign('/lista')`.
 
@@ -156,10 +168,24 @@ nella stessa casa (piatti e pasti per persona, una lista sola): un'altra spec.
 - Il tetto di import (3 in 30 giorni) è per casa.
 - La lista si aggiorna al ritorno in primo piano, non in tempo reale; due spunte
   contemporanee sulla stessa riga: l'ultima vince.
-- Il codice d'invito è di sei caratteri e dura 24 ore: chi lo ha, entra. È un rischio
+- Il codice d'invito è di otto caratteri e dura un'ora: chi lo ha, entra. È un rischio
   accettato per un'app fra persone che vivono insieme; il proprietario vede chi c'è e lo
   toglie.
+- Un membro ha sui dati della casa gli stessi poteri del proprietario (modificare,
+  cancellare, importare, consumare il tetto di import); non può invitare, togliere altri
+  membri né eliminare l'account. Per annullare un codice dato per sbaglio basta crearne un
+  altro.
+- Nota operativa: le funzioni `security definer` scrivono su tabelle con
+  `force row level security` e senza policy di scrittura: funzionano solo se il ruolo che
+  applica la migrazione ha `BYPASSRLS` (`postgres` su Supabase hosted).
 - Le email dei membri si vedono dentro la casa e da nessun'altra parte.
+- Entrare o uscire svuota anche la coda delle spunte offline (`svuotaCoda()`), oltre
+  all'istantanea: i suoi `itemId` sono righe della lista dell'altra casa. Una spunta
+  fatta senza rete e non ancora sincronizzata al momento del cambio si perde.
+- La memoria di `idCasa` non si invalida da sola: un membro tolto (o uscito da un altro
+  dispositivo) continua a scrivere con l'id della casa vecchia e vede errori RLS
+  (`42501`) finché non ricarica l'app. Nessuna invalidazione automatica sul primo
+  errore: sarebbero troppi i punti del data layer da cablare.
 - Il moltiplicatore "per quante persone cucini" vale per tutta la casa, non per
   persona, e presuppone porzioni uguali per tutti: chi mangia diverso lo lascia a 1 e
   scrive le quantità giuste nei piatti (§6).
@@ -175,6 +201,10 @@ nella stessa casa (piatti e pasti per persona, una lista sola): un'altra spec.
 | `src/app/(app)/impostazioni/page.tsx` | Sezione CASA |
 | `src/app/(app)/lista/page.tsx` | Rilettura al ritorno in primo piano |
 | `README.md`, `spesa-backlog-nicchia.md` | P6 consegnato, migrazione 0012 nel deploy |
+
+Regola di manutenzione: ogni tabella futura con `user_id` usa la policy
+`user_id = (select casa_id())`, non `auth.uid() = user_id`: la migrazione 0012 rigenera
+solo le tabelle esistenti al momento in cui gira.
 
 ## 9. Test che contano
 

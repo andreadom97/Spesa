@@ -41,10 +41,18 @@ interface Chiamata { metodo: string; args: unknown[] }
 /**
  * Controfigura del query builder (pattern di settimana.creaSettimana.test.ts):
  * `week` risponde con la settimana passata, `meal_slot` con le righe passate
- * alla lettura e con `data: null` alle scritture; ogni catena di chiamate
- * viene registrata per tabella così i test guardano cosa è stato scritto.
+ * alla lettura; l'update di `meal_slot` (che chiede `.select('id')` per
+ * sapere se ha toccato la riga) risponde con la riga aggiornata, o con
+ * nessuna per gli id in `giaScelti` — lo slot che qualcun altro ha riempito
+ * fra la lettura e la scrittura. Le altre scritture rispondono `data: null`.
+ * Ogni catena di chiamate viene registrata per tabella così i test guardano
+ * cosa è stato scritto.
  */
-function creaClientMock(week: { data_inizio: string; stato: string } | null, slots: unknown[]) {
+function creaClientMock(
+  week: { data_inizio: string; stato: string } | null,
+  slots: unknown[],
+  giaScelti: string[] = [],
+) {
   const scritture: Record<string, Chiamata[][]> = {};
 
   function from(tabella: string) {
@@ -56,6 +64,7 @@ function creaClientMock(week: { data_inizio: string; stato: string } | null, slo
     const proxy: Record<string, unknown> = {
       select: registra('select'),
       eq: registra('eq'),
+      is: registra('is'),
       order: registra('order'),
       update: registra('update'),
       insert: registra('insert'),
@@ -65,6 +74,11 @@ function creaClientMock(week: { data_inizio: string; stato: string } | null, slo
       then(onFulfilled: (v: unknown) => unknown) {
         (scritture[tabella] ??= []).push(chiamate);
         if (tabella === 'week') return Promise.resolve({ data: week, error: null }).then(onFulfilled);
+        if (tabella === 'meal_slot' && chiamate.some((c) => c.metodo === 'update')) {
+          const id = chiamate.find((c) => c.metodo === 'eq' && c.args[0] === 'id')?.args[1] as string;
+          const righe = giaScelti.includes(id) ? [] : [{ id }];
+          return Promise.resolve({ data: righe, error: null }).then(onFulfilled);
+        }
         if (tabella === 'meal_slot' && chiamate.some((c) => c.metodo === 'select')) {
           return Promise.resolve({ data: slots, error: null }).then(onFulfilled);
         }
@@ -77,13 +91,15 @@ function creaClientMock(week: { data_inizio: string; stato: string } | null, slo
   return { sb: { from }, scritture };
 }
 
-/** Le catene su `meal_slot` che contengono un update, con il payload e gli eq. */
+/** Le catene su `meal_slot` che contengono un update, con il payload, gli eq, gli is e il select. */
 function updateMealSlot(scritture: Record<string, Chiamata[][]>) {
   return (scritture['meal_slot'] ?? [])
     .filter((chiamate) => chiamate.some((c) => c.metodo === 'update'))
     .map((chiamate) => ({
       payload: chiamate.find((c) => c.metodo === 'update')!.args[0] as Record<string, unknown>,
       eq: chiamate.filter((c) => c.metodo === 'eq').map((c) => c.args),
+      is: chiamate.filter((c) => c.metodo === 'is').map((c) => c.args),
+      select: chiamate.filter((c) => c.metodo === 'select').map((c) => c.args),
     }));
 }
 
@@ -116,10 +132,42 @@ describe('completaAssegnazioni (B1: la settimana nata vuota si compila quando ar
     expect(updates[0].payload).toEqual({ dish_id: 's1' });
     expect(updates[0].eq).toContainEqual(['id', 'slot-1']);
     expect(updates[0].eq).toContainEqual(['user_id', 'user-1']);
+    // Solo se ancora vuoto al momento della scrittura, e con le righe toccate indietro.
+    expect(updates[0].is).toEqual([['dish_id', null]]);
+    expect(updates[0].select).toEqual([['id']]);
     expect(updates[1].payload).toEqual({ dish_id: 's1' });
     expect(updates[1].eq).toContainEqual(['id', 'slot-2']);
+    expect(updates[1].is).toEqual([['dish_id', null]]);
     // Nessun componente a scelta: niente scritture su meal_slot_choice.
     expect(scritture['meal_slot_choice']).toBeUndefined();
+  });
+
+  // Fra la lettura e la scrittura un altro telefono della casa ha scelto a
+  // mano: l'update condizionato non tocca la riga (0 righe indietro), e allora
+  // né le scelte del planner — sarebbero di un piatto che lo slot non ha — né
+  // il conto.
+  it('slot riempito da qualcun altro nel frattempo (update a 0 righe): niente scelte, non contato', async () => {
+    const { sb, scritture } = creaClientMock({ data_inizio: '2026-08-31', stato: 'bozza' }, [
+      rigaSlot('slot-1', '2026-08-31', 'cen', 'casa', null),
+      rigaSlot('slot-2', '2026-09-01', 'cen', 'casa', null),
+    ], ['slot-1']);
+    vi.mocked(client).mockReturnValue(sb as never);
+    vi.mocked(leggiRepertorio).mockResolvedValue([
+      piatto('s1', 'cen', [{ id: 'comp1', nome: 'Farcitura', opzioni: [{ id: 'opt-scelta', righe: [] }] }]),
+    ]);
+
+    expect(await completaAssegnazioni('week-1')).toBe(1);
+
+    // L'update si tenta su entrambi: è la condizione a decidere.
+    const updates = updateMealSlot(scritture);
+    expect(updates).toHaveLength(2);
+    expect(updates[0].eq).toContainEqual(['id', 'slot-1']);
+    expect(updates[1].eq).toContainEqual(['id', 'slot-2']);
+    // Le scelte si scrivono solo per slot-2, quello davvero compilato.
+    const scelte = (scritture['meal_slot_choice'] ?? [])
+      .map((chiamate) => chiamate.find((c) => c.metodo === 'upsert')!.args[0] as { meal_slot_id: string }[]);
+    expect(scelte).toHaveLength(1);
+    expect(scelte[0].map((r) => r.meal_slot_id)).toEqual(['slot-2']);
   });
 
   it('le scelte del planner sui componenti del piatto assegnato finiscono in meal_slot_choice', async () => {

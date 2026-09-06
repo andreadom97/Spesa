@@ -232,12 +232,23 @@ export async function completaAssegnazioni(weekId: string): Promise<number> {
     const dopo = assegnati[i];
     if (!slotVuoto(prima) || dopo.dishId === null) continue;
 
-    const { error: eUpd } = await sb
+    // `.is('dish_id', null)`: lo slot era vuoto quando lo si è letto, ma fra
+    // la lettura e questa scrittura un altro telefono della casa (spec
+    // casa-condivisa §5) può aver scelto a mano — e una scelta manuale non
+    // si sovrascrive mai. La condizione la mette nell'update stesso, così
+    // vale al momento della scrittura e non a quello della lettura; il
+    // `.select('id')` dice se la riga è stata toccata: nessuna riga vuol
+    // dire che qualcun altro è arrivato prima, e allora né le scelte del
+    // planner (sarebbero quelle di un piatto che lo slot non ha) né il conto.
+    const { data: aggiornate, error: eUpd } = await sb
       .from('meal_slot')
       .update({ dish_id: dopo.dishId })
       .eq('id', prima.id)
-      .eq('user_id', userId);
+      .eq('user_id', userId)
+      .is('dish_id', null)
+      .select('id');
     if (eUpd) throw eUpd;
+    if ((aggiornate ?? []).length === 0) continue;
 
     // Solo le scelte del planner: una manuale, se mai ce ne fosse una su uno
     // slot senza piatto, è già a database. Upsert e non insert come in

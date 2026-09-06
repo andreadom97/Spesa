@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import type { AreaId, Dish } from '@/domain/types';
 import { coloreArea, nomeArea } from '@/domain/aree';
@@ -206,6 +206,13 @@ export default function Lista() {
   const [erroreAzione, setErroreAzione] = useState<string | null>(null);
   const [tab, setTab] = useState<'base' | 'topup'>('base');
   const [rigaInVolo, setRigaInVolo] = useState<string | null>(null);
+  // Quante volte l'utente ha toccato la lista (spunte e risposte ai
+  // controlli) da quando la pagina è montata. Serve a `rileggi`: una lettura
+  // partita prima di un tocco e arrivata dopo descrive una lista più vecchia
+  // di quella a schermo, e va scartata. La coda offline da sola non basta:
+  // se la scrittura del tocco è già stata confermata, la coda è vuota e non
+  // ha nulla da riapplicare sopra la risposta stantia.
+  const versioneTocchi = useRef(0);
 
   useEffect(() => {
     let vivo = true;
@@ -304,6 +311,15 @@ export default function Lista() {
   // dell'istantanea non esiste più sul server, leggiListe torna null e la
   // copia resta com'è. I listener vivono solo a lista caricata (dipendono
   // da `weekId`) e se ne vanno allo smontaggio.
+  //
+  // Prima di leggere si sincronizza la coda, e si aspetta che finisca: una
+  // spunta fallita in secondo piano (rete andata via a metà) si ritenta
+  // così, e la lettura parte dopo che le scritture in attesa sono arrivate
+  // al server — letta prima, tornerebbe senza quelle spunte e con la coda
+  // già svuotata dalla conferma, e le disfarebbe a schermo. Lo stesso
+  // scarto si guarda anche per un tocco arrivato *durante* la lettura: si
+  // confronta `versioneTocchi` prima e dopo, e se è cambiata la risposta
+  // si butta in silenzio — al prossimo ritorno in primo piano si rilegge.
   const weekId = stato?.weekId ?? null;
   const settimanaLabel = stato?.settimanaLabel ?? null;
   const offline = stato?.offline ?? false;
@@ -312,8 +328,11 @@ export default function Lista() {
     let vivo = true;
     async function rileggi(motivo: string) {
       try {
+        await sincronizzaCoda();
+        const versione = versioneTocchi.current;
         const fresca = await leggiListe(weekId!);
         if (!vivo || !fresca) return;
+        if (versioneTocchi.current !== versione) return;
         salvaIstantaneaLista({ weekId: weekId!, settimanaLabel: settimanaLabel!, lista: fresca });
         setStato((p) => (p ? { ...p, lista: applicaCodaLista(fresca), offline: false } : p));
       } catch (errore) {
@@ -338,6 +357,7 @@ export default function Lista() {
 
   function toggleVoce(voce: VoceSalvata) {
     const nuovo = !voce.spuntato;
+    versioneTocchi.current += 1;
     setStato((prev) => (prev ? { ...prev, lista: conSpuntaLocale(prev.lista, voce.id, nuovo) } : prev));
     accodaSpunta(voce.id, nuovo);
     void sincronizzaCoda();
@@ -345,6 +365,7 @@ export default function Lista() {
 
   async function rispondi(controllo: VoceSalvata, listaId: string | null, ancora: boolean) {
     if (!listaId || rigaInVolo) return;
+    versioneTocchi.current += 1;
     setErroreAzione(null);
     setRigaInVolo(controllo.id);
     try {

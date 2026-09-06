@@ -493,6 +493,96 @@ describe('Lista', () => {
       expect(leggiListe).toHaveBeenCalledTimes(1);
     });
 
+    // D1 della review: una rilettura partita prima di un tap e arrivata dopo
+    // descrive una lista più vecchia di quella a schermo. Se nel frattempo la
+    // scrittura del tap è già stata confermata, la coda è vuota e non ha
+    // nulla da riapplicare: senza uno scarto esplicito la risposta stantia
+    // ripristinerebbe la voce non spuntata mentre il server l'ha spuntata.
+    it('una rilettura partita prima di un tap e arrivata dopo si scarta: la spunta resta', async () => {
+      let risolviRilettura: (l: ListaSalvata) => void = () => {};
+      vi.mocked(leggiListe)
+        .mockResolvedValueOnce(buildLista())
+        .mockImplementationOnce(() => new Promise<ListaSalvata | null>((resolve) => { risolviRilettura = resolve; }));
+      render(<Lista />);
+      const riso = (await screen.findByText('Riso Carnaroli')).closest('button')!;
+
+      simulaVisibilita('visible');
+      await waitFor(() => expect(leggiListe).toHaveBeenCalledTimes(2));
+
+      // Tap mentre la rilettura è ancora in volo: la scrittura riesce subito
+      // e la coda si svuota.
+      fireEvent.click(riso);
+      await waitFor(() => expect(spunta).toHaveBeenCalledWith('item-riso', true));
+      await waitFor(() => expect(leggiCoda()).toEqual([]));
+      expect(riso).toHaveAttribute('aria-pressed', 'true');
+
+      // La rilettura arriva adesso, letta prima del tap: riso non spuntato.
+      risolviRilettura(buildLista());
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(screen.getByText('Riso Carnaroli').closest('button')).toHaveAttribute('aria-pressed', 'true');
+      // Nemmeno l'istantanea si sovrascrive con la lista stantia.
+      expect(leggiIstantaneaLista()?.lista).toEqual(buildLista());
+    });
+
+    it('una rilettura senza tocchi nel mezzo si applica come sempre', async () => {
+      const prima = buildLista();
+      const dopo: ListaSalvata = {
+        ...prima,
+        base: [
+          { area: 'cereali', voci: [VOCE_RISO, { ...VOCE_PASTA, spuntato: true }], controlli: [] },
+          { area: 'dispensa', voci: [], controlli: [CONTROLLO_OLIO] },
+        ],
+      };
+      vi.mocked(leggiListe).mockResolvedValueOnce(prima).mockResolvedValueOnce(dopo);
+      render(<Lista />);
+      await screen.findByText('Riso Carnaroli');
+
+      simulaVisibilita('visible');
+
+      await waitFor(() => expect(screen.getByText('Pasta integrale').closest('button')).toHaveAttribute('aria-pressed', 'true'));
+    });
+
+    it('al ritorno in primo piano si ritenta prima la coda, poi si rilegge', async () => {
+      // Una spunta fallita in secondo piano (rete andata via a metà) non
+      // deve aspettare il prossimo evento online per essere ritentata.
+      vi.mocked(leggiListe).mockResolvedValue(buildLista());
+      render(<Lista />);
+      await screen.findByText('Riso Carnaroli');
+      accodaSpunta('item-pasta', true);
+      expect(spunta).not.toHaveBeenCalled();
+
+      simulaVisibilita('visible');
+
+      await waitFor(() => expect(spunta).toHaveBeenCalledWith('item-pasta', true));
+      await waitFor(() => expect(leggiCoda()).toEqual([]));
+      await waitFor(() => expect(leggiListe).toHaveBeenCalledTimes(2));
+      // La lettura parte dopo la conferma della scrittura, non in parallelo:
+      // altrimenti potrebbe tornare senza la spunta appena confermata.
+      expect(vi.mocked(spunta).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(leggiListe).mock.invocationCallOrder[1]);
+    });
+
+    it('una rilettura partita prima di una risposta a un controllo e arrivata dopo si scarta', async () => {
+      let risolviRilettura: (l: ListaSalvata) => void = () => {};
+      vi.mocked(leggiListe)
+        .mockResolvedValueOnce(buildLista())
+        .mockImplementationOnce(() => new Promise<ListaSalvata | null>((resolve) => { risolviRilettura = resolve; }));
+      render(<Lista />);
+      await screen.findByText('Olio: ne hai ancora?');
+
+      simulaVisibilita('visible');
+      await waitFor(() => expect(leggiListe).toHaveBeenCalledTimes(2));
+
+      fireEvent.click(screen.getByRole('button', { name: /Sì, hai ancora Olio/ }));
+      await waitFor(() => expect(screen.queryByText('Olio: ne hai ancora?')).not.toBeInTheDocument());
+
+      // La rilettura stantia ha ancora il controllo: non deve ricomparire.
+      risolviRilettura(buildLista());
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(screen.queryByText('Olio: ne hai ancora?')).not.toBeInTheDocument();
+    });
+
     it('una rilettura riuscita aggiorna l\'istantanea offline con la lista come letta', async () => {
       const prima = buildLista();
       const dopo: ListaSalvata = {
