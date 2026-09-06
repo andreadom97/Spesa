@@ -1,6 +1,6 @@
 # Avviso di scadenza del fresco e conflitto alla sostituzione — design
 
-**Data:** 06/09/2026 · **Stato:** approvata (P3 del backlog, revisione 05/09)
+**Data:** 06/09/2026 · **Stato:** approvata e implementata il 06/09 (piano omonimo); da provare in locale con un deperibile in residuo
 **Deriva da:** [spesa-backlog-nicchia.md](../../../spesa-backlog-nicchia.md) (P3),
 [2026-08-26-spesa-design.md](2026-08-26-spesa-design.md) (il decadimento del fresco in
 `residuoUtilizzabile`; il conflitto "se usi lo yogurt qui non ti resta per giovedì"

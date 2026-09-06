@@ -8,7 +8,7 @@ a un eventuale prodotto.
 
 **Stato: Fase 1 completa e provata sul campo il 28/08/2026.** Dominio puro
 (`list-builder`, `pantry`, `planner`, `ciclo`, `week-shape`, `chiusura`, `opzioni`,
-`confezioni`), 793 test automatici verdi, schema su un progetto Supabase vero,
+`confezioni`), 858 test automatici verdi, schema su un progetto Supabase vero,
 quattordici schermate, PWA installabile con guscio offline sulla lista, in produzione
 su Vercel.
 
@@ -184,8 +184,8 @@ già fatta, correzione manuale del residuo, ricerca fra 70 ingredienti.
 ### Cosa resta non provato
 
 Classe `stima` e il controllo staple a 90 giorni (serve far invecchiare una data di tre
-mesi), decadimento del fresco e congelatore su dati veri (nessun deperibile ha ancora un
-residuo), riordino delle aree, lettura offline — che **non funziona** ed è un traguardo
+mesi), decadimento del fresco, congelatore e i nuovi avvisi di scadenza su dati veri
+(nessun deperibile ha ancora un residuo), riordino delle aree, lettura offline — che **non funziona** ed è un traguardo
 a sé, vedi sotto.
 
 ## Meal prepping
@@ -261,6 +261,34 @@ giusta per chi compra a caso; le settimane chiuse prima della migrazione 0011 no
 righe, il totale parte da lì. Spec:
 [`docs/superpowers/specs/2026-09-05-non-ricomprato-design.md`](docs/superpowers/specs/2026-09-05-non-ricomprato-design.md).
 
+## Il fresco che scade (06/09/2026)
+
+Il decadimento del fresco era nel modello dal primo giorno (`residuoUtilizzabile`: dopo
+la soglia dell'area, o 90 giorni in congelatore, il residuo di un deperibile non conta
+più) ma si vedeva solo a cose fatte. Dal 06/09 ha un giorno, la **scadenza**: l'ultimo
+in cui l'app conta ancora quel residuo (`ultimoAcquisto + soglia`, `src/domain/scadenza.ts`).
+Non è la data sulla confezione: dice quando la lista smetterà di fidarsi di quello che
+hai in casa.
+
+**Dove si vede.** In Dispensa, nella riga dell'ingrediente, `SCADE OGGI` o `SCADE IL 9 SET`,
+e sotto, se nessun pasto della settimana corrente lo usa prima che scada, `Nessun pasto in
+programma lo usa prima che scada` (la dimenticanza: un terzo dello spreco dichiarato). In
+Settimana, sotto un pasto che userà un fresco che per il modello non ci sarà più quel
+giorno, `Pollo in casa: scade martedì, prima di questo pasto`. In Scegli, sostituendo un
+piatto che consuma un ingrediente già in lista oltre quello che casa e lista coprono,
+`Con questo piatto Yogurt non basta: ne mancano 150 g, e serve anche giovedì (Cena).`
+(`src/domain/conflitto.ts`): è il buco che `allineaTopUp` non copre, perché aggiunge al
+top-up solo gli ingredienti non ancora in lista, e che a settimana chiusa lo storno
+nasconderebbe clampando il residuo a zero. Nessun avviso blocca nulla.
+
+**Limiti dichiarati** (non bug): una sola data per ingrediente, due acquisti in giorni
+diversi decadono insieme; un pasto entro la scadenza "usa" l'ingrediente anche se ne
+consuma una parte, il residuo non è simulato giorno per giorno; il conflitto assume che la
+lista venga comprata tutta e, a settimana chiusa, elenca tutti i pasti successivi senza
+dire quale resterà senza; nessun segno sulla striscia dei giorni; nessuna riga
+anti-dimenticanza per scadenze oltre la domenica corrente. Spec:
+[`docs/superpowers/specs/2026-09-06-scadenza-fresco-design.md`](docs/superpowers/specs/2026-09-06-scadenza-fresco-design.md).
+
 ## Dove sta cosa
 
 | File | Cosa contiene |
@@ -271,6 +299,7 @@ righe, il totale parte da lì. Spec:
 | [`docs/superpowers/specs/2026-08-26-spesa-design.md`](docs/superpowers/specs/2026-08-26-spesa-design.md) | **La spec.** Modello dati, componenti, fasi, e tutte le decisioni prese durante il design con il loro perché |
 | [`docs/superpowers/specs/DESIGN-SYSTEM.md`](docs/superpowers/specs/DESIGN-SYSTEM.md) | Colori, tipografia, forme, regole di stato — valori estratti dalle schermate reali |
 | [`docs/superpowers/specs/2026-09-05-import-in-produzione-design.md`](docs/superpowers/specs/2026-09-05-import-in-produzione-design.md) | Import in produzione: estrazione a pagine in parallelo, tetto per utente, eval che decide il modello, checklist locale |
+| [`docs/superpowers/specs/2026-09-06-scadenza-fresco-design.md`](docs/superpowers/specs/2026-09-06-scadenza-fresco-design.md) | Il fresco che scade: la scadenza del residuo, gli avvisi in Settimana e Dispensa, il conflitto alla sostituzione in Scegli, i limiti dichiarati |
 | [`docs/superpowers/specs/2026-09-05-non-ricomprato-design.md`](docs/superpowers/specs/2026-09-05-non-ricomprato-design.md) | Contatore "non hai ricomprato": la definizione (lista senza memoria contro lista con residuo), `risparmio_settimana`, il prezzo per confezione, le due righe di UI e i limiti dichiarati |
 | `design/*.dc.html` | 69 artboard. Le 12 definitive sono elencate sotto; il resto è l'archivio delle direzioni esplorate |
 | `design/canvas.json` | Impaginazione del canvas: pagina 1 = v1 definitiva, pagina 2 = archivio |
@@ -316,7 +345,8 @@ cp .env.local.example .env.local   # valorizzare con URL e anon key del progetto
 npm run dev                        # http://localhost:3000, Turbopack
 ```
 
-Verifica prima di ogni commit:
+Verifica prima di ogni commit (gli stessi quattro controlli girano su GitHub Actions a ogni
+push su `main` e su ogni pull request, `.github/workflows/ci.yml`):
 
 ```bash
 npm test && npx tsc --noEmit && npm run build && npm run lint

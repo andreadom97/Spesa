@@ -34,7 +34,7 @@ le conclusioni che contano sono riportate qui).
 8. **Nessun retail media.** Bring! e Listonic monetizzano con Nestlé, Unilever,
    Carrefour: vogliono che si compri di più. È in conflitto con la promessa.
 
-## Cosa è già stato fatto (stato al 05/09)
+## Cosa è già stato fatto (stato al 06/09)
 
 | Voce | Stato | Evidenza |
 |---|---|---|
@@ -49,6 +49,9 @@ le conclusioni che contano sono riportate qui).
 | Import in produzione: estrazione a pagine, tetto per utente, eval a confronto (P0 e P1) | **Consegnato il 05/09** con la review di correttezza e sicurezza; da provare in locale con la chiave, poi `ANTHROPIC_API_KEY` su Vercel | Spec [2026-09-05-import-in-produzione-design.md](docs/superpowers/specs/2026-09-05-import-in-produzione-design.md) e piano omonimo; commit `e413806` → `56fb637` (`import-ai.ts`, route, `import_uso` con migrazione 0010, `eval-import`); README, sezioni "Estrazione a pagine" e "Tetto di import per utente" |
 | Contatore "non hai ricomprato" (P2) | **Consegnato il 05/09**; da provare in locale dopo la migrazione 0011 | Spec [2026-09-05-non-ricomprato-design.md](docs/superpowers/specs/2026-09-05-non-ricomprato-design.md) e piano omonimo; commit `188aef6` → `22afa72` (`evitato` in `costruisciLista`, `risparmio_settimana`, prezzo per confezione, scheda in "Hai preso tutto" e riga in Dispensa); README, sezione "Quanto non hai ricomprato" |
 
+| Avviso di scadenza del fresco e conflitto alla sostituzione (P3) | **Consegnato il 06/09**; da provare in locale con un deperibile in residuo | Spec [2026-09-06-scadenza-fresco-design.md](docs/superpowers/specs/2026-09-06-scadenza-fresco-design.md) e piano omonimo; `src/domain/scadenza.ts`, `src/domain/conflitto.ts`, righe in Settimana, Dispensa e Scegli; README, sezione "Il fresco che scade" |
+| CI su GitHub Actions | Attiva dal 06/09: test, build, tsc, lint su push a `main` e su ogni pull request | `.github/workflows/ci.yml` |
+
 ## Priorità
 
 | # | Cosa | Perché in questa posizione |
@@ -56,7 +59,7 @@ le conclusioni che contano sono riportate qui).
 | ~~P0~~ ✓ 05/09 | **Chiudere l'estrattore: campione a ~20 diete, confronto modelli, tempo entro il limite.** Tre lavori in uno: (a) allargare il campione con i casi scoperti (foto annotate a penna, griglie Word, altri software); (b) un run dell'eval con `EVAL_IMPORT_MODELLI=claude-sonnet-5,claude-opus-5` sulle foto originali *e* compresse, per decidere il modello sui numeri; (c) risolvere la durata: 453 s supera il `maxDuration` di 300 s della route su Vercel, quindi oggi un import reale può cadere in timeout. Strade: estrazione per pagina in parallelo e fusione, oppure job in background con polling. | È l'onboarding e il posizionamento: finché la chiave non è su Vercel e la soglia >90% non è misurata su 20 diete, "porta la tua dieta" è una promessa non mantenuta al primo utilizzo. Il 61/82 sulle foto compresse dice che il collo di bottiglia potrebbe essere la compressione della Camera, non il modello: misurare prima di cambiare modello |
 | ~~P1~~ ✓ 05/09 | **Limite agli import per utente e chiave in produzione.** Contatore per utente su finestra mobile di 30 giorni (proposta: 3 import), verificato nella route prima della chiamata, dopo auth e cap dimensione; messaggio onesto quando si supera. Spend limit sul workspace Anthropic come rete di sicurezza. Poi `ANTHROPIC_API_KEY` su Vercel. | Un import costa tra 0,10 e 0,50 € a seconda del modello (stima, vedi sezione sotto): il limite non è una leva di costo, è una difesa dall'abuso. Senza, la chiave in produzione è un rubinetto aperto |
 | ~~P2~~ ✓ 05/09 | **Contatore "non hai ricomprato".** Per ogni lista chiusa: differenza tra lista ingenua (somma degli ingredienti del piano) e lista con residuo, in confezioni, grammi e euro stimati. Serve un prezzo indicativo per formato confezione: campo su `ingredient`, valore medio inserito a mano o proposto dall'AI al momento dell'import, correggibile. Una riga in cima alla Lista fatta, un totale nella Dispensa. | È l'unica prova visibile del vantaggio, calcolabile senza chiedere nulla all'utente. Regge qualunque modello di guadagno (abbonamento, ente, catena) e il posizionamento "compri solo il mancante". Il residuo derivato esiste dal 28/08 ed è muto |
-| **P3** | **Avviso di scadenza del fresco.** Il decadimento del fresco è già nel modello: quando un deperibile in residuo scade prima del pasto che lo usa, avvisare nella Settimana e nella Dispensa (niente push: è Fase 4). Insieme: l'avviso di conflitto alla sostituzione, "se usi lo yogurt qui non ti resta per giovedì", rinviato a Fase 3 nella spec. | La dimenticanza è la seconda causa di spreco dichiarata dagli italiani (33%, Waste Watcher 2026). È l'unico momento in cui il residuo derivato diventa visibile *durante* l'uso e non a posteriori |
+| ~~P3~~ ✓ 06/09 | **Avviso di scadenza del fresco.** Il decadimento del fresco è già nel modello: quando un deperibile in residuo scade prima del pasto che lo usa, avvisare nella Settimana e nella Dispensa (niente push: è Fase 4). Insieme: l'avviso di conflitto alla sostituzione, "se usi lo yogurt qui non ti resta per giovedì", rinviato a Fase 3 nella spec. | La dimenticanza è la seconda causa di spreco dichiarata dagli italiani (33%, Waste Watcher 2026). È l'unico momento in cui il residuo derivato diventa visibile *durante* l'uso e non a posteriori |
 | **P4** | **Ingresso "i miei piatti" per chi non ha una dieta.** Onboarding a due porte: "ho una dieta" (import) e "cucino sempre le stesse cose" (inserimento rapido di 8–12 piatti con ingredienti e porzioni, il planner li ruota). Zero claim di salute in copy e store. | Copre il gap di contenuto senza generare piani (vincolo Cass. 20281/2017) e senza il repertorio di 300 ricette di EasyPlan. Il planner ruota già un repertorio su più settimane |
 | **P5** | **Onboarding multi-utente.** Seed automatico dei 71 ingredienti classificati al primo accesso, empty state collegati alle due porte di P4. | Prerequisito di qualunque test con persone diverse da Andrea. Era P6: sale perché P4 non ha senso senza |
 | **P6** | **Lista condivisa e "per quante persone".** Un secondo account sullo stesso piano, con la lista e la spunta in comune; fattore porzioni per casa. | Il segmento uno-due persone è metà coppie. Bring! e Listonic esistono solo per questo. Va prima dello store iOS: un prodotto per una persona sola non si consiglia al partner |
@@ -64,9 +67,9 @@ le conclusioni che contano sono riportate qui).
 | **P8** | **Scan codice a barre → formato confezione reale via Open Food Facts.** Alla chiusura della spesa si scansiona il prodotto: la quantità reale sostituisce quella assunta. | Da residuo stimato a residuo vero. Copertura italiana di OFF da verificare. Scende perché rende più preciso un prodotto che prima deve diventare leggibile (P2, P3) |
 | **P9** | **Play Store via TWA, poi iOS.** | Discovery: la nicchia cerca sullo store, e EasyPlan e Melarossa sono su entrambi. Scende in coda perché la distribuzione a pagamento non chiude senza P2 e P6 a monte; iOS resta rimandato ma non escluso |
 
-P0, P1 e P2 sono consegnati il 05/09 (righe corrispondenti in "Cosa è già stato fatto";
-la chiave su Vercel e le migrazioni 0010 e 0011 sono nelle checklist locali dei due
-piani). **La prossima priorità aperta è P3**, l'avviso di scadenza del fresco.
+P0, P1 e P2 sono consegnati il 05/09, P3 il 06/09 (righe corrispondenti in "Cosa è già
+stato fatto"; la chiave su Vercel e le migrazioni 0010 e 0011 sono nelle checklist locali
+dei piani). **La prossima priorità aperta è P4**, l'ingresso "i miei piatti".
 
 ## Modello per l'import: Sonnet o Opus, e quanto costa
 
