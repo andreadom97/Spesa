@@ -1,6 +1,6 @@
 # Due porte e primo avvio — design (P4 e P5)
 
-**Data:** 06/09/2026 · **Stato:** approvata
+**Data:** 06/09/2026 · **Stato:** approvata e implementata il 06/09 (piano omonimo); da provare con un account nuovo
 **Deriva da:** [spesa-backlog-nicchia.md](../../../spesa-backlog-nicchia.md) (P4 ingresso
 "i miei piatti", P5 onboarding multi-utente), [2026-08-26-spesa-design.md](2026-08-26-spesa-design.md)
 

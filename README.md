@@ -8,8 +8,8 @@ a un eventuale prodotto.
 
 **Stato: Fase 1 completa e provata sul campo il 28/08/2026.** Dominio puro
 (`list-builder`, `pantry`, `planner`, `ciclo`, `week-shape`, `chiusura`, `opzioni`,
-`confezioni`), 858 test automatici verdi, schema su un progetto Supabase vero,
-quattordici schermate, PWA installabile con guscio offline sulla lista, in produzione
+`confezioni`), 923 test automatici verdi, schema su un progetto Supabase vero,
+quindici schermate, PWA installabile con guscio offline sulla lista, in produzione
 su Vercel.
 
 ### Importa la dieta (29/08/2026)
@@ -289,6 +289,37 @@ dire quale resterà senza; nessun segno sulla striscia dei giorni; nessuna riga
 anti-dimenticanza per scadenze oltre la domenica corrente. Spec:
 [`docs/superpowers/specs/2026-09-06-scadenza-fresco-design.md`](docs/superpowers/specs/2026-09-06-scadenza-fresco-design.md).
 
+## Le due porte e il primo avvio (06/09/2026)
+
+Fino al 06/09 una persona diversa da Andrea non poteva usare l'app senza l'SQL Editor:
+senza `seed.sql` la Settimana rifiutava di crearsi, senza `seed-ingredienti.sql` il
+repertorio partiva da zero un ingrediente alla volta, e lo stato vuoto di Piatti conosceva
+una sola strada, l'editor completo.
+
+**Primo avvio automatico.** Al primo caricamento dell'app dopo il login, un cancello nel
+layout (`src/components/PrimoAvvio.tsx`) chiama `assicuraDatiIniziali`
+(`src/data/primo-avvio.ts`): se l'utente non ha pasti, i quattro di default; sempre, la
+riga `settings`; se non ha nessun ingrediente, i 71 di base con la loro riga di dispensa
+(`src/domain/ingredienti-base.ts`, gli stessi del file SQL). Idempotente, una volta per
+apertura, tollerante: se fallisce, la pagina si carica comunque. Chi ha già anche un solo
+ingrediente non riceve niente: le correzioni fatte a mano non si toccano.
+
+**Le due porte.** Lo stato vuoto di Piatti chiede "Da dove partiamo?": **Ho una dieta**
+porta all'import; **Cucino sempre le stesse cose** porta a `/piatti/veloce`, una
+schermata che salva un piatto alla volta (nome, pasto, ingredienti cercati fra quelli
+dell'utente, con una mini-creazione inline per i mancanti e difetti sensati da area e
+unità) e conta quanti ne servono: ne bastano otto, due per pasto, perché il planner
+ruota per pasto. L'editor completo resta a portata di link. Lista e Settimana vuote, a
+repertorio vuoto, rimandano lì. Nessuna affermazione di salute in nessun copy: l'app
+trascrive o rotola i piatti, non li propone né li valuta.
+
+**Limiti dichiarati** (non bug): due schede aperte insieme da un utente nuovissimo possono
+seminare due volte gli ingredienti (nessun vincolo di unicità sul nome); la schermata
+veloce non conosce componenti, giro, procedimento né conversioni di unità; i difetti della
+mini-creazione sono per area e unità, non per ingrediente; la porta dell'import risponde
+503 finché la chiave non è su Vercel. Spec:
+[`docs/superpowers/specs/2026-09-06-due-porte-design.md`](docs/superpowers/specs/2026-09-06-due-porte-design.md).
+
 ## Dove sta cosa
 
 | File | Cosa contiene |
@@ -299,6 +330,7 @@ anti-dimenticanza per scadenze oltre la domenica corrente. Spec:
 | [`docs/superpowers/specs/2026-08-26-spesa-design.md`](docs/superpowers/specs/2026-08-26-spesa-design.md) | **La spec.** Modello dati, componenti, fasi, e tutte le decisioni prese durante il design con il loro perché |
 | [`docs/superpowers/specs/DESIGN-SYSTEM.md`](docs/superpowers/specs/DESIGN-SYSTEM.md) | Colori, tipografia, forme, regole di stato — valori estratti dalle schermate reali |
 | [`docs/superpowers/specs/2026-09-05-import-in-produzione-design.md`](docs/superpowers/specs/2026-09-05-import-in-produzione-design.md) | Import in produzione: estrazione a pagine in parallelo, tetto per utente, eval che decide il modello, checklist locale |
+| [`docs/superpowers/specs/2026-09-06-due-porte-design.md`](docs/superpowers/specs/2026-09-06-due-porte-design.md) | Le due porte e il primo avvio: semina automatica, stato vuoto di Piatti, inserimento veloce, stati vuoti collegati |
 | [`docs/superpowers/specs/2026-09-06-scadenza-fresco-design.md`](docs/superpowers/specs/2026-09-06-scadenza-fresco-design.md) | Il fresco che scade: la scadenza del residuo, gli avvisi in Settimana e Dispensa, il conflitto alla sostituzione in Scegli, i limiti dichiarati |
 | [`docs/superpowers/specs/2026-09-05-non-ricomprato-design.md`](docs/superpowers/specs/2026-09-05-non-ricomprato-design.md) | Contatore "non hai ricomprato": la definizione (lista senza memoria contro lista con residuo), `risparmio_settimana`, il prezzo per confezione, le due righe di UI e i limiti dichiarati |
 | `design/*.dc.html` | 69 artboard. Le 12 definitive sono elencate sotto; il resto è l'archivio delle direzioni esplorate |
@@ -314,10 +346,11 @@ Definitive: `Lista`, `Settimana`, `Piatti`, `Piatto`, `Ingrediente`, `Impostazio
 `Reparti`, `Scegli`, più gli stati vuoti `VuotoPiatti` (primo avvio/onboarding),
 `VuotoLista`, `VuotoFatta`, `VuotoPiatto`.
 
-Due schermate sono nate dopo, dall'uso reale, e **non hanno un artboard**: l'elenco degli
-ingredienti (`/impostazioni/ingredienti`) e la Dispensa (`/dispensa`). Seguono i token e i
-pattern del design system, ma chi le tocca non ha una specifica visiva contro cui
-confrontarsi — a differenza di tutte le altre.
+Tre schermate sono nate dopo, dall'uso reale, e **non hanno un artboard**: l'elenco degli
+ingredienti (`/impostazioni/ingredienti`), la Dispensa (`/dispensa`) e l'inserimento
+veloce (`/piatti/veloce`); anche lo stato vuoto di Piatti non segue più `VuotoPiatti`, che
+è precedente all'import. Seguono i token e i pattern del design system, ma chi le tocca
+non ha una specifica visiva contro cui confrontarsi — a differenza di tutte le altre.
 
 Tutto il resto in `design/` è archivio: direzioni visive scartate (`Dir*`, `Mag*`,
 `Rail*`, `Hero*`), prove di testata e logo (`Hdr*`, `Logo*`, `Grid*`, `Casa*`, `Ico*`),
@@ -361,8 +394,7 @@ modifica basta `npx vercel --prod` dalla cartella del progetto.
 ### Passo 0 — prima di aprire l'app
 
 Nell'ordine, altrimenti l'app non è usabile (senza schema non c'è nulla su cui
-autenticarsi, senza un utente non c'è un uuid da mettere in seed.sql, senza seed.sql
-non c'è repertorio):
+autenticarsi):
 
 1. **Applicare lo schema.** Nell'SQL Editor del progetto Supabase, eseguire per intero
    `supabase/migrations/0001_schema.sql` e poi `supabase/migrations/0002_rls.sql`, in
@@ -371,16 +403,11 @@ non c'è repertorio):
 2. **Registrarsi col magic link.** Aprire l'app (in locale con `npm run dev`, o sull'URL
    di produzione dopo il deploy sotto) e inserire la propria email in `/entra`. Il link
    arriva via mail: cliccarlo crea l'utente in `auth.users` e apre una sessione.
-3. **Eseguire `supabase/seed.sql`** nell'SQL Editor, per intero. Trova l'utente per
-   email (quella del login), quindi non serve copiare nessun uuid; è rieseguibile senza
-   danno. Inserisce i quattro pasti di default e la riga `settings`.
-3b. **Facoltativo: `supabase/seed-ingredienti.sql`.** Settantuno ingredienti di base di un
-   supermercato italiano, già classificati per area, classe di residuo e formato confezione
-   — i tre campi che nessun database pubblico espone e che vanno decisi comunque. Salta
-   quelli che esistono già e non sovrascrive mai le correzioni fatte a mano.
-4. **Solo ora aprire l'app per usarla davvero.** Senza questo passo, le Impostazioni
-   seminano comunque quattro pasti di default al primo accesso (vedi C3 nel report della
-   revisione finale), ma repertorio e dispensa restano vuoti finché non li popoli a mano.
+3. **Aprire l'app.** Dal 06/09 il primo avvio semina da solo i quattro pasti di default,
+   la riga `settings` e i 71 ingredienti di base (sezione "Le due porte e il primo avvio").
+   I file `supabase/seed.sql` e `supabase/seed-ingredienti.sql` restano come strumenti
+   manuali: il secondo serve a chi ha già un repertorio e vuole aggiungere i mancanti
+   senza toccare i suoi (salta quelli che esistono già, per nome).
 
 **Migrazioni di questo branch (05/09/2026).** Prima di ripubblicare, applicare
 nell'SQL Editor, in ordine, `supabase/migrations/0010_import_uso.sql` (il tetto di import
