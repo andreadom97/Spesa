@@ -1,0 +1,46 @@
+# Gli stessi quattro controlli che il README chiede prima di ogni commit,
+# nello stesso ordine di `npx vitest run && npx tsc --noEmit && npm run lint && npm run build`.
+# Nessun segreto: la build non ha bisogno delle variabili Supabase (il client
+# le legge a runtime nel browser) e i test dell'eval girano solo in locale.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verifica:
+    name: test, tsc, lint, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Test
+        run: npx vitest run
+
+      # `tsc` prima della build ha un errore preesistente su `LayoutProps`
+      # (src/app/layout.tsx) che dipende da `.next/types`, generato dalla
+      # build: qui si esegue dopo, come in locale dopo un `npm run build`.
+      - name: Build
+        run: npm run build
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
