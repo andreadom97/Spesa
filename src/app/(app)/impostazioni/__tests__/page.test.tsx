@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import type { MealSlotDef } from '@/domain/types';
 
@@ -21,12 +21,22 @@ vi.mock('@/data/impostazioni', () => ({
   ]),
 }));
 
+vi.mock('@/data/casa', () => ({
+  statoCasa: vi.fn(),
+  creaInvito: vi.fn(),
+  entraInCasa: vi.fn(),
+  esciDallaCasa: vi.fn(),
+  rimuoviMembro: vi.fn(),
+  dimenticaIdCasa: vi.fn(),
+}));
+
 const back = vi.fn();
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), back, replace: vi.fn() }),
 }));
 
 import { leggiImpostazioni, salvaImpostazioni, leggiSlotDefs, salvaSlotDefs } from '@/data/impostazioni';
+import { statoCasa, creaInvito, entraInCasa, esciDallaCasa } from '@/data/casa';
 import { lunediDi } from '@/domain/date';
 import Impostazioni from '../page';
 
@@ -50,6 +60,8 @@ function mockDati(overrides?: { porzioni?: number; pasti?: MealSlotDef[] }) {
   vi.mocked(leggiSlotDefs).mockResolvedValue(overrides?.pasti ?? [SLOT_COLAZIONE, SLOT_PRANZO, SLOT_CENA]);
   vi.mocked(salvaImpostazioni).mockResolvedValue(undefined);
   vi.mocked(salvaSlotDefs).mockResolvedValue(undefined);
+  // Da solo per default: la scheda CASA c'è ma non tocca i test sui pasti.
+  vi.mocked(statoCasa).mockResolvedValue({ ruolo: 'solo', email: [] });
 }
 
 describe('Impostazioni', () => {
@@ -394,5 +406,170 @@ describe('Impostazioni', () => {
 
     await waitFor(() => expect(salvaImpostazioni).toHaveBeenCalledTimes(1));
     expect(screen.getByRole('button', { name: 'RIPARTI DALLA SETTIMANA 1' })).toBeInTheDocument();
+  });
+});
+
+describe('Casa', () => {
+  // `window.location.assign` in jsdom non si può spiare (la proprietà non è
+  // ridefinibile): si sostituisce l'intero `location` con una copia che ha
+  // un assign finto, e si ripristina alla fine.
+  const locationOriginale = window.location;
+  let assign: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    assign = vi.fn();
+    Object.defineProperty(window, 'location', {
+      value: { ...locationOriginale, assign },
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  afterEach(() => {
+    Object.defineProperty(window, 'location', { value: locationOriginale, writable: true, configurable: true });
+  });
+
+  it('da solo: invita a fare la spesa con qualcuno, offre il codice e il campo per entrare', async () => {
+    mockDati();
+    render(<Impostazioni />);
+
+    expect(await screen.findByText('Fai la spesa con qualcuno?')).toBeInTheDocument();
+    expect(screen.getByText('CASA')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'CREA UN CODICE' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Ho un codice')).toHaveAttribute('placeholder', 'Ho un codice');
+    expect(screen.getByRole('button', { name: 'ENTRA' })).toBeDisabled();
+    expect(screen.queryByText('ESCI DALLA CASA')).not.toBeInTheDocument();
+  });
+
+  it('CREA UN CODICE chiama creaInvito e mostra il codice grande con la sua durata', async () => {
+    mockDati();
+    vi.mocked(creaInvito).mockResolvedValue('K7P3QX');
+    render(<Impostazioni />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'CREA UN CODICE' }));
+
+    expect(await screen.findByLabelText('Codice della casa')).toHaveTextContent('K7P3QX');
+    expect(creaInvito).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Vale 24 ore. Dalle sue Impostazioni, l’altra persona lo inserisce qui sotto.')).toBeInTheDocument();
+  });
+
+  it('se creaInvito fallisce lo dice senza rompere la scheda', async () => {
+    mockDati();
+    vi.mocked(creaInvito).mockRejectedValue(new Error('rete'));
+    render(<Impostazioni />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'CREA UN CODICE' }));
+
+    expect(await screen.findByText('Non siamo riusciti a creare il codice. Riprova.')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Codice della casa')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'CREA UN CODICE' })).toBeInTheDocument();
+  });
+
+  it('ENTRA maiuscola il codice, chiama entraInCasa e ricarica su /lista', async () => {
+    mockDati();
+    vi.mocked(entraInCasa).mockResolvedValue(undefined);
+    render(<Impostazioni />);
+
+    const campo = await screen.findByLabelText('Ho un codice');
+    fireEvent.change(campo, { target: { value: 'k7p3' } });
+    expect(campo).toHaveValue('K7P3');
+    expect(screen.getByRole('button', { name: 'ENTRA' })).toBeDisabled();
+
+    fireEvent.change(campo, { target: { value: 'k7p3qx' } });
+    expect(campo).toHaveValue('K7P3QX');
+    expect(campo).toHaveAttribute('maxlength', '6');
+    const entra = screen.getByRole('button', { name: 'ENTRA' });
+    expect(entra).toBeEnabled();
+    fireEvent.click(entra);
+
+    await waitFor(() => expect(entraInCasa).toHaveBeenCalledWith('K7P3QX'));
+    await waitFor(() => expect(assign).toHaveBeenCalledWith('/lista'));
+  });
+
+  it('con un codice sbagliato mostra il messaggio della funzione così com’è', async () => {
+    mockDati();
+    vi.mocked(entraInCasa).mockRejectedValue(new Error('codice non valido o scaduto'));
+    render(<Impostazioni />);
+
+    fireEvent.change(await screen.findByLabelText('Ho un codice'), { target: { value: 'AAAAAA' } });
+    fireEvent.click(screen.getByRole('button', { name: 'ENTRA' }));
+
+    expect(await screen.findByText('codice non valido o scaduto')).toBeInTheDocument();
+    expect(assign).not.toHaveBeenCalled();
+  });
+
+  it('da proprietario: elenca le email dei membri e offre un altro codice, senza ESCI', async () => {
+    mockDati();
+    vi.mocked(statoCasa).mockResolvedValue({ ruolo: 'proprietario', email: ['a@b.it', 'c@d.it'] });
+    render(<Impostazioni />);
+
+    expect(await screen.findByText('La tua casa')).toBeInTheDocument();
+    expect(screen.getByText('a@b.it')).toBeInTheDocument();
+    expect(screen.getByText('c@d.it')).toBeInTheDocument();
+    expect(screen.getByText('Ognuno spunta dal suo telefono. La lista si aggiorna quando la riapri.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'CREA UN CODICE' })).toBeInTheDocument();
+    expect(screen.queryByText('ESCI DALLA CASA')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Ho un codice')).not.toBeInTheDocument();
+  });
+
+  it('da membro: ESCI DALLA CASA chiede conferma al primo tocco ed esce al secondo', async () => {
+    mockDati();
+    vi.mocked(statoCasa).mockResolvedValue({ ruolo: 'membro', email: ['a@b.it'] });
+    vi.mocked(esciDallaCasa).mockResolvedValue(undefined);
+    render(<Impostazioni />);
+
+    expect(await screen.findByText('Sei nella casa di a@b.it')).toBeInTheDocument();
+    expect(screen.getByText('Vedi la sua lista, il suo piano e la sua dispensa. I tuoi restano da parte.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'CREA UN CODICE' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'ESCI DALLA CASA' }));
+    expect(esciDallaCasa).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'SICURO?' }));
+
+    await waitFor(() => expect(esciDallaCasa).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(assign).toHaveBeenCalledWith('/lista'));
+  });
+
+  it('da membro: ESCI armato, un tap fuori disarma senza uscire', async () => {
+    mockDati();
+    vi.mocked(statoCasa).mockResolvedValue({ ruolo: 'membro', email: ['a@b.it'] });
+    render(<Impostazioni />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'ESCI DALLA CASA' }));
+    expect(screen.getByRole('button', { name: 'SICURO?' })).toBeInTheDocument();
+
+    fireEvent.click(document.body);
+
+    expect(screen.getByRole('button', { name: 'ESCI DALLA CASA' })).toBeInTheDocument();
+    expect(esciDallaCasa).not.toHaveBeenCalled();
+  });
+
+  it('se uscire fallisce lo dice e resta nella casa', async () => {
+    mockDati();
+    vi.mocked(statoCasa).mockResolvedValue({ ruolo: 'membro', email: ['a@b.it'] });
+    vi.mocked(esciDallaCasa).mockRejectedValue(new Error('rete'));
+    render(<Impostazioni />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'ESCI DALLA CASA' }));
+    fireEvent.click(screen.getByRole('button', { name: 'SICURO?' }));
+
+    expect(await screen.findByText('Non siamo riusciti a uscire. Riprova.')).toBeInTheDocument();
+    expect(assign).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'ESCI DALLA CASA' })).toBeInTheDocument();
+  });
+
+  it('se statoCasa fallisce la sezione lo dice e il resto delle impostazioni resta usabile', async () => {
+    mockDati();
+    vi.mocked(statoCasa).mockRejectedValue(new Error('rete'));
+    const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+    render(<Impostazioni />);
+
+    expect(await screen.findByText('Non riusciamo a leggere la casa. Riprova più tardi.')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Colazione')).toBeInTheDocument();
+    expect(screen.getByText('3 DI 6')).toBeInTheDocument();
+    expect(screen.queryByText('Fai la spesa con qualcuno?')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'CREA UN CODICE' })).not.toBeInTheDocument();
+    errore.mockRestore();
   });
 });

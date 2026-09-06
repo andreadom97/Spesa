@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Impostazioni, MealSlotDef } from '@/domain/types';
 import { leggiImpostazioni, leggiSlotDefs, salvaImpostazioni, salvaSlotDefs, pastiDiDefault } from '@/data/impostazioni';
+import { creaInvito, entraInCasa, esciDallaCasa, statoCasa, type StatoCasa } from '@/data/casa';
 import { MAX_PASTI, MIN_PASTI } from '@/domain/pasti';
 import { coloreArea, nomeArea } from '@/domain/aree';
 import { MAX_SETTIMANE_CICLO, settimanaDelCiclo } from '@/domain/ciclo';
@@ -34,6 +35,18 @@ const OPZIONI_CICLO = Array.from({ length: MAX_SETTIMANE_CICLO }, (_, i) => ({
 /** Reindicizza `posizione` sull'ordine effettivo dell'array: va rifatto a ogni aggiunta, rimozione o riordino. */
 function conPosizioni(lista: MealSlotDef[]): MealSlotDef[] {
   return lista.map((p, i) => ({ ...p, posizione: i }));
+}
+
+const LUNGHEZZA_CODICE = 6;
+
+/**
+ * Ricarica l'app da capo su un percorso. Dopo entra/esci dalla casa l'id su
+ * cui agisce il data layer cambia e ogni stato di pagina in memoria è di
+ * un'altra casa: un reload completo è l'unico modo onesto di svuotarlo.
+ * Incapsulato perché `window.location.assign` non si spia in jsdom.
+ */
+function ricaricaSu(percorso: string) {
+  window.location.assign(percorso);
 }
 
 interface Dati {
@@ -79,6 +92,26 @@ export default function Impostazioni() {
   // un nome) è il valore a cui tornare se una scrittura fallisce.
   const pastiSalvatiRef = useRef<MealSlotDef[]>([]);
   const impostazioniSalvateRef = useRef<Impostazioni | null>(null);
+
+  // La casa si legge a parte, non nel Promise.all: se la RPC fallisce la
+  // sezione CASA lo dice, e il resto delle impostazioni resta usabile.
+  const [casa, setCasa] = useState<StatoCasa | null>(null);
+  const [erroreCasa, setErroreCasa] = useState<string | null>(null);
+
+  useEffect(() => {
+    let vivo = true;
+    statoCasa()
+      .then((stato) => {
+        if (vivo) setCasa(stato);
+      })
+      .catch((errore) => {
+        console.error('impostazioni: lettura della casa fallita.', errore);
+        if (vivo) setErroreCasa('Non riusciamo a leggere la casa. Riprova più tardi.');
+      });
+    return () => {
+      vivo = false;
+    };
+  }, []);
 
   useEffect(() => {
     let vivo = true;
@@ -400,6 +433,17 @@ export default function Impostazioni() {
           </svg>
         </Link>
 
+        {(casa || erroreCasa) && (
+          <>
+            <Etichetta margine="26px 4px 10px">CASA</Etichetta>
+            {casa ? (
+              <SezioneCasa casa={casa} />
+            ) : (
+              <p style={{ margin: '0 6px', fontSize: 13, color: 'var(--sec)' }}>{erroreCasa}</p>
+            )}
+          </>
+        )}
+
         <Etichetta margine="26px 4px 10px">SUPERMERCATO</Etichetta>
         <Link
           href="/impostazioni/reparti"
@@ -449,6 +493,228 @@ export default function Impostazioni() {
         </Link>
       </div>
     </Cornice>
+  );
+}
+
+const SCHEDA: CSSProperties = {
+  background: 'var(--superficie)', borderRadius: 18, border: '1px solid var(--bordo)', padding: 16,
+};
+
+const BOTTONE_PIENO: CSSProperties = {
+  height: 48, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center',
+  fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, letterSpacing: '0.09em',
+  background: 'var(--ink)', color: '#FFFFFF',
+};
+
+const BOTTONE_LEGGERO: CSSProperties = {
+  minHeight: 44, width: '100%', borderRadius: 14,
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  background: 'rgba(20,22,58,0.05)',
+  fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700,
+  letterSpacing: '0.09em', color: 'var(--sec)',
+};
+
+/**
+ * La scheda CASA (spec P6 §4), che si ramifica sul ruolo di chi è loggato:
+ * da solo invita a creare un codice o a inserirne uno; da proprietario
+ * elenca chi c'è e offre un altro codice; da membro dice di chi è la casa e
+ * lascia uscire. Entrare o uscire ricaricano l'app su /lista: il data layer
+ * ha già scartato la memoria dell'id della casa.
+ *
+ * Il bottone TOGLI della spec non c'è: `statoCasa()` restituisce solo le
+ * email dei membri e `rimuoviMembro` vuole l'id utente. Finché `stato_casa`
+ * non restituisce anche gli id, il proprietario non può togliere nessuno da qui.
+ */
+function SezioneCasa({ casa }: { casa: StatoCasa }) {
+  const [codiceCreato, setCodiceCreato] = useState<string | null>(null);
+  const [creando, setCreando] = useState(false);
+  const [erroreCodice, setErroreCodice] = useState<string | null>(null);
+
+  const [codiceScritto, setCodiceScritto] = useState('');
+  const [entrando, setEntrando] = useState(false);
+  const [erroreEntrata, setErroreEntrata] = useState<string | null>(null);
+
+  const [erroreUscita, setErroreUscita] = useState<string | null>(null);
+
+  async function crea() {
+    setCreando(true);
+    setErroreCodice(null);
+    try {
+      setCodiceCreato(await creaInvito());
+    } catch (errore) {
+      console.error('impostazioni: creazione del codice fallita.', errore);
+      setErroreCodice('Non siamo riusciti a creare il codice. Riprova.');
+    } finally {
+      setCreando(false);
+    }
+  }
+
+  async function entra() {
+    if (codiceScritto.length < LUNGHEZZA_CODICE) return;
+    setEntrando(true);
+    setErroreEntrata(null);
+    try {
+      await entraInCasa(codiceScritto);
+      ricaricaSu('/lista');
+    } catch (errore) {
+      // Il messaggio arriva già in italiano dalla funzione SQL
+      // (`codice non valido o scaduto`): si mostra così com'è.
+      console.error('impostazioni: entrata nella casa fallita.', errore);
+      setErroreEntrata(errore instanceof Error && errore.message ? errore.message : 'Non siamo riusciti a entrare. Riprova.');
+      setEntrando(false);
+    }
+  }
+
+  async function esci() {
+    setErroreUscita(null);
+    try {
+      await esciDallaCasa();
+      ricaricaSu('/lista');
+    } catch (errore) {
+      console.error('impostazioni: uscita dalla casa fallita.', errore);
+      setErroreUscita('Non siamo riusciti a uscire. Riprova.');
+    }
+  }
+
+  const creaUnCodice = (
+    <>
+      {codiceCreato ? (
+        <div style={{ marginTop: 14 }}>
+          <div
+            aria-label="Codice della casa"
+            style={{
+              fontFamily: 'var(--font-mono)', fontSize: 28, letterSpacing: '0.2em', fontWeight: 700,
+              color: 'var(--ink)', textAlign: 'center', padding: '6px 0 4px',
+            }}
+          >
+            {codiceCreato}
+          </div>
+          <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', textAlign: 'center', marginTop: 6 }}>
+            Vale 24 ore. Dalle sue Impostazioni, l’altra persona lo inserisce qui sotto.
+          </div>
+        </div>
+      ) : (
+        <button type="button" onClick={crea} disabled={creando} style={{ ...BOTTONE_PIENO, width: '100%', marginTop: 14 }}>
+          CREA UN CODICE
+        </button>
+      )}
+      {erroreCodice && <p style={{ margin: '10px 0 0', fontSize: 12.5, color: 'var(--sec)' }}>{erroreCodice}</p>}
+    </>
+  );
+
+  if (casa.ruolo === 'membro') {
+    return (
+      <div style={SCHEDA}>
+        <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)' }}>
+          Sei nella casa di {casa.email[0]}
+        </div>
+        <div style={{ fontSize: 13, lineHeight: 1.45, color: 'var(--sec)', marginTop: 6 }}>
+          Vedi la sua lista, il suo piano e la sua dispensa. I tuoi restano da parte.
+        </div>
+        <BottoneDueTocchi testo="ESCI DALLA CASA" onConferma={esci} style={{ ...BOTTONE_LEGGERO, marginTop: 14 }} />
+        {erroreUscita && <p style={{ margin: '10px 0 0', fontSize: 12.5, color: 'var(--sec)' }}>{erroreUscita}</p>}
+      </div>
+    );
+  }
+
+  if (casa.ruolo === 'proprietario') {
+    return (
+      <div style={SCHEDA}>
+        <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)' }}>La tua casa</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+          {casa.email.map((email) => (
+            <div key={email} style={{ fontSize: 14, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {email}
+            </div>
+          ))}
+        </div>
+        <div style={{ fontSize: 13, lineHeight: 1.45, color: 'var(--sec)', marginTop: 10 }}>
+          Ognuno spunta dal suo telefono. La lista si aggiorna quando la riapri.
+        </div>
+        {creaUnCodice}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div style={SCHEDA}>
+        <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)' }}>Fai la spesa con qualcuno?</div>
+        <div style={{ fontSize: 13, lineHeight: 1.45, color: 'var(--sec)', marginTop: 6 }}>
+          Chi entra nella tua casa vede e spunta la tua lista dal suo telefono. Il suo piano resta da parte finché non esce.
+        </div>
+        {creaUnCodice}
+      </div>
+      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+        <input
+          type="text"
+          value={codiceScritto}
+          onChange={(e) => setCodiceScritto(e.target.value.toUpperCase())}
+          aria-label="Ho un codice"
+          placeholder="Ho un codice"
+          maxLength={LUNGHEZZA_CODICE}
+          autoCapitalize="characters"
+          autoComplete="off"
+          spellCheck={false}
+          style={{
+            flex: 1, minWidth: 0, height: 48, padding: '0 14px', borderRadius: 14,
+            border: '1px solid var(--bordo)', background: 'var(--superficie)', color: 'var(--ink)',
+            fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 700, letterSpacing: '0.12em',
+            outline: 'none', boxSizing: 'border-box',
+          }}
+        />
+        <button
+          type="button"
+          onClick={entra}
+          disabled={codiceScritto.length < LUNGHEZZA_CODICE || entrando}
+          style={{
+            ...BOTTONE_PIENO, flex: 'none', width: 96,
+            opacity: codiceScritto.length < LUNGHEZZA_CODICE ? 0.35 : 1,
+          }}
+        >
+          ENTRA
+        </button>
+      </div>
+      {erroreEntrata && <p style={{ margin: '10px 6px 0', fontSize: 12.5, color: 'var(--sec)' }}>{erroreEntrata}</p>}
+    </>
+  );
+}
+
+/**
+ * Conferma in due tocchi, come RIPARTI: il primo tap arma il bottone (il
+ * testo diventa "SICURO?"), solo il secondo chiama `onConferma`. Un tap
+ * fuori dal bottone disarma. A differenza di RIPARTI non dipende da altro
+ * stato della pagina, quindi vive da sé.
+ */
+function BottoneDueTocchi({ testo, onConferma, style }: { testo: string; onConferma: () => void; style?: CSSProperties }) {
+  const [armato, setArmato] = useState(false);
+  const ref = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!armato) return;
+    function fuoriDalBottone(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setArmato(false);
+    }
+    document.addEventListener('click', fuoriDalBottone);
+    return () => document.removeEventListener('click', fuoriDalBottone);
+  }, [armato]);
+
+  return (
+    <button
+      ref={ref}
+      type="button"
+      onClick={() => {
+        if (armato) {
+          setArmato(false);
+          onConferma();
+        } else {
+          setArmato(true);
+        }
+      }}
+      style={style}
+    >
+      {armato ? 'SICURO?' : testo}
+    </button>
   );
 }
 
