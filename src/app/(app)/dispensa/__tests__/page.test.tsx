@@ -2,7 +2,7 @@ import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import type { Dish, Ingredient, LottoPronto, MealSlot, PantryState } from '@/domain/types';
-import { sommaGiorni } from '@/domain/date';
+import { giorniTra, lunediDi, sommaGiorni } from '@/domain/date';
 
 vi.mock('@/data/repertorio', () => ({ leggiIngredienti: vi.fn(), leggiRepertorio: vi.fn() }));
 vi.mock('@/data/dispensa', () => ({ leggiDispensa: vi.fn(), correggiResiduo: vi.fn(), impostaCongelato: vi.fn() }));
@@ -23,6 +23,7 @@ import { leggiPronti, correggiLotto, impostaCongelatoLotto, eliminaLotto } from 
 import { leggiSettimanaCorrente } from '@/data/settimana';
 import { leggiRisparmioTotale } from '@/data/risparmio';
 import type { VoceEvitata } from '@/domain/list-builder';
+import { nomeArea } from '@/domain/aree';
 import Dispensa from '../page';
 
 const ORDINE = ['ortofrutta', 'macelleria', 'latticini', 'cereali', 'dispensa', 'surgelati'] as const;
@@ -435,6 +436,142 @@ describe('Dispensa', () => {
       expect(screen.queryByText(/Da quando usi Spesa/)).not.toBeInTheDocument();
       expect(errore).toHaveBeenCalled();
       errore.mockRestore();
+    });
+  });
+  // Spec 2026-09-06-scadenza-fresco-design.md §3.2: il giorno in cui il
+  // residuo smetterà di contare, in coda alla riga mono; e, sotto, la riga
+  // anti-dimenticanza se nessun pasto della settimana lo usa prima.
+  describe('Scadenza del fresco', () => {
+    const POLLO: Ingredient = {
+      id: 'i-pollo', nome: 'Petto di pollo', unitaBase: 'g', area: 'macelleria',
+      classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 300, prezzoConfezione: null,
+    };
+    const CENA_POLLO: Dish = {
+      id: 'd-pollo', nome: 'Pollo alla piastra', slotDefId: 'sd-cena', fonte: 'proprio',
+      attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
+      ingredienti: [{ ingredientId: 'i-pollo', quantita: 150, unita: 'g' }], componenti: [],
+    };
+    const MESI = ['GEN', 'FEB', 'MAR', 'APR', 'MAG', 'GIU', 'LUG', 'AGO', 'SET', 'OTT', 'NOV', 'DIC'];
+    /** Lo stesso formato di PRESO IL: "9 SET". */
+    function dataMono(iso: string): string {
+      return `${Number(iso.slice(8, 10))} ${MESI[Number(iso.slice(5, 7)) - 1]}`;
+    }
+    const DOMENICA = sommaGiorni(lunediDi(OGGI), 6);
+    // La macelleria ha tre giorni di soglia. Perché la riga anti-dimenticanza
+    // possa comparire la scadenza deve cadere entro domenica: se oggi è
+    // troppo vicino alla fine della settimana, un acquisto di tre giorni fa
+    // scade oggi, che è sempre entro domenica.
+    const ACQUISTO_IN_SETTIMANA = giorniTra(OGGI, DOMENICA) >= 3 ? OGGI : sommaGiorni(OGGI, -3);
+    const SCADENZA_IN_SETTIMANA = sommaGiorni(ACQUISTO_IN_SETTIMANA, 3);
+
+    function slotCasa(overrides: Partial<MealSlot>): MealSlot {
+      return {
+        id: 'ms-pollo', data: OGGI, slotDefId: 'sd-cena', stato: 'casa', dishId: CENA_POLLO.id,
+        fonteStato: 'default', scelte: {}, porzioniPreparate: 0, daPronti: false,
+        ...overrides,
+      };
+    }
+
+    function settimanaCorrente(slots: MealSlot[]) {
+      vi.mocked(leggiRepertorio).mockResolvedValue([CENA_POLLO]);
+      vi.mocked(leggiSettimanaCorrente).mockResolvedValue({
+        id: 'w-1', dataInizio: lunediDi(OGGI), stato: 'confermata', slots,
+      });
+    }
+
+    it('dice il giorno in cui il residuo smetterà di contare, dopo PRESO IL', async () => {
+      mockBase(statoDispensa([{ ingredientId: 'i-pollo', residuo: 200, ultimoAcquisto: OGGI }]), [POLLO]);
+
+      render(<Dispensa />);
+
+      expect(
+        await screen.findByText(`${nomeArea('macelleria')} · PRESO IL ${dataMono(OGGI)} · SCADE IL ${dataMono(sommaGiorni(OGGI, 3))}`),
+      ).toBeInTheDocument();
+    });
+
+    it('l\'ultimo giorno buono dice SCADE OGGI', async () => {
+      mockBase(statoDispensa([{ ingredientId: 'i-pollo', residuo: 200, ultimoAcquisto: sommaGiorni(OGGI, -3) }]), [POLLO]);
+
+      render(<Dispensa />);
+
+      expect(await screen.findByText(/· SCADE OGGI$/)).toBeInTheDocument();
+      expect(screen.queryByText(/Troppo tempo per essere ancora buono/)).not.toBeInTheDocument();
+    });
+
+    it('un residuo già decaduto ha solo la riga esistente, senza scadenza', async () => {
+      // "Scade il 2 set" su una cosa già scaduta direbbe una data passata:
+      // la riga "Troppo tempo" basta e avanza.
+      mockBase(statoDispensa([{ ingredientId: 'i-pollo', residuo: 200, ultimoAcquisto: sommaGiorni(OGGI, -4) }]), [POLLO]);
+
+      render(<Dispensa />);
+
+      expect(await screen.findByText(/Troppo tempo per essere ancora buono/)).toBeInTheDocument();
+      expect(screen.queryByText(/SCADE/)).not.toBeInTheDocument();
+    });
+
+    it('un non deperibile non scade', async () => {
+      mockBase(statoDispensa([{ ingredientId: 'i-riso', residuo: 920, ultimoAcquisto: OGGI }]), [RISO]);
+
+      render(<Dispensa />);
+
+      await screen.findByLabelText('Residuo di Riso');
+      expect(screen.queryByText(/SCADE/)).not.toBeInTheDocument();
+    });
+
+    it('avverte se nessun pasto della settimana lo usa prima che scada', async () => {
+      mockBase(statoDispensa([{ ingredientId: 'i-pollo', residuo: 200, ultimoAcquisto: ACQUISTO_IN_SETTIMANA }]), [POLLO]);
+      settimanaCorrente([]);
+
+      render(<Dispensa />);
+
+      expect(await screen.findByText('Nessun pasto in programma lo usa prima che scada.')).toBeInTheDocument();
+      expect(screen.getByText(/· SCADE/)).toBeInTheDocument();
+    });
+
+    it('tace se un pasto entro la scadenza lo usa', async () => {
+      mockBase(statoDispensa([{ ingredientId: 'i-pollo', residuo: 200, ultimoAcquisto: ACQUISTO_IN_SETTIMANA }]), [POLLO]);
+      settimanaCorrente([slotCasa({ data: SCADENZA_IN_SETTIMANA })]);
+
+      render(<Dispensa />);
+
+      await screen.findByText(/· SCADE/);
+      expect(screen.queryByText('Nessun pasto in programma lo usa prima che scada.')).not.toBeInTheDocument();
+    });
+
+    it('un pasto già passato non conta come uso', async () => {
+      // Il piano di ieri non può più dire se il pollo l'hai mangiato.
+      mockBase(statoDispensa([{ ingredientId: 'i-pollo', residuo: 200, ultimoAcquisto: sommaGiorni(OGGI, -3) }]), [POLLO]);
+      settimanaCorrente([slotCasa({ data: sommaGiorni(OGGI, -1) })]);
+
+      render(<Dispensa />);
+
+      expect(await screen.findByText('Nessun pasto in programma lo usa prima che scada.')).toBeInTheDocument();
+    });
+
+    it('oltre la domenica corrente il piano non può dire nulla: solo la scadenza', async () => {
+      // In congelatore la soglia è di novanta giorni: la settimana dopo non
+      // esiste ancora, quindi nessuna riga anti-dimenticanza.
+      mockBase(statoDispensa([{ ingredientId: 'i-pollo', residuo: 200, ultimoAcquisto: OGGI, congelato: true }]), [POLLO]);
+      settimanaCorrente([]);
+
+      render(<Dispensa />);
+
+      expect(
+        await screen.findByText(
+          `${nomeArea('macelleria')} · PRESO IL ${dataMono(OGGI)} · IN CONGELATORE · SCADE IL ${dataMono(sommaGiorni(OGGI, 90))}`,
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByText('Nessun pasto in programma lo usa prima che scada.')).not.toBeInTheDocument();
+    });
+
+    it('senza settimana corrente resta la scadenza, non la riga anti-dimenticanza', async () => {
+      mockBase(statoDispensa([{ ingredientId: 'i-pollo', residuo: 200, ultimoAcquisto: sommaGiorni(OGGI, -3) }]), [POLLO]);
+      vi.mocked(leggiSettimanaCorrente).mockResolvedValue(null);
+
+      render(<Dispensa />);
+
+      expect(await screen.findByText(/· SCADE OGGI$/)).toBeInTheDocument();
+      expect(screen.queryByText('Nessun pasto in programma lo usa prima che scada.')).not.toBeInTheDocument();
     });
   });
 });
