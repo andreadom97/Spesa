@@ -80,21 +80,104 @@ describe('Impostazioni', () => {
     expect(screen.getByText('3 DI 6')).toBeInTheDocument();
   });
 
-  it('non offre piu il moltiplicatore porzioni', async () => {
-    // Tolto dall'interfaccia il 28/08/2026 su richiesta di Andrea dopo la
-    // prova sul campo: un moltiplicatore unico presuppone che tutti a tavola
-    // mangino la stessa porzione. Il campo resta nello schema e in
-    // list-builder, fermo a 1 — qui si verifica solo che non sia piu
-    // governabile da qui, cosi il giorno che lo si reintroduce questo test
-    // fallisce e obbliga a decidere di nuovo.
-    mockDati({ porzioni: 1 });
-    render(<Impostazioni />);
+  // Tolto dall'interfaccia il 28/08/2026 (un moltiplicatore unico presuppone
+  // che tutti a tavola mangino la stessa porzione), rimesso il 06/09 a livello
+  // di casa con quell'assunzione dichiarata nel copy: spec casa condivisa §6.
+  describe('Per quante persone cucini', () => {
+    it('sta nella sezione CASA, dichiara l’assunzione e parte da 1 con il − spento', async () => {
+      mockDati({ porzioni: 1 });
+      render(<Impostazioni />);
 
-    await screen.findByDisplayValue('Colazione');
-    expect(screen.queryByLabelText('Aumenta porzioni')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('Diminuisci porzioni')).not.toBeInTheDocument();
-    expect(screen.queryByText('Per quante persone cucini')).not.toBeInTheDocument();
-    expect(salvaImpostazioni).not.toHaveBeenCalled();
+      await screen.findByDisplayValue('Colazione');
+      expect(screen.getByText('CASA')).toBeInTheDocument();
+      expect(screen.getByText('Per quante persone cucini')).toBeInTheDocument();
+      expect(
+        screen.getByText('Moltiplica ogni porzione del piano. Vale se a tavola mangiate tutti la stessa porzione: se no, lascia 1 e scrivi le quantità giuste nei piatti.'),
+      ).toBeInTheDocument();
+      expect(screen.getByLabelText('Porzioni')).toHaveTextContent('1');
+      expect(screen.getByLabelText('Diminuisci porzioni')).toBeDisabled();
+      expect(screen.getByLabelText('Diminuisci porzioni')).toHaveStyle({ opacity: '0.35' });
+      expect(screen.getByLabelText('Aumenta porzioni')).toBeEnabled();
+      // A 1 la lista non moltiplica niente: la riga sotto lo stepper non c'è.
+      expect(screen.queryByText(/La lista compra per/)).not.toBeInTheDocument();
+      expect(salvaImpostazioni).not.toHaveBeenCalled();
+    });
+
+    it('+ salva subito le impostazioni intere con 2, mostra 2 e dice per quanti compra la lista', async () => {
+      mockDati({ porzioni: 1 });
+      render(<Impostazioni />);
+
+      await screen.findByDisplayValue('Colazione');
+      // Dopo la scrittura la pagina rilegge dal server (come per il ciclo):
+      // il mock deve restituire il valore appena salvato, o l'ottimismo
+      // verrebbe sovrascritto dall'1 di partenza.
+      vi.mocked(leggiImpostazioni).mockResolvedValue({
+        moltiplicatorePorzioni: 2,
+        ordineAree: [...ORDINE_AREE_TEST],
+        settimaneCiclo: 1,
+        cicloOrigine: null,
+      });
+      fireEvent.click(screen.getByLabelText('Aumenta porzioni'));
+
+      await waitFor(() => expect(salvaImpostazioni).toHaveBeenCalledTimes(1));
+      expect(vi.mocked(salvaImpostazioni).mock.calls[0][0]).toEqual({
+        moltiplicatorePorzioni: 2,
+        ordineAree: [...ORDINE_AREE_TEST],
+        settimaneCiclo: 1,
+        cicloOrigine: null,
+      });
+      await waitFor(() => expect(screen.getByLabelText('Porzioni')).toHaveTextContent('2'));
+      expect(screen.getByText('La lista compra per 2. Le porzioni nel piatto restano quelle scritte.')).toBeInTheDocument();
+      expect(screen.getByLabelText('Diminuisci porzioni')).toBeEnabled();
+    });
+
+    it('a 4 il + è spento e non salva', async () => {
+      mockDati({ porzioni: 4 });
+      render(<Impostazioni />);
+
+      await screen.findByDisplayValue('Colazione');
+      expect(screen.getByLabelText('Porzioni')).toHaveTextContent('4');
+      const piu = screen.getByLabelText('Aumenta porzioni');
+      expect(piu).toBeDisabled();
+      expect(piu).toHaveStyle({ opacity: '0.35' });
+      fireEvent.click(piu);
+      expect(salvaImpostazioni).not.toHaveBeenCalled();
+      expect(screen.getByText('La lista compra per 4. Le porzioni nel piatto restano quelle scritte.')).toBeInTheDocument();
+    });
+
+    it('− scende di uno e salva', async () => {
+      mockDati({ porzioni: 3 });
+      render(<Impostazioni />);
+
+      await screen.findByDisplayValue('Colazione');
+      vi.mocked(leggiImpostazioni).mockResolvedValue({
+        moltiplicatorePorzioni: 2,
+        ordineAree: [...ORDINE_AREE_TEST],
+        settimaneCiclo: 1,
+        cicloOrigine: null,
+      });
+      fireEvent.click(screen.getByLabelText('Diminuisci porzioni'));
+
+      await waitFor(() => expect(salvaImpostazioni).toHaveBeenCalledTimes(1));
+      expect(vi.mocked(salvaImpostazioni).mock.calls[0][0].moltiplicatorePorzioni).toBe(2);
+      await waitFor(() => expect(screen.getByLabelText('Porzioni')).toHaveTextContent('2'));
+    });
+
+    it('se il salvataggio fallisce torna al valore di prima e lo dice', async () => {
+      mockDati({ porzioni: 1 });
+      vi.mocked(salvaImpostazioni).mockRejectedValue(new Error('rete'));
+      const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+      render(<Impostazioni />);
+
+      await screen.findByDisplayValue('Colazione');
+      fireEvent.click(screen.getByLabelText('Aumenta porzioni'));
+
+      expect(await screen.findByText('Non siamo riusciti a salvare. Riprova.')).toBeInTheDocument();
+      expect(screen.getByLabelText('Porzioni')).toHaveTextContent('1');
+      expect(screen.queryByText(/La lista compra per/)).not.toBeInTheDocument();
+      expect(screen.getByLabelText('Diminuisci porzioni')).toBeDisabled();
+      errore.mockRestore();
+    });
   });
 
   it('porta all elenco degli ingredienti', async () => {
@@ -356,7 +439,7 @@ describe('Impostazioni', () => {
     expect(salvaImpostazioni).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'SICURO? RIPARTI DA LUNEDÌ' })).toBeInTheDocument();
 
-    // Secondo tap sullo stesso bottone: ora esegue persistiCiclo davvero.
+    // Secondo tap sullo stesso bottone: ora esegue persistiImpostazioni davvero.
     fireEvent.click(screen.getByRole('button', { name: 'SICURO? RIPARTI DA LUNEDÌ' }));
 
     await waitFor(() => expect(salvaImpostazioni).toHaveBeenCalledTimes(1));

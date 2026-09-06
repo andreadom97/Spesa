@@ -40,6 +40,17 @@ function conPosizioni(lista: MealSlotDef[]): MealSlotDef[] {
 const LUNGHEZZA_CODICE = 6;
 
 /**
+ * "Per quante persone cucini", nella sezione CASA. Il moltiplicatore era
+ * stato tolto dall'interfaccia il 28/08/2026 (un moltiplicatore unico
+ * presuppone che tutti a tavola mangino la stessa porzione); il 06/09 torna
+ * a livello di casa, con quell'assunzione dichiarata nel copy invece che
+ * taciuta. Vedi la spec casa condivisa §6. Il campo nello schema e in
+ * list-builder non si era mai mosso.
+ */
+const MIN_PORZIONI = 1;
+const MAX_PORZIONI = 4;
+
+/**
  * Ricarica l'app da capo su un percorso. Dopo entra/esci dalla casa l'id su
  * cui agisce il data layer cambia e ogni stato di pagina in memoria è di
  * un'altra casa: un reload completo è l'unico modo onesto di svuotarlo.
@@ -76,7 +87,7 @@ export default function Impostazioni() {
   const [erroreCaricamento, setErroreCaricamento] = useState<string | null>(null);
   const [erroreSalvataggio, setErroreSalvataggio] = useState<string | null>(null);
   // Conferma in due tocchi di RIPARTI: il primo tap arma il bottone (il testo
-  // diventa "SICURO?"), solo il secondo tap esegue davvero persistiCiclo. Un
+  // diventa "SICURO?"), solo il secondo tap esegue davvero persistiImpostazioni. Un
   // tap fuori dal bottone o un cambio di stato altrove (es. la rotazione)
   // annullano l'armamento.
   const [ripartiArmato, setRipartiArmato] = useState(false);
@@ -175,13 +186,15 @@ export default function Impostazioni() {
   }
 
   /**
-   * Salva il ciclo. Come i pasti: ottimistico, con rollback all'ultimo stato
-   * confermato dal server se la scrittura fallisce.
+   * Salva una patch delle impostazioni (il ciclo, le porzioni). Come i
+   * pasti: ottimistico, con rollback all'ultimo stato confermato dal server
+   * se la scrittura fallisce.
    *
    * `salvaImpostazioni` àncora da sé l'origine al lunedì corrente quando si
-   * accende un ciclo che non ne ha una, quindi qui basta rileggere.
+   * accende un ciclo che non ne ha una, quindi dopo la scrittura si rilegge:
+   * vale per ogni patch, così lo stato in pagina è sempre quello del server.
    */
-  async function persistiCiclo(patch: Partial<Impostazioni>) {
+  async function persistiImpostazioni(patch: Partial<Impostazioni>) {
     if (!dati) return;
     setErroreSalvataggio(null);
     const nuove = { ...dati.impostazioni, ...patch };
@@ -192,7 +205,7 @@ export default function Impostazioni() {
       impostazioniSalvateRef.current = rilette;
       setDati((correnti) => (correnti ? { ...correnti, impostazioni: rilette } : correnti));
     } catch (errore) {
-      console.error('impostazioni: salvataggio del ciclo fallito.', errore);
+      console.error('impostazioni: salvataggio delle impostazioni fallito.', errore);
       const salvate = impostazioniSalvateRef.current;
       if (salvate) setDati((correnti) => (correnti ? { ...correnti, impostazioni: salvate } : correnti));
       setErroreSalvataggio('Non siamo riusciti a salvare. Riprova.');
@@ -281,6 +294,7 @@ export default function Impostazioni() {
   const oggi = new Date().toISOString().slice(0, 10);
   const lunediCorrente = lunediDi(oggi);
   const settimaneCiclo = dati.impostazioni.settimaneCiclo;
+  const porzioni = dati.impostazioni.moltiplicatorePorzioni;
   const settimanaCorrente = settimanaDelCiclo({
     lunedi: lunediCorrente,
     origine: dati.impostazioni.cicloOrigine,
@@ -293,18 +307,6 @@ export default function Impostazioni() {
         <div style={{ fontSize: 32, fontWeight: 800, letterSpacing: '-0.045em', lineHeight: 1, color: 'var(--ink)', padding: '0 2px 14px' }}>
           Impostazioni
         </div>
-
-        {/* Il moltiplicatore porzioni è tolto dall'interfaccia, non dal
-            modello: `settings.moltiplicatore_porzioni` resta nello schema e
-            list-builder continua a usarlo, fermo a 1. Un moltiplicatore
-            unico presuppone che tutti a tavola mangino la stessa porzione,
-            che è falso appena qualcuno mangia meno — e la lista sbagliata
-            per eccesso non si nota, si nota solo la spesa più cara. Chi
-            cucina per due scriva due banane nel piatto: è più lavoro una
-            volta sola, ma dice la verità. Diverge dalla spec riga 166, dove
-            la voce risulta "Chiusa"; la rimozione è richiesta esplicita di
-            Andrea del 28/08/2026 dopo la prova sul campo. Rimetterlo è una
-            riga di interfaccia, non una migrazione. */}
 
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', margin: '26px 4px 10px' }}>
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--ink)' }}>
@@ -376,7 +378,7 @@ export default function Impostazioni() {
             variante="blocco"
             opzioni={OPZIONI_CICLO}
             valore={String(settimaneCiclo)}
-            onCambia={(id) => persistiCiclo({ settimaneCiclo: Number(id) })}
+            onCambia={(id) => persistiImpostazioni({ settimaneCiclo: Number(id) })}
           />
           <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', marginTop: 11 }}>
             {settimaneCiclo === 1
@@ -394,7 +396,7 @@ export default function Impostazioni() {
               onClick={() => {
                 if (ripartiArmato) {
                   setRipartiArmato(false);
-                  persistiCiclo({ cicloOrigine: lunediCorrente });
+                  persistiImpostazioni({ cicloOrigine: lunediCorrente });
                 } else {
                   setRipartiArmato(true);
                 }
@@ -433,16 +435,45 @@ export default function Impostazioni() {
           </svg>
         </Link>
 
-        {(casa || erroreCasa) && (
-          <>
-            <Etichetta margine="26px 4px 10px">CASA</Etichetta>
-            {casa ? (
-              <SezioneCasa casa={casa} onCambiata={setCasa} />
-            ) : (
-              <p style={{ margin: '0 6px', fontSize: 13, color: 'var(--sec)' }}>{erroreCasa}</p>
-            )}
-          </>
+        {/* La sezione CASA c'è sempre: la scheda della casa arriva quando
+            statoCasa() risponde (o lascia un messaggio), le porzioni sono
+            nelle impostazioni già caricate e non aspettano nessuno. */}
+        <Etichetta margine="26px 4px 10px">CASA</Etichetta>
+        {casa && <SezioneCasa casa={casa} onCambiata={setCasa} />}
+        {!casa && erroreCasa && (
+          <p style={{ margin: '0 6px', fontSize: 13, color: 'var(--sec)' }}>{erroreCasa}</p>
         )}
+        <div style={{ ...SCHEDA, marginTop: 10 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)' }}>Per quante persone cucini</div>
+          <div style={{ fontSize: 13, lineHeight: 1.45, color: 'var(--sec)', marginTop: 6 }}>
+            Moltiplica ogni porzione del piano. Vale se a tavola mangiate tutti la stessa porzione: se no, lascia 1 e scrivi le quantità giuste nei piatti.
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18, marginTop: 12 }}>
+            <BottoneStepper
+              etichetta="Diminuisci porzioni"
+              segno="−"
+              disabled={porzioni <= MIN_PORZIONI}
+              onClick={() => persistiImpostazioni({ moltiplicatorePorzioni: porzioni - 1 })}
+            />
+            <span
+              aria-label="Porzioni"
+              style={{ fontFamily: 'var(--font-mono)', fontSize: 20, fontWeight: 700, color: 'var(--ink)', minWidth: 28, textAlign: 'center' }}
+            >
+              {porzioni}
+            </span>
+            <BottoneStepper
+              etichetta="Aumenta porzioni"
+              segno="+"
+              disabled={porzioni >= MAX_PORZIONI}
+              onClick={() => persistiImpostazioni({ moltiplicatorePorzioni: porzioni + 1 })}
+            />
+          </div>
+          {porzioni > 1 && (
+            <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', textAlign: 'center', marginTop: 10 }}>
+              La lista compra per {porzioni}. Le porzioni nel piatto restano quelle scritte.
+            </div>
+          )}
+        </div>
 
         <Etichetta margine="26px 4px 10px">SUPERMERCATO</Etichetta>
         <Link
@@ -760,6 +791,27 @@ function BottoneDueTocchi({ testo, onConferma, disabled, style }: {
       style={style}
     >
       {armato ? 'SICURO?' : testo}
+    </button>
+  );
+}
+
+/** Un tasto dello stepper delle porzioni: 44px di tap, dimming al 35% al limite come le frecce dei pasti. */
+function BottoneStepper({ etichetta, segno, disabled, onClick }: {
+  etichetta: string; segno: string; disabled: boolean; onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={etichetta}
+      style={{
+        width: 44, height: 44, borderRadius: 14, background: 'rgba(20,22,58,0.05)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 22, fontWeight: 600, color: 'var(--ink)', opacity: disabled ? 0.35 : 1,
+      }}
+    >
+      {segno}
     </button>
   );
 }

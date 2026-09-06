@@ -125,20 +125,27 @@ lista, la pagina Lista rilegge le liste quando torna visibile (`visibilitychange
 `visible`, con la coda offline applicata sopra come già fa al caricamento). Niente
 realtime: limite dichiarato.
 
-## 6. Decisione aperta: "per quante persone"
+## 6. "Per quante persone": deciso il 06/09, moltiplicatore a livello di casa
 
 Il backlog abbina a P6 il "fattore porzioni per casa". Il moltiplicatore esiste
-(`settings.moltiplicatore_porzioni`, `list-builder` lo applica) ma il 28/08 è stato tolto
-dall'interfaccia dopo la prova sul campo, con un test che lo blinda: "un moltiplicatore
-unico presuppone che tutti a tavola mangino la stessa porzione". Una casa di due persone
-con due diete diverse è esattamente il caso in cui non vale.
+(`settings.moltiplicatore_porzioni`, `list-builder` lo applica) ma il 28/08 era stato
+tolto dall'interfaccia dopo la prova sul campo, con un test che lo blindava: "un
+moltiplicatore unico presuppone che tutti a tavola mangino la stessa porzione". Una casa
+di due persone con due diete diverse è esattamente il caso in cui non vale.
 
-Proposta, **da decidere prima di costruirla**: reintrodurlo in CASA come `Per quante
-persone cucini` (1–4), dichiarando che vale quando tutti mangiano la stessa porzione,
-com'è per chi cucina un piatto per due. È quello che fanno EasyPlan e Bring!. Se invece
-la casa serve a due diete diverse, la strada giusta è un secondo piano nella stessa casa
-(piatti e pasti per persona, una lista sola): un'altra spec. Questo documento non
-implementa né l'uno né l'altro.
+**Deciso il 06/09 (Andrea, con P6 intero): torna, a livello di casa, con l'assunzione
+dichiarata.** In Impostazioni → CASA, seconda scheda sotto quella della casa: titolo
+`Per quante persone cucini`, testo `Moltiplica ogni porzione del piano. Vale se a tavola
+mangiate tutti la stessa porzione: se no, lascia 1 e scrivi le quantità giuste nei
+piatti.`, stepper `−` / numero / `+` da 1 a 4 che salva a ogni tocco (ottimistico, con
+rollback e `Non siamo riusciti a salvare. Riprova.` come i pasti). Sopra 1, sotto lo
+stepper: `La lista compra per {n}. Le porzioni nel piatto restano quelle scritte.` La
+riga `settings` è della casa (chiave `idCasa()`), quindi il valore è unico per tutti i
+membri. È quello che fanno EasyPlan e Bring!. Il test che blindava la rimozione è
+sostituito da quelli sullo stepper.
+
+Se invece la casa serve a due diete diverse, la strada giusta resta un secondo piano
+nella stessa casa (piatti e pasti per persona, una lista sola): un'altra spec.
 
 ## 7. Limiti dichiarati (non bug)
 
@@ -153,6 +160,9 @@ implementa né l'uno né l'altro.
   accettato per un'app fra persone che vivono insieme; il proprietario vede chi c'è e lo
   toglie.
 - Le email dei membri si vedono dentro la casa e da nessun'altra parte.
+- Il moltiplicatore "per quante persone cucini" vale per tutta la casa, non per
+  persona, e presuppone porzioni uguali per tutti: chi mangia diverso lo lascia a 1 e
+  scrive le quantità giuste nei piatti (§6).
 
 ## 8. Cosa cambia nei file
 
