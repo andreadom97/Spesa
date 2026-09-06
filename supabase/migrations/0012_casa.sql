@@ -244,6 +244,7 @@ as $$
 declare
   proprietario_di uuid;
   email_elenco jsonb;
+  id_elenco jsonb;
 begin
   if auth.uid() is null then
     raise exception 'non autenticato';
@@ -251,20 +252,25 @@ begin
 
   select proprietario into proprietario_di from casa_membro where membro = auth.uid();
   if found then
-    select coalesce(jsonb_agg(coalesce(u.email, '')), '[]'::jsonb) into email_elenco
+    select coalesce(jsonb_agg(coalesce(u.email, '')), '[]'::jsonb),
+           coalesce(jsonb_agg(u.id), '[]'::jsonb)
+      into email_elenco, id_elenco
     from auth.users u where u.id = proprietario_di;
-    return jsonb_build_object('ruolo', 'membro', 'email', email_elenco);
+    return jsonb_build_object('ruolo', 'membro', 'email', email_elenco, 'id', id_elenco);
   end if;
 
-  select coalesce(jsonb_agg(coalesce(u.email, '') order by m.entrato_il), '[]'::jsonb) into email_elenco
+  -- email e id nello stesso ordine (entrato_il): la scheda CASA li accoppia per indice.
+  select coalesce(jsonb_agg(coalesce(u.email, '') order by m.entrato_il), '[]'::jsonb),
+         coalesce(jsonb_agg(m.membro order by m.entrato_il), '[]'::jsonb)
+    into email_elenco, id_elenco
   from casa_membro m
   join auth.users u on u.id = m.membro
   where m.proprietario = auth.uid();
   if email_elenco <> '[]'::jsonb then
-    return jsonb_build_object('ruolo', 'proprietario', 'email', email_elenco);
+    return jsonb_build_object('ruolo', 'proprietario', 'email', email_elenco, 'id', id_elenco);
   end if;
 
-  return jsonb_build_object('ruolo', 'solo', 'email', '[]'::jsonb);
+  return jsonb_build_object('ruolo', 'solo', 'email', '[]'::jsonb, 'id', '[]'::jsonb);
 end $$;
 revoke execute on function public.stato_casa() from public, anon;
 grant execute on function public.stato_casa() to authenticated;
