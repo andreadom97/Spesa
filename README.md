@@ -265,6 +265,7 @@ righe, il totale parte da lì. Spec:
 
 | File | Cosa contiene |
 |---|---|
+| [`docs/2026-09-06-ripresa.md`](docs/2026-09-06-ripresa.md) | Punto di ripresa: dove siamo, decisioni, cose da sapere, checklist locale, prossimi passi |
 | [`spesa-one-pager.md`](spesa-one-pager.md) | Analisi di mercato e go/no-go. Conclusione: no-go come business allo stato attuale, go come strumento personale |
 | [`spesa-backlog-nicchia.md`](spesa-backlog-nicchia.md) | Backlog della nicchia "dieta dal nutrizionista", rivisto il 05/09: ordine di costruzione delle feature e priorità |
 | [`docs/superpowers/specs/2026-08-26-spesa-design.md`](docs/superpowers/specs/2026-08-26-spesa-design.md) | **La spec.** Modello dati, componenti, fasi, e tutte le decisioni prese durante il design con il loro perché |
