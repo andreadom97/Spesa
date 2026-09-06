@@ -3,16 +3,20 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import type { AreaId, ClasseResiduo, Componente, Dish, Ingredient, OpzioneComponente, PantryState, Scelta, StatoSlot } from '@/domain/types';
+import type { AreaId, ClasseResiduo, Componente, Dish, Ingredient, MealSlot, MealSlotDef, OpzioneComponente, PantryState, Scelta, StatoSlot } from '@/domain/types';
 import { leggiRepertorio, leggiIngredienti } from '@/data/repertorio';
-import { leggiSettimana, aggiornaSlot } from '@/data/settimana';
+import { leggiSettimana, aggiornaSlot, type SettimanaCorrente } from '@/data/settimana';
 import { leggiSlotDefs, leggiImpostazioni } from '@/data/impostazioni';
 import { leggiDispensa } from '@/data/dispensa';
+import { leggiListe } from '@/data/lista';
 import { giorniTra, lunediDi } from '@/domain/date';
 import { coloreArea } from '@/domain/aree';
 import { residuoUtilizzabile } from '@/domain/pantry';
 import { confezioniNecessarie } from '@/domain/confezioni';
 import { convertiInUnitaBase } from '@/domain/unita';
+import { conflittiSostituzione, type ConflittiSostituzioneInput, type ConflittoResiduo } from '@/domain/conflitto';
+import { etichettaScadenza } from '@/domain/scadenza';
+import { formattaQuantita } from '@/domain/risparmio';
 
 const GIORNI = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
 
@@ -28,8 +32,20 @@ interface DatiScegli {
    * riga in Settimana continua a dire "Saltato".
    */
   statoOriginale: StatoSlot;
+  /** Lo slot com'è ora, per intero: `conflittiSostituzione` lo rimonta col candidato lasciando stato, daPronti e porzioni invariati. */
+  slot: MealSlot;
+  /** Tutti gli slot della settimana: il fabbisogno degli altri pasti concorre al conflitto. */
+  slots: MealSlot[];
+  statoSettimana: SettimanaCorrente['stato'];
+  /** Base + top-up, voci e controlli: tutto quello che la lista dice di comprare. Vuoto senza lista (o se la lettura fallisce). */
+  vociLista: { ingredientId: string; quantitaTotale: number }[];
+  /** I nomi dei pasti per la coda "e serve anche giovedì (Cena)". */
+  slotDefs: MealSlotDef[];
   nomePasto: string;
+  /** Solo i piatti attivi di questo slotDef: sono quelli fra cui scegliere. */
   piatti: Dish[];
+  /** Tutto il repertorio: gli altri slot della settimana montano piatti di altri pasti. */
+  tuttiIPiatti: Dish[];
   areePerPiatto: Map<string, AreaId[]>;
   /** Le scelte registrate sullo slot al caricamento: riferimento per capire se un componente è stato toccato. */
   scelteOriginali: Record<string, Scelta>;
@@ -68,20 +84,82 @@ function etichettaGiorno(dataIso: string): { maiuscolo: string; minuscolo: strin
  * stesso principio per cui altrove nel progetto si evita di pluralizzare un
  * nome di pasto scritto liberamente.
  *
- * La frase per `cambiato` NON è più quella dell'artboard (I9): prometteva
- * "la lista della spesa si ricalcola da sola", ma generaListe congela la
- * lista in shopping_list_item per scelta esplicita — nulla la rigenera dopo.
- * L'artboard è stato disegnato prima che si decidesse il congelamento. Resta
- * il tratto che contava nell'originale: prima cosa NON cambia (gli altri
- * giorni), poi la conseguenza pratica per l'utente — solo che ora è la
- * conseguenza vera (rigenerare a mano dalla Settimana), non quella
- * automatica che non esiste.
+ * La frase per `cambiato` NON è quella dell'artboard (I9): prometteva "la
+ * lista della spesa si ricalcola da sola", ma generaListe congela la lista in
+ * shopping_list_item per scelta esplicita. Non è nemmeno più quella della
+ * prima correzione ("va rigenerata dalla Settimana"): da quando esiste
+ * `allineaTopUp` (chiamata a ogni apertura della Lista) gli ingredienti che
+ * mancano entrano da soli nel top-up, e la Settimana non rigenera una
+ * settimana non bozza (spec scadenza-fresco §3.3). Resta il tratto che
+ * contava nell'originale: prima cosa NON cambia (gli altri giorni), poi la
+ * conseguenza pratica vera per l'utente. Il buco che `allineaTopUp` lascia —
+ * un fabbisogno che cresce su un ingrediente GIÀ in lista — lo racconta la
+ * riga di conflitto (`testoConflitto`), non la nota.
  */
 function testoNota(cambiato: boolean, nomePasto: string, giorno: string): string {
   if (cambiato) {
-    return `Cambia solo ${nomePasto} di ${giorno}. Gli altri giorni restano come sono. Se la lista della spesa è già stata creata, non si aggiorna da sola: va rigenerata dalla Settimana.`;
+    return `Cambia solo ${nomePasto} di ${giorno}. Gli altri giorni restano come sono. Se la lista è già fatta, quello che manca entra nel top-up quando la riapri.`;
   }
   return `Tocca un piatto per sostituire ${nomePasto} di ${giorno}. Vale solo per quel giorno, non cambia il piatto nel repertorio.`;
+}
+
+/**
+ * La riga di conflitto (spec scadenza-fresco §3.3), copy esatto:
+ * `Con questo piatto {Nome} non basta: ne mancano {quantità}{coda}.`
+ * Nessun articolo davanti al nome, per lo stesso motivo di `testoNota`: è
+ * testo libero dell'utente, il genere non si conosce. La quantità è
+ * `formattaQuantita` sulla sola unità dell'ingrediente. La coda, solo se
+ * qualche altro pasto della settimana resterà senza: `, e serve anche` più i
+ * pasti come `{giorno} ({pasto})` — il giorno da `etichettaScadenza`
+ * (oggi/domani/nome del giorno), il pasto dal nome dello slotDef (l'id se
+ * non si trova, meglio di una parentesi vuota). Al massimo due pasti per
+ * esteso, poi `altri N`; virgole fra i primi e ` e ` prima dell'ultimo
+ * elemento, che sia un pasto o "altri N": `domani (Pranzo) e giovedì (Cena)`,
+ * `domani (Pranzo), giovedì (Cena) e altri 2`.
+ */
+function testoConflitto(c: ConflittoResiduo, slotDefs: MealSlotDef[], oggi: string): string {
+  const quantita = formattaQuantita({ g: 0, ml: 0, pz: 0, [c.unita]: c.mancante });
+  const pasti = c.pastiDopo.slice(0, 2).map((p) => {
+    const nomePasto = slotDefs.find((d) => d.id === p.slotDefId)?.nome ?? p.slotDefId;
+    return `${etichettaScadenza(p.data, oggi)} (${nomePasto})`;
+  });
+  const restanti = c.pastiDopo.length - pasti.length;
+  if (restanti > 0) pasti.push(`altri ${restanti}`);
+  const coda = pasti.length === 0
+    ? ''
+    : `, e serve anche ${pasti.length === 1 ? pasti[0] : `${pasti.slice(0, -1).join(', ')} e ${pasti[pasti.length - 1]}`}`;
+  return `Con questo piatto ${c.nome} non basta: ne mancano ${quantita}${coda}.`;
+}
+
+/**
+ * La lista della settimana, o null se non esiste o se la lettura fallisce.
+ * Stessa tolleranza di `leggiRisparmioSenzaBloccare` nella Dispensa: la
+ * lista serve solo alla riga di conflitto, e una riga in meno non è un motivo
+ * per negare la schermata a chi vuole solo cambiare piatto.
+ */
+async function leggiListaSenzaBloccare(weekId: string) {
+  try {
+    return await leggiListe(weekId);
+  } catch (e) {
+    console.error('scegli: lettura della lista fallita.', e);
+    return null;
+  }
+}
+
+/**
+ * `conflittiSostituzione` per la schermata: se il candidato stesso è rotto
+ * (una scelta registrata che punta a un'opzione rimossa, un ingrediente
+ * sparito dal repertorio) il dominio propaga l'errore, ma qui — come
+ * `opzioneCorrente` — non è il posto per esplodere: la schermata deve
+ * restare usabile per correggere la scelta, e un avviso in meno è il prezzo
+ * giusto. Gli altri slot rotti li salta già il dominio.
+ */
+function conflittiSenzaEsplodere(i: ConflittiSostituzioneInput): ConflittoResiduo[] {
+  try {
+    return conflittiSostituzione(i);
+  } catch {
+    return [];
+  }
 }
 
 /**
@@ -256,10 +334,20 @@ export default function ScegliPiatto() {
 
         const slot = settimana?.slots.find((s) => s.data === dataParam && s.slotDefId === slotDefId) ?? null;
         const def = slotDefs.find((d) => d.id === slotDefId) ?? null;
-        if (!slot || !def) {
+        if (!settimana || !slot || !def) {
           setErrore('Non troviamo questo pasto.');
           return;
         }
+
+        // Dopo la Promise.all, non dentro: serve l'id della settimana. Una
+        // lettura in più solo su questa schermata.
+        const lista = await leggiListaSenzaBloccare(settimana.id);
+        if (!vivo) return;
+        const vociLista = lista === null
+          ? []
+          : [...lista.base, ...lista.topup]
+            .flatMap((sezione) => [...sezione.voci, ...sezione.controlli])
+            .map((v) => ({ ingredientId: v.ingredientId, quantitaTotale: v.quantitaTotale }));
 
         const areaPerIngrediente = new Map(ingredienti.map((i) => [i.id, i.area]));
         const ingredientiPerId = new Map(ingredienti.map((i) => [i.id, i]));
@@ -277,8 +365,14 @@ export default function ScegliPiatto() {
           slotId: slot.id,
           dishIdOriginale: slot.dishId,
           statoOriginale: slot.stato,
+          slot,
+          slots: settimana.slots,
+          statoSettimana: settimana.stato,
+          vociLista,
+          slotDefs,
           nomePasto: def.nome,
           piatti,
+          tuttiIPiatti: repertorio,
           areePerPiatto,
           scelteOriginali: slot.scelte,
           dispensa,
@@ -360,6 +454,21 @@ export default function ScegliPiatto() {
   const dishSelezionato = dati.piatti.find((p) => p.id === scelto) ?? null;
   const dispensaPerId = new Map(dati.dispensa.map((d) => [d.ingredientId, d]));
   const oggi = new Date().toISOString().slice(0, 10);
+  const conflitti = cambiato && dishSelezionato
+    ? conflittiSenzaEsplodere({
+      slot: dati.slot,
+      candidato: dishSelezionato,
+      scelte: scelteCorrenti,
+      slots: dati.slots,
+      dishes: dati.tuttiIPiatti,
+      ingredients: [...dati.ingredientiPerId.values()],
+      pantry: dati.dispensa,
+      impostazioni: { moltiplicatorePorzioni: dati.moltiplicatorePorzioni },
+      statoSettimana: dati.statoSettimana,
+      vociLista: dati.vociLista,
+      oggi,
+    })
+    : [];
 
   return (
     <Cornice etichetta={etichettaHeader}>
@@ -515,6 +624,16 @@ export default function ScegliPiatto() {
                 </button>
               );
             })}
+          </div>
+        )}
+
+        {conflitti.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, margin: '14px 6px 0' }}>
+            {conflitti.map((c) => (
+              <div key={c.ingredientId} style={{ fontSize: 12.5, lineHeight: 1.45, fontWeight: 600, color: 'var(--ink-2)' }}>
+                {testoConflitto(c, dati.slotDefs, oggi)}
+              </div>
+            ))}
           </div>
         )}
 

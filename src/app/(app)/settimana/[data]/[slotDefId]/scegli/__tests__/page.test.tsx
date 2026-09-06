@@ -3,6 +3,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import type { Dish, Ingredient, MealSlot, MealSlotDef, PantryState } from '@/domain/types';
 import type { SettimanaCorrente } from '@/data/settimana';
+import type { ListaSalvata } from '@/data/lista';
+import { giorniTra, lunediDi, sommaGiorni } from '@/domain/date';
+import { etichettaScadenza } from '@/domain/scadenza';
 
 vi.mock('@/data/settimana', () => ({
   leggiSettimana: vi.fn(),
@@ -19,6 +22,9 @@ vi.mock('@/data/impostazioni', () => ({
 vi.mock('@/data/dispensa', () => ({
   leggiDispensa: vi.fn(),
 }));
+vi.mock('@/data/lista', () => ({
+  leggiListe: vi.fn(),
+}));
 
 const push = vi.fn();
 // La data scelta è un giovedì (2026-08-27): verifica sia l'etichetta header
@@ -34,6 +40,7 @@ import { leggiSettimana, aggiornaSlot } from '@/data/settimana';
 import { leggiRepertorio, leggiIngredienti } from '@/data/repertorio';
 import { leggiSlotDefs, leggiImpostazioni } from '@/data/impostazioni';
 import { leggiDispensa } from '@/data/dispensa';
+import { leggiListe } from '@/data/lista';
 import ScegliPiatto from '../page';
 
 const DATA = '2026-08-27';
@@ -252,6 +259,9 @@ describe('Scegli il piatto', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     paramsMock = { data: DATA, slotDefId: 'sd-3' };
+    // Nessuna lista salvata: i test di questo blocco sono nati prima del
+    // conflitto di residuo e non devono cambiare per la lettura in più.
+    vi.mocked(leggiListe).mockResolvedValue(null);
   });
 
   it('mostra solo i piatti attivi dello slot corrente, non quelli di altri pasti', async () => {
@@ -326,7 +336,7 @@ describe('Scegli il piatto', () => {
     fireEvent.click(screen.getByText('Merluzzo e piselli'));
 
     expect(
-      screen.getByText('Cambia solo Cena di giovedì. Gli altri giorni restano come sono. Se la lista della spesa è già stata creata, non si aggiorna da sola: va rigenerata dalla Settimana.'),
+      screen.getByText('Cambia solo Cena di giovedì. Gli altri giorni restano come sono. Se la lista è già fatta, quello che manca entra nel top-up quando la riapri.'),
     ).toBeInTheDocument();
     const bottone = screen.getByText('SOSTITUISCI');
     expect(bottone).not.toBeDisabled();
@@ -492,5 +502,168 @@ describe('Scegli il piatto', () => {
     await screen.findByText('Torta salata');
 
     expect(screen.getByLabelText('Cambia Farcitura: ora Ricotta')).toBeInTheDocument();
+  });
+});
+
+// ── Conflitto di residuo (spec scadenza-fresco §3.3) ────────────────────────
+//
+// `oggi` nella schermata è l'orologio reale, e `conflittiSostituzione` conta
+// in `pastiDopo` solo gli slot con data ≥ oggi: la settimana di questi test
+// è costruita intorno all'oggi vero, non intorno alla DATA fissa di sopra.
+// L'ingrediente è porzionabile e NON deperibile, così il residuo non decade
+// qualunque sia il giorno in cui gira la suite.
+
+const OGGI = new Date().toISOString().slice(0, 10);
+const LUNEDI_OGGI = lunediDi(OGGI);
+// L'altro pasto che usa l'ingrediente: domani, se è ancora in questa
+// settimana; di domenica, la colazione di oggi (uno slotDef diverso, stesso giorno).
+const DATA_ALTRO = giorniTra(LUNEDI_OGGI, OGGI) < 6 ? sommaGiorni(OGGI, 1) : OGGI;
+const SD_ALTRO: MealSlotDef = DATA_ALTRO === OGGI ? SD_COLAZIONE : SD_CENA;
+
+const ING_YOGURT_GRECO: Ingredient = {
+  id: 'i-8', nome: 'Yogurt greco', unitaBase: 'g', area: 'latticini',
+  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500, prezzoConfezione: null,
+};
+
+/** Il piatto attuale dello slot: non usa lo yogurt. */
+const DISH_SENZA_YOGURT: Dish = {
+  id: 'd-10', nome: 'Merluzzo al vapore', slotDefId: 'sd-3', fonte: 'proprio', attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
+  ingredienti: [{ ingredientId: 'i-2', quantita: 80, unita: 'g' }],
+  componenti: [],
+};
+/** Il candidato: 400 g di yogurt. */
+const DISH_YOGURT_400: Dish = {
+  id: 'd-11', nome: 'Pollo allo yogurt', slotDefId: 'sd-3', fonte: 'proprio', attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
+  ingredienti: [{ ingredientId: 'i-8', quantita: 400, unita: 'g' }],
+  componenti: [],
+};
+/** Il piatto attuale nel caso a settimana chiusa: 200 g di yogurt da stornare. */
+const DISH_YOGURT_200: Dish = {
+  id: 'd-12', nome: 'Yogurt e miele', slotDefId: 'sd-3', fonte: 'proprio', attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
+  ingredienti: [{ ingredientId: 'i-8', quantita: 200, unita: 'g' }],
+  componenti: [],
+};
+/** L'altro pasto della settimana che usa lo yogurt: 350 g. */
+const DISH_YOGURT_350: Dish = {
+  id: 'd-13', nome: 'Tzatziki', slotDefId: SD_ALTRO.id, fonte: 'proprio', attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
+  ingredienti: [{ ingredientId: 'i-8', quantita: 350, unita: 'g' }],
+  componenti: [],
+};
+
+const SLOT_OGGI_CENA: MealSlot = { id: 'slot-oggi-cena', data: OGGI, slotDefId: 'sd-3', stato: 'casa', dishId: 'd-10', fonteStato: 'default', scelte: {}, porzioniPreparate: 0, daPronti: false };
+const SLOT_ALTRO: MealSlot = { id: 'slot-altro', data: DATA_ALTRO, slotDefId: SD_ALTRO.id, stato: 'casa', dishId: 'd-13', fonteStato: 'default', scelte: {}, porzioniPreparate: 0, daPronti: false };
+
+const PANTRY_YOGURT_100: PantryState = {
+  ingredientId: 'i-8', residuo: 100, ultimoAcquisto: OGGI, giorniStimati: 90, congelato: false, ultimoCheck: null,
+};
+
+/** Una voce di lista da 500 g di yogurt: con residuo 100, disponibile 600. */
+const LISTA_YOGURT_500: ListaSalvata = {
+  base: [{
+    area: 'latticini',
+    voci: [{
+      id: 'item-1', ingredientId: 'i-8', nome: 'Yogurt greco', area: 'latticini', unita: 'g',
+      fabbisogno: 350, residuo: 100, confezioni: 1, quantitaTotale: 500, spuntato: false, origine: 'piano', mostraDettaglio: true,
+    }],
+    controlli: [],
+  }],
+  topup: [],
+  baseListaId: 'lista-base',
+  topupListaId: 'lista-topup',
+};
+
+function mockCaricoConflitto(stato: SettimanaCorrente['stato']) {
+  vi.mocked(leggiSettimana).mockResolvedValue({
+    id: 'week-conflitto', dataInizio: LUNEDI_OGGI, stato, slots: [SLOT_OGGI_CENA, SLOT_ALTRO],
+  });
+  vi.mocked(leggiSlotDefs).mockResolvedValue(SLOT_DEFS);
+  vi.mocked(leggiRepertorio).mockResolvedValue([DISH_SENZA_YOGURT, DISH_YOGURT_400, DISH_YOGURT_350]);
+  vi.mocked(leggiIngredienti).mockResolvedValue([ING_RISO, ING_YOGURT_GRECO]);
+  vi.mocked(leggiImpostazioni).mockResolvedValue({
+    moltiplicatorePorzioni: 1,
+    ordineAree: [...ORDINE_AREE_TEST],
+    settimaneCiclo: 1,
+    cicloOrigine: null,
+  });
+  vi.mocked(leggiDispensa).mockResolvedValue([PANTRY_YOGURT_100]);
+  vi.mocked(leggiListe).mockResolvedValue(LISTA_YOGURT_500);
+}
+
+describe('Conflitto di residuo', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    paramsMock = { data: OGGI, slotDefId: 'sd-3' };
+  });
+
+  it('settimana confermata: il candidato che sfora lista più residuo mostra il mancante e il pasto che resterà senza', async () => {
+    mockCaricoConflitto('confermata');
+    render(<ScegliPiatto />);
+    await screen.findByText('Merluzzo al vapore');
+
+    expect(screen.queryByText(/non basta/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('Pollo allo yogurt'));
+
+    // Fabbisogno dopo = 400 (candidato) + 350 (altro pasto) = 750;
+    // disponibile = 100 (residuo) + 500 (lista) = 600 → mancano 150 g.
+    expect(
+      screen.getByText(`Con questo piatto Yogurt greco non basta: ne mancano 150 g, e serve anche ${etichettaScadenza(DATA_ALTRO, OGGI)} (${SD_ALTRO.nome}).`),
+    ).toBeInTheDocument();
+    expect(screen.getByText('SOSTITUISCI')).not.toBeDisabled();
+  });
+
+  it('settimana bozza: nessun conflitto, mai', async () => {
+    mockCaricoConflitto('bozza');
+    render(<ScegliPiatto />);
+    await screen.findByText('Merluzzo al vapore');
+
+    fireEvent.click(screen.getByText('Pollo allo yogurt'));
+
+    expect(screen.queryByText(/non basta/)).not.toBeInTheDocument();
+  });
+
+  it('col piatto originale selezionato non compare nessun conflitto', async () => {
+    mockCaricoConflitto('confermata');
+    render(<ScegliPiatto />);
+    await screen.findByText('Merluzzo al vapore');
+
+    fireEvent.click(screen.getByText('Merluzzo al vapore'));
+
+    expect(screen.queryByText(/non basta/)).not.toBeInTheDocument();
+  });
+
+  it('lettura della lista fallita: schermata normale, nessun conflitto, SOSTITUISCI resta abilitato', async () => {
+    mockCaricoConflitto('confermata');
+    vi.mocked(leggiListe).mockRejectedValue(new Error('rete assente'));
+    const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      render(<ScegliPiatto />);
+      await screen.findByText('Merluzzo al vapore');
+
+      fireEvent.click(screen.getByText('Pollo allo yogurt'));
+
+      expect(screen.queryByText(/non basta/)).not.toBeInTheDocument();
+      expect(screen.getByText('SOSTITUISCI')).not.toBeDisabled();
+      expect(errore).toHaveBeenCalledWith('scegli: lettura della lista fallita.', expect.any(Error));
+    } finally {
+      errore.mockRestore();
+    }
+  });
+
+  it('settimana chiusa: lo storno restituisce il piatto attuale, il mancante è il resto, senza coda se nessun altro pasto lo usa', async () => {
+    mockCaricoConflitto('chiusa');
+    vi.mocked(leggiSettimana).mockResolvedValue({
+      id: 'week-conflitto', dataInizio: LUNEDI_OGGI, stato: 'chiusa',
+      slots: [{ ...SLOT_OGGI_CENA, dishId: 'd-12' }],
+    });
+    vi.mocked(leggiRepertorio).mockResolvedValue([DISH_YOGURT_200, DISH_YOGURT_400]);
+    vi.mocked(leggiDispensa).mockResolvedValue([{ ...PANTRY_YOGURT_100, residuo: 50 }]);
+    render(<ScegliPiatto />);
+    await screen.findByText('Yogurt e miele');
+
+    fireEvent.click(screen.getByText('Pollo allo yogurt'));
+
+    // Disponibile = 50 (residuo) + 200 (storno del piatto attuale) = 250;
+    // fabbisogno = 400 → mancano 150 g. Nessun altro slot: niente coda.
+    expect(screen.getByText('Con questo piatto Yogurt greco non basta: ne mancano 150 g.')).toBeInTheDocument();
   });
 });
