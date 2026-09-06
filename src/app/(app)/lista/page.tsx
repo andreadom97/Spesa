@@ -8,6 +8,7 @@ import { leggiSettimanaCorrente } from '@/data/settimana';
 import { leggiRepertorio } from '@/data/repertorio';
 import { leggiListe, spunta, allineaTopUp, type ListaSalvata, type SezioneSalvata, type VoceSalvata } from '@/data/lista';
 import { rispondiControllo } from '@/data/dispensa';
+import { idCasa } from '@/data/casa';
 import { accodaSpunta, leggiCoda, rimuoviConfermate, applicaCodaSuVoci, type Spunta } from '@/offline/coda';
 import { leggiIstantaneaLista, salvaIstantaneaLista, cancellaIstantaneaLista } from '@/offline/lista-cache';
 import { Testata } from '@/components/Testata';
@@ -255,11 +256,15 @@ export default function Lista() {
           }
           return;
         }
+        // L'istantanea porta l'id della casa (spec lista-offline §1), così un
+        // membro tolto dal proprietario non si rilegge la lista della casa che
+        // ha lasciato. `idCasa` è memorizzata per sessione: costa niente.
+        const casaId = await idCasa();
         if (!vivo) return;
         // L'istantanea è la lista come letta, senza la coda: la coda si
         // riapplica quando la si mostra, così una spunta in volo non viene
         // né disfatta né contata due volte.
-        salvaIstantaneaLista({ weekId: settimana.id, settimanaLabel: label, lista });
+        salvaIstantaneaLista({ casaId, weekId: settimana.id, settimanaLabel: label, lista });
         setStato({ weekId: settimana.id, settimanaLabel: label, lista: applicaCodaLista(lista), offline: false });
         void sincronizzaCoda();
       } catch (errore) {
@@ -269,7 +274,22 @@ export default function Lista() {
         // mostra l'ultima lista vista con rete, dicendo che è una copia. Se
         // l'istantanea è di un'altra settimana si mostra lo stesso: la
         // settimana corrente non è nota e non si tenta di indovinarla.
-        const istantanea = leggiIstantaneaLista();
+        //
+        // La casa invece si verifica quando si può: `idCasa()` è memorizzata
+        // dopo il primo successo nella sessione, ma a freddo senza rete la
+        // RPC fallisce. In quel caso si legge senza id — la casa non è
+        // verificabile e l'istantanea è la migliore informazione disponibile
+        // (limite dichiarato in spec lista-offline §5). Con l'id, se
+        // l'istantanea è di un'altra casa lista-cache la cancella e si mostra
+        // l'errore di sempre.
+        let casaId: string | null = null;
+        try {
+          casaId = await idCasa();
+        } catch {
+          // Casa non verificabile: si legge senza id.
+        }
+        if (!vivo) return;
+        const istantanea = leggiIstantaneaLista(casaId ?? undefined);
         if (istantanea) {
           setStato({
             weekId: istantanea.weekId,
@@ -329,11 +349,15 @@ export default function Lista() {
     async function rileggi(motivo: string) {
       try {
         await sincronizzaCoda();
+        // Prima della lettura, non dopo: se fallisce (niente rete) la
+        // rilettura fallisce tutta intera, com'è giusto, invece di buttare
+        // una lista fresca già arrivata.
+        const casaId = await idCasa();
         const versione = versioneTocchi.current;
         const fresca = await leggiListe(weekId!);
         if (!vivo || !fresca) return;
         if (versioneTocchi.current !== versione) return;
-        salvaIstantaneaLista({ weekId: weekId!, settimanaLabel: settimanaLabel!, lista: fresca });
+        salvaIstantaneaLista({ casaId, weekId: weekId!, settimanaLabel: settimanaLabel!, lista: fresca });
         setStato((p) => (p ? { ...p, lista: applicaCodaLista(fresca), offline: false } : p));
       } catch (errore) {
         console.error(`lista: rilettura ${motivo} fallita.`, errore);

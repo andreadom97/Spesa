@@ -24,11 +24,17 @@ vi.mock('@/data/dispensa', () => ({
 vi.mock('@/data/repertorio', () => ({
   leggiRepertorio: vi.fn(),
 }));
+// L'id della casa entra nell'istantanea offline (spec lista-offline §1): di
+// default 'casa-1', cioè la casa di chi apre la pagina.
+vi.mock('@/data/casa', () => ({
+  idCasa: vi.fn(),
+}));
 
 import { leggiSettimanaCorrente } from '@/data/settimana';
 import { leggiListe, spunta, allineaTopUp } from '@/data/lista';
 import { rispondiControllo } from '@/data/dispensa';
 import { leggiRepertorio } from '@/data/repertorio';
+import { idCasa } from '@/data/casa';
 import { accodaSpunta, leggiCoda } from '@/offline/coda';
 // Anche l'istantanea offline (src/offline/lista-cache.ts) gira per davvero
 // su localStorage/jsdom: qui si prova l'integrazione fra la pagina e la copia
@@ -79,6 +85,7 @@ beforeEach(() => {
   vi.mocked(allineaTopUp).mockReset().mockResolvedValue(0);
   vi.mocked(rispondiControllo).mockReset().mockResolvedValue(undefined);
   vi.mocked(leggiRepertorio).mockReset().mockResolvedValue([PIATTO]);
+  vi.mocked(idCasa).mockReset().mockResolvedValue('casa-1');
 });
 
 describe('Lista', () => {
@@ -600,7 +607,7 @@ describe('Lista', () => {
       simulaVisibilita('visible');
 
       await waitFor(() => expect(leggiIstantaneaLista()?.lista).toEqual(dopo));
-      expect(leggiIstantaneaLista()).toMatchObject({ weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO' });
+      expect(leggiIstantaneaLista()).toMatchObject({ casaId: 'casa-1', weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO' });
     });
   });
 
@@ -624,8 +631,8 @@ describe('Lista', () => {
       errore.mockRestore();
     });
 
-    function salvaIstantaneaDiProva(lista: ListaSalvata = buildLista()) {
-      salvaIstantaneaLista({ weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO', lista });
+    function salvaIstantaneaDiProva(lista: ListaSalvata = buildLista(), casaId = 'casa-1') {
+      salvaIstantaneaLista({ casaId, weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO', lista });
     }
 
     it('se la lettura fallisce e c\'è un\'istantanea, mostra quella con la riga "Sei offline"', async () => {
@@ -685,6 +692,44 @@ describe('Lista', () => {
       expect(await screen.findByText('Non riusciamo a caricare la lista. Riprova più tardi.')).toBeInTheDocument();
     });
 
+    // L'istantanea porta l'id della casa: un membro tolto dal proprietario
+    // non passa da entra/esci (che la cancellano), e senza questo controllo
+    // offline vedrebbe ancora l'ultima lista della casa che ha lasciato.
+    it('se l\'istantanea è della propria casa si mostra', async () => {
+      salvaIstantaneaDiProva(buildLista(), 'casa-1');
+      vi.mocked(leggiSettimanaCorrente).mockRejectedValue(new Error('rete assente'));
+      render(<Lista />);
+
+      expect(await screen.findByText(RIGA_OFFLINE)).toBeInTheDocument();
+      expect(screen.getByText('Riso Carnaroli')).toBeInTheDocument();
+      expect(idCasa).toHaveBeenCalled();
+    });
+
+    it('se l\'istantanea è di un\'altra casa (membro tolto) non si mostra e si cancella', async () => {
+      salvaIstantaneaDiProva(buildLista(), 'casa-2');
+      vi.mocked(leggiSettimanaCorrente).mockRejectedValue(new Error('rete assente'));
+      render(<Lista />);
+
+      expect(await screen.findByText('Non riusciamo a caricare la lista. Riprova più tardi.')).toBeInTheDocument();
+      expect(screen.queryByText(/Sei offline/)).not.toBeInTheDocument();
+      expect(screen.queryByText('Riso Carnaroli')).not.toBeInTheDocument();
+      expect(localStorage.getItem('spesa:lista')).toBeNull();
+    });
+
+    it('se a freddo senza rete la casa non è verificabile (idCasa fallisce), l\'istantanea si mostra comunque', async () => {
+      // Limite dichiarato in spec lista-offline §5: senza rete la casa non
+      // si può verificare, e l'istantanea è la migliore informazione che c'è.
+      salvaIstantaneaDiProva(buildLista(), 'casa-2');
+      vi.mocked(idCasa).mockRejectedValue(new Error('rete assente'));
+      vi.mocked(leggiSettimanaCorrente).mockRejectedValue(new Error('rete assente'));
+      render(<Lista />);
+
+      expect(await screen.findByText(RIGA_OFFLINE)).toBeInTheDocument();
+      expect(screen.getByText('Riso Carnaroli')).toBeInTheDocument();
+      expect(screen.queryByText('Non riusciamo a caricare la lista. Riprova più tardi.')).not.toBeInTheDocument();
+      expect(localStorage.getItem('spesa:lista')).not.toBeNull();
+    });
+
     it('con la rete la riga non c\'è', async () => {
       vi.mocked(leggiListe).mockResolvedValue(buildLista());
       render(<Lista />);
@@ -706,7 +751,7 @@ describe('Lista', () => {
       expect(riso.closest('button')).toHaveAttribute('aria-pressed', 'true');
 
       const istantanea = leggiIstantaneaLista();
-      expect(istantanea).toMatchObject({ weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO', salvataIl: expect.any(Number) });
+      expect(istantanea).toMatchObject({ casaId: 'casa-1', weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO', salvataIl: expect.any(Number) });
       expect(istantanea?.lista).toEqual(buildLista());
       expect(istantanea?.lista.base[0].voci[0].spuntato).toBe(false);
     });

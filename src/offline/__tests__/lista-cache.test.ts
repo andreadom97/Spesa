@@ -24,16 +24,45 @@ beforeEach(() => localStorage.clear());
 describe('istantanea della lista', () => {
   it('salva e rilegge la stessa lista, con settimana e momento del salvataggio', () => {
     vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
-    salvaIstantaneaLista({ weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO', lista: LISTA });
+    salvaIstantaneaLista({ casaId: 'casa-1', weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO', lista: LISTA });
 
     expect(leggiIstantaneaLista()).toEqual({
-      weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO', lista: LISTA, salvataIl: 1_700_000_000_000,
+      casaId: 'casa-1', weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO', lista: LISTA, salvataIl: 1_700_000_000_000,
     });
     vi.restoreAllMocks();
   });
 
+  // L'istantanea porta l'id della casa: un membro tolto dal proprietario non
+  // passa da entra/esci (che la cancellano), e senza questo controllo si
+  // terrebbe sul telefono l'ultima lista della casa che ha lasciato.
+  describe('con l\'id della casa', () => {
+    it('si rilegge se è della stessa casa', () => {
+      salvaIstantaneaLista({ casaId: 'casa-1', weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO', lista: LISTA });
+      expect(leggiIstantaneaLista('casa-1')).toMatchObject({ casaId: 'casa-1', weekId: 'week-1', lista: LISTA });
+    });
+
+    it('se è di un\'altra casa torna null e si cancella', () => {
+      salvaIstantaneaLista({ casaId: 'casa-1', weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO', lista: LISTA });
+      expect(leggiIstantaneaLista('altra')).toBeNull();
+      expect(localStorage.getItem('spesa:lista')).toBeNull();
+      expect(leggiIstantaneaLista()).toBeNull();
+    });
+
+    it('senza id (casa non verificabile, a freddo senza rete) si rilegge comunque', () => {
+      salvaIstantaneaLista({ casaId: 'casa-1', weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO', lista: LISTA });
+      expect(leggiIstantaneaLista()).toMatchObject({ casaId: 'casa-1', weekId: 'week-1' });
+      expect(localStorage.getItem('spesa:lista')).not.toBeNull();
+    });
+
+    it('un\'istantanea vecchia senza casaId torna null, anche letta senza id', () => {
+      localStorage.setItem('spesa:lista', JSON.stringify({ weekId: 'w', settimanaLabel: 'x', salvataIl: 1, lista: { base: [], topup: [] } }));
+      expect(leggiIstantaneaLista()).toBeNull();
+      expect(leggiIstantaneaLista('casa-1')).toBeNull();
+    });
+  });
+
   it('usa la chiave spesa:lista, come le altre memorie dell\'app', () => {
-    salvaIstantaneaLista({ weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO', lista: LISTA });
+    salvaIstantaneaLista({ casaId: 'casa-1', weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO', lista: LISTA });
     expect(localStorage.getItem('spesa:lista')).not.toBeNull();
   });
 
@@ -42,7 +71,7 @@ describe('istantanea della lista', () => {
   });
 
   it('si cancella', () => {
-    salvaIstantaneaLista({ weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO', lista: LISTA });
+    salvaIstantaneaLista({ casaId: 'casa-1', weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO', lista: LISTA });
     cancellaIstantaneaLista();
     expect(leggiIstantaneaLista()).toBeNull();
   });
@@ -57,14 +86,16 @@ describe('istantanea della lista', () => {
   });
 
   it.each([
-    ['senza weekId', { settimanaLabel: 'x', salvataIl: 1, lista: { base: [], topup: [] } }],
-    ['weekId non stringa', { weekId: 1, settimanaLabel: 'x', salvataIl: 1, lista: { base: [], topup: [] } }],
-    ['senza settimanaLabel', { weekId: 'w', salvataIl: 1, lista: { base: [], topup: [] } }],
-    ['salvataIl non numero', { weekId: 'w', settimanaLabel: 'x', salvataIl: 'ieri', lista: { base: [], topup: [] } }],
-    ['senza lista', { weekId: 'w', settimanaLabel: 'x', salvataIl: 1 }],
-    ['lista non oggetto', { weekId: 'w', settimanaLabel: 'x', salvataIl: 1, lista: 'lista' }],
-    ['lista senza base', { weekId: 'w', settimanaLabel: 'x', salvataIl: 1, lista: { topup: [] } }],
-    ['lista con topup non array', { weekId: 'w', settimanaLabel: 'x', salvataIl: 1, lista: { base: [], topup: {} } }],
+    ['senza casaId', { weekId: 'w', settimanaLabel: 'x', salvataIl: 1, lista: { base: [], topup: [] } }],
+    ['casaId non stringa', { casaId: 1, weekId: 'w', settimanaLabel: 'x', salvataIl: 1, lista: { base: [], topup: [] } }],
+    ['senza weekId', { casaId: 'c', settimanaLabel: 'x', salvataIl: 1, lista: { base: [], topup: [] } }],
+    ['weekId non stringa', { casaId: 'c', weekId: 1, settimanaLabel: 'x', salvataIl: 1, lista: { base: [], topup: [] } }],
+    ['senza settimanaLabel', { casaId: 'c', weekId: 'w', salvataIl: 1, lista: { base: [], topup: [] } }],
+    ['salvataIl non numero', { casaId: 'c', weekId: 'w', settimanaLabel: 'x', salvataIl: 'ieri', lista: { base: [], topup: [] } }],
+    ['senza lista', { casaId: 'c', weekId: 'w', settimanaLabel: 'x', salvataIl: 1 }],
+    ['lista non oggetto', { casaId: 'c', weekId: 'w', settimanaLabel: 'x', salvataIl: 1, lista: 'lista' }],
+    ['lista senza base', { casaId: 'c', weekId: 'w', settimanaLabel: 'x', salvataIl: 1, lista: { topup: [] } }],
+    ['lista con topup non array', { casaId: 'c', weekId: 'w', settimanaLabel: 'x', salvataIl: 1, lista: { base: [], topup: {} } }],
     ['array invece di oggetto', []],
     ['null', null],
   ])('con forma incompleta (%s) torna null', (_, valore) => {
@@ -92,7 +123,7 @@ describe('istantanea della lista', () => {
     });
 
     it('salvare e cancellare non lanciano', () => {
-      expect(() => salvaIstantaneaLista({ weekId: 'w', settimanaLabel: 'x', lista: LISTA })).not.toThrow();
+      expect(() => salvaIstantaneaLista({ casaId: 'c', weekId: 'w', settimanaLabel: 'x', lista: LISTA })).not.toThrow();
       expect(() => cancellaIstantaneaLista()).not.toThrow();
     });
   });
@@ -102,7 +133,7 @@ describe('istantanea della lista', () => {
     const quota = new Error('QuotaExceededError');
     const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw quota; });
 
-    expect(() => salvaIstantaneaLista({ weekId: 'w', settimanaLabel: 'x', lista: LISTA })).not.toThrow();
+    expect(() => salvaIstantaneaLista({ casaId: 'c', weekId: 'w', settimanaLabel: 'x', lista: LISTA })).not.toThrow();
     expect(errore).toHaveBeenCalledWith('lista offline: istantanea non salvata.', quota);
 
     setItem.mockRestore();
