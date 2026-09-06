@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Impostazioni, MealSlotDef } from '@/domain/types';
 import { leggiImpostazioni, leggiSlotDefs, salvaImpostazioni, salvaSlotDefs, pastiDiDefault } from '@/data/impostazioni';
-import { creaInvito, entraInCasa, esciDallaCasa, statoCasa, type StatoCasa } from '@/data/casa';
+import { creaInvito, entraInCasa, esciDallaCasa, rimuoviMembro, statoCasa, type StatoCasa } from '@/data/casa';
 import { MAX_PASTI, MIN_PASTI } from '@/domain/pasti';
 import { coloreArea, nomeArea } from '@/domain/aree';
 import { MAX_SETTIMANE_CICLO, settimanaDelCiclo } from '@/domain/ciclo';
@@ -437,7 +437,7 @@ export default function Impostazioni() {
           <>
             <Etichetta margine="26px 4px 10px">CASA</Etichetta>
             {casa ? (
-              <SezioneCasa casa={casa} />
+              <SezioneCasa casa={casa} onCambiata={setCasa} />
             ) : (
               <p style={{ margin: '0 6px', fontSize: 13, color: 'var(--sec)' }}>{erroreCasa}</p>
             )}
@@ -517,15 +517,18 @@ const BOTTONE_LEGGERO: CSSProperties = {
 /**
  * La scheda CASA (spec P6 §4), che si ramifica sul ruolo di chi è loggato:
  * da solo invita a creare un codice o a inserirne uno; da proprietario
- * elenca chi c'è e offre un altro codice; da membro dice di chi è la casa e
- * lascia uscire. Entrare o uscire ricaricano l'app su /lista: il data layer
- * ha già scartato la memoria dell'id della casa.
+ * elenca chi c'è, lascia togliere ognuno (TOGLI, due tocchi) e offre un
+ * altro codice; da membro dice di chi è la casa e lascia uscire. Entrare o
+ * uscire ricaricano l'app su /lista: il data layer ha già scartato la
+ * memoria dell'id della casa. Togliere invece non cambia l'id di chi chiama:
+ * niente reload, si rilegge `statoCasa()` e la scheda si aggiorna da sé
+ * tramite `onCambiata` (senza più membri torna allo stato "da solo").
  *
- * Il bottone TOGLI della spec non c'è: `statoCasa()` restituisce solo le
- * email dei membri e `rimuoviMembro` vuole l'id utente. Finché `stato_casa`
- * non restituisce anche gli id, il proprietario non può togliere nessuno da qui.
+ * TOGLI usa `casa.id[i]`, accoppiato per indice a `casa.email[i]`: è
+ * `stato_casa` a garantire l'ordine, e `statoCasa()` a verificare che le
+ * lunghezze coincidano.
  */
-function SezioneCasa({ casa }: { casa: StatoCasa }) {
+function SezioneCasa({ casa, onCambiata }: { casa: StatoCasa; onCambiata: (stato: StatoCasa) => void }) {
   const [codiceCreato, setCodiceCreato] = useState<string | null>(null);
   const [creando, setCreando] = useState(false);
   const [erroreCodice, setErroreCodice] = useState<string | null>(null);
@@ -535,6 +538,9 @@ function SezioneCasa({ casa }: { casa: StatoCasa }) {
   const [erroreEntrata, setErroreEntrata] = useState<string | null>(null);
 
   const [erroreUscita, setErroreUscita] = useState<string | null>(null);
+
+  const [togliendo, setTogliendo] = useState<string | null>(null);
+  const [erroreRimozione, setErroreRimozione] = useState<string | null>(null);
 
   async function crea() {
     setCreando(true);
@@ -573,6 +579,33 @@ function SezioneCasa({ casa }: { casa: StatoCasa }) {
     } catch (errore) {
       console.error('impostazioni: uscita dalla casa fallita.', errore);
       setErroreUscita('Non siamo riusciti a uscire. Riprova.');
+    }
+  }
+
+  async function togli(id: string) {
+    setTogliendo(id);
+    setErroreRimozione(null);
+    try {
+      await rimuoviMembro(id);
+    } catch (errore) {
+      console.error('impostazioni: rimozione del membro fallita.', errore);
+      setErroreRimozione('Non siamo riusciti a togliere. Riprova.');
+      setTogliendo(null);
+      return;
+    }
+    // Tolto davvero: la scheda si riallinea al server. Se la rilettura
+    // fallisce non si dice "non siamo riusciti" (sarebbe falso): si toglie
+    // la riga in locale, e senza membri si torna allo stato "da solo".
+    try {
+      onCambiata(await statoCasa());
+    } catch (errore) {
+      console.error('impostazioni: rilettura della casa dopo la rimozione fallita.', errore);
+      const resta = casa.id.map((_, i) => i).filter((i) => casa.id[i] !== id);
+      onCambiata(resta.length > 0
+        ? { ruolo: 'proprietario', email: resta.map((i) => casa.email[i]), id: resta.map((i) => casa.id[i]) }
+        : { ruolo: 'solo', email: [], id: [] });
+    } finally {
+      setTogliendo(null);
     }
   }
 
@@ -621,13 +654,22 @@ function SezioneCasa({ casa }: { casa: StatoCasa }) {
     return (
       <div style={SCHEDA}>
         <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)' }}>La tua casa</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
-          {casa.email.map((email) => (
-            <div key={email} style={{ fontSize: 14, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {email}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+          {casa.email.map((email, i) => (
+            <div key={casa.id[i]} style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 44 }}>
+              <div style={{ flex: 1, minWidth: 0, fontSize: 14, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {email}
+              </div>
+              <BottoneDueTocchi
+                testo="TOGLI"
+                onConferma={() => togli(casa.id[i])}
+                disabled={togliendo !== null}
+                style={{ ...BOTTONE_LEGGERO, width: 'auto', flex: 'none', padding: '0 14px', opacity: togliendo === casa.id[i] ? 0.35 : 1 }}
+              />
             </div>
           ))}
         </div>
+        {erroreRimozione && <p style={{ margin: '4px 0 0', fontSize: 12.5, color: 'var(--sec)' }}>{erroreRimozione}</p>}
         <div style={{ fontSize: 13, lineHeight: 1.45, color: 'var(--sec)', marginTop: 10 }}>
           Ognuno spunta dal suo telefono. La lista si aggiorna quando la riapri.
         </div>
@@ -684,9 +726,12 @@ function SezioneCasa({ casa }: { casa: StatoCasa }) {
  * Conferma in due tocchi, come RIPARTI: il primo tap arma il bottone (il
  * testo diventa "SICURO?"), solo il secondo chiama `onConferma`. Un tap
  * fuori dal bottone disarma. A differenza di RIPARTI non dipende da altro
- * stato della pagina, quindi vive da sé.
+ * stato della pagina, quindi vive da sé. `disabled` serve mentre una
+ * conferma è in corso (TOGLI su un membro mentre un altro sta sparendo).
  */
-function BottoneDueTocchi({ testo, onConferma, style }: { testo: string; onConferma: () => void; style?: CSSProperties }) {
+function BottoneDueTocchi({ testo, onConferma, disabled, style }: {
+  testo: string; onConferma: () => void; disabled?: boolean; style?: CSSProperties;
+}) {
   const [armato, setArmato] = useState(false);
   const ref = useRef<HTMLButtonElement>(null);
 
@@ -703,6 +748,7 @@ function BottoneDueTocchi({ testo, onConferma, style }: { testo: string; onConfe
     <button
       ref={ref}
       type="button"
+      disabled={disabled}
       onClick={() => {
         if (armato) {
           setArmato(false);

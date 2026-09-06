@@ -106,24 +106,41 @@ describe('statoCasa', () => {
 
   it('mappa il jsonb della RPC', async () => {
     const rpc = creaClientMock();
-    rpc.mockResolvedValue({ data: { ruolo: 'proprietario', email: ['a@b'] }, error: null });
+    rpc.mockResolvedValue({ data: { ruolo: 'proprietario', email: ['a@b', 'c@d'], id: ['u1', 'u2'] }, error: null });
 
-    expect(await statoCasa()).toEqual({ ruolo: 'proprietario', email: ['a@b'] });
+    expect(await statoCasa()).toEqual({ ruolo: 'proprietario', email: ['a@b', 'c@d'], id: ['u1', 'u2'] });
     expect(rpc).toHaveBeenCalledWith('stato_casa');
   });
 
-  it('accetta i tre ruoli con email vuote', async () => {
+  it('accetta i tre ruoli con email e id vuoti', async () => {
     for (const ruolo of ['solo', 'proprietario', 'membro']) {
       const rpc = creaClientMock();
-      rpc.mockResolvedValue({ data: { ruolo, email: [] }, error: null });
-      expect(await statoCasa()).toEqual({ ruolo, email: [] });
+      rpc.mockResolvedValue({ data: { ruolo, email: [], id: [] }, error: null });
+      expect(await statoCasa()).toEqual({ ruolo, email: [], id: [] });
     }
   });
 
+  it('restituisce copie, non gli array del jsonb', async () => {
+    const rpc = creaClientMock();
+    const data = { ruolo: 'membro', email: ['a@b'], id: ['u1'] };
+    rpc.mockResolvedValue({ data, error: null });
+
+    const stato = await statoCasa();
+
+    expect(stato.email).not.toBe(data.email);
+    expect(stato.id).not.toBe(data.id);
+  });
+
   it.each([
-    ['ruolo sconosciuto', { ruolo: 'ospite', email: [] }],
-    ['email non array', { ruolo: 'solo', email: 'a@b' }],
-    ['email con non-stringhe', { ruolo: 'membro', email: [1] }],
+    ['ruolo sconosciuto', { ruolo: 'ospite', email: [], id: [] }],
+    ['email non array', { ruolo: 'solo', email: 'a@b', id: [] }],
+    ['email con non-stringhe', { ruolo: 'membro', email: [1], id: ['u1'] }],
+    ['senza id (stato_casa vecchio)', { ruolo: 'proprietario', email: ['a@b'] }],
+    ['id non array', { ruolo: 'proprietario', email: ['a@b'], id: 'u1' }],
+    ['id con non-stringhe', { ruolo: 'proprietario', email: ['a@b'], id: [1] }],
+    // Accoppiati per indice: con lunghezze diverse TOGLI colpirebbe la persona sbagliata.
+    ['id più corti delle email', { ruolo: 'proprietario', email: ['a@b', 'c@d'], id: ['u1'] }],
+    ['id più lunghi delle email', { ruolo: 'proprietario', email: ['a@b'], id: ['u1', 'u2'] }],
     ['null', null],
     ['stringa', 'solo'],
   ])('forma non valida (%s) → errore', async (_, data) => {

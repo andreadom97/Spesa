@@ -36,7 +36,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 import { leggiImpostazioni, salvaImpostazioni, leggiSlotDefs, salvaSlotDefs } from '@/data/impostazioni';
-import { statoCasa, creaInvito, entraInCasa, esciDallaCasa } from '@/data/casa';
+import { statoCasa, creaInvito, entraInCasa, esciDallaCasa, rimuoviMembro } from '@/data/casa';
 import { lunediDi } from '@/domain/date';
 import Impostazioni from '../page';
 
@@ -61,7 +61,7 @@ function mockDati(overrides?: { porzioni?: number; pasti?: MealSlotDef[] }) {
   vi.mocked(salvaImpostazioni).mockResolvedValue(undefined);
   vi.mocked(salvaSlotDefs).mockResolvedValue(undefined);
   // Da solo per default: la scheda CASA c'è ma non tocca i test sui pasti.
-  vi.mocked(statoCasa).mockResolvedValue({ ruolo: 'solo', email: [] });
+  vi.mocked(statoCasa).mockResolvedValue({ ruolo: 'solo', email: [], id: [] });
 }
 
 describe('Impostazioni', () => {
@@ -501,7 +501,7 @@ describe('Casa', () => {
 
   it('da proprietario: elenca le email dei membri e offre un altro codice, senza ESCI', async () => {
     mockDati();
-    vi.mocked(statoCasa).mockResolvedValue({ ruolo: 'proprietario', email: ['a@b.it', 'c@d.it'] });
+    vi.mocked(statoCasa).mockResolvedValue({ ruolo: 'proprietario', email: ['a@b.it', 'c@d.it'], id: ['id-1', 'id-2'] });
     render(<Impostazioni />);
 
     expect(await screen.findByText('La tua casa')).toBeInTheDocument();
@@ -513,9 +513,111 @@ describe('Casa', () => {
     expect(screen.queryByLabelText('Ho un codice')).not.toBeInTheDocument();
   });
 
+  it('da proprietario: TOGLI chiede conferma al primo tocco, al secondo toglie per id e rilegge la casa', async () => {
+    mockDati();
+    vi.mocked(statoCasa)
+      .mockResolvedValueOnce({ ruolo: 'proprietario', email: ['a@b.it', 'c@d.it'], id: ['id-1', 'id-2'] })
+      // La rilettura dopo la rimozione: resta il secondo.
+      .mockResolvedValueOnce({ ruolo: 'proprietario', email: ['c@d.it'], id: ['id-2'] });
+    vi.mocked(rimuoviMembro).mockResolvedValue(undefined);
+    render(<Impostazioni />);
+
+    await screen.findByText('a@b.it');
+    const togli = screen.getAllByRole('button', { name: 'TOGLI' });
+    expect(togli).toHaveLength(2);
+
+    fireEvent.click(togli[0]);
+    expect(screen.getByRole('button', { name: 'SICURO?' })).toBeInTheDocument();
+    expect(rimuoviMembro).not.toHaveBeenCalled();
+    // L'altro TOGLI non si è armato.
+    expect(screen.getAllByRole('button', { name: 'TOGLI' })).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'SICURO?' }));
+
+    // L'id, non l'email: accoppiati per indice da stato_casa.
+    await waitFor(() => expect(rimuoviMembro).toHaveBeenCalledWith('id-1'));
+    await waitFor(() => expect(screen.queryByText('a@b.it')).not.toBeInTheDocument());
+    expect(statoCasa).toHaveBeenCalledTimes(2);
+    expect(screen.getByText('c@d.it')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'TOGLI' })).toHaveLength(1);
+    expect(screen.getByText('La tua casa')).toBeInTheDocument();
+    // Nessun reload: l'id di chi chiama non è cambiato.
+    expect(assign).not.toHaveBeenCalled();
+  });
+
+  it('da proprietario: tolto l’ultimo membro la scheda torna allo stato da solo', async () => {
+    mockDati();
+    vi.mocked(statoCasa)
+      .mockResolvedValueOnce({ ruolo: 'proprietario', email: ['a@b.it'], id: ['id-1'] })
+      .mockResolvedValueOnce({ ruolo: 'solo', email: [], id: [] });
+    vi.mocked(rimuoviMembro).mockResolvedValue(undefined);
+    render(<Impostazioni />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'TOGLI' }));
+    fireEvent.click(screen.getByRole('button', { name: 'SICURO?' }));
+
+    expect(await screen.findByText('Fai la spesa con qualcuno?')).toBeInTheDocument();
+    expect(screen.queryByText('La tua casa')).not.toBeInTheDocument();
+    expect(screen.queryByText('a@b.it')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Ho un codice')).toBeInTheDocument();
+  });
+
+  it('da proprietario: TOGLI armato, un tap fuori disarma senza togliere', async () => {
+    mockDati();
+    vi.mocked(statoCasa).mockResolvedValue({ ruolo: 'proprietario', email: ['a@b.it'], id: ['id-1'] });
+    render(<Impostazioni />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'TOGLI' }));
+    expect(screen.getByRole('button', { name: 'SICURO?' })).toBeInTheDocument();
+
+    fireEvent.click(document.body);
+
+    expect(screen.getByRole('button', { name: 'TOGLI' })).toBeInTheDocument();
+    expect(rimuoviMembro).not.toHaveBeenCalled();
+  });
+
+  it('se togliere fallisce lo dice e il membro resta in elenco', async () => {
+    mockDati();
+    vi.mocked(statoCasa).mockResolvedValue({ ruolo: 'proprietario', email: ['a@b.it', 'c@d.it'], id: ['id-1', 'id-2'] });
+    vi.mocked(rimuoviMembro).mockRejectedValue(new Error('nessun membro con questo id nella tua casa'));
+    const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+    render(<Impostazioni />);
+
+    await screen.findByText('a@b.it');
+    fireEvent.click(screen.getAllByRole('button', { name: 'TOGLI' })[0]);
+    fireEvent.click(screen.getByRole('button', { name: 'SICURO?' }));
+
+    expect(await screen.findByText('Non siamo riusciti a togliere. Riprova.')).toBeInTheDocument();
+    expect(screen.getByText('a@b.it')).toBeInTheDocument();
+    expect(screen.getByText('c@d.it')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'TOGLI' })).toHaveLength(2);
+    // Nessuna rilettura: la scheda non è cambiata.
+    expect(statoCasa).toHaveBeenCalledTimes(1);
+    errore.mockRestore();
+  });
+
+  it('se la rilettura dopo TOGLI fallisce la riga sparisce comunque, senza dire che non siamo riusciti', async () => {
+    mockDati();
+    vi.mocked(statoCasa)
+      .mockResolvedValueOnce({ ruolo: 'proprietario', email: ['a@b.it', 'c@d.it'], id: ['id-1', 'id-2'] })
+      .mockRejectedValueOnce(new Error('rete'));
+    vi.mocked(rimuoviMembro).mockResolvedValue(undefined);
+    const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+    render(<Impostazioni />);
+
+    await screen.findByText('a@b.it');
+    fireEvent.click(screen.getAllByRole('button', { name: 'TOGLI' })[0]);
+    fireEvent.click(screen.getByRole('button', { name: 'SICURO?' }));
+
+    await waitFor(() => expect(screen.queryByText('a@b.it')).not.toBeInTheDocument());
+    expect(screen.getByText('c@d.it')).toBeInTheDocument();
+    expect(screen.queryByText('Non siamo riusciti a togliere. Riprova.')).not.toBeInTheDocument();
+    errore.mockRestore();
+  });
+
   it('da membro: ESCI DALLA CASA chiede conferma al primo tocco ed esce al secondo', async () => {
     mockDati();
-    vi.mocked(statoCasa).mockResolvedValue({ ruolo: 'membro', email: ['a@b.it'] });
+    vi.mocked(statoCasa).mockResolvedValue({ ruolo: 'membro', email: ['a@b.it'], id: ['id-p'] });
     vi.mocked(esciDallaCasa).mockResolvedValue(undefined);
     render(<Impostazioni />);
 
@@ -533,7 +635,7 @@ describe('Casa', () => {
 
   it('da membro: ESCI armato, un tap fuori disarma senza uscire', async () => {
     mockDati();
-    vi.mocked(statoCasa).mockResolvedValue({ ruolo: 'membro', email: ['a@b.it'] });
+    vi.mocked(statoCasa).mockResolvedValue({ ruolo: 'membro', email: ['a@b.it'], id: ['id-p'] });
     render(<Impostazioni />);
 
     fireEvent.click(await screen.findByRole('button', { name: 'ESCI DALLA CASA' }));
@@ -547,7 +649,7 @@ describe('Casa', () => {
 
   it('se uscire fallisce lo dice e resta nella casa', async () => {
     mockDati();
-    vi.mocked(statoCasa).mockResolvedValue({ ruolo: 'membro', email: ['a@b.it'] });
+    vi.mocked(statoCasa).mockResolvedValue({ ruolo: 'membro', email: ['a@b.it'], id: ['id-p'] });
     vi.mocked(esciDallaCasa).mockRejectedValue(new Error('rete'));
     render(<Impostazioni />);
 

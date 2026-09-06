@@ -6,6 +6,12 @@ export interface StatoCasa {
   ruolo: RuoloCasa;
   /** Per un proprietario le email dei membri, per un membro quella del proprietario, per chi è solo nessuna. */
   email: string[];
+  /**
+   * Gli id utente accoppiati per indice a `email`: per un proprietario quelli
+   * dei membri (in ordine di ingresso), per un membro quello del proprietario.
+   * È l'id che `rimuoviMembro` vuole.
+   */
+  id: string[];
 }
 
 const RUOLI: ReadonlyArray<RuoloCasa> = ['solo', 'proprietario', 'membro'];
@@ -56,23 +62,27 @@ export function dimenticaIdCasa(): void {
 
 function eStatoCasa(v: unknown): v is StatoCasa {
   if (typeof v !== 'object' || v === null) return false;
-  const { ruolo, email } = v as Record<string, unknown>;
+  const { ruolo, email, id } = v as Record<string, unknown>;
   return (RUOLI as ReadonlyArray<unknown>).includes(ruolo)
     && Array.isArray(email)
-    && email.every((e) => typeof e === 'string');
+    && email.every((e) => typeof e === 'string')
+    && Array.isArray(id)
+    && id.every((i) => typeof i === 'string')
+    // Accoppiati per indice: una lunghezza diversa farebbe togliere la persona sbagliata.
+    && id.length === email.length;
 }
 
 /**
- * Il ruolo di chi è loggato e le email che gli spettano (`stato_casa()`
- * restituisce jsonb). La forma si valida qui, perché da un jsonb TypeScript
- * non garantisce niente e la scheda CASA si ramifica sul ruolo: meglio un
- * errore chiaro che una scheda vuota.
+ * Il ruolo di chi è loggato, le email che gli spettano e gli id accoppiati
+ * (`stato_casa()` restituisce jsonb). La forma si valida qui, perché da un
+ * jsonb TypeScript non garantisce niente e la scheda CASA si ramifica sul
+ * ruolo: meglio un errore chiaro che una scheda vuota.
  */
 export async function statoCasa(): Promise<StatoCasa> {
   const { data, error } = await client().rpc('stato_casa');
   if (error) throw error;
   if (!eStatoCasa(data)) throw new Error('stato della casa non valido');
-  return { ruolo: data.ruolo, email: [...data.email] };
+  return { ruolo: data.ruolo, email: [...data.email], id: [...data.id] };
 }
 
 /** Un codice di sei caratteri valido 24 ore; sostituisce l'invito precedente del proprietario. */
