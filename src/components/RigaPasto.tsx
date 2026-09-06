@@ -21,6 +21,18 @@ interface Props {
    * anche a riga spenta — solo attenuate come il resto della riga.
    */
   sottotitolo?: string | null;
+  /**
+   * Avvisi di scadenza del fresco (spec scadenza-fresco §3.1), una riga di
+   * testo per elemento, sotto il sottotitolo e sopra i pallini delle aree:
+   * "Pollo in casa: scade martedì, prima di questo pasto". È il residuo
+   * derivato che diventa visibile *mentre* la settimana si svolge, non solo
+   * a lista generata: la casa oggi ha l'ingrediente, ma il giorno di questo
+   * pasto il modello non lo conterà più. Mostrati solo a riga accesa — un
+   * pasto spento non consuma, quindi non c'è nulla da avvisare. Vuoto o
+   * assente = nessun elemento nel DOM. Il testo può andare a capo: a
+   * differenza del sottotitolo, un avviso troncato non dice niente.
+   */
+  avvisi?: string[];
   /** Zona sinistra 60px: accende/spegne. Un tap solo, sempre disponibile. */
   onToggleStato: () => void;
   /** Zona centrale: apre il dettaglio del piatto. Assente (nessun onClick) se non c'è un piatto da aprire. */
@@ -51,7 +63,7 @@ const ETICHETTA_SPENTO: Record<Exclude<StatoSlot, 'casa'>, string> = {
  * contorno l'icona sparisce sul fondo chiaro — è l'errore già commesso una
  * volta, non va ripetuto.
  */
-export function RigaPasto({ nomePasto, stato, nomePiatto, aree, sottotitolo, onToggleStato, onApriPiatto, hrefScegli, onApriAzioni }: Props) {
+export function RigaPasto({ nomePasto, stato, nomePiatto, aree, sottotitolo, avvisi, onToggleStato, onApriPiatto, hrefScegli, onApriAzioni }: Props) {
   const aCasa = stato === 'casa';
   return (
     <div
@@ -155,6 +167,22 @@ export function RigaPasto({ nomePasto, stato, nomePiatto, aree, sottotitolo, onT
             {sottotitolo}
           </span>
         )}
+        {aCasa && avvisi?.map((avviso) => (
+          <span
+            key={avviso}
+            data-avviso=""
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              lineHeight: 1.35,
+              textAlign: 'left',
+              maxWidth: '100%',
+              color: 'var(--ink-2)',
+            }}
+          >
+            {avviso}
+          </span>
+        ))}
         {aCasa && aree.length > 0 && (
           <div style={{ display: 'flex', gap: 4 }}>
             {aree.map((a) => (

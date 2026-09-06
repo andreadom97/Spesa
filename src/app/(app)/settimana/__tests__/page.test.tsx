@@ -27,6 +27,9 @@ vi.mock('@/data/lista', () => ({
 vi.mock('@/data/pronti', () => ({
   leggiPronti: vi.fn(),
 }));
+vi.mock('@/data/dispensa', () => ({
+  leggiDispensa: vi.fn(),
+}));
 
 const push = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -44,7 +47,9 @@ import { leggiRepertorio, leggiIngredienti } from '@/data/repertorio';
 import { leggiSlotDefs, leggiImpostazioni } from '@/data/impostazioni';
 import { generaListe } from '@/data/lista';
 import { leggiPronti } from '@/data/pronti';
+import { leggiDispensa } from '@/data/dispensa';
 import { sommaGiorni } from '@/domain/date';
+import { etichettaScadenza } from '@/domain/scadenza';
 import Settimana from '../page';
 
 // "Oggi" reale: evita di mockare l'orologio di sistema, che confligge con i
@@ -54,6 +59,14 @@ const OGGI = new Date().toISOString().slice(0, 10);
 const LUNEDI = lunediDi(OGGI);
 const GIORNI = giorniDellaSettimana(LUNEDI);
 const INDICE_OGGI = GIORNI.indexOf(OGGI);
+
+// La dispensa è una lettura tollerante della Settimana (spec scadenza-fresco
+// §3.1): di default vuota, così i test che montano i mock a mano — senza
+// mockCarico — non cambiano. vi.clearAllMocks nei beforeEach interni azzera
+// solo la storia delle chiamate, non questa implementazione.
+beforeEach(() => {
+  vi.mocked(leggiDispensa).mockResolvedValue([]);
+});
 
 const ASSENZE = [false, false, false, false, false, false, false];
 // Solo tre meal_slot_def: la trappola dell'artboard ne ha quattro cablati
@@ -142,6 +155,7 @@ function mockCarico(settimana: SettimanaCorrente = SETTIMANA_BASE) {
     cicloOrigine: null,
   });
   vi.mocked(leggiPronti).mockResolvedValue([]);
+  vi.mocked(leggiDispensa).mockResolvedValue([]);
 }
 
 describe('Settimana (piano alimentare)', () => {
@@ -694,5 +708,93 @@ describe('settimana precedente', () => {
     fireEvent.click(bottoneRitorno);
 
     expect(await screen.findByText('Yogurt e frutta')).toBeInTheDocument();
+  });
+});
+
+describe('Avviso di scadenza del fresco', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // Il pollo (macelleria, soglia tre giorni) è in casa e scade fra
+  // `GIORNI_SCADENZA` giorni; la cena lo usa tutti i giorni. Il primo giorno
+  // dopo la scadenza è quello da avvisare. Con "oggi" reale la settimana può
+  // essere quasi finita: la scadenza si accorcia quanto serve perché il
+  // giorno dopo esista ancora (fino a "scade oggi" e avviso su domani); la
+  // domenica non ha nessun giorno dopo, e il test salta.
+  const GIORNI_SCADENZA = Math.min(3, 5 - INDICE_OGGI);
+  const SCADENZA = sommaGiorni(OGGI, GIORNI_SCADENZA);
+  const ULTIMO_ACQUISTO = sommaGiorni(SCADENZA, -3);
+  const GIORNO_DOPO = GIORNI[INDICE_OGGI + GIORNI_SCADENZA + 1];
+
+  const POLLO_IN_CASA = [{
+    ingredientId: ING_POLLO.id, residuo: 500, ultimoAcquisto: ULTIMO_ACQUISTO,
+    giorniStimati: 90, congelato: false, ultimoCheck: null,
+  }];
+
+  it.skipIf(INDICE_OGGI === 6)('il pasto dopo la scadenza mostra "Pollo in casa: scade …, prima di questo pasto"', async () => {
+    mockCarico();
+    vi.mocked(leggiDispensa).mockResolvedValue(POLLO_IN_CASA);
+    const { container } = render(<Settimana />);
+    await screen.findByText('Yogurt e frutta');
+
+    fireEvent.click(container.querySelector(`[data-giorno="${GIORNO_DOPO}"]`) as HTMLElement);
+
+    expect(await screen.findByText(
+      `Pollo in casa: scade ${etichettaScadenza(SCADENZA, OGGI)}, prima di questo pasto`,
+    )).toBeInTheDocument();
+    // Un avviso solo, sulla cena: la colazione non usa il pollo.
+    expect(screen.getAllByText(/in casa: scade/)).toHaveLength(1);
+  });
+
+  it('il pasto di oggi è entro la scadenza: nessun avviso', async () => {
+    mockCarico();
+    vi.mocked(leggiDispensa).mockResolvedValue(POLLO_IN_CASA);
+    render(<Settimana />);
+    await screen.findByText('Yogurt e frutta');
+
+    expect(screen.getByText('Pollo e riso')).toBeInTheDocument();
+    expect(screen.queryByText(/in casa: scade/)).not.toBeInTheDocument();
+  });
+
+  it('leggiDispensa che fallisce: la schermata resta usabile, senza avvisi', async () => {
+    mockCarico();
+    vi.mocked(leggiDispensa).mockRejectedValue(new Error('rete assente'));
+    render(<Settimana />);
+
+    expect(await screen.findByText('Yogurt e frutta')).toBeInTheDocument();
+    expect(screen.getByText('Pollo e riso')).toBeInTheDocument();
+    expect(screen.queryByText(/in casa: scade/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Non riusciamo a caricare la settimana. Riprova più tardi.')).not.toBeInTheDocument();
+  });
+
+  it('nella vista precedente nessun avviso, anche se la dispensa ha una scadenza', async () => {
+    const LUNEDI_PREC = sommaGiorni(LUNEDI, -7);
+    const slotsPrecedenti: MealSlot[] = giorniDellaSettimana(LUNEDI_PREC).flatMap((data) => [
+      {
+        id: `${data}:sd-1`, data, slotDefId: 'sd-1', stato: 'casa' as const,
+        dishId: DISH_COLAZIONE.id, fonteStato: 'default' as const, scelte: {},
+        porzioniPreparate: 0, daPronti: false,
+      },
+      {
+        id: `${data}:sd-3`, data, slotDefId: 'sd-3', stato: 'casa' as const,
+        dishId: DISH_CENA.id, fonteStato: 'default' as const, scelte: {},
+        porzioniPreparate: 0, daPronti: false,
+      },
+    ]);
+    mockCarico({ id: 'w-1', dataInizio: LUNEDI, stato: 'confermata', slots: buildSlots() });
+    vi.mocked(leggiSettimana).mockResolvedValue({ id: 'w-0', dataInizio: LUNEDI_PREC, stato: 'chiusa', slots: slotsPrecedenti });
+    // Pollo comprato oggi: scade fra tre giorni, ma il passato non si avvisa.
+    vi.mocked(leggiDispensa).mockResolvedValue([{ ...POLLO_IN_CASA[0], ultimoAcquisto: OGGI }]);
+
+    render(<Settimana />);
+    await screen.findByText('Yogurt e frutta');
+
+    fireEvent.click(screen.getByRole('button', { name: '‹ SETTIMANA SCORSA' }));
+    await screen.findByRole('button', { name: 'SETTIMANA CORRENTE ›' });
+
+    // La precedente apre sulla domenica: la cena di quel giorno è a casa col pollo.
+    expect(await screen.findByText('Pollo e riso')).toBeInTheDocument();
+    expect(screen.queryByText(/in casa: scade/)).not.toBeInTheDocument();
   });
 });

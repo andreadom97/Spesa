@@ -2,15 +2,17 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import type { AreaId, Dish, Ingredient, LottoPronto, MealSlot, MealSlotDef, StatoSlot } from '@/domain/types';
+import type { AreaId, Dish, Ingredient, LottoPronto, MealSlot, MealSlotDef, PantryState, StatoSlot } from '@/domain/types';
 import { applicaStato } from '@/domain/week-shape';
 import { descriviScelte } from '@/domain/opzioni';
 import { giorniDellaSettimana, lunediDi, sommaGiorni } from '@/domain/date';
 import { porzioniUtilizzabili } from '@/domain/pronti';
+import { avvisiScadenza, etichettaScadenza, type AvvisoScadenza } from '@/domain/scadenza';
 import { leggiSettimanaCorrente, leggiSettimana, creaSettimana, aggiornaSlot, confermaSettimana } from '@/data/settimana';
 import { leggiRepertorio, leggiIngredienti } from '@/data/repertorio';
 import { leggiSlotDefs, leggiImpostazioni } from '@/data/impostazioni';
 import { leggiPronti } from '@/data/pronti';
+import { leggiDispensa } from '@/data/dispensa';
 import { generaListe } from '@/data/lista';
 import { Testata } from '@/components/Testata';
 import { StrisciaGiorni } from '@/components/StrisciaGiorni';
@@ -23,6 +25,20 @@ function oggiIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+/**
+ * La dispensa serve solo agli avvisi di scadenza del fresco (spec
+ * scadenza-fresco §3.1): un di più. Se la lettura fallisce, nessun avviso e
+ * la Settimana resta usabile — come fa la Dispensa col non ricomprato.
+ */
+async function leggiDispensaSenzaBloccare(): Promise<PantryState[]> {
+  try {
+    return await leggiDispensa();
+  } catch (e) {
+    console.error('settimana: lettura della dispensa fallita.', e);
+    return [];
+  }
+}
+
 interface Repertorio {
   settimana: {
     id: string;
@@ -33,6 +49,7 @@ interface Repertorio {
   slotDefs: MealSlotDef[];
   piatti: Dish[];
   ingredienti: Ingredient[];
+  dispensa: PantryState[];
   ordineAree: AreaId[];
 }
 
@@ -125,12 +142,13 @@ export default function Settimana() {
           if (!corrente) throw new Error('Settimana non disponibile dopo la creazione.');
         }
 
-        const [slotDefs, piatti, ingredienti, impostazioni, lottiCaricati] = await Promise.all([
+        const [slotDefs, piatti, ingredienti, impostazioni, lottiCaricati, dispensa] = await Promise.all([
           leggiSlotDefs(),
           leggiRepertorio(),
           leggiIngredienti(),
           leggiImpostazioni(),
           leggiPronti(),
+          leggiDispensaSenzaBloccare(),
         ]);
         if (!vivo) return;
 
@@ -139,6 +157,7 @@ export default function Settimana() {
           slotDefs,
           piatti,
           ingredienti,
+          dispensa,
           ordineAree: impostazioni.ordineAree,
         });
         setLotti(lottiCaricati);
@@ -212,10 +231,26 @@ export default function Settimana() {
     return <Cornice />;
   }
 
-  const { settimana, slotDefs, piatti, ingredienti, ordineAree } = dati;
+  const { settimana, slotDefs, piatti, ingredienti, dispensa, ordineAree } = dati;
   const giorni = giorniDellaSettimana(settimana.dataInizio);
   const dataSelezionata = giorni[selezionato];
   const oggi = oggiIso();
+
+  // Avvisi di scadenza del fresco (spec scadenza-fresco §1.2, §3.1): un
+  // residuo che oggi conta ma che, per il modello, non ci sarà più il giorno
+  // di un pasto che lo usa. Una volta per render, non per riga. Solo nella
+  // vista corrente: il passato non si avvisa. Per un giorno già passato la
+  // lista è vuota per costruzione (avvisiScadenza guarda solo data ≥ oggi).
+  const avvisi: AvvisoScadenza[] = vista === 'corrente'
+    ? avvisiScadenza({ slots: settimana.slots, dishes: piatti, ingredients: ingredienti, pantry: dispensa, oggi })
+    : [];
+
+  /** Le righe di avviso per il pasto (dataSelezionata, slotDefId): copy esatto della spec §3.1. */
+  function avvisiDelPasto(slotDefId: string): string[] {
+    return avvisi
+      .filter((a) => a.pastiDopo.some((p) => p.data === dataSelezionata && p.slotDefId === slotDefId))
+      .map((a) => `${a.nome} in casa: scade ${etichettaScadenza(a.scadenza, oggi)}, prima di questo pasto`);
+  }
 
   const piattiPerId = new Map(piatti.map((p) => [p.id, p]));
   const areaPerIngrediente = new Map(ingredienti.map((i) => [i.id, i.area]));
@@ -511,6 +546,7 @@ export default function Settimana() {
                   // prescindere dallo stato (fattoreConsumo, spec §6).
                   : [slot.porzioniPreparate > 0 ? `+${slot.porzioniPreparate} ${slot.porzioniPreparate === 1 ? 'porzione' : 'porzioni'}` : null]
                 ).filter(Boolean).join(' · ') || null}
+                avvisi={avvisiDelPasto(def.id)}
                 onToggleStato={() => toggleStato(slot)}
                 onApriPiatto={piatto ? () => apriPiatto(piatto.id) : undefined}
                 hrefScegli={`/settimana/${dataSelezionata}/${def.id}/scegli`}
