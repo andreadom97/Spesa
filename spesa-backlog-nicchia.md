@@ -51,7 +51,8 @@ le conclusioni che contano sono riportate qui).
 
 | Avviso di scadenza del fresco e conflitto alla sostituzione (P3) | **Consegnato il 06/09**; da provare in locale con un deperibile in residuo | Spec [2026-09-06-scadenza-fresco-design.md](docs/superpowers/specs/2026-09-06-scadenza-fresco-design.md) e piano omonimo; `src/domain/scadenza.ts`, `src/domain/conflitto.ts`, righe in Settimana, Dispensa e Scegli; README, sezione "Il fresco che scade" |
 | Ingresso "i miei piatti" e onboarding multi-utente (P4 e P5) | **Consegnati il 06/09**; da provare con un account nuovo | Spec [2026-09-06-due-porte-design.md](docs/superpowers/specs/2026-09-06-due-porte-design.md) e piano omonimo; `src/data/primo-avvio.ts`, `src/components/PrimoAvvio.tsx`, `src/domain/ingredienti-base.ts`, `/piatti/veloce`, le due porte in Piatti, stati vuoti di Lista e Settimana; README, sezione "Le due porte e il primo avvio" |
-| Casa condivisa (P6, salvo "per quante persone") | **Consegnata il 06/09**; da provare con due account dopo la migrazione 0012 | Spec [2026-09-06-casa-condivisa-design.md](docs/superpowers/specs/2026-09-06-casa-condivisa-design.md) e piano omonimo; migrazione 0012, `src/data/casa.ts`, `idCasa()` in tutto il data layer, sezione CASA in Impostazioni, Lista che si rilegge al ritorno; README, sezione "La casa condivisa". Il "per quante persone" è una decisione aperta (spec §6) |
+| Casa condivisa e "per quante persone" (P6) | **Consegnata il 06/09** e rivista (correttezza e sicurezza) con le correzioni; da provare con due account dopo la migrazione 0012 | Spec [2026-09-06-casa-condivisa-design.md](docs/superpowers/specs/2026-09-06-casa-condivisa-design.md) e piano omonimo; migrazione 0012, `src/data/casa.ts`, `idCasa()` in tutto il data layer, sezione CASA in Impostazioni, Lista che si rilegge al ritorno; README, sezione "La casa condivisa". Il "per quante persone" è tornato a livello di casa con l'assunzione dichiarata (spec §6) |
+| Lettura offline della lista (P7) | **Consegnata il 06/09**; da provare col telefono in aereo | Spec [2026-09-06-lista-offline-design.md](docs/superpowers/specs/2026-09-06-lista-offline-design.md) e piano omonimo; `src/offline/lista-cache.ts`, ramo offline in Lista; README, sezione "La lista offline" |
 | CI su GitHub Actions | Attiva dal 06/09: test, build, tsc, lint su push a `main` e su ogni pull request | `.github/workflows/ci.yml` |
 
 ## Priorità
@@ -65,14 +66,14 @@ le conclusioni che contano sono riportate qui).
 | ~~P4~~ ✓ 06/09 | **Ingresso "i miei piatti" per chi non ha una dieta.** Onboarding a due porte: "ho una dieta" (import) e "cucino sempre le stesse cose" (inserimento rapido di 8–12 piatti con ingredienti e porzioni, il planner li ruota). Zero claim di salute in copy e store. | Copre il gap di contenuto senza generare piani (vincolo Cass. 20281/2017) e senza il repertorio di 300 ricette di EasyPlan. Il planner ruota già un repertorio su più settimane |
 | ~~P5~~ ✓ 06/09 | **Onboarding multi-utente.** Seed automatico dei 71 ingredienti classificati al primo accesso, empty state collegati alle due porte di P4. | Prerequisito di qualunque test con persone diverse da Andrea. Era P6: sale perché P4 non ha senso senza |
 | ~~P6~~ ✓ 06/09 (casa) | **Lista condivisa e "per quante persone".** Un secondo account sullo stesso piano, con la lista e la spunta in comune; fattore porzioni per casa. | Il segmento uno-due persone è metà coppie. Bring! e Listonic esistono solo per questo. Va prima dello store iOS: un prodotto per una persona sola non si consiglia al partner |
-| **P7** | **Lettura offline della lista.** | La promessa si consuma in corsia, spesso senza segnale. Il guscio c'è, la garanzia no |
+| ~~P7~~ ✓ 06/09 | **Lettura offline della lista.** | La promessa si consuma in corsia, spesso senza segnale. Il guscio c'è, la garanzia no |
 | **P8** | **Scan codice a barre → formato confezione reale via Open Food Facts.** Alla chiusura della spesa si scansiona il prodotto: la quantità reale sostituisce quella assunta. | Da residuo stimato a residuo vero. Copertura italiana di OFF da verificare. Scende perché rende più preciso un prodotto che prima deve diventare leggibile (P2, P3) |
 | **P9** | **Play Store via TWA, poi iOS.** | Discovery: la nicchia cerca sullo store, e EasyPlan e Melarossa sono su entrambi. Scende in coda perché la distribuzione a pagamento non chiude senza P2 e P6 a monte; iOS resta rimandato ma non escluso |
 
-P0, P1 e P2 sono consegnati il 05/09, P3, P4, P5 e P6 (la casa; il "per quante persone"
-è una decisione aperta) il 06/09 (righe corrispondenti in "Cosa è già stato fatto"; la
-chiave su Vercel e le migrazioni 0010, 0011 e 0012 sono nelle checklist locali dei
-piani). **La prossima priorità aperta è P7**, la lettura offline della lista.
+P0, P1 e P2 sono consegnati il 05/09; P3, P4, P5, P6 (la casa, compreso "per quante
+persone") e P7 il 06/09 (righe corrispondenti in "Cosa è già stato fatto"; la chiave su
+Vercel e le migrazioni 0010, 0011 e 0012 sono nelle checklist locali dei piani). **La
+prossima priorità aperta è P8**, lo scan del codice a barre.
 
 ## Modello per l'import: Sonnet o Opus, e quanto costa
 

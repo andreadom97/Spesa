@@ -8,7 +8,7 @@ a un eventuale prodotto.
 
 **Stato: Fase 1 completa e provata sul campo il 28/08/2026.** Dominio puro
 (`list-builder`, `pantry`, `planner`, `ciclo`, `week-shape`, `chiusura`, `opzioni`,
-`confezioni`), 1003 test automatici verdi, schema su un progetto Supabase vero,
+`confezioni`), 1063 test automatici verdi, schema su un progetto Supabase vero,
 quindici schermate, PWA installabile con guscio offline sulla lista, in produzione
 su Vercel.
 
@@ -185,8 +185,8 @@ già fatta, correzione manuale del residuo, ricerca fra 70 ingredienti.
 
 Classe `stima` e il controllo staple a 90 giorni (serve far invecchiare una data di tre
 mesi), decadimento del fresco, congelatore e i nuovi avvisi di scadenza su dati veri
-(nessun deperibile ha ancora un residuo), riordino delle aree, lettura offline — che **non funziona** ed è un traguardo
-a sé, vedi sotto.
+(nessun deperibile ha ancora un residuo), riordino delle aree, la lista offline su un
+telefono vero (sezione "La lista offline").
 
 ## Meal prepping
 
@@ -362,6 +362,7 @@ porzione; spec §6). Spec:
 | [`docs/superpowers/specs/2026-08-26-spesa-design.md`](docs/superpowers/specs/2026-08-26-spesa-design.md) | **La spec.** Modello dati, componenti, fasi, e tutte le decisioni prese durante il design con il loro perché |
 | [`docs/superpowers/specs/DESIGN-SYSTEM.md`](docs/superpowers/specs/DESIGN-SYSTEM.md) | Colori, tipografia, forme, regole di stato — valori estratti dalle schermate reali |
 | [`docs/superpowers/specs/2026-09-05-import-in-produzione-design.md`](docs/superpowers/specs/2026-09-05-import-in-produzione-design.md) | Import in produzione: estrazione a pagine in parallelo, tetto per utente, eval che decide il modello, checklist locale |
+| [`docs/superpowers/specs/2026-09-06-lista-offline-design.md`](docs/superpowers/specs/2026-09-06-lista-offline-design.md) | La lista offline: l'istantanea dell'ultima lista letta, la regola "la rete decide, la copia ripara", i limiti |
 | [`docs/superpowers/specs/2026-09-06-casa-condivisa-design.md`](docs/superpowers/specs/2026-09-06-casa-condivisa-design.md) | La casa condivisa: `casa_id()`, policy rigenerate, inviti con codice (otto caratteri, un'ora), la sezione CASA, il moltiplicatore "per quante persone" a livello di casa, i poteri del membro |
 | [`docs/superpowers/specs/2026-09-06-due-porte-design.md`](docs/superpowers/specs/2026-09-06-due-porte-design.md) | Le due porte e il primo avvio: semina automatica, stato vuoto di Piatti, inserimento veloce, stati vuoti collegati |
 | [`docs/superpowers/specs/2026-09-06-scadenza-fresco-design.md`](docs/superpowers/specs/2026-09-06-scadenza-fresco-design.md) | Il fresco che scade: la scadenza del residuo, gli avvisi in Settimana e Dispensa, il conflitto alla sostituzione in Scegli, i limiti dichiarati |
@@ -470,15 +471,23 @@ Poi, nel progetto Vercel:
 L'URL di produzione è <https://spesa-zeta.vercel.app>; quello autorizzato in Supabase è
 `https://spesa-zeta.vercel.app/auth/callback`.
 
-### Limite noto: la lista non è ancora leggibile offline
+### La lista offline (06/09/2026)
 
 Il guscio dell'app (l'HTML/JS/CSS) è in cache dal service worker e si apre anche senza
-rete. I **dati** della lista no: arrivano da Supabase a ogni caricamento. Riaprire l'app
-in corsia, senza segnale, mostra la schermata ma non la lista della spesa — non uno
-stato di errore chiaro, semplicemente niente da vedere. Le spunte fatte offline si
-accodano e si sincronizzano al ritorno della rete (questo funziona); è la *lettura*
-della lista a non funzionare offline. Non è un difetto da correggere in questa fase:
-è un traguardo distinto, deliberatamente fuori dalla Fase 1.
+rete; i **dati** arrivano da Supabase a ogni caricamento. Dal 06/09 la Lista tiene in
+`localStorage` un'istantanea dell'ultima lista letta con rete (`src/offline/lista-cache.ts`,
+la lista come letta dal server, senza la coda delle spunte, legata alla casa): se la
+lettura fallisce e l'istantanea c'è, la mostra con la coda applicata sopra e una riga che
+dice `Sei offline: questa è la lista di {settimana} salvata l'ultima volta che l'hai
+aperta. Le spunte si sincronizzano appena torna la rete.` Le spunte funzionano come
+sempre; al ritorno della rete o in primo piano la Lista rilegge, la riga sparisce e
+l'istantanea si aggiorna. Il service worker non cambia: guscio same-origin, mai Supabase.
+
+**Limiti dichiarati** (non bug): offline si vede l'ultima lista *aperta* con rete, non
+l'ultima generata; i controlli staple non si rispondono offline; l'istantanea è per
+dispositivo e per casa e si cancella entrando o uscendo da una casa; a freddo senza rete
+la casa non è verificabile e l'istantanea si mostra comunque. Spec:
+[`docs/superpowers/specs/2026-09-06-lista-offline-design.md`](docs/superpowers/specs/2026-09-06-lista-offline-design.md).
 
 ## Il gate
 

@@ -16,14 +16,14 @@
 ## Task 1: `src/offline/lista-cache.ts` e la Lista
 - Create: `src/offline/lista-cache.ts`, `src/offline/__tests__/lista-cache.test.ts`
 - Modify: `src/app/(app)/lista/page.tsx`, `src/app/(app)/lista/__tests__/page.test.tsx`, `src/data/casa.ts`, `src/data/__tests__/casa.test.ts`
-- [ ] Test del modulo (spec §4), poi il modulo.
-- [ ] Test della Lista (spec §4), poi la pagina (spec §3).
-- [ ] `entraInCasa`/`esciDallaCasa` chiamano `cancellaIstantaneaLista()` (test).
-- [ ] Commit `feat(offline): la Lista si legge senza rete dall'ultima istantanea`.
+- [x] Test del modulo (spec §4), poi il modulo.
+- [x] Test della Lista (spec §4), poi la pagina (spec §3).
+- [x] `entraInCasa`/`esciDallaCasa` chiamano `cancellaIstantaneaLista()` (test).
+- [x] Commit `feat(offline): la Lista si legge senza rete dall'ultima istantanea`.
 
 ## Task 2: Documentazione
-- [ ] README: la sezione "Limite noto: la lista non è ancora leggibile offline" diventa "La lista offline" (cosa si vede, i limiti §5); "Cosa resta non provato" aggiornato; conteggio test. Backlog: P7 consegnato, P8 prossimo. `docs/2026-09-06-ripresa.md`.
-- [ ] Commit `docs: lista offline consegnata`.
+- [x] README: la sezione "Limite noto: la lista non è ancora leggibile offline" diventa "La lista offline" (cosa si vede, i limiti §5); "Cosa resta non provato" aggiornato; conteggio test. Backlog: P7 consegnato, P8 prossimo. `docs/2026-09-06-ripresa.md`.
+- [x] Commit `docs: lista offline consegnata`.
 
 ## Checklist locale per Andrea
 - [ ] Aprire la Lista con rete, mettere il telefono in aereo, riaprire l'app: la lista c'è con la riga "Sei offline"; spuntare due voci; togliere l'aereo: le spunte arrivano e la riga sparisce.
