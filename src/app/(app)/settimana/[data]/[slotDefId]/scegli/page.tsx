@@ -14,7 +14,7 @@ import { coloreArea } from '@/domain/aree';
 import { residuoUtilizzabile } from '@/domain/pantry';
 import { confezioniNecessarie } from '@/domain/confezioni';
 import { convertiInUnitaBase } from '@/domain/unita';
-import { conflittiSostituzione, type ConflittiSostituzioneInput, type ConflittoResiduo } from '@/domain/conflitto';
+import { conflittiSostituzione, type ConflittiSostituzioneInput, type ConflittoResiduo, type VoceListaConflitto } from '@/domain/conflitto';
 import { etichettaScadenza } from '@/domain/scadenza';
 import { formattaQuantita } from '@/domain/risparmio';
 
@@ -37,8 +37,13 @@ interface DatiScegli {
   /** Tutti gli slot della settimana: il fabbisogno degli altri pasti concorre al conflitto. */
   slots: MealSlot[];
   statoSettimana: SettimanaCorrente['stato'];
-  /** Base + top-up, voci e controlli: tutto quello che la lista dice di comprare. Vuoto senza lista (o se la lettura fallisce). */
-  vociLista: { ingredientId: string; quantitaTotale: number }[];
+  /**
+   * Base + top-up, voci e controlli: tutto quello che la lista dice di
+   * comprare, col residuo congelato in ogni riga alla generazione — a
+   * settimana confermata è quello, non la dispensa di oggi, il disponibile
+   * del conflitto. Vuoto senza lista (o se la lettura fallisce).
+   */
+  vociLista: VoceListaConflitto[];
   /** I nomi dei pasti per la coda "e serve anche giovedì (Cena)". */
   slotDefs: MealSlotDef[];
   nomePasto: string;
@@ -347,7 +352,7 @@ export default function ScegliPiatto() {
           ? []
           : [...lista.base, ...lista.topup]
             .flatMap((sezione) => [...sezione.voci, ...sezione.controlli])
-            .map((v) => ({ ingredientId: v.ingredientId, quantitaTotale: v.quantitaTotale }));
+            .map((v) => ({ ingredientId: v.ingredientId, quantitaTotale: v.quantitaTotale, residuo: v.residuo }));
 
         const areaPerIngrediente = new Map(ingredienti.map((i) => [i.id, i.area]));
         const ingredientiPerId = new Map(ingredienti.map((i) => [i.id, i]));

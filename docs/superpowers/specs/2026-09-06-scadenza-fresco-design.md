@@ -26,9 +26,17 @@ piatto sostituito e quello che la casa più la lista coprono.
 
 Un fatto che decide il disegno del conflitto: `allineaTopUp` (chiamata a ogni apertura
 della Lista) aggiunge al top-up **solo gli ingredienti non ancora in lista**. Se una
-sostituzione alza il fabbisogno di un ingrediente già in lista, nessuno lo aggiunge; a
-settimana chiusa lo storno di `aggiornaSlot` addebita il sostituto al residuo e clampa a
-zero, e il mancante sparisce senza traccia. È il buco che l'avviso deve mostrare.
+sostituzione alza il fabbisogno di un ingrediente già in lista, nessuno lo aggiunge; e
+lo storno di `aggiornaSlot` — attivo **da quando la settimana non è più bozza**, cioè a
+`confermata` come a `chiusa` (`src/data/settimana.ts`: esce solo con
+`week.stato === 'bozza'`, altrimenti scrive `meal_slot_storno` e `pantry_state`) —
+addebita il sostituto al residuo e clampa a zero, e il mancante sparisce senza traccia.
+È il buco che l'avviso deve mostrare.
+
+Conseguenza per il conflitto: a settimana `confermata` il residuo vivo in dispensa non è
+più quello su cui la lista ha contato le confezioni — è quel residuo più la somma degli
+storni degli slot già saltati o sostituiti. Il residuo della generazione resta scritto in
+ogni riga di lista (`shopping_list_item.residuo`, `VoceSalvata.residuo`).
 
 ## 1. Le definizioni
 
@@ -70,22 +78,40 @@ In Scegli, per il piatto candidato (con le scelte correnti dei componenti) sullo
   dal piano com'è dopo la sostituzione.
 - **Ingrediente non in lista** (né base né top-up, qualunque origine e spunta) → nessun
   conflitto: `allineaTopUp` lo aggiunge al top-up alla prossima apertura della Lista.
-- **Settimana `confermata`, ingrediente in lista**: disponibile = `residuoUtilizzabile(oggi)`
-  + Σ `quantitaTotale` delle sue voci in lista; fabbisogno dopo = Σ `consumoSlot` su
-  tutti gli slot della settimana con questo slot che monta il candidato (stato,
-  `daPronti` e `porzioniPreparate` dello slot invariati). **mancante** = fabbisogno dopo −
-  disponibile, se > 0.
-- **Settimana `chiusa`, ingrediente in lista**: il residuo è già al netto di tutta la
-  settimana; lo storno restituirà il consumo del piatto attuale e addebiterà il
-  candidato. disponibile = `residuoUtilizzabile(oggi)` + `consumoSlot(slot attuale)`;
-  fabbisogno = `consumoSlot(slot col candidato)`. **mancante** = fabbisogno −
-  disponibile, se > 0.
+- **Settimana `confermata`, ingrediente in lista**: disponibile = **residuo congelato
+  nella riga di lista** (`VoceSalvata.residuo`: il `residuoUtilizzabile` del giorno della
+  generazione, quello su cui la lista ha contato le confezioni) + Σ `quantitaTotale` delle
+  sue voci in lista; fabbisogno dopo = Σ `consumoSlot` su tutti gli slot della settimana
+  con gli stati attuali e questo slot che monta il candidato (stato, `daPronti` e
+  `porzioniPreparate` dello slot invariati). **mancante** = fabbisogno dopo − disponibile,
+  se > 0.
+
+  Perché non `residuoUtilizzabile(oggi)`: lo storno è già attivo (§0), e uno slot
+  saltato ha già accreditato il suo consumo alla dispensa *e* consuma 0 nel fabbisogno —
+  col residuo vivo lo storno conterebbe due volte. Residuo 100, lun e gio piatto A da
+  200 → lista 500 (fabbisogno 400). Lun saltato: dispensa 300. Su gio si sceglie B da
+  700: col residuo vivo 300 + 500 = 800 ≥ 700, nessun conflitto; in realtà 100 + 500 =
+  600 contro 700, mancano 100. Col residuo congelato: 100 + 500 = 600 contro 0 + 700 →
+  mancante 100. Vale anche al contrario: una sostituzione precedente già addebitata
+  abbassa la dispensa sotto il congelato, e col residuo vivo nascerebbe un mancante che
+  non esiste. Se l'ingrediente ha più voci (base e top-up non lo duplicano; una voce
+  manuale o un controllo staple a residuo 0 sì) le `quantitaTotale` si sommano e il
+  residuo è il **massimo** fra le voci: il residuo alla generazione è uno solo, e le
+  righe che non lo portano lo hanno a 0. Un `residuo` non numerico vale 0.
+- **Settimana `chiusa`, ingrediente in lista**: il residuo vivo è già al netto di tutta
+  la settimana e degli storni; lo storno restituirà il consumo del piatto attuale e
+  addebiterà il candidato. disponibile = `residuoUtilizzabile(oggi)` +
+  `consumoSlot(slot attuale)`; fabbisogno = `consumoSlot(slot col candidato)`.
+  **mancante** = fabbisogno − disponibile, se > 0. Il residuo congelato nella riga qui
+  non conta.
 - **pastiDopo** = gli altri slot della settimana con `data ≥ oggi`, diversi da questo,
   che consumano l'ingrediente: sono quelli che resteranno senza.
 
 Un conflitto per ingrediente, in unità base, ordinati per nome. L'avviso non blocca
-SOSTITUISCI: informa. `residuoUtilizzabile` e non il residuo grezzo anche a settimana
-chiusa: un residuo scaduto non è disponibile per nessuno.
+SOSTITUISCI: informa. Mai il residuo grezzo della dispensa: a settimana chiusa
+`residuoUtilizzabile(oggi)` (un residuo scaduto non è disponibile per nessuno), a
+settimana confermata il residuo congelato nella riga, che era già `residuoUtilizzabile`
+il giorno della generazione.
 
 ## 2. Dominio
 
@@ -124,7 +150,8 @@ export function conflittiSostituzione(i: {
   slots: MealSlot[]; dishes: Dish[]; ingredients: Ingredient[]; pantry: PantryState[];
   impostazioni: Pick<Impostazioni, 'moltiplicatorePorzioni'>;
   statoSettimana: 'bozza' | 'confermata' | 'chiusa';
-  vociLista: { ingredientId: string; quantitaTotale: number }[];   // base + topup, tutte
+  // base + topup, tutte; `residuo` è quello congelato nella riga alla generazione
+  vociLista: { ingredientId: string; quantitaTotale: number; residuo: number }[];
   oggi: string;
 }): ConflittoResiduo[];
 ```
@@ -181,7 +208,8 @@ con `{giorno}` da `etichettaScadenza(data, oggi)` (oggi/domani/nome del giorno) 
 separati da ` e ` (al massimo due, poi `e altri N`). La quantità con `formattaQuantita`
 di `src/domain/risparmio.ts` sull'unità dell'ingrediente. Scegli legge in più
 `leggiListe(settimana.id)` (stesso `try/catch` di tolleranza: senza lista, nessun
-conflitto) e ha già settimana (con `stato`), repertorio, dispensa e impostazioni.
+conflitto) e passa le voci con `quantitaTotale` e `residuo` (§1.3); ha già settimana
+(con `stato`), repertorio, dispensa e impostazioni.
 
 **Correzione della nota di Scegli.** La frase "Se la lista della spesa è già stata
 creata, non si aggiorna da sola: va rigenerata dalla Settimana" non è più vera da quando
@@ -212,9 +240,11 @@ Nessuna migrazione, nessuna variabile d'ambiente.
   pasti passati ignorati; slot fuori/saltato/`daPronti` senza porzioni ignorato;
   `porzioniPreparate` su slot spento conta; scelte dei componenti rispettate; classe
   `stima` esclusa; residuo già scaduto escluso; ordine.
-- `conflittiSostituzione`: i quattro rami del §1.3 con numeri verificabili a mano;
-  `pastiDopo` esclude lo slot stesso e i giorni passati; il candidato uguale al piatto
-  attuale con scelte diverse.
+- `conflittiSostituzione`: i quattro rami del §1.3 con numeri verificabili a mano; a
+  settimana confermata la dispensa non conta (lo scenario dello slot saltato del §1.3:
+  congelato 100, lista 500, dispensa 300, candidato 700 → mancante 100, e lo speculare
+  senza falso positivo); `pastiDopo` esclude lo slot stesso e i giorni passati; il
+  candidato uguale al piatto attuale con scelte diverse.
 - Le tre pagine: copy esatti del §3, assenza dell'avviso nei casi esclusi, tolleranza al
   fallimento delle letture aggiunte, nota di Scegli nuova.
 
@@ -230,6 +260,10 @@ Nessuna migrazione, nessuna variabile d'ambiente.
 - Il conflitto assume che la lista venga comprata tutta e che i pasti passati siano
   stati mangiati; a settimana chiusa non distingue chi, fra i pasti successivi,
   resterà senza: li elenca tutti.
+- La nota di Scegli "quello che manca entra nel top-up quando la riapri" vale per gli
+  ingredienti **non ancora in lista** (quelli che `allineaTopUp` aggiunge). Per un
+  ingrediente già in lista nessuno aggiunge il mancante: lo dice la riga di conflitto,
+  e tocca all'utente aggiungerlo a mano o comprarne di più.
 - Niente segno sulla striscia dei giorni: l'avviso si vede aprendo il giorno, e in
   Dispensa nell'insieme.
 - Nessuna riga anti-dimenticanza per scadenze oltre la domenica corrente (congelati,

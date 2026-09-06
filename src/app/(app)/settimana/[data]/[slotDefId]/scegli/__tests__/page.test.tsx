@@ -557,7 +557,11 @@ const PANTRY_YOGURT_100: PantryState = {
   ingredientId: 'i-8', residuo: 100, ultimoAcquisto: OGGI, giorniStimati: 90, congelato: false, ultimoCheck: null,
 };
 
-/** Una voce di lista da 500 g di yogurt: con residuo 100, disponibile 600. */
+/**
+ * Una voce di lista da 500 g di yogurt, congelata con residuo 100 alla
+ * generazione: a settimana confermata il disponibile è 100 + 500 = 600,
+ * qualunque cosa dica la dispensa oggi.
+ */
 const LISTA_YOGURT_500: ListaSalvata = {
   base: [{
     area: 'latticini',
@@ -595,8 +599,11 @@ describe('Conflitto di residuo', () => {
     paramsMock = { data: OGGI, slotDefId: 'sd-3' };
   });
 
-  it('settimana confermata: il candidato che sfora lista più residuo mostra il mancante e il pasto che resterà senza', async () => {
+  it('settimana confermata: il candidato che sfora lista più residuo congelato mostra il mancante e il pasto che resterà senza', async () => {
     mockCaricoConflitto('confermata');
+    // La dispensa dice 300 (uno storno già passato di lì): non conta, a
+    // settimana confermata vale il residuo congelato nella riga di lista.
+    vi.mocked(leggiDispensa).mockResolvedValue([{ ...PANTRY_YOGURT_100, residuo: 300 }]);
     render(<ScegliPiatto />);
     await screen.findByText('Merluzzo al vapore');
 
@@ -604,7 +611,8 @@ describe('Conflitto di residuo', () => {
     fireEvent.click(screen.getByText('Pollo allo yogurt'));
 
     // Fabbisogno dopo = 400 (candidato) + 350 (altro pasto) = 750;
-    // disponibile = 100 (residuo) + 500 (lista) = 600 → mancano 150 g.
+    // disponibile = 100 (residuo congelato nella voce) + 500 (lista) = 600
+    // → mancano 150 g. Col residuo vivo (300) sarebbero stati 0: falso.
     expect(
       screen.getByText(`Con questo piatto Yogurt greco non basta: ne mancano 150 g, e serve anche ${etichettaScadenza(DATA_ALTRO, OGGI)} (${SD_ALTRO.nome}).`),
     ).toBeInTheDocument();
@@ -662,8 +670,9 @@ describe('Conflitto di residuo', () => {
 
     fireEvent.click(screen.getByText('Pollo allo yogurt'));
 
-    // Disponibile = 50 (residuo) + 200 (storno del piatto attuale) = 250;
-    // fabbisogno = 400 → mancano 150 g. Nessun altro slot: niente coda.
+    // Disponibile = 50 (residuo vivo: qui conta lui, non il 100 congelato
+    // nella voce) + 200 (storno del piatto attuale) = 250; fabbisogno = 400
+    // → mancano 150 g. Nessun altro slot: niente coda.
     expect(screen.getByText('Con questo piatto Yogurt greco non basta: ne mancano 150 g.')).toBeInTheDocument();
   });
 });

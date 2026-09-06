@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Dish, Ingredient, MealSlot, PantryState, Scelta } from '../types';
-import { conflittiSostituzione } from '../conflitto';
+import { conflittiSostituzione, type VoceListaConflitto } from '../conflitto';
 import { OpzioneMancanteError } from '../opzioni';
 
 // ── Repertorio ──────────────────────────────────────────────────────────────
@@ -41,6 +41,9 @@ const POLLO_400 = piatto('d-pollo-400', 'Pollo alla griglia', [
 const POLLO_150 = piatto('d-pollo-150', 'Insalata di pollo', [
   { ingredientId: 'i-pollo', quantita: 150, unita: 'g' },
 ]);
+const POLLO_700 = piatto('d-pollo-700', 'Pollo intero', [
+  { ingredientId: 'i-pollo', quantita: 700, unita: 'g' },
+]);
 const RISO_100 = piatto('d-riso-100', 'Riso in bianco', [
   { ingredientId: 'i-riso', quantita: 100, unita: 'g' },
 ]);
@@ -62,7 +65,7 @@ const POLLO_SCELTA = piatto('d-scelta', 'Pollo a scelta', [], [{
 const BRICIOLA = piatto('d-briciola', 'Briciola', [
   { ingredientId: 'i-riso', quantita: 0.1, unita: 'g' },
 ]);
-const PIATTI = [POLLO_200, POLLO_400, POLLO_150, RISO_100, POLLO_YOGURT_RISO, POLLO_SCELTA, BRICIOLA];
+const PIATTI = [POLLO_200, POLLO_400, POLLO_150, POLLO_700, RISO_100, POLLO_YOGURT_RISO, POLLO_SCELTA, BRICIOLA];
 
 // ── Settimana ───────────────────────────────────────────────────────────────
 
@@ -87,6 +90,11 @@ function inCasa(ingredientId: string, residuo: number, ultimoAcquisto: string | 
   return { ingredientId, residuo, ultimoAcquisto, giorniStimati: 90, congelato: false, ultimoCheck: null };
 }
 
+/** Una voce di lista: quantità da comprare e il residuo congelato nella riga alla generazione. */
+function voce(ingredientId: string, quantitaTotale: number, residuo = 0): VoceListaConflitto {
+  return { ingredientId, quantitaTotale, residuo };
+}
+
 type Stato = 'bozza' | 'confermata' | 'chiusa';
 
 /** Lo slot di oggi è quello che si sostituisce; il resto è la settimana attorno. */
@@ -97,7 +105,7 @@ function calcola(i: {
   scelte?: Record<string, Scelta>;
   altri?: MealSlot[];
   pantry?: PantryState[];
-  vociLista?: { ingredientId: string; quantitaTotale: number }[];
+  vociLista?: VoceListaConflitto[];
   moltiplicatorePorzioni?: number;
   oggi?: string;
 }) {
@@ -126,15 +134,17 @@ describe('conflittiSostituzione — settimana bozza', () => {
       candidato: POLLO_400,
       altri: [slot(0, 'd-pollo-200'), slot(5, 'd-pollo-150')],
       pantry: [],
-      vociLista: [{ ingredientId: 'i-pollo', quantitaTotale: 100 }],
+      vociLista: [voce('i-pollo', 100)],
     });
     expect(conflitti).toEqual([]);
   });
 });
 
 describe('conflittiSostituzione — settimana confermata', () => {
-  // residuo 100 g + 500 g in lista = 600 g disponibili.
-  // Fabbisogno dopo: lunedì (passato) 200 + oggi col candidato 400 + sabato 150 = 750.
+  // Residuo congelato nella riga di lista 100 g + 500 g in lista = 600 g
+  // disponibili. La dispensa dice altro (300: lo storno è già passato di lì)
+  // e non conta. Fabbisogno dopo: lunedì (passato) 200 + oggi col candidato
+  // 400 + sabato 150 = 750.
   const settimana = {
     slot: slot(3, 'd-riso-100'),
     candidato: POLLO_400,
@@ -146,19 +156,27 @@ describe('conflittiSostituzione — settimana confermata', () => {
       slot(5, 'd-pollo-150'),                    // sabato: consuma e resterà senza
       slot(6, 'd-pollo-400', { stato: 'saltato' }),
     ],
-    pantry: [inCasa('i-pollo', 100)],
+    pantry: [inCasa('i-pollo', 300)],
     vociLista: [
-      { ingredientId: 'i-pollo', quantitaTotale: 500 },
-      { ingredientId: 'i-riso', quantitaTotale: 200 },
+      voce('i-pollo', 500, 100),
+      voce('i-riso', 200, 0),
     ],
   };
 
-  it('mancante = fabbisogno di tutta la settimana − (residuo utilizzabile + lista)', () => {
+  it('mancante = fabbisogno di tutta la settimana − (residuo congelato nella riga di lista + lista)', () => {
     const conflitti = calcola({ statoSettimana: 'confermata', ...settimana });
     expect(conflitti).toEqual([{
       ingredientId: 'i-pollo', nome: 'Pollo', unita: 'g', mancante: 150,
       pastiDopo: [{ data: '2026-09-05', slotDefId: 'sd-cena' }],
     }]);
+  });
+
+  it('la dispensa di oggi non conta: lo stesso conflitto con la dispensa vuota, piena o assente', () => {
+    for (const pantry of [[], [inCasa('i-pollo', 0)], [inCasa('i-pollo', 5000)]]) {
+      const conflitti = calcola({ statoSettimana: 'confermata', ...settimana, pantry });
+      expect(conflitti).toHaveLength(1);
+      expect(conflitti[0].mancante).toBe(150);
+    }
   });
 
   it('il pasto già passato conta nel fabbisogno: la lista lo ha comprato, si assume mangiato', () => {
@@ -173,22 +191,70 @@ describe('conflittiSostituzione — settimana confermata', () => {
   it('un ingrediente non in lista non è un conflitto anche se manca: lo aggiungerà allineaTopUp', () => {
     const conflitti = calcola({
       statoSettimana: 'confermata', ...settimana,
-      vociLista: [{ ingredientId: 'i-riso', quantitaTotale: 200 }],
+      vociLista: [voce('i-riso', 200)],
     });
     expect(conflitti).toEqual([]);
   });
 
-  it('le voci della stessa lista si sommano (base + top-up) e un ingrediente senza dispensa vale 0', () => {
+  it('le voci della stessa lista si sommano e il residuo congelato è il massimo fra le voci (un controllo a 0 non lo abbassa)', () => {
+    const senzaResiduo = calcola({
+      statoSettimana: 'confermata', ...settimana,
+      vociLista: [voce('i-pollo', 300), voce('i-pollo', 200)],
+    });
+    expect(senzaResiduo).toHaveLength(1);
+    expect(senzaResiduo[0].mancante).toBe(250); // 750 − (0 + 500)
+
+    const conResiduo = calcola({
+      statoSettimana: 'confermata', ...settimana,
+      vociLista: [voce('i-pollo', 0, 0), voce('i-pollo', 300, 100), voce('i-pollo', 200, 0)],
+    });
+    expect(conResiduo).toHaveLength(1);
+    expect(conResiduo[0].mancante).toBe(150); // 750 − (100 + 500)
+  });
+
+  it('un residuo congelato non numerico vale 0', () => {
     const conflitti = calcola({
       statoSettimana: 'confermata', ...settimana,
-      pantry: [],
-      vociLista: [
-        { ingredientId: 'i-pollo', quantitaTotale: 300 },
-        { ingredientId: 'i-pollo', quantitaTotale: 200 },
-      ],
+      vociLista: [voce('i-pollo', 500, Number.NaN)],
     });
     expect(conflitti).toHaveLength(1);
     expect(conflitti[0].mancante).toBe(250); // 750 − (0 + 500)
+  });
+
+  // Il motivo del residuo congelato (review): a settimana confermata lo
+  // storno di aggiornaSlot è già attivo. Residuo 100, lun e gio da 200 →
+  // lista 500 (fabbisogno 400). Lun saltato: lo storno accredita 200 e la
+  // dispensa dice 300. Su gio si sceglie un piatto da 700.
+  it('uno slot saltato a settimana confermata non conta due volte: la dispensa già accreditata dallo storno si ignora', () => {
+    const conflitti = calcola({
+      statoSettimana: 'confermata',
+      slot: slot(3, 'd-pollo-200'),
+      candidato: POLLO_700,
+      altri: [slot(0, 'd-pollo-200', { stato: 'saltato', fonteStato: 'checkin' })],
+      pantry: [inCasa('i-pollo', 300)],
+      vociLista: [voce('i-pollo', 500, 100)],
+    });
+    // Col residuo vivo: 300 + 500 = 800 ≥ 700, nessun conflitto — falso.
+    // Col residuo congelato: 100 + 500 = 600 contro 0 + 700 → mancano 100.
+    expect(conflitti).toEqual([{
+      ingredientId: 'i-pollo', nome: 'Pollo', unita: 'g', mancante: 100, pastiDopo: [],
+    }]);
+  });
+
+  it('il caso speculare: una sostituzione precedente già addebitata alla dispensa non produce un falso positivo', () => {
+    // Lun era da 200, ora monta un piatto da 400: lo storno ha addebitato 200
+    // e la dispensa, clampata a zero, dice 0. Fabbisogno 400 + 200 = 600;
+    // col residuo congelato 100 + 500 = 600 → niente. Col residuo vivo
+    // 0 + 500 = 500 → un mancante di 100 che non esiste.
+    const conflitti = calcola({
+      statoSettimana: 'confermata',
+      slot: slot(3, 'd-riso-100'),
+      candidato: POLLO_200,
+      altri: [slot(0, 'd-pollo-400')],
+      pantry: [inCasa('i-pollo', 0)],
+      vociLista: [voce('i-pollo', 500, 100)],
+    });
+    expect(conflitti).toEqual([]);
   });
 
   it('uno slot con una scelta verso un\'opzione rimossa si salta nelle somme e non compare fra i pasti dopo', () => {
@@ -202,7 +268,7 @@ describe('conflittiSostituzione — settimana confermata', () => {
         slot(6, 'd-fantasma'), // piatto rimosso dal repertorio: nessun consumo
       ],
       pantry: [],
-      vociLista: [{ ingredientId: 'i-pollo', quantitaTotale: 500 }],
+      vociLista: [voce('i-pollo', 500)],
     });
     expect(conflitti).toEqual([{
       ingredientId: 'i-pollo', nome: 'Pollo', unita: 'g', mancante: 100, // 200 + 400 − 500
@@ -216,7 +282,7 @@ describe('conflittiSostituzione — settimana confermata', () => {
       slot: slot(3, 'd-riso-100'),
       candidato: POLLO_SCELTA,
       scelte: { 'c-taglio': { opzioneId: 'o-sparita', fonte: 'manuale' } },
-      vociLista: [{ ingredientId: 'i-pollo', quantitaTotale: 500 }],
+      vociLista: [voce('i-pollo', 500)],
     })).toThrow(OpzioneMancanteError);
   });
 
@@ -227,21 +293,21 @@ describe('conflittiSostituzione — settimana confermata', () => {
       slot: slot(3, null),
       candidato: BRICIOLA,
       altri: [slot(4, 'd-briciola'), slot(5, 'd-briciola')],
-      vociLista: [{ ingredientId: 'i-riso', quantitaTotale: 0.3 }],
+      vociLista: [voce('i-riso', 0.3)],
     });
     expect(conflitti).toEqual([]);
   });
 });
 
 describe('conflittiSostituzione — settimana chiusa', () => {
-  it('il residuo è già al netto della settimana: lo storno restituisce il piatto attuale e addebita il candidato', () => {
+  it('il residuo vivo è già al netto della settimana: lo storno restituisce il piatto attuale e addebita il candidato; il residuo congelato nella voce non conta', () => {
     // disponibile = 50 + 200 (piatto attuale) = 250; fabbisogno = 400 → mancano 150.
     const conflitti = calcola({
       statoSettimana: 'chiusa',
       slot: slot(3, 'd-pollo-200'),
       candidato: POLLO_400,
       pantry: [inCasa('i-pollo', 50)],
-      vociLista: [{ ingredientId: 'i-pollo', quantitaTotale: 200 }],
+      vociLista: [voce('i-pollo', 200, 1000)],
     });
     expect(conflitti).toEqual([{
       ingredientId: 'i-pollo', nome: 'Pollo', unita: 'g', mancante: 150, pastiDopo: [],
@@ -255,7 +321,7 @@ describe('conflittiSostituzione — settimana chiusa', () => {
       candidato: POLLO_400,
       altri: [slot(0, 'd-pollo-400'), slot(5, 'd-pollo-150')],
       pantry: [inCasa('i-pollo', 50)],
-      vociLista: [{ ingredientId: 'i-pollo', quantitaTotale: 200 }],
+      vociLista: [voce('i-pollo', 200)],
     });
     expect(conflitti).toHaveLength(1);
     expect(conflitti[0].mancante).toBe(150); // identico al caso senza altri slot
@@ -269,7 +335,7 @@ describe('conflittiSostituzione — settimana chiusa', () => {
       slot: slot(3, 'd-pollo-200'),
       candidato: POLLO_400,
       pantry: [inCasa('i-pollo', 50, '2026-08-25')],
-      vociLista: [{ ingredientId: 'i-pollo', quantitaTotale: 200 }],
+      vociLista: [voce('i-pollo', 200)],
     });
     expect(conflitti).toHaveLength(1);
     expect(conflitti[0].mancante).toBe(200); // 400 − (0 + 200)
@@ -283,8 +349,8 @@ describe('conflittiSostituzione — settimana chiusa', () => {
       candidato: POLLO_200,
       pantry: [inCasa('i-pollo', 200), inCasa('i-olio', 0)],
       vociLista: [
-        { ingredientId: 'i-olio', quantitaTotale: 0 },
-        { ingredientId: 'i-pollo', quantitaTotale: 0 },
+        voce('i-olio', 0),
+        voce('i-pollo', 0),
       ],
     });
     expect(conflitti).toEqual([]);
@@ -299,7 +365,7 @@ describe('conflittiSostituzione — settimana chiusa', () => {
       candidato: POLLO_SCELTA,
       scelte: { 'c-taglio': { opzioneId: 'o-coscia', fonte: 'manuale' } },
       pantry: [inCasa('i-pollo', 100)],
-      vociLista: [{ ingredientId: 'i-pollo', quantitaTotale: 200 }],
+      vociLista: [voce('i-pollo', 200)],
     });
     expect(conflitti).toEqual([{
       ingredientId: 'i-pollo', nome: 'Pollo', unita: 'g', mancante: 200, pastiDopo: [],
@@ -314,7 +380,7 @@ describe('conflittiSostituzione — settimana chiusa', () => {
       candidato: POLLO_400,
       moltiplicatorePorzioni: 2,
       pantry: [inCasa('i-pollo', 0)],
-      vociLista: [{ ingredientId: 'i-pollo', quantitaTotale: 400 }],
+      vociLista: [voce('i-pollo', 400)],
     });
     expect(conflitti).toHaveLength(1);
     expect(conflitti[0].mancante).toBe(400);
@@ -328,7 +394,7 @@ describe('conflittiSostituzione — settimana chiusa', () => {
       statoSettimana: 'chiusa' as const,
       candidato: POLLO_400,
       pantry: [inCasa('i-pollo', 0)],
-      vociLista: [{ ingredientId: 'i-pollo', quantitaTotale: 200 }],
+      vociLista: [voce('i-pollo', 200)],
     };
     const preparato = calcola({ ...base, slot: slot(3, 'd-pollo-200', { stato: 'fuori', porzioniPreparate: 1 }) });
     expect(preparato).toHaveLength(1);
@@ -346,9 +412,9 @@ describe('conflittiSostituzione — settimana chiusa', () => {
       candidato: POLLO_YOGURT_RISO,
       pantry: [],
       vociLista: [
-        { ingredientId: 'i-yogurt', quantitaTotale: 0 },
-        { ingredientId: 'i-riso', quantitaTotale: 0 },
-        { ingredientId: 'i-pollo', quantitaTotale: 0 },
+        voce('i-yogurt', 0),
+        voce('i-riso', 0),
+        voce('i-pollo', 0),
       ],
     });
     expect(conflitti.map((c) => [c.nome, c.unita, c.mancante])).toEqual([
@@ -376,7 +442,7 @@ describe('conflittiSostituzione — pastiDopo', () => {
         slot(6, 'd-pollo-200', { slotDefId: 'sd-pranzo', daPronti: true }), // da pronti: non consuma
       ],
       pantry: [inCasa('i-pollo', 50)],
-      vociLista: [{ ingredientId: 'i-pollo', quantitaTotale: 200 }],
+      vociLista: [voce('i-pollo', 200)],
     });
     expect(conflitti).toHaveLength(1);
     expect(conflitti[0].pastiDopo).toEqual([
