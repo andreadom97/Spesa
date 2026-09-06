@@ -9,6 +9,7 @@ import { leggiRepertorio } from '@/data/repertorio';
 import { leggiListe, spunta, allineaTopUp, type ListaSalvata, type SezioneSalvata, type VoceSalvata } from '@/data/lista';
 import { rispondiControllo } from '@/data/dispensa';
 import { accodaSpunta, leggiCoda, rimuoviConfermate, applicaCodaSuVoci, type Spunta } from '@/offline/coda';
+import { leggiIstantaneaLista, salvaIstantaneaLista, cancellaIstantaneaLista } from '@/offline/lista-cache';
 import { Testata } from '@/components/Testata';
 import { Tessera } from '@/components/Tessera';
 import { RigaControllo } from '@/components/RigaControllo';
@@ -182,6 +183,12 @@ interface StatoCarico {
   weekId: string;
   settimanaLabel: string;
   lista: ListaSalvata;
+  /**
+   * Vero quando la lettura dal server è fallita e quella mostrata è
+   * l'istantanea salvata l'ultima volta (lista-cache.ts). Torna falso alla
+   * prima rilettura riuscita.
+   */
+  offline: boolean;
 }
 
 /**
@@ -207,6 +214,9 @@ export default function Lista() {
       try {
         const settimana = await leggiSettimanaCorrente();
         if (!settimana) {
+          // Lettura riuscita, lista assente: l'istantanea non deve
+          // ricomparire più (spec lista-offline §1).
+          cancellaIstantaneaLista();
           const repertorio = await leggiRepertorioSenzaBloccare();
           if (vivo) {
             setRepertorioVuoto(repertorio !== null && repertorio.length === 0);
@@ -229,6 +239,7 @@ export default function Lista() {
         }
         const lista = await leggiListe(settimana.id);
         if (!lista) {
+          cancellaIstantaneaLista();
           const repertorio = await leggiRepertorioSenzaBloccare();
           if (vivo) {
             setSettimanaLabelVuoto(label);
@@ -238,11 +249,30 @@ export default function Lista() {
           return;
         }
         if (!vivo) return;
-        setStato({ weekId: settimana.id, settimanaLabel: label, lista: applicaCodaLista(lista) });
+        // L'istantanea è la lista come letta, senza la coda: la coda si
+        // riapplica quando la si mostra, così una spunta in volo non viene
+        // né disfatta né contata due volte.
+        salvaIstantaneaLista({ weekId: settimana.id, settimanaLabel: label, lista });
+        setStato({ weekId: settimana.id, settimanaLabel: label, lista: applicaCodaLista(lista), offline: false });
         void sincronizzaCoda();
       } catch (errore) {
         console.error('lista: caricamento fallito.', errore);
-        if (vivo) setErroreCaricamento('Non riusciamo a caricare la lista. Riprova più tardi.');
+        if (!vivo) return;
+        // La rete decide, la copia ripara: senza risposta dal server si
+        // mostra l'ultima lista vista con rete, dicendo che è una copia. Se
+        // l'istantanea è di un'altra settimana si mostra lo stesso: la
+        // settimana corrente non è nota e non si tenta di indovinarla.
+        const istantanea = leggiIstantaneaLista();
+        if (istantanea) {
+          setStato({
+            weekId: istantanea.weekId,
+            settimanaLabel: istantanea.settimanaLabel,
+            lista: applicaCodaLista(istantanea.lista),
+            offline: true,
+          });
+        } else {
+          setErroreCaricamento('Non riusciamo a caricare la lista. Riprova più tardi.');
+        }
       }
     }
 
@@ -266,28 +296,45 @@ export default function Lista() {
   // leggiListe, non allineaTopUp: il piano non è cambiato, sono cambiate le
   // spunte — con la coda offline applicata sopra come al caricamento, così
   // una spunta locale ancora in volo non viene "disfatta" dal server.
-  // Tollerante: se la rilettura fallisce la lista che c'è resta. Il
-  // listener vive solo a lista caricata (dipende da `weekId`) e se ne va
-  // allo smontaggio.
+  // Tollerante: se la rilettura fallisce la lista che c'è resta.
+  //
+  // La stessa rilettura serve al ritorno della rete quando quella mostrata
+  // è l'istantanea (spec lista-offline §1): al successo la riga "Sei
+  // offline" sparisce e l'istantanea si aggiorna. Se il `weekId`
+  // dell'istantanea non esiste più sul server, leggiListe torna null e la
+  // copia resta com'è. I listener vivono solo a lista caricata (dipendono
+  // da `weekId`) e se ne vanno allo smontaggio.
   const weekId = stato?.weekId ?? null;
+  const settimanaLabel = stato?.settimanaLabel ?? null;
+  const offline = stato?.offline ?? false;
   useEffect(() => {
-    if (!weekId) return;
+    if (!weekId || settimanaLabel === null) return;
     let vivo = true;
-    async function alRitornoInPrimoPiano() {
-      if (document.visibilityState !== 'visible') return;
+    async function rileggi(motivo: string) {
       try {
         const fresca = await leggiListe(weekId!);
-        if (vivo && fresca) setStato((p) => (p ? { ...p, lista: applicaCodaLista(fresca) } : p));
+        if (!vivo || !fresca) return;
+        salvaIstantaneaLista({ weekId: weekId!, settimanaLabel: settimanaLabel!, lista: fresca });
+        setStato((p) => (p ? { ...p, lista: applicaCodaLista(fresca), offline: false } : p));
       } catch (errore) {
-        console.error('lista: rilettura al ritorno in primo piano fallita.', errore);
+        console.error(`lista: rilettura ${motivo} fallita.`, errore);
       }
     }
+    function alRitornoInPrimoPiano() {
+      if (document.visibilityState !== 'visible') return;
+      void rileggi('al ritorno in primo piano');
+    }
+    function alRitornoOnline() {
+      if (offline) void rileggi('al ritorno online');
+    }
     document.addEventListener('visibilitychange', alRitornoInPrimoPiano);
+    window.addEventListener('online', alRitornoOnline);
     return () => {
       vivo = false;
       document.removeEventListener('visibilitychange', alRitornoInPrimoPiano);
+      window.removeEventListener('online', alRitornoOnline);
     };
-  }, [weekId]);
+  }, [weekId, settimanaLabel, offline]);
 
   function toggleVoce(voce: VoceSalvata) {
     const nuovo = !voce.spuntato;
@@ -396,6 +443,11 @@ export default function Lista() {
   return (
     <Cornice titolo="Spesa" settimana={stato.settimanaLabel} aree={areeMancanti(lista)}>
       <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {stato.offline && (
+          <p style={{ margin: '0 4px', fontSize: 12.5, lineHeight: 1.4, color: 'var(--sec)' }}>
+            {`Sei offline: questa è la lista di ${stato.settimanaLabel} salvata l'ultima volta che l'hai aperta. Le spunte si sincronizzano appena torna la rete.`}
+          </p>
+        )}
         {erroreAzione && (
           <p style={{ margin: '0 4px', fontSize: 12.5, color: 'var(--sec)' }}>{erroreAzione}</p>
         )}

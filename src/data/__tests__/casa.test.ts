@@ -1,8 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../supabase', () => ({ client: vi.fn() }));
+// L'istantanea offline della lista è di una casa: entra/esci la cancellano.
+vi.mock('@/offline/lista-cache', () => ({ cancellaIstantaneaLista: vi.fn() }));
 
 import { client } from '../supabase';
+import { cancellaIstantaneaLista } from '@/offline/lista-cache';
 import {
   creaInvito,
   dimenticaIdCasa,
@@ -161,6 +164,7 @@ describe('statoCasa', () => {
 describe('inviti e membri', () => {
   beforeEach(() => {
     vi.mocked(client).mockReset();
+    vi.mocked(cancellaIstantaneaLista).mockReset();
     dimenticaIdCasa();
   });
 
@@ -201,6 +205,24 @@ describe('inviti e membri', () => {
     await expect(entraInCasa('XXXXXX')).rejects.toMatchObject({ message: 'codice non valido o scaduto' });
   });
 
+  it('entraInCasa cancella l\'istantanea offline della lista: è di un\'altra casa', async () => {
+    const rpc = creaClientMock();
+    rpc.mockResolvedValue({ data: 'proprietario-1', error: null });
+
+    await entraInCasa('K7P3QX');
+
+    expect(cancellaIstantaneaLista).toHaveBeenCalledTimes(1);
+  });
+
+  it('entraInCasa con errore della RPC non tocca l\'istantanea: la casa non è cambiata', async () => {
+    const rpc = creaClientMock();
+    rpc.mockResolvedValue({ data: null, error: erroreRpc('codice non valido o scaduto') });
+
+    await expect(entraInCasa('XXXXXX')).rejects.toBeDefined();
+
+    expect(cancellaIstantaneaLista).not.toHaveBeenCalled();
+  });
+
   it('esciDallaCasa chiama la RPC e poi idCasa rifà la RPC', async () => {
     const rpc = creaClientMock();
     rpc.mockImplementation(async (nome: string) => {
@@ -221,6 +243,24 @@ describe('inviti e membri', () => {
     rpc.mockResolvedValue({ data: null, error: erroreRpc('errore') });
 
     await expect(esciDallaCasa()).rejects.toMatchObject({ message: 'errore' });
+  });
+
+  it('esciDallaCasa cancella l\'istantanea offline della lista', async () => {
+    const rpc = creaClientMock();
+    rpc.mockResolvedValue({ data: null, error: null });
+
+    await esciDallaCasa();
+
+    expect(cancellaIstantaneaLista).toHaveBeenCalledTimes(1);
+  });
+
+  it('esciDallaCasa con errore della RPC non tocca l\'istantanea', async () => {
+    const rpc = creaClientMock();
+    rpc.mockResolvedValue({ data: null, error: erroreRpc('errore') });
+
+    await expect(esciDallaCasa()).rejects.toBeDefined();
+
+    expect(cancellaIstantaneaLista).not.toHaveBeenCalled();
   });
 
   it('rimuoviMembro passa p_membro', async () => {

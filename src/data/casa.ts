@@ -1,4 +1,5 @@
 import { client } from './supabase';
+import { cancellaIstantaneaLista } from '@/offline/lista-cache';
 
 export type RuoloCasa = 'solo' | 'proprietario' | 'membro';
 
@@ -97,19 +98,27 @@ export async function creaInvito(): Promise<string> {
  * (spazi via, maiuscole) perché lo si scrive a mano sul telefono; gli errori
  * della funzione SQL (`codice non valido o scaduto`…) arrivano già in
  * italiano e si mostrano così come sono. Dopo, l'id della casa cambia:
- * la memoria si scarta e chi chiama ricarica l'app.
+ * la memoria si scarta e chi chiama ricarica l'app. Con la memoria se ne va
+ * anche l'istantanea offline della lista (lista-cache.ts): è di un'altra
+ * casa, e senza rete al reload ricomparirebbe la lista sbagliata.
  */
 export async function entraInCasa(codice: string): Promise<void> {
   const { error } = await client().rpc('entra_in_casa', { codice: codice.trim().toUpperCase() });
   if (error) throw error;
   dimenticaIdCasa();
+  cancellaIstantaneaLista();
 }
 
-/** Torna ai propri dati. Come per `entraInCasa`, l'id della casa cambia: memoria scartata, poi reload. */
+/**
+ * Torna ai propri dati. Come per `entraInCasa`, l'id della casa cambia:
+ * memoria scartata, istantanea offline della lista (di un'altra casa)
+ * cancellata, poi reload.
+ */
 export async function esciDallaCasa(): Promise<void> {
   const { error } = await client().rpc('esci_dalla_casa');
   if (error) throw error;
   dimenticaIdCasa();
+  cancellaIstantaneaLista();
 }
 
 /** Il proprietario toglie un membro (per id utente). L'id di chi chiama non cambia: la memoria resta. */
