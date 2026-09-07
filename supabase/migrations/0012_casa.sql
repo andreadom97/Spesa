@@ -215,6 +215,9 @@ begin
 
   insert into casa_membro (membro, proprietario) values (auth.uid(), invito.proprietario);
   delete from casa_invito where casa_invito.codice = invito.codice;
+  -- Chi entra in una casa non può più ospitarne una: un suo codice ancora
+  -- vivo verrebbe comunque rifiutato, ma è più pulito toglierlo.
+  delete from casa_invito where proprietario = auth.uid();
 
   return invito.proprietario;
 end $$;
@@ -294,4 +297,4 @@ grant execute on function public.stato_casa() to authenticated;
 comment on table casa_membro is
   'Chi agisce sui dati di chi: membro → proprietario. Una riga per membro; le policy di tutte le tabelle passano da casa_id().';
 comment on table casa_invito is
-  'Codice di otto caratteri, un'ora, uno per proprietario. Solo le funzioni lo leggono.';
+  'Codice di otto caratteri, un''ora, uno per proprietario. Solo le funzioni lo leggono.';
