@@ -26,6 +26,9 @@ export function aIngrediente(r: Record<string, unknown>): Ingredient {
     // `== null` copre sia il null del database (prezzo facoltativo) sia la
     // colonna assente (riga di mock, o deploy prima della migrazione 0011).
     prezzoConfezione: r.prezzo_confezione == null ? null : num(r.prezzo_confezione),
+    // Stessa regola: null dal database (mai scansionato) o colonna assente
+    // (mock, o deploy prima della migrazione 0013).
+    ean: r.ean == null ? null : String(r.ean),
   };
 }
 

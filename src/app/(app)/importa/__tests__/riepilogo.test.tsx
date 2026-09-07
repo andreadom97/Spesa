@@ -123,7 +123,7 @@ describe('Riepilogo', () => {
     vi.mocked(leggiBozzaImport).mockResolvedValue({ piano: PIANO_SEMPLICE, statoRevisione: STATO_OK });
     const ESISTENTE: Ingredient = {
       id: 'i-pasta-gia-creata', nome: 'Pasta di semola', unitaBase: 'g',
-      area: 'cereali', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500, prezzoConfezione: null,
+      area: 'cereali', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500, prezzoConfezione: null, ean: null,
     };
     // page.tsx legge leggiIngredienti una volta al mount (per i formati); Riepilogo la
     // rilegge da sé nel suo effect. Tre chiamate in tutto prima del retry: mount, calcolo

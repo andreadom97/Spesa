@@ -78,6 +78,35 @@ describe('salvaIngrediente', () => {
     expect(riga.prezzo_confezione).toBeNull();
   });
 
+  it('scrive ean quando lo riceve, null compreso', async () => {
+    const { sb, upsert } = creaClientMock();
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    await salvaIngrediente({ ...BASE, prezzoConfezione: null, ean: '8076800105735' });
+    await salvaIngrediente({ ...BASE, prezzoConfezione: null, ean: null });
+
+    expect(upsert.ingredient[0]).toMatchObject({ ean: '8076800105735' });
+    // null esplicito è una scrittura: azzera l'ultimo codice.
+    const conNull = upsert.ingredient[1] as Record<string, unknown>;
+    expect('ean' in conNull).toBe(true);
+    expect(conNull.ean).toBeNull();
+  });
+
+  it('senza ean nel parametro non tocca la colonna: la scheda ingrediente non azzera il codice scansionato', async () => {
+    // A differenza di prezzo_confezione, nessun editor scrive ean a mano: lo
+    // scrive solo la scansione (confezioni.ts). La scheda e l'import non lo
+    // passano, e un undefined sparisce dal payload JSON di supabase-js:
+    // la colonna resta com'è.
+    const { sb, upsert } = creaClientMock();
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    await salvaIngrediente({ ...BASE, prezzoConfezione: null });
+
+    const riga = upsert.ingredient[0] as Record<string, unknown>;
+    expect(riga.ean).toBeUndefined();
+    expect(JSON.parse(JSON.stringify(riga))).not.toHaveProperty('ean');
+  });
+
   it('crea la riga di dispensa a residuo zero, come prima', async () => {
     const { sb, upsert } = creaClientMock();
     vi.mocked(client).mockReturnValue(sb as never);

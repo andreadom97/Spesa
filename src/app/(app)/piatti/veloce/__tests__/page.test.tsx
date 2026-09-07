@@ -32,19 +32,19 @@ const SLOT_CENA: MealSlotDef = { id: 'sd-3', nome: 'Cena', posizione: 2, assenze
 
 const ING_PASTA: Ingredient = {
   id: 'i-pasta', nome: 'Pasta', unitaBase: 'g', area: 'cereali',
-  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500, prezzoConfezione: null,
+  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500, prezzoConfezione: null, ean: null,
 };
 const ING_PASSATA: Ingredient = {
   id: 'i-passata', nome: 'Passata di pomodoro', unitaBase: 'g', area: 'dispensa',
-  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 700, prezzoConfezione: null,
+  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 700, prezzoConfezione: null, ean: null,
 };
 const ING_CAFFE: Ingredient = {
   id: 'i-caffe', nome: 'Caffè', unitaBase: 'g', area: 'dispensa',
-  classeResiduo: 'stima', deperibile: false, formatoConfezione: 250, prezzoConfezione: null,
+  classeResiduo: 'stima', deperibile: false, formatoConfezione: 250, prezzoConfezione: null, ean: null,
 };
 const ING_UOVA: Ingredient = {
   id: 'i-uova', nome: 'Uova', unitaBase: 'pz', area: 'latticini',
-  classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 6, prezzoConfezione: null,
+  classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 6, prezzoConfezione: null, ean: null,
 };
 
 const ORDINE_AREE_TEST = ['ortofrutta', 'macelleria', 'latticini', 'cereali', 'dispensa', 'surgelati'] as const;
@@ -500,6 +500,7 @@ describe('Piatti veloce (/piatti/veloce)', () => {
         deperibile: true,
         formatoConfezione: 1,
         prezzoConfezione: null,
+        ean: null,
       });
       expect(screen.getByLabelText('Quantità di Tofu').closest('[data-riga]')).toHaveTextContent('pz');
       expect(screen.queryByLabelText("Nome dell'ingrediente")).not.toBeInTheDocument();

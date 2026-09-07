@@ -85,19 +85,19 @@ const SLOT_DEFS = [SD_COLAZIONE, SD_PRANZO, SD_CENA];
 
 const ING_YOGURT: Ingredient = {
   id: 'i-1', nome: 'Yogurt', unitaBase: 'g', area: 'latticini',
-  classeResiduo: 'stima', deperibile: true, formatoConfezione: 500, prezzoConfezione: null,
+  classeResiduo: 'stima', deperibile: true, formatoConfezione: 500, prezzoConfezione: null, ean: null,
 };
 const ING_POLLO: Ingredient = {
   id: 'i-2', nome: 'Pollo', unitaBase: 'g', area: 'macelleria',
-  classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 1000, prezzoConfezione: null,
+  classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 1000, prezzoConfezione: null, ean: null,
 };
 const ING_UOVA: Ingredient = {
   id: 'i-3', nome: 'Uova', unitaBase: 'pz', area: 'latticini',
-  classeResiduo: 'intero', deperibile: true, formatoConfezione: 1, prezzoConfezione: null,
+  classeResiduo: 'intero', deperibile: true, formatoConfezione: 1, prezzoConfezione: null, ean: null,
 };
 const ING_PASSATA: Ingredient = {
   id: 'i-4', nome: 'Passata di pomodoro', unitaBase: 'g', area: 'dispensa',
-  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 700, prezzoConfezione: null,
+  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 700, prezzoConfezione: null, ean: null,
 };
 
 const DISH_COLAZIONE: Dish = {

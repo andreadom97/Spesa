@@ -1,6 +1,6 @@
 import type { AreaId, ClasseResiduo, Ingredient, UnitaBase } from './types';
 
-export type IngredienteBase = Omit<Ingredient, 'id' | 'prezzoConfezione'>;
+export type IngredienteBase = Omit<Ingredient, 'id' | 'prezzoConfezione' | 'ean'>;
 
 /**
  * Gli ingredienti di base di un supermercato italiano, già classificati con i
@@ -16,7 +16,8 @@ export type IngredienteBase = Omit<Ingredient, 'id' | 'prezzoConfezione'>;
  * Non vengono da un database pubblico: nessuno espone area, classe di residuo
  * e formato confezione. Sono decisi qui, con i formati che si trovano davvero
  * a scaffale; dove il proprio supermercato ne vende un altro si corregge da
- * Impostazioni → Ingredienti. `prezzoConfezione` non c'è: parte a null.
+ * Impostazioni → Ingredienti. `prezzoConfezione` ed `ean` non ci sono: partono
+ * a null.
  */
 export const INGREDIENTI_BASE: ReadonlyArray<IngredienteBase> = [
   // ORTOFRUTTA — a pezzo quello che si compra a pezzo, a peso il resto

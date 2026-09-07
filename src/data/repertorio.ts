@@ -161,8 +161,16 @@ export async function eliminaPiatto(id: string): Promise<void> {
   if (error) throw error;
 }
 
+/**
+ * `ean` è facoltativo nel parametro, a differenza di `prezzoConfezione`:
+ * nessun editor lo scrive a mano, lo scrive solo la scansione
+ * (`aggiornaFormatoDaScansione` in confezioni.ts). Chi lo passa lo scrive
+ * così com'è, null compreso (per cancellarlo); chi non lo passa — la scheda
+ * ingrediente, l'import — lascia in piedi l'ultimo codice scansionato invece
+ * di azzerarlo a ogni modifica del formato o del prezzo.
+ */
 export async function salvaIngrediente(
-  ing: Omit<Ingredient, 'id'> & { id?: string },
+  ing: Omit<Ingredient, 'id' | 'ean'> & { id?: string; ean?: string | null },
 ): Promise<string> {
   const sb = client();
   const userId = await idCasa();
@@ -180,6 +188,9 @@ export async function salvaIngrediente(
       // Sempre scritto, anche null: su un upsert ometterlo lascerebbe in
       // piedi il prezzo vecchio invece di cancellarlo.
       prezzo_confezione: ing.prezzoConfezione,
+      // undefined (non passato) sparisce dal payload JSON e la colonna resta
+      // com'è; null la azzera. Vedi la docstring.
+      ean: ing.ean,
     })
     .select('id')
     .single();

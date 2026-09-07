@@ -29,7 +29,7 @@ import IngredienteEditor from '../page';
 // alla lettura, con la virgola italiana, e che lo tolga se il campo si svuota.
 const ING_YOGURT: Ingredient = {
   id: 'i-1', nome: 'Yogurt greco', unitaBase: 'g', area: 'latticini',
-  classeResiduo: 'stima', deperibile: true, formatoConfezione: 500, prezzoConfezione: 2.5,
+  classeResiduo: 'stima', deperibile: true, formatoConfezione: 500, prezzoConfezione: 2.5, ean: null,
 };
 
 // Dato "sporco" come quello che la Important 1 della review permetteva di
@@ -38,7 +38,7 @@ const ING_YOGURT: Ingredient = {
 // arriva così dal caricamento, non solo quando nasce da un click in pagina.
 const ING_INTERO_INCONSISTENTE: Ingredient = {
   id: 'i-2', nome: 'Uova', unitaBase: 'g', area: 'macelleria',
-  classeResiduo: 'intero', deperibile: false, formatoConfezione: 500, prezzoConfezione: null,
+  classeResiduo: 'intero', deperibile: false, formatoConfezione: 500, prezzoConfezione: null, ean: null,
 };
 
 describe('Ingrediente (editor)', () => {

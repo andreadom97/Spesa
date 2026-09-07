@@ -7,19 +7,19 @@ import { OpzioneMancanteError } from '../opzioni';
 
 const POLLO: Ingredient = {
   id: 'i-pollo', nome: 'Pollo', unitaBase: 'g', area: 'macelleria',
-  classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 1000, prezzoConfezione: null,
+  classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 1000, prezzoConfezione: null, ean: null,
 };
 const RISO: Ingredient = {
   id: 'i-riso', nome: 'Riso', unitaBase: 'g', area: 'cereali',
-  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500, prezzoConfezione: null,
+  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500, prezzoConfezione: null, ean: null,
 };
 const OLIO: Ingredient = {
   id: 'i-olio', nome: 'Olio', unitaBase: 'ml', area: 'dispensa',
-  classeResiduo: 'stima', deperibile: false, formatoConfezione: 1000, prezzoConfezione: null,
+  classeResiduo: 'stima', deperibile: false, formatoConfezione: 1000, prezzoConfezione: null, ean: null,
 };
 const YOGURT: Ingredient = {
   id: 'i-yogurt', nome: 'Yogurt greco', unitaBase: 'g', area: 'latticini',
-  classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 500, prezzoConfezione: null,
+  classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 500, prezzoConfezione: null, ean: null,
 };
 const INGREDIENTI = [POLLO, RISO, OLIO, YOGURT];
 

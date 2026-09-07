@@ -38,11 +38,11 @@ const SLOT_CENA: MealSlotDef = { id: 'sd-3', nome: 'Cena', posizione: 2, assenze
 
 const ING_YOGURT: Ingredient = {
   id: 'i-1', nome: 'Yogurt greco', unitaBase: 'g', area: 'latticini',
-  classeResiduo: 'stima', deperibile: true, formatoConfezione: 500, prezzoConfezione: null,
+  classeResiduo: 'stima', deperibile: true, formatoConfezione: 500, prezzoConfezione: null, ean: null,
 };
 const ING_AVENA: Ingredient = {
   id: 'i-2', nome: "Fiocchi d'avena", unitaBase: 'g', area: 'cereali',
-  classeResiduo: 'intero', deperibile: false, formatoConfezione: 1000, prezzoConfezione: null,
+  classeResiduo: 'intero', deperibile: false, formatoConfezione: 1000, prezzoConfezione: null, ean: null,
 };
 
 const PIATTO_ESISTENTE: Dish = {
@@ -443,11 +443,11 @@ describe('Piatto (editor)', () => {
   it('la ricerca filtra per nome, ignorando accenti e maiuscole', async () => {
     const molti: Ingredient[] = Array.from({ length: 12 }, (_, i) => ({
       id: `i-${i}`, nome: `Riempitivo ${i}`, unitaBase: 'g' as const, area: 'dispensa' as const,
-      classeResiduo: 'porzionabile' as const, deperibile: false, formatoConfezione: 100, prezzoConfezione: null,
+      classeResiduo: 'porzionabile' as const, deperibile: false, formatoConfezione: 100, prezzoConfezione: null, ean: null,
     }));
     const CAFFE: Ingredient = {
       id: 'i-caffe', nome: 'Caffè', unitaBase: 'g', area: 'dispensa',
-      classeResiduo: 'stima', deperibile: false, formatoConfezione: 250, prezzoConfezione: null,
+      classeResiduo: 'stima', deperibile: false, formatoConfezione: 250, prezzoConfezione: null, ean: null,
     };
     vi.mocked(leggiIngredienti).mockResolvedValue([...molti, CAFFE]);
 
@@ -466,7 +466,7 @@ describe('Piatto (editor)', () => {
   it('senza risultati suggerisce di crearlo invece di lasciare il vuoto', async () => {
     const molti: Ingredient[] = Array.from({ length: 12 }, (_, i) => ({
       id: `i-${i}`, nome: `Riempitivo ${i}`, unitaBase: 'g' as const, area: 'dispensa' as const,
-      classeResiduo: 'porzionabile' as const, deperibile: false, formatoConfezione: 100, prezzoConfezione: null,
+      classeResiduo: 'porzionabile' as const, deperibile: false, formatoConfezione: 100, prezzoConfezione: null, ean: null,
     }));
     vi.mocked(leggiIngredienti).mockResolvedValue(molti);
 

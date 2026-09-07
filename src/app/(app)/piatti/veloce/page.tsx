@@ -547,6 +547,7 @@ function MiniCreazione({ nomeIniziale, ordineAree, onCreato, onAnnulla }: PropsM
       deperibile,
       formatoConfezione: formato,
       prezzoConfezione: null,
+      ean: null,
     };
     try {
       const id = await salvaIngrediente(dati);

@@ -30,11 +30,11 @@ const ORDINE = ['ortofrutta', 'macelleria', 'latticini', 'cereali', 'dispensa', 
 
 const RISO: Ingredient = {
   id: 'i-riso', nome: 'Riso', unitaBase: 'g', area: 'cereali',
-  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 1000, prezzoConfezione: null,
+  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 1000, prezzoConfezione: null, ean: null,
 };
 const BANANE: Ingredient = {
   id: 'i-banane', nome: 'Banane', unitaBase: 'pz', area: 'ortofrutta',
-  classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 3, prezzoConfezione: null,
+  classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 3, prezzoConfezione: null, ean: null,
 };
 
 function statoDispensa(righe: Partial<PantryState>[]): PantryState[] {
@@ -206,7 +206,7 @@ describe('Dispensa', () => {
     // lista lo richiede lo stesso: due verita' diverse nella stessa app.
     const POLLO: Ingredient = {
       id: 'i-pollo', nome: 'Petto di pollo', unitaBase: 'g', area: 'macelleria',
-      classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 300, prezzoConfezione: null,
+      classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 300, prezzoConfezione: null, ean: null,
     };
     mockBase(statoDispensa([{ ingredientId: 'i-pollo', residuo: 200, ultimoAcquisto: '2020-01-01' }]), [POLLO]);
 
@@ -218,7 +218,7 @@ describe('Dispensa', () => {
   it('non avverte se quel fresco e dichiarato in congelatore', async () => {
     const POLLO: Ingredient = {
       id: 'i-pollo', nome: 'Petto di pollo', unitaBase: 'g', area: 'macelleria',
-      classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 300, prezzoConfezione: null,
+      classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 300, prezzoConfezione: null, ean: null,
     };
     const oggi = new Date().toISOString().slice(0, 10);
     mockBase(statoDispensa([{ ingredientId: 'i-pollo', residuo: 200, ultimoAcquisto: oggi, congelato: true }]), [POLLO]);
@@ -444,7 +444,7 @@ describe('Dispensa', () => {
   describe('Scadenza del fresco', () => {
     const POLLO: Ingredient = {
       id: 'i-pollo', nome: 'Petto di pollo', unitaBase: 'g', area: 'macelleria',
-      classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 300, prezzoConfezione: null,
+      classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 300, prezzoConfezione: null, ean: null,
     };
     const CENA_POLLO: Dish = {
       id: 'd-pollo', nome: 'Pollo alla piastra', slotDefId: 'sd-cena', fonte: 'proprio',

@@ -24,6 +24,12 @@ export interface Ingredient {
    * calcolo della lista né del residuo.
    */
   prezzoConfezione: number | null;
+  /**
+   * L'ultimo codice a barre scansionato (8–14 cifre), null se mai
+   * scansionato. Serve solo a riconoscere il prodotto comprato (spec
+   * 2026-09-07 scan confezione): non entra in nessun calcolo.
+   */
+  ean: string | null;
 }
 
 export interface DishIngredient {

@@ -74,12 +74,12 @@ describe('avvisiScadenza', () => {
 
   const pollo: Ingredient = {
     id: 'pollo', nome: 'Pollo', unitaBase: 'g', area: 'macelleria',
-    classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 500, prezzoConfezione: null,
+    classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 500, prezzoConfezione: null, ean: null,
   };
   /** Deperibile ma di classe stima: fuori da ogni aritmetica sul residuo. */
   const latte: Ingredient = {
     id: 'latte', nome: 'Latte', unitaBase: 'ml', area: 'latticini',
-    classeResiduo: 'stima', deperibile: true, formatoConfezione: 1000, prezzoConfezione: null,
+    classeResiduo: 'stima', deperibile: true, formatoConfezione: 1000, prezzoConfezione: null, ean: null,
   };
   const INGREDIENTI = [pollo, yogurt, avena, uova, olio, passata, latte];
 
