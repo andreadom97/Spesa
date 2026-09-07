@@ -66,6 +66,17 @@ beforeEach(() => {
   vi.mocked(leggiRisparmioSettimana).mockReset().mockResolvedValue([]);
 });
 
+describe('Lista fatta — CONFEZIONI DIVERSE? SCANSIONA', () => {
+  it('il link alle confezioni sta prima di CHIUDI LA SPESA e porta a /lista/confezioni', async () => {
+    const { container } = render(<ListaFatta />);
+
+    const link = await screen.findByRole('link', { name: 'CONFEZIONI DIVERSE? SCANSIONA' });
+    expect(link).toHaveAttribute('href', '/lista/confezioni');
+    const testo = container.textContent ?? '';
+    expect(testo.indexOf('CONFEZIONI DIVERSE? SCANSIONA')).toBeLessThan(testo.indexOf('CHIUDI LA SPESA'));
+  });
+});
+
 describe('Lista fatta — NON RICOMPRATO QUESTA SETTIMANA', () => {
   it('con evitate > 0 e prezzi su tutti mostra confezioni, quantità ed euro, senza riga secondaria', async () => {
     vi.mocked(leggiRisparmioSettimana).mockResolvedValue([

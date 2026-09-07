@@ -230,6 +230,19 @@ export default function ListaFatta() {
         <p style={{ margin: '0 16px 4px', fontSize: 12.5, color: 'var(--sec)' }}>{erroreChiusura}</p>
       )}
       <div style={{ padding: '6px 16px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {/* Prima di chiudere: le confezioni vere (spec scan-confezione §1).
+            Dopo la chiusura il residuo è già accreditato e la correzione non
+            avrebbe più effetto, per questo il link sta qui e non altrove. */}
+        <Link
+          href="/lista/confezioni"
+          style={{
+            alignSelf: 'center', padding: '4px 8px',
+            fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.12em',
+            color: 'var(--ink)', textDecoration: 'underline', textUnderlineOffset: 3,
+          }}
+        >
+          CONFEZIONI DIVERSE? SCANSIONA
+        </Link>
         <button
           type="button"
           onClick={onChiudi}
