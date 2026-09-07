@@ -19,15 +19,23 @@ const LISTA: ListaSalvata = {
   topupListaId: 'lista-topup-1',
 };
 
+const GIORNO_MS = 86_400_000;
+
+function salvaDiProva(sovrascrivi: Partial<{ casaId: string; userId: string }> = {}) {
+  salvaIstantaneaLista({
+    casaId: 'casa-1', userId: 'user-1', weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO', lista: LISTA, ...sovrascrivi,
+  });
+}
+
 beforeEach(() => localStorage.clear());
 
 describe('istantanea della lista', () => {
   it('salva e rilegge la stessa lista, con settimana e momento del salvataggio', () => {
     vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
-    salvaIstantaneaLista({ casaId: 'casa-1', weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO', lista: LISTA });
+    salvaDiProva();
 
     expect(leggiIstantaneaLista()).toEqual({
-      casaId: 'casa-1', weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO', lista: LISTA, salvataIl: 1_700_000_000_000,
+      casaId: 'casa-1', userId: 'user-1', weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO', lista: LISTA, salvataIl: 1_700_000_000_000,
     });
     vi.restoreAllMocks();
   });
@@ -37,32 +45,115 @@ describe('istantanea della lista', () => {
   // terrebbe sul telefono l'ultima lista della casa che ha lasciato.
   describe('con l\'id della casa', () => {
     it('si rilegge se è della stessa casa', () => {
-      salvaIstantaneaLista({ casaId: 'casa-1', weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO', lista: LISTA });
-      expect(leggiIstantaneaLista('casa-1')).toMatchObject({ casaId: 'casa-1', weekId: 'week-1', lista: LISTA });
+      salvaDiProva();
+      expect(leggiIstantaneaLista({ casaId: 'casa-1' })).toMatchObject({ casaId: 'casa-1', weekId: 'week-1', lista: LISTA });
     });
 
     it('se è di un\'altra casa torna null e si cancella', () => {
-      salvaIstantaneaLista({ casaId: 'casa-1', weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO', lista: LISTA });
-      expect(leggiIstantaneaLista('altra')).toBeNull();
+      salvaDiProva();
+      expect(leggiIstantaneaLista({ casaId: 'altra' })).toBeNull();
       expect(localStorage.getItem('spesa:lista')).toBeNull();
       expect(leggiIstantaneaLista()).toBeNull();
     });
 
     it('senza id (casa non verificabile, a freddo senza rete) si rilegge comunque', () => {
-      salvaIstantaneaLista({ casaId: 'casa-1', weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO', lista: LISTA });
+      salvaDiProva();
       expect(leggiIstantaneaLista()).toMatchObject({ casaId: 'casa-1', weekId: 'week-1' });
       expect(localStorage.getItem('spesa:lista')).not.toBeNull();
     });
 
     it('un\'istantanea vecchia senza casaId torna null, anche letta senza id', () => {
-      localStorage.setItem('spesa:lista', JSON.stringify({ weekId: 'w', settimanaLabel: 'x', salvataIl: 1, lista: { base: [], topup: [] } }));
+      localStorage.setItem('spesa:lista', JSON.stringify({ userId: 'u', weekId: 'w', settimanaLabel: 'x', salvataIl: Date.now(), lista: { base: [], topup: [] } }));
       expect(leggiIstantaneaLista()).toBeNull();
-      expect(leggiIstantaneaLista('casa-1')).toBeNull();
+      expect(leggiIstantaneaLista({ casaId: 'casa-1' })).toBeNull();
+    });
+  });
+
+  // L'istantanea porta anche l'id dell'account: sullo stesso browser due
+  // account condividono localStorage, e senza questo controllo chi entra
+  // dopo vedrebbe offline la lista di chi c'era prima.
+  describe('con l\'id dell\'account', () => {
+    it('si rilegge se è dello stesso account', () => {
+      salvaDiProva();
+      expect(leggiIstantaneaLista({ userId: 'user-1' })).toMatchObject({ userId: 'user-1', weekId: 'week-1', lista: LISTA });
+    });
+
+    it('se è di un altro account torna null e si cancella', () => {
+      salvaDiProva();
+      expect(leggiIstantaneaLista({ userId: 'user-2' })).toBeNull();
+      expect(localStorage.getItem('spesa:lista')).toBeNull();
+    });
+
+    it('con casa e account insieme basta che uno dei due non torni', () => {
+      salvaDiProva();
+      expect(leggiIstantaneaLista({ casaId: 'casa-1', userId: 'user-2' })).toBeNull();
+      salvaDiProva();
+      expect(leggiIstantaneaLista({ casaId: 'altra', userId: 'user-1' })).toBeNull();
+      salvaDiProva();
+      expect(leggiIstantaneaLista({ casaId: 'casa-1', userId: 'user-1' })).not.toBeNull();
+    });
+
+    it('senza id (sessione non leggibile) si rilegge comunque', () => {
+      salvaDiProva();
+      expect(leggiIstantaneaLista({ casaId: 'casa-1' })).toMatchObject({ userId: 'user-1' });
+    });
+
+    it('salvata con userId vuoto (sessione non leggibile al salvataggio) si rilegge senza id e non con un id', () => {
+      salvaDiProva({ userId: '' });
+      expect(leggiIstantaneaLista()).toMatchObject({ userId: '' });
+      expect(leggiIstantaneaLista({ userId: 'user-1' })).toBeNull();
+      expect(localStorage.getItem('spesa:lista')).toBeNull();
+    });
+
+    it('un\'istantanea vecchia senza userId torna null, anche letta senza id', () => {
+      localStorage.setItem('spesa:lista', JSON.stringify({ casaId: 'c', weekId: 'w', settimanaLabel: 'x', salvataIl: Date.now(), lista: { base: [], topup: [] } }));
+      expect(leggiIstantaneaLista()).toBeNull();
+      expect(leggiIstantaneaLista({ userId: 'user-1' })).toBeNull();
+    });
+  });
+
+  // Oltre i 30 giorni non è più "l'ultima lista vista": è un dato vecchio
+  // che in corsia farebbe comprare cose sbagliate, e su un browser condiviso
+  // resterebbe in giro a tempo indefinito.
+  describe('scadenza', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-09-07T10:00:00Z'));
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('a 30 giorni esatti si rilegge ancora', () => {
+      salvaDiProva();
+      vi.setSystemTime(new Date('2026-09-07T10:00:00Z').getTime() + 30 * GIORNO_MS);
+      expect(leggiIstantaneaLista()).not.toBeNull();
+      expect(leggiIstantaneaLista({ casaId: 'casa-1', userId: 'user-1' })).not.toBeNull();
+    });
+
+    it('oltre i 30 giorni torna null e si cancella, anche senza id', () => {
+      salvaDiProva();
+      vi.setSystemTime(new Date('2026-09-07T10:00:00Z').getTime() + 30 * GIORNO_MS + 1);
+      expect(leggiIstantaneaLista()).toBeNull();
+      expect(localStorage.getItem('spesa:lista')).toBeNull();
+    });
+
+    it('oltre i 30 giorni torna null anche con casa e account giusti', () => {
+      salvaDiProva();
+      vi.setSystemTime(new Date('2026-09-07T10:00:00Z').getTime() + 31 * GIORNO_MS);
+      expect(leggiIstantaneaLista({ casaId: 'casa-1', userId: 'user-1' })).toBeNull();
+      expect(localStorage.getItem('spesa:lista')).toBeNull();
+    });
+
+    it('un\'istantanea appena salvata si rilegge', () => {
+      salvaDiProva();
+      expect(leggiIstantaneaLista()).toMatchObject({ salvataIl: new Date('2026-09-07T10:00:00Z').getTime() });
     });
   });
 
   it('usa la chiave spesa:lista, come le altre memorie dell\'app', () => {
-    salvaIstantaneaLista({ casaId: 'casa-1', weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO', lista: LISTA });
+    salvaDiProva();
     expect(localStorage.getItem('spesa:lista')).not.toBeNull();
   });
 
@@ -71,7 +162,7 @@ describe('istantanea della lista', () => {
   });
 
   it('si cancella', () => {
-    salvaIstantaneaLista({ casaId: 'casa-1', weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO', lista: LISTA });
+    salvaDiProva();
     cancellaIstantaneaLista();
     expect(leggiIstantaneaLista()).toBeNull();
   });
@@ -85,22 +176,32 @@ describe('istantanea della lista', () => {
     expect(leggiIstantaneaLista()).toBeNull();
   });
 
+  // Ogni caso ha tutti gli altri campi validi e `salvataIl` recente: è il
+  // solo campo indicato a far cadere la validazione.
+  const VALIDA = { casaId: 'c', userId: 'u', weekId: 'w', settimanaLabel: 'x', salvataIl: Date.now(), lista: { base: [], topup: [] } };
   it.each([
-    ['senza casaId', { weekId: 'w', settimanaLabel: 'x', salvataIl: 1, lista: { base: [], topup: [] } }],
-    ['casaId non stringa', { casaId: 1, weekId: 'w', settimanaLabel: 'x', salvataIl: 1, lista: { base: [], topup: [] } }],
-    ['senza weekId', { casaId: 'c', settimanaLabel: 'x', salvataIl: 1, lista: { base: [], topup: [] } }],
-    ['weekId non stringa', { casaId: 'c', weekId: 1, settimanaLabel: 'x', salvataIl: 1, lista: { base: [], topup: [] } }],
-    ['senza settimanaLabel', { casaId: 'c', weekId: 'w', salvataIl: 1, lista: { base: [], topup: [] } }],
-    ['salvataIl non numero', { casaId: 'c', weekId: 'w', settimanaLabel: 'x', salvataIl: 'ieri', lista: { base: [], topup: [] } }],
-    ['senza lista', { casaId: 'c', weekId: 'w', settimanaLabel: 'x', salvataIl: 1 }],
-    ['lista non oggetto', { casaId: 'c', weekId: 'w', settimanaLabel: 'x', salvataIl: 1, lista: 'lista' }],
-    ['lista senza base', { casaId: 'c', weekId: 'w', settimanaLabel: 'x', salvataIl: 1, lista: { topup: [] } }],
-    ['lista con topup non array', { casaId: 'c', weekId: 'w', settimanaLabel: 'x', salvataIl: 1, lista: { base: [], topup: {} } }],
+    ['senza casaId', { ...VALIDA, casaId: undefined }],
+    ['casaId non stringa', { ...VALIDA, casaId: 1 }],
+    ['senza userId', { ...VALIDA, userId: undefined }],
+    ['userId non stringa', { ...VALIDA, userId: 1 }],
+    ['senza weekId', { ...VALIDA, weekId: undefined }],
+    ['weekId non stringa', { ...VALIDA, weekId: 1 }],
+    ['senza settimanaLabel', { ...VALIDA, settimanaLabel: undefined }],
+    ['salvataIl non numero', { ...VALIDA, salvataIl: 'ieri' }],
+    ['senza lista', { ...VALIDA, lista: undefined }],
+    ['lista non oggetto', { ...VALIDA, lista: 'lista' }],
+    ['lista senza base', { ...VALIDA, lista: { topup: [] } }],
+    ['lista con topup non array', { ...VALIDA, lista: { base: [], topup: {} } }],
     ['array invece di oggetto', []],
     ['null', null],
   ])('con forma incompleta (%s) torna null', (_, valore) => {
     localStorage.setItem('spesa:lista', JSON.stringify(valore));
     expect(leggiIstantaneaLista()).toBeNull();
+  });
+
+  it('la forma di controllo del caso precedente, intera, passa', () => {
+    localStorage.setItem('spesa:lista', JSON.stringify(VALIDA));
+    expect(leggiIstantaneaLista()).not.toBeNull();
   });
 
   describe('senza localStorage', () => {
@@ -123,7 +224,7 @@ describe('istantanea della lista', () => {
     });
 
     it('salvare e cancellare non lanciano', () => {
-      expect(() => salvaIstantaneaLista({ casaId: 'c', weekId: 'w', settimanaLabel: 'x', lista: LISTA })).not.toThrow();
+      expect(() => salvaDiProva()).not.toThrow();
       expect(() => cancellaIstantaneaLista()).not.toThrow();
     });
   });
@@ -133,7 +234,7 @@ describe('istantanea della lista', () => {
     const quota = new Error('QuotaExceededError');
     const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw quota; });
 
-    expect(() => salvaIstantaneaLista({ casaId: 'c', weekId: 'w', settimanaLabel: 'x', lista: LISTA })).not.toThrow();
+    expect(() => salvaDiProva()).not.toThrow();
     expect(errore).toHaveBeenCalledWith('lista offline: istantanea non salvata.', quota);
 
     setItem.mockRestore();

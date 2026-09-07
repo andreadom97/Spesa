@@ -183,9 +183,13 @@ nella stessa casa (piatti e pasti per persona, una lista sola): un'altra spec.
   all'istantanea: i suoi `itemId` sono righe della lista dell'altra casa. Una spunta
   fatta senza rete e non ancora sincronizzata al momento del cambio si perde.
 - La memoria di `idCasa` non si invalida da sola: un membro tolto (o uscito da un altro
-  dispositivo) continua a scrivere con l'id della casa vecchia e vede errori RLS
-  (`42501`) finché non ricarica l'app. Nessuna invalidazione automatica sul primo
-  errore: sarebbero troppi i punti del data layer da cablare.
+  dispositivo), finché non ricarica l'app, continua a scrivere con l'id della casa
+  vecchia. Con RLS gli update e i delete non falliscono: toccano 0 righe in silenzio
+  (le spunte e le risposte ai controlli sembrano riuscite — `spunta` "riesce" a 0 righe
+  e la coda offline la considera confermata), mentre gli insert sono rifiutati con
+  `42501`. Nessuna invalidazione automatica sul primo errore: sarebbero troppi i punti
+  del data layer da cablare, e per le scritture a 0 righe non c'è nemmeno un errore da
+  intercettare.
 - Il moltiplicatore "per quante persone cucini" vale per tutta la casa, non per
   persona, e presuppone porzioni uguali per tutti: chi mangia diverso lo lascia a 1 e
   scrive le quantità giuste nei piatti (§6).

@@ -163,6 +163,70 @@ describe('Impostazioni', () => {
       await waitFor(() => expect(screen.getByLabelText('Porzioni')).toHaveTextContent('2'));
     });
 
+    // F4 della review: due tap veloci sono due salvataggi con due riletture,
+    // e la rilettura del primo può arrivare dopo quella del secondo. Senza
+    // un contatore di richiesta, la rilettura vecchia sovrascriverebbe il
+    // valore nuovo a schermo (e il punto di rollback).
+    it('due tap veloci: se la rilettura del primo arriva dopo quella del secondo, resta il valore del secondo', async () => {
+      mockDati({ porzioni: 1 });
+      render(<Impostazioni />);
+      await screen.findByDisplayValue('Colazione');
+
+      const impostazioni = (porzioni: number) => ({
+        moltiplicatorePorzioni: porzioni, ordineAree: [...ORDINE_AREE_TEST], settimaneCiclo: 1, cicloOrigine: null,
+      });
+      const riletture: Array<(i: ReturnType<typeof impostazioni>) => void> = [];
+      vi.mocked(leggiImpostazioni).mockImplementation(
+        () => new Promise((resolve) => { riletture.push(resolve); }),
+      );
+
+      fireEvent.click(screen.getByLabelText('Aumenta porzioni'));
+      await waitFor(() => expect(salvaImpostazioni).toHaveBeenCalledTimes(1));
+      fireEvent.click(screen.getByLabelText('Aumenta porzioni'));
+      await waitFor(() => expect(salvaImpostazioni).toHaveBeenCalledTimes(2));
+      expect(vi.mocked(salvaImpostazioni).mock.calls[1][0].moltiplicatorePorzioni).toBe(3);
+      await waitFor(() => expect(riletture).toHaveLength(2));
+
+      // La seconda rilettura torna per prima: 3.
+      riletture[1](impostazioni(3));
+      await waitFor(() => expect(screen.getByLabelText('Porzioni')).toHaveTextContent('3'));
+
+      // Poi la prima, stantia: 2. Non deve toccare lo schermo.
+      riletture[0](impostazioni(2));
+      await new Promise((r) => setTimeout(r, 0));
+      expect(screen.getByLabelText('Porzioni')).toHaveTextContent('3');
+      expect(screen.getByText('La lista compra per 3. Le porzioni nel piatto restano quelle scritte.')).toBeInTheDocument();
+    });
+
+    it('due tap veloci: se il primo salvataggio fallisce dopo che il secondo è riuscito, resta il valore del secondo senza errore', async () => {
+      mockDati({ porzioni: 1 });
+      render(<Impostazioni />);
+      await screen.findByDisplayValue('Colazione');
+      const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const salvataggi: Array<{ resolve: () => void; reject: (e: Error) => void }> = [];
+      vi.mocked(salvaImpostazioni).mockImplementation(
+        () => new Promise<void>((resolve, reject) => { salvataggi.push({ resolve, reject }); }),
+      );
+      vi.mocked(leggiImpostazioni).mockResolvedValue({
+        moltiplicatorePorzioni: 3, ordineAree: [...ORDINE_AREE_TEST], settimaneCiclo: 1, cicloOrigine: null,
+      });
+
+      fireEvent.click(screen.getByLabelText('Aumenta porzioni'));
+      await waitFor(() => expect(salvataggi).toHaveLength(1));
+      fireEvent.click(screen.getByLabelText('Aumenta porzioni'));
+      await waitFor(() => expect(salvataggi).toHaveLength(2));
+
+      salvataggi[1].resolve();
+      await waitFor(() => expect(screen.getByLabelText('Porzioni')).toHaveTextContent('3'));
+
+      salvataggi[0].reject(new Error('rete'));
+      await new Promise((r) => setTimeout(r, 0));
+      expect(screen.getByLabelText('Porzioni')).toHaveTextContent('3');
+      expect(screen.queryByText('Non siamo riusciti a salvare. Riprova.')).not.toBeInTheDocument();
+      errore.mockRestore();
+    });
+
     it('se il salvataggio fallisce torna al valore di prima e lo dice', async () => {
       mockDati({ porzioni: 1 });
       vi.mocked(salvaImpostazioni).mockRejectedValue(new Error('rete'));

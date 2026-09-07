@@ -121,6 +121,12 @@ export default function Impostazioni() {
   // un nome) è il valore a cui tornare se una scrittura fallisce.
   const pastiSalvatiRef = useRef<MealSlotDef[]>([]);
   const impostazioniSalvateRef = useRef<Impostazioni | null>(null);
+  // Contatore delle chiamate a persistiImpostazioni: due tap veloci sullo
+  // stepper (o sul ciclo) sono due salvataggi con due riletture, e la
+  // rilettura del primo può arrivare dopo quella del secondo. Solo la
+  // rilettura dell'ultima richiesta si applica: le altre descrivono uno
+  // stato che a schermo è già stato superato.
+  const richiestaImpostazioniRef = useRef(0);
 
   // La casa si legge a parte, non nel Promise.all: se la RPC fallisce la
   // sezione CASA lo dice, e il resto delle impostazioni resta usabile.
@@ -211,19 +217,27 @@ export default function Impostazioni() {
    * `salvaImpostazioni` àncora da sé l'origine al lunedì corrente quando si
    * accende un ciclo che non ne ha una, quindi dopo la scrittura si rilegge:
    * vale per ogni patch, così lo stato in pagina è sempre quello del server.
+   *
+   * Solo l'ultima richiesta tocca lo stato: una rilettura (o un errore) di
+   * una richiesta superata da una più recente si ignora, perché la più
+   * recente riscrive la riga intera e la sua rilettura dirà l'ultima parola.
    */
   async function persistiImpostazioni(patch: Partial<Impostazioni>) {
     if (!dati) return;
+    const richiesta = ++richiestaImpostazioniRef.current;
+    const eUltima = () => richiesta === richiestaImpostazioniRef.current;
     setErroreSalvataggio(null);
     const nuove = { ...dati.impostazioni, ...patch };
     setDati((correnti) => (correnti ? { ...correnti, impostazioni: nuove } : correnti));
     try {
       await salvaImpostazioni(nuove);
       const rilette = await leggiImpostazioni();
+      if (!eUltima()) return;
       impostazioniSalvateRef.current = rilette;
       setDati((correnti) => (correnti ? { ...correnti, impostazioni: rilette } : correnti));
     } catch (errore) {
       console.error('impostazioni: salvataggio delle impostazioni fallito.', errore);
+      if (!eUltima()) return;
       const salvate = impostazioniSalvateRef.current;
       if (salvate) setDati((correnti) => (correnti ? { ...correnti, impostazioni: salvate } : correnti));
       setErroreSalvataggio('Non siamo riusciti a salvare. Riprova.');

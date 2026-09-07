@@ -29,6 +29,13 @@ vi.mock('@/data/repertorio', () => ({
 vi.mock('@/data/casa', () => ({
   idCasa: vi.fn(),
 }));
+// L'account entra nell'istantanea offline (spec lista-offline §1): di
+// default 'user-1'. `getSession` legge il token locale, quindi risponde
+// anche nei test "senza rete" (pattern copiato da importa/page.test.tsx).
+const { getSessionMock } = vi.hoisted(() => ({ getSessionMock: vi.fn() }));
+vi.mock('@/data/supabase', () => ({
+  client: () => ({ auth: { getSession: getSessionMock } }),
+}));
 
 import { leggiSettimanaCorrente } from '@/data/settimana';
 import { leggiListe, spunta, allineaTopUp } from '@/data/lista';
@@ -86,6 +93,7 @@ beforeEach(() => {
   vi.mocked(rispondiControllo).mockReset().mockResolvedValue(undefined);
   vi.mocked(leggiRepertorio).mockReset().mockResolvedValue([PIATTO]);
   vi.mocked(idCasa).mockReset().mockResolvedValue('casa-1');
+  getSessionMock.mockReset().mockResolvedValue({ data: { session: { user: { id: 'user-1' } } } });
 });
 
 describe('Lista', () => {
@@ -607,7 +615,83 @@ describe('Lista', () => {
       simulaVisibilita('visible');
 
       await waitFor(() => expect(leggiIstantaneaLista()?.lista).toEqual(dopo));
-      expect(leggiIstantaneaLista()).toMatchObject({ casaId: 'casa-1', weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO' });
+      expect(leggiIstantaneaLista()).toMatchObject({ casaId: 'casa-1', userId: 'user-1', weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO' });
+    });
+
+    // F2 della review: chi chiama `sincronizzaCoda()` mentre un giro è in
+    // volo aspetta solo quel giro, non quello coalescente che un tocco nel
+    // frattempo ha chiesto. Se `versioneTocchi` si fissasse DOPO l'attesa,
+    // un tap arrivato durante la sincronizzazione non si vedrebbe: la
+    // lettura partirebbe senza quella spunta, la coda si svuoterebbe alla
+    // conferma del secondo giro, e la risposta stantia la disfarebbe.
+    it('un tap arrivato durante la sincronizzazione che precede la rilettura la fa scartare', async () => {
+      const risolvi: Record<string, () => void> = {};
+      vi.mocked(spunta).mockImplementation((itemId: string) => new Promise<void>((resolve) => { risolvi[itemId] = resolve; }));
+      let risolviRilettura: (l: ListaSalvata) => void = () => {};
+      vi.mocked(leggiListe)
+        .mockResolvedValueOnce(buildLista())
+        .mockImplementationOnce(() => new Promise<ListaSalvata | null>((resolve) => { risolviRilettura = resolve; }));
+      render(<Lista />);
+      const riso = (await screen.findByText('Riso Carnaroli')).closest('button')!;
+      const pasta = screen.getByText('Pasta integrale').closest('button')!;
+
+      // Tap 1: pasta. Il primo giro di sincronizzazione parte, scrittura pendente.
+      fireEvent.click(pasta);
+      await waitFor(() => expect(spunta).toHaveBeenCalledWith('item-pasta', true));
+
+      // Ritorno in primo piano mentre il giro è in volo: la rilettura aspetta
+      // quel giro (e solo quello).
+      simulaVisibilita('visible');
+
+      // Tap 2, durante la sincronizzazione: riso. Chiede un giro coalescente.
+      fireEvent.click(riso);
+      expect(riso).toHaveAttribute('aria-pressed', 'true');
+
+      // Il primo giro finisce; la rilettura parte; il giro coalescente
+      // scrive riso e svuota la coda prima che la rilettura torni.
+      risolvi['item-pasta']();
+      await waitFor(() => expect(leggiListe).toHaveBeenCalledTimes(2));
+      await waitFor(() => expect(spunta).toHaveBeenCalledWith('item-riso', true));
+      risolvi['item-riso']();
+      await waitFor(() => expect(leggiCoda()).toEqual([]));
+
+      // La rilettura torna adesso, letta senza la spunta di riso.
+      risolviRilettura(buildLista());
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(screen.getByText('Riso Carnaroli').closest('button')).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByText('Pasta integrale').closest('button')).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    // F3 della review: `rispondi` conta il tocco anche DOPO la RPC. Una
+    // rilettura partita mentre la risposta era in volo può essere stata
+    // servita prima che il server la registrasse: senza il secondo
+    // incremento passerebbe come "senza tocchi nel mezzo".
+    it('una rilettura partita durante la risposta a un controllo e arrivata dopo si scarta', async () => {
+      let risolviRisposta: () => void = () => {};
+      vi.mocked(rispondiControllo).mockImplementation(() => new Promise<void>((resolve) => { risolviRisposta = resolve; }));
+      let risolviRilettura: (l: ListaSalvata) => void = () => {};
+      vi.mocked(leggiListe)
+        .mockResolvedValueOnce(buildLista())
+        .mockImplementationOnce(() => new Promise<ListaSalvata | null>((resolve) => { risolviRilettura = resolve; }));
+      render(<Lista />);
+      await screen.findByText('Olio: ne hai ancora?');
+
+      // Risposta in volo, poi la rilettura parte (dopo l'incremento pre-RPC).
+      fireEvent.click(screen.getByRole('button', { name: /Sì, hai ancora Olio/ }));
+      await waitFor(() => expect(rispondiControllo).toHaveBeenCalled());
+      simulaVisibilita('visible');
+      await waitFor(() => expect(leggiListe).toHaveBeenCalledTimes(2));
+
+      // La risposta si conclude: il controllo sparisce.
+      risolviRisposta();
+      await waitFor(() => expect(screen.queryByText('Olio: ne hai ancora?')).not.toBeInTheDocument());
+
+      // La rilettura stantia ha ancora il controllo: non deve ricomparire.
+      risolviRilettura(buildLista());
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(screen.queryByText('Olio: ne hai ancora?')).not.toBeInTheDocument();
     });
   });
 
@@ -631,8 +715,17 @@ describe('Lista', () => {
       errore.mockRestore();
     });
 
-    function salvaIstantaneaDiProva(lista: ListaSalvata = buildLista(), casaId = 'casa-1') {
-      salvaIstantaneaLista({ casaId, weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO', lista });
+    function simulaVisibilita(stato: 'visible' | 'hidden') {
+      Object.defineProperty(document, 'visibilityState', { value: stato, configurable: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+    }
+
+    afterEach(() => {
+      delete (document as unknown as Record<string, unknown>).visibilityState;
+    });
+
+    function salvaIstantaneaDiProva(lista: ListaSalvata = buildLista(), casaId = 'casa-1', userId = 'user-1') {
+      salvaIstantaneaLista({ casaId, userId, weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO', lista });
     }
 
     it('se la lettura fallisce e c\'è un\'istantanea, mostra quella con la riga "Sei offline"', async () => {
@@ -730,6 +823,50 @@ describe('Lista', () => {
       expect(localStorage.getItem('spesa:lista')).not.toBeNull();
     });
 
+    // S1 della review: due account sullo stesso browser condividono
+    // localStorage. `getSession` legge il token locale e risponde anche
+    // senza rete finché è valido: l'istantanea di un altro account non si
+    // mostra e si cancella.
+    it('se l\'istantanea è di un altro account (stesso browser) non si mostra e si cancella', async () => {
+      salvaIstantaneaDiProva(buildLista(), 'casa-1', 'user-2');
+      vi.mocked(leggiSettimanaCorrente).mockRejectedValue(new Error('rete assente'));
+      render(<Lista />);
+
+      expect(await screen.findByText('Non riusciamo a caricare la lista. Riprova più tardi.')).toBeInTheDocument();
+      expect(screen.queryByText(/Sei offline/)).not.toBeInTheDocument();
+      expect(localStorage.getItem('spesa:lista')).toBeNull();
+      expect(getSessionMock).toHaveBeenCalled();
+    });
+
+    it('se la sessione non si legge (token scaduto senza rete), l\'account non si verifica e l\'istantanea si mostra', async () => {
+      salvaIstantaneaDiProva(buildLista(), 'casa-1', 'user-2');
+      getSessionMock.mockResolvedValue({ data: { session: null } });
+      vi.mocked(leggiSettimanaCorrente).mockRejectedValue(new Error('rete assente'));
+      render(<Lista />);
+
+      expect(await screen.findByText(RIGA_OFFLINE)).toBeInTheDocument();
+      expect(localStorage.getItem('spesa:lista')).not.toBeNull();
+    });
+
+    it('se getSession lancia, l\'account non si verifica e l\'istantanea si mostra', async () => {
+      salvaIstantaneaDiProva(buildLista(), 'casa-1', 'user-2');
+      getSessionMock.mockRejectedValue(new Error('storage bloccato'));
+      vi.mocked(leggiSettimanaCorrente).mockRejectedValue(new Error('rete assente'));
+      render(<Lista />);
+
+      expect(await screen.findByText(RIGA_OFFLINE)).toBeInTheDocument();
+      expect(errore).toHaveBeenCalledWith('lista: lettura della sessione fallita.', expect.any(Error));
+    });
+
+    it('una lettura riuscita senza sessione leggibile salva l\'istantanea con userId vuoto', async () => {
+      getSessionMock.mockResolvedValue({ data: { session: null } });
+      vi.mocked(leggiListe).mockResolvedValue(buildLista());
+      render(<Lista />);
+      await screen.findByText('Riso Carnaroli');
+
+      expect(leggiIstantaneaLista()).toMatchObject({ casaId: 'casa-1', userId: '' });
+    });
+
     it('con la rete la riga non c\'è', async () => {
       vi.mocked(leggiListe).mockResolvedValue(buildLista());
       render(<Lista />);
@@ -751,7 +888,7 @@ describe('Lista', () => {
       expect(riso.closest('button')).toHaveAttribute('aria-pressed', 'true');
 
       const istantanea = leggiIstantaneaLista();
-      expect(istantanea).toMatchObject({ casaId: 'casa-1', weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO', salvataIl: expect.any(Number) });
+      expect(istantanea).toMatchObject({ casaId: 'casa-1', userId: 'user-1', weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO', salvataIl: expect.any(Number) });
       expect(istantanea?.lista).toEqual(buildLista());
       expect(istantanea?.lista.base[0].voci[0].spuntato).toBe(false);
     });
@@ -774,9 +911,14 @@ describe('Lista', () => {
       expect(leggiIstantaneaLista()).toBeNull();
     });
 
-    it('al ritorno della rete rilegge la settimana dell\'istantanea: la riga sparisce e la lista è quella fresca', async () => {
+    // F1 della review: al ritorno della rete con l'istantanea a schermo NON
+    // si rilegge la settimana dell'istantanea, si rifà il caricamento
+    // intero. Le liste di una settimana chiusa restano sul server: rilette
+    // da sole tornerebbero come vive, senza allineaTopUp e senza il ramo
+    // che cancella la copia quando la lista non c'è più.
+    it('al ritorno della rete rifà il caricamento intero: la riga sparisce e la lista è quella fresca', async () => {
       salvaIstantaneaDiProva();
-      vi.mocked(leggiSettimanaCorrente).mockRejectedValue(new Error('rete assente'));
+      vi.mocked(leggiSettimanaCorrente).mockRejectedValueOnce(new Error('rete assente'));
       const fresca: ListaSalvata = {
         ...buildLista(),
         base: [
@@ -788,48 +930,140 @@ describe('Lista', () => {
       render(<Lista />);
       await screen.findByText(RIGA_OFFLINE);
       expect(screen.queryByText('Uova')).not.toBeInTheDocument();
+      expect(allineaTopUp).not.toHaveBeenCalled();
 
       window.dispatchEvent(new Event('online'));
 
       expect(await screen.findByText('Uova')).toBeInTheDocument();
       expect(screen.queryByText(RIGA_OFFLINE)).not.toBeInTheDocument();
       expect(screen.getByText('Pasta integrale').closest('button')).toHaveAttribute('aria-pressed', 'true');
+      // Il giro intero: settimana corrente riletta, top-up allineato, liste lette.
+      expect(leggiSettimanaCorrente).toHaveBeenCalledTimes(2);
+      expect(allineaTopUp).toHaveBeenCalledTimes(1);
+      expect(allineaTopUp).toHaveBeenCalledWith('week-1');
       expect(leggiListe).toHaveBeenCalledTimes(1);
       expect(leggiListe).toHaveBeenCalledWith('week-1');
-      // Solo leggiListe, come al ritorno in primo piano: non si rifà il caricamento intero.
-      expect(allineaTopUp).not.toHaveBeenCalled();
       // L'istantanea si aggiorna con la lista fresca.
       expect(leggiIstantaneaLista()?.lista).toEqual(fresca);
     });
 
-    it('al ritorno della rete, se la settimana dell\'istantanea non esiste più, la copia resta com\'è', async () => {
+    it('al ritorno della rete, se la settimana corrente è un\'altra e ha una lista, mostra quella', async () => {
+      // Lunedì mattina senza rete: l'istantanea è della settimana chiusa.
       salvaIstantaneaDiProva();
-      vi.mocked(leggiSettimanaCorrente).mockRejectedValue(new Error('rete assente'));
+      vi.mocked(leggiSettimanaCorrente)
+        .mockRejectedValueOnce(new Error('rete assente'))
+        .mockResolvedValue({ ...SETTIMANA, id: 'week-2', dataInizio: '2026-08-31' });
+      const nuova: ListaSalvata = {
+        ...buildLista(),
+        base: [{ area: 'latticini', voci: [VOCE_UOVA], controlli: [] }],
+      };
+      vi.mocked(leggiListe).mockResolvedValue(nuova);
+      render(<Lista />);
+      await screen.findByText(RIGA_OFFLINE);
+
+      window.dispatchEvent(new Event('online'));
+
+      expect(await screen.findByText('Uova')).toBeInTheDocument();
+      expect(screen.queryByText('Riso Carnaroli')).not.toBeInTheDocument();
+      expect(screen.queryByText(/Sei offline/)).not.toBeInTheDocument();
+      expect(screen.getByText('31 AGO — 6 SET')).toBeInTheDocument();
+      // La settimana letta è quella corrente, non quella dell'istantanea.
+      expect(allineaTopUp).toHaveBeenCalledWith('week-2');
+      expect(leggiListe).toHaveBeenCalledWith('week-2');
+      expect(leggiListe).not.toHaveBeenCalledWith('week-1');
+      expect(leggiIstantaneaLista()).toMatchObject({ weekId: 'week-2', settimanaLabel: '31 AGO — 6 SET', lista: nuova });
+    });
+
+    it('al ritorno della rete, se la settimana corrente è un\'altra senza lista, mostra "non trovata" e cancella l\'istantanea', async () => {
+      salvaIstantaneaDiProva();
+      vi.mocked(leggiSettimanaCorrente)
+        .mockRejectedValueOnce(new Error('rete assente'))
+        .mockResolvedValue({ ...SETTIMANA, id: 'week-2', dataInizio: '2026-08-31' });
       vi.mocked(leggiListe).mockResolvedValue(null);
       render(<Lista />);
       await screen.findByText(RIGA_OFFLINE);
 
       window.dispatchEvent(new Event('online'));
 
-      await waitFor(() => expect(leggiListe).toHaveBeenCalledWith('week-1'));
-      await new Promise((r) => setTimeout(r, 0));
-      expect(screen.getByText(RIGA_OFFLINE)).toBeInTheDocument();
-      expect(screen.getByText('Riso Carnaroli')).toBeInTheDocument();
-      expect(leggiIstantaneaLista()?.lista).toEqual(buildLista());
+      expect(await screen.findByText('La lista non c’è ancora')).toBeInTheDocument();
+      expect(screen.queryByText(/Sei offline/)).not.toBeInTheDocument();
+      expect(screen.queryByText('Riso Carnaroli')).not.toBeInTheDocument();
+      expect(leggiListe).toHaveBeenCalledWith('week-2');
+      expect(leggiIstantaneaLista()).toBeNull();
     });
 
-    it('al ritorno della rete, se la rilettura fallisce, la copia resta e l\'errore va in console', async () => {
+    it('al ritorno della rete, se non c\'è più una settimana corrente, mostra "non trovata" e cancella l\'istantanea', async () => {
       salvaIstantaneaDiProva();
-      vi.mocked(leggiSettimanaCorrente).mockRejectedValue(new Error('rete assente'));
-      vi.mocked(leggiListe).mockRejectedValue(new Error('ancora niente rete'));
+      vi.mocked(leggiSettimanaCorrente)
+        .mockRejectedValueOnce(new Error('rete assente'))
+        .mockResolvedValue(null);
       render(<Lista />);
       await screen.findByText(RIGA_OFFLINE);
 
       window.dispatchEvent(new Event('online'));
 
-      await waitFor(() => expect(errore).toHaveBeenCalledWith('lista: rilettura al ritorno online fallita.', expect.any(Error)));
+      expect(await screen.findByText('La lista non c’è ancora')).toBeInTheDocument();
+      expect(leggiListe).not.toHaveBeenCalled();
+      expect(leggiIstantaneaLista()).toBeNull();
+    });
+
+    it('al ritorno della rete, se il caricamento fallisce di nuovo, la copia resta e l\'errore va in console', async () => {
+      salvaIstantaneaDiProva();
+      vi.mocked(leggiSettimanaCorrente).mockRejectedValue(new Error('ancora niente rete'));
+      render(<Lista />);
+      await screen.findByText(RIGA_OFFLINE);
+      expect(errore).toHaveBeenCalledTimes(1);
+
+      window.dispatchEvent(new Event('online'));
+
+      await waitFor(() => expect(errore).toHaveBeenCalledTimes(2));
+      expect(errore).toHaveBeenLastCalledWith('lista: caricamento fallito.', expect.any(Error));
       expect(screen.getByText(RIGA_OFFLINE)).toBeInTheDocument();
       expect(screen.getByText('Riso Carnaroli')).toBeInTheDocument();
+      expect(leggiListe).not.toHaveBeenCalled();
+    });
+
+    it('con l\'istantanea a schermo anche il ritorno in primo piano rifà il caricamento intero', async () => {
+      salvaIstantaneaDiProva();
+      vi.mocked(leggiSettimanaCorrente)
+        .mockRejectedValueOnce(new Error('rete assente'))
+        .mockResolvedValue({ ...SETTIMANA, id: 'week-2', dataInizio: '2026-08-31' });
+      vi.mocked(leggiListe).mockResolvedValue(null);
+      render(<Lista />);
+      await screen.findByText(RIGA_OFFLINE);
+
+      simulaVisibilita('visible');
+
+      expect(await screen.findByText('La lista non c’è ancora')).toBeInTheDocument();
+      expect(leggiSettimanaCorrente).toHaveBeenCalledTimes(2);
+      expect(leggiListe).toHaveBeenCalledWith('week-2');
+      expect(leggiIstantaneaLista()).toBeNull();
+    });
+
+    it('un tap arrivato mentre il caricamento al ritorno della rete è in volo lo fa scartare', async () => {
+      // Come per `rileggi`: la risposta letta prima del tap è più vecchia di
+      // quella a schermo. La spunta si è già confermata e la coda è vuota:
+      // senza lo scarto la risposta stantia la disfarebbe.
+      salvaIstantaneaDiProva();
+      vi.mocked(leggiSettimanaCorrente).mockRejectedValueOnce(new Error('rete assente'));
+      let risolviLettura: (l: ListaSalvata) => void = () => {};
+      vi.mocked(leggiListe).mockImplementationOnce(() => new Promise<ListaSalvata | null>((resolve) => { risolviLettura = resolve; }));
+      render(<Lista />);
+      const riso = (await screen.findByText('Riso Carnaroli')).closest('button')!;
+
+      window.dispatchEvent(new Event('online'));
+      await waitFor(() => expect(leggiListe).toHaveBeenCalledTimes(1));
+
+      fireEvent.click(riso);
+      await waitFor(() => expect(spunta).toHaveBeenCalledWith('item-riso', true));
+      await waitFor(() => expect(leggiCoda()).toEqual([]));
+
+      risolviLettura(buildLista());
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(screen.getByText('Riso Carnaroli').closest('button')).toHaveAttribute('aria-pressed', 'true');
+      // La risposta scartata non aggiorna nemmeno l'istantanea: resta la riga offline fino al prossimo giro.
+      expect(screen.getByText(RIGA_OFFLINE)).toBeInTheDocument();
     });
 
     it('con la rete, l\'evento online sincronizza la coda ma non rilegge', async () => {

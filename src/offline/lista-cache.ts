@@ -22,10 +22,17 @@ import type { ListaSalvata } from '@/data/lista';
  * cancella già (`casa.ts`), ma un membro **tolto dal proprietario** non
  * passa di lì: senza l'id resterebbe sul suo telefono l'ultima lista della
  * casa che ha lasciato, e offline la vedrebbe ancora.
+ *
+ * `userId` è l'account che l'ha salvata (`auth.getSession()`): sullo stesso
+ * browser due account diversi condividono `localStorage`, e senza l'id chi
+ * entra dopo vedrebbe offline la lista di chi c'era prima. Vuoto (`''`)
+ * quando al salvataggio la sessione non era leggibile.
  */
 export interface IstantaneaLista {
   /** L'id della casa (`idCasa()`) di cui la lista è. */
   casaId: string;
+  /** L'id dell'account (`auth.getSession()`) che l'ha salvata; `''` se non leggibile. */
+  userId: string;
   weekId: string;
   settimanaLabel: string;
   lista: ListaSalvata;
@@ -35,11 +42,20 @@ export interface IstantaneaLista {
 
 const CHIAVE = 'spesa:lista';
 
+/**
+ * Oltre questa età l'istantanea si scarta: una lista di un mese fa non è
+ * più "l'ultima vista", è un dato vecchio che in corsia farebbe comprare
+ * cose sbagliate, e su un browser condiviso resterebbe in giro a tempo
+ * indefinito.
+ */
+const SCADENZA_MS = 30 * 86_400_000;
+
 /** La forma minima che serve alla Lista per mostrarla: il resto lo tollera già il rendering. */
 function eIstantanea(v: unknown): v is IstantaneaLista {
   if (typeof v !== 'object' || v === null) return false;
-  const { casaId, weekId, settimanaLabel, salvataIl, lista } = v as Record<string, unknown>;
-  if (typeof casaId !== 'string' || typeof weekId !== 'string' || typeof settimanaLabel !== 'string') return false;
+  const { casaId, userId, weekId, settimanaLabel, salvataIl, lista } = v as Record<string, unknown>;
+  if (typeof casaId !== 'string' || typeof userId !== 'string') return false;
+  if (typeof weekId !== 'string' || typeof settimanaLabel !== 'string') return false;
   if (typeof salvataIl !== 'number') return false;
   if (typeof lista !== 'object' || lista === null) return false;
   const { base, topup } = lista as Record<string, unknown>;
@@ -47,24 +63,35 @@ function eIstantanea(v: unknown): v is IstantaneaLista {
 }
 
 /**
- * null se assente, malformata o senza `localStorage`: chi chiama mostra
- * allora l'errore di sempre.
+ * null se assente, malformata, più vecchia di 30 giorni o senza
+ * `localStorage`: chi chiama mostra allora l'errore di sempre.
  *
  * Con `casaId` si legge solo se l'istantanea è di quella casa: se è di
  * un'altra (un membro tolto dal proprietario, che ha ancora sul telefono la
- * lista della casa che ha lasciato) si cancella e si torna null. Senza
- * `casaId` la si restituisce comunque: chi chiama non ha potuto verificare
- * la casa (a freddo senza rete `idCasa()` fallisce) e l'istantanea è la
- * migliore informazione disponibile.
+ * lista della casa che ha lasciato) si cancella e si torna null. Con
+ * `userId`, lo stesso per l'account: se l'ha salvata un altro account sullo
+ * stesso browser si cancella e si torna null. Senza l'uno o l'altro la si
+ * restituisce comunque: chi chiama non ha potuto verificare (a freddo senza
+ * rete `idCasa()` fallisce; con il token scaduto la sessione non si legge)
+ * e l'istantanea è la migliore informazione disponibile.
  */
-export function leggiIstantaneaLista(casaId?: string): IstantaneaLista | null {
+export function leggiIstantaneaLista(opzioni: { casaId?: string; userId?: string } = {}): IstantaneaLista | null {
   if (typeof localStorage === 'undefined') return null;
   try {
     const grezzo = localStorage.getItem(CHIAVE);
     if (!grezzo) return null;
     const v: unknown = JSON.parse(grezzo);
     if (!eIstantanea(v)) return null;
+    const { casaId, userId } = opzioni;
     if (casaId !== undefined && v.casaId !== casaId) {
+      cancellaIstantaneaLista();
+      return null;
+    }
+    if (userId !== undefined && v.userId !== userId) {
+      cancellaIstantaneaLista();
+      return null;
+    }
+    if (Date.now() - v.salvataIl > SCADENZA_MS) {
       cancellaIstantaneaLista();
       return null;
     }
