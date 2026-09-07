@@ -9,7 +9,7 @@ a un eventuale prodotto.
 **Stato: Fase 1 completa e provata sul campo il 28/08/2026.** Dominio puro
 (`list-builder`, `pantry`, `planner`, `ciclo`, `week-shape`, `chiusura`, `opzioni`,
 `confezioni`), 1063 test automatici verdi, schema su un progetto Supabase vero,
-quindici schermate, PWA installabile con guscio offline sulla lista, in produzione
+sedici schermate, PWA installabile con guscio offline sulla lista, in produzione
 su Vercel.
 
 ### Importa la dieta (29/08/2026)
@@ -352,6 +352,27 @@ CASA, con l'assunzione dichiarata nel copy (vale se a tavola mangiate tutti la s
 porzione; spec §6). Spec:
 [`docs/superpowers/specs/2026-09-06-casa-condivisa-design.md`](docs/superpowers/specs/2026-09-06-casa-condivisa-design.md).
 
+## Il formato vero della confezione (07/09/2026)
+
+Il formato confezione di un ingrediente è deciso a mano o dal seed e vale per sempre: se
+compri una confezione diversa, il residuo derivato sbaglia di quella differenza a ogni
+settimana. Da "Hai preso tutto", prima di chiudere la spesa, `CONFEZIONI DIVERSE?
+SCANSIONA` porta a `/lista/confezioni`: per ogni voce comprata a peso o volume si
+scansiona il codice a barre (fotocamera con `BarcodeDetector` su Chrome Android; altrove
+si scrive il codice) e una route server (`/api/prodotto/[ean]`) chiede a Open Food Facts
+nome, marca e quantità della confezione (`src/domain/ean.ts` legge le forme "500 g",
+"1,5 l", "33 cl", "6 x 125 g"). Se la quantità è diversa dal formato assunto, `AGGIORNA`
+la scrive sull'ingrediente (le prossime settimane) e sulle righe della lista di questa
+settimana (che la chiusura accredita al residuo); il codice resta sull'ingrediente
+(migrazione 0013, colonna `ean`). Prodotto non trovato: formato a mano.
+
+**Limiti dichiarati** (non bug): solo prodotti con codice a barre presenti in Open Food
+Facts (~263 mila italiani a settembre 2026); le voci a pezzo e a stima non si
+scansionano; il formato vale per l'ingrediente, non per marca, vince l'ultima
+scansione; la quantità di OFF la dichiara un contributore e si conferma con un tocco;
+la correzione si fa prima di chiudere la spesa. Spec:
+[`docs/superpowers/specs/2026-09-07-scan-confezione-design.md`](docs/superpowers/specs/2026-09-07-scan-confezione-design.md).
+
 ## Dove sta cosa
 
 | File | Cosa contiene |
@@ -362,6 +383,7 @@ porzione; spec §6). Spec:
 | [`docs/superpowers/specs/2026-08-26-spesa-design.md`](docs/superpowers/specs/2026-08-26-spesa-design.md) | **La spec.** Modello dati, componenti, fasi, e tutte le decisioni prese durante il design con il loro perché |
 | [`docs/superpowers/specs/DESIGN-SYSTEM.md`](docs/superpowers/specs/DESIGN-SYSTEM.md) | Colori, tipografia, forme, regole di stato — valori estratti dalle schermate reali |
 | [`docs/superpowers/specs/2026-09-05-import-in-produzione-design.md`](docs/superpowers/specs/2026-09-05-import-in-produzione-design.md) | Import in produzione: estrazione a pagine in parallelo, tetto per utente, eval che decide il modello, checklist locale |
+| [`docs/superpowers/specs/2026-09-07-scan-confezione-design.md`](docs/superpowers/specs/2026-09-07-scan-confezione-design.md) | Il formato vero della confezione: scanner, route verso Open Food Facts, `ean` sull'ingrediente, i limiti |
 | [`docs/superpowers/specs/2026-09-06-lista-offline-design.md`](docs/superpowers/specs/2026-09-06-lista-offline-design.md) | La lista offline: l'istantanea dell'ultima lista letta, la regola "la rete decide, la copia ripara", i limiti |
 | [`docs/superpowers/specs/2026-09-06-casa-condivisa-design.md`](docs/superpowers/specs/2026-09-06-casa-condivisa-design.md) | La casa condivisa: `casa_id()`, policy rigenerate, inviti con codice (otto caratteri, un'ora), la sezione CASA, il moltiplicatore "per quante persone" a livello di casa, i poteri del membro |
 | [`docs/superpowers/specs/2026-09-06-due-porte-design.md`](docs/superpowers/specs/2026-09-06-due-porte-design.md) | Le due porte e il primo avvio: semina automatica, stato vuoto di Piatti, inserimento veloce, stati vuoti collegati |
@@ -447,7 +469,8 @@ autenticarsi):
 nell'SQL Editor, in ordine, `supabase/migrations/0010_import_uso.sql` (il tetto di import
 per utente), `supabase/migrations/0011_prezzo_e_risparmio.sql` (colonna
 `prezzo_confezione` e tabella `risparmio_settimana`) e `supabase/migrations/0012_casa.sql`
-(la casa condivisa: sostituisce tutte le policy RLS con `casa_id()`). Nessuna è
+(la casa condivisa: sostituisce tutte le policy RLS con `casa_id()`) e
+`supabase/migrations/0013_ean.sql` (la colonna `ean`). Nessuna è
 rimandabile: senza la 0011 la generazione della lista fallisce, senza la 0012 l'app non
 carica (il data layer chiama la RPC `casa_id` a ogni apertura). Dal pannello Supabase
 Auth conviene anche **spegnere le iscrizioni aperte** ("Allow new users to sign up")

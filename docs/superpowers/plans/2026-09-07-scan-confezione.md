@@ -15,19 +15,19 @@
 
 ## Lotto 1 (in parallelo)
 ### Task 1: `src/domain/ean.ts` (+ test)
-- [ ] `eanValido`, `analizzaQuantitaOFF`, `formatoProposto` (spec §4, §6).
+- [x] `eanValido`, `analizzaQuantitaOFF`, `formatoProposto` (spec §4, §6).
 ### Task 2: migrazione 0013, `Ingredient.ean`, `src/data/confezioni.ts` (+ test), mapper
-- [ ] Colonna, tipo, `aIngrediente`, `salvaIngrediente` (scrive `ean`), letture/scrittura (spec §4).
+- [x] Colonna, tipo, `aIngrediente`, `salvaIngrediente` (scrive `ean`), letture/scrittura (spec §4).
 
 ## Lotto 2 (in parallelo, dopo il Lotto 1)
 ### Task 3: route `src/app/api/prodotto/[ean]/route.ts` (+ test)
-- [ ] Spec §2.
+- [x] Spec §2.
 ### Task 4: `src/components/Scanner.tsx`, `src/app/(app)/lista/confezioni/page.tsx`, link in `lista/fatta` (+ test)
-- [ ] Spec §1, §3.
+- [x] Spec §1, §3.
 
 ## Lotto 3
 ### Task 5: documentazione
-- [ ] README (sezione "Il formato vero", migrazione 0013 nel deploy), backlog (P8 consegnato, P9 prossimo), `docs/2026-09-06-ripresa.md`.
+- [x] README (sezione "Il formato vero", migrazione 0013 nel deploy), backlog (P8 consegnato, P9 prossimo), `docs/2026-09-06-ripresa.md`.
 
 ## Checklist locale per Andrea
 - [ ] Applicare `0013_ean.sql`.

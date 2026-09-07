@@ -1,6 +1,6 @@
 # Scan del codice a barre → formato confezione reale — design (P8)
 
-**Data:** 07/09/2026 · **Stato:** approvata
+**Data:** 07/09/2026 · **Stato:** approvata e implementata il 07/09 (piano omonimo); da provare con un pacco di pasta dopo la migrazione 0013
 **Deriva da:** [spesa-backlog-nicchia.md](../../../spesa-backlog-nicchia.md) (P8), la spec di
 prodotto (il residuo è derivato da porzione vs formato confezione)
 
