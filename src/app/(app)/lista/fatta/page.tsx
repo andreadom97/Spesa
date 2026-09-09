@@ -117,6 +117,12 @@ export default function ListaFatta() {
           router.replace('/lista');
           return;
         }
+        // Spesa già chiusa (un link vecchio, il tasto indietro): il traguardo
+        // è passato e CHIUDI sarebbe un no-op che sembra fare qualcosa.
+        if (settimana.stato === 'chiusa') {
+          router.replace('/settimana');
+          return;
+        }
         const lista = await leggiListe(settimana.id);
         const esito = lista ? tuttoFatto(lista) : { fatto: false, totale: 0 };
         if (!lista || !esito.fatto) {

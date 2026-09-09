@@ -14,6 +14,11 @@ function taglia(v: unknown): string {
   return typeof v === 'string' ? v.trim().slice(0, MAX_CARATTERI) : '';
 }
 
+/** Un giorno: la data cache di Next verso OFF e il `max-age` verso il browser. */
+const REVALIDATE_S = 86_400;
+/** Solo sui 200: un errore non si tiene. */
+const CACHE_200 = { 'Cache-Control': `private, max-age=${REVALIDATE_S}` };
+
 /**
  * GET /api/prodotto/[ean] — nome, marca e quantità della confezione da Open Food
  * Facts (spec scan-confezione §2).
@@ -21,8 +26,18 @@ function taglia(v: unknown): string {
  * Passa dal server e non dal browser per tre ragioni: OFF vuole uno `User-Agent`
  * esplicito, che una fetch dal browser non può impostare; il browser non ha
  * nulla da verificare sul CORS; e il codice a barre resta fra il client e noi.
- * La route legge e basta: nessuna scrittura, nessuna cache (`no-store`), e nel
- * log non finisce mai il codice — dice cosa mangi.
+ * La route legge e basta: nessuna scrittura, e nel log non finisce mai il
+ * codice — dice cosa mangi.
+ *
+ * Cache: la risposta di OFF dipende solo dall'URL, cioè dal codice a barre —
+ * nessun dato dell'utente ci entra (la sessione serve solo a decidere SE
+ * rispondere, non COSA). Quindi si può tenere: la fetch verso OFF passa dalla
+ * data cache di Next con `next: { revalidate: 86400 }` (un giorno: il formato
+ * di un prodotto non cambia di ora in ora, e una casa scansiona spesso gli
+ * stessi pacchi), e il 200 porta `Cache-Control: private, max-age=86400` per
+ * il browser — `private` perché la risposta è dietro sessione e non deve
+ * finire in una cache condivisa. Per la data cache vedi
+ * node_modules/next/dist/docs/01-app/03-api-reference/04-functions/fetch.md.
  *
  * Sessione: il proxy già rimanda a /entra chi non ce l'ha; qui in più si
  * verifica `auth.getUser()` col client dei cookie della richiesta (GET dalla
@@ -60,9 +75,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const res = await fetch(`${OFF_BASE}${codice}.json?fields=${OFF_FIELDS}`, {
       headers: { 'User-Agent': USER_AGENT },
       signal: AbortSignal.timeout(TIMEOUT_MS),
-      cache: 'no-store',
+      next: { revalidate: REVALIDATE_S },
     });
-    if (res.status === 404) return Response.json({ trovato: false }, { status: 200 });
+    if (res.status === 404) return Response.json({ trovato: false }, { status: 200, headers: CACHE_200 });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     corpo = await res.json();
   } catch (err) {
@@ -73,11 +88,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const risposta = typeof corpo === 'object' && corpo !== null ? (corpo as Record<string, unknown>) : {};
   const product = risposta.product;
   if (risposta.status === 0 || typeof product !== 'object' || product === null) {
-    return Response.json({ trovato: false }, { status: 200 });
+    return Response.json({ trovato: false }, { status: 200, headers: CACHE_200 });
   }
   const p = product as Record<string, unknown>;
   return Response.json(
     { trovato: true, nome: taglia(p.product_name), marca: taglia(p.brands), quantita: analizzaQuantitaOFF(p) },
-    { status: 200 },
+    { status: 200, headers: CACHE_200 },
   );
 }

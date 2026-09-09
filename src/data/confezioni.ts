@@ -16,6 +16,10 @@ export interface VoceComprata {
   unita: UnitaBase;
   /** La pagina non offre lo scan per `intero` (si conta) né per `stima`. */
   classeResiduo: ClasseResiduo;
+  /** Il fabbisogno congelato della riga, in `unita`: serve a rifare le confezioni con un formato diverso. */
+  fabbisogno: number;
+  /** Il residuo congelato della riga (già utilizzabile), in `unita`. */
+  residuo: number;
   confezioni: number;
   /** Il formato assunto oggi sull'ingrediente, in `unita`. */
   formato: number;
@@ -29,6 +33,8 @@ export interface VoceComprata {
 interface RigaCompratoGrezza {
   id: unknown;
   ingredient_id: unknown;
+  fabbisogno: unknown;
+  residuo: unknown;
   confezioni: unknown;
   quantita_totale: unknown;
   spuntato: unknown;
@@ -42,12 +48,21 @@ interface RigaCompratoGrezza {
   } | null;
 }
 
+/** Il tetto del formato: sotto un millesimo di unità o sopra 100 kg / 100 l / 100.000 pezzi non è una confezione. */
+export const FORMATO_MIN = 0.001;
+export const FORMATO_MAX = 100_000;
+/** Il tetto delle confezioni comprate in una spesa. */
+export const CONFEZIONI_MAX = 1000;
+
 /**
  * Le voci comprate della settimana: spuntate, nate dal piano o aggiunte a
  * mano (i controlli staple "ne hai ancora?" non sono acquisti) e con almeno
  * una confezione (un controllo risposto "sì" resta a 0). Entrambe le liste
- * (base e top-up), in ordine di nome. Le quantità sono quelle congelate:
- * questa funzione non ricalcola niente.
+ * (base e top-up), in ordine di nome; a parità di nome (lo stesso
+ * ingrediente in tutte e due le liste) prima la base, poi il top-up — lo
+ * stesso ordine in cui `aggiornaFormatoDaScansione` assegna le confezioni
+ * comprate. Le quantità sono quelle congelate: questa funzione non
+ * ricalcola niente.
  */
 export async function leggiVociComprate(weekId: string): Promise<VoceComprata[]> {
   const sb = client();
@@ -55,65 +70,104 @@ export async function leggiVociComprate(weekId: string): Promise<VoceComprata[]>
   const { data: liste, error } = await sb
     .from('shopping_list')
     .select(
-      'id, shopping_list_item(id, ingredient_id, confezioni, quantita_totale, spuntato, origine, unita, ingredient(nome, classe_residuo, formato_confezione, ean))',
+      'id, tipo, shopping_list_item(id, ingredient_id, fabbisogno, residuo, confezioni, quantita_totale, spuntato, origine, unita, ingredient(nome, classe_residuo, formato_confezione, ean))',
     )
     .eq('week_id', weekId)
     .eq('user_id', userId)
-    .returns<Array<{ id: unknown; shopping_list_item: RigaCompratoGrezza[] }>>();
+    .returns<Array<{ id: unknown; tipo: unknown; shopping_list_item: RigaCompratoGrezza[] }>>();
   if (error) throw error;
 
+  const ordineLista = (tipo: unknown): number => (tipo === 'topup' ? 1 : 0);
+
   return (liste ?? [])
-    .flatMap((l) => l.shopping_list_item ?? [])
-    .filter((r) =>
+    .flatMap((l) => (l.shopping_list_item ?? []).map((r) => ({ riga: r, lista: ordineLista(l.tipo) })))
+    .filter(({ riga: r }) =>
       Boolean(r.spuntato)
       && (r.origine === 'piano' || r.origine === 'manuale')
       && Number(r.confezioni) > 0)
-    .map((r): VoceComprata => ({
+    .sort((a, b) => {
+      const perNome = String(a.riga.ingredient?.nome ?? '').localeCompare(String(b.riga.ingredient?.nome ?? ''), 'it');
+      return perNome !== 0 ? perNome : a.lista - b.lista;
+    })
+    .map(({ riga: r }): VoceComprata => ({
       itemId: String(r.id),
       ingredientId: String(r.ingredient_id),
       nome: r.ingredient ? String(r.ingredient.nome) : '',
       unita: r.unita as UnitaBase,
       classeResiduo: (r.ingredient?.classe_residuo ?? 'porzionabile') as ClasseResiduo,
+      fabbisogno: Number(r.fabbisogno),
+      residuo: Number(r.residuo),
       confezioni: Number(r.confezioni),
       formato: Number(r.ingredient?.formato_confezione ?? 0),
       quantitaTotale: Number(r.quantita_totale),
       ean: r.ingredient?.ean == null ? null : String(r.ingredient.ean),
-    }))
-    .sort((a, b) => a.nome.localeCompare(b.nome, 'it'));
+    }));
 }
 
 /**
- * Scrive il formato letto dal codice a barre in due posti, perché il formato
- * vive in due posti:
+ * Scrive quello che si è comprato davvero: il formato letto dal codice a
+ * barre E quante confezioni di quel formato sono entrate nel carrello. Le
+ * due cose vanno insieme: `confezioni` della riga è derivato dal formato
+ * assunto (`ceil(daComprare / formato)`), e cambiare il formato tenendo il
+ * conteggio darebbe una `quantita_totale` che non corrisponde a niente di
+ * comprato — fabbisogno 800 g, formato assunto 500 → 2 confezioni; in
+ * corsia il pacco è da 1 kg e se ne prende 1: scrivere 2 × 1000 = 2000
+ * gonfierebbe il residuo di un chilo e la settimana dopo la pasta non
+ * verrebbe chiesta.
  *
- * - `ingredient.formato_confezione`: è quello che costruisciLista userà da
- *   qui in avanti. Corregge le settimane PROSSIME.
- * - `shopping_list_item.quantita_totale` delle righe di questa settimana:
- *   `chiudiSpesa` accredita al residuo la quantita_totale congelata, non il
- *   formato vivo dell'ingrediente. Senza riscriverla, il residuo di QUESTA
- *   settimana resterebbe sbagliato di (formato assunto − formato vero) ×
- *   confezioni. Riga per riga, perché quantita_totale = confezioni × formato
- *   e le confezioni sono della riga (una voce può stare in base o in top-up,
- *   con conteggi diversi).
+ * Il formato vive in due posti, e si scrive in questo ordine:
  *
- * `ean` si memorizza solo se c'è (null lascia l'ultimo codice, come il
- * `coalesce` della spec §4). Solo a settimana non chiusa: dopo la chiusura
- * il residuo è già accreditato e correggere quantita_totale non
- * cambierebbe più niente — anzi, un chiudiSpesa non può ripartire (è
- * idempotente sullo stato) e la correzione sembrerebbe fatta senza esserlo.
- * Stesso guard di generaListe/chiudiSpesa, ma qui si lancia: la pagina deve
- * dirlo, non tacere.
+ * 1. `shopping_list_item` di QUESTA settimana, per l'ingrediente:
+ *    `confezioni` e `quantita_totale = confezioni × formato`. `chiudiSpesa`
+ *    accredita al residuo la quantita_totale congelata, non il formato vivo
+ *    dell'ingrediente. Se l'ingrediente sta in più righe (base e top-up),
+ *    tutto va sulla prima in ordine base → top-up e 0 sulle altre: le
+ *    confezioni comprate sono un numero solo, e spalmarle a caso fra due
+ *    righe inventerebbe una divisione che nessuno ha fatto. Solo le righe
+ *    `piano`/`manuale`: un controllo staple ("ne hai ancora?") è una
+ *    domanda, non un acquisto, e metterci delle confezioni lo farebbe
+ *    registrare come tale alla chiusura.
+ * 2. `ingredient.formato_confezione` (ed `ean`, se c'è): è quello che
+ *    costruisciLista userà da qui in avanti. Corregge le settimane PROSSIME.
+ *
+ * Prima le righe e poi l'ingrediente perché un fallimento a metà non deve
+ * lasciare le settimane prossime corrette e questa no: la chiusura di questa
+ * settimana è l'unico momento in cui il residuo diventa reale, e se qualcosa
+ * si rompe è meglio che l'ingrediente resti com'era e la pagina dica di
+ * riprovare.
+ *
+ * `confezioni = 0` è ammesso: vuol dire "in corsia non l'ho preso". La riga
+ * resta spuntata con 0 confezioni e quantita_totale 0, e alla chiusura non
+ * accredita niente al residuo (l'acquisto registrato sarà a 0, un limite
+ * dichiarato in spec §7). `ean` si memorizza solo se c'è (null lascia
+ * l'ultimo codice, come il `coalesce` della spec §4).
+ *
+ * Solo a settimana non chiusa: dopo la chiusura il residuo è già accreditato
+ * e correggere quantita_totale non cambierebbe più niente — anzi, un
+ * chiudiSpesa non può ripartire (è idempotente sullo stato) e la correzione
+ * sembrerebbe fatta senza esserlo. Stesso guard di generaListe/chiudiSpesa,
+ * ma qui si lancia: la pagina deve dirlo, non tacere.
+ *
+ * Tetti: `formato` finito in [FORMATO_MIN, FORMATO_MAX] (un formato a 0
+ * farebbe un ceil(x / 0) infinito nelle liste prossime; uno da un milione
+ * di grammi è un refuso, non un pacco), `confezioni` intero in
+ * [0, CONFEZIONI_MAX]. Si controlla qui, prima di toccare il database: il
+ * check `formato_confezione > 0` lo fermerebbe, ma dopo aver già capito male.
  */
 export async function aggiornaFormatoDaScansione(i: {
   ingredientId: string;
   weekId: string;
   formato: number;
   ean: string | null;
+  /** Le confezioni di quel formato comprate davvero, intero ≥ 0. */
+  confezioni: number;
 }): Promise<void> {
-  // Un formato a 0 farebbe quantita_totale = 0 su righe comprate davvero e
-  // un ceil(x / 0) infinito nelle liste prossime; il check del database
-  // (formato_confezione > 0) lo fermerebbe, ma dopo aver già capito male.
-  if (!Number.isFinite(i.formato) || i.formato <= 0) throw new Error('formato non valido');
+  if (!Number.isFinite(i.formato) || i.formato < FORMATO_MIN || i.formato > FORMATO_MAX) {
+    throw new Error('formato non valido');
+  }
+  if (!Number.isInteger(i.confezioni) || i.confezioni < 0 || i.confezioni > CONFEZIONI_MAX) {
+    throw new Error('confezioni non valide');
+  }
 
   const sb = client();
   const userId = await idCasa();
@@ -128,6 +182,42 @@ export async function aggiornaFormatoDaScansione(i: {
   if (!week) throw new Error('settimana non trovata');
   if (week.stato === 'chiusa') throw new Error('spesa già chiusa');
 
+  const { data: liste, error: eListe } = await sb
+    .from('shopping_list')
+    .select('id, tipo')
+    .eq('week_id', i.weekId)
+    .eq('user_id', userId);
+  if (eListe) throw eListe;
+  // Base prima del top-up: è la riga su cui vanno le confezioni comprate.
+  const listeOrdinate = [...(liste ?? [])]
+    .map((l) => ({ id: String(l.id), ordine: l.tipo === 'topup' ? 1 : 0 }))
+    .sort((a, b) => a.ordine - b.ordine);
+  const idListe = listeOrdinate.map((l) => l.id);
+
+  if (idListe.length > 0) {
+    const { data: righe, error: eRighe } = await sb
+      .from('shopping_list_item')
+      .select('id, shopping_list_id, origine')
+      .in('shopping_list_id', idListe)
+      .eq('ingredient_id', i.ingredientId);
+    if (eRighe) throw eRighe;
+
+    const acquisti = (righe ?? [])
+      .filter((r) => r.origine === 'piano' || r.origine === 'manuale')
+      .map((r) => ({ id: String(r.id), ordine: idListe.indexOf(String(r.shopping_list_id)) }))
+      .sort((a, b) => a.ordine - b.ordine || a.id.localeCompare(b.id));
+
+    for (const [indice, r] of acquisti.entries()) {
+      const confezioni = indice === 0 ? i.confezioni : 0;
+      const { error } = await sb
+        .from('shopping_list_item')
+        .update({ confezioni, quantita_totale: confezioni * i.formato })
+        .eq('id', r.id)
+        .eq('user_id', userId);
+      if (error) throw error;
+    }
+  }
+
   const patch: Record<string, unknown> = { formato_confezione: i.formato };
   if (i.ean !== null) patch.ean = i.ean;
   const { error: eIng } = await sb
@@ -136,31 +226,4 @@ export async function aggiornaFormatoDaScansione(i: {
     .eq('id', i.ingredientId)
     .eq('user_id', userId);
   if (eIng) throw eIng;
-
-  const { data: liste, error: eListe } = await sb
-    .from('shopping_list')
-    .select('id')
-    .eq('week_id', i.weekId)
-    .eq('user_id', userId);
-  if (eListe) throw eListe;
-  const idListe = (liste ?? []).map((l) => String(l.id));
-  if (idListe.length === 0) return;
-
-  const { data: righe, error: eRighe } = await sb
-    .from('shopping_list_item')
-    .select('id, confezioni')
-    .in('shopping_list_id', idListe)
-    .eq('ingredient_id', i.ingredientId);
-  if (eRighe) throw eRighe;
-
-  // Solo le righe con confezioni: un controllo staple risposto "sì" (0
-  // confezioni) non è un acquisto e la sua quantita_totale resta 0.
-  for (const r of (righe ?? []).filter((r) => Number(r.confezioni) > 0)) {
-    const { error } = await sb
-      .from('shopping_list_item')
-      .update({ quantita_totale: Number(r.confezioni) * i.formato })
-      .eq('id', String(r.id))
-      .eq('user_id', userId);
-    if (error) throw error;
-  }
 }

@@ -81,15 +81,35 @@ describe('GET /api/prodotto/[ean]', () => {
     });
   });
 
-  it('la URL chiamata porta l\'ean e i fields; l\'header User-Agent è presente', async () => {
+  it('la URL chiamata porta l\'ean e i fields; l\'header User-Agent è presente; la fetch va in data cache per un giorno', async () => {
     fetchMock.mockResolvedValue(rispostaOFF(PRODOTTO));
     await chiama();
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, init] = fetchMock.mock.calls[0]! as [string, RequestInit];
+    const [url, init] = fetchMock.mock.calls[0]! as [string, RequestInit & { next?: { revalidate?: number } }];
     expect(url).toBe(`https://world.openfoodfacts.org/api/v2/product/${EAN}.json?fields=product_name,brands,quantity,product_quantity,product_quantity_unit`);
     expect((init.headers as Record<string, string>)['User-Agent']).toMatch(/^Spesa\//);
-    expect(init.cache).toBe('no-store');
+    // Cache per URL = per codice: nessun dato utente. `cache: 'no-store'` e
+    // `revalidate` insieme si annullerebbero a vicenda (docs di fetch).
+    expect(init.next).toEqual({ revalidate: 86400 });
+    expect(init.cache).toBeUndefined();
     expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('i 200 portano Cache-Control private per un giorno; gli errori no', async () => {
+    fetchMock.mockResolvedValue(rispostaOFF(PRODOTTO));
+    expect((await chiama()).headers.get('Cache-Control')).toBe('private, max-age=86400');
+
+    fetchMock.mockResolvedValue(rispostaOFF({ status: 0 }));
+    expect((await chiama()).headers.get('Cache-Control')).toBe('private, max-age=86400');
+
+    fetchMock.mockResolvedValue(rispostaOFF({ status: 0 }, 404));
+    expect((await chiama()).headers.get('Cache-Control')).toBe('private, max-age=86400');
+
+    fetchMock.mockResolvedValue(new Response('boom', { status: 500 }));
+    expect((await chiama()).headers.get('Cache-Control')).toBeNull();
+    expect((await chiama('12ab')).headers.get('Cache-Control')).toBeNull();
+    getUserMock.mockResolvedValue({ data: { user: null }, error: { message: 'no' } });
+    expect((await chiama()).headers.get('Cache-Control')).toBeNull();
   });
 
   it('nome e marca: trim e taglio a 80 caratteri; vuoti se assenti', async () => {

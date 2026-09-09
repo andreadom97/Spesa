@@ -12,10 +12,16 @@ assunta, per questa settimana e per le prossime.
 
 ## 0. Cosa c'è già e cosa manca
 
-- `ingredient.formato_confezione` è il formato assunto; `shopping_list_item.quantita_totale`
-  = `confezioni × formato` congelato alla generazione; `chiudiSpesa` accredita
-  `quantita_totale` al residuo. Basta correggere il formato sull'ingrediente e la
-  `quantita_totale` della settimana per rendere vero il residuo.
+- `ingredient.formato_confezione` è il formato assunto; `shopping_list_item.confezioni`
+  = `ceil(daComprare / formato)` e `quantita_totale = confezioni × formato`, congelati
+  alla generazione; `chiudiSpesa` accredita `quantita_totale` al residuo. Per rendere vero
+  il residuo vanno corretti il formato sull'ingrediente **e** la riga della settimana — ma
+  non basta cambiare il formato tenendo le confezioni: le confezioni sono derivate dal
+  formato vecchio, e `2 × 1000` quando in corsia si è preso un solo pacco da 1 kg (la lista
+  ne chiedeva 2 da 500 per 800 g) gonfierebbe il residuo di un chilo e la settimana dopo
+  la pasta non verrebbe chiesta. La regola (review del 07/09, A1): si scrivono il
+  **formato vero e le confezioni comprate davvero** di quel formato, e
+  `quantita_totale = confezioni comprate × formato vero`.
 - Non c'è nessuna lettura di codici a barre. La Camera dell'import usa `getUserMedia`
   con un fallback a file.
 - Open Food Facts (OFF) ha ~263.000 prodotti italiani [fonte: it.openfoodfacts.org,
@@ -32,16 +38,28 @@ e il bottone `SCANSIONA`. Il bottone apre lo scanner (§3); il codice letto (o d
 va alla route `/api/prodotto/{ean}` (§2) che risponde con nome, marca e quantità della
 confezione. La schermata mostra `Barilla · Spaghetti n. 5 · 500 g` e, se la quantità
 è diversa dal formato assunto nella stessa unità: `La confezione è 500 g, nel formato
-avevi 1000 g. Aggiorno per questa settimana e per le prossime?` con `AGGIORNA` /
-`LASCIA`. `AGGIORNA` scrive (§4) e la riga diventa `N × 500 g · AGGIORNATO`. Se la
-quantità è uguale: `Formato confermato: 500 g.` e il codice viene comunque memorizzato.
-Se OFF non conosce il prodotto: `Prodotto non trovato: puoi scrivere il formato a mano.`
-con un campo numerico e lo stesso `AGGIORNA`. Se l'unità non è compatibile (OFF dice
-`1 L`, l'ingrediente è in `g`): `Unità diversa (l contro g): non aggiorno. Correggi il
-formato a mano se serve.`
+avevi 1000 g. Aggiorno per questa settimana e per le prossime?` seguito da `Con
+confezioni da 500 g ne bastano 2 (la lista ne chiedeva 1). Quante ne hai comprate?` con
+un campo intero (`Confezioni comprate`, `inputMode="numeric"`, da 0 a 1000, proposto =
+le confezioni che `confezioniNecessarie` darebbe col formato nuovo su fabbisogno e
+residuo congelati della riga) e `AGGIORNA` / `LASCIA`. `AGGIORNA` scrive (§4) e la riga
+diventa `M × 500 g · AGGIORNATO` con `M` le confezioni comprate. Se la quantità è uguale:
+nessuna domanda (le confezioni restano quelle della lista), il codice viene memorizzato e
+solo a scrittura riuscita compare `Formato confermato: 500 g.`; se la scrittura fallisce,
+messaggio e `RIPROVA`. Se OFF non conosce il prodotto: `Prodotto non trovato: puoi
+scrivere il formato a mano.` con un campo numerico (da 1 a 100.000 nell'unità
+dell'ingrediente: sotto il grammo/millilitro non esiste una confezione, e un pezzo non si
+spezza), la stessa domanda sulle confezioni appena il formato è valido, e lo stesso
+`AGGIORNA`. Se l'unità non è compatibile (OFF dice `1 L`, l'ingrediente è in `g`): `Unità
+diversa (l contro g): non aggiorno. Correggi il formato a mano se serve.` Le quantità si
+mostrano esatte nell'unità base (`1250 g`, non `1,3 kg`): qui si confrontano formati.
 
-La pagina è raggiungibile solo a lista tutta spuntata (come "Hai preso tutto"); dopo
-la chiusura non ha più senso (le quantità sono già accreditate) e rimanda a `/settimana`.
+La pagina è raggiungibile solo a lista tutta spuntata (come "Hai preso tutto"); a
+settimana `chiusa` non ha più senso (le quantità sono già accreditate) e rimanda a
+`/settimana` prima ancora di leggere le liste — come fa anche "Hai preso tutto". Una
+risposta 401 o un redirect dalla route (sessione scaduta) manda a `/entra`, non al campo
+a mano. Se si preme `SCANSIONA` su una seconda voce mentre la ricerca della prima è in
+corso, la risposta in ritardo della prima non tocca lo scanner della seconda.
 
 ## 2. La route `GET /api/prodotto/[ean]`
 
@@ -55,8 +73,12 @@ la chiusura non ha più senso (le quantità sono già accreditate) e rimanda a `
 - Risposte: 200 `{ trovato: true, nome, marca, quantita: { valore, unita } | null }`;
   200 `{ trovato: false }` se OFF risponde `status: 0` o 404; 502 `{ errore: 'servizio
   non raggiungibile' }` su rete/timeout/5xx. `nome`/`marca` tagliati a 80 caratteri.
-- Nessuna cache server, nessun dato scritto: la route legge e basta. Nessun log del
-  codice.
+- Nessun dato scritto: la route legge e basta. Nessun log del codice.
+- Cache, sì, perché la risposta dipende solo dall'URL (cioè dal codice a barre) e nessun
+  dato dell'utente ci entra: la fetch verso OFF passa dalla data cache di Next con
+  `next: { revalidate: 86400 }` (un giorno) e i 200 (trovato o no) portano
+  `Cache-Control: private, max-age=86400` per il browser — `private` perché la risposta
+  è dietro sessione. Gli errori (400, 401, 502) non si tengono.
 
 ## 3. Lo scanner
 
@@ -88,17 +110,31 @@ nuova (la tabella esiste già; le policy sono `(select casa_id())`).
 
 `src/data/confezioni.ts`:
 ```ts
-export interface VoceComprata { itemId: string; ingredientId: string; nome: string; unita: UnitaBase; confezioni: number; formato: number; quantitaTotale: number; ean: string | null }
-export async function leggiVociComprate(weekId: string): Promise<VoceComprata[]>;       // voci spuntate, origine piano|manuale, confezioni > 0, con formato/ean dall'ingrediente
-export async function aggiornaFormatoDaScansione(i: { ingredientId: string; weekId: string; formato: number; ean: string | null }): Promise<void>;
+export interface VoceComprata { itemId: string; ingredientId: string; nome: string; unita: UnitaBase; classeResiduo: ClasseResiduo; fabbisogno: number; residuo: number; confezioni: number; formato: number; quantitaTotale: number; ean: string | null }
+export async function leggiVociComprate(weekId: string): Promise<VoceComprata[]>;       // voci spuntate, origine piano|manuale, confezioni > 0, con fabbisogno/residuo congelati della riga e formato/ean dall'ingrediente; per nome, a parità base prima del top-up
+export async function aggiornaFormatoDaScansione(i: { ingredientId: string; weekId: string; formato: number; ean: string | null; confezioni: number }): Promise<void>;
 ```
-`aggiornaFormatoDaScansione`: `update ingredient set formato_confezione = formato, ean =
-coalesce(ean, ean attuale)` per id e `user_id = idCasa()`; poi per ogni
-`shopping_list_item` della settimana di quell'ingrediente con `confezioni > 0`:
-`quantita_totale = confezioni × formato`. Solo se la settimana non è `chiusa` (guard
-come `generaListe`). Un ingrediente di classe `intero` ha formato 1 per contratto: la
-pagina non offre lo scan per le voci `intero` (le uova si contano, non si pesano) né per
-le `stima`.
+`aggiornaFormatoDaScansione` scrive il formato vero **e** le confezioni comprate di quel
+formato, in quest'ordine:
+
+1. Le righe `shopping_list_item` della settimana di quell'ingrediente, di origine `piano`
+   o `manuale` (un controllo staple è una domanda, non un acquisto: non si tocca):
+   `confezioni = confezioni comprate` e `quantita_totale = confezioni comprate × formato`
+   sulla **prima** riga in ordine di lista base → top-up, `0` e `0` sulle altre. Le
+   confezioni comprate sono un numero solo: spalmarle fra due righe inventerebbe una
+   divisione che nessuno ha fatto (in pratica un ingrediente sta in una lista sola).
+2. `update ingredient set formato_confezione = formato, ean = coalesce(ean, ean attuale)`
+   per id e `user_id = idCasa()`.
+
+Prima le righe e poi l'ingrediente: un fallimento a metà non deve lasciare le settimane
+prossime corrette e questa no. `confezioni = 0` è ammesso ("in corsia non l'ho preso"):
+la riga resta spuntata con 0 confezioni e `quantita_totale` 0, e alla chiusura non
+accredita niente. Tetti, controllati prima di toccare il database: `formato` finito in
+`[0.001, 100000]` (`formato non valido`), `confezioni` intero in `[0, 1000]`
+(`confezioni non valide`). Solo se la settimana non è `chiusa` (guard come
+`generaListe`, ma qui si lancia `spesa già chiusa`). Un ingrediente di classe `intero`
+ha formato 1 per contratto: la pagina non offre lo scan per le voci `intero` (le uova si
+contano, non si pesano) né per le `stima`.
 
 ## 5. Cosa cambia nei file
 
@@ -141,3 +177,14 @@ le `stima`.
   prima di scrivere e si conferma con un tocco.
 - La correzione si fa prima di chiudere la spesa: dopo, il residuo è già accreditato
   e la strada è la Dispensa.
+- Il "non ricomprato questa settimana" (`risparmio_settimana`) resta fissato alla
+  generazione della lista, col formato vecchio: la scansione corregge quello che entra in
+  casa, non il conteggio di quello che la lista non ha chiesto. È una fotografia del
+  momento in cui la lista è stata scritta, e ricalcolarla col formato nuovo cambierebbe
+  un numero già mostrato.
+- Con `confezioni = 0` la riga resta spuntata: alla chiusura si registra un acquisto a 0
+  confezioni e 0 quantità (`ultimo_acquisto` = oggi). È un'anomalia innocua per il
+  residuo; se dà fastidio nello storico, la strada è togliere la spunta in `/lista`.
+- I tetti (formato fino a 100 kg / 100 l / 100.000 pezzi, 1000 confezioni) sono contro i
+  refusi e i valori che farebbero saltare l'aritmetica delle liste, non un limite
+  d'uso: nessuna spesa domestica li sfiora.

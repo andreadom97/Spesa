@@ -66,6 +66,19 @@ beforeEach(() => {
   vi.mocked(leggiRisparmioSettimana).mockReset().mockResolvedValue([]);
 });
 
+describe('Lista fatta — accesso', () => {
+  it('a settimana chiusa rimanda a /settimana senza leggere le liste', async () => {
+    vi.mocked(leggiSettimanaCorrente).mockResolvedValue({ ...SETTIMANA, stato: 'chiusa' });
+
+    render(<ListaFatta />);
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/settimana'));
+    expect(leggiListe).not.toHaveBeenCalled();
+    expect(leggiRisparmioSettimana).not.toHaveBeenCalled();
+    expect(screen.queryByText('Hai preso tutto')).not.toBeInTheDocument();
+  });
+});
+
 describe('Lista fatta — CONFEZIONI DIVERSE? SCANSIONA', () => {
   it('il link alle confezioni sta prima di CHIUDI LA SPESA e porta a /lista/confezioni', async () => {
     const { container } = render(<ListaFatta />);
