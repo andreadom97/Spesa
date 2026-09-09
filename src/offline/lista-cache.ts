@@ -73,7 +73,10 @@ function eIstantanea(v: unknown): v is IstantaneaLista {
  * stesso browser si cancella e si torna null. Senza l'uno o l'altro la si
  * restituisce comunque: chi chiama non ha potuto verificare (a freddo senza
  * rete `idCasa()` fallisce; con il token scaduto la sessione non si legge)
- * e l'istantanea è la migliore informazione disponibile.
+ * e l'istantanea è la migliore informazione disponibile. Simmetrico dal
+ * lato del salvataggio: un'istantanea con `userId` vuoto (sessione non
+ * leggibile quando è stata salvata) non è di un altro account, è di un
+ * account non verificabile, e si restituisce anche leggendo con un id.
  */
 export function leggiIstantaneaLista(opzioni: { casaId?: string; userId?: string } = {}): IstantaneaLista | null {
   if (typeof localStorage === 'undefined') return null;
@@ -87,7 +90,10 @@ export function leggiIstantaneaLista(opzioni: { casaId?: string; userId?: string
       cancellaIstantaneaLista();
       return null;
     }
-    if (userId !== undefined && v.userId !== userId) {
+    // `''` è "account non verificato al salvataggio", non un account
+    // diverso: si mostra, come quando è la lettura a non poter verificare
+    // (spec lista-offline §1 e §5).
+    if (userId !== undefined && v.userId !== '' && v.userId !== userId) {
       cancellaIstantaneaLista();
       return null;
     }

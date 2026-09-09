@@ -1,6 +1,6 @@
 # Lettura offline della lista — design (P7)
 
-**Data:** 06/09/2026 · **Stato:** approvata e implementata il 06/09 (piano omonimo); da provare col telefono in aereo
+**Data:** 06/09/2026 · **Stato:** approvata e implementata il 06/09 (piano omonimo); corretta il 07/09 dopo la review di correttezza (M1, M2, B4); da provare col telefono in aereo
 **Deriva da:** [spesa-backlog-nicchia.md](../../../spesa-backlog-nicchia.md) (P7), README "Limite
 noto: la lista non è ancora leggibile offline", `src/offline/coda.ts` (le spunte offline)
 
@@ -41,9 +41,20 @@ La rete decide, la copia locale ripara.
   essere già chiusa (lunedì mattina senza rete) e le sue liste restano sul server, che
   rilette da sole tornerebbero come vive. Al successo la riga sparisce e l'istantanea
   si aggiorna; se la settimana corrente è un'altra si mostra la sua lista, o "non
-  trovata" con l'istantanea cancellata; se fallisce di nuovo, si ripiega
-  sull'istantanea come al caricamento. Con la rete (`offline` falso) il ritorno in
-  primo piano rilegge solo le liste, come prima.
+  trovata" con l'istantanea cancellata; se fallisce di nuovo, **la lista a schermo
+  resta com'è**. Con la rete (`offline` falso) il ritorno in primo piano rilegge solo
+  le liste, come prima.
+- **L'istantanea non sovrascrive mai una lista già a schermo**: entra solo quando
+  non c'è ancora niente (il caricamento al montaggio fallito). Al ritorno della rete
+  partono insieme la sincronizzazione della coda e `carica()`: se la coda scrive una
+  spunta e si svuota e `carica()` fallisce di nuovo, l'istantanea — salvata prima di
+  quel tocco — con la coda ormai vuota da riapplicare disfarebbe a schermo una spunta
+  che sul server è fatta, e un ritocco la annullerebbe. La lista mostrata è sempre
+  almeno aggiornata quanto l'istantanea, perché ogni spunta locale ci passa sopra.
+- Un tocco arrivato **mentre `carica()` è in volo** (in qualunque sua fase: settimana
+  corrente, `allineaTopUp`, liste) rende la risposta più vecchia di quella a schermo
+  e la fa scartare: la versione dei tocchi si fissa in testa al giro, non prima della
+  sola lettura delle liste.
 - Un'istantanea di una **settimana diversa** da quella corrente (ad esempio lunedì
   mattina senza rete: la settimana nuova non esiste ancora) si mostra lo stesso, perché
   la rete non ha risposto e la settimana corrente non è nota: la riga dice di quale
@@ -69,7 +80,11 @@ La rete decide, la copia locale ripara.
   stesso browser condividono `localStorage`, e senza l'id chi entra dopo vedrebbe
   offline la lista di chi c'era prima. `getSession` legge il token locale, quindi
   risponde anche senza rete finché il token è valido; se non risponde (scaduto, storage
-  bloccato) l'account non si verifica e l'istantanea si mostra, come per la casa.
+  bloccato) l'account non si verifica e l'istantanea si mostra, come per la casa. Vale
+  nei due versi: un'istantanea salvata con `userId` vuoto non è di un altro account, è
+  di un account non verificato al salvataggio, e si mostra anche quando alla lettura
+  la sessione si legge ("non verificabile si mostra", §5); la casa si verifica
+  comunque.
 - L'istantanea **scade**: più vecchia di 30 giorni (`salvataIl`) si scarta e si cancella
   alla lettura. Non è più "l'ultima lista vista", è un dato vecchio.
 
@@ -78,7 +93,7 @@ La rete decide, la copia locale ripara.
 ```ts
 // src/offline/lista-cache.ts — solo localStorage, niente rete
 export interface IstantaneaLista { casaId: string; userId: string; weekId: string; settimanaLabel: string; lista: ListaSalvata; salvataIl: number }
-export function leggiIstantaneaLista(opzioni?: { casaId?: string; userId?: string }): IstantaneaLista | null;   // null se assente, malformata, più vecchia di 30 giorni o senza localStorage; con casaId (o userId), se l'istantanea è di un'altra casa (o di un altro account) la cancella e torna null; senza, la restituisce comunque (casa o account non verificabili)
+export function leggiIstantaneaLista(opzioni?: { casaId?: string; userId?: string }): IstantaneaLista | null;   // null se assente, malformata, più vecchia di 30 giorni o senza localStorage; con casaId (o userId), se l'istantanea è di un'altra casa (o di un altro account) la cancella e torna null; senza, la restituisce comunque (casa o account non verificabili); un'istantanea con userId '' si restituisce anche con userId (account non verificato al salvataggio)
 export function salvaIstantaneaLista(i: Omit<IstantaneaLista, 'salvataIl'>): void; // salvataIl = Date.now(); un errore di quota va in console e non propaga
 export function cancellaIstantaneaLista(): void;
 ```
@@ -96,10 +111,15 @@ comporta come assente.
   `getSession` legge il token locale: costano niente); sul ramo `nonTrovata`
   `cancellaIstantaneaLista()`; nel `catch`, si tentano `idCasa()` e `getSession()`
   (senza propagare: a freddo offline la prima fallisce) e se
-  `leggiIstantaneaLista({ casaId, userId })` è non nulla → `setStato({ ...istantanea,
-  lista: applicaCodaLista(istantanea.lista), offline: true })`, altrimenti l'errore di oggi.
-  Un tocco arrivato mentre `leggiListe` è in volo fa scartare la risposta, come in
-  `rileggi`.
+  `leggiIstantaneaLista({ casaId, userId })` è non nulla → `setStato((prev) => prev ??
+  { ...istantanea, lista: applicaCodaLista(istantanea.lista), offline: true })`,
+  altrimenti l'errore di oggi. Il `prev ??` è la regola di §1: l'istantanea entra solo a
+  schermo vuoto; con una lista già mostrata (il giro al ritorno della rete fallito di
+  nuovo) resta quella, che è almeno aggiornata quanto l'istantanea e ha sopra le spunte
+  fatte nel frattempo.
+  La versione dei tocchi (`versioneTocchi`) si fissa **come prima riga di `carica()`**:
+  un tocco arrivato in qualunque fase del giro (settimana corrente, `allineaTopUp`,
+  liste) fa scartare la risposta, come in `rileggi`.
 - `StatoCarico` acquista `offline: boolean`. Con `offline` la riga sotto la testata (12.5px,
   `var(--sec)`, come le altre righe di spiegazione), copy esatto di §1.
 - Con `stato.offline`, sia il listener `online` sia quello di `visibilitychange` rifanno
@@ -118,9 +138,11 @@ comporta come assente.
   (`leggiSettimanaCorrente` riletta, `allineaTopUp` chiamata) e riga che sparisce, e con
   la settimana corrente cambiata senza lista → "non trovata" e istantanea cancellata;
   istantanea di un altro account → non mostrata e cancellata; `entraInCasa` cancella
-  l'istantanea (test in `casa.test.ts`).
-- `lista-cache.ts`: `userId` diverso → null e cancellata; più vecchia di 30 giorni →
-  null e cancellata.
+  l'istantanea (test in `casa.test.ts`); al ritorno della rete con la coda che si
+  svuota e `carica()` che fallisce di nuovo → la spunta a schermo resta; tap durante
+  `leggiSettimanaCorrente` al ritorno della rete → risposta scartata.
+- `lista-cache.ts`: `userId` diverso → null e cancellata; salvata con `userId` vuoto →
+  si rilegge anche con un id; più vecchia di 30 giorni → null e cancellata.
 
 ## 5. Limiti dichiarati (non bug)
 
@@ -133,7 +155,10 @@ comporta come assente.
 - Un altro account sullo stesso browser (`userId` diverso) non la vede: alla lettura
   con la sessione leggibile si cancella. Se la sessione non si legge (token scaduto
   senza rete, storage bloccato) l'account non è verificabile e l'istantanea si mostra,
-  come per la casa a freddo: è un dato che chi usa quel browser ha già visto.
+  come per la casa a freddo: è un dato che chi usa quel browser ha già visto. Lo stesso
+  se era la sessione al **salvataggio** a non leggersi (`userId` vuoto): quell'istantanea
+  si mostra a chiunque apra la Lista su quel browser senza rete, finché una lettura
+  riuscita non la sovrascrive con l'id giusto.
 - Un membro **tolto dal proprietario** che apre la Lista **senza rete** prima di averla
   riaperta con rete vede ancora l'ultima lista della casa che ha lasciato: a freddo
   `idCasa()` fallisce e la casa non è verificabile, quindi l'istantanea si mostra senza

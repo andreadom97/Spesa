@@ -254,6 +254,14 @@ export default function Lista() {
      * l'istantanea quando la lista non c'è più.
      */
     async function carica() {
+      // Come in `rileggi`: un tocco arrivato mentre il caricamento è in volo
+      // (possibile al ritorno della rete, con l'istantanea già a schermo)
+      // rende la risposta più vecchia di quella mostrata, e si scarta. Si
+      // fissa in testa, non prima della sola `leggiListe`: un tocco durante
+      // `leggiSettimanaCorrente` o `allineaTopUp` è già più nuovo di tutto
+      // ciò che questo giro leggerà, e una versione presa dopo non lo
+      // vedrebbe.
+      const versione = versioneTocchi.current;
       try {
         const settimana = await leggiSettimanaCorrente();
         if (!settimana) {
@@ -280,10 +288,6 @@ export default function Lista() {
         } catch (errore) {
           console.error('lista: allineamento del top-up fallito.', errore);
         }
-        // Come in `rileggi`: un tocco arrivato mentre la lettura è in volo
-        // (possibile al ritorno della rete, con l'istantanea già a schermo)
-        // rende la risposta più vecchia di quella mostrata, e si scarta.
-        const versione = versioneTocchi.current;
         const lista = await leggiListe(settimana.id);
         if (!lista) {
           cancellaIstantaneaLista();
@@ -336,7 +340,13 @@ export default function Lista() {
         if (!vivo) return;
         const istantanea = leggiIstantaneaLista({ casaId: casaId ?? undefined, userId: userId ?? undefined });
         if (istantanea) {
-          setStato({
+          // L'istantanea entra solo se a schermo non c'è ancora niente. Se
+          // c'è già una lista (il giro al ritorno della rete fallito di
+          // nuovo), quella resta: nel frattempo `sincronizzaCoda` può aver
+          // scritto una spunta e svuotato la coda, e l'istantanea — salvata
+          // prima di quel tocco, con la coda ormai vuota da riapplicare —
+          // la disfarebbe a schermo mentre sul server è fatta.
+          setStato((prev) => prev ?? {
             weekId: istantanea.weekId,
             settimanaLabel: istantanea.settimanaLabel,
             lista: applicaCodaLista(istantanea.lista),
@@ -378,9 +388,10 @@ export default function Lista() {
   // restano sul server: rilette da sole, tornerebbero come vive, senza
   // `allineaTopUp` e senza il ramo "lista non trovata" che cancella la
   // copia. Al successo la riga "Sei offline" sparisce e l'istantanea si
-  // aggiorna; se `carica()` fallisce di nuovo, ripiega sull'istantanea come
-  // al montaggio. I listener vivono solo a lista caricata (dipendono da
-  // `weekId`) e se ne vanno allo smontaggio.
+  // aggiorna; se `carica()` fallisce di nuovo, la lista a schermo resta
+  // com'è (l'istantanea entra solo a schermo vuoto: vedi il `catch`). I
+  // listener vivono solo a lista caricata (dipendono da `weekId`) e se ne
+  // vanno allo smontaggio.
   //
   // Prima di leggere si sincronizza la coda, e si aspetta che finisca: una
   // spunta fallita in secondo piano (rete andata via a metà) si ritenta

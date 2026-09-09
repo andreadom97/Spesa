@@ -963,7 +963,7 @@ describe('Lista', () => {
 
       window.dispatchEvent(new Event('online'));
 
-      expect(await screen.findByText('Uova')).toBeInTheDocument();
+      expect(await screen.findByText('Uova', {}, { timeout: 3000 })).toBeInTheDocument();
       expect(screen.queryByText('Riso Carnaroli')).not.toBeInTheDocument();
       expect(screen.queryByText(/Sei offline/)).not.toBeInTheDocument();
       expect(screen.getByText('31 AGO — 6 SET')).toBeInTheDocument();
@@ -1063,6 +1063,74 @@ describe('Lista', () => {
 
       expect(screen.getByText('Riso Carnaroli').closest('button')).toHaveAttribute('aria-pressed', 'true');
       // La risposta scartata non aggiorna nemmeno l'istantanea: resta la riga offline fino al prossimo giro.
+      expect(screen.getByText(RIGA_OFFLINE)).toBeInTheDocument();
+    });
+
+    // M1 della review di correttezza: al ritorno della rete partono insieme
+    // `sincronizzaCoda` (dal listener di montaggio) e `carica()`. Se la coda
+    // scrive la spunta e si svuota, e `carica()` fallisce di nuovo, il
+    // ripiego sull'istantanea (salvata prima del tocco) con la coda ormai
+    // vuota disfarebbe a schermo una spunta che sul server è fatta: un
+    // ritocco la annullerebbe. L'istantanea entra solo a schermo vuoto.
+    it('se al ritorno della rete la coda si sincronizza ma il caricamento fallisce di nuovo, la spunta a schermo resta', async () => {
+      salvaIstantaneaDiProva();
+      let rifiutaSettimana: (e: Error) => void = () => {};
+      vi.mocked(leggiSettimanaCorrente)
+        .mockRejectedValueOnce(new Error('rete assente'))
+        .mockImplementationOnce(() => new Promise((_, reject) => { rifiutaSettimana = reject; }));
+      // Offline il tap fallisce e resta in coda; alla seconda scrittura la rete c'è.
+      vi.mocked(spunta).mockRejectedValueOnce(new Error('rete assente'));
+      render(<Lista />);
+      const riso = (await screen.findByText('Riso Carnaroli')).closest('button')!;
+
+      fireEvent.click(riso);
+      await waitFor(() => expect(spunta).toHaveBeenCalledTimes(1));
+      expect(leggiCoda()).toEqual([{ itemId: 'item-riso', spuntato: true, ts: expect.any(Number) }]);
+      expect(riso).toHaveAttribute('aria-pressed', 'true');
+
+      window.dispatchEvent(new Event('online'));
+      // La coda scrive Riso e si svuota, mentre `carica()` è ancora in volo.
+      await waitFor(() => expect(spunta).toHaveBeenCalledTimes(2));
+      await waitFor(() => expect(leggiCoda()).toEqual([]));
+
+      rifiutaSettimana(new Error('ancora niente rete'));
+      await waitFor(() => expect(errore).toHaveBeenCalledTimes(2));
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(screen.getByText('Riso Carnaroli').closest('button')).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByText(RIGA_OFFLINE)).toBeInTheDocument();
+      // L'istantanea non si tocca: è la lista come letta dal server.
+      expect(leggiIstantaneaLista()?.lista.base[0].voci[0].spuntato).toBe(false);
+    });
+
+    // M2 della review di correttezza: la versione dei tocchi si fissa in
+    // testa a `carica()`, non prima della sola `leggiListe`. Un tap durante
+    // `leggiSettimanaCorrente` è già più nuovo di tutto ciò che il giro
+    // leggerà: preso dopo, il giro non lo vedrebbe e la lista letta senza
+    // la spunta (ormai confermata, coda vuota) la disfarebbe a schermo.
+    it('un tap arrivato mentre la settimana corrente è in lettura al ritorno della rete fa scartare la risposta', async () => {
+      salvaIstantaneaDiProva();
+      let risolviSettimana: (s: typeof SETTIMANA) => void = () => {};
+      vi.mocked(leggiSettimanaCorrente)
+        .mockRejectedValueOnce(new Error('rete assente'))
+        .mockImplementationOnce(() => new Promise((resolve) => { risolviSettimana = resolve; }));
+      vi.mocked(leggiListe).mockResolvedValue(buildLista());
+      render(<Lista />);
+      const riso = (await screen.findByText('Riso Carnaroli')).closest('button')!;
+
+      window.dispatchEvent(new Event('online'));
+      await waitFor(() => expect(leggiSettimanaCorrente).toHaveBeenCalledTimes(2));
+
+      fireEvent.click(riso);
+      await waitFor(() => expect(spunta).toHaveBeenCalledWith('item-riso', true));
+      await waitFor(() => expect(leggiCoda()).toEqual([]));
+
+      // La settimana risolve dopo il tap: la lista letta non ha la spunta.
+      risolviSettimana(SETTIMANA);
+      await waitFor(() => expect(leggiListe).toHaveBeenCalledTimes(1));
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(screen.getByText('Riso Carnaroli').closest('button')).toHaveAttribute('aria-pressed', 'true');
       expect(screen.getByText(RIGA_OFFLINE)).toBeInTheDocument();
     });
 

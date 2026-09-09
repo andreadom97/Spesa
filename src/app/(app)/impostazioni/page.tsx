@@ -221,6 +221,14 @@ export default function Impostazioni() {
    * Solo l'ultima richiesta tocca lo stato: una rilettura (o un errore) di
    * una richiesta superata da una più recente si ignora, perché la più
    * recente riscrive la riga intera e la sua rilettura dirà l'ultima parola.
+   *
+   * Se l'ultima richiesta fallisce, il valore a cui tornare si rilegge dal
+   * server, non dal ref: il ref si aggiorna solo con la rilettura
+   * dell'ultima richiesta, e con due tap veloci la scrittura del primo può
+   * essere andata a buon fine senza che la sua rilettura (superata) l'abbia
+   * registrata. Tornare al ref mostrerebbe il valore di prima di entrambi i
+   * tap, mentre sul server c'è quello del primo. Solo se anche la rilettura
+   * fallisce (niente rete) si ripiega sul ref.
    */
   async function persistiImpostazioni(patch: Partial<Impostazioni>) {
     if (!dati) return;
@@ -238,7 +246,15 @@ export default function Impostazioni() {
     } catch (errore) {
       console.error('impostazioni: salvataggio delle impostazioni fallito.', errore);
       if (!eUltima()) return;
-      const salvate = impostazioniSalvateRef.current;
+      let salvate = impostazioniSalvateRef.current;
+      try {
+        salvate = await leggiImpostazioni();
+        if (!eUltima()) return;
+        impostazioniSalvateRef.current = salvate;
+      } catch (erroreRilettura) {
+        console.error('impostazioni: rilettura dopo il salvataggio fallito non riuscita.', erroreRilettura);
+        if (!eUltima()) return;
+      }
       if (salvate) setDati((correnti) => (correnti ? { ...correnti, impostazioni: salvate } : correnti));
       setErroreSalvataggio('Non siamo riusciti a salvare. Riprova.');
     }

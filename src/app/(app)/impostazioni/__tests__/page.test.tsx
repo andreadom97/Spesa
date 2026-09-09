@@ -227,7 +227,65 @@ describe('Impostazioni', () => {
       errore.mockRestore();
     });
 
-    it('se il salvataggio fallisce torna al valore di prima e lo dice', async () => {
+    // B1 della review di correttezza: il punto di rollback (il ref) si
+    // aggiorna solo con la rilettura dell'ultima richiesta. Con due tap
+    // veloci, se il primo salvataggio riesce ma la sua rilettura è superata
+    // dal secondo tap, e il secondo salvataggio fallisce, il ref è ancora al
+    // valore di prima di entrambi i tap mentre sul server c'è quello del
+    // primo: il rollback deve rileggere dal server, non tornare al ref.
+    it('due tap veloci: se il primo riesce ma la sua rilettura non è l’ultima e il secondo fallisce, mostra il valore del server', async () => {
+      mockDati({ porzioni: 1 });
+      render(<Impostazioni />);
+      await screen.findByDisplayValue('Colazione');
+      const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const salvataggi: Array<{ resolve: () => void; reject: (e: Error) => void }> = [];
+      vi.mocked(salvaImpostazioni).mockImplementation(
+        () => new Promise<void>((resolve, reject) => { salvataggi.push({ resolve, reject }); }),
+      );
+      // Il server ha il valore del primo tap (2), da qui in poi.
+      vi.mocked(leggiImpostazioni).mockResolvedValue({
+        moltiplicatorePorzioni: 2, ordineAree: [...ORDINE_AREE_TEST], settimaneCiclo: 1, cicloOrigine: null,
+      });
+
+      fireEvent.click(screen.getByLabelText('Aumenta porzioni'));
+      await waitFor(() => expect(salvataggi).toHaveLength(1));
+      fireEvent.click(screen.getByLabelText('Aumenta porzioni'));
+      await waitFor(() => expect(salvataggi).toHaveLength(2));
+      expect(screen.getByLabelText('Porzioni')).toHaveTextContent('3');
+
+      // Il primo riesce: la sua rilettura (2) è superata dal secondo tap e si ignora.
+      salvataggi[0].resolve();
+      await waitFor(() => expect(leggiImpostazioni).toHaveBeenCalledTimes(2));
+      await new Promise((r) => setTimeout(r, 0));
+      expect(screen.getByLabelText('Porzioni')).toHaveTextContent('3');
+
+      // Il secondo fallisce: si rilegge dal server, che dice 2 — non 1, il valore del ref.
+      salvataggi[1].reject(new Error('rete'));
+      expect(await screen.findByText('Non siamo riusciti a salvare. Riprova.')).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByLabelText('Porzioni')).toHaveTextContent('2'));
+      expect(leggiImpostazioni).toHaveBeenCalledTimes(3);
+      expect(screen.getByText('La lista compra per 2. Le porzioni nel piatto restano quelle scritte.')).toBeInTheDocument();
+      errore.mockRestore();
+    });
+
+    it('se il salvataggio fallisce e anche la rilettura fallisce, torna all’ultimo valore confermato e lo dice', async () => {
+      mockDati({ porzioni: 1 });
+      render(<Impostazioni />);
+      await screen.findByDisplayValue('Colazione');
+      const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+      vi.mocked(salvaImpostazioni).mockRejectedValue(new Error('rete'));
+      vi.mocked(leggiImpostazioni).mockRejectedValue(new Error('rete'));
+
+      fireEvent.click(screen.getByLabelText('Aumenta porzioni'));
+
+      expect(await screen.findByText('Non siamo riusciti a salvare. Riprova.')).toBeInTheDocument();
+      expect(screen.getByLabelText('Porzioni')).toHaveTextContent('1');
+      expect(errore).toHaveBeenCalledWith('impostazioni: rilettura dopo il salvataggio fallito non riuscita.', expect.any(Error));
+      errore.mockRestore();
+    });
+
+    it('se il salvataggio fallisce torna al valore del server e lo dice', async () => {
       mockDati({ porzioni: 1 });
       vi.mocked(salvaImpostazioni).mockRejectedValue(new Error('rete'));
       const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -238,6 +296,8 @@ describe('Impostazioni', () => {
 
       expect(await screen.findByText('Non siamo riusciti a salvare. Riprova.')).toBeInTheDocument();
       expect(screen.getByLabelText('Porzioni')).toHaveTextContent('1');
+      // Il valore a cui tornare si rilegge dal server: una per il caricamento, una per il rollback.
+      expect(leggiImpostazioni).toHaveBeenCalledTimes(2);
       expect(screen.queryByText(/La lista compra per/)).not.toBeInTheDocument();
       expect(screen.getByLabelText('Diminuisci porzioni')).toBeDisabled();
       errore.mockRestore();

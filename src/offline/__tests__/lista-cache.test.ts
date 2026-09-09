@@ -98,10 +98,20 @@ describe('istantanea della lista', () => {
       expect(leggiIstantaneaLista({ casaId: 'casa-1' })).toMatchObject({ userId: 'user-1' });
     });
 
-    it('salvata con userId vuoto (sessione non leggibile al salvataggio) si rilegge senza id e non con un id', () => {
+    // B4 della review di correttezza: `''` non è un altro account, è un
+    // account non verificato al salvataggio. Simmetrico alla lettura senza
+    // id: "non verificabile si mostra" (spec lista-offline §1 e §5).
+    it('salvata con userId vuoto (sessione non leggibile al salvataggio) si rilegge sia senza id sia con un id', () => {
       salvaDiProva({ userId: '' });
       expect(leggiIstantaneaLista()).toMatchObject({ userId: '' });
-      expect(leggiIstantaneaLista({ userId: 'user-1' })).toBeNull();
+      expect(leggiIstantaneaLista({ userId: 'user-1' })).toMatchObject({ userId: '', weekId: 'week-1' });
+      expect(leggiIstantaneaLista({ casaId: 'casa-1', userId: 'user-1' })).toMatchObject({ userId: '' });
+      expect(localStorage.getItem('spesa:lista')).not.toBeNull();
+    });
+
+    it('salvata con userId vuoto, la casa si verifica comunque', () => {
+      salvaDiProva({ userId: '' });
+      expect(leggiIstantaneaLista({ casaId: 'altra', userId: 'user-1' })).toBeNull();
       expect(localStorage.getItem('spesa:lista')).toBeNull();
     });
 
