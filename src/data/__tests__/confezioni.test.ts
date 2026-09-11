@@ -53,7 +53,7 @@ const ING_UOVA = { nome: 'Uova', classe_residuo: 'intero', formato_confezione: '
 const ING_ACETO = { nome: 'Aceto', classe_residuo: 'porzionabile', formato_confezione: '500', ean: null };
 
 describe('leggiVociComprate', () => {
-  it('tiene solo le voci spuntate, di origine piano o manuale, con almeno una confezione', async () => {
+  it('tiene le voci spuntate di origine piano o manuale, anche a 0 confezioni; non i controlli', async () => {
     const { sb, catene } = creaClientMock(() => ({
       data: [
         {
@@ -72,8 +72,12 @@ describe('leggiVociComprate', () => {
           tipo: 'topup',
           shopping_list_item: [
             { id: 'r-pasta', ingredient_id: 'ing-pasta', fabbisogno: '820', residuo: '120', confezioni: 1, quantita_totale: '1000', spuntato: true, origine: 'manuale', unita: 'g', ingredient: ING_PASTA },
-            // Zero confezioni (controllo risposto "sì"): niente da scansionare.
-            { id: 'r-aceto', ingredient_id: 'ing-aceto', fabbisogno: '0', residuo: '0', confezioni: 0, quantita_totale: '0', spuntato: true, origine: 'piano', unita: 'ml', ingredient: ING_ACETO },
+            // Zero confezioni su una riga di piano: scritta così da una
+            // scansione ("non l'ho preso" o un refuso). Deve restare in
+            // pagina, altrimenti non si può più correggere.
+            { id: 'r-aceto', ingredient_id: 'ing-aceto', fabbisogno: '500', residuo: '0', confezioni: 0, quantita_totale: '0', spuntato: true, origine: 'piano', unita: 'ml', ingredient: ING_ACETO },
+            // Un controllo staple risposto "sì" resta a 0: fuori per l'origine, non per le confezioni.
+            { id: 'r-olio-zero', ingredient_id: 'ing-olio', fabbisogno: '0', residuo: '0', confezioni: 0, quantita_totale: '0', spuntato: true, origine: 'controllo', unita: 'ml', ingredient: ING_OLIO },
           ],
         },
       ],
@@ -86,6 +90,12 @@ describe('leggiVociComprate', () => {
     // In ordine di nome, numeric di Postgres convertiti, ean dall'ingrediente,
     // fabbisogno e residuo congelati della riga.
     expect(voci).toEqual([
+      {
+        itemId: 'r-aceto', ingredientId: 'ing-aceto', nome: 'Aceto', unita: 'ml',
+        classeResiduo: 'porzionabile', fabbisogno: 500, residuo: 0,
+        confezioni: 0, formato: 500, quantitaTotale: 0,
+        ean: null,
+      },
       {
         itemId: 'r-pasta', ingredientId: 'ing-pasta', nome: 'Pasta', unita: 'g',
         classeResiduo: 'porzionabile', fabbisogno: 820, residuo: 120,
@@ -164,13 +174,15 @@ describe('aggiornaFormatoDaScansione', () => {
           error: null,
         };
       }
+      // L'update dell'ingrediente rilegge la riga toccata: una sola, la pasta.
+      if (tabella === 'ingredient') return { data: [{ id: 'ing-pasta' }], error: null };
       return { data: null, error: null };
     });
     vi.mocked(client).mockReturnValue(mock.sb as never);
     return mock;
   }
 
-  it('scrive formato ed ean sull\'ingrediente, filtrando per id e casa', async () => {
+  it('scrive formato ed ean sull\'ingrediente, filtrando per id e casa, e rilegge l\'id per sapere se la riga c\'era', async () => {
     const { catene } = preparaSettimana();
 
     await aggiornaFormatoDaScansione({ ...PASTA, formato: 500, ean: '8076800105735', confezioni: 2 });
@@ -180,7 +192,48 @@ describe('aggiornaFormatoDaScansione', () => {
       { metodo: 'update', args: [{ formato_confezione: 500, ean: '8076800105735' }] },
       { metodo: 'eq', args: ['id', 'ing-pasta'] },
       { metodo: 'eq', args: ['user_id', 'user-1'] },
+      { metodo: 'select', args: ['id'] },
     ]);
+  });
+
+  it('l\'ean si scrive senza gli spazi ai bordi', async () => {
+    const { catene } = preparaSettimana();
+
+    await aggiornaFormatoDaScansione({ ...PASTA, formato: 500, ean: ' 8076800105735 ', confezioni: 2 });
+
+    expect(catene['ingredient'][0][0]).toEqual({ metodo: 'update', args: [{ formato_confezione: 500, ean: '8076800105735' }] });
+  });
+
+  it.each(['12ab', '123', '', '8076 800105735', '12345678901234567'])('con ean "%s" lancia "codice non valido" prima di toccare il database', async (ean) => {
+    // Il check SQL (`^[0-9]{8,14}$`) lo fermerebbe, ma sull'ultimo update:
+    // le righe della settimana sarebbero già riscritte.
+    const { catene } = preparaSettimana();
+
+    await expect(
+      aggiornaFormatoDaScansione({ ...PASTA, formato: 500, ean, confezioni: 1 }),
+    ).rejects.toThrow('codice non valido');
+
+    expect(catene).toEqual({});
+    expect(idCasa).not.toHaveBeenCalled();
+  });
+
+  it('se l\'update dell\'ingrediente non tocca righe (altra casa o cancellato) lancia "ingrediente non trovato"', async () => {
+    const { sb, catene } = creaClientMock((tabella, chiamate) => {
+      if (tabella === 'week') return { data: { stato: 'confermata' }, error: null };
+      if (tabella === 'shopping_list') return { data: [{ id: 'lista-base', tipo: 'base' }], error: null };
+      if (tabella === 'shopping_list_item' && chiamate.some((c) => c.metodo === 'select')) {
+        return { data: [{ id: 'r-base', shopping_list_id: 'lista-base', origine: 'piano' }], error: null };
+      }
+      if (tabella === 'ingredient') return { data: [], error: null };
+      return { data: null, error: null };
+    });
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    await expect(
+      aggiornaFormatoDaScansione({ ...PASTA, formato: 500, ean: null, confezioni: 2 }),
+    ).rejects.toThrow('ingrediente non trovato');
+    // L'update c'è stato (a vuoto): la pagina deve saperlo, non segnare AGGIORNATO.
+    expect(catene['ingredient']).toHaveLength(1);
   });
 
   it('senza ean aggiorna solo il formato: l\'ultimo codice memorizzato resta', async () => {
@@ -254,6 +307,7 @@ describe('aggiornaFormatoDaScansione', () => {
     const { sb, catene } = creaClientMock((tabella) => {
       if (tabella === 'week') return { data: { stato: 'confermata' }, error: null };
       if (tabella === 'shopping_list') return { data: [], error: null };
+      if (tabella === 'ingredient') return { data: [{ id: 'ing-pasta' }], error: null };
       return { data: null, error: null };
     });
     vi.mocked(client).mockReturnValue(sb as never);

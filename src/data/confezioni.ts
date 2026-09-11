@@ -1,4 +1,5 @@
 import type { ClasseResiduo, UnitaBase } from '@/domain/types';
+import { eanValido } from '@/domain/ean';
 import { client } from './supabase';
 import { idCasa } from './casa';
 
@@ -55,14 +56,18 @@ export const FORMATO_MAX = 100_000;
 export const CONFEZIONI_MAX = 1000;
 
 /**
- * Le voci comprate della settimana: spuntate, nate dal piano o aggiunte a
- * mano (i controlli staple "ne hai ancora?" non sono acquisti) e con almeno
- * una confezione (un controllo risposto "sì" resta a 0). Entrambe le liste
- * (base e top-up), in ordine di nome; a parità di nome (lo stesso
- * ingrediente in tutte e due le liste) prima la base, poi il top-up — lo
- * stesso ordine in cui `aggiornaFormatoDaScansione` assegna le confezioni
- * comprate. Le quantità sono quelle congelate: questa funzione non
- * ricalcola niente.
+ * Le voci comprate della settimana: spuntate e nate dal piano o aggiunte a
+ * mano. I controlli staple ("ne hai ancora?") restano fuori per l'origine,
+ * non per le confezioni: un controllo risposto "sì" sta a 0, ma è l'origine
+ * `controllo` a dire che non è un acquisto. Nessun filtro su
+ * `confezioni > 0`: una riga di piano non nasce mai a 0, e se sta a 0 è
+ * perché una scansione l'ha scritta così ("non l'ho preso", o un refuso) —
+ * deve restare in pagina, altrimenti al ricarico sparisce e non si corregge
+ * più. Entrambe le liste (base e top-up), in ordine di nome; a parità di
+ * nome (lo stesso ingrediente in tutte e due le liste) prima la base, poi il
+ * top-up — lo stesso ordine in cui `aggiornaFormatoDaScansione` assegna le
+ * confezioni comprate. Le quantità sono quelle congelate: questa funzione
+ * non ricalcola niente.
  */
 export async function leggiVociComprate(weekId: string): Promise<VoceComprata[]> {
   const sb = client();
@@ -81,10 +86,7 @@ export async function leggiVociComprate(weekId: string): Promise<VoceComprata[]>
 
   return (liste ?? [])
     .flatMap((l) => (l.shopping_list_item ?? []).map((r) => ({ riga: r, lista: ordineLista(l.tipo) })))
-    .filter(({ riga: r }) =>
-      Boolean(r.spuntato)
-      && (r.origine === 'piano' || r.origine === 'manuale')
-      && Number(r.confezioni) > 0)
+    .filter(({ riga: r }) => Boolean(r.spuntato) && (r.origine === 'piano' || r.origine === 'manuale'))
     .sort((a, b) => {
       const perNome = String(a.riga.ingredient?.nome ?? '').localeCompare(String(b.riga.ingredient?.nome ?? ''), 'it');
       return perNome !== 0 ? perNome : a.lista - b.lista;
@@ -151,8 +153,15 @@ export async function leggiVociComprate(weekId: string): Promise<VoceComprata[]>
  * Tetti: `formato` finito in [FORMATO_MIN, FORMATO_MAX] (un formato a 0
  * farebbe un ceil(x / 0) infinito nelle liste prossime; uno da un milione
  * di grammi è un refuso, non un pacco), `confezioni` intero in
- * [0, CONFEZIONI_MAX]. Si controlla qui, prima di toccare il database: il
- * check `formato_confezione > 0` lo fermerebbe, ma dopo aver già capito male.
+ * [0, CONFEZIONI_MAX], `ean` (se c'è) di 8–14 cifre come il check SQL
+ * `^[0-9]{8,14}$`, scritto senza spazi ai bordi. Si controlla qui, prima di
+ * toccare il database: i check lo fermerebbero, ma sull'ultimo update, con
+ * le righe della settimana già riscritte.
+ *
+ * L'update dell'ingrediente rilegge l'id toccato (`select('id')`): con le
+ * policy per casa un ingrediente di un'altra casa, o cancellato, dà zero
+ * righe senza errore, e la pagina segnerebbe AGGIORNATO un formato che non
+ * ha scritto nessuno. Zero righe → `ingrediente non trovato`.
  */
 export async function aggiornaFormatoDaScansione(i: {
   ingredientId: string;
@@ -168,6 +177,7 @@ export async function aggiornaFormatoDaScansione(i: {
   if (!Number.isInteger(i.confezioni) || i.confezioni < 0 || i.confezioni > CONFEZIONI_MAX) {
     throw new Error('confezioni non valide');
   }
+  if (i.ean !== null && !eanValido(i.ean)) throw new Error('codice non valido');
 
   const sb = client();
   const userId = await idCasa();
@@ -219,11 +229,13 @@ export async function aggiornaFormatoDaScansione(i: {
   }
 
   const patch: Record<string, unknown> = { formato_confezione: i.formato };
-  if (i.ean !== null) patch.ean = i.ean;
-  const { error: eIng } = await sb
+  if (i.ean !== null) patch.ean = i.ean.trim();
+  const { data: toccati, error: eIng } = await sb
     .from('ingredient')
     .update(patch)
     .eq('id', i.ingredientId)
-    .eq('user_id', userId);
+    .eq('user_id', userId)
+    .select('id');
   if (eIng) throw eIng;
+  if (!toccati || toccati.length === 0) throw new Error('ingrediente non trovato');
 }

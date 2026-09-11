@@ -330,7 +330,9 @@ describe('Confezioni — scansione', () => {
 
     expect(await screen.findByText('Prodotto non trovato: puoi scrivere il formato a mano.')).toBeInTheDocument();
     const campo = screen.getByLabelText('Formato a mano');
-    expect(campo).toHaveAttribute('inputmode', 'decimal');
+    // Intero: sotto il grammo/millilitro non c'è confezione, e "1.000" (le
+    // migliaia all'italiana) non deve passare per un grammo.
+    expect(campo).toHaveAttribute('inputmode', 'numeric');
     const aggiorna = screen.getByRole('button', { name: 'AGGIORNA' });
     expect(aggiorna).toBeDisabled();
     // Senza un formato valido non c'è niente su cui chiedere le confezioni.
@@ -356,7 +358,7 @@ describe('Confezioni — scansione', () => {
     expect(await screen.findByText('1 × 750 g · AGGIORNATO')).toBeInTheDocument();
   });
 
-  it.each(['0,5', '0', '-3', '100001', 'abc'])('formato a mano "%s" fuori tetto: AGGIORNA resta disabilitato e niente domanda', async (valore) => {
+  it.each(['0,5', '0', '-3', '-5', '100001', 'abc', '1.000', '1,5', '1e3', '0x10', ''])('formato a mano "%s" non è un intero nel tetto: AGGIORNA resta disabilitato e niente domanda', async (valore) => {
     fetchMock.mockResolvedValue(rispostaJson({ trovato: false }));
 
     render(<Confezioni />);
@@ -367,7 +369,7 @@ describe('Confezioni — scansione', () => {
     expect(screen.queryByLabelText('Confezioni comprate')).not.toBeInTheDocument();
   });
 
-  it.each(['1', '100000', '1,5'])('formato a mano "%s" è nel tetto', async (valore) => {
+  it.each(['1', '1000', '100000'])('formato a mano "%s" è un intero nel tetto', async (valore) => {
     fetchMock.mockResolvedValue(rispostaJson({ trovato: false }));
 
     render(<Confezioni />);
@@ -375,6 +377,23 @@ describe('Confezioni — scansione', () => {
     fireEvent.change(await screen.findByLabelText('Formato a mano'), { target: { value: valore } });
 
     expect(screen.getByRole('button', { name: 'AGGIORNA' })).toBeEnabled();
+  });
+
+  it('correggere il formato a mano azzera le confezioni digitate: la proposta torna a seguire il formato', async () => {
+    fetchMock.mockResolvedValue(rispostaJson({ trovato: false }));
+
+    render(<Confezioni />);
+    await scansiona();
+    const formato = await screen.findByLabelText('Formato a mano');
+    fireEvent.change(formato, { target: { value: '500' } });
+    expect(screen.getByLabelText('Confezioni comprate')).toHaveValue('2');
+    fireEvent.change(screen.getByLabelText('Confezioni comprate'), { target: { value: '3' } });
+    expect(screen.getByLabelText('Confezioni comprate')).toHaveValue('3');
+
+    // Con confezioni da 1000 g ne basta 1: il "3" era per un altro formato.
+    fireEvent.change(formato, { target: { value: '1000' } });
+
+    expect(screen.getByLabelText('Confezioni comprate')).toHaveValue('1');
   });
 
   it('trovato ma senza quantità: campo a mano con nome e marca, il codice si memorizza', async () => {
@@ -509,6 +528,73 @@ describe('Confezioni — scansione', () => {
     const schedaPasta = screen.getByText('Pasta').parentElement!.parentElement!.parentElement!;
     expect(within(schedaPasta).getByLabelText('Scrivi il codice')).toBeInTheDocument();
     expect(within(schedaPasta).queryByRole('button', { name: 'SCANSIONA' })).not.toBeInTheDocument();
+  });
+
+  it('una scrittura in volo su una voce non chiude lo scanner aperto intanto su un\'altra', async () => {
+    vi.mocked(leggiVociComprate).mockResolvedValue([
+      voce({}),
+      voce({ itemId: 'item-riso', ingredientId: 'ing-riso', nome: 'Riso', formato: 1000 }),
+    ]);
+    fetchMock.mockResolvedValue(rispostaJson(OFF_500G));
+    let risolvi: () => void = () => {};
+    vi.mocked(aggiornaFormatoDaScansione).mockReturnValueOnce(new Promise<void>((r) => { risolvi = r; }));
+
+    render(<Confezioni />);
+    // Pasta: si scansiona, si preme AGGIORNA, la scrittura resta in sospeso.
+    fireEvent.click((await screen.findAllByRole('button', { name: 'SCANSIONA' }))[0]);
+    fireEvent.change(await screen.findByLabelText('Scrivi il codice'), { target: { value: EAN } });
+    fireEvent.click(screen.getByRole('button', { name: 'CERCA' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'AGGIORNA' }));
+    expect(aggiornaFormatoDaScansione).toHaveBeenCalledTimes(1);
+
+    // Intanto si apre lo scanner sul riso.
+    fireEvent.click(screen.getByRole('button', { name: 'SCANSIONA' }));
+    const schedaRiso = screen.getByText('Riso').parentElement!.parentElement!.parentElement!;
+    expect(within(schedaRiso).getByLabelText('Scrivi il codice')).toBeInTheDocument();
+
+    // La scrittura della pasta si risolve: la pasta è aggiornata, lo scanner del riso resta.
+    risolvi();
+    expect(await screen.findByText('2 × 500 g · AGGIORNATO')).toBeInTheDocument();
+    expect(within(schedaRiso).getByLabelText('Scrivi il codice')).toBeInTheDocument();
+    expect(within(schedaRiso).queryByRole('button', { name: 'SCANSIONA' })).not.toBeInTheDocument();
+    // La pasta, chiusa, torna col suo SCANSIONA: uno solo in pagina.
+    expect(screen.getAllByRole('button', { name: 'SCANSIONA' })).toHaveLength(1);
+  });
+
+  it('una scrittura in volo su una voce non blocca il "formato uguale" di un\'altra', async () => {
+    vi.mocked(leggiVociComprate).mockResolvedValue([
+      voce({}),
+      voce({ itemId: 'item-riso', ingredientId: 'ing-riso', nome: 'Riso', formato: 1000 }),
+    ]);
+    fetchMock
+      .mockResolvedValueOnce(rispostaJson(OFF_500G))
+      .mockResolvedValueOnce(rispostaJson({ trovato: true, nome: 'Riso', marca: 'R', quantita: { valore: 1000, unita: 'g' } }));
+    let risolviPasta: () => void = () => {};
+    vi.mocked(aggiornaFormatoDaScansione)
+      .mockReturnValueOnce(new Promise<void>((r) => { risolviPasta = r; }))
+      .mockResolvedValueOnce(undefined);
+
+    render(<Confezioni />);
+    fireEvent.click((await screen.findAllByRole('button', { name: 'SCANSIONA' }))[0]);
+    fireEvent.change(await screen.findByLabelText('Scrivi il codice'), { target: { value: EAN } });
+    fireEvent.click(screen.getByRole('button', { name: 'CERCA' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'AGGIORNA' }));
+
+    // Riso: formato uguale → il codice si memorizza anche se la pasta è ancora in volo.
+    fireEvent.click(screen.getByRole('button', { name: 'SCANSIONA' }));
+    fireEvent.change(await screen.findByLabelText('Scrivi il codice'), { target: { value: '80768001' } });
+    fireEvent.click(screen.getByRole('button', { name: 'CERCA' }));
+
+    expect(await screen.findByText('Formato confermato: 1000 g.')).toBeInTheDocument();
+    expect(aggiornaFormatoDaScansione).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(aggiornaFormatoDaScansione).mock.calls[1][0]).toEqual({
+      ingredientId: 'ing-riso', weekId: 'week-1', formato: 1000, ean: '80768001', confezioni: 1,
+    });
+
+    risolviPasta();
+    expect(await screen.findByText('2 × 500 g · AGGIORNATO')).toBeInTheDocument();
+    // Il riso resta sulla sua conferma: la pasta non chiude la scheda di un'altra voce.
+    expect(screen.getByText('Formato confermato: 1000 g.')).toBeInTheDocument();
   });
 
   it('la risposta in ritardo di una voce non copre lo scanner aperto su un\'altra', async () => {

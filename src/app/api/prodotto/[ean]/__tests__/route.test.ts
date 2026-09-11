@@ -120,6 +120,37 @@ describe('GET /api/prodotto/[ean]', () => {
     expect(corpo.quantita).toEqual({ valore: 1000, unita: 'ml' });
   });
 
+  it('i campi della quantità entrano tagliati: il testo oltre 80 caratteri non si legge', async () => {
+    // Senza il taglio "500 g" in coda a 80 caratteri di rumore verrebbe letto;
+    // con il taglio il testo che arriva ad analizzaQuantitaOFF è solo il rumore.
+    fetchMock.mockResolvedValue(rispostaOFF({ status: 1, product: { product_name: 'Cosa', quantity: 'x'.repeat(80) + ' 500 g' } }));
+    expect((await (await chiama()).json()).quantita).toBeNull();
+  });
+
+  it('product_quantity: una stringa si taglia, un numero finito si tiene, Infinity no', async () => {
+    fetchMock.mockResolvedValue(rispostaOFF({ status: 1, product: { product_name: 'Cosa', product_quantity: 500, product_quantity_unit: 'g' } }));
+    expect((await (await chiama()).json()).quantita).toEqual({ valore: 500, unita: 'g' });
+
+    fetchMock.mockResolvedValue(rispostaOFF({ status: 1, product: { product_name: 'Cosa', product_quantity: ' 250 ', product_quantity_unit: ' kg ' } }));
+    expect((await (await chiama()).json()).quantita).toEqual({ valore: 250_000, unita: 'g' });
+
+    // JSON non porta Infinity: qui arriva come stringa, e Number('Infinity') non è finito.
+    fetchMock.mockResolvedValue(rispostaOFF({ status: 1, product: { product_name: 'Cosa', product_quantity: 'Infinity', product_quantity_unit: 'g', quantity: '1 L' } }));
+    expect((await (await chiama()).json()).quantita).toEqual({ valore: 1000, unita: 'ml' });
+  });
+
+  it('campi della quantità di 50.000 caratteri: risponde in meno di 100 ms, senza bloccare l\'event loop', async () => {
+    const lungo = '9'.repeat(50_000);
+    fetchMock.mockResolvedValue(rispostaOFF({
+      status: 1,
+      product: { product_name: 'Cosa', quantity: lungo, product_quantity: lungo, product_quantity_unit: 'g'.repeat(50_000) },
+    }));
+    const inizio = performance.now();
+    const corpo = await (await chiama()).json();
+    expect(performance.now() - inizio).toBeLessThan(100);
+    expect(corpo).toEqual({ trovato: true, nome: 'Cosa', marca: '', quantita: null });
+  });
+
   it('quantità non capita → quantita null, ma trovato', async () => {
     fetchMock.mockResolvedValue(rispostaOFF({ status: 1, product: { product_name: 'Cosa', brands: 'X', quantity: 'grande' } }));
     expect(await (await chiama()).json()).toEqual({ trovato: true, nome: 'Cosa', marca: 'X', quantita: null });

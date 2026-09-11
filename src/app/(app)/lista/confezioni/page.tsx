@@ -83,15 +83,19 @@ function rigaProdotto(marca: string, nome: string, coda?: string): string {
 }
 
 /**
- * Il formato scritto a mano: da 1 a FORMATO_MAX. Il data layer accetta da un
- * millesimo in su (un tetto generico contro lo zero e i refusi), ma qui le
- * unità sono grammi, millilitri e pezzi: sotto il grammo o il millilitro non
- * c'è nessuna confezione in vendita, e un pezzo non si spezza. Un "0,5"
- * digitato è quasi sempre un "500" con la virgola sbagliata, non mezzo grammo.
+ * Il formato scritto a mano: un intero da 1 a FORMATO_MAX, solo cifre. Il
+ * data layer accetta da un millesimo in su (un tetto generico contro lo zero
+ * e i refusi), ma qui le unità sono grammi, millilitri e pezzi: sotto il
+ * grammo o il millilitro non c'è nessuna confezione in vendita, e un pezzo
+ * non si spezza. Perciò niente decimali né notazioni: "1.000" all'italiana
+ * è mille, non un grammo (`Number` lo leggerebbe come 1), "1,5" e "1e3" e
+ * "0x10" non sono formati che qualcuno scrive apposta.
  */
 function numeroDaCampo(s: string): number | null {
-  const n = Number(s.trim().replace(',', '.'));
-  return Number.isFinite(n) && n >= 1 && n <= FORMATO_MAX ? n : null;
+  const t = s.trim();
+  if (!/^\d+$/.test(t)) return null;
+  const n = Number(t);
+  return n >= 1 && n <= FORMATO_MAX ? n : null;
 }
 
 /** Le confezioni comprate: un intero da 0 (non l'ho preso) a CONFEZIONI_MAX. */
@@ -149,7 +153,14 @@ export default function Confezioni() {
   const [manuale, setManuale] = useState('');
   /** Il campo "quante ne hai comprate": null finché non lo tocca, e vale il proposto. */
   const [comprate, setComprate] = useState<string | null>(null);
-  const [scrivendo, setScrivendo] = useState(false);
+  /**
+   * L'itemId della voce la cui scrittura è in volo, null se nessuna. Per voce
+   * e non un booleano: chi ha premuto AGGIORNA sulla pasta può intanto
+   * scansionare il riso, e un "formato uguale" sul riso deve poter scrivere
+   * — con un flag unico uscirebbe in silenzio da `scrivi` e resterebbe
+   * appeso su "Memorizzo il codice…" senza RIPROVA.
+   */
+  const [scrivendo, setScrivendo] = useState<string | null>(null);
   const [erroreScrittura, setErroreScrittura] = useState<string | null>(null);
 
   useEffect(() => {
@@ -218,6 +229,10 @@ export default function Confezioni() {
    * dato: tutte le voci dello stesso ingrediente (una può stare in base e in
    * top-up) prendono il nuovo formato; le confezioni vanno sulla prima (le
    * voci arrivano già in ordine base → top-up) e 0 sulle altre.
+   *
+   * La scheda si chiude (o passa a "confermato") solo se la voce è ancora
+   * quella aperta: se intanto si è premuto SCANSIONA su un'altra, la
+   * scrittura che torna non deve chiuderle lo scanner.
    */
   async function scrivi(
     voce: VoceComprata,
@@ -226,8 +241,8 @@ export default function Confezioni() {
     confezioni: number,
     poi: 'chiudi' | 'confermato',
   ) {
-    if (!stato || scrivendo) return;
-    setScrivendo(true);
+    if (!stato || scrivendo === voce.itemId) return;
+    setScrivendo(voce.itemId);
     setErroreScrittura(null);
     try {
       await aggiornaFormatoDaScansione({ ingredientId: voce.ingredientId, weekId: stato.weekId, formato, ean, confezioni });
@@ -250,8 +265,11 @@ export default function Confezioni() {
           return n;
         });
       }
-      if (poi === 'chiudi') chiudi();
-      else seAncoraAperta(voce, { tipo: 'confermato', formato });
+      if (poi === 'chiudi') {
+        if (attivaRef.current === voce.itemId) chiudi();
+      } else {
+        seAncoraAperta(voce, { tipo: 'confermato', formato });
+      }
     } catch (errore) {
       if (errore instanceof Error && errore.message === 'spesa già chiusa') {
         router.replace('/settimana');
@@ -260,7 +278,7 @@ export default function Confezioni() {
       console.error('lista/confezioni: aggiornamento del formato fallito.', errore);
       if (attivaRef.current === voce.itemId) setErroreScrittura('Non siamo riusciti ad aggiornare. Riprova.');
     } finally {
-      setScrivendo(false);
+      setScrivendo((s) => (s === voce.itemId ? null : s));
     }
   }
 
@@ -411,7 +429,7 @@ export default function Confezioni() {
                     : <Testo>{`Formato ${quantita(esito.formato, voce.unita)}, come in lista. Memorizzo il codice…`}</Testo>}
                   <Azioni>
                     {erroreScrittura && (
-                      <Primario disabled={scrivendo} onClick={() => void scrivi(voce, esito.formato, esito.ean, voce.confezioni, 'confermato')}>
+                      <Primario disabled={scrivendo === voce.itemId} onClick={() => void scrivi(voce, esito.formato, esito.ean, voce.confezioni, 'confermato')}>
                         RIPROVA
                       </Primario>
                     )}
@@ -445,7 +463,7 @@ export default function Confezioni() {
                   {erroreScrittura && <Errore>{erroreScrittura}</Errore>}
                   <Azioni>
                     <Primario
-                      disabled={scrivendo || confezioniComprate === null}
+                      disabled={scrivendo === voce.itemId || confezioniComprate === null}
                       onClick={() => confezioniComprate !== null && void scrivi(voce, esito.formato, esito.ean, confezioniComprate, 'chiudi')}
                     >
                       AGGIORNA
@@ -463,10 +481,16 @@ export default function Confezioni() {
                     <input
                       type="text"
                       aria-label="Formato a mano"
-                      inputMode="decimal"
+                      inputMode="numeric"
                       placeholder={String(voce.formato)}
                       value={manuale}
-                      onChange={(e) => setManuale(e.target.value)}
+                      onChange={(e) => {
+                        setManuale(e.target.value);
+                        // Le confezioni digitate erano per il formato di
+                        // prima: con un altro formato la proposta cambia e
+                        // il campo deve tornare a seguirla.
+                        setComprate(null);
+                      }}
                       style={{
                         flex: 1, minWidth: 0, height: 44, padding: '0 14px', borderRadius: 14,
                         border: '1px solid rgba(20,22,58,0.16)', background: '#FFFFFF',
@@ -485,7 +509,7 @@ export default function Confezioni() {
                   {erroreScrittura && <Errore>{erroreScrittura}</Errore>}
                   <Azioni>
                     <Primario
-                      disabled={scrivendo || formatoManuale === null || confezioniComprate === null}
+                      disabled={scrivendo === voce.itemId || formatoManuale === null || confezioniComprate === null}
                       onClick={() =>
                         formatoManuale !== null && confezioniComprate !== null
                         && void scrivi(voce, formatoManuale, esito.ean, confezioniComprate, 'chiudi')}

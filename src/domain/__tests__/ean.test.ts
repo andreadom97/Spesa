@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { eanValido, analizzaQuantitaOFF, formatoProposto } from '../ean';
+import { eanValido, analizzaQuantitaOFF, formatoProposto, MAX_TESTO_QUANTITA } from '../ean';
 import type { QuantitaConfezione } from '../ean';
 
 describe('eanValido', () => {
@@ -90,6 +90,36 @@ describe('analizzaQuantitaOFF', () => {
       ['-500 g', null],
     ])('"%s" → %j', (quantity, atteso) => {
       expect(analizzaQuantitaOFF({ quantity })).toEqual(atteso);
+    });
+
+    it('una stringa di 50.000 cifre non blocca l\'event loop: risposta in meno di 100 ms', () => {
+      // Con `\\d+` ripetuti nella regex il tempo cresceva col quadrato del testo
+      // (10.000 cifre ≈ 0,2 s, 40.000 ≈ 12 s), in modo sincrono. Il testo di OFF
+      // è un campo libero: chiunque può scriverci quello che vuole.
+      const inizio = performance.now();
+      const esito = analizzaQuantitaOFF({ quantity: '9'.repeat(50_000) });
+      expect(performance.now() - inizio).toBeLessThan(100);
+      expect(esito).toBeNull();
+    });
+
+    it('anche con 50.000 cifre seguite da un\'unità, o con "x" ripetute, risponde subito', () => {
+      const inizio = performance.now();
+      analizzaQuantitaOFF({ quantity: '9'.repeat(50_000) + ' g' });
+      analizzaQuantitaOFF({ quantity: '1 x '.repeat(20_000) });
+      analizzaQuantitaOFF({ quantity: '1.'.repeat(30_000) });
+      expect(performance.now() - inizio).toBeLessThan(100);
+    });
+
+    it('legge solo i primi MAX_TESTO_QUANTITA caratteri del testo', () => {
+      // Dentro il tetto: si capisce.
+      expect(analizzaQuantitaOFF({ quantity: ' '.repeat(MAX_TESTO_QUANTITA - 5) + '500 g' })).toEqual({ valore: 500, unita: 'g' });
+      // Oltre il tetto: la quantità sta nella parte che non si legge → null.
+      expect(analizzaQuantitaOFF({ quantity: ' '.repeat(MAX_TESTO_QUANTITA) + '500 g' })).toBeNull();
+    });
+
+    it('una sequenza di più di 7 cifre non è un numero: nessuna confezione ha otto cifre', () => {
+      expect(analizzaQuantitaOFF({ quantity: '12345678 g' })).toBeNull();
+      expect(analizzaQuantitaOFF({ quantity: '1234567 g' })).toEqual({ valore: 1234567, unita: 'g' });
     });
 
     it('restituisce null se `quantity` manca o non è una stringa', () => {

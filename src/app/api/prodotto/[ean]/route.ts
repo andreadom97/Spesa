@@ -14,6 +14,16 @@ function taglia(v: unknown): string {
   return typeof v === 'string' ? v.trim().slice(0, MAX_CARATTERI) : '';
 }
 
+/**
+ * `product_quantity` di OFF: un numero (si tiene solo se finito) o, più
+ * spesso, una stringa ("500"), che si taglia come il resto. Tutto ciò che
+ * entra in `analizzaQuantitaOFF` deve avere un tetto: è testo di chiunque.
+ */
+function quantitaNumerica(v: unknown): number | string | undefined {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : undefined;
+  return typeof v === 'string' ? taglia(v) : undefined;
+}
+
 /** Un giorno: la data cache di Next verso OFF e il `max-age` verso il browser. */
 const REVALIDATE_S = 86_400;
 /** Solo sui 200: un errore non si tiene. */
@@ -34,10 +44,15 @@ const CACHE_200 = { 'Cache-Control': `private, max-age=${REVALIDATE_S}` };
  * rispondere, non COSA). Quindi si può tenere: la fetch verso OFF passa dalla
  * data cache di Next con `next: { revalidate: 86400 }` (un giorno: il formato
  * di un prodotto non cambia di ora in ora, e una casa scansiona spesso gli
- * stessi pacchi), e il 200 porta `Cache-Control: private, max-age=86400` per
- * il browser — `private` perché la risposta è dietro sessione e non deve
- * finire in una cache condivisa. Per la data cache vedi
- * node_modules/next/dist/docs/01-app/03-api-reference/04-functions/fetch.md.
+ * stessi pacchi). Attenzione a cosa ci entra davvero: Next memorizza solo le
+ * risposte 200 di OFF ("Only responses with a 200 HTTP status code are
+ * stored", node_modules/next/dist/docs/01-app/03-api-reference/04-functions/fetch.md).
+ * Un codice sconosciuto è un 404 di OFF: non entra mai nella data cache, e
+ * ogni scansione di un codice ignoto va a OFF. Lo `status: 0` in un 200 sì.
+ * Verso il browser i 200 nostri (trovato o no) portano `Cache-Control:
+ * private, max-age=86400`: è solo il browser a tenere un `trovato: false`
+ * per un giorno — `private` perché la risposta è dietro sessione e non deve
+ * finire in una cache condivisa.
  *
  * Sessione: il proxy già rimanda a /entra chi non ce l'ha; qui in più si
  * verifica `auth.getUser()` col client dei cookie della richiesta (GET dalla
@@ -91,8 +106,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return Response.json({ trovato: false }, { status: 200, headers: CACHE_200 });
   }
   const p = product as Record<string, unknown>;
+  // Anche la quantità entra tagliata: analizzaQuantitaOFF ha i suoi tetti,
+  // ma nessun testo di OFF deve arrivarci senza un limite dato qui.
+  const quantita = analizzaQuantitaOFF({
+    quantity: taglia(p.quantity),
+    product_quantity: quantitaNumerica(p.product_quantity),
+    product_quantity_unit: taglia(p.product_quantity_unit),
+  });
   return Response.json(
-    { trovato: true, nome: taglia(p.product_name), marca: taglia(p.brands), quantita: analizzaQuantitaOFF(p) },
+    { trovato: true, nome: taglia(p.product_name), marca: taglia(p.brands), quantita },
     { status: 200, headers: CACHE_200 },
   );
 }

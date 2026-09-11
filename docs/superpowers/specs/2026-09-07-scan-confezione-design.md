@@ -33,10 +33,11 @@ assunta, per questa settimana e per le prossime.
 
 Da "Hai preso tutto", prima di CHIUDI LA SPESA, un link `CONFEZIONI DIVERSE? SCANSIONA`
 porta a `/lista/confezioni`: l'elenco delle voci comprate della settimana (spuntate,
-origine `piano` o `manuale`, `confezioni > 0`), ciascuna con nome, `N × formato unità`
-e il bottone `SCANSIONA`. Il bottone apre lo scanner (§3); il codice letto (o digitato)
-va alla route `/api/prodotto/{ean}` (§2) che risponde con nome, marca e quantità della
-confezione. La schermata mostra `Barilla · Spaghetti n. 5 · 500 g` e, se la quantità
+origine `piano` o `manuale` — anche a 0 confezioni: una riga di piano non nasce mai a
+0, e se ci sta è perché una scansione l'ha scritta così e deve restare correggibile),
+ciascuna con nome, `N × formato unità` e il bottone `SCANSIONA`. Il bottone apre lo
+scanner (§3); il codice letto (o digitato) va alla route `/api/prodotto/{ean}` (§2) che
+risponde con nome, marca e quantità della confezione. La schermata mostra `Barilla · Spaghetti n. 5 · 500 g` e, se la quantità
 è diversa dal formato assunto nella stessa unità: `La confezione è 500 g, nel formato
 avevi 1000 g. Aggiorno per questa settimana e per le prossime?` seguito da `Con
 confezioni da 500 g ne bastano 2 (la lista ne chiedeva 1). Quante ne hai comprate?` con
@@ -47,19 +48,25 @@ diventa `M × 500 g · AGGIORNATO` con `M` le confezioni comprate. Se la quantit
 nessuna domanda (le confezioni restano quelle della lista), il codice viene memorizzato e
 solo a scrittura riuscita compare `Formato confermato: 500 g.`; se la scrittura fallisce,
 messaggio e `RIPROVA`. Se OFF non conosce il prodotto: `Prodotto non trovato: puoi
-scrivere il formato a mano.` con un campo numerico (da 1 a 100.000 nell'unità
-dell'ingrediente: sotto il grammo/millilitro non esiste una confezione, e un pezzo non si
-spezza), la stessa domanda sulle confezioni appena il formato è valido, e lo stesso
-`AGGIORNA`. Se l'unità non è compatibile (OFF dice `1 L`, l'ingrediente è in `g`): `Unità
-diversa (l contro g): non aggiorno. Correggi il formato a mano se serve.` Le quantità si
-mostrano esatte nell'unità base (`1250 g`, non `1,3 kg`): qui si confrontano formati.
+scrivere il formato a mano.` con un campo **intero** (`Formato a mano`,
+`inputMode="numeric"`, solo cifre, da 1 a 100.000 nell'unità dell'ingrediente: sotto il
+grammo/millilitro non esiste una confezione, e un pezzo non si spezza; niente decimali né
+separatori — "1.000" all'italiana è mille, e letto come numero sarebbe un grammo), la
+stessa domanda sulle confezioni appena il formato è valido (cambiare il formato azzera le
+confezioni digitate: la proposta torna a seguirlo), e lo stesso `AGGIORNA`. Se l'unità
+non è compatibile (OFF dice `1 L`, l'ingrediente è in `g`): `Unità diversa (l contro g):
+non aggiorno. Correggi il formato a mano se serve.` Le quantità si mostrano esatte
+nell'unità base (`1250 g`, non `1,3 kg`): qui si confrontano formati.
 
 La pagina è raggiungibile solo a lista tutta spuntata (come "Hai preso tutto"); a
 settimana `chiusa` non ha più senso (le quantità sono già accreditate) e rimanda a
 `/settimana` prima ancora di leggere le liste — come fa anche "Hai preso tutto". Una
 risposta 401 o un redirect dalla route (sessione scaduta) manda a `/entra`, non al campo
 a mano. Se si preme `SCANSIONA` su una seconda voce mentre la ricerca della prima è in
-corso, la risposta in ritardo della prima non tocca lo scanner della seconda.
+corso, la risposta in ritardo della prima non tocca lo scanner della seconda; lo stesso
+se è in corso la scrittura della prima (`AGGIORNA` premuto): quando torna, aggiorna la
+riga della prima ma non chiude la scheda della seconda, e la seconda può scrivere a sua
+volta (la scrittura in volo è per voce, non un blocco unico della pagina).
 
 ## 2. La route `GET /api/prodotto/[ean]`
 
@@ -76,9 +83,17 @@ corso, la risposta in ritardo della prima non tocca lo scanner della seconda.
 - Nessun dato scritto: la route legge e basta. Nessun log del codice.
 - Cache, sì, perché la risposta dipende solo dall'URL (cioè dal codice a barre) e nessun
   dato dell'utente ci entra: la fetch verso OFF passa dalla data cache di Next con
-  `next: { revalidate: 86400 }` (un giorno) e i 200 (trovato o no) portano
-  `Cache-Control: private, max-age=86400` per il browser — `private` perché la risposta
-  è dietro sessione. Gli errori (400, 401, 502) non si tengono.
+  `next: { revalidate: 86400 }` (un giorno). Nella data cache entrano **solo i 200 di
+  OFF** (docs di `fetch`: "Only responses with a 200 HTTP status code are stored"): un
+  codice sconosciuto è un 404 di OFF e non ci entra mai — ogni scansione di un codice
+  ignoto va a OFF. I nostri 200 (trovato o no) portano `Cache-Control: private,
+  max-age=86400` per il browser, ed è solo il browser a tenere un `trovato: false` per
+  un giorno — `private` perché la risposta è dietro sessione. Gli errori (400, 401,
+  502) non si tengono.
+- I campi di OFF entrano in `analizzaQuantitaOFF` già tagliati (`quantity`,
+  `product_quantity_unit` e `product_quantity` se stringa a 80 caratteri; un
+  `product_quantity` numerico solo se finito): è testo di chiunque, e il dominio ha i
+  suoi tetti (200 caratteri, numeri fino a 7 cifre) ma non deve essere l'unico argine.
 
 ## 3. Lo scanner
 
@@ -111,7 +126,7 @@ nuova (la tabella esiste già; le policy sono `(select casa_id())`).
 `src/data/confezioni.ts`:
 ```ts
 export interface VoceComprata { itemId: string; ingredientId: string; nome: string; unita: UnitaBase; classeResiduo: ClasseResiduo; fabbisogno: number; residuo: number; confezioni: number; formato: number; quantitaTotale: number; ean: string | null }
-export async function leggiVociComprate(weekId: string): Promise<VoceComprata[]>;       // voci spuntate, origine piano|manuale, confezioni > 0, con fabbisogno/residuo congelati della riga e formato/ean dall'ingrediente; per nome, a parità base prima del top-up
+export async function leggiVociComprate(weekId: string): Promise<VoceComprata[]>;       // voci spuntate, origine piano|manuale (anche a 0 confezioni: i controlli restano fuori per l'origine), con fabbisogno/residuo congelati della riga e formato/ean dall'ingrediente; per nome, a parità base prima del top-up
 export async function aggiornaFormatoDaScansione(i: { ingredientId: string; weekId: string; formato: number; ean: string | null; confezioni: number }): Promise<void>;
 ```
 `aggiornaFormatoDaScansione` scrive il formato vero **e** le confezioni comprate di quel
@@ -127,12 +142,18 @@ formato, in quest'ordine:
    per id e `user_id = idCasa()`.
 
 Prima le righe e poi l'ingrediente: un fallimento a metà non deve lasciare le settimane
-prossime corrette e questa no. `confezioni = 0` è ammesso ("in corsia non l'ho preso"):
-la riga resta spuntata con 0 confezioni e `quantita_totale` 0, e alla chiusura non
-accredita niente. Tetti, controllati prima di toccare il database: `formato` finito in
-`[0.001, 100000]` (`formato non valido`), `confezioni` intero in `[0, 1000]`
-(`confezioni non valide`). Solo se la settimana non è `chiusa` (guard come
-`generaListe`, ma qui si lancia `spesa già chiusa`). Un ingrediente di classe `intero`
+prossime corrette e questa no. L'update dell'ingrediente rilegge l'id toccato
+(`.select('id')`): zero righe (ingrediente di un'altra casa o cancellato: le policy
+non danno errore) → `ingrediente non trovato`, così la pagina non segna `AGGIORNATO`
+una scrittura che non c'è stata. `confezioni = 0` è ammesso ("in corsia non l'ho
+preso"): la riga resta spuntata con 0 confezioni e `quantita_totale` 0, e alla chiusura
+non accredita niente; la voce resta in `/lista/confezioni` e si può correggere. Tetti,
+controllati prima di toccare il database: `formato` finito in `[0.001, 100000]`
+(`formato non valido`), `confezioni` intero in `[0, 1000]` (`confezioni non valide`),
+`ean` (se non null) di 8–14 cifre come il check SQL (`codice non valido`), scritto senza
+spazi ai bordi — validato qui perché il check SQL fermerebbe solo l'ultimo update, a
+righe già riscritte. Solo se la settimana non è `chiusa` (guard come `generaListe`, ma
+qui si lancia `spesa già chiusa`). Un ingrediente di classe `intero`
 ha formato 1 per contratto: la pagina non offre lo scan per le voci `intero` (le uova si
 contano, non si pesano) né per le `stima`.
 
@@ -157,8 +178,12 @@ contano, non si pesano) né per le `stima`.
 - Route: ean non valido → 400; senza sessione → 401; OFF `status: 1` → `trovato: true`
   con la quantità analizzata; `status: 0` → `trovato: false`; timeout/5xx → 502; nessun
   log del codice (`console.error` senza ean).
-- `confezioni.ts`: lettura filtra spuntate/origine/confezioni; scrittura aggiorna
-  ingrediente e righe della settimana, non a settimana chiusa.
+- `confezioni.ts`: lettura filtra spuntate/origine (una riga di piano a 0 confezioni
+  resta, un controllo a 0 no); scrittura aggiorna ingrediente e righe della settimana,
+  non a settimana chiusa; `ean` non conforme e update dell'ingrediente a zero righe
+  lanciano.
+- `analizzaQuantitaOFF` e la route su un testo di 50.000 cifre: risposta sotto i 100 ms
+  (la regex era quadratica sulle cifre).
 - Scanner: senza `BarcodeDetector` → solo il campo; codice digitato non valido → `CERCA`
   disabilitato; valido → `onCodice`. Il ramo camera non si testa in jsdom (dichiarato).
 - Pagina: elenco delle sole voci ammissibili, `SCANSIONA` → route mockata → proposta →
@@ -184,7 +209,9 @@ contano, non si pesano) né per le `stima`.
   un numero già mostrato.
 - Con `confezioni = 0` la riga resta spuntata: alla chiusura si registra un acquisto a 0
   confezioni e 0 quantità (`ultimo_acquisto` = oggi). È un'anomalia innocua per il
-  residuo; se dà fastidio nello storico, la strada è togliere la spunta in `/lista`.
+  residuo; se dà fastidio nello storico, la strada è togliere la spunta in `/lista`. La
+  voce resta in `/lista/confezioni` anche al ricarico (nessun filtro `confezioni > 0`):
+  uno "0" sbagliato si corregge con un'altra scansione.
 - I tetti (formato fino a 100 kg / 100 l / 100.000 pezzi, 1000 confezioni) sono contro i
   refusi e i valori che farebbero saltare l'aritmetica delle liste, non un limite
   d'uso: nessuna spesa domestica li sfiora.

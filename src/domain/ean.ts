@@ -45,6 +45,15 @@ const UNITA_NUMERICHE = new Set(['g', 'gr', 'kg', 'ml', 'cl', 'dl', 'l', 'lt']);
 const SIGLE = Object.keys(UNITA).sort((a, b) => b.length - a.length).join('|');
 
 /**
+ * Quanto testo di `quantity` si legge: i primi 200 caratteri. Su OFF è un campo
+ * libero ("Peso netto 400 g ℮", "1 kg (2 x 500 g)"), e nessuna etichetta vera
+ * supera qualche decina di caratteri; il resto è rumore o un testo ostile. Il
+ * taglio sta prima di ogni `exec`: la regex non deve mai girare su un testo
+ * senza tetto, anche se le sue cifre sono già limitate (vedi RE_QUANTITA).
+ */
+export const MAX_TESTO_QUANTITA = 200;
+
+/**
  * Cerca la prima quantità nel testo, da sinistra. Le alternative sono nell'ordine
  * in cui devono vincere sulla stessa posizione:
  *  1. `[N x] valore unità`  — "500 g", "1,5 l", "6 x 125 g": il multipack
@@ -52,9 +61,17 @@ const SIGLE = Object.keys(UNITA).sort((a, b) => b.length - a.length).join('|');
  *  2. `x N`                 — "x6", "x 12": conteggio senza unità = pezzi.
  * Il lookahead `(?![a-z])` dopo l'unità evita che "500 grandi" passi per 500 g;
  * il lookbehind sul numero evita di leggere "5" dentro "1.5" e rifiuta "-500 g".
+ *
+ * Le sequenze di cifre sono limitate (`\d{1,7}` per l'intero, `\d{1,6}` per i
+ * decimali) e non `\d+`: con `\d+` ripetuti, su un testo di sole cifre il motore
+ * prova ogni lunghezza da ogni posizione e il tempo cresce col quadrato del
+ * testo (10.000 cifre ≈ 0,2 s, 40.000 ≈ 12 s, in modo sincrono). Con un tetto
+ * il backtracking per posizione è costante e il tempo resta lineare anche senza
+ * il taglio di MAX_TESTO_QUANTITA. Sette cifre bastano: nessuna confezione
+ * arriva a dieci milioni di grammi, e un numero più lungo non è una quantità.
  */
 const RE_QUANTITA = new RegExp(
-  `(?:(\\d+)\\s*x\\s*)?(?<![\\d.-])(\\d+(?:\\.\\d+)?)\\s*(${SIGLE})(?![a-z])|(?<![a-z])x\\s*(\\d+)(?![\\d.])`,
+  `(?:(?<![\\d.-])(\\d{1,7})\\s*x\\s*)?(?<![\\d.-])(\\d{1,7}(?:\\.\\d{1,6})?)(?!\\d)\\s*(${SIGLE})(?![a-z])|(?<![a-z])x\\s*(\\d{1,7})(?![\\d.])`,
 );
 
 function arrotonda3(v: number): number {
@@ -86,7 +103,7 @@ function daCampiNumerici(product_quantity: unknown, product_quantity_unit: unkno
 
 function daTesto(quantity: unknown): QuantitaConfezione | null {
   if (typeof quantity !== 'string') return null;
-  const testo = quantity.trim().toLowerCase().replace(/,/g, '.');
+  const testo = quantity.slice(0, MAX_TESTO_QUANTITA).trim().toLowerCase().replace(/,/g, '.');
   const m = RE_QUANTITA.exec(testo);
   if (!m) return null;
   const [, pezziPack, valore, sigla, conteggio] = m;
@@ -114,6 +131,11 @@ function daTesto(quantity: unknown): QuantitaConfezione | null {
  * Restituisce null quando non c'è un numero, l'unità è sconosciuta ("500",
  * "500 oz"), o il valore non è positivo: meglio chiedere il formato a mano che
  * scrivere un numero inventato nel residuo.
+ *
+ * Del testo si leggono solo i primi MAX_TESTO_QUANTITA caratteri, e un numero
+ * ha al più 7 cifre intere: il tempo è lineare e limitato qualunque cosa OFF
+ * mandi (è un campo libero). Chi chiama dovrebbe comunque passare valori già
+ * tagliati, come fa la route.
  */
 export function analizzaQuantitaOFF(p: {
   quantity?: unknown;
