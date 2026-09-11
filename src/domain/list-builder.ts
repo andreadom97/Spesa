@@ -62,9 +62,35 @@ export interface SezioneLista {
   controlli: VoceControllo[];
 }
 
+/**
+ * Quante confezioni di un ingrediente NON si comprano grazie al residuo
+ * derivato: il confronto fra la lista "senza memoria" (residuo zero, quella di
+ * qualunque altra app) e quella vera. Entrano tutti gli ingredienti con
+ * fabbisogno > 0 e classe diversa da `stima`, anche con zero evitate: sono il
+ * denominatore ("su 12 ingredienti").
+ */
+export interface VoceEvitata {
+  ingredientId: string;
+  nome: string;
+  unita: UnitaBase;
+  fabbisogno: number;
+  /** Le confezioni con residuo zero. */
+  confezioniIngenue: number;
+  /** Le confezioni che la lista chiede davvero, con il residuo utilizzabile. */
+  confezioniReali: number;
+  /** ingenue − reali, mai sotto zero. */
+  confezioniEvitate: number;
+  /** evitate × formato effettivo (1 per la classe intero), in unita. */
+  quantitaEvitata: number;
+  /** Istantanea del prezzo dell'ingrediente al momento della generazione. */
+  prezzoConfezione: number | null;
+}
+
 export interface ListaRisultato {
   base: SezioneLista[];
   topup: SezioneLista[];
+  /** Il non ricomprato della settimana, ordinato per nome. */
+  evitato: VoceEvitata[];
 }
 
 export interface ListaInput {
@@ -107,8 +133,11 @@ export function costruisciLista(input: ListaInput): ListaRisultato {
     }
   }
 
-  // Regole 4-6: residuo, confezioni, classe intero.
+  // Regole 4-6: residuo, confezioni, classe intero. Nello stesso ciclo si
+  // fissa anche il non ricomprato: stesso residuo, stesso istante, stessa
+  // aritmetica delle voci.
   const voci: VoceLista[] = [];
+  const evitato: VoceEvitata[] = [];
   for (const [ingredientId, fabbisogno] of fabbisogni) {
     const ing = perId.get(ingredientId)!;
     if (ing.classeResiduo === 'stima') continue; // regola 7: nessuna aritmetica
@@ -124,12 +153,27 @@ export function costruisciLista(input: ListaInput): ListaRisultato {
       congelato: statoDispensa?.congelato ?? false,
       oggi,
     });
+    const classeResiduo = ing.classeResiduo as Exclude<ClasseResiduo, 'stima'>; // regola 7: 'stima' esclusa sopra
     const { daComprare, confezioni, quantitaTotale } = confezioniNecessarie({
-      fabbisogno,
-      residuo,
-      classeResiduo: ing.classeResiduo as Exclude<ClasseResiduo, 'stima'>, // regola 7: 'stima' esclusa sopra
-      formatoConfezione: ing.formatoConfezione,
+      fabbisogno, residuo, classeResiduo, formatoConfezione: ing.formatoConfezione,
     });
+    if (fabbisogno > 0) {
+      // La baseline "senza memoria": le confezioni che chiederebbe una lista
+      // che non sa cosa c'è in casa. Stessa funzione, residuo zero: nessuna
+      // seconda aritmetica delle confezioni.
+      const ingenue = confezioniNecessarie({
+        fabbisogno, residuo: 0, classeResiduo, formatoConfezione: ing.formatoConfezione,
+      }).confezioni;
+      const confezioniEvitate = Math.max(0, ingenue - confezioni);
+      const formatoEffettivo = classeResiduo === 'intero' ? 1 : ing.formatoConfezione;
+      const prezzoConfezione = ing.prezzoConfezione ?? null;
+      evitato.push({
+        ingredientId, nome: ing.nome, unita: ing.unitaBase, fabbisogno,
+        confezioniIngenue: ingenue, confezioniReali: confezioni, confezioniEvitate,
+        quantitaEvitata: confezioniEvitate * formatoEffettivo,
+        prezzoConfezione,
+      });
+    }
     if (confezioni === 0) continue; // il residuo copre già tutto
     voci.push({
       ingredientId, nome: ing.nome, area: ing.area, unita: ing.unitaBase,
@@ -167,6 +211,7 @@ export function costruisciLista(input: ListaInput): ListaRisultato {
       controlli.filter((c) => deperibile(c.ingredientId)),
       impostazioni.ordineAree,
     ),
+    evitato: evitato.sort((a, b) => a.nome.localeCompare(b.nome, 'it')),
   };
 }
 

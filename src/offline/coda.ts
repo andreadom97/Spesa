@@ -21,8 +21,19 @@ export function leggiCoda(): Spunta[] {
   }
 }
 
-function scrivi(coda: Spunta[]) {
-  localStorage.setItem(CHIAVE, JSON.stringify(coda));
+/**
+ * Come `lista-cache.ts`: un errore di scrittura (quota superata, storage
+ * bloccato, nessun `localStorage`) va in console e non propaga. Chi chiama è
+ * un tap in corsia: meglio una spunta che non sopravvive al reload che una
+ * schermata rotta.
+ */
+function scrivi(coda: Spunta[]): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(CHIAVE, JSON.stringify(coda));
+  } catch (e) {
+    console.error('coda: scrittura fallita.', e);
+  }
 }
 
 /**
@@ -41,7 +52,12 @@ export function accodaSpunta(itemId: string, spuntato: boolean, ts = Date.now())
 }
 
 export function svuotaCoda(): void {
-  localStorage.removeItem(CHIAVE);
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.removeItem(CHIAVE);
+  } catch (e) {
+    console.error('coda: scrittura fallita.', e);
+  }
 }
 
 /**

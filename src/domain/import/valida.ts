@@ -21,6 +21,13 @@ function str(v: unknown, percorso: string): string {
   if (typeof v !== 'string') throw new PianoNonValidoError(percorso, 'non è una stringa');
   return v;
 }
+/** Testo libero del modello (fonte, note, motivazione del rifiuto) che arriva in UI e nella bozza: un tetto di lunghezza. */
+const MAX_TESTO_LIBERO = 500;
+function strCorta(v: unknown, percorso: string, max: number): string {
+  const s = str(v, percorso);
+  if (s.length > max) throw new PianoNonValidoError(percorso, 'troppo lungo');
+  return s;
+}
 
 function validaRiga(v: unknown, percorso: string): RigaEstratta {
   const r = ogg(v, percorso);
@@ -87,23 +94,26 @@ function validaPasto(v: unknown, percorso: string): PastoEstratto {
 
 const ARCHETIPI = new Set(['menu_settimanale', 'giornata_unica', 'griglia_alternative', 'giorni_tipo']);
 
-function validaPiano(v: unknown): PianoEstratto {
+/**
+ * La forma del piano: tipi, intervalli e vincoli di ogni singola settimana/giorno/pasto/
+ * piatto/riga, con le normalizzazioni dei JSON legacy (titolo/quantitaInferita/nota assenti
+ * → null/false/null). Non conosce le regole d'insieme (v. `validaInsiemePiano`): è la parte
+ * che vale anche per la pagina di un'estrazione a pagine, che può contenere la sola
+ * settimana 2 o un giorno di giorni_tipo senza titolo perché continua dalla precedente.
+ */
+function validaFormaPiano(v: unknown): PianoEstratto {
   const p = ogg(v, 'piano');
   const archetipo = str(p.archetipo, 'piano.archetipo');
   if (!ARCHETIPI.has(archetipo)) throw new PianoNonValidoError('piano.archetipo', `sconosciuto: ${archetipo}`);
   const settimane = arr(p.settimane, 'piano.settimane');
   if (settimane.length === 0 || settimane.length > 4) throw new PianoNonValidoError('piano.settimane', 'da 1 a 4');
   const giorniTipo = archetipo === 'giorni_tipo';
-  if (giorniTipo && settimane.length !== 1)
-    throw new PianoNonValidoError('piano.settimane', 'giorni_tipo richiede esattamente una settimana');
   const numeriSettimana = new Set<number>();
   const settimaneValidate = settimane.map((s, i) => {
     const se = ogg(s, `piano.settimane[${i}]`);
     const numero = se.numero;
     if (typeof numero !== 'number' || numero < 1 || numero > 4)
       throw new PianoNonValidoError(`piano.settimane[${i}].numero`, 'fuori da 1..4');
-    if (giorniTipo && numero !== 1)
-      throw new PianoNonValidoError(`piano.settimane[${i}].numero`, 'giorni_tipo richiede numero 1');
     if (numeriSettimana.has(numero)) throw new PianoNonValidoError(`piano.settimane[${i}].numero`, `duplicato: ${numero}`);
     numeriSettimana.add(numero);
     const giorni = arr(se.giorni, `piano.settimane[${i}].giorni`);
@@ -114,15 +124,13 @@ function validaPiano(v: unknown): PianoEstratto {
       giorni: giorni.map((g, j) => {
         const gi = ogg(g, `piano.settimane[${i}].giorni[${j}]`);
         const giorno = gi.giorno;
-        const limiteGiorno = giorniTipo ? giorni.length - 1 : 6;
-        if (typeof giorno !== 'number' || giorno < 0 || giorno > limiteGiorno)
-          throw new PianoNonValidoError(`piano.settimane[${i}].giorni[${j}].giorno`, giorniTipo ? `fuori da 0..${limiteGiorno}` : 'fuori da 0..6');
+        // Per giorni_tipo il tetto (indici contigui da 0) dipende da quanti giorni ha l'insieme.
+        if (typeof giorno !== 'number' || giorno < 0 || (!giorniTipo && giorno > 6))
+          throw new PianoNonValidoError(`piano.settimane[${i}].giorni[${j}].giorno`, giorniTipo ? `fuori da 0..${giorni.length - 1}` : 'fuori da 0..6');
         if (giorniVisti.has(giorno))
           throw new PianoNonValidoError(`piano.settimane[${i}].giorni[${j}].giorno`, `duplicato nella settimana: ${giorno}`);
         giorniVisti.add(giorno);
         const titoloGrezzo = gi.titolo === undefined || gi.titolo === null ? null : str(gi.titolo, `piano.settimane[${i}].giorni[${j}].titolo`);
-        if (giorniTipo && (titoloGrezzo === null || titoloGrezzo.trim() === ''))
-          throw new PianoNonValidoError(`piano.settimane[${i}].giorni[${j}].titolo`, 'obbligatorio per giorni_tipo');
         if (!giorniTipo && titoloGrezzo !== null)
           throw new PianoNonValidoError(`piano.settimane[${i}].giorni[${j}].titolo`, 'ammesso solo per giorni_tipo');
         const pasti = arr(gi.pasti, `piano.settimane[${i}].giorni[${j}].pasti`);
@@ -131,17 +139,54 @@ function validaPiano(v: unknown): PianoEstratto {
       }),
     };
   });
-  const numeri = settimaneValidate
+  return {
+    archetipo: archetipo as PianoEstratto['archetipo'],
+    fonte: strCorta(p.fonte, 'piano.fonte', MAX_TESTO_LIBERO),
+    noteEstrazione: arr(p.noteEstrazione, 'piano.noteEstrazione').map((n, i) => strCorta(n, `piano.noteEstrazione[${i}]`, MAX_TESTO_LIBERO)),
+    settimane: settimaneValidate,
+  };
+}
+
+/**
+ * Le regole d'insieme, quelle che hanno senso solo sul piano intero: settimane contigue
+ * da 1; giorni_tipo con una sola settimana (numero 1), giorni indicizzati in modo contiguo
+ * da 0 e titolo obbligatorio su ogni giorno.
+ */
+function validaInsiemePiano(piano: PianoEstratto): void {
+  const giorniTipo = piano.archetipo === 'giorni_tipo';
+  if (giorniTipo && piano.settimane.length !== 1)
+    throw new PianoNonValidoError('piano.settimane', 'giorni_tipo richiede esattamente una settimana');
+  piano.settimane.forEach((settimana, i) => {
+    if (giorniTipo && settimana.numero !== 1)
+      throw new PianoNonValidoError(`piano.settimane[${i}].numero`, 'giorni_tipo richiede numero 1');
+    settimana.giorni.forEach((giorno, j) => {
+      const limiteGiorno = settimana.giorni.length - 1;
+      if (giorniTipo && giorno.giorno > limiteGiorno)
+        throw new PianoNonValidoError(`piano.settimane[${i}].giorni[${j}].giorno`, `fuori da 0..${limiteGiorno}`);
+      if (giorniTipo && (giorno.titolo === null || giorno.titolo.trim() === ''))
+        throw new PianoNonValidoError(`piano.settimane[${i}].giorni[${j}].titolo`, 'obbligatorio per giorni_tipo');
+    });
+  });
+  const numeri = piano.settimane
     .map((s) => s.numero)
     .sort((a, b) => a - b);
   if (numeri.some((n, i) => n !== i + 1))
     throw new PianoNonValidoError('piano.settimane', 'numeri non contigui da 1');
-  return {
-    archetipo: archetipo as PianoEstratto['archetipo'],
-    fonte: str(p.fonte, 'piano.fonte'),
-    noteEstrazione: arr(p.noteEstrazione, 'piano.noteEstrazione').map((n, i) => str(n, `piano.noteEstrazione[${i}]`)),
-    settimane: settimaneValidate,
-  };
+}
+
+/**
+ * Il piano di UNA pagina di un'estrazione a pagine (spec 2026-09-05 §2.3): stessa forma e
+ * stesse normalizzazioni legacy di `validaEsito`, senza le regole d'insieme, che la fusione
+ * non può garantire per la singola pagina e che `validaEsito` verifica sul piano fuso.
+ */
+export function validaPianoParziale(v: unknown): PianoEstratto {
+  return validaFormaPiano(v);
+}
+
+function validaPiano(v: unknown): PianoEstratto {
+  const piano = validaFormaPiano(v);
+  validaInsiemePiano(piano);
+  return piano;
 }
 
 const PASSI_REVISIONE = new Set<string>(['revisione', 'formati', 'riepilogo']);
@@ -153,7 +198,10 @@ const PASSI_REVISIONE = new Set<string>(['revisione', 'formati', 'riepilogo']);
  * lo fa comunque `traduciBozza` a valle, che fallisce onestamente con `BozzaIncompletaError`
  * se una correzione è malformata). Controlla solo: `passo` fra i tre ammessi,
  * `mappaturaPasti` un oggetto di stringhe, `pastiConfermati` un array di stringhe,
- * `correzioni` un oggetto, `ingredientiNuovi` un array.
+ * `correzioni` un oggetto, `ingredientiNuovi` un array di oggetti. L'unica
+ * normalizzazione legacy è `prezzoConfezione` degli ingredienti nuovi: assente nelle
+ * bozze salvate prima della migrazione 0011 → `null`; se presente dev'essere `null` o
+ * un numero positivo, come il `check (prezzo_confezione > 0)` della colonna.
  */
 export function validaStatoRevisione(v: unknown): StatoRevisione {
   const s = ogg(v, 'statoRevisione');
@@ -167,13 +215,20 @@ export function validaStatoRevisione(v: unknown): StatoRevisione {
     str(p, `statoRevisione.pastiConfermati[${i}]`),
   );
   const correzioni = ogg(s.correzioni, 'statoRevisione.correzioni');
-  arr(s.ingredientiNuovi, 'statoRevisione.ingredientiNuovi');
+  const ingredientiNuovi = arr(s.ingredientiNuovi, 'statoRevisione.ingredientiNuovi').map((i, k) => {
+    const percorso = `statoRevisione.ingredientiNuovi[${k}]`;
+    const ing = ogg(i, percorso);
+    const prezzo = ing.prezzoConfezione;
+    if (prezzo !== undefined && prezzo !== null && (typeof prezzo !== 'number' || !Number.isFinite(prezzo) || prezzo <= 0))
+      throw new PianoNonValidoError(`${percorso}.prezzoConfezione`, 'non è un numero positivo');
+    return { ...ing, prezzoConfezione: prezzo ?? null } as IngredienteProposto;
+  });
   return {
     passo: passo as PassoRevisione,
     mappaturaPasti: mappaturaPasti as Record<string, string>,
     pastiConfermati,
     correzioni: correzioni as Record<string, PastoEstratto>,
-    ingredientiNuovi: s.ingredientiNuovi as IngredienteProposto[],
+    ingredientiNuovi,
   };
 }
 
@@ -183,7 +238,7 @@ export function validaEsito(v: unknown): EsitoEstrazione {
   if (e.tipo === 'rifiuto') {
     const r = ogg(e.rifiuto, 'rifiuto');
     if (r.archetipo !== 'solo_macro') throw new PianoNonValidoError('rifiuto.archetipo', 'deve essere solo_macro');
-    return { tipo: 'rifiuto', rifiuto: { archetipo: 'solo_macro', motivazione: str(r.motivazione, 'rifiuto.motivazione') } };
+    return { tipo: 'rifiuto', rifiuto: { archetipo: 'solo_macro', motivazione: strCorta(r.motivazione, 'rifiuto.motivazione', MAX_TESTO_LIBERO) } };
   }
   throw new PianoNonValidoError('esito.tipo', 'né piano né rifiuto');
 }

@@ -71,7 +71,8 @@ export function proponi(alimento: string, unita: UnitaBase | null): IngredienteP
     .filter((v) => norm.includes(v.chiave))
     .sort((a, b) => b.chiave.length - a.chiave.length)[0];
   if (voce && (unita === null || unita === voce.unitaBase)) {
-    return { alimento: norm, nome: voce.nome, unitaBase: voce.unitaBase, area: voce.area, classeResiduo: voce.classeResiduo, deperibile: voce.deperibile, formatoConfezione: voce.formatoConfezione };
+    // Nessuna proposta automatica del prezzo (spec non-ricomprato §7): la tabella conosce i formati, non i listini.
+    return { alimento: norm, nome: voce.nome, unitaBase: voce.unitaBase, area: voce.area, classeResiduo: voce.classeResiduo, deperibile: voce.deperibile, formatoConfezione: voce.formatoConfezione, prezzoConfezione: null };
   }
   return {
     alimento: norm,
@@ -81,5 +82,6 @@ export function proponi(alimento: string, unita: UnitaBase | null): IngredienteP
     classeResiduo: 'stima',
     deperibile: false,
     formatoConfezione: 500,
+    prezzoConfezione: null,
   };
 }

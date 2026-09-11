@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { costruisciLista, IngredienteMancanteError, OrdineAreeNonValidoError } from '../list-builder';
 import { UnitaIncompatibileError } from '../unita';
+import type { Ingredient } from '../types';
 import {
   INGREDIENTI, PIATTI, IMPOSTAZIONI, dispensaVuota, cinqueColazioni,
   colazione, wrap,
@@ -298,5 +299,117 @@ describe('costruisciLista — componenti a scelta', () => {
     expect(voce(r, 'avena')).toBeDefined();
     expect(voce(r, 'yogurt')).toBeDefined();
     expect(voce(r, 'uova')).toBeUndefined();
+  });
+});
+
+describe('costruisciLista — evitato (il non ricomprato)', () => {
+  const cena = {
+    id: 'c1', data: '2026-08-31', slotDefId: 'cen', stato: 'casa' as const,
+    dishId: 'cena-frittata', fonteStato: 'default' as const, scelte: {},
+    porzioniPreparate: 0, daPronti: false,
+  };
+
+  function evitato(r: ReturnType<typeof costruisciLista>, id: string) {
+    return r.evitato.find((v) => v.ingredientId === id);
+  }
+
+  it('con il residuo che copre tutto conta le confezioni ingenue come evitate', () => {
+    // avena: 50 g × 5 = 250 g, formato 500 → 1 confezione ingenua; residuo 900 → 0 reali.
+    const pantry = dispensaVuota().map((p) =>
+      p.ingredientId === 'avena' ? { ...p, residuo: 900 } : p);
+    expect(evitato(base({ pantry }), 'avena')).toEqual({
+      ingredientId: 'avena', nome: "Fiocchi d'avena", unita: 'g', fabbisogno: 250,
+      confezioniIngenue: 1, confezioniReali: 0, confezioniEvitate: 1,
+      quantitaEvitata: 500, prezzoConfezione: null,
+    });
+  });
+
+  it('con residuo parziale le evitate sono ingenue meno reali', () => {
+    // yogurt: 750 g, formato 500 → 2 ingenue; residuo 300 → da comprare 450 → 1 reale.
+    const pantry = dispensaVuota().map((p) =>
+      p.ingredientId === 'yogurt' ? { ...p, residuo: 300 } : p);
+    const v = evitato(base({ pantry }), 'yogurt')!;
+    expect(v.confezioniIngenue).toBe(2);
+    expect(v.confezioniReali).toBe(1);
+    expect(v.confezioniEvitate).toBe(1);
+    expect(v.quantitaEvitata).toBe(500);
+  });
+
+  it('senza residuo entra lo stesso, con zero evitate: è il denominatore', () => {
+    const v = evitato(base(), 'yogurt')!;
+    expect(v.confezioniIngenue).toBe(2);
+    expect(v.confezioniReali).toBe(2);
+    expect(v.confezioniEvitate).toBe(0);
+    expect(v.quantitaEvitata).toBe(0);
+  });
+
+  it('la classe intero conta a pezzi: il formato effettivo è uno, non quello memorizzato', () => {
+    const ingredients = INGREDIENTI.map((i) =>
+      i.id === 'uova' ? { ...i, formatoConfezione: 6 } : i);
+    const pantry = dispensaVuota().map((p) =>
+      p.ingredientId === 'uova' ? { ...p, residuo: 1 } : p);
+    const v = evitato(base({ slots: [cena], ingredients, pantry }), 'uova')!;
+    expect(v.unita).toBe('pz');
+    expect(v.confezioniIngenue).toBe(3);
+    expect(v.confezioniReali).toBe(2);
+    expect(v.confezioniEvitate).toBe(1);
+    expect(v.quantitaEvitata).toBe(1);
+  });
+
+  it('la classe stima non entra: non ha residuo per contratto', () => {
+    const r = base({ slots: [cena] });
+    expect(evitato(r, 'olio')).toBeUndefined();
+    expect(evitato(r, 'uova')).toBeDefined();
+  });
+
+  it('un residuo scaduto non evita niente: vale il residuo utilizzabile, non quello registrato', () => {
+    // Yogurt deperibile comprato quattro settimane fa: residuoUtilizzabile lo azzera.
+    const pantry = dispensaVuota().map((p) =>
+      p.ingredientId === 'yogurt' ? { ...p, residuo: 900, ultimoAcquisto: '2026-08-01' } : p);
+    const v = evitato(base({ pantry }), 'yogurt')!;
+    expect(v.confezioniReali).toBe(2);
+    expect(v.confezioniEvitate).toBe(0);
+    expect(v.quantitaEvitata).toBe(0);
+  });
+
+  it('un ingrediente con fabbisogno zero non entra nel denominatore', () => {
+    const dishes = [{
+      ...colazione,
+      ingredienti: [
+        { ingredientId: 'yogurt', quantita: 150, unita: 'g' as const },
+        { ingredientId: 'avena', quantita: 0, unita: 'g' as const },
+      ],
+    }];
+    const r = base({ dishes });
+    expect(r.evitato.map((v) => v.ingredientId)).toEqual(['yogurt']);
+  });
+
+  it('ordina per nome, alla italiana', () => {
+    const r = base({ slots: [...cinqueColazioni(), cena] });
+    expect(r.evitato.map((v) => v.nome)).toEqual(["Fiocchi d'avena", 'Uova', 'Yogurt greco']);
+  });
+
+  it('copia il prezzo per confezione dall\'ingrediente, null se assente', () => {
+    const ingredients: Ingredient[] = INGREDIENTI.map((i) =>
+      i.id === 'avena' ? { ...i, prezzoConfezione: 2.5 } : i);
+    const r = base({ ingredients });
+    expect(evitato(r, 'avena')!.prezzoConfezione).toBe(2.5);
+    expect(evitato(r, 'yogurt')!.prezzoConfezione).toBeNull();
+  });
+
+  it('non cambia base e topup di una virgola', () => {
+    const pantry = dispensaVuota().map((p) =>
+      p.ingredientId === 'avena' ? { ...p, residuo: 900 } : p);
+    const r = base({ pantry });
+    // Stesso caso di "sparisce dalla lista quando il residuo copre già tutto".
+    expect(r.base).toEqual([]);
+    expect(r.topup.map((s) => s.area)).toEqual(['latticini']);
+    const yogurt = voce(r, 'yogurt')!;
+    expect(yogurt).toEqual({
+      ingredientId: 'yogurt', nome: 'Yogurt greco', area: 'latticini', unita: 'g',
+      fabbisogno: 750, residuo: 0, daComprare: 750, confezioni: 2, quantitaTotale: 1000,
+      residuoPrevisto: 250, mostraDettaglio: true,
+    });
+    expect(r.evitato.map((v) => v.ingredientId)).toEqual(['avena', 'yogurt']);
   });
 });

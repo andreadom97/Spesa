@@ -53,4 +53,76 @@ describe('RigaPasto', () => {
     expect(screen.getByText('Ho mangiato fuori piano')).toBeInTheDocument();
     expect(screen.queryByText('Ho mangiato altro')).not.toBeInTheDocument();
   });
+
+  // Gli avvisi di scadenza (spec scadenza-fresco §3.1): il residuo derivato
+  // che diventa visibile durante l'uso. Una riga per elemento, solo a riga
+  // accesa — a riga spenta il pasto non consuma, non c'è nulla da avvisare.
+  describe('avvisi', () => {
+    const AVVISO = 'Pollo in casa: scade martedì, prima di questo pasto';
+
+    it('a riga accesa ogni avviso è una riga di testo sotto il sottotitolo', () => {
+      render(
+        <RigaPasto
+          nomePasto="Cena"
+          stato={'casa' as StatoSlot}
+          nomePiatto="Pollo e riso"
+          aree={[]}
+          sottotitolo="+1 porzione"
+          avvisi={[{ id: 'i-pollo', testo: AVVISO }, { id: 'i-yogurt', testo: 'Yogurt in casa: scade domani, prima di questo pasto' }]}
+          onToggleStato={() => {}}
+          hrefScegli="/x"
+        />,
+      );
+      expect(screen.getByText(AVVISO)).toBeInTheDocument();
+      expect(screen.getByText('Yogurt in casa: scade domani, prima di questo pasto')).toBeInTheDocument();
+      // Sotto il sottotitolo: l'ordine nel DOM è quello di lettura.
+      const sottotitolo = screen.getByText('+1 porzione');
+      const avviso = screen.getByText(AVVISO);
+      expect(sottotitolo.compareDocumentPosition(avviso) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('a riga spenta gli avvisi non compaiono', () => {
+      render(
+        <RigaPasto
+          nomePasto="Cena"
+          stato={'fuori' as StatoSlot}
+          nomePiatto={null}
+          aree={[]}
+          avvisi={[{ id: 'i-pollo', testo: AVVISO }]}
+          onToggleStato={() => {}}
+          hrefScegli="/x"
+        />,
+      );
+      expect(screen.queryByText(AVVISO)).not.toBeInTheDocument();
+    });
+
+    it('senza avvisi (assenti o vuoti) nessuna riga in più', () => {
+      const { container, unmount } = render(
+        <RigaPasto
+          nomePasto="Cena"
+          stato={'casa' as StatoSlot}
+          nomePiatto="Pollo e riso"
+          aree={[]}
+          onToggleStato={() => {}}
+          hrefScegli="/x"
+        />,
+      );
+      expect(container.querySelectorAll('[data-avviso]')).toHaveLength(0);
+      unmount();
+
+      const { container: conVuoto } = render(
+        <RigaPasto
+          nomePasto="Cena"
+          stato={'casa' as StatoSlot}
+          nomePiatto="Pollo e riso"
+          aree={[]}
+          avvisi={[]}
+          onToggleStato={() => {}}
+          hrefScegli="/x"
+        />,
+      );
+      expect(conVuoto.querySelectorAll('[data-avviso]')).toHaveLength(0);
+      expect(screen.queryByText(/in casa: scade/)).not.toBeInTheDocument();
+    });
+  });
 });

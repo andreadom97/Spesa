@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../supabase', () => ({ client: vi.fn() }));
+vi.mock('../casa', () => ({ idCasa: vi.fn() }));
 vi.mock('../impostazioni', () => ({ leggiImpostazioni: vi.fn(), leggiSlotDefs: vi.fn() }));
 vi.mock('../repertorio', () => ({ leggiRepertorio: vi.fn(), leggiIngredienti: vi.fn() }));
 vi.mock('../dispensa', () => ({ leggiDispensa: vi.fn() }));
@@ -8,9 +9,18 @@ vi.mock('../dispensa', () => ({ leggiDispensa: vi.fn() }));
 import type { Dish, Ingredient } from '@/domain/types';
 import { sommaGiorni } from '@/domain/date';
 import { client } from '../supabase';
+import { idCasa } from '../casa';
 import { leggiImpostazioni } from '../impostazioni';
 import { leggiRepertorio, leggiIngredienti } from '../repertorio';
 import { aggiornaSlot } from '../settimana';
+
+// L'id che finisce in `user_id` non viene più da `auth.getUser` sul client
+// finto ma da `idCasa()` (l'account della casa): lo stesso valore di prima,
+// così i payload attesi non cambiano.
+beforeEach(() => {
+  vi.mocked(idCasa).mockReset();
+  vi.mocked(idCasa).mockResolvedValue('user-1');
+});
 
 interface Chiamata { metodo: string; args: unknown[] }
 
@@ -35,22 +45,22 @@ function creaClientMock(risolvi: (tabella: string, chiamate: Chiamata[]) => { da
     return proxy;
   }
   return {
-    sb: { auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }) }, from },
+    sb: { from },
     scritture,
   };
 }
 
 const ING_POLLO: Ingredient = {
   id: 'i-pollo', nome: 'Pollo', unitaBase: 'g', area: 'macelleria',
-  classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 1000,
+  classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 1000, prezzoConfezione: null, ean: null,
 };
 const ING_RISO: Ingredient = {
   id: 'i-riso', nome: 'Riso', unitaBase: 'g', area: 'cereali',
-  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500,
+  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500, prezzoConfezione: null, ean: null,
 };
 const ING_OLIO: Ingredient = {
   id: 'i-olio', nome: 'Olio', unitaBase: 'ml', area: 'dispensa',
-  classeResiduo: 'stima', deperibile: false, formatoConfezione: 1000,
+  classeResiduo: 'stima', deperibile: false, formatoConfezione: 1000, prezzoConfezione: null, ean: null,
 };
 
 const DISH_POLLO: Dish = {

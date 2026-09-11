@@ -1,16 +1,26 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../supabase', () => ({ client: vi.fn() }));
+vi.mock('../casa', () => ({ idCasa: vi.fn() }));
 vi.mock('../impostazioni', () => ({ leggiSlotDefs: vi.fn(), leggiImpostazioni: vi.fn() }));
 vi.mock('../repertorio', () => ({ leggiRepertorio: vi.fn(), leggiIngredienti: vi.fn() }));
 vi.mock('../dispensa', () => ({ leggiDispensa: vi.fn() }));
 
 import { client } from '../supabase';
+import { idCasa } from '../casa';
 import { leggiImpostazioni, leggiSlotDefs } from '../impostazioni';
 import { leggiRepertorio, leggiIngredienti } from '../repertorio';
 import { leggiDispensa } from '../dispensa';
 import { creaSettimana, aggiornaSlot } from '../settimana';
 import type { Dish, Impostazioni, MealSlotDef } from '@/domain/types';
+
+// L'id che finisce in `user_id` non viene più da `auth.getUser` sul client
+// finto ma da `idCasa()` (l'account della casa): lo stesso valore di prima,
+// così i payload attesi non cambiano.
+beforeEach(() => {
+  vi.mocked(idCasa).mockReset();
+  vi.mocked(idCasa).mockResolvedValue('user-1');
+});
 
 const ORDINE_AREE = ['ortofrutta', 'macelleria', 'latticini', 'cereali', 'dispensa', 'surgelati'] as const;
 
@@ -76,7 +86,7 @@ function creaClientMock() {
   }
 
   return {
-    sb: { auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }) }, from },
+    sb: { from },
     scritture,
   };
 }
@@ -214,7 +224,7 @@ describe('creaSettimana — persiste le scelte del planner (Task 8)', () => {
       };
       return proxy;
     }
-    const sb = { auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }) }, from };
+    const sb = { from };
     vi.mocked(client).mockReturnValue(sb as never);
     vi.mocked(leggiSlotDefs).mockResolvedValue([CENA]);
     vi.mocked(leggiRepertorio).mockResolvedValue([piattoConComponente('s1', 'comp1', 'opt-scelta')]);
@@ -275,7 +285,7 @@ describe('aggiornaSlot — patch di scelte (Task 8)', () => {
     }
 
     return {
-      sb: { auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }) }, from },
+      sb: { from },
       scritture,
       ordineOperazioni,
     };

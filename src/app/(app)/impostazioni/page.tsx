@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Impostazioni, MealSlotDef } from '@/domain/types';
-import { leggiImpostazioni, leggiSlotDefs, salvaImpostazioni, salvaSlotDefs, pastiDiDefault } from '@/data/impostazioni';
+import { leggiImpostazioni, leggiSlotDefs, salvaImpostazioni, salvaSlotDefs, pastiDiDefault, MAX_PORZIONI, MIN_PORZIONI } from '@/data/impostazioni';
+import { creaInvito, entraInCasa, esciDallaCasa, rimuoviMembro, statoCasa, type StatoCasa } from '@/data/casa';
 import { MAX_PASTI, MIN_PASTI } from '@/domain/pasti';
 import { coloreArea, nomeArea } from '@/domain/aree';
 import { MAX_SETTIMANE_CICLO, settimanaDelCiclo } from '@/domain/ciclo';
@@ -36,6 +37,44 @@ function conPosizioni(lista: MealSlotDef[]): MealSlotDef[] {
   return lista.map((p, i) => ({ ...p, posizione: i }));
 }
 
+/** Otto caratteri, come li genera `crea_invito` (migrazione 0012). */
+const LUNGHEZZA_CODICE = 8;
+
+// "Per quante persone cucini", nella sezione CASA: lo stepper va da
+// MIN_PORZIONI a MAX_PORZIONI, le stesse costanti che `salvaImpostazioni`
+// fa rispettare. Il moltiplicatore era stato tolto dall'interfaccia il
+// 28/08/2026 (un moltiplicatore unico presuppone che tutti a tavola mangino
+// la stessa porzione); il 06/09 torna a livello di casa, con quell'assunzione
+// dichiarata nel copy invece che taciuta. Vedi la spec casa condivisa §6. Il
+// campo nello schema e in list-builder non si era mai mosso.
+
+/**
+ * Il messaggio da mostrare se `entraInCasa` fallisce. Solo un `raise
+ * exception` della funzione SQL (SQLSTATE P0001) porta un messaggio scritto
+ * per l'utente, in italiano (`codice non valido o scaduto`, `sei già in una
+ * casa: esci prima`…): quello si mostra così com'è. Ogni altro errore
+ * (violazione di vincolo, rete, permessi) è un messaggio grezzo di Postgres o
+ * del client, che non va mostrato: dice cose che non aiutano e a volte cose
+ * che non dovrebbe.
+ */
+function messaggioEntrata(errore: unknown): string {
+  if (typeof errore === 'object' && errore !== null) {
+    const { code, message } = errore as { code?: unknown; message?: unknown };
+    if (code === 'P0001' && typeof message === 'string' && message) return message;
+  }
+  return 'Non siamo riusciti a entrare. Riprova.';
+}
+
+/**
+ * Ricarica l'app da capo su un percorso. Dopo entra/esci dalla casa l'id su
+ * cui agisce il data layer cambia e ogni stato di pagina in memoria è di
+ * un'altra casa: un reload completo è l'unico modo onesto di svuotarlo.
+ * Incapsulato perché `window.location.assign` non si spia in jsdom.
+ */
+function ricaricaSu(percorso: string) {
+  window.location.assign(percorso);
+}
+
 interface Dati {
   /**
    * Le impostazioni per intero, non i soli campi che questa schermata mostra:
@@ -63,7 +102,7 @@ export default function Impostazioni() {
   const [erroreCaricamento, setErroreCaricamento] = useState<string | null>(null);
   const [erroreSalvataggio, setErroreSalvataggio] = useState<string | null>(null);
   // Conferma in due tocchi di RIPARTI: il primo tap arma il bottone (il testo
-  // diventa "SICURO?"), solo il secondo tap esegue davvero persistiCiclo. Un
+  // diventa "SICURO?"), solo il secondo tap esegue davvero persistiImpostazioni. Un
   // tap fuori dal bottone o un cambio di stato altrove (es. la rotazione)
   // annullano l'armamento.
   const [ripartiArmato, setRipartiArmato] = useState(false);
@@ -79,6 +118,43 @@ export default function Impostazioni() {
   // un nome) è il valore a cui tornare se una scrittura fallisce.
   const pastiSalvatiRef = useRef<MealSlotDef[]>([]);
   const impostazioniSalvateRef = useRef<Impostazioni | null>(null);
+  // Contatore delle chiamate a persistiImpostazioni: due tap veloci sullo
+  // stepper (o sul ciclo) sono due salvataggi con due riletture, e la
+  // rilettura del primo può arrivare dopo quella del secondo. Solo la
+  // rilettura dell'ultima richiesta si applica: le altre descrivono uno
+  // stato che a schermo è già stato superato.
+  const richiestaImpostazioniRef = useRef(0);
+  // Le scritture si serializzano: ogni persistiImpostazioni aspetta la
+  // precedente prima di scrivere (review dell'11/09). Il contatore da solo
+  // non basta: con due tap 1→2 e 2→3, se la seconda scrittura fallisce
+  // subito mentre la prima è ancora in volo, il suo catch è "l'ultima
+  // richiesta" e rilegge dal server, che ha ancora 1; poi la prima riesce
+  // ma la sua rilettura è superata. Server 2, schermo 1. Con la catena il
+  // rollback rilegge sempre dopo tutte le scritture precedenti, e l'ordine
+  // di arrivo al server è quello dei tap. La catena non si rompe mai: un
+  // errore si ferma nel catch di chi l'ha fatto, la scrittura dopo parte lo
+  // stesso (riscrive la riga intera, quindi non dipende da quella fallita).
+  const codaScrittureRef = useRef<Promise<void>>(Promise.resolve());
+
+  // La casa si legge a parte, non nel Promise.all: se la RPC fallisce la
+  // sezione CASA lo dice, e il resto delle impostazioni resta usabile.
+  const [casa, setCasa] = useState<StatoCasa | null>(null);
+  const [erroreCasa, setErroreCasa] = useState<string | null>(null);
+
+  useEffect(() => {
+    let vivo = true;
+    statoCasa()
+      .then((stato) => {
+        if (vivo) setCasa(stato);
+      })
+      .catch((errore) => {
+        console.error('impostazioni: lettura della casa fallita.', errore);
+        if (vivo) setErroreCasa('Non riusciamo a leggere la casa. Riprova più tardi.');
+      });
+    return () => {
+      vivo = false;
+    };
+  }, []);
 
   useEffect(() => {
     let vivo = true;
@@ -142,25 +218,57 @@ export default function Impostazioni() {
   }
 
   /**
-   * Salva il ciclo. Come i pasti: ottimistico, con rollback all'ultimo stato
-   * confermato dal server se la scrittura fallisce.
+   * Salva una patch delle impostazioni (il ciclo, le porzioni). Come i
+   * pasti: ottimistico, con rollback all'ultimo stato confermato dal server
+   * se la scrittura fallisce.
    *
    * `salvaImpostazioni` àncora da sé l'origine al lunedì corrente quando si
-   * accende un ciclo che non ne ha una, quindi qui basta rileggere.
+   * accende un ciclo che non ne ha una, quindi dopo la scrittura si rilegge:
+   * vale per ogni patch, così lo stato in pagina è sempre quello del server.
+   *
+   * Solo l'ultima richiesta tocca lo stato: una rilettura (o un errore) di
+   * una richiesta superata da una più recente si ignora, perché la più
+   * recente riscrive la riga intera e la sua rilettura dirà l'ultima parola.
+   *
+   * Se l'ultima richiesta fallisce, il valore a cui tornare si rilegge dal
+   * server, non dal ref: il ref si aggiorna solo con la rilettura
+   * dell'ultima richiesta, e con due tap veloci la scrittura del primo può
+   * essere andata a buon fine senza che la sua rilettura (superata) l'abbia
+   * registrata. Tornare al ref mostrerebbe il valore di prima di entrambi i
+   * tap, mentre sul server c'è quello del primo. Solo se anche la rilettura
+   * fallisce (niente rete) si ripiega sul ref.
+   *
+   * Le scritture partono una dopo l'altra (`codaScrittureRef`): così la
+   * rilettura del rollback trova sul server anche le scritture dei tap
+   * precedenti, già atterrate, e non un valore che sta per essere superato.
    */
-  async function persistiCiclo(patch: Partial<Impostazioni>) {
+  async function persistiImpostazioni(patch: Partial<Impostazioni>) {
     if (!dati) return;
+    const richiesta = ++richiestaImpostazioniRef.current;
+    const eUltima = () => richiesta === richiestaImpostazioniRef.current;
     setErroreSalvataggio(null);
     const nuove = { ...dati.impostazioni, ...patch };
     setDati((correnti) => (correnti ? { ...correnti, impostazioni: nuove } : correnti));
+    const scrittura = codaScrittureRef.current.then(() => salvaImpostazioni(nuove));
+    codaScrittureRef.current = scrittura.then(() => undefined, () => undefined);
     try {
-      await salvaImpostazioni(nuove);
+      await scrittura;
       const rilette = await leggiImpostazioni();
+      if (!eUltima()) return;
       impostazioniSalvateRef.current = rilette;
       setDati((correnti) => (correnti ? { ...correnti, impostazioni: rilette } : correnti));
     } catch (errore) {
-      console.error('impostazioni: salvataggio del ciclo fallito.', errore);
-      const salvate = impostazioniSalvateRef.current;
+      console.error('impostazioni: salvataggio delle impostazioni fallito.', errore);
+      if (!eUltima()) return;
+      let salvate = impostazioniSalvateRef.current;
+      try {
+        salvate = await leggiImpostazioni();
+        if (!eUltima()) return;
+        impostazioniSalvateRef.current = salvate;
+      } catch (erroreRilettura) {
+        console.error('impostazioni: rilettura dopo il salvataggio fallito non riuscita.', erroreRilettura);
+        if (!eUltima()) return;
+      }
       if (salvate) setDati((correnti) => (correnti ? { ...correnti, impostazioni: salvate } : correnti));
       setErroreSalvataggio('Non siamo riusciti a salvare. Riprova.');
     }
@@ -248,6 +356,7 @@ export default function Impostazioni() {
   const oggi = new Date().toISOString().slice(0, 10);
   const lunediCorrente = lunediDi(oggi);
   const settimaneCiclo = dati.impostazioni.settimaneCiclo;
+  const porzioni = dati.impostazioni.moltiplicatorePorzioni;
   const settimanaCorrente = settimanaDelCiclo({
     lunedi: lunediCorrente,
     origine: dati.impostazioni.cicloOrigine,
@@ -260,18 +369,6 @@ export default function Impostazioni() {
         <div style={{ fontSize: 32, fontWeight: 800, letterSpacing: '-0.045em', lineHeight: 1, color: 'var(--ink)', padding: '0 2px 14px' }}>
           Impostazioni
         </div>
-
-        {/* Il moltiplicatore porzioni è tolto dall'interfaccia, non dal
-            modello: `settings.moltiplicatore_porzioni` resta nello schema e
-            list-builder continua a usarlo, fermo a 1. Un moltiplicatore
-            unico presuppone che tutti a tavola mangino la stessa porzione,
-            che è falso appena qualcuno mangia meno — e la lista sbagliata
-            per eccesso non si nota, si nota solo la spesa più cara. Chi
-            cucina per due scriva due banane nel piatto: è più lavoro una
-            volta sola, ma dice la verità. Diverge dalla spec riga 166, dove
-            la voce risulta "Chiusa"; la rimozione è richiesta esplicita di
-            Andrea del 28/08/2026 dopo la prova sul campo. Rimetterlo è una
-            riga di interfaccia, non una migrazione. */}
 
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', margin: '26px 4px 10px' }}>
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--ink)' }}>
@@ -343,7 +440,7 @@ export default function Impostazioni() {
             variante="blocco"
             opzioni={OPZIONI_CICLO}
             valore={String(settimaneCiclo)}
-            onCambia={(id) => persistiCiclo({ settimaneCiclo: Number(id) })}
+            onCambia={(id) => persistiImpostazioni({ settimaneCiclo: Number(id) })}
           />
           <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', marginTop: 11 }}>
             {settimaneCiclo === 1
@@ -361,7 +458,7 @@ export default function Impostazioni() {
               onClick={() => {
                 if (ripartiArmato) {
                   setRipartiArmato(false);
-                  persistiCiclo({ cicloOrigine: lunediCorrente });
+                  persistiImpostazioni({ cicloOrigine: lunediCorrente });
                 } else {
                   setRipartiArmato(true);
                 }
@@ -399,6 +496,46 @@ export default function Impostazioni() {
             <path d="M6 3.2 10.4 8 6 12.8" stroke="var(--ter)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </Link>
+
+        {/* La sezione CASA c'è sempre: la scheda della casa arriva quando
+            statoCasa() risponde (o lascia un messaggio), le porzioni sono
+            nelle impostazioni già caricate e non aspettano nessuno. */}
+        <Etichetta margine="26px 4px 10px">CASA</Etichetta>
+        {casa && <SezioneCasa casa={casa} onCambiata={setCasa} />}
+        {!casa && erroreCasa && (
+          <p style={{ margin: '0 6px', fontSize: 13, color: 'var(--sec)' }}>{erroreCasa}</p>
+        )}
+        <div style={{ ...SCHEDA, marginTop: 10 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)' }}>Per quante persone cucini</div>
+          <div style={{ fontSize: 13, lineHeight: 1.45, color: 'var(--sec)', marginTop: 6 }}>
+            Moltiplica ogni porzione del piano. Vale se a tavola mangiate tutti la stessa porzione: se no, lascia 1 e scrivi le quantità giuste nei piatti.
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18, marginTop: 12 }}>
+            <BottoneStepper
+              etichetta="Diminuisci porzioni"
+              segno="−"
+              disabled={porzioni <= MIN_PORZIONI}
+              onClick={() => persistiImpostazioni({ moltiplicatorePorzioni: porzioni - 1 })}
+            />
+            <span
+              aria-label="Porzioni"
+              style={{ fontFamily: 'var(--font-mono)', fontSize: 20, fontWeight: 700, color: 'var(--ink)', minWidth: 28, textAlign: 'center' }}
+            >
+              {porzioni}
+            </span>
+            <BottoneStepper
+              etichetta="Aumenta porzioni"
+              segno="+"
+              disabled={porzioni >= MAX_PORZIONI}
+              onClick={() => persistiImpostazioni({ moltiplicatorePorzioni: porzioni + 1 })}
+            />
+          </div>
+          {porzioni > 1 && (
+            <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', textAlign: 'center', marginTop: 10 }}>
+              La lista compra per {porzioni}. Le porzioni nel piatto restano quelle scritte.
+            </div>
+          )}
+        </div>
 
         <Etichetta margine="26px 4px 10px">SUPERMERCATO</Etichetta>
         <Link
@@ -449,6 +586,293 @@ export default function Impostazioni() {
         </Link>
       </div>
     </Cornice>
+  );
+}
+
+const SCHEDA: CSSProperties = {
+  background: 'var(--superficie)', borderRadius: 18, border: '1px solid var(--bordo)', padding: 16,
+};
+
+const BOTTONE_PIENO: CSSProperties = {
+  height: 48, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center',
+  fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, letterSpacing: '0.09em',
+  background: 'var(--ink)', color: '#FFFFFF',
+};
+
+const BOTTONE_LEGGERO: CSSProperties = {
+  minHeight: 44, width: '100%', borderRadius: 14,
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  background: 'rgba(20,22,58,0.05)',
+  fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700,
+  letterSpacing: '0.09em', color: 'var(--sec)',
+};
+
+/**
+ * La scheda CASA (spec P6 §4), che si ramifica sul ruolo di chi è loggato:
+ * da solo invita a creare un codice o a inserirne uno; da proprietario
+ * elenca chi c'è, lascia togliere ognuno (TOGLI, due tocchi) e offre un
+ * altro codice; da membro dice di chi è la casa e lascia uscire. Entrare o
+ * uscire ricaricano l'app su /lista: il data layer ha già scartato la
+ * memoria dell'id della casa. Togliere invece non cambia l'id di chi chiama:
+ * niente reload, si rilegge `statoCasa()` e la scheda si aggiorna da sé
+ * tramite `onCambiata` (senza più membri torna allo stato "da solo").
+ *
+ * TOGLI usa `casa.id[i]`, accoppiato per indice a `casa.email[i]`: è
+ * `stato_casa` a garantire l'ordine, e `statoCasa()` a verificare che le
+ * lunghezze coincidano.
+ */
+function SezioneCasa({ casa, onCambiata }: { casa: StatoCasa; onCambiata: (stato: StatoCasa) => void }) {
+  const [codiceCreato, setCodiceCreato] = useState<string | null>(null);
+  const [creando, setCreando] = useState(false);
+  const [erroreCodice, setErroreCodice] = useState<string | null>(null);
+
+  const [codiceScritto, setCodiceScritto] = useState('');
+  const [entrando, setEntrando] = useState(false);
+  const [erroreEntrata, setErroreEntrata] = useState<string | null>(null);
+
+  const [erroreUscita, setErroreUscita] = useState<string | null>(null);
+
+  const [togliendo, setTogliendo] = useState<string | null>(null);
+  const [erroreRimozione, setErroreRimozione] = useState<string | null>(null);
+
+  async function crea() {
+    setCreando(true);
+    setErroreCodice(null);
+    try {
+      setCodiceCreato(await creaInvito());
+    } catch (errore) {
+      console.error('impostazioni: creazione del codice fallita.', errore);
+      setErroreCodice('Non siamo riusciti a creare il codice. Riprova.');
+    } finally {
+      setCreando(false);
+    }
+  }
+
+  async function entra() {
+    if (codiceScritto.length < LUNGHEZZA_CODICE) return;
+    setEntrando(true);
+    setErroreEntrata(null);
+    try {
+      await entraInCasa(codiceScritto);
+      ricaricaSu('/lista');
+    } catch (errore) {
+      console.error('impostazioni: entrata nella casa fallita.', errore);
+      setErroreEntrata(messaggioEntrata(errore));
+      setEntrando(false);
+    }
+  }
+
+  async function esci() {
+    setErroreUscita(null);
+    try {
+      await esciDallaCasa();
+      ricaricaSu('/lista');
+    } catch (errore) {
+      console.error('impostazioni: uscita dalla casa fallita.', errore);
+      setErroreUscita('Non siamo riusciti a uscire. Riprova.');
+    }
+  }
+
+  async function togli(id: string) {
+    setTogliendo(id);
+    setErroreRimozione(null);
+    try {
+      await rimuoviMembro(id);
+    } catch (errore) {
+      console.error('impostazioni: rimozione del membro fallita.', errore);
+      setErroreRimozione('Non siamo riusciti a togliere. Riprova.');
+      setTogliendo(null);
+      return;
+    }
+    // Tolto davvero: la scheda si riallinea al server. Se la rilettura
+    // fallisce non si dice "non siamo riusciti" (sarebbe falso): si toglie
+    // la riga in locale, e senza membri si torna allo stato "da solo".
+    try {
+      onCambiata(await statoCasa());
+    } catch (errore) {
+      console.error('impostazioni: rilettura della casa dopo la rimozione fallita.', errore);
+      const resta = casa.id.map((_, i) => i).filter((i) => casa.id[i] !== id);
+      onCambiata(resta.length > 0
+        ? { ruolo: 'proprietario', email: resta.map((i) => casa.email[i]), id: resta.map((i) => casa.id[i]) }
+        : { ruolo: 'solo', email: [], id: [] });
+    } finally {
+      setTogliendo(null);
+    }
+  }
+
+  const creaUnCodice = (
+    <>
+      {codiceCreato ? (
+        <div style={{ marginTop: 14 }}>
+          <div
+            aria-label="Codice della casa"
+            style={{
+              fontFamily: 'var(--font-mono)', fontSize: 28, letterSpacing: '0.2em', fontWeight: 700,
+              color: 'var(--ink)', textAlign: 'center', padding: '6px 0 4px',
+            }}
+          >
+            {codiceCreato}
+          </div>
+          <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', textAlign: 'center', marginTop: 6 }}>
+            Vale un’ora. Dalle sue Impostazioni, l’altra persona lo inserisce qui sotto.
+          </div>
+        </div>
+      ) : (
+        <button type="button" onClick={crea} disabled={creando} style={{ ...BOTTONE_PIENO, width: '100%', marginTop: 14 }}>
+          CREA UN CODICE
+        </button>
+      )}
+      {erroreCodice && <p style={{ margin: '10px 0 0', fontSize: 12.5, color: 'var(--sec)' }}>{erroreCodice}</p>}
+    </>
+  );
+
+  if (casa.ruolo === 'membro') {
+    return (
+      <div style={SCHEDA}>
+        <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)' }}>
+          Sei nella casa di {casa.email[0]}
+        </div>
+        <div style={{ fontSize: 13, lineHeight: 1.45, color: 'var(--sec)', marginTop: 6 }}>
+          Vedi e cambi la sua lista, il suo piano e la sua dispensa, come fossero tuoi. I tuoi restano da parte.
+        </div>
+        <BottoneDueTocchi testo="ESCI DALLA CASA" onConferma={esci} style={{ ...BOTTONE_LEGGERO, marginTop: 14 }} />
+        {erroreUscita && <p style={{ margin: '10px 0 0', fontSize: 12.5, color: 'var(--sec)' }}>{erroreUscita}</p>}
+      </div>
+    );
+  }
+
+  if (casa.ruolo === 'proprietario') {
+    return (
+      <div style={SCHEDA}>
+        <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)' }}>La tua casa</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+          {casa.email.map((email, i) => (
+            <div key={casa.id[i]} style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 44 }}>
+              <div style={{ flex: 1, minWidth: 0, fontSize: 14, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {email}
+              </div>
+              <BottoneDueTocchi
+                testo="TOGLI"
+                onConferma={() => togli(casa.id[i])}
+                disabled={togliendo !== null}
+                style={{ ...BOTTONE_LEGGERO, width: 'auto', flex: 'none', padding: '0 14px', opacity: togliendo === casa.id[i] ? 0.35 : 1 }}
+              />
+            </div>
+          ))}
+        </div>
+        {erroreRimozione && <p style={{ margin: '4px 0 0', fontSize: 12.5, color: 'var(--sec)' }}>{erroreRimozione}</p>}
+        <div style={{ fontSize: 13, lineHeight: 1.45, color: 'var(--sec)', marginTop: 10 }}>
+          Ognuno spunta dal suo telefono. La lista si aggiorna quando la riapri.
+        </div>
+        {creaUnCodice}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div style={SCHEDA}>
+        <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)' }}>Fai la spesa con qualcuno?</div>
+        <div style={{ fontSize: 13, lineHeight: 1.45, color: 'var(--sec)', marginTop: 6 }}>
+          Chi entra nella tua casa usa i tuoi dati come fossero suoi: vede e cambia lista, piano, dispensa e piatti, e può anche cancellarli. Il suo piano resta da parte finché non esce. Dai il codice solo a chi vive con te.
+        </div>
+        {creaUnCodice}
+      </div>
+      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+        <input
+          type="text"
+          value={codiceScritto}
+          onChange={(e) => setCodiceScritto(e.target.value.toUpperCase())}
+          aria-label="Ho un codice"
+          placeholder="Ho un codice"
+          maxLength={LUNGHEZZA_CODICE}
+          autoCapitalize="characters"
+          autoComplete="off"
+          spellCheck={false}
+          style={{
+            flex: 1, minWidth: 0, height: 48, padding: '0 14px', borderRadius: 14,
+            border: '1px solid var(--bordo)', background: 'var(--superficie)', color: 'var(--ink)',
+            fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 700, letterSpacing: '0.12em',
+            outline: 'none', boxSizing: 'border-box',
+          }}
+        />
+        <button
+          type="button"
+          onClick={entra}
+          disabled={codiceScritto.length < LUNGHEZZA_CODICE || entrando}
+          style={{
+            ...BOTTONE_PIENO, flex: 'none', width: 96,
+            opacity: codiceScritto.length < LUNGHEZZA_CODICE ? 0.35 : 1,
+          }}
+        >
+          ENTRA
+        </button>
+      </div>
+      {erroreEntrata && <p style={{ margin: '10px 6px 0', fontSize: 12.5, color: 'var(--sec)' }}>{erroreEntrata}</p>}
+    </>
+  );
+}
+
+/**
+ * Conferma in due tocchi, come RIPARTI: il primo tap arma il bottone (il
+ * testo diventa "SICURO?"), solo il secondo chiama `onConferma`. Un tap
+ * fuori dal bottone disarma. A differenza di RIPARTI non dipende da altro
+ * stato della pagina, quindi vive da sé. `disabled` serve mentre una
+ * conferma è in corso (TOGLI su un membro mentre un altro sta sparendo).
+ */
+function BottoneDueTocchi({ testo, onConferma, disabled, style }: {
+  testo: string; onConferma: () => void; disabled?: boolean; style?: CSSProperties;
+}) {
+  const [armato, setArmato] = useState(false);
+  const ref = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!armato) return;
+    function fuoriDalBottone(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setArmato(false);
+    }
+    document.addEventListener('click', fuoriDalBottone);
+    return () => document.removeEventListener('click', fuoriDalBottone);
+  }, [armato]);
+
+  return (
+    <button
+      ref={ref}
+      type="button"
+      disabled={disabled}
+      onClick={() => {
+        if (armato) {
+          setArmato(false);
+          onConferma();
+        } else {
+          setArmato(true);
+        }
+      }}
+      style={style}
+    >
+      {armato ? 'SICURO?' : testo}
+    </button>
+  );
+}
+
+/** Un tasto dello stepper delle porzioni: 44px di tap, dimming al 35% al limite come le frecce dei pasti. */
+function BottoneStepper({ etichetta, segno, disabled, onClick }: {
+  etichetta: string; segno: string; disabled: boolean; onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={etichetta}
+      style={{
+        width: 44, height: 44, borderRadius: 14, background: 'rgba(20,22,58,0.05)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 22, fontWeight: 600, color: 'var(--ink)', opacity: disabled ? 0.35 : 1,
+      }}
+    >
+      {segno}
+    </button>
   );
 }
 

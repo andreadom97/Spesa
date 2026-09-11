@@ -148,6 +148,41 @@ describe('Importa', () => {
     expect(screen.getByRole('button', { name: /riprova/i })).toBeEnabled();
   });
 
+  it('429 (tetto di import) mostra il messaggio della route verbatim', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      json: async () => ({ errore: 'hai già fatto 3 import negli ultimi 30 giorni: il prossimo dal 12/09/2026' }),
+    });
+    render(<Importa />);
+    await screen.findByRole('button', { name: /estrai la dieta/i });
+    await caricaUnaFoto();
+    fireEvent.click(screen.getByRole('button', { name: /estrai la dieta/i }));
+    expect(await screen.findByText('hai già fatto 3 import negli ultimi 30 giorni: il prossimo dal 12/09/2026')).toBeInTheDocument();
+  });
+
+  it('400 col messaggio della route (PDF illeggibile) lo mostra verbatim', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({ errore: 'il PDF non si apre: prova con le foto' }),
+    });
+    render(<Importa />);
+    await screen.findByRole('button', { name: /estrai la dieta/i });
+    await caricaUnaFoto();
+    fireEvent.click(screen.getByRole('button', { name: /estrai la dieta/i }));
+    expect(await screen.findByText('il PDF non si apre: prova con le foto')).toBeInTheDocument();
+  });
+
+  it('400 senza corpo leggibile: messaggio generico', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 400, json: async () => { throw new Error('non JSON'); } });
+    render(<Importa />);
+    await screen.findByRole('button', { name: /estrai la dieta/i });
+    await caricaUnaFoto();
+    fireEvent.click(screen.getByRole('button', { name: /estrai la dieta/i }));
+    expect(await screen.findByText('Non siamo riusciti a leggere la dieta. Riprova.')).toBeInTheDocument();
+  });
+
   it('422 mostra il messaggio dedicato', async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: false,

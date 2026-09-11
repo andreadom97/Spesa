@@ -2,6 +2,7 @@ import type { AreaId, UnitaBase } from '@/domain/types';
 import { costruisciLista } from '@/domain/list-builder';
 import { calcolaChiusura, type VoceChiusura } from '@/domain/chiusura';
 import { client } from './supabase';
+import { idCasa } from './casa';
 import { leggiImpostazioni } from './impostazioni';
 import { leggiSlotSettimana } from './settimana';
 import { leggiRepertorio, leggiIngredienti } from './repertorio';
@@ -51,8 +52,8 @@ export interface ListaSalvata {
  */
 export async function generaListe(weekId: string): Promise<void> {
   const sb = client();
-  const { data: u } = await sb.auth.getUser();
-  const userId = u.user!.id;
+  // L'id della casa (casa.ts), non dell'account: per un membro è il proprietario. Una chiamata per funzione: è memorizzata.
+  const userId = await idCasa();
 
   // Difesa in profondità (C4): una settimana chiusa non va mai rigenerata,
   // qualunque sia la via per cui si arriva qui. Cancellare e reinserire gli
@@ -105,6 +106,30 @@ export async function generaListe(weekId: string): Promise<void> {
       if (e) throw e;
     }
   }
+
+  // Il non ricomprato della settimana, fissato qui e non ricalcolato dopo
+  // (spec 2026-09-05-non-ricomprato-design.md §1 e §3): stesso residuo e
+  // stessa aritmetica delle voci appena scritte. Rigenerare sostituisce le
+  // righe della settimana, anche a zero voci: un piano svuotato non deve
+  // continuare a raccontare il risparmio della generazione precedente.
+  const { error: eRisparmioDel } = await sb
+    .from('risparmio_settimana')
+    .delete()
+    .eq('week_id', weekId)
+    .eq('user_id', userId);
+  if (eRisparmioDel) throw eRisparmioDel;
+  if (risultato.evitato.length > 0) {
+    const { error: eRisparmioIns } = await sb.from('risparmio_settimana').insert(
+      risultato.evitato.map((v) => ({
+        user_id: userId, week_id: weekId, ingredient_id: v.ingredientId,
+        fabbisogno: v.fabbisogno, confezioni_ingenue: v.confezioniIngenue,
+        confezioni_reali: v.confezioniReali, confezioni_evitate: v.confezioniEvitate,
+        quantita_evitata: v.quantitaEvitata, unita: v.unita,
+        prezzo_confezione: v.prezzoConfezione,
+      })),
+    );
+    if (eRisparmioIns) throw eRisparmioIns;
+  }
 }
 
 /**
@@ -135,8 +160,7 @@ export async function generaListe(weekId: string): Promise<void> {
  */
 export async function allineaTopUp(weekId: string): Promise<number> {
   const sb = client();
-  const { data: u } = await sb.auth.getUser();
-  const userId = u.user!.id;
+  const userId = await idCasa();
 
   const { data: liste, error: eListe } = await sb
     .from('shopping_list')
@@ -307,12 +331,12 @@ export async function leggiListe(weekId: string): Promise<ListaSalvata | null> {
 
 export async function spunta(itemId: string, spuntato: boolean): Promise<void> {
   const sb = client();
-  const { data: utente } = await sb.auth.getUser();
+  const userId = await idCasa();
   const { error } = await sb
     .from('shopping_list_item')
     .update({ spuntato, spuntato_il: spuntato ? new Date().toISOString() : null })
     .eq('id', itemId)
-    .eq('user_id', utente.user!.id);
+    .eq('user_id', userId);
   if (error) throw error;
 }
 
@@ -354,8 +378,7 @@ interface RigaChiusuraGrezza {
  */
 export async function chiudiSpesa(weekId: string): Promise<void> {
   const sb = client();
-  const { data: u } = await sb.auth.getUser();
-  const userId = u.user!.id;
+  const userId = await idCasa();
   const oggi = new Date().toISOString().slice(0, 10);
 
   const { data: week, error: eWeek } = await sb

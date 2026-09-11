@@ -8,9 +8,14 @@ import { leggiDispensa, correggiResiduo, impostaCongelato } from '@/data/dispens
 import { leggiImpostazioni } from '@/data/impostazioni';
 import { leggiPronti, correggiLotto, impostaCongelatoLotto, eliminaLotto } from '@/data/pronti';
 import { leggiSettimanaCorrente } from '@/data/settimana';
+import { leggiRisparmioTotale } from '@/data/risparmio';
+import type { VoceEvitata } from '@/domain/list-builder';
+import { riassumiEvitato, formattaQuantita, formattaEuro } from '@/domain/risparmio';
 import { coloreArea, nomeArea } from '@/domain/aree';
 import { residuoUtilizzabile } from '@/domain/pantry';
 import { porzioniUtilizzabili } from '@/domain/pronti';
+import { avvisiScadenza, scadenzaResiduo, type AvvisoScadenza } from '@/domain/scadenza';
+import { lunediDi, sommaGiorni } from '@/domain/date';
 import { NotaDispensa } from '@/components/NotaDispensa';
 
 interface Riga {
@@ -20,11 +25,69 @@ interface Riga {
   congelato: boolean;
 }
 
+/** Una riga con quello che la schermata dice del suo fresco (spec 2026-09-06 §3.2). */
+interface RigaMostrata extends Riga {
+  /** L'ultimo giorno in cui il residuo conta ancora; null se non c'è niente che decada. */
+  scadenza: string | null;
+  /** Nessun pasto della settimana corrente lo usa prima che scada. */
+  dimenticato: boolean;
+}
+
 const MESI = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
 
 function dataBreve(iso: string): string {
   const d = new Date(`${iso}T00:00:00Z`);
   return `${d.getUTCDate()} ${MESI[d.getUTCMonth()]}`;
+}
+
+/**
+ * La scadenza si ricava dai valori correnti della riga e non da quelli
+ * letti al caricamento: il congelatore si accende e spegne in modo
+ * ottimistico, e sposta la soglia da giorni a mesi — una scadenza calcolata
+ * una volta sola direbbe "scade il 9 set" su una cosa appena congelata.
+ * L'avviso della settimana invece è di `carica`: vale solo se parla della
+ * stessa scadenza, e solo se questa cade entro la domenica corrente — oltre,
+ * il piano di questa settimana non può dire nulla.
+ */
+function annotaScadenza(riga: Riga, avviso: AvvisoScadenza | undefined, domenica: string): RigaMostrata {
+  const scadenza = scadenzaResiduo({
+    residuo: riga.residuo,
+    deperibile: riga.ingrediente.deperibile,
+    area: riga.ingrediente.area,
+    ultimoAcquisto: riga.ultimoAcquisto,
+    congelato: riga.congelato,
+  });
+  const dimenticato =
+    scadenza !== null && scadenza <= domenica && avviso !== undefined && avviso.scadenza === scadenza && !avviso.usatoInTempo;
+  return { ...riga, scadenza, dimenticato };
+}
+
+/**
+ * Il totale del non ricomprato sulle settimane chiuse è un di più: se la
+ * lettura fallisce la dispensa resta usabile e la riga non compare.
+ */
+async function leggiRisparmioSenzaBloccare(): Promise<VoceEvitata[]> {
+  try {
+    return await leggiRisparmioTotale();
+  } catch (e) {
+    console.error('dispensa: lettura del non ricomprato fallita.', e);
+    return [];
+  }
+}
+
+/**
+ * "Da quando usi Spesa: 9 confezioni non ricomprate · 4,1 kg · circa 32 €"
+ * (spec §5). Null con zero confezioni: la Dispensa non fa rumore. Quantità ed
+ * euro compaiono solo se c'è qualcosa da dire.
+ */
+function rigaTotaleNonRicomprato(voci: VoceEvitata[]): string | null {
+  const r = riassumiEvitato(voci);
+  if (r.confezioni === 0) return null;
+  const segmenti = [r.confezioni === 1 ? '1 confezione non ricomprata' : `${r.confezioni} confezioni non ricomprate`];
+  const quantita = formattaQuantita(r.quantita);
+  if (quantita) segmenti.push(quantita);
+  if (r.euro !== null) segmenti.push(formattaEuro(r.euro));
+  return `Da quando usi Spesa: ${segmenti.join(' · ')}`;
 }
 
 /**
@@ -49,6 +112,10 @@ export default function Dispensa() {
   const [lotti, setLotti] = useState<LottoPronto[]>([]);
   const [nomiPiatti, setNomiPiatti] = useState<Map<string, string>>(new Map());
   const [impegniPerPiatto, setImpegniPerPiatto] = useState<Map<string, number>>(new Map());
+  const [totaleNonRicomprato, setTotaleNonRicomprato] = useState<string | null>(null);
+  // Per ingrediente, cosa dice la settimana corrente del suo fresco: vuota
+  // senza settimana, perché senza piano non c'è niente con cui confrontarlo.
+  const [avvisiPerIngrediente, setAvvisiPerIngrediente] = useState<Map<string, AvvisoScadenza>>(new Map());
   // La nota AI e' un ripiego per quando il calcolo non torna, non la prima
   // cosa da vedere: parte compressa in una card, si monta solo al tap.
   const [notaAperta, setNotaAperta] = useState(false);
@@ -68,9 +135,11 @@ export default function Dispensa() {
       leggiPronti(),
       leggiRepertorio(),
       leggiSettimanaCorrente(),
+      leggiRisparmioSenzaBloccare(),
     ])
-      .then(([ingredienti, dispensa, impostazioni, pronti, repertorio, settimana]) => {
+      .then(([ingredienti, dispensa, impostazioni, pronti, repertorio, settimana, risparmio]) => {
         if (!vivo()) return;
+        const oggi = new Date().toISOString().slice(0, 10);
         const perId = new Map<string, PantryState>(dispensa.map((p) => [p.ingredientId, p]));
         setRighe(
           ingredienti.map((ingrediente) => {
@@ -86,11 +155,19 @@ export default function Dispensa() {
         setOrdineAree(impostazioni.ordineAree);
         setLotti(pronti);
         setNomiPiatti(new Map(repertorio.map((d) => [d.id, d.nome])));
+        setTotaleNonRicomprato(rigaTotaleNonRicomprato(risparmio));
+
+        // Il fresco che nessun pasto usa prima che scada: sui dati già in
+        // mano, nessuna lettura in più. Senza settimana corrente non c'è un
+        // piano con cui confrontarlo, e la riga anti-dimenticanza non compare.
+        const avvisi = settimana
+          ? avvisiScadenza({ slots: settimana.slots, dishes: repertorio, ingredients: ingredienti, pantry: dispensa, oggi })
+          : [];
+        setAvvisiPerIngrediente(new Map(avvisi.map((a) => [a.ingredientId, a])));
 
         // Quante porzioni di quel piatto sono già promesse a uno slot
         // futuro: un lotto "disponibile" che in realtà è già impegnato per
         // dopodomani non è la stessa cosa di uno libero.
-        const oggi = new Date().toISOString().slice(0, 10);
         const impegni = new Map<string, number>();
         for (const slot of settimana?.slots ?? []) {
           if (!slot.daPronti || slot.dishId === null || slot.data < oggi) continue;
@@ -226,17 +303,25 @@ export default function Dispensa() {
   }
 
   const oggi = new Date().toISOString().slice(0, 10);
-  const inCasa = righe.filter((r) => r.residuo > 0);
+  const domenica = sommaGiorni(lunediDi(oggi), 6);
+  const mostrate = righe.map((r) => annotaScadenza(r, avvisiPerIngrediente.get(r.ingrediente.id), domenica));
+  const inCasa = mostrate.filter((r) => r.residuo > 0);
   // "Finito" e "mai avuto" non sono la stessa cosa: il primo e' un
   // ingrediente che usi e che si e' esaurito — informazione utile, sono
   // pochi — il secondo e' catalogo, e dopo il seed sono decine. Tenerli
   // insieme seppelliva i primi sotto i secondi.
-  const finiti = righe.filter((r) => r.residuo <= 0 && r.ultimoAcquisto !== null);
-  const maiComprati = righe.filter((r) => r.residuo <= 0 && r.ultimoAcquisto === null);
+  const finiti = mostrate.filter((r) => r.residuo <= 0 && r.ultimoAcquisto !== null);
+  const maiComprati = mostrate.filter((r) => r.residuo <= 0 && r.ultimoAcquisto === null);
 
   return (
     <Cornice>
       <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 16px 20px' }}>
+        {/* Il residuo derivato, sommato sulle settimane chiuse: una riga e
+            basta, e solo quando c'è qualcosa da dire. */}
+        {totaleNonRicomprato && (
+          <p style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', margin: '0 4px 14px' }}>{totaleNonRicomprato}</p>
+        )}
+
         {erroreSalvataggio && (
           <p style={{ fontSize: 13, color: 'var(--sec)', margin: '0 6px 12px' }}>{erroreSalvataggio}</p>
         )}
@@ -317,7 +402,7 @@ export default function Dispensa() {
 
 interface PropsGruppo {
   titolo: string;
-  righe: Riga[];
+  righe: RigaMostrata[];
   ordineAree: AreaId[];
   onSalva: (ingredientId: string, nuovo: number, precedente: number) => void;
   onCongela: (ingredientId: string, congelato: boolean) => void;
@@ -596,11 +681,12 @@ function RigaDispensa({
   onSalva,
   onCongela,
 }: {
-  riga: Riga;
+  riga: RigaMostrata;
   onSalva: PropsGruppo['onSalva'];
   onCongela: PropsGruppo['onCongela'];
 }) {
   const [testo, setTesto] = useState(String(riga.residuo));
+  const oggi = new Date().toISOString().slice(0, 10);
 
   // Quello che il calcolo della lista userà davvero. Mostrarlo qui è
   // necessario: senza, si legge "200 g" di pollo e non si capisce perché la
@@ -612,7 +698,7 @@ function RigaDispensa({
     area: riga.ingrediente.area,
     ultimoAcquisto: riga.ultimoAcquisto,
     congelato: riga.congelato,
-    oggi: new Date().toISOString().slice(0, 10),
+    oggi,
   });
   const decaduto = riga.residuo > 0 && utilizzabile === 0;
 
@@ -648,11 +734,21 @@ function RigaDispensa({
           {nomeArea(riga.ingrediente.area)}
           {riga.ultimoAcquisto ? ` · PRESO IL ${dataBreve(riga.ultimoAcquisto).toUpperCase()}` : ' · MAI COMPRATO'}
           {riga.congelato ? ' · IN CONGELATORE' : ''}
+          {/* La scadenza per ultima, dopo il congelatore: è lui che spiega
+              perché è lontana. Su un residuo già decaduto direbbe una data
+              passata: lì parla solo la riga sotto. */}
+          {!decaduto && riga.scadenza !== null &&
+            (riga.scadenza === oggi ? ' · SCADE OGGI' : ` · SCADE IL ${dataBreve(riga.scadenza).toUpperCase()}`)}
         </div>
         {decaduto && (
           <div style={{ fontSize: 12, lineHeight: 1.35, color: 'var(--sec)', marginTop: 5 }}>
             Troppo tempo per essere ancora buono: la lista lo richiede.
             {!riga.congelato && ' Se l’hai congelato, dillo qui accanto.'}
+          </div>
+        )}
+        {riga.dimenticato && (
+          <div style={{ fontSize: 12, lineHeight: 1.35, color: 'var(--sec)', marginTop: 5 }}>
+            Nessun pasto in programma lo usa prima che scada.
           </div>
         )}
       </div>

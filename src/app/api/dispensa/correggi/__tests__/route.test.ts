@@ -2,14 +2,21 @@
 /** @vitest-environment node */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { interpretaNotaMock, getUserMock } = vi.hoisted(() => ({
+const { interpretaNotaMock, getUserMock, validaProposteMock } = vi.hoisted(() => ({
   interpretaNotaMock: vi.fn(),
   getUserMock: vi.fn(),
+  validaProposteMock: vi.fn(),
 }));
 vi.mock('@/server/dispensa-ai', () => ({
   interpretaNota: interpretaNotaMock,
   modelloConfigurato: () => 'claude-haiku-4-5',
 }));
+// validaProposte vera di default; un solo test la fa esplodere con un errore non previsto.
+vi.mock('@/domain/dispensa-ai', async (importOriginal) => {
+  const vero = await importOriginal<typeof import('@/domain/dispensa-ai')>();
+  validaProposteMock.mockImplementation(vero.validaProposte);
+  return { ...vero, validaProposte: validaProposteMock };
+});
 vi.mock('@supabase/supabase-js', () => ({
   createClient: () => ({ auth: { getUser: getUserMock } }),
 }));
@@ -135,6 +142,22 @@ describe('POST /api/dispensa/correggi', () => {
     expect(res.status).toBe(502);
     expect((await res.json()).errore).toBe('correzione non riuscita, riprova');
     expect(spyConsoleError).toHaveBeenCalledWith('dispensa-ai: interpretazione fallita.', erroreRete);
+    spyConsoleError.mockRestore();
+    delete process.env.ANTHROPIC_API_KEY;
+  });
+
+  it('validaProposte che esplode con un errore imprevisto → 500 col messaggio generico, mai err.message al client', async () => {
+    process.env.ANTHROPIC_API_KEY = 'test-non-vera';
+    interpretaNotaMock.mockResolvedValue({ proposte: [], nonRiconosciuti: [] });
+    const erroreInterno = new TypeError('dettaglio interno da non esporre');
+    validaProposteMock.mockImplementationOnce(() => { throw erroreInterno; });
+    const spyConsoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const res = await POST(richiesta({ nota: 'x', contesto: CONTESTO }));
+
+    expect(res.status).toBe(500);
+    expect((await res.json()).errore).toBe('correzione non riuscita, riprova');
+    expect(spyConsoleError).toHaveBeenCalledWith('dispensa-ai: validazione fallita.', 'TypeError');
     spyConsoleError.mockRestore();
     delete process.env.ANTHROPIC_API_KEY;
   });

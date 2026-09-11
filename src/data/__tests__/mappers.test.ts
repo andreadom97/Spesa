@@ -9,7 +9,42 @@ describe('aIngrediente', () => {
     })).toEqual({
       id: 'a', nome: 'Yogurt greco', unitaBase: 'g', area: 'latticini',
       classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 500,
+      prezzoConfezione: null, ean: null,
     });
+  });
+
+  it('legge ean come stringa, e lo tiene a null se la colonna è null o non arriva affatto', () => {
+    // Come il prezzo: null in database è "mai scansionato", e una riga di
+    // mock (o un deploy prima della migrazione 0013) può non portare la
+    // colonna. Mai un numero: gli zeri iniziali di un EAN-8 contano.
+    const base = {
+      id: 'a', nome: 'x', unita_base: 'g', area: 'dispensa',
+      classe_residuo: 'porzionabile', deperibile: false, formato_confezione: '500',
+    };
+    expect(aIngrediente({ ...base, ean: '8076800105735' }).ean).toBe('8076800105735');
+    expect(aIngrediente({ ...base, ean: '00012345' }).ean).toBe('00012345');
+    expect(aIngrediente({ ...base, ean: null }).ean).toBeNull();
+    expect(aIngrediente(base).ean).toBeNull();
+  });
+
+  it('legge prezzo_confezione come numero (numeric di Postgres, quindi stringa)', () => {
+    expect(aIngrediente({
+      id: 'a', nome: 'x', unita_base: 'g', area: 'dispensa',
+      classe_residuo: 'porzionabile', deperibile: false, formato_confezione: '500',
+      prezzo_confezione: '2.35',
+    }).prezzoConfezione).toBe(2.35);
+  });
+
+  it('prezzoConfezione è null se la colonna è null o non arriva affatto', () => {
+    // Il prezzo è facoltativo: null in database è il caso normale, e una
+    // riga di mock (o un deploy prima della migrazione 0011) può non
+    // portare la colonna. In entrambi i casi il dominio vede "nessun prezzo".
+    const base = {
+      id: 'a', nome: 'x', unita_base: 'g', area: 'dispensa',
+      classe_residuo: 'porzionabile', deperibile: false, formato_confezione: '500',
+    };
+    expect(aIngrediente({ ...base, prezzo_confezione: null }).prezzoConfezione).toBeNull();
+    expect(aIngrediente(base).prezzoConfezione).toBeNull();
   });
 
   it('converte i numeric di Postgres, che arrivano come stringhe', () => {
