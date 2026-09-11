@@ -6,7 +6,7 @@ vi.mock('../casa', () => ({ idCasa: vi.fn() }));
 
 import { client } from '../supabase';
 import { idCasa } from '../casa';
-import { salvaImpostazioni, salvaSlotDefs } from '../impostazioni';
+import { MAX_PORZIONI, MIN_PORZIONI, salvaImpostazioni, salvaSlotDefs } from '../impostazioni';
 import { MAX_PASTI, MIN_PASTI } from '@/domain/pasti';
 
 // L'id che finisce in `user_id` non viene più da `auth.getUser` sul client
@@ -114,5 +114,34 @@ describe('salvaImpostazioni — l\'origine del ciclo', () => {
     const riga = await scritto({ ...BASE, settimaneCiclo: 1, cicloOrigine: '2026-08-31' });
     expect(riga.settimane_ciclo).toBe(1);
     expect(riga.ciclo_origine).toBe('2026-08-31');
+  });
+});
+
+// Review di sicurezza dell'11/09: "Per quante persone cucini" era vincolato
+// 1–4 solo dallo stepper in pagina, mentre la colonna ammette 1–6. Il tetto
+// vive qui, dove si scrive, e la pagina lo importa.
+describe('salvaImpostazioni — per quante persone', () => {
+  beforeEach(() => vi.mocked(client).mockReset());
+
+  it('il tetto è 4 e il minimo 1, come lo stepper della pagina', () => {
+    expect(MIN_PORZIONI).toBe(1);
+    expect(MAX_PORZIONI).toBe(4);
+  });
+
+  it('accetta 1 e 4', async () => {
+    const { sb, upsert } = creaClientMock();
+    vi.mocked(client).mockReturnValue(sb as never);
+    await salvaImpostazioni({ ...BASE, moltiplicatorePorzioni: 1 });
+    await salvaImpostazioni({ ...BASE, moltiplicatorePorzioni: 4 });
+    expect(upsert['settings']).toHaveLength(2);
+  });
+
+  it.each([0, 5, 6, 2.5, NaN, Infinity])('rifiuta %s senza scrivere niente', async (persone) => {
+    const { sb, upsert } = creaClientMock();
+    vi.mocked(client).mockReturnValue(sb as never);
+    await expect(salvaImpostazioni({ ...BASE, moltiplicatorePorzioni: persone })).rejects.toThrow('persone non valide');
+    expect(upsert['settings']).toBeUndefined();
+    // Il controllo viene prima di qualunque accesso al server.
+    expect(idCasa).not.toHaveBeenCalled();
   });
 });

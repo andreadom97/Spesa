@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Impostazioni, MealSlotDef } from '@/domain/types';
-import { leggiImpostazioni, leggiSlotDefs, salvaImpostazioni, salvaSlotDefs, pastiDiDefault } from '@/data/impostazioni';
+import { leggiImpostazioni, leggiSlotDefs, salvaImpostazioni, salvaSlotDefs, pastiDiDefault, MAX_PORZIONI, MIN_PORZIONI } from '@/data/impostazioni';
 import { creaInvito, entraInCasa, esciDallaCasa, rimuoviMembro, statoCasa, type StatoCasa } from '@/data/casa';
 import { MAX_PASTI, MIN_PASTI } from '@/domain/pasti';
 import { coloreArea, nomeArea } from '@/domain/aree';
@@ -40,16 +40,13 @@ function conPosizioni(lista: MealSlotDef[]): MealSlotDef[] {
 /** Otto caratteri, come li genera `crea_invito` (migrazione 0012). */
 const LUNGHEZZA_CODICE = 8;
 
-/**
- * "Per quante persone cucini", nella sezione CASA. Il moltiplicatore era
- * stato tolto dall'interfaccia il 28/08/2026 (un moltiplicatore unico
- * presuppone che tutti a tavola mangino la stessa porzione); il 06/09 torna
- * a livello di casa, con quell'assunzione dichiarata nel copy invece che
- * taciuta. Vedi la spec casa condivisa §6. Il campo nello schema e in
- * list-builder non si era mai mosso.
- */
-const MIN_PORZIONI = 1;
-const MAX_PORZIONI = 4;
+// "Per quante persone cucini", nella sezione CASA: lo stepper va da
+// MIN_PORZIONI a MAX_PORZIONI, le stesse costanti che `salvaImpostazioni`
+// fa rispettare. Il moltiplicatore era stato tolto dall'interfaccia il
+// 28/08/2026 (un moltiplicatore unico presuppone che tutti a tavola mangino
+// la stessa porzione); il 06/09 torna a livello di casa, con quell'assunzione
+// dichiarata nel copy invece che taciuta. Vedi la spec casa condivisa §6. Il
+// campo nello schema e in list-builder non si era mai mosso.
 
 /**
  * Il messaggio da mostrare se `entraInCasa` fallisce. Solo un `raise
@@ -127,6 +124,17 @@ export default function Impostazioni() {
   // rilettura dell'ultima richiesta si applica: le altre descrivono uno
   // stato che a schermo è già stato superato.
   const richiestaImpostazioniRef = useRef(0);
+  // Le scritture si serializzano: ogni persistiImpostazioni aspetta la
+  // precedente prima di scrivere (review dell'11/09). Il contatore da solo
+  // non basta: con due tap 1→2 e 2→3, se la seconda scrittura fallisce
+  // subito mentre la prima è ancora in volo, il suo catch è "l'ultima
+  // richiesta" e rilegge dal server, che ha ancora 1; poi la prima riesce
+  // ma la sua rilettura è superata. Server 2, schermo 1. Con la catena il
+  // rollback rilegge sempre dopo tutte le scritture precedenti, e l'ordine
+  // di arrivo al server è quello dei tap. La catena non si rompe mai: un
+  // errore si ferma nel catch di chi l'ha fatto, la scrittura dopo parte lo
+  // stesso (riscrive la riga intera, quindi non dipende da quella fallita).
+  const codaScrittureRef = useRef<Promise<void>>(Promise.resolve());
 
   // La casa si legge a parte, non nel Promise.all: se la RPC fallisce la
   // sezione CASA lo dice, e il resto delle impostazioni resta usabile.
@@ -229,6 +237,10 @@ export default function Impostazioni() {
    * registrata. Tornare al ref mostrerebbe il valore di prima di entrambi i
    * tap, mentre sul server c'è quello del primo. Solo se anche la rilettura
    * fallisce (niente rete) si ripiega sul ref.
+   *
+   * Le scritture partono una dopo l'altra (`codaScrittureRef`): così la
+   * rilettura del rollback trova sul server anche le scritture dei tap
+   * precedenti, già atterrate, e non un valore che sta per essere superato.
    */
   async function persistiImpostazioni(patch: Partial<Impostazioni>) {
     if (!dati) return;
@@ -237,8 +249,10 @@ export default function Impostazioni() {
     setErroreSalvataggio(null);
     const nuove = { ...dati.impostazioni, ...patch };
     setDati((correnti) => (correnti ? { ...correnti, impostazioni: nuove } : correnti));
+    const scrittura = codaScrittureRef.current.then(() => salvaImpostazioni(nuove));
+    codaScrittureRef.current = scrittura.then(() => undefined, () => undefined);
     try {
-      await salvaImpostazioni(nuove);
+      await scrittura;
       const rilette = await leggiImpostazioni();
       if (!eUltima()) return;
       impostazioniSalvateRef.current = rilette;

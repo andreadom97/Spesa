@@ -12,6 +12,19 @@ const MOLTIPLICATORE_DEFAULT = 1;
 /** Deve coincidere con il default della colonna `settimane_ciclo`: nessuna rotazione. */
 const SETTIMANE_CICLO_DEFAULT = 1;
 
+/**
+ * "Per quante persone cucini" (`moltiplicatore_porzioni`): da 1 a 4. Lo
+ * stepper della pagina si ferma a 4, ma la colonna ammette fino a 6: il
+ * vincolo del prodotto vive qui, dove si scrive, non solo nell'interfaccia
+ * (review di sicurezza dell'11/09). La pagina importa le stesse costanti.
+ */
+export const MIN_PORZIONI = 1;
+export const MAX_PORZIONI = 4;
+
+function personeValide(persone: number): boolean {
+  return Number.isInteger(persone) && persone >= MIN_PORZIONI && persone <= MAX_PORZIONI;
+}
+
 function oggiIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -72,6 +85,8 @@ export async function leggiImpostazioni(): Promise<Impostazioni> {
 }
 
 export async function salvaImpostazioni(i: Impostazioni): Promise<void> {
+  // Prima di qualunque accesso al server: una riga fuori tetto non si scrive.
+  if (!personeValide(i.moltiplicatorePorzioni)) throw new Error('persone non valide');
   const sb = client();
   const userId = await idCasa();
   const { error } = await sb.from('settings').upsert({

@@ -746,6 +746,9 @@ describe('Lista', () => {
       salvaIstantaneaDiProva();
       accodaSpunta('item-riso', true);
       vi.mocked(leggiSettimanaCorrente).mockRejectedValue(new Error('rete assente'));
+      // Senza rete anche la scrittura della coda fallisce: `carica()` la
+      // tenta prima di leggere, e la spunta deve restare in coda.
+      vi.mocked(spunta).mockRejectedValue(new Error('rete assente'));
       render(<Lista />);
 
       const riso = await screen.findByText('Riso Carnaroli');
@@ -1101,6 +1104,96 @@ describe('Lista', () => {
       expect(screen.getByText(RIGA_OFFLINE)).toBeInTheDocument();
       // L'istantanea non si tocca: è la lista come letta dal server.
       expect(leggiIstantaneaLista()?.lista.base[0].voci[0].spuntato).toBe(false);
+    });
+
+    // Review dell'11/09 (media): speculare al test qui sopra, ma sul ramo di
+    // successo. `carica()` leggeva le liste senza aspettare la
+    // sincronizzazione lanciata in parallelo dal listener di montaggio: se
+    // `leggiListe` rispondeva prima che la spunta in coda atterrasse e la
+    // conferma svuotava la coda prima di `applicaCodaLista`, la lista andava
+    // a schermo senza la spunta mentre sul server c'era. Ora `carica()`
+    // aspetta `sincronizzaCoda()` prima di leggere, come `rileggi`.
+    it('al ritorno della rete la coda si scrive prima di leggere le liste: la spunta confermata nel frattempo non si disfa', async () => {
+      salvaIstantaneaDiProva();
+      vi.mocked(leggiSettimanaCorrente).mockRejectedValueOnce(new Error('rete assente'));
+      // Offline il tap fallisce e resta in coda; al ritorno della rete la
+      // scrittura resta in volo finché il test non la conferma, e solo da
+      // quel momento il server "ha" la spunta.
+      let risoSulServer = false;
+      let confermaSpunta: () => void = () => {};
+      vi.mocked(spunta)
+        .mockRejectedValueOnce(new Error('rete assente'))
+        .mockImplementationOnce(() => new Promise<void>((resolve) => {
+          confermaSpunta = () => { risoSulServer = true; resolve(); };
+        }));
+      // Il server risponde con quello che ha quando la lettura *parte*: una
+      // lettura partita prima della conferma torna senza la spunta.
+      let risolviLettura: () => void = () => {};
+      vi.mocked(leggiListe).mockImplementation(() => {
+        const spuntato = risoSulServer;
+        return new Promise<ListaSalvata | null>((resolve) => {
+          risolviLettura = () => resolve({
+            ...buildLista(),
+            base: [
+              { area: 'cereali', voci: [{ ...VOCE_RISO, spuntato }, VOCE_PASTA], controlli: [] },
+              { area: 'dispensa', voci: [], controlli: [CONTROLLO_OLIO] },
+            ],
+          });
+        });
+      });
+      render(<Lista />);
+      const riso = (await screen.findByText('Riso Carnaroli')).closest('button')!;
+
+      fireEvent.click(riso);
+      await waitFor(() => expect(spunta).toHaveBeenCalledTimes(1));
+      expect(leggiCoda()).toEqual([{ itemId: 'item-riso', spuntato: true, ts: expect.any(Number) }]);
+
+      window.dispatchEvent(new Event('online'));
+      await waitFor(() => expect(spunta).toHaveBeenCalledTimes(2));
+      // La scrittura è ancora in volo: le liste non si leggono finché non atterra.
+      await new Promise((r) => setTimeout(r, 0));
+      expect(leggiListe).not.toHaveBeenCalled();
+
+      // La conferma svuota la coda; solo ora parte la lettura, e trova la spunta.
+      confermaSpunta();
+      await waitFor(() => expect(leggiCoda()).toEqual([]));
+      await waitFor(() => expect(leggiListe).toHaveBeenCalledTimes(1));
+      risolviLettura();
+
+      await waitFor(() => expect(screen.queryByText(RIGA_OFFLINE)).not.toBeInTheDocument());
+      expect(screen.getByText('Riso Carnaroli').closest('button')).toHaveAttribute('aria-pressed', 'true');
+      expect(vi.mocked(spunta).mock.invocationCallOrder[1]).toBeLessThan(vi.mocked(leggiListe).mock.invocationCallOrder[0]);
+    });
+
+    // I listener `online`/`visibilitychange` si registrano una volta sola al
+    // montaggio e leggono lo stato da `statoRef` (allineato in un layout
+    // effect, dentro il commit). Registrati in un effetto dipendente da
+    // `weekId`/`offline`, nascevano solo dopo il commit che mostra la lista:
+    // un evento in quella finestra si perdeva (casuale nei test, quindi
+    // questo test non poteva fallire in modo deterministico col vecchio
+    // codice: documenta il comportamento).
+    it('un evento online emesso subito dopo che l\'istantanea compare è sempre ricevuto', async () => {
+      salvaIstantaneaDiProva();
+      vi.mocked(leggiSettimanaCorrente).mockRejectedValueOnce(new Error('rete assente'));
+      vi.mocked(leggiListe).mockResolvedValue(buildLista());
+      render(<Lista />);
+      await screen.findByText(RIGA_OFFLINE);
+
+      // Nessuna attesa fra la comparsa e l'evento.
+      window.dispatchEvent(new Event('online'));
+
+      await waitFor(() => expect(leggiSettimanaCorrente).toHaveBeenCalledTimes(2));
+      await waitFor(() => expect(screen.queryByText(RIGA_OFFLINE)).not.toBeInTheDocument());
+    });
+
+    it('un ritorno in primo piano emesso subito dopo che la lista compare è sempre ricevuto', async () => {
+      vi.mocked(leggiListe).mockResolvedValue(buildLista());
+      render(<Lista />);
+      await screen.findByText('Riso Carnaroli');
+
+      simulaVisibilita('visible');
+
+      await waitFor(() => expect(leggiListe).toHaveBeenCalledTimes(2));
     });
 
     // M2 della review di correttezza: la versione dei tocchi si fissa in

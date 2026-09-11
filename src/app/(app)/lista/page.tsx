@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import type { AreaId, Dish } from '@/domain/types';
 import { coloreArea, nomeArea } from '@/domain/aree';
@@ -262,6 +262,23 @@ export default function Lista() {
       // ciò che questo giro leggerà, e una versione presa dopo non lo
       // vedrebbe.
       const versione = versioneTocchi.current;
+      // Prima di leggere si scrive la coda, e si aspetta che finisca, come
+      // in `rileggi`: al ritorno della rete il listener di montaggio lancia
+      // `sincronizzaCoda()` in parallelo a questo giro, e se `leggiListe`
+      // rispondesse prima che la spunta in coda atterri — con la conferma
+      // che svuota la coda prima di `applicaCodaLista` — la lista andrebbe
+      // a schermo senza la spunta mentre sul server c'è, e un ritocco la
+      // disfarebbe. Chi arriva mentre un giro è in volo aspetta quel giro,
+      // ed è per questo che la versione dei tocchi si fissa PRIMA. A freddo
+      // senza rete la scrittura fallisce in fretta e la coda resta.
+      // `sincronizzaCoda` non lancia mai (allSettled, coda tollerante):
+      // il catch è una cintura in più, perché un suo errore non è un
+      // errore di lettura e non deve far scattare il ripiego sull'istantanea.
+      try {
+        await sincronizzaCoda();
+      } catch (errore) {
+        console.error('lista: sincronizzazione della coda prima del caricamento fallita.', errore);
+      }
       try {
         const settimana = await leggiSettimanaCorrente();
         if (!settimana) {
@@ -389,15 +406,25 @@ export default function Lista() {
   // `allineaTopUp` e senza il ramo "lista non trovata" che cancella la
   // copia. Al successo la riga "Sei offline" sparisce e l'istantanea si
   // aggiorna; se `carica()` fallisce di nuovo, la lista a schermo resta
-  // com'è (l'istantanea entra solo a schermo vuoto: vedi il `catch`). I
-  // listener vivono solo a lista caricata (dipendono da `weekId`) e se ne
-  // vanno allo smontaggio.
+  // com'è (l'istantanea entra solo a schermo vuoto: vedi il `catch`).
+  //
+  // I listener si registrano una volta sola, al montaggio, e leggono lo
+  // stato corrente da `statoRef` (allineato in un layout effect, cioè
+  // dentro il commit, prima di qualunque evento). Registrarli in un
+  // effetto che dipende da `weekId` e `offline` li farebbe nascere solo
+  // dopo il commit che mostra la lista: un evento arrivato in quella
+  // finestra (piccola nel browser, casuale nei test) si perderebbe. Prima
+  // della lista caricata gli eventi non fanno niente.
   //
   // Prima di leggere si sincronizza la coda, e si aspetta che finisca: una
   // spunta fallita in secondo piano (rete andata via a metà) si ritenta
   // così, e la lettura parte dopo che le scritture in attesa sono arrivate
   // al server — letta prima, tornerebbe senza quelle spunte e con la coda
-  // già svuotata dalla conferma, e le disfarebbe a schermo. Lo stesso
+  // già svuotata dalla conferma, e le disfarebbe a schermo. Vale anche per
+  // `carica()` al ritorno della rete: il listener di montaggio lancia
+  // `sincronizzaCoda()` in parallelo, e `carica()` aspetta quello stesso
+  // giro prima di leggere (non basta il lucchetto: senza l'attesa
+  // `leggiListe` partirebbe con la scrittura ancora in volo). Lo stesso
   // scarto si guarda anche per un tocco arrivato *durante* la
   // sincronizzazione o la lettura: `versioneTocchi` si fissa PRIMA di
   // `sincronizzaCoda()`, non dopo, perché chi arriva mentre un giro è in
@@ -406,13 +433,16 @@ export default function Lista() {
   // la coda poi svuotata dalla sua conferma. Se la versione è cambiata la
   // risposta si butta in silenzio: al prossimo ritorno in primo piano si
   // rilegge.
-  const weekId = stato?.weekId ?? null;
-  const settimanaLabel = stato?.settimanaLabel ?? null;
-  const offline = stato?.offline ?? false;
+  const statoRef = useRef<StatoCarico | null>(null);
+  useLayoutEffect(() => {
+    statoRef.current = stato;
+  }, [stato]);
   useEffect(() => {
-    if (!weekId || settimanaLabel === null) return;
     let attivo = true;
     async function rileggi(motivo: string) {
+      const corrente = statoRef.current;
+      if (!corrente) return;
+      const { weekId, settimanaLabel } = corrente;
       try {
         const versione = versioneTocchi.current;
         await sincronizzaCoda();
@@ -421,10 +451,13 @@ export default function Lista() {
         // una lista fresca già arrivata.
         const casaId = await idCasa();
         const userId = (await idUtenteSessione()) ?? '';
-        const fresca = await leggiListe(weekId!);
+        const fresca = await leggiListe(weekId);
         if (!attivo || !fresca) return;
         if (versioneTocchi.current !== versione) return;
-        salvaIstantaneaLista({ casaId, userId, weekId: weekId!, settimanaLabel: settimanaLabel!, lista: fresca });
+        // La settimana a schermo è cambiata nel frattempo (un `carica()`
+        // intero): la risposta descrive un'altra lista e si butta.
+        if (statoRef.current?.weekId !== weekId) return;
+        salvaIstantaneaLista({ casaId, userId, weekId, settimanaLabel, lista: fresca });
         setStato((p) => (p ? { ...p, lista: applicaCodaLista(fresca), offline: false } : p));
       } catch (errore) {
         console.error(`lista: rilettura ${motivo} fallita.`, errore);
@@ -432,11 +465,13 @@ export default function Lista() {
     }
     function alRitornoInPrimoPiano() {
       if (document.visibilityState !== 'visible') return;
-      if (offline) void caricaRef.current();
+      const corrente = statoRef.current;
+      if (!corrente) return;
+      if (corrente.offline) void caricaRef.current();
       else void rileggi('al ritorno in primo piano');
     }
     function alRitornoOnline() {
-      if (offline) void caricaRef.current();
+      if (statoRef.current?.offline) void caricaRef.current();
     }
     document.addEventListener('visibilitychange', alRitornoInPrimoPiano);
     window.addEventListener('online', alRitornoOnline);
@@ -445,7 +480,7 @@ export default function Lista() {
       document.removeEventListener('visibilitychange', alRitornoInPrimoPiano);
       window.removeEventListener('online', alRitornoOnline);
     };
-  }, [weekId, settimanaLabel, offline]);
+  }, []);
 
   function toggleVoce(voce: VoceSalvata) {
     const nuovo = !voce.spuntato;

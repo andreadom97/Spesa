@@ -1,6 +1,6 @@
 # Lettura offline della lista — design (P7)
 
-**Data:** 06/09/2026 · **Stato:** approvata e implementata il 06/09 (piano omonimo); corretta il 07/09 dopo la review di correttezza (M1, M2, B4); da provare col telefono in aereo
+**Data:** 06/09/2026 · **Stato:** approvata e implementata il 06/09 (piano omonimo); corretta il 07/09 dopo la review di correttezza (M1, M2, B4) e l'11/09 (coda scritta prima di leggere in `carica()`, service worker senza `/api/`); da provare col telefono in aereo
 **Deriva da:** [spesa-backlog-nicchia.md](../../../spesa-backlog-nicchia.md) (P7), README "Limite
 noto: la lista non è ancora leggibile offline", `src/offline/coda.ts` (le spunte offline)
 
@@ -13,7 +13,10 @@ la lista". Le spunte fatte offline si accodano già e si sincronizzano al ritorn
 ## 0. Cosa c'è già e cosa manca
 
 - `public/sw.js` mette in cache le pagine same-origin e non tocca mai Supabase, per
-  costruzione: niente dati vecchi spacciati per freschi.
+  costruzione: niente dati vecchi spacciati per freschi. Dall'11/09 lascia fuori anche
+  le API dell'app (`/api/*`: dati, non guscio — vanno sempre alla rete, niente cache né
+  lettura dalla cache) e mette in cache solo le risposte `ok`: un 502 o un 401 non
+  viene riservito offline al posto della pagina buona.
 - `src/offline/coda.ts` tiene in `localStorage` le spunte in attesa (`spesa:coda`) e la
   Lista le applica sopra a quello che legge dal server.
 - La Lista, se `leggiSettimanaCorrente`/`leggiListe` falliscono, mostra un errore. Manca
@@ -51,6 +54,13 @@ La rete decide, la copia locale ripara.
   quel tocco — con la coda ormai vuota da riapplicare disfarebbe a schermo una spunta
   che sul server è fatta, e un ritocco la annullerebbe. La lista mostrata è sempre
   almeno aggiornata quanto l'istantanea, perché ogni spunta locale ci passa sopra.
+- **`carica()` scrive la coda prima di leggere**, come `rileggi`: subito dopo aver
+  fissato la versione dei tocchi aspetta `sincronizzaCoda()` (si accoda al giro già in
+  volo lanciato dal listener di montaggio), poi legge. Letta in parallelo, la lista
+  potrebbe rispondere prima che la spunta in coda atterri, e la conferma svuoterebbe
+  la coda prima che venga riapplicata: la lista andrebbe a schermo senza la spunta
+  mentre sul server c'è. A freddo senza rete la scrittura fallisce in fretta e la
+  spunta resta in coda; un tocco durante la sincronizzazione fa scartare la risposta.
 - Un tocco arrivato **mentre `carica()` è in volo** (in qualunque sua fase: settimana
   corrente, `allineaTopUp`, liste) rende la risposta più vecchia di quella a schermo
   e la fa scartare: la versione dei tocchi si fissa in testa al giro, non prima della
@@ -119,14 +129,18 @@ comporta come assente.
   fatte nel frattempo.
   La versione dei tocchi (`versioneTocchi`) si fissa **come prima riga di `carica()`**:
   un tocco arrivato in qualunque fase del giro (settimana corrente, `allineaTopUp`,
-  liste) fa scartare la risposta, come in `rileggi`.
+  liste) fa scartare la risposta, come in `rileggi`. Subito dopo, `await
+  sincronizzaCoda()` (che non lancia mai: `allSettled` e coda tollerante), e solo poi
+  `leggiSettimanaCorrente`.
 - `StatoCarico` acquista `offline: boolean`. Con `offline` la riga sotto la testata (12.5px,
   `var(--sec)`, come le altre righe di spiegazione), copy esatto di §1.
 - Con `stato.offline`, sia il listener `online` sia quello di `visibilitychange` rifanno
   `carica()` intero (§1); con `offline` falso il ritorno in primo piano rilegge solo le
   liste (`rileggi`), e al successo salva l'istantanea e mette `offline: false`.
 - `sw.js`: aggiungere `/dispensa` e `/impostazioni` al guscio precaricato? No: il guscio si
-  riempie visitando le pagine, e la promessa è la Lista. Nessun cambio al service worker.
+  riempie visitando le pagine, e la promessa è la Lista. Il solo cambio al service worker
+  (11/09) è di sicurezza: `/api/*` fuori dalla cache e dalla lettura dalla cache, e
+  `cache.put` solo su risposte `ok` (vedi §0).
 
 ## 4. Test che contano
 
@@ -135,7 +149,8 @@ comporta come assente.
 - Lista: lettura fallita con istantanea → lista mostrata, riga offline, coda applicata; senza
   istantanea → errore di oggi; lettura riuscita → istantanea salvata (contenuto senza coda);
   `nonTrovata` → istantanea cancellata; `online` con `offline` → caricamento intero
-  (`leggiSettimanaCorrente` riletta, `allineaTopUp` chiamata) e riga che sparisce, e con
+  (`leggiSettimanaCorrente` riletta, `allineaTopUp` chiamata) e riga che sparisce, con la
+  coda scritta prima della lettura (la spunta confermata nel frattempo non si disfa), e con
   la settimana corrente cambiata senza lista → "non trovata" e istantanea cancellata;
   istantanea di un altro account → non mostrata e cancellata; `entraInCasa` cancella
   l'istantanea (test in `casa.test.ts`); al ritorno della rete con la coda che si
@@ -165,4 +180,4 @@ comporta come assente.
   controllo. Alla prima apertura con rete l'id arriva, l'istantanea risulta di un'altra
   casa e si cancella. È un dato che quella persona ha già visto con i suoi occhi, non
   un dato nuovo.
-- Il service worker resta com'è: guscio same-origin, mai Supabase.
+- Il service worker resta com'è: guscio same-origin, mai Supabase, mai `/api/*`, solo risposte `ok`.

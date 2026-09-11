@@ -9,6 +9,9 @@ import type { MealSlotDef } from '@/domain/types';
 // fallirebbe in modo silenzioso, mascherando il test come un bug diverso.
 const ASSENZE_VUOTE_MODULO = [false, false, false, false, false, false, false];
 vi.mock('@/data/impostazioni', () => ({
+  // Le stesse costanti del modulo vero: lo stepper le importa da lì.
+  MIN_PORZIONI: 1,
+  MAX_PORZIONI: 4,
   leggiImpostazioni: vi.fn(),
   salvaImpostazioni: vi.fn(),
   leggiSlotDefs: vi.fn(),
@@ -198,7 +201,11 @@ describe('Impostazioni', () => {
       expect(screen.getByText('La lista compra per 3. Le porzioni nel piatto restano quelle scritte.')).toBeInTheDocument();
     });
 
-    it('due tap veloci: se il primo salvataggio fallisce dopo che il secondo è riuscito, resta il valore del secondo senza errore', async () => {
+    // Le scritture partono una dopo l'altra (review dell'11/09): la seconda
+    // aspetta la prima anche se la prima fallisce, perché riscrive la riga
+    // intera e non dipende da quella. L'errore della prima non si mostra:
+    // non è l'ultima richiesta, e la seconda dirà l'ultima parola.
+    it('due tap veloci: se il primo salvataggio fallisce, il secondo si scrive lo stesso e resta il suo valore senza errore', async () => {
       mockDati({ porzioni: 1 });
       render(<Impostazioni />);
       await screen.findByDisplayValue('Colazione');
@@ -215,14 +222,17 @@ describe('Impostazioni', () => {
       fireEvent.click(screen.getByLabelText('Aumenta porzioni'));
       await waitFor(() => expect(salvataggi).toHaveLength(1));
       fireEvent.click(screen.getByLabelText('Aumenta porzioni'));
-      await waitFor(() => expect(salvataggi).toHaveLength(2));
-
-      salvataggi[1].resolve();
-      await waitFor(() => expect(screen.getByLabelText('Porzioni')).toHaveTextContent('3'));
+      await new Promise((r) => setTimeout(r, 0));
+      // La seconda scrittura aspetta la prima.
+      expect(salvataggi).toHaveLength(1);
 
       salvataggi[0].reject(new Error('rete'));
+      await waitFor(() => expect(salvataggi).toHaveLength(2));
+      expect(vi.mocked(salvaImpostazioni).mock.calls[1][0].moltiplicatorePorzioni).toBe(3);
+      salvataggi[1].resolve();
+
+      await waitFor(() => expect(screen.getByLabelText('Porzioni')).toHaveTextContent('3'));
       await new Promise((r) => setTimeout(r, 0));
-      expect(screen.getByLabelText('Porzioni')).toHaveTextContent('3');
       expect(screen.queryByText('Non siamo riusciti a salvare. Riprova.')).not.toBeInTheDocument();
       errore.mockRestore();
     });
@@ -251,12 +261,13 @@ describe('Impostazioni', () => {
       fireEvent.click(screen.getByLabelText('Aumenta porzioni'));
       await waitFor(() => expect(salvataggi).toHaveLength(1));
       fireEvent.click(screen.getByLabelText('Aumenta porzioni'));
-      await waitFor(() => expect(salvataggi).toHaveLength(2));
       expect(screen.getByLabelText('Porzioni')).toHaveTextContent('3');
 
-      // Il primo riesce: la sua rilettura (2) è superata dal secondo tap e si ignora.
+      // Il primo riesce: la sua rilettura (2) è superata dal secondo tap e si
+      // ignora. Solo ora parte la seconda scrittura (le scritture sono in fila).
       salvataggi[0].resolve();
       await waitFor(() => expect(leggiImpostazioni).toHaveBeenCalledTimes(2));
+      await waitFor(() => expect(salvataggi).toHaveLength(2));
       await new Promise((r) => setTimeout(r, 0));
       expect(screen.getByLabelText('Porzioni')).toHaveTextContent('3');
 
@@ -265,6 +276,51 @@ describe('Impostazioni', () => {
       expect(await screen.findByText('Non siamo riusciti a salvare. Riprova.')).toBeInTheDocument();
       await waitFor(() => expect(screen.getByLabelText('Porzioni')).toHaveTextContent('2'));
       expect(leggiImpostazioni).toHaveBeenCalledTimes(3);
+      expect(screen.getByText('La lista compra per 2. Le porzioni nel piatto restano quelle scritte.')).toBeInTheDocument();
+      errore.mockRestore();
+    });
+
+    // Review dell'11/09 (bassa): con due tap 1→2 e 2→3, se la seconda
+    // scrittura fallisce subito mentre la prima è ancora in volo, il catch
+    // della seconda è "l'ultima richiesta" e rilegge dal server, che ha
+    // ancora 1; poi la prima riesce, ma la sua rilettura è superata: server
+    // 2, schermo 1. Le scritture si serializzano: la seconda parte solo dopo
+    // la prima, così il rollback rilegge sempre dopo tutte le scritture
+    // precedenti e l'ordine di arrivo al server è quello dei tap.
+    it('due tap veloci: se la seconda scrittura fallisce mentre la prima è in volo, alla fine schermo e server dicono 2', async () => {
+      mockDati({ porzioni: 1 });
+      render(<Impostazioni />);
+      await screen.findByDisplayValue('Colazione');
+      const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      // Il server ha quello che le scritture confermate gli hanno lasciato.
+      let sulServer = 1;
+      let confermaPrima: () => void = () => {};
+      vi.mocked(salvaImpostazioni)
+        .mockImplementationOnce((i) => new Promise<void>((resolve) => {
+          confermaPrima = () => { sulServer = i.moltiplicatorePorzioni; resolve(); };
+        }))
+        .mockRejectedValueOnce(new Error('rete'));
+      vi.mocked(leggiImpostazioni).mockImplementation(async () => ({
+        moltiplicatorePorzioni: sulServer, ordineAree: [...ORDINE_AREE_TEST], settimaneCiclo: 1, cicloOrigine: null,
+      }));
+
+      fireEvent.click(screen.getByLabelText('Aumenta porzioni'));
+      await waitFor(() => expect(salvaImpostazioni).toHaveBeenCalledTimes(1));
+      fireEvent.click(screen.getByLabelText('Aumenta porzioni'));
+      expect(screen.getByLabelText('Porzioni')).toHaveTextContent('3');
+      await new Promise((r) => setTimeout(r, 0));
+      // La seconda scrittura aspetta la prima: non è ancora partita.
+      expect(salvaImpostazioni).toHaveBeenCalledTimes(1);
+      expect(screen.queryByText('Non siamo riusciti a salvare. Riprova.')).not.toBeInTheDocument();
+
+      // La prima atterra (server: 2); solo ora parte la seconda, che fallisce.
+      confermaPrima();
+      await waitFor(() => expect(salvaImpostazioni).toHaveBeenCalledTimes(2));
+      expect(vi.mocked(salvaImpostazioni).mock.calls[1][0].moltiplicatorePorzioni).toBe(3);
+
+      expect(await screen.findByText('Non siamo riusciti a salvare. Riprova.')).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByLabelText('Porzioni')).toHaveTextContent('2'));
       expect(screen.getByText('La lista compra per 2. Le porzioni nel piatto restano quelle scritte.')).toBeInTheDocument();
       errore.mockRestore();
     });
