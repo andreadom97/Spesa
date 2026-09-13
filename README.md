@@ -21,13 +21,13 @@ attuale** — i piatti del nutrizionista disattivati, i nuovi creati, il ciclo s
 riallineato. L'esecuzione (`eseguiScritture`) è idempotente per costruzione: un errore a
 metà si ripara riprovando, non lascia il piano a metà strada.
 
-**Stato: estrattore vero in codice, chiave non ancora su Vercel.** Dal 30/08 l'estrattore
+**Stato: estrattore vero in codice, chiave su Vercel dal 30/08 (Production).** Dal 30/08 l'estrattore
 esiste in `src/server/import-ai.ts` (structured output, streaming) e `/api/import/estrai`
 ha tre rami, in quest'ordine:
 
 1. `ANTHROPIC_API_KEY` presente → estrazione vera delle foto o del PDF caricati, con il
-   modello di `IMPORT_AI_MODEL` (default `claude-sonnet-5`). Su Vercel la chiave non è
-   ancora impostata: si accende dopo il run dell'eval che decide il modello (sotto).
+   modello di `IMPORT_AI_MODEL` (default `claude-sonnet-5`). Su Vercel la chiave c'è
+   per Production dal 30/08; l'eval (sotto) serve solo a cambiare modello.
 2. Altrimenti `IMPORT_MOCK` (solo sviluppo, mai su Vercel) → un fixture al posto della
    lettura; i file caricati vengono ricevuti e scartati, così la firma della route è la
    stessa dell'estrazione vera.
@@ -113,7 +113,7 @@ raggiungibile da chiunque abbia un account. Il tetto è una difesa, e va dichiar
 
 | Variabile | Default | Cosa fa |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | *(assente)* | Accende l'estrazione vera. Non ancora su Vercel |
+| `ANTHROPIC_API_KEY` | *(assente)* | Accende l'estrazione vera. Su Vercel (Production) dal 30/08 |
 | `ANTHROPIC_WORKSPACE_ID` | *(assente)* | Opzionale: header `anthropic-workspace-id` per le chiavi identity-linked (`src/server/anthropic.ts`); con una chiave di workspace non serve |
 | `IMPORT_AI_MODEL` | `claude-sonnet-5` | Il modello dell'estrattore. È configurazione, non codice |
 | `IMPORT_AI_EFFORT` | *(assente)* | Opzionale, `low`/`medium`/`high` → `output_config.effort` su tutte le chiamate. Consigliato `low` con Opus: è trascrizione, non ragionamento |
@@ -317,7 +317,7 @@ trascrive o rotola i piatti, non li propone né li valuta.
 seminare due volte gli ingredienti (nessun vincolo di unicità sul nome); la schermata
 veloce non conosce componenti, giro, procedimento né conversioni di unità; i difetti della
 mini-creazione sono per area e unità, non per ingrediente; la porta dell'import risponde
-503 finché la chiave non è su Vercel. Spec:
+503 se manca la chiave (su Vercel c'è per Production). Spec:
 [`docs/superpowers/specs/2026-09-06-due-porte-design.md`](docs/superpowers/specs/2026-09-06-due-porte-design.md).
 
 ## La casa condivisa (06/09/2026)
