@@ -18,7 +18,12 @@ Da `/impostazioni` → **Importa la dieta**: acquisisci le pagine della dieta de
 nutrizionista (foto o PDF), un wizard guida la revisione pasto per pasto, propone i
 formati di confezione per gli ingredienti nuovi, e al riepilogo **sostituisce il piano
 attuale** — i piatti del nutrizionista disattivati, i nuovi creati, il ciclo settimane
-riallineato. L'esecuzione (`eseguiScritture`) è idempotente per costruzione: un errore a
+riallineato. Le foto si scattano con la Camera in-app (fotocamera posteriore via
+`getUserMedia`); le foto si possono anche scegliere dalla galleria (DALLA GALLERIA), senza
+scattarle. Scatti e foto di galleria passano dallo stesso percorso: ridimensionamento al
+lato lungo di 1568px e jpeg 0.75 (così anche un HEIC da iPhone o una foto da 5 MB entra
+nei limiti della route: jpeg/png/webp, 4 MiB in tutto), tetto di 12 pagine applicato
+prima dell'invio. L'esecuzione (`eseguiScritture`) è idempotente per costruzione: un errore a
 metà si ripara riprovando, non lascia il piano a metà strada.
 
 **Stato: estrattore vero in codice, chiave su Vercel dal 30/08 (Production).** Dal 30/08 l'estrattore

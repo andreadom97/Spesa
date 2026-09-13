@@ -39,6 +39,14 @@ beforeEach(() => {
   Object.defineProperty(navigator, 'mediaDevices', { value: undefined, configurable: true });
   URL.createObjectURL = vi.fn(() => 'blob:finto');
   URL.revokeObjectURL = vi.fn();
+  // Camera ricomprime ogni foto scelta (createImageBitmap → canvas → jpeg):
+  // jsdom non sa fare nessuno dei tre passaggi, senza questi mock i file
+  // sarebbero scartati come illeggibili e nessuna foto arriverebbe alla pagina.
+  vi.stubGlobal('createImageBitmap', vi.fn(async () => ({ width: 100, height: 100, close: vi.fn() })));
+  HTMLCanvasElement.prototype.getContext = vi.fn(() => ({ drawImage: vi.fn() })) as unknown as typeof HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.toBlob = vi.fn(function (cb: BlobCallback) {
+    cb(new Blob(['jpeg'], { type: 'image/jpeg' }));
+  });
   vi.mocked(leggiBozzaImport).mockResolvedValue(null);
   vi.mocked(leggiSlotDefs).mockResolvedValue(SLOTS);
   vi.mocked(leggiIngredienti).mockResolvedValue([]);
@@ -50,9 +58,12 @@ beforeEach(() => {
 // bottone "estrai la dieta"), ma `Camera` decide fra fotocamera e fallback solo
 // dentro un effect, un giro asincrono dopo il proprio mount — `findByLabelText`
 // aspetta quel giro invece di assumere che sia già passato.
+// Poi aspetta la miniatura: la ricompressione in Camera è asincrona, e finché
+// non è finita `onFoto` non è chiamato e il bottone ESTRAI resta spento.
 async function caricaUnaFoto() {
   const input = await screen.findByLabelText(/scegli le foto/i);
   fireEvent.change(input, { target: { files: [new File(['a'], 'p1.jpg', { type: 'image/jpeg' })] } });
+  await screen.findByText('pag. 1');
 }
 
 describe('Importa', () => {
