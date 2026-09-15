@@ -78,6 +78,19 @@ la chiave su Vercel e le migrazioni 0010–0013 sono nelle checklist locali dei 
 distribuzione, non codice da remoto: prima le prove locali di tutto quello che è stato
 consegnato dal 05/09.
 
+### Dalle prove del 15/09 (piccoli, prima dello store)
+
+- **Rigenerare la lista a mano.** Oggi la lista nasce una volta sola, a CONFERMA E CREA
+  LA LISTA, e le quantità restano congelate: chi cambia "Per quante persone cucini" a
+  settimana già confermata non vede nessun effetto fino al lunedì dopo. Voluto da Andrea
+  il 15/09: un tasto per rigenerare subito la lista della settimana corrente, con
+  l'avviso che le spunte fatte si perdono e che, a porzioni cambiate, va rifatta a mano
+  (nessuna riga di aiuto al posto del tasto). Da decidere: cosa fare delle spunte già
+  fatte (scartarle è la scelta semplice; il residuo non è ancora accreditato finché la
+  spesa non è chiusa, quindi non c'è niente da stornare).
+- **ESCI dall'account** in Impostazioni: oggi non esiste un logout; su un telefono
+  condiviso o per provare un secondo account serve una scheda in incognito.
+
 ## Modello per l'import: Sonnet o Opus, e quanto costa
 
 Stima per un import tipico di 7 foto (dieta 6): circa 12k token in ingresso fra
