@@ -80,7 +80,7 @@ consegnato dal 05/09.
 
 ### Dalle prove del 15/09 (piccoli, prima dello store)
 
-- **Rigenerare la lista a mano.** Oggi la lista nasce una volta sola, a CONFERMA E CREA
+- ~~**Rigenerare la lista a mano.**~~ ✓ 15/09 (`RIFAI LA LISTA` in fondo alla Lista). Oggi la lista nasce una volta sola, a CONFERMA E CREA
   LA LISTA, e le quantità restano congelate: chi cambia "Per quante persone cucini" a
   settimana già confermata non vede nessun effetto fino al lunedì dopo. Voluto da Andrea
   il 15/09: un tasto per rigenerare subito la lista della settimana corrente, con
@@ -88,7 +88,7 @@ consegnato dal 05/09.
   (nessuna riga di aiuto al posto del tasto). Da decidere: cosa fare delle spunte già
   fatte (scartarle è la scelta semplice; il residuo non è ancora accreditato finché la
   spesa non è chiusa, quindi non c'è niente da stornare).
-- **ESCI dall'account** in Impostazioni: oggi non esiste un logout; su un telefono
+- ~~**ESCI dall'account** in Impostazioni~~ ✓ 15/09 (sezione ACCOUNT, esce solo da questo dispositivo). Prima non esisteva un logout; su un telefono
   condiviso o per provare un secondo account serve una scheda in incognito.
 
 ## Modello per l'import: Sonnet o Opus, e quanto costa

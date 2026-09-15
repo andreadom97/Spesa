@@ -378,6 +378,31 @@ scansione; la quantità di OFF la dichiara un contributore e si conferma con un 
 la correzione si fa prima di chiudere la spesa. Spec:
 [`docs/superpowers/specs/2026-09-07-scan-confezione-design.md`](docs/superpowers/specs/2026-09-07-scan-confezione-design.md).
 
+## Rifare la lista a mano e uscire dall'account (15/09/2026)
+
+Dalle prove in produzione del 15/09. Spec:
+[`docs/superpowers/specs/2026-09-15-rigenera-lista-design.md`](docs/superpowers/specs/2026-09-15-rigenera-lista-design.md)
+e [`docs/superpowers/specs/2026-09-15-esci-design.md`](docs/superpowers/specs/2026-09-15-esci-design.md).
+
+**RIFAI LA LISTA.** La lista nasce una volta sola, a `CONFERMA E CREA LA LISTA`, e le
+quantità restano congelate: chi cambia "Per quante persone cucini", aggiunge piatti o
+corregge un formato a settimana già confermata non vedeva nessun effetto fino al lunedì
+dopo. In fondo alla Lista, a settimana `confermata` e con la rete, il tasto a due tocchi
+`RIFAI LA LISTA` ricalcola da piatti, dispensa e porzioni di adesso: le spunte e le
+risposte ai controlli si perdono (lo dice il testo), le righe aggiunte a mano
+sopravvivono, il non ricomprato della settimana viene ricalcolato. In `bozza` la lista
+non esiste ancora, a `chiusa` il residuo è già accreditato: il tasto non c'è.
+`rigeneraListe` in `src/data/lista.ts` (svuota la coda offline prima, cancella
+l'istantanea dopo). In Impostazioni, dopo un cambio delle porzioni, una riga ricorda
+che la lista di questa settimana va rifatta da lì.
+
+**ESCI DALL'ACCOUNT.** In fondo a Impostazioni, sezione ACCOUNT: l'email con cui sei
+dentro e il tasto a due tocchi. Esce solo da questo dispositivo (`signOut` con
+`scope: 'local'`: il telefono resta collegato se esci dal PC), poi cancella
+l'istantanea della lista, la coda delle spunte e la memoria della casa, e manda a
+`/entra`. Senza rete non esce e lo dice: se il server non ha chiuso la sessione, i
+dati locali non si toccano. `src/data/sessione.ts`.
+
 ## Dove sta cosa
 
 | File | Cosa contiene |
