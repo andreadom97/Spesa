@@ -92,10 +92,15 @@ Una schermata, un piatto alla volta, che resta aperta finché non si dice basta.
 
 **Testata**: freccia indietro → `/piatti`; etichetta mono `PIATTO {n+1}` dove `n` = piatti
 già nel repertorio (letti all'apertura) + salvati in questa sessione. Sotto, una riga:
-con `n < 8` → `{n} piatti salvati · ne bastano 8 per far girare la settimana` (con `n = 0`:
-`Nessun piatto ancora · ne bastano 8 per far girare la settimana`; con `n = 1`: `1 piatto
-salvato · …`); con `n ≥ 8` → `Ne hai {n}: la settimana può girare. Aggiungine quanti vuoi.`
-Otto perché quattro pasti di default per due piatti ciascuno: il planner ruota per pasto.
+con `n < 8` → `{n} piatti salvati · ne bastano 8 per far girare la settimana · o esci con
+HO FINITO` (con `n = 0`: `Nessun piatto ancora · ne bastano 8 per far girare la settimana`,
+senza la coda: con zero piatti uscire non ha senso; con `n = 1`: `1 piatto salvato · …`);
+con `n ≥ 8` e ogni pasto con almeno 2 piatti → `Ne hai {n}: la settimana può girare.
+Aggiungine quanti vuoi.`; con `n ≥ 8` ma un pasto scoperto (quello con meno piatti, a
+parità il primo) → `{n} piatti salvati · manca 1 piatto per {pasto} (o esci con HO
+FINITO)` / `mancano 2 piatti per {pasto} (…)`. Otto perché quattro pasti di default per
+due piatti ciascuno: il planner ruota per pasto, otto cene non fanno girare la colazione.
+La riga basta: niente modali né conferme sotto il contatore.
 
 **Il modulo**:
 - Campo `Dai un nome al piatto` (stesso placeholder dell'editor).
@@ -121,7 +126,11 @@ Al successo: `n` aumenta, il modulo si svuota (il pasto resta), una riga sopra i
 dice `Salvato: {nome}` finché non si ricomincia a scrivere. Errore → `Non siamo riusciti
 a salvare il piatto. Riprova.` con i dati intatti.
 
-Bottone secondario `HO FINITO` → `/settimana` (è lì che si vede la settimana girare).
+Bottone `HO FINITO` → `/settimana` (è lì che si vede la settimana girare). È un tasto
+vero, non un link sbiadito: stessa altezza di `SALVA E AVANTI`, bianco con bordo e testo
+scuro. Quando la settimana può girare (`settimanaPuoGirare`) diventa lui l'azione
+principale — pieno nero — e `SALVA E AVANTI` passa allo stile secondario (spento, come
+sempre, finché il piatto non è valido).
 
 ### 2.3 Mini-creazione di un ingrediente
 

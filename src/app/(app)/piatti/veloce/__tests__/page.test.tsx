@@ -29,6 +29,9 @@ const ASSENZE = [false, false, false, false, false, false, false];
 const SLOT_COLAZIONE: MealSlotDef = { id: 'sd-1', nome: 'Colazione', posizione: 0, assenzeAbituali: ASSENZE };
 const SLOT_PRANZO: MealSlotDef = { id: 'sd-2', nome: 'Pranzo', posizione: 1, assenzeAbituali: ASSENZE };
 const SLOT_CENA: MealSlotDef = { id: 'sd-3', nome: 'Cena', posizione: 2, assenzeAbituali: ASSENZE };
+const SLOT_SPUNTINO: MealSlotDef = { id: 'sd-4', nome: 'Spuntino', posizione: 3, assenzeAbituali: ASSENZE };
+const TRE_PASTI = [SLOT_COLAZIONE, SLOT_PRANZO, SLOT_CENA];
+const QUATTRO_PASTI = [...TRE_PASTI, SLOT_SPUNTINO];
 
 const ING_PASTA: Ingredient = {
   id: 'i-pasta', nome: 'Pasta', unitaBase: 'g', area: 'cereali',
@@ -57,8 +60,17 @@ function piattoFinto(i: number, slotDefId = 'sd-1'): Dish {
   };
 }
 
-function mockBase(repertorio: Dish[] = []) {
-  vi.mocked(leggiSlotDefs).mockResolvedValue([SLOT_COLAZIONE, SLOT_PRANZO, SLOT_CENA]);
+/** Un repertorio con tanti piatti per pasto quanti i conteggi, nell'ordine dei pasti passati. */
+function repertorioPerPasto(conteggi: number[], slotDefs: MealSlotDef[] = QUATTRO_PASTI): Dish[] {
+  const piatti: Dish[] = [];
+  conteggi.forEach((quanti, i) => {
+    for (let k = 0; k < quanti; k++) piatti.push(piattoFinto(piatti.length + 1, slotDefs[i].id));
+  });
+  return piatti;
+}
+
+function mockBase(repertorio: Dish[] = [], slotDefs: MealSlotDef[] = TRE_PASTI) {
+  vi.mocked(leggiSlotDefs).mockResolvedValue(slotDefs);
   vi.mocked(leggiIngredienti).mockResolvedValue([ING_PASTA, ING_PASSATA, ING_CAFFE, ING_UOVA]);
   vi.mocked(leggiRepertorio).mockResolvedValue(repertorio);
   vi.mocked(leggiImpostazioni).mockResolvedValue({
@@ -69,8 +81,8 @@ function mockBase(repertorio: Dish[] = []) {
   });
 }
 
-async function apri(repertorio: Dish[] = []) {
-  mockBase(repertorio);
+async function apri(repertorio: Dish[] = [], slotDefs: MealSlotDef[] = TRE_PASTI) {
+  mockBase(repertorio, slotDefs);
   render(<Veloce />);
   await screen.findByPlaceholderText('Dai un nome al piatto');
 }
@@ -109,13 +121,17 @@ describe('Piatti veloce (/piatti/veloce)', () => {
     it('con 1 piatto: PIATTO 2 e "1 piatto salvato"', async () => {
       await apri([piattoFinto(1)]);
       expect(screen.getByText('PIATTO 2')).toBeInTheDocument();
-      expect(screen.getByText('1 piatto salvato · ne bastano 8 per far girare la settimana')).toBeInTheDocument();
+      expect(
+        screen.getByText('1 piatto salvato · ne bastano 8 per far girare la settimana · o esci con HO FINITO'),
+      ).toBeInTheDocument();
     });
 
     it('con 3 piatti: "3 piatti salvati"', async () => {
       await apri([1, 2, 3].map((i) => piattoFinto(i)));
       expect(screen.getByText('PIATTO 4')).toBeInTheDocument();
-      expect(screen.getByText('3 piatti salvati · ne bastano 8 per far girare la settimana')).toBeInTheDocument();
+      expect(
+        screen.getByText('3 piatti salvati · ne bastano 8 per far girare la settimana · o esci con HO FINITO'),
+      ).toBeInTheDocument();
     });
 
     // B4: il planner ruota per pasto, quindi "può girare" solo se OGNI pasto
@@ -130,10 +146,12 @@ describe('Piatti veloce (/piatti/veloce)', () => {
       expect(screen.getByText('Ne hai 9: la settimana può girare. Aggiungine quanti vuoi.')).toBeInTheDocument();
     });
 
-    it('con 9 piatti tutti a colazione: PIATTO 10 ma "manca ancora qualcosa per Pranzo"', async () => {
+    it('con 9 piatti tutti a colazione: PIATTO 10 ma "mancano 2 piatti per Pranzo"', async () => {
       await apri([1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => piattoFinto(i)));
       expect(screen.getByText('PIATTO 10')).toBeInTheDocument();
-      expect(screen.getByText('9 piatti salvati · manca ancora qualcosa per Pranzo')).toBeInTheDocument();
+      expect(
+        screen.getByText('9 piatti salvati · mancano 2 piatti per Pranzo (o esci con HO FINITO)'),
+      ).toBeInTheDocument();
     });
 
     it('il pasto nominato è quello con meno piatti, non il primo scoperto', async () => {
@@ -143,7 +161,9 @@ describe('Piatti veloce (/piatti/veloce)', () => {
         piattoFinto(5, 'sd-1'), piattoFinto(6, 'sd-1'), piattoFinto(7, 'sd-1'),
         piattoFinto(8, 'sd-2'),
       ]);
-      expect(screen.getByText('8 piatti salvati · manca ancora qualcosa per Cena')).toBeInTheDocument();
+      expect(
+        screen.getByText('8 piatti salvati · mancano 2 piatti per Cena (o esci con HO FINITO)'),
+      ).toBeInTheDocument();
     });
 
     it('i piatti salvati in sessione contano per il loro pasto: coprire l\'ultimo pasto fa girare la settimana', async () => {
@@ -153,7 +173,9 @@ describe('Piatti veloce (/piatti/veloce)', () => {
         piattoFinto(4, 'sd-2'), piattoFinto(5, 'sd-2'), piattoFinto(6, 'sd-2'),
         piattoFinto(7, 'sd-3'), piattoFinto(8, 'sd-2'),
       ]);
-      expect(screen.getByText('8 piatti salvati · manca ancora qualcosa per Cena')).toBeInTheDocument();
+      expect(
+        screen.getByText('8 piatti salvati · manca 1 piatto per Cena (o esci con HO FINITO)'),
+      ).toBeInTheDocument();
 
       scriviNome('Pollo e riso');
       fireEvent.click(screen.getByRole('button', { name: 'Cena' }));
@@ -163,6 +185,20 @@ describe('Piatti veloce (/piatti/veloce)', () => {
       expect(await screen.findByText('Salvato: Pollo e riso')).toBeInTheDocument();
       expect(screen.getByText('PIATTO 10')).toBeInTheDocument();
       expect(screen.getByText('Ne hai 9: la settimana può girare. Aggiungine quanti vuoi.')).toBeInTheDocument();
+    });
+
+    // La prova del 15/09 con un account nuovo: 11 piatti (2/6/2/1) e l'utente
+    // si è sentito bloccato perché la riga non diceva cosa mancava né che si
+    // poteva uscire.
+    it('con 11 piatti e lo Spuntino a 1: dice che manca 1 piatto per Spuntino e che si può uscire', async () => {
+      await apri(repertorioPerPasto([2, 6, 2, 1]), QUATTRO_PASTI);
+      expect(screen.getByText('PIATTO 12')).toBeInTheDocument();
+      expect(
+        screen.getByText('11 piatti salvati · manca 1 piatto per Spuntino (o esci con HO FINITO)'),
+      ).toBeInTheDocument();
+      const hoFinito = screen.getByRole('link', { name: 'HO FINITO' });
+      expect(hoFinito).toHaveAttribute('href', '/settimana');
+      expect(hoFinito).toHaveAttribute('data-primario', 'false');
     });
 
     it('i pasti vengono dai meal_slot_def reali, il primo è preselezionato', async () => {
@@ -334,7 +370,9 @@ describe('Piatti veloce (/piatti/veloce)', () => {
       });
 
       expect(screen.getByText('PIATTO 2')).toBeInTheDocument();
-      expect(screen.getByText('1 piatto salvato · ne bastano 8 per far girare la settimana')).toBeInTheDocument();
+      expect(
+        screen.getByText('1 piatto salvato · ne bastano 8 per far girare la settimana · o esci con HO FINITO'),
+      ).toBeInTheDocument();
       expect(screen.getByLabelText('Nome del piatto')).toHaveValue('');
       expect(screen.queryByLabelText('Quantità di Pasta')).not.toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Cena' })).toHaveAttribute('aria-pressed', 'true');
@@ -562,6 +600,21 @@ describe('Piatti veloce (/piatti/veloce)', () => {
       await apri();
       expect(screen.getByRole('link', { name: 'HO FINITO' })).toHaveAttribute('href', '/settimana');
       expect(screen.getByRole('link', { name: 'Torna ai piatti' })).toHaveAttribute('href', '/piatti');
+    });
+
+    it('HO FINITO è secondario finché la settimana non gira, e SALVA resta primario', async () => {
+      await apri(repertorioPerPasto([2, 6, 2, 1]), QUATTRO_PASTI);
+      expect(screen.getByRole('link', { name: 'HO FINITO' })).toHaveAttribute('data-primario', 'false');
+      expect(screen.getByRole('button', { name: 'SALVA E AVANTI' })).toHaveAttribute('data-primario', 'true');
+    });
+
+    it('quando la settimana può girare HO FINITO diventa primario e SALVA secondario', async () => {
+      await apri(repertorioPerPasto([2, 2, 2, 2]), QUATTRO_PASTI);
+      expect(screen.getByText('Ne hai 8: la settimana può girare. Aggiungine quanti vuoi.')).toBeInTheDocument();
+      const hoFinito = screen.getByRole('link', { name: 'HO FINITO' });
+      expect(hoFinito).toHaveAttribute('href', '/settimana');
+      expect(hoFinito).toHaveAttribute('data-primario', 'true');
+      expect(screen.getByRole('button', { name: 'SALVA E AVANTI' })).toHaveAttribute('data-primario', 'false');
     });
   });
 });

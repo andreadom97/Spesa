@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import Link from 'next/link';
 import type { AreaId, Ingredient, MealSlotDef, UnitaBase } from '@/domain/types';
 import { leggiIngredienti, leggiRepertorio, salvaIngrediente, salvaPiatto } from '@/data/repertorio';
@@ -8,13 +8,7 @@ import { leggiImpostazioni, leggiSlotDefs } from '@/data/impostazioni';
 import { coloreArea, nomeArea } from '@/domain/aree';
 import { predefinitiIngrediente } from '@/domain/ingredienti-base';
 import { Segmento } from '@/components/Segmento';
-
-/**
- * Quattro pasti di default per due piatti ciascuno: sotto questa soglia il
- * planner, che ruota per pasto, ripete lo stesso piatto ogni giorno. È il
- * numero della spec (2026-09-06, §2.2), non un consiglio su quanto mangiare.
- */
-const PIATTI_PER_GIRARE = 8;
+import { settimanaPuoGirare, testoContatore } from './contatore';
 
 /** Quanti risultati mostrare sotto la ricerca: oltre, si scrive una lettera in più. */
 const MAX_RISULTATI = 8;
@@ -30,38 +24,6 @@ function normalizza(testo: string): string {
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .trim();
-}
-
-/**
- * Quanti piatti per pasto perché la rotazione abbia qualcosa da alternare:
- * con uno solo il planner ripete lo stesso piatto ogni giorno di quel pasto.
- */
-const PIATTI_PER_PASTO = 2;
-
-/**
- * La riga sotto la testata, a tre livelli: `n` piatti nel repertorio (letti
- * all'apertura più quelli salvati in questa sessione). Sotto la soglia dice
- * quanti ne mancano a far girare la settimana; sopra, che si può smettere —
- * ma solo se OGNI pasto ha almeno `PIATTI_PER_PASTO` piatti: il planner
- * ruota per pasto, otto cene non fanno girare la colazione. Con la soglia
- * raggiunta ma un pasto scoperto, dice quale (quello con meno piatti; a
- * parità il primo nell'ordine dei pasti).
- */
-function testoContatore(n: number, perPasto: Map<string, number>, slotDefs: MealSlotDef[]): string {
-  if (n >= PIATTI_PER_GIRARE) {
-    let scoperto: MealSlotDef | null = null;
-    for (const def of slotDefs) {
-      const conta = perPasto.get(def.id) ?? 0;
-      if (conta >= PIATTI_PER_PASTO) continue;
-      if (scoperto === null || conta < (perPasto.get(scoperto.id) ?? 0)) scoperto = def;
-    }
-    if (scoperto === null) return `Ne hai ${n}: la settimana può girare. Aggiungine quanti vuoi.`;
-    return `${n} piatti salvati · manca ancora qualcosa per ${scoperto.nome}`;
-  }
-  const coda = `ne bastano ${PIATTI_PER_GIRARE} per far girare la settimana`;
-  if (n === 0) return `Nessun piatto ancora · ${coda}`;
-  if (n === 1) return `1 piatto salvato · ${coda}`;
-  return `${n} piatti salvati · ${coda}`;
 }
 
 /** Oltre questo valore una quantità o un formato è un errore di battitura, non una ricetta. */
@@ -104,6 +66,35 @@ function ragioneNonValido(nome: string, righe: Riga[], nomiPerId: Map<string, st
   }
   return null;
 }
+
+/** Base dei due tasti in fondo: stessa altezza e stesso raggio, cambia solo il peso. */
+const TASTO_BASE: CSSProperties = {
+  height: 54, borderRadius: 18, boxSizing: 'border-box',
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700, letterSpacing: '0.09em',
+};
+
+/** Il tasto pieno: l'azione principale della schermata. */
+const TASTO_PRIMARIO: CSSProperties = {
+  background: 'var(--ink)', color: '#FFFFFF', border: '1px solid var(--ink)',
+  boxShadow: '0 3px 10px rgba(20,22,58,0.24)',
+};
+
+/**
+ * Il tasto secondario: bianco con bordo, testo scuro. Deve sembrare un tasto
+ * vero: nella prova del 15/09 HO FINITO, grigio chiaro su grigio, sembrava
+ * disabilitato e chi aveva finito non ha capito che poteva uscire.
+ */
+const TASTO_SECONDARIO: CSSProperties = {
+  background: 'var(--superficie)', color: 'var(--ink)', border: '1px solid var(--bordo)',
+  boxShadow: 'none',
+};
+
+/** Il tasto spento: SALVA finché il piatto non è valido. */
+const TASTO_SPENTO: CSSProperties = {
+  background: 'rgba(20,22,58,0.10)', color: 'var(--ter)', border: '1px solid transparent',
+  boxShadow: 'none',
+};
 
 interface Dati {
   slotDefs: MealSlotDef[];
@@ -192,6 +183,11 @@ export default function PiattiVeloce() {
   }
   const nomiPerId = new Map(ingredienti.map((i) => [i.id, i.nome]));
   const ragione = ragioneNonValido(nome, righe, nomiPerId);
+  // Quando la settimana può girare l'azione principale è uscire: HO FINITO
+  // prende il nero pieno e SALVA passa in secondo piano (resta spento se il
+  // piatto non è valido). `data-primario` dice il ruolo, non lo stato spento.
+  const puoGirare = settimanaPuoGirare(n, perPasto, dati.slotDefs);
+  const stileSalva = ragione !== null ? TASTO_SPENTO : puoGirare ? TASTO_SECONDARIO : TASTO_PRIMARIO;
 
   const testoRicerca = normalizza(ricerca);
   const nelPiatto = new Set(righe.map((r) => r.ingredientId));
@@ -432,11 +428,11 @@ export default function PiattiVeloce() {
       <div style={{ padding: '8px 16px 22px', display: 'flex', gap: 9 }}>
         <Link
           href="/settimana"
+          data-primario={puoGirare ? 'true' : 'false'}
           style={{
-            flex: 'none', width: 104, height: 54, borderRadius: 18,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: 'var(--font-mono)', fontSize: 11.5, fontWeight: 700, letterSpacing: '0.09em',
-            color: 'var(--sec)', background: 'rgba(20,22,58,0.05)',
+            ...TASTO_BASE,
+            ...(puoGirare ? TASTO_PRIMARIO : TASTO_SECONDARIO),
+            flex: 'none', width: 104, fontSize: 11.5,
           }}
         >
           HO FINITO
@@ -445,15 +441,8 @@ export default function PiattiVeloce() {
           type="button"
           onClick={salva}
           disabled={ragione !== null || salvando}
-          style={{
-            flex: 1, height: 54, borderRadius: 18,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700, letterSpacing: '0.09em',
-            background: ragione === null ? 'var(--ink)' : 'rgba(20,22,58,0.10)',
-            boxShadow: ragione === null ? '0 3px 10px rgba(20,22,58,0.24)' : 'none',
-            color: ragione === null ? '#FFFFFF' : 'var(--ter)',
-            opacity: salvando ? 0.7 : 1,
-          }}
+          data-primario={puoGirare ? 'false' : 'true'}
+          style={{ ...TASTO_BASE, ...stileSalva, flex: 1, opacity: salvando ? 0.7 : 1 }}
         >
           SALVA E AVANTI
         </button>
@@ -649,12 +638,7 @@ function MiniCreazione({ nomeIniziale, ordineAree, onCreato, onAnnulla }: PropsM
           type="button"
           onClick={onAnnulla}
           disabled={creando}
-          style={{
-            flex: 'none', width: 104, height: 54, borderRadius: 18,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: 'var(--font-mono)', fontSize: 11.5, fontWeight: 700, letterSpacing: '0.09em',
-            color: 'var(--sec)', background: 'rgba(20,22,58,0.05)',
-          }}
+          style={{ ...TASTO_BASE, ...TASTO_SECONDARIO, flex: 'none', width: 104 }}
         >
           ANNULLA
         </button>
