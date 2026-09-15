@@ -132,6 +132,91 @@ export async function generaListe(weekId: string): Promise<void> {
   }
 }
 
+/** Le colonne di shopping_list_item che una riga manuale reinserita NON eredita: id nuovo, spunta azzerata, lista riassegnata per tipo. */
+const COLONNE_NON_COPIATE = new Set(['id', 'spuntato', 'spuntato_il', 'shopping_list_id']);
+
+/**
+ * Rifà la lista della settimana corrente a mano (spec
+ * 2026-09-15-rigenera-lista-design.md §2): chi cambia le porzioni o aggiunge
+ * piatti a settimana già confermata non aspetta il lunedì dopo.
+ *
+ * Diversamente da `generaListe`, che esce a vuoto, qui si LANCIA sui tre
+ * casi in cui rifare non ha senso: la pagina deve poterlo dire. Le righe
+ * `manuale` sopravvivono: sono un'intenzione dell'utente, non un calcolo. Si
+ * leggono prima, si reinseriscono dopo nella lista dello stesso `tipo`, con
+ * la spunta azzerata come tutte le altre. Le liste si rileggono dopo la
+ * generazione per non assumere che l'id sia rimasto lo stesso (lo è, per
+ * l'upsert su `week_id,tipo`, ma non è un contratto).
+ *
+ * Se la generazione fallisce a metà, valgono le garanzie per lista di
+ * `generaListe`: le manuali della lista non ancora toccata restano, quelle
+ * della lista toccata si perdono. Dichiarato.
+ */
+export async function rigeneraListe(weekId: string): Promise<void> {
+  const sb = client();
+  const userId = await idCasa();
+
+  const { data: week, error: eWeek } = await sb
+    .from('week')
+    .select('stato')
+    .eq('id', weekId)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (eWeek) throw eWeek;
+  if (!week) throw new Error('settimana non trovata');
+  if (week.stato === 'bozza') throw new Error('lista non ancora creata');
+  if (week.stato === 'chiusa') throw new Error('spesa già chiusa');
+
+  const listePrima = await leggiListeDellaSettimana(sb, weekId, userId);
+  const tipoPerLista = new Map(listePrima.map((l) => [l.id, l.tipo]));
+  const { data: righeManuali, error: eManuali } = await sb
+    .from('shopping_list_item')
+    .select('*')
+    .in('shopping_list_id', listePrima.map((l) => l.id))
+    .eq('user_id', userId)
+    .eq('origine', 'manuale');
+  if (eManuali) throw eManuali;
+  const manuali = ((righeManuali ?? []) as Array<Record<string, unknown>>)
+    .map((r) => ({ tipo: tipoPerLista.get(String(r.shopping_list_id)), riga: r }))
+    .filter((m): m is { tipo: 'base' | 'topup'; riga: Record<string, unknown> } => m.tipo !== undefined);
+
+  await generaListe(weekId);
+
+  if (manuali.length === 0) return;
+  const listeDopo = await leggiListeDellaSettimana(sb, weekId, userId);
+  const idPerTipo = new Map(listeDopo.map((l) => [l.tipo, l.id]));
+  const righe = manuali.flatMap(({ tipo, riga }) => {
+    const listaId = idPerTipo.get(tipo);
+    if (!listaId) return [];
+    // Tutte le colonne tranne l'id (nuovo) e la spunta (azzerata): la riga
+    // ricompare com'era ma da prendere.
+    const resto = Object.fromEntries(
+      Object.entries(riga).filter(([colonna]) => !COLONNE_NON_COPIATE.has(colonna)),
+    );
+    return [{ ...resto, shopping_list_id: listaId, spuntato: false, spuntato_il: null }];
+  });
+  // Se il piano di adesso chiede lo stesso ingrediente, la riga di piano
+  // appena scritta resta e la manuale non fa fallire tutto contro l'unique
+  // (shopping_list_id, ingredient_id): la voce c'è comunque, in lista.
+  const { error: eIns } = await sb
+    .from('shopping_list_item')
+    .upsert(righe, { onConflict: 'shopping_list_id,ingredient_id', ignoreDuplicates: true });
+  if (eIns) throw eIns;
+}
+
+/** Le liste (id, tipo) della settimana: serve a rigeneraListe prima e dopo la generazione. */
+async function leggiListeDellaSettimana(
+  sb: ReturnType<typeof client>, weekId: string, userId: string,
+): Promise<Array<{ id: string; tipo: 'base' | 'topup' }>> {
+  const { data, error } = await sb
+    .from('shopping_list')
+    .select('id, tipo')
+    .eq('week_id', weekId)
+    .eq('user_id', userId);
+  if (error) throw error;
+  return (data ?? []).map((l) => ({ id: String(l.id), tipo: l.tipo as 'base' | 'topup' }));
+}
+
 /**
  * Aggiunge al top-up quello che il piano chiede e la lista non ha ancora.
  *

@@ -4,17 +4,18 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 're
 import Link from 'next/link';
 import type { AreaId, Dish } from '@/domain/types';
 import { coloreArea, nomeArea } from '@/domain/aree';
-import { leggiSettimanaCorrente } from '@/data/settimana';
+import { leggiSettimanaCorrente, type SettimanaCorrente } from '@/data/settimana';
 import { leggiRepertorio } from '@/data/repertorio';
-import { leggiListe, spunta, allineaTopUp, type ListaSalvata, type SezioneSalvata, type VoceSalvata } from '@/data/lista';
+import { leggiListe, spunta, allineaTopUp, rigeneraListe, type ListaSalvata, type SezioneSalvata, type VoceSalvata } from '@/data/lista';
 import { rispondiControllo } from '@/data/dispensa';
 import { idCasa } from '@/data/casa';
 import { client } from '@/data/supabase';
-import { accodaSpunta, leggiCoda, rimuoviConfermate, applicaCodaSuVoci, type Spunta } from '@/offline/coda';
+import { accodaSpunta, leggiCoda, rimuoviConfermate, applicaCodaSuVoci, svuotaCoda, type Spunta } from '@/offline/coda';
 import { leggiIstantaneaLista, salvaIstantaneaLista, cancellaIstantaneaLista } from '@/offline/lista-cache';
 import { Testata } from '@/components/Testata';
 import { Tessera } from '@/components/Tessera';
 import { RigaControllo } from '@/components/RigaControllo';
+import { BottoneDueTocchi } from '@/components/BottoneDueTocchi';
 
 const INK = '#14163A';
 const MUT = '#8A8A96';
@@ -203,6 +204,13 @@ interface StatoCarico {
   settimanaLabel: string;
   lista: ListaSalvata;
   /**
+   * Lo stato della settimana letta con la rete: RIFAI LA LISTA si mostra
+   * solo a `confermata` (spec rigenera-lista §1). null con l'istantanea
+   * offline, che non lo porta: lì il tasto non serve comunque, vuole il
+   * server.
+   */
+  statoSettimana: SettimanaCorrente['stato'] | null;
+  /**
    * Vero quando la lettura dal server è fallita e quella mostrata è
    * l'istantanea salvata l'ultima volta (lista-cache.ts). Torna falso alla
    * prima rilettura riuscita.
@@ -225,6 +233,9 @@ export default function Lista() {
   const [erroreAzione, setErroreAzione] = useState<string | null>(null);
   const [tab, setTab] = useState<'base' | 'topup'>('base');
   const [rigaInVolo, setRigaInVolo] = useState<string | null>(null);
+  // Vero mentre RIFAI LA LISTA è in corso: il tasto si spegne, un secondo
+  // tap non parte.
+  const [rifacendo, setRifacendo] = useState(false);
   // Quante volte l'utente ha toccato la lista (spunte e risposte ai
   // controlli) da quando la pagina è montata. Serve a `rileggi` e a
   // `carica`: una lettura partita prima di un tocco e arrivata dopo descrive
@@ -328,7 +339,10 @@ export default function Lista() {
         // riapplica quando la si mostra, così una spunta in volo non viene
         // né disfatta né contata due volte.
         salvaIstantaneaLista({ casaId, userId, weekId: settimana.id, settimanaLabel: label, lista });
-        setStato({ weekId: settimana.id, settimanaLabel: label, lista: applicaCodaLista(lista), offline: false });
+        setStato({
+          weekId: settimana.id, settimanaLabel: label, lista: applicaCodaLista(lista),
+          statoSettimana: settimana.stato, offline: false,
+        });
         void sincronizzaCoda();
       } catch (errore) {
         console.error('lista: caricamento fallito.', errore);
@@ -367,6 +381,7 @@ export default function Lista() {
             weekId: istantanea.weekId,
             settimanaLabel: istantanea.settimanaLabel,
             lista: applicaCodaLista(istantanea.lista),
+            statoSettimana: null,
             offline: true,
           });
         } else {
@@ -523,6 +538,33 @@ export default function Lista() {
     }
   }
 
+  /**
+   * Rifare la lista a mano (spec rigenera-lista §1): la coda offline se ne va
+   * prima — le spunte in attesa riguardano righe che stanno per sparire —
+   * poi il dato, poi l'istantanea, poi il caricamento intero come al ritorno
+   * della rete. La versione dei tocchi avanza prima di `carica()`, così una
+   * rilettura partita prima e arrivata dopo (che riporterebbe la lista
+   * vecchia) si scarta. In errore la lista a schermo resta quella di prima:
+   * il dato o riesce o lascia le righe vecchie.
+   */
+  async function rifaiLista() {
+    if (!stato || rifacendo) return;
+    setRifacendo(true);
+    setErroreAzione(null);
+    try {
+      svuotaCoda();
+      await rigeneraListe(stato.weekId);
+      cancellaIstantaneaLista();
+      versioneTocchi.current += 1;
+      await caricaRef.current();
+    } catch (errore) {
+      console.error('lista: rigenerazione fallita.', errore);
+      setErroreAzione('Non siamo riusciti a rifare la lista. Riprova.');
+    } finally {
+      setRifacendo(false);
+    }
+  }
+
   if (erroreCaricamento) {
     return (
       <Cornice titolo="Spesa" aree={[]}>
@@ -642,6 +684,25 @@ export default function Lista() {
           >
             HAI PRESO TUTTO
           </Link>
+        </div>
+      )}
+
+      {stato.statoSettimana === 'confermata' && (
+        <div style={{ padding: '8px 16px 0' }}>
+          <BottoneDueTocchi
+            testo="RIFAI LA LISTA"
+            onConferma={() => { void rifaiLista(); }}
+            disabled={rifacendo}
+            style={{
+              width: '100%', height: 54, borderRadius: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700, letterSpacing: '0.09em',
+              background: 'var(--superficie)', border: '1px solid var(--bordo)', color: 'var(--ink)',
+              opacity: rifacendo ? 0.5 : 1,
+            }}
+          />
+          <p style={{ margin: '8px 4px 0', fontSize: 12.5, lineHeight: 1.4, color: 'var(--sec)' }}>
+            Ricalcola da piatti, dispensa e porzioni di adesso. Le spunte fatte si perdono.
+          </p>
         </div>
       )}
     </Cornice>

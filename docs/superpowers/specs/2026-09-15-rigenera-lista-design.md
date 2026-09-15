@@ -23,7 +23,8 @@ fatte si perdono.`
 **Quando.** Solo con la settimana `confermata`. In `bozza` la lista non esiste (la
 pagina mostra già lo stato vuoto con VAI ALLA SETTIMANA); a `chiusa` il residuo è già
 accreditato e rifare la lista sarebbe una bugia (`generaListe` esce comunque a vuoto:
-difesa in profondità C4). Offline il tasto è disabilitato: serve il server.
+difesa in profondità C4). Offline il tasto non si mostra: la pagina sta mostrando
+l'istantanea, che non porta lo stato della settimana, e comunque serve il server.
 
 **Cosa succede al tap confermato.**
 1. La coda offline delle spunte si svuota (`svuotaCoda`): le spunte in attesa
@@ -61,7 +62,12 @@ export async function rigeneraListe(weekId: string): Promise<void>;
 - Legge le righe `manuale` delle liste della settimana (`shopping_list_item` join
   `shopping_list.tipo`), poi chiama `generaListe(weekId)` (che già cancella e riscrive le
   righe di ogni lista e il `risparmio_settimana`), poi reinserisce le righe manuali con
-  `spuntato = false` sulla lista dello stesso `tipo`.
+  `spuntato = false` e `spuntato_il = null` sulla lista dello stesso `tipo` (riletta dopo
+  la generazione, senza assumerne l'id), con un upsert che ignora i duplicati su
+  `(shopping_list_id, ingredient_id)`: se il piano nuovo chiede lo stesso ingrediente, la
+  riga di piano resta e quella manuale è ridondante; un insert secco farebbe fallire
+  tutta la rigenerazione a righe già riscritte. Oggi nessuna funzione scrive righe
+  `manuale`: la logica è pronta per quando ci saranno.
 - Ordine: prima la lettura delle manuali, poi la generazione, poi il reinserimento. Se
   la generazione fallisce a metà, `generaListe` ha già le sue garanzie per lista (upsert
   della lista, delete + insert delle righe): le righe manuali della lista non ancora

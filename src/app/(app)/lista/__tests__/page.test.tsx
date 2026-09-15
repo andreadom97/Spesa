@@ -14,6 +14,7 @@ vi.mock('@/data/lista', () => ({
   leggiListe: vi.fn(),
   spunta: vi.fn(),
   allineaTopUp: vi.fn(),
+  rigeneraListe: vi.fn(),
 }));
 vi.mock('@/data/dispensa', () => ({
   rispondiControllo: vi.fn(),
@@ -38,7 +39,7 @@ vi.mock('@/data/supabase', () => ({
 }));
 
 import { leggiSettimanaCorrente } from '@/data/settimana';
-import { leggiListe, spunta, allineaTopUp } from '@/data/lista';
+import { leggiListe, spunta, allineaTopUp, rigeneraListe } from '@/data/lista';
 import { rispondiControllo } from '@/data/dispensa';
 import { leggiRepertorio } from '@/data/repertorio';
 import { idCasa } from '@/data/casa';
@@ -90,6 +91,7 @@ beforeEach(() => {
   vi.mocked(leggiListe).mockReset();
   vi.mocked(spunta).mockReset().mockResolvedValue(undefined);
   vi.mocked(allineaTopUp).mockReset().mockResolvedValue(0);
+  vi.mocked(rigeneraListe).mockReset().mockResolvedValue(undefined);
   vi.mocked(rispondiControllo).mockReset().mockResolvedValue(undefined);
   vi.mocked(leggiRepertorio).mockReset().mockResolvedValue([PIATTO]);
   vi.mocked(idCasa).mockReset().mockResolvedValue('casa-1');
@@ -1236,6 +1238,142 @@ describe('Lista', () => {
 
       await new Promise((r) => setTimeout(r, 0));
       expect(leggiListe).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // Rifare la lista a mano (spec 2026-09-15-rigenera-lista-design.md §1 e
+  // §3): un tasto a due tocchi in fondo, solo a settimana confermata e con la
+  // rete; al tap confermato coda svuotata, rigenerazione, istantanea via e
+  // caricamento intero da capo.
+  describe('rifai la lista', () => {
+    const AIUTO = 'Ricalcola da piatti, dispensa e porzioni di adesso. Le spunte fatte si perdono.';
+    let errore: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      errore.mockRestore();
+    });
+
+    it('a settimana confermata mostra il tasto con la riga di aiuto, sotto HAI PRESO TUTTO', async () => {
+      const lista = buildLista();
+      lista.base = [{ area: 'cereali', voci: [{ ...VOCE_RISO, spuntato: true }], controlli: [] }];
+      vi.mocked(leggiListe).mockResolvedValue(lista);
+      render(<Lista />);
+      await screen.findByText('Riso Carnaroli');
+
+      const tasto = screen.getByRole('button', { name: 'RIFAI LA LISTA' });
+      const preso = screen.getByRole('link', { name: 'HAI PRESO TUTTO' });
+      expect(tasto).toBeEnabled();
+      expect(screen.getByText(AIUTO)).toBeInTheDocument();
+      // Sotto, non sopra: il tasto principale resta il primo in fondo.
+      expect(preso.compareDocumentPosition(tasto) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('in bozza il tasto non c\'è', async () => {
+      vi.mocked(leggiSettimanaCorrente).mockResolvedValue({ ...SETTIMANA, stato: 'bozza' });
+      vi.mocked(leggiListe).mockResolvedValue(buildLista());
+      render(<Lista />);
+      await screen.findByText('Riso Carnaroli');
+
+      expect(screen.queryByRole('button', { name: 'RIFAI LA LISTA' })).not.toBeInTheDocument();
+      expect(screen.queryByText(AIUTO)).not.toBeInTheDocument();
+    });
+
+    it('a spesa chiusa il tasto non c\'è', async () => {
+      vi.mocked(leggiSettimanaCorrente).mockResolvedValue({ ...SETTIMANA, stato: 'chiusa' });
+      vi.mocked(leggiListe).mockResolvedValue(buildLista());
+      render(<Lista />);
+      await screen.findByText('Riso Carnaroli');
+
+      expect(screen.queryByRole('button', { name: 'RIFAI LA LISTA' })).not.toBeInTheDocument();
+    });
+
+    it('offline (istantanea a schermo) il tasto non c\'è: serve il server', async () => {
+      salvaIstantaneaLista({ casaId: 'casa-1', userId: 'user-1', weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO', lista: buildLista() });
+      vi.mocked(leggiSettimanaCorrente).mockRejectedValue(new Error('rete assente'));
+      render(<Lista />);
+      await screen.findByText('Riso Carnaroli');
+
+      expect(screen.getByText(/Sei offline/)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'RIFAI LA LISTA' })).not.toBeInTheDocument();
+    });
+
+    it('il primo tap chiede "SICURO?" senza rigenerare', async () => {
+      vi.mocked(leggiListe).mockResolvedValue(buildLista());
+      render(<Lista />);
+      await screen.findByText('Riso Carnaroli');
+
+      fireEvent.click(screen.getByRole('button', { name: 'RIFAI LA LISTA' }));
+
+      expect(screen.getByRole('button', { name: 'SICURO?' })).toBeInTheDocument();
+      expect(rigeneraListe).not.toHaveBeenCalled();
+    });
+
+    it('il secondo tap svuota la coda, rigenera, cancella l\'istantanea e ricarica tutto', async () => {
+      vi.mocked(leggiListe).mockResolvedValue(buildLista());
+      // Una spunta ferma in coda (scrittura fallita): riguarda una riga che
+      // sta per sparire, e deve sparire con lei prima di rigenerare.
+      vi.mocked(spunta).mockRejectedValue(new Error('offline'));
+      let codaAllaRigenerazione: unknown = null;
+      let istantaneaAllaRigenerazione: unknown = null;
+      let risolviSettimana: (s: typeof SETTIMANA) => void = () => {};
+      vi.mocked(rigeneraListe).mockImplementation(async () => {
+        codaAllaRigenerazione = leggiCoda();
+        istantaneaAllaRigenerazione = leggiIstantaneaLista();
+      });
+      render(<Lista />);
+      const riso = (await screen.findByText('Riso Carnaroli')).closest('button')!;
+      fireEvent.click(riso);
+      await waitFor(() => expect(leggiCoda()).toHaveLength(1));
+      expect(leggiIstantaneaLista()).not.toBeNull();
+      // Il caricamento che segue si tiene in sospeso per guardare lo stato in mezzo.
+      vi.mocked(leggiSettimanaCorrente).mockImplementationOnce(() => new Promise((resolve) => { risolviSettimana = resolve; }));
+
+      fireEvent.click(screen.getByRole('button', { name: 'RIFAI LA LISTA' }));
+      fireEvent.click(screen.getByRole('button', { name: 'SICURO?' }));
+
+      await waitFor(() => expect(rigeneraListe).toHaveBeenCalledWith('week-1'));
+      expect(rigeneraListe).toHaveBeenCalledTimes(1);
+      // La coda era già vuota quando la rigenerazione è partita; l'istantanea
+      // c'era ancora e se ne va subito dopo, prima del caricamento.
+      expect(codaAllaRigenerazione).toEqual([]);
+      expect(istantaneaAllaRigenerazione).not.toBeNull();
+      await waitFor(() => expect(leggiSettimanaCorrente).toHaveBeenCalledTimes(2));
+      expect(leggiIstantaneaLista()).toBeNull();
+      // Durante, il tasto è spento.
+      expect(screen.getByRole('button', { name: 'RIFAI LA LISTA' })).toBeDisabled();
+
+      const nuova = buildLista();
+      nuova.base = [{ area: 'cereali', voci: [{ ...VOCE_RISO, id: 'item-riso-2', confezioni: 3 }], controlli: [] }];
+      vi.mocked(leggiListe).mockResolvedValue(nuova);
+      risolviSettimana(SETTIMANA);
+
+      await waitFor(() => expect(leggiListe).toHaveBeenCalledTimes(2));
+      await screen.findByText('3 conf');
+      expect(screen.queryByText('Pasta integrale')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'RIFAI LA LISTA' })).toBeEnabled();
+      expect(screen.queryByText('Non siamo riusciti a rifare la lista. Riprova.')).not.toBeInTheDocument();
+    });
+
+    it('se la rigenerazione fallisce mostra la riga di errore e la lista resta quella di prima', async () => {
+      vi.mocked(leggiListe).mockResolvedValue(buildLista());
+      vi.mocked(rigeneraListe).mockRejectedValue(new Error('spesa già chiusa'));
+      render(<Lista />);
+      await screen.findByText('Riso Carnaroli');
+
+      fireEvent.click(screen.getByRole('button', { name: 'RIFAI LA LISTA' }));
+      fireEvent.click(screen.getByRole('button', { name: 'SICURO?' }));
+
+      expect(await screen.findByText('Non siamo riusciti a rifare la lista. Riprova.')).toBeInTheDocument();
+      expect(screen.getByText('Riso Carnaroli')).toBeInTheDocument();
+      expect(screen.getByText('Pasta integrale')).toBeInTheDocument();
+      expect(leggiListe).toHaveBeenCalledTimes(1);
+      expect(leggiSettimanaCorrente).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole('button', { name: 'RIFAI LA LISTA' })).toBeEnabled();
+      expect(errore).toHaveBeenCalledWith('lista: rigenerazione fallita.', expect.any(Error));
     });
   });
 });
