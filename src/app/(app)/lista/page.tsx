@@ -1,13 +1,17 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import type { AreaId } from '@/domain/types';
+import type { AreaId, Dish } from '@/domain/types';
 import { coloreArea, nomeArea } from '@/domain/aree';
 import { leggiSettimanaCorrente } from '@/data/settimana';
+import { leggiRepertorio } from '@/data/repertorio';
 import { leggiListe, spunta, allineaTopUp, type ListaSalvata, type SezioneSalvata, type VoceSalvata } from '@/data/lista';
 import { rispondiControllo } from '@/data/dispensa';
+import { idCasa } from '@/data/casa';
+import { client } from '@/data/supabase';
 import { accodaSpunta, leggiCoda, rimuoviConfermate, applicaCodaSuVoci, type Spunta } from '@/offline/coda';
+import { leggiIstantaneaLista, salvaIstantaneaLista, cancellaIstantaneaLista } from '@/offline/lista-cache';
 import { Testata } from '@/components/Testata';
 import { Tessera } from '@/components/Tessera';
 import { RigaControllo } from '@/components/RigaControllo';
@@ -82,6 +86,39 @@ function areeMancanti(lista: ListaSalvata): AreaId[] {
     if (sezione.voci.some((v) => !v.spuntato) || sezione.controlli.length > 0) mancanti.add(sezione.area);
   }
   return [...mancanti];
+}
+
+/**
+ * Il repertorio serve solo nel ramo "lista non trovata", per scegliere fra
+ * le due schede vuote (spec due-porte §2.4): senza piatti "vai alla
+ * settimana" sarebbe un vicolo cieco. Lettura tollerante: se fallisce si
+ * mostra la scheda di sempre, che è meglio di una schermata di errore per
+ * una lettura che non serve alla lista.
+ */
+async function leggiRepertorioSenzaBloccare(): Promise<Dish[] | null> {
+  try {
+    return await leggiRepertorio();
+  } catch (e) {
+    console.error('lista: lettura del repertorio fallita.', e);
+    return null;
+  }
+}
+
+/**
+ * L'id dell'account loggato, per l'istantanea offline (spec lista-offline
+ * §1): `getSession` legge il token locale, quindi funziona anche senza rete
+ * finché il token è valido. null se la sessione non si legge (token scaduto
+ * senza rete, storage bloccato): chi chiama salva `''` o legge senza
+ * verificare l'account. Non propaga mai: l'istantanea non deve far fallire
+ * la lista.
+ */
+async function idUtenteSessione(): Promise<string | null> {
+  try {
+    return (await client().auth.getSession()).data.session?.user.id ?? null;
+  } catch (e) {
+    console.error('lista: lettura della sessione fallita.', e);
+    return null;
+  }
 }
 
 function conSpuntaLocale(lista: ListaSalvata, itemId: string, spuntato: boolean): ListaSalvata {
@@ -165,6 +202,12 @@ interface StatoCarico {
   weekId: string;
   settimanaLabel: string;
   lista: ListaSalvata;
+  /**
+   * Vero quando la lettura dal server è fallita e quella mostrata è
+   * l'istantanea salvata l'ultima volta (lista-cache.ts). Torna falso alla
+   * prima rilettura riuscita.
+   */
+  offline: boolean;
 }
 
 /**
@@ -176,20 +219,77 @@ interface StatoCarico {
 export default function Lista() {
   const [stato, setStato] = useState<StatoCarico | null>(null);
   const [nonTrovata, setNonTrovata] = useState(false);
+  const [repertorioVuoto, setRepertorioVuoto] = useState(false);
   const [settimanaLabelVuoto, setSettimanaLabelVuoto] = useState<string | undefined>(undefined);
   const [erroreCaricamento, setErroreCaricamento] = useState<string | null>(null);
   const [erroreAzione, setErroreAzione] = useState<string | null>(null);
   const [tab, setTab] = useState<'base' | 'topup'>('base');
   const [rigaInVolo, setRigaInVolo] = useState<string | null>(null);
+  // Quante volte l'utente ha toccato la lista (spunte e risposte ai
+  // controlli) da quando la pagina è montata. Serve a `rileggi` e a
+  // `carica`: una lettura partita prima di un tocco e arrivata dopo descrive
+  // una lista più vecchia di quella a schermo, e va scartata. La coda
+  // offline da sola non basta: se la scrittura del tocco è già stata
+  // confermata, la coda è vuota e non ha nulla da riapplicare sopra la
+  // risposta stantia.
+  const versioneTocchi = useRef(0);
+  // Il caricamento intero, dichiarato nell'effetto di montaggio (dove vive
+  // il flag `vivo`) e pubblicato qui perché serva anche ai listener: al
+  // ritorno della rete con l'istantanea a schermo si rifà tutto, non si
+  // rilegge solo (vedi il commento sui listener).
+  const caricaRef = useRef<() => Promise<void>>(async () => {});
 
   useEffect(() => {
     let vivo = true;
 
+    /**
+     * Il caricamento intero: settimana corrente, allineamento del top-up,
+     * liste, istantanea. È lo stesso al montaggio e al ritorno della rete
+     * quando quella a schermo è l'istantanea (spec lista-offline §1): in
+     * quel caso NON basta rileggere la settimana dell'istantanea, perché
+     * potrebbe non essere più quella corrente (lunedì mattina senza rete:
+     * l'istantanea è della settimana chiusa, le cui liste restano sul
+     * server e si rileggerebbero come vive). Solo il giro intero passa da
+     * `leggiSettimanaCorrente`, da `allineaTopUp` e dai rami che cancellano
+     * l'istantanea quando la lista non c'è più.
+     */
     async function carica() {
+      // Come in `rileggi`: un tocco arrivato mentre il caricamento è in volo
+      // (possibile al ritorno della rete, con l'istantanea già a schermo)
+      // rende la risposta più vecchia di quella mostrata, e si scarta. Si
+      // fissa in testa, non prima della sola `leggiListe`: un tocco durante
+      // `leggiSettimanaCorrente` o `allineaTopUp` è già più nuovo di tutto
+      // ciò che questo giro leggerà, e una versione presa dopo non lo
+      // vedrebbe.
+      const versione = versioneTocchi.current;
+      // Prima di leggere si scrive la coda, e si aspetta che finisca, come
+      // in `rileggi`: al ritorno della rete il listener di montaggio lancia
+      // `sincronizzaCoda()` in parallelo a questo giro, e se `leggiListe`
+      // rispondesse prima che la spunta in coda atterri — con la conferma
+      // che svuota la coda prima di `applicaCodaLista` — la lista andrebbe
+      // a schermo senza la spunta mentre sul server c'è, e un ritocco la
+      // disfarebbe. Chi arriva mentre un giro è in volo aspetta quel giro,
+      // ed è per questo che la versione dei tocchi si fissa PRIMA. A freddo
+      // senza rete la scrittura fallisce in fretta e la coda resta.
+      // `sincronizzaCoda` non lancia mai (allSettled, coda tollerante):
+      // il catch è una cintura in più, perché un suo errore non è un
+      // errore di lettura e non deve far scattare il ripiego sull'istantanea.
+      try {
+        await sincronizzaCoda();
+      } catch (errore) {
+        console.error('lista: sincronizzazione della coda prima del caricamento fallita.', errore);
+      }
       try {
         const settimana = await leggiSettimanaCorrente();
         if (!settimana) {
-          if (vivo) setNonTrovata(true);
+          // Lettura riuscita, lista assente: l'istantanea non deve
+          // ricomparire più (spec lista-offline §1).
+          cancellaIstantaneaLista();
+          const repertorio = await leggiRepertorioSenzaBloccare();
+          if (vivo) {
+            setRepertorioVuoto(repertorio !== null && repertorio.length === 0);
+            setNonTrovata(true);
+          }
           return;
         }
         const label = formattaPillola(settimana.dataInizio);
@@ -207,22 +307,76 @@ export default function Lista() {
         }
         const lista = await leggiListe(settimana.id);
         if (!lista) {
+          cancellaIstantaneaLista();
+          const repertorio = await leggiRepertorioSenzaBloccare();
           if (vivo) {
             setSettimanaLabelVuoto(label);
+            setRepertorioVuoto(repertorio !== null && repertorio.length === 0);
             setNonTrovata(true);
           }
           return;
         }
-        if (!vivo) return;
-        setStato({ weekId: settimana.id, settimanaLabel: label, lista: applicaCodaLista(lista) });
+        // L'istantanea porta l'id della casa (spec lista-offline §1), così un
+        // membro tolto dal proprietario non si rilegge la lista della casa che
+        // ha lasciato, e quello dell'account, così un altro account sullo
+        // stesso browser non se la rilegge. `idCasa` è memorizzata per
+        // sessione e `getSession` legge il token locale: costano niente.
+        const casaId = await idCasa();
+        const userId = (await idUtenteSessione()) ?? '';
+        if (!vivo || versioneTocchi.current !== versione) return;
+        // L'istantanea è la lista come letta, senza la coda: la coda si
+        // riapplica quando la si mostra, così una spunta in volo non viene
+        // né disfatta né contata due volte.
+        salvaIstantaneaLista({ casaId, userId, weekId: settimana.id, settimanaLabel: label, lista });
+        setStato({ weekId: settimana.id, settimanaLabel: label, lista: applicaCodaLista(lista), offline: false });
         void sincronizzaCoda();
       } catch (errore) {
         console.error('lista: caricamento fallito.', errore);
-        if (vivo) setErroreCaricamento('Non riusciamo a caricare la lista. Riprova più tardi.');
+        if (!vivo) return;
+        // La rete decide, la copia ripara: senza risposta dal server si
+        // mostra l'ultima lista vista con rete, dicendo che è una copia. Se
+        // l'istantanea è di un'altra settimana si mostra lo stesso: la
+        // settimana corrente non è nota e non si tenta di indovinarla.
+        //
+        // La casa invece si verifica quando si può: `idCasa()` è memorizzata
+        // dopo il primo successo nella sessione, ma a freddo senza rete la
+        // RPC fallisce. In quel caso si legge senza id — la casa non è
+        // verificabile e l'istantanea è la migliore informazione disponibile
+        // (limite dichiarato in spec lista-offline §5). Lo stesso per
+        // l'account: `getSession` legge il token locale e funziona offline
+        // finché è valido; se non si legge, non si verifica. Con gli id, se
+        // l'istantanea è di un'altra casa o di un altro account lista-cache
+        // la cancella e si mostra l'errore di sempre.
+        let casaId: string | null = null;
+        try {
+          casaId = await idCasa();
+        } catch {
+          // Casa non verificabile: si legge senza id.
+        }
+        const userId = await idUtenteSessione();
+        if (!vivo) return;
+        const istantanea = leggiIstantaneaLista({ casaId: casaId ?? undefined, userId: userId ?? undefined });
+        if (istantanea) {
+          // L'istantanea entra solo se a schermo non c'è ancora niente. Se
+          // c'è già una lista (il giro al ritorno della rete fallito di
+          // nuovo), quella resta: nel frattempo `sincronizzaCoda` può aver
+          // scritto una spunta e svuotato la coda, e l'istantanea — salvata
+          // prima di quel tocco, con la coda ormai vuota da riapplicare —
+          // la disfarebbe a schermo mentre sul server è fatta.
+          setStato((prev) => prev ?? {
+            weekId: istantanea.weekId,
+            settimanaLabel: istantanea.settimanaLabel,
+            lista: applicaCodaLista(istantanea.lista),
+            offline: true,
+          });
+        } else {
+          setErroreCaricamento('Non riusciamo a caricare la lista. Riprova più tardi.');
+        }
       }
     }
 
-    carica();
+    caricaRef.current = carica;
+    void carica();
     return () => {
       vivo = false;
     };
@@ -236,8 +390,101 @@ export default function Lista() {
     return () => window.removeEventListener('online', alRitornoOnline);
   }, []);
 
+  // La lista in due (spec casa-condivisa §5): due telefoni che spuntano la
+  // stessa lista non si accorgono l'uno dell'altro finché non ricaricano.
+  // Quando la pagina torna in primo piano si rileggono le liste — solo
+  // leggiListe, non allineaTopUp: il piano non è cambiato, sono cambiate le
+  // spunte — con la coda offline applicata sopra come al caricamento, così
+  // una spunta locale ancora in volo non viene "disfatta" dal server.
+  // Tollerante: se la rilettura fallisce la lista che c'è resta.
+  //
+  // Quando quella mostrata è l'istantanea (`offline`, spec lista-offline
+  // §1), al ritorno della rete e al ritorno in primo piano NON si rilegge
+  // la sua settimana: si rifà `carica()` intero. L'istantanea può essere
+  // di una settimana ormai chiusa (lunedì mattina senza rete), le cui liste
+  // restano sul server: rilette da sole, tornerebbero come vive, senza
+  // `allineaTopUp` e senza il ramo "lista non trovata" che cancella la
+  // copia. Al successo la riga "Sei offline" sparisce e l'istantanea si
+  // aggiorna; se `carica()` fallisce di nuovo, la lista a schermo resta
+  // com'è (l'istantanea entra solo a schermo vuoto: vedi il `catch`).
+  //
+  // I listener si registrano una volta sola, al montaggio, e leggono lo
+  // stato corrente da `statoRef` (allineato in un layout effect, cioè
+  // dentro il commit, prima di qualunque evento). Registrarli in un
+  // effetto che dipende da `weekId` e `offline` li farebbe nascere solo
+  // dopo il commit che mostra la lista: un evento arrivato in quella
+  // finestra (piccola nel browser, casuale nei test) si perderebbe. Prima
+  // della lista caricata gli eventi non fanno niente.
+  //
+  // Prima di leggere si sincronizza la coda, e si aspetta che finisca: una
+  // spunta fallita in secondo piano (rete andata via a metà) si ritenta
+  // così, e la lettura parte dopo che le scritture in attesa sono arrivate
+  // al server — letta prima, tornerebbe senza quelle spunte e con la coda
+  // già svuotata dalla conferma, e le disfarebbe a schermo. Vale anche per
+  // `carica()` al ritorno della rete: il listener di montaggio lancia
+  // `sincronizzaCoda()` in parallelo, e `carica()` aspetta quello stesso
+  // giro prima di leggere (non basta il lucchetto: senza l'attesa
+  // `leggiListe` partirebbe con la scrittura ancora in volo). Lo stesso
+  // scarto si guarda anche per un tocco arrivato *durante* la
+  // sincronizzazione o la lettura: `versioneTocchi` si fissa PRIMA di
+  // `sincronizzaCoda()`, non dopo, perché chi arriva mentre un giro è in
+  // volo aspetta solo quel giro, non quello coalescente che un tocco nel
+  // frattempo ha chiesto — e la lettura partirebbe senza quella spunta, con
+  // la coda poi svuotata dalla sua conferma. Se la versione è cambiata la
+  // risposta si butta in silenzio: al prossimo ritorno in primo piano si
+  // rilegge.
+  const statoRef = useRef<StatoCarico | null>(null);
+  useLayoutEffect(() => {
+    statoRef.current = stato;
+  }, [stato]);
+  useEffect(() => {
+    let attivo = true;
+    async function rileggi(motivo: string) {
+      const corrente = statoRef.current;
+      if (!corrente) return;
+      const { weekId, settimanaLabel } = corrente;
+      try {
+        const versione = versioneTocchi.current;
+        await sincronizzaCoda();
+        // Prima della lettura, non dopo: se fallisce (niente rete) la
+        // rilettura fallisce tutta intera, com'è giusto, invece di buttare
+        // una lista fresca già arrivata.
+        const casaId = await idCasa();
+        const userId = (await idUtenteSessione()) ?? '';
+        const fresca = await leggiListe(weekId);
+        if (!attivo || !fresca) return;
+        if (versioneTocchi.current !== versione) return;
+        // La settimana a schermo è cambiata nel frattempo (un `carica()`
+        // intero): la risposta descrive un'altra lista e si butta.
+        if (statoRef.current?.weekId !== weekId) return;
+        salvaIstantaneaLista({ casaId, userId, weekId, settimanaLabel, lista: fresca });
+        setStato((p) => (p ? { ...p, lista: applicaCodaLista(fresca), offline: false } : p));
+      } catch (errore) {
+        console.error(`lista: rilettura ${motivo} fallita.`, errore);
+      }
+    }
+    function alRitornoInPrimoPiano() {
+      if (document.visibilityState !== 'visible') return;
+      const corrente = statoRef.current;
+      if (!corrente) return;
+      if (corrente.offline) void caricaRef.current();
+      else void rileggi('al ritorno in primo piano');
+    }
+    function alRitornoOnline() {
+      if (statoRef.current?.offline) void caricaRef.current();
+    }
+    document.addEventListener('visibilitychange', alRitornoInPrimoPiano);
+    window.addEventListener('online', alRitornoOnline);
+    return () => {
+      attivo = false;
+      document.removeEventListener('visibilitychange', alRitornoInPrimoPiano);
+      window.removeEventListener('online', alRitornoOnline);
+    };
+  }, []);
+
   function toggleVoce(voce: VoceSalvata) {
     const nuovo = !voce.spuntato;
+    versioneTocchi.current += 1;
     setStato((prev) => (prev ? { ...prev, lista: conSpuntaLocale(prev.lista, voce.id, nuovo) } : prev));
     accodaSpunta(voce.id, nuovo);
     void sincronizzaCoda();
@@ -245,6 +492,7 @@ export default function Lista() {
 
   async function rispondi(controllo: VoceSalvata, listaId: string | null, ancora: boolean) {
     if (!listaId || rigaInVolo) return;
+    versioneTocchi.current += 1;
     setErroreAzione(null);
     setRigaInVolo(controllo.id);
     try {
@@ -267,6 +515,10 @@ export default function Lista() {
       console.error('lista: risposta al controllo fallita.', errore);
       setErroreAzione('Non siamo riusciti a salvare la risposta. Riprova.');
     } finally {
+      // Anche dopo la RPC, non solo prima: una rilettura partita mentre la
+      // risposta era in volo può essere stata servita prima che il server
+      // la registrasse, e riporterebbe il controllo (o la voce vecchia).
+      versioneTocchi.current += 1;
       setRigaInVolo(null);
     }
   }
@@ -280,6 +532,21 @@ export default function Lista() {
   }
 
   if (nonTrovata) {
+    // Due schede per lo stesso vuoto (spec due-porte §2.4): senza piatti la
+    // settimana non avrebbe nulla da assegnare, quindi la porta è /piatti.
+    const vuoto = repertorioVuoto
+      ? {
+        titolo: 'Prima servono i piatti',
+        testo: 'La lista nasce dai piatti che mangi: dicci quali sono e da lì la settimana e la spesa si costruiscono da sole.',
+        href: '/piatti',
+        bottone: 'COMINCIA DAI PIATTI',
+      }
+      : {
+        titolo: 'La lista non c’è ancora',
+        testo: 'Nasce dalla settimana: appena confermi quali pasti farai a casa, qui trovi cosa comprare e quante confezioni.',
+        href: '/settimana',
+        bottone: 'VAI ALLA SETTIMANA',
+      };
     return (
       <Cornice titolo="Spesa" settimana={settimanaLabelVuoto} aree={[]}>
         <div className="sc" style={{ flex: 1, overflowY: 'auto', padding: '6px 16px 16px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
@@ -290,23 +557,23 @@ export default function Lista() {
               </svg>
             </div>
             <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-0.035em', lineHeight: 1.2, color: 'var(--ink)', marginBottom: 8 }}>
-              La lista non c’è ancora
+              {vuoto.titolo}
             </div>
             <div style={{ fontSize: 14, lineHeight: 1.5, color: '#8A8A96' }}>
-              Nasce dalla settimana: appena confermi quali pasti farai a casa, qui trovi cosa comprare e quante confezioni.
+              {vuoto.testo}
             </div>
           </div>
         </div>
         <div style={{ padding: '6px 16px 0' }}>
           <Link
-            href="/settimana"
+            href={vuoto.href}
             style={{
               width: '100%', height: 54, borderRadius: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700, letterSpacing: '0.09em',
               background: '#14163A', boxShadow: '0 3px 10px rgba(20,22,58,0.24)', color: '#FFFFFF',
             }}
           >
-            VAI ALLA SETTIMANA
+            {vuoto.bottone}
           </Link>
         </div>
       </Cornice>
@@ -328,6 +595,11 @@ export default function Lista() {
   return (
     <Cornice titolo="Spesa" settimana={stato.settimanaLabel} aree={areeMancanti(lista)}>
       <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {stato.offline && (
+          <p style={{ margin: '0 4px', fontSize: 12.5, lineHeight: 1.4, color: 'var(--sec)' }}>
+            {`Sei offline: questa è la lista di ${stato.settimanaLabel} salvata l'ultima volta che l'hai aperta. Le spunte si sincronizzano appena torna la rete.`}
+          </p>
+        )}
         {erroreAzione && (
           <p style={{ margin: '0 4px', fontSize: 12.5, color: 'var(--sec)' }}>{erroreAzione}</p>
         )}

@@ -1,5 +1,6 @@
 import type { LottoPronto } from '@/domain/types';
 import { client } from './supabase';
+import { idCasa } from './casa';
 import { aLottoPronto } from './mappers';
 
 /** Tutti i lotti, dal più vecchio: il decadimento lo applica chi legge (porzioniUtilizzabili), qui non si filtra. */
@@ -20,8 +21,8 @@ export async function leggiPronti(): Promise<LottoPronto[]> {
 export async function correggiLotto(id: string, porzioni: number): Promise<void> {
   if (!Number.isFinite(porzioni)) throw new Error(`Porzioni non valide: ${porzioni}.`);
   const sb = client();
-  const { data: utente } = await sb.auth.getUser();
-  const userId = utente.user!.id;
+  // L'id della casa (casa.ts), non dell'account: per un membro è il proprietario. Una chiamata per funzione: è memorizzata.
+  const userId = await idCasa();
   if (porzioni <= 0) {
     const { error } = await sb.from('porzione_pronta').delete().eq('id', id).eq('user_id', userId);
     if (error) throw error;
@@ -38,18 +39,18 @@ export async function correggiLotto(id: string, porzioni: number): Promise<void>
 /** Frigo ↔ freezer: cambia la soglia di decadimento del lotto, come il flag congelato del residuo. */
 export async function impostaCongelatoLotto(id: string, congelato: boolean): Promise<void> {
   const sb = client();
-  const { data: utente } = await sb.auth.getUser();
+  const userId = await idCasa();
   const { error } = await sb
     .from('porzione_pronta')
     .update({ congelato })
     .eq('id', id)
-    .eq('user_id', utente.user!.id);
+    .eq('user_id', userId);
   if (error) throw error;
 }
 
 export async function eliminaLotto(id: string): Promise<void> {
   const sb = client();
-  const { data: utente } = await sb.auth.getUser();
-  const { error } = await sb.from('porzione_pronta').delete().eq('id', id).eq('user_id', utente.user!.id);
+  const userId = await idCasa();
+  const { error } = await sb.from('porzione_pronta').delete().eq('id', id).eq('user_id', userId);
   if (error) throw error;
 }

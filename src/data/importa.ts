@@ -3,6 +3,7 @@ import { validaEsito, validaStatoRevisione } from '@/domain/import/valida';
 import type { PiattoDaCreare, RigaTradotta, ScrittureImport } from '@/domain/import/commit';
 import type { Dish, DishIngredient } from '@/domain/types';
 import { client } from './supabase';
+import { idCasa } from './casa';
 import { salvaIngrediente, salvaPiatto, eliminaPiatto } from './repertorio';
 import { leggiImpostazioni, salvaImpostazioni } from './impostazioni';
 
@@ -13,11 +14,12 @@ export interface BozzaImport {
 
 export async function leggiBozzaImport(): Promise<BozzaImport | null> {
   const sb = client();
-  const { data: utente } = await sb.auth.getUser();
+  // L'id della casa (casa.ts), non dell'account: per un membro è il proprietario. Una chiamata per funzione: è memorizzata.
+  const userId = await idCasa();
   const { data, error } = await sb
     .from('import_draft')
     .select('piano, stato_revisione')
-    .eq('user_id', utente.user!.id)
+    .eq('user_id', userId)
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;
@@ -36,9 +38,9 @@ export async function leggiBozzaImport(): Promise<BozzaImport | null> {
 
 export async function salvaBozzaImport(b: BozzaImport): Promise<void> {
   const sb = client();
-  const { data: utente } = await sb.auth.getUser();
+  const userId = await idCasa();
   const { error } = await sb.from('import_draft').upsert({
-    user_id: utente.user!.id,
+    user_id: userId,
     piano: b.piano,
     stato_revisione: b.statoRevisione,
   });
@@ -47,8 +49,8 @@ export async function salvaBozzaImport(b: BozzaImport): Promise<void> {
 
 export async function cancellaBozzaImport(): Promise<void> {
   const sb = client();
-  const { data: utente } = await sb.auth.getUser();
-  const { error } = await sb.from('import_draft').delete().eq('user_id', utente.user!.id);
+  const userId = await idCasa();
+  const { error } = await sb.from('import_draft').delete().eq('user_id', userId);
   if (error) throw error;
 }
 
@@ -110,6 +112,7 @@ export async function eseguiScritture(s: ScrittureImport): Promise<void> {
       classeResiduo: ing.classeResiduo,
       deperibile: ing.deperibile,
       formatoConfezione: ing.formatoConfezione,
+      prezzoConfezione: ing.prezzoConfezione,
     });
     idPerAlimento.set(ing.alimento, id);
   }

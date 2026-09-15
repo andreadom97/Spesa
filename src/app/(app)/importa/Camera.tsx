@@ -35,35 +35,97 @@ type Modo = 'rilevamento' | 'camera' | 'fallback';
 const LATO_MAX = 1568;
 
 /**
- * Ridisegna il frame corrente del video su un canvas ridimensionato (max
- * 1568px sul lato lungo) e produce un jpeg allo 0.75 di qualità. Ritorna null
- * se il canvas non riesce a produrre un blob (fotocamera nera, browser
- * esotico): in quel caso lo scatto va scartato invece di aggiungere una
- * pagina vuota.
+ * Stesso tetto di `/api/import/estrai` (MAX_IMMAGINI): applicato qui, prima
+ * dell'invio, così chi sceglie 20 foto dalla galleria vede subito quali sono
+ * entrate invece di un 413 dopo l'upload. Le eccedenti si scartano.
  */
-function scattaDaVideo(video: HTMLVideoElement): Promise<Blob | null> {
-  const largezzaSorgente = video.videoWidth;
-  const altezzaSorgente = video.videoHeight;
-  const lato = Math.max(largezzaSorgente, altezzaSorgente);
+const MAX_PAGINE = 12;
+
+/** Sorgente disegnabile su canvas con dimensioni note in pixel. */
+interface Sorgente {
+  immagine: CanvasImageSource;
+  larghezza: number;
+  altezza: number;
+  rilascia?: () => void;
+}
+
+/**
+ * Ridisegna la sorgente su un canvas ridimensionato (max 1568px sul lato
+ * lungo) e produce un jpeg allo 0.75 di qualità. Ritorna null se il canvas
+ * non riesce a produrre un blob (fotocamera nera, browser esotico): in quel
+ * caso la pagina va scartata invece di aggiungerne una vuota.
+ */
+function ricomprimi({ immagine, larghezza, altezza, rilascia }: Sorgente): Promise<Blob | null> {
+  const lato = Math.max(larghezza, altezza);
   const scala = lato > LATO_MAX ? LATO_MAX / lato : 1;
   const canvas = document.createElement('canvas');
-  canvas.width = Math.round(largezzaSorgente * scala);
-  canvas.height = Math.round(altezzaSorgente * scala);
+  canvas.width = Math.round(larghezza * scala);
+  canvas.height = Math.round(altezza * scala);
   const ctx = canvas.getContext('2d');
-  if (!ctx) return Promise.resolve(null);
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  if (!ctx) {
+    rilascia?.();
+    return Promise.resolve(null);
+  }
+  ctx.drawImage(immagine, 0, 0, canvas.width, canvas.height);
+  rilascia?.();
   return new Promise((resolve) => {
     canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.75);
   });
+}
+
+function scattaDaVideo(video: HTMLVideoElement): Promise<Blob | null> {
+  return ricomprimi({ immagine: video, larghezza: video.videoWidth, altezza: video.videoHeight });
+}
+
+/**
+ * Decodifica un file di galleria e lo porta sullo stesso percorso dello
+ * scatto (ridimensionamento + jpeg 0.75): le foto di galleria pesano 3–5 MB
+ * e su iPhone sono HEIC, che la route rifiuta (accetta jpeg/png/webp, 4 MiB
+ * in tutto). Prima `createImageBitmap` (decodifica anche HEIC dove il
+ * browser lo sa fare, es. Safari), altrimenti un `<img>` da object URL. Se
+ * nessuno dei due decodifica, null: il file si scarta con un avviso, non
+ * rompe il flusso.
+ */
+async function ricomprimiFile(file: File): Promise<Blob | null> {
+  if (typeof createImageBitmap === 'function') {
+    try {
+      const bitmap = await createImageBitmap(file);
+      return await ricomprimi({
+        immagine: bitmap,
+        larghezza: bitmap.width,
+        altezza: bitmap.height,
+        rilascia: () => bitmap.close(),
+      });
+    } catch {
+      // Formato che il browser non decodifica via bitmap: si prova con <img>.
+    }
+  }
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement | null>((resolve) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => resolve(null);
+      el.src = url;
+    });
+    if (!img) return null;
+    return await ricomprimi({ immagine: img, larghezza: img.naturalWidth, altezza: img.naturalHeight });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 /**
  * Camera in-app multi-scatto per l'import dieta: componente isolato, nessuna
  * dipendenza dal resto del piano. Prova ad aprire lo stream della fotocamera
  * posteriore; se `getUserMedia` non esiste o viene rifiutato, ripiega su un
- * `<input type="file" capture="environment">` con la stessa striscia di
- * miniature — l'utente sceglie le foto dei fogli dalla galleria o scattandole
- * con la fotocamera di sistema.
+ * `<input type="file">` con la stessa striscia di miniature. In entrambi i
+ * rami c'è il tasto DALLA GALLERIA: le foto si possono anche scegliere dalla
+ * galleria del telefono, senza scattarle — l'input non ha `capture`, che sul
+ * telefono riaprirebbe la fotocamera di sistema. Scatti e foto scelte passano
+ * dallo stesso percorso (`ricomprimi`: lato lungo 1568px, jpeg 0.75) e dallo
+ * stesso tetto di 12 pagine (`MAX_PAGINE`); un file che non si decodifica è
+ * scartato con un avviso.
  *
  * `onFoto` è chiamato dagli event handler DOPO il setState, mai dentro
  * l'updater di `setPagine` (sarebbe un setState del genitore durante il
@@ -83,6 +145,7 @@ export function Camera({ onFoto, iniziali = [] }: Props) {
   );
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [modo, setModo] = useState<Modo>('rilevamento');
+  const [avviso, setAvviso] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   // Rif. sempre allineato a `pagine`: base di calcolo delle mutazioni (così
   // gli handler compongono la lista nuova FUORI dall'updater e possono
@@ -164,18 +227,47 @@ export function Camera({ onFoto, iniziali = [] }: Props) {
   async function scatta() {
     const video = videoRef.current;
     if (!video) return;
+    if (pagineRef.current.length >= MAX_PAGINE) {
+      setAvviso(`al massimo ${MAX_PAGINE} fogli`);
+      return;
+    }
     const blob = await scattaDaVideo(video);
-    if (blob) aggiungiBlob(blob);
+    if (blob) {
+      setAvviso(null);
+      aggiungiBlob(blob);
+    }
   }
 
-  function scegliFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files;
-    if (!file || file.length === 0) return;
+  /**
+   * Foto dalla galleria: si ricomprimono una alla volta (una foto per volta
+   * in memoria, non venti bitmap insieme), poi si accodano in un colpo solo
+   * nell'ordine scelto. Il tetto si applica PRIMA di decodificare: le
+   * eccedenti non costano nulla.
+   */
+  async function scegliFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const scelti = Array.from(e.target.files ?? []);
+    // Reset subito (prima di ogni await): riscegliere gli stessi file deve
+    // rilanciare `change`.
+    e.target.value = '';
+    if (scelti.length === 0) return;
+    const spazio = Math.max(0, MAX_PAGINE - pagineRef.current.length);
+    const daDecodificare = scelti.slice(0, spazio);
+    const eccedenti = scelti.length - daDecodificare.length;
+    const blob: Blob[] = [];
+    for (const file of daDecodificare) {
+      const b = await ricomprimiFile(file);
+      if (b) blob.push(b);
+    }
+    const illeggibili = daDecodificare.length - blob.length;
+    const messaggi: string[] = [];
+    if (eccedenti > 0) messaggi.push(`al massimo ${MAX_PAGINE} fogli: ${eccedenti} foto in più scartat${eccedenti === 1 ? 'a' : 'e'}`);
+    if (illeggibili > 0) messaggi.push(`${illeggibili} foto non leggibil${illeggibili === 1 ? 'e' : 'i'}, scartat${illeggibili === 1 ? 'a' : 'e'}`);
+    setAvviso(messaggi.length > 0 ? messaggi.join(' · ') : null);
+    if (blob.length === 0) return;
     applicaPagine([
       ...pagineRef.current,
-      ...Array.from(file).map((f) => ({ blob: f, url: URL.createObjectURL(f) })),
+      ...blob.map((b) => ({ blob: b, url: URL.createObjectURL(b) })),
     ]);
-    e.target.value = '';
   }
 
   function elimina(indice: number) {
@@ -198,10 +290,40 @@ export function Camera({ onFoto, iniziali = [] }: Props) {
     return <div style={{ minHeight: 160 }} />;
   }
 
+  // L'input reale resta accessibile (aria-label) ma visivamente nascosto: il
+  // tap va sul finto bottone testuale, vestito come gli altri bottoni
+  // dell'app. Nessun `capture`: sul telefono riaprirebbe la fotocamera di
+  // sistema invece della galleria.
+  const tastoGalleria = (
+    <label
+      style={{
+        position: 'relative',
+        alignSelf: modo === 'camera' ? 'center' : 'flex-start',
+        height: 40, padding: '0 18px', borderRadius: 999,
+        display: 'inline-flex', alignItems: 'center',
+        border: modo === 'camera' ? '1px solid var(--bordo)' : 'none',
+        background: modo === 'camera' ? 'var(--superficie)' : 'var(--ink)',
+        color: modo === 'camera' ? 'var(--ink)' : '#FFFFFF',
+        fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.1em',
+        cursor: 'pointer',
+      }}
+    >
+      DALLA GALLERIA
+      <input
+        type="file"
+        accept="image/*"
+        multiple
+        aria-label="scegli le foto dalla galleria"
+        onChange={scegliFile}
+        style={{ position: 'absolute', width: 1, height: 1, opacity: 0, overflow: 'hidden', clipPath: 'inset(50%)' }}
+      />
+    </label>
+  );
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {modo === 'fallback' ? (
-        <label
+        <div
           style={{
             display: 'flex',
             flexDirection: 'column',
@@ -214,26 +336,9 @@ export function Camera({ onFoto, iniziali = [] }: Props) {
             fontSize: 13,
           }}
         >
-          La fotocamera non è disponibile: scegli le foto dei fogli
-          <span
-            style={{
-              alignSelf: 'flex-start', height: 40, padding: '0 18px', borderRadius: 999,
-              display: 'inline-flex', alignItems: 'center', background: 'var(--ink)',
-              fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.1em', color: '#FFFFFF',
-            }}
-          >
-            SCEGLI LE FOTO
-          </span>
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            capture="environment"
-            aria-label="scegli le foto dei fogli"
-            onChange={scegliFile}
-            style={{ position: 'absolute', width: 1, height: 1, opacity: 0, overflow: 'hidden', clipPath: 'inset(50%)' }}
-          />
-        </label>
+          La fotocamera non è disponibile: scegli le foto dei fogli dalla galleria
+          {tastoGalleria}
+        </div>
       ) : (
         <>
           <video
@@ -264,7 +369,14 @@ export function Camera({ onFoto, iniziali = [] }: Props) {
           >
             Scatta
           </button>
+          {tastoGalleria}
         </>
+      )}
+
+      {avviso && (
+        <p role="status" style={{ margin: 0, fontSize: 13, color: 'var(--sec)' }}>
+          {avviso}
+        </p>
       )}
 
       {pagine.length > 0 && (

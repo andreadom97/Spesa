@@ -39,6 +39,14 @@ beforeEach(() => {
   Object.defineProperty(navigator, 'mediaDevices', { value: undefined, configurable: true });
   URL.createObjectURL = vi.fn(() => 'blob:finto');
   URL.revokeObjectURL = vi.fn();
+  // Camera ricomprime ogni foto scelta (createImageBitmap → canvas → jpeg):
+  // jsdom non sa fare nessuno dei tre passaggi, senza questi mock i file
+  // sarebbero scartati come illeggibili e nessuna foto arriverebbe alla pagina.
+  vi.stubGlobal('createImageBitmap', vi.fn(async () => ({ width: 100, height: 100, close: vi.fn() })));
+  HTMLCanvasElement.prototype.getContext = vi.fn(() => ({ drawImage: vi.fn() })) as unknown as typeof HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.toBlob = vi.fn(function (cb: BlobCallback) {
+    cb(new Blob(['jpeg'], { type: 'image/jpeg' }));
+  });
   vi.mocked(leggiBozzaImport).mockResolvedValue(null);
   vi.mocked(leggiSlotDefs).mockResolvedValue(SLOTS);
   vi.mocked(leggiIngredienti).mockResolvedValue([]);
@@ -50,9 +58,12 @@ beforeEach(() => {
 // bottone "estrai la dieta"), ma `Camera` decide fra fotocamera e fallback solo
 // dentro un effect, un giro asincrono dopo il proprio mount — `findByLabelText`
 // aspetta quel giro invece di assumere che sia già passato.
+// Poi aspetta la miniatura: la ricompressione in Camera è asincrona, e finché
+// non è finita `onFoto` non è chiamato e il bottone ESTRAI resta spento.
 async function caricaUnaFoto() {
   const input = await screen.findByLabelText(/scegli le foto/i);
   fireEvent.change(input, { target: { files: [new File(['a'], 'p1.jpg', { type: 'image/jpeg' })] } });
+  await screen.findByText('pag. 1');
 }
 
 describe('Importa', () => {
@@ -146,6 +157,41 @@ describe('Importa', () => {
     // RIPROVA riporta all'acquisizione con le foto ancora selezionate: basta
     // verificare che il bottone sia abilitato, lo stato delle foto non è toccato dall'errore.
     expect(screen.getByRole('button', { name: /riprova/i })).toBeEnabled();
+  });
+
+  it('429 (tetto di import) mostra il messaggio della route verbatim', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      json: async () => ({ errore: 'hai già fatto 3 import negli ultimi 30 giorni: il prossimo dal 12/09/2026' }),
+    });
+    render(<Importa />);
+    await screen.findByRole('button', { name: /estrai la dieta/i });
+    await caricaUnaFoto();
+    fireEvent.click(screen.getByRole('button', { name: /estrai la dieta/i }));
+    expect(await screen.findByText('hai già fatto 3 import negli ultimi 30 giorni: il prossimo dal 12/09/2026')).toBeInTheDocument();
+  });
+
+  it('400 col messaggio della route (PDF illeggibile) lo mostra verbatim', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({ errore: 'il PDF non si apre: prova con le foto' }),
+    });
+    render(<Importa />);
+    await screen.findByRole('button', { name: /estrai la dieta/i });
+    await caricaUnaFoto();
+    fireEvent.click(screen.getByRole('button', { name: /estrai la dieta/i }));
+    expect(await screen.findByText('il PDF non si apre: prova con le foto')).toBeInTheDocument();
+  });
+
+  it('400 senza corpo leggibile: messaggio generico', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 400, json: async () => { throw new Error('non JSON'); } });
+    render(<Importa />);
+    await screen.findByRole('button', { name: /estrai la dieta/i });
+    await caricaUnaFoto();
+    fireEvent.click(screen.getByRole('button', { name: /estrai la dieta/i }));
+    expect(await screen.findByText('Non siamo riusciti a leggere la dieta. Riprova.')).toBeInTheDocument();
   });
 
   it('422 mostra il messaggio dedicato', async () => {

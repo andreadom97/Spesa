@@ -15,6 +15,24 @@ const CLASSI: { id: ClasseResiduo; label: string }[] = [
   { id: 'stima', label: 'A stima' },
 ];
 
+/**
+ * Il prezzo si digita in un campo di testo (non `type="number"`): il tastierino
+ * decimale di iOS in italiano offre la virgola, e un input numerico la
+ * rifiuterebbe in silenzio. Vuoto = nessun prezzo (`null`); altrimenti si
+ * accetta virgola o punto, e un valore non positivo o non numerico blocca il
+ * passo come un formato non valido. Stessa funzione dell'editor ingrediente.
+ */
+function analizzaPrezzo(testo: string): number | null {
+  const pulito = testo.trim();
+  if (!pulito) return null;
+  return Number(pulito.replace(',', '.'));
+}
+
+/** Da numero a testo del campo: con la virgola, come lo si scriverebbe. */
+function prezzoInTesto(prezzo: number | null): string {
+  return prezzo === null ? '' : String(prezzo).replace('.', ',');
+}
+
 interface Props {
   piano: PianoEstratto;
   stato: StatoRevisione;
@@ -78,7 +96,15 @@ export function Formati({ piano, stato, ingredientiEsistenti, onStato }: Props) 
     onStato({ ...stato, ingredientiNuovi: ingredienti, passo: 'riepilogo' });
   }
 
-  const bloccato = ingredienti.some((i) => !i.nome.trim() || !Number.isFinite(i.formatoConfezione) || i.formatoConfezione <= 0);
+  // Il prezzo è facoltativo (null passa), ma se c'è dev'essere un numero
+  // positivo: un "0" o un "abc" bloccano il passo come un formato non valido.
+  const bloccato = ingredienti.some(
+    (i) =>
+      !i.nome.trim() ||
+      !Number.isFinite(i.formatoConfezione) ||
+      i.formatoConfezione <= 0 ||
+      (i.prezzoConfezione !== null && (!Number.isFinite(i.prezzoConfezione) || i.prezzoConfezione <= 0)),
+  );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
@@ -133,6 +159,10 @@ function CardIngrediente({
   onCambia: (cambio: Partial<IngredienteProposto>) => void;
   onUsaEsistente: (ingredientId: string) => void;
 }) {
+  // Testo del campo prezzo, non numero: così "1," resta "1," mentre si
+  // digita; a ogni modifica il numero (o null) va nella proposta.
+  const [prezzoTesto, setPrezzoTesto] = useState(() => prezzoInTesto(proposto.prezzoConfezione));
+
   return (
     <section
       style={{
@@ -182,7 +212,10 @@ function CardIngrediente({
           </select>
         </Campo>
 
-        <Campo etichetta="Classe residuo">
+        {/* A tutta larghezza, così formato e prezzo (che è il prezzo di
+            QUELLA confezione) stanno affiancati nella riga sotto, senza
+            lasciare una cella vuota nella griglia a due colonne. */}
+        <Campo etichetta="Classe residuo" larghezza="piena">
           <select
             value={proposto.classeResiduo}
             aria-label={`Classe residuo di ${proposto.alimento}`}
@@ -206,6 +239,25 @@ function CardIngrediente({
               style={{ ...STILE_SELECT, flex: 1 }}
             />
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--sec)' }}>{proposto.unitaBase}</span>
+          </div>
+        </Campo>
+
+        {/* Etichetta corta e aiuto "facoltativo": la cella è metà card, non
+            c'è spazio per la frase intera dell'editor ingrediente. */}
+        <Campo etichetta="Prezzo" aiuto="facoltativo">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={prezzoTesto}
+              aria-label={`Prezzo di una confezione di ${proposto.alimento}`}
+              onChange={(e) => {
+                setPrezzoTesto(e.target.value);
+                onCambia({ prezzoConfezione: analizzaPrezzo(e.target.value) });
+              }}
+              style={{ ...STILE_SELECT, flex: 1, minWidth: 0 }}
+            />
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--sec)' }}>€</span>
           </div>
         </Campo>
       </div>
@@ -263,11 +315,24 @@ const STILE_SELECT = {
   color: 'var(--ink)',
 };
 
-function Campo({ etichetta, children }: { etichetta: string; children: ReactNode }) {
+function Campo({
+  etichetta,
+  aiuto,
+  larghezza = 'mezza',
+  children,
+}: {
+  etichetta: string;
+  /** Nota breve accanto all'etichetta, in minuscolo (es. "facoltativo"). */
+  aiuto?: string;
+  /** "piena" occupa entrambe le colonne della griglia. */
+  larghezza?: 'mezza' | 'piena';
+  children: ReactNode;
+}) {
   return (
-    <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+    <label style={{ display: 'flex', flexDirection: 'column', gap: 4, gridColumn: larghezza === 'piena' ? '1 / -1' : undefined }}>
       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.08em', color: 'var(--ter)' }}>
         {etichetta.toUpperCase()}
+        {aiuto && <span style={{ letterSpacing: 0, fontWeight: 400, marginLeft: 5 }}>{aiuto}</span>}
       </span>
       {children}
     </label>

@@ -3,6 +3,7 @@ import { ORDINE_AREE_DEFAULT } from '@/domain/aree';
 import { lunediDi } from '@/domain/date';
 import { MAX_PASTI, MIN_PASTI } from '@/domain/pasti';
 import { client } from './supabase';
+import { idCasa } from './casa';
 import { aSlotDef } from './mappers';
 
 /** Deve coincidere con il default della colonna `moltiplicatore_porzioni`. */
@@ -10,6 +11,19 @@ const MOLTIPLICATORE_DEFAULT = 1;
 
 /** Deve coincidere con il default della colonna `settimane_ciclo`: nessuna rotazione. */
 const SETTIMANE_CICLO_DEFAULT = 1;
+
+/**
+ * "Per quante persone cucini" (`moltiplicatore_porzioni`): da 1 a 4. Lo
+ * stepper della pagina si ferma a 4, ma la colonna ammette fino a 6: il
+ * vincolo del prodotto vive qui, dove si scrive, non solo nell'interfaccia
+ * (review di sicurezza dell'11/09). La pagina importa le stesse costanti.
+ */
+export const MIN_PORZIONI = 1;
+export const MAX_PORZIONI = 4;
+
+function personeValide(persone: number): boolean {
+  return Number.isInteger(persone) && persone >= MIN_PORZIONI && persone <= MAX_PORZIONI;
+}
 
 function oggiIso(): string {
   return new Date().toISOString().slice(0, 10);
@@ -46,11 +60,12 @@ export function pastiDiDefault(): MealSlotDef[] {
  */
 export async function leggiImpostazioni(): Promise<Impostazioni> {
   const sb = client();
-  const { data: utente } = await sb.auth.getUser();
+  // L'id della casa (casa.ts), non dell'account: per un membro è il proprietario. Una chiamata per funzione: è memorizzata.
+  const userId = await idCasa();
   const { data, error } = await sb
     .from('settings')
     .select('moltiplicatore_porzioni, ordine_aree, settimane_ciclo, ciclo_origine')
-    .eq('user_id', utente.user!.id)
+    .eq('user_id', userId)
     .maybeSingle();
   if (error) throw error;
   if (!data) {
@@ -70,10 +85,12 @@ export async function leggiImpostazioni(): Promise<Impostazioni> {
 }
 
 export async function salvaImpostazioni(i: Impostazioni): Promise<void> {
+  // Prima di qualunque accesso al server: una riga fuori tetto non si scrive.
+  if (!personeValide(i.moltiplicatorePorzioni)) throw new Error('persone non valide');
   const sb = client();
-  const { data: utente } = await sb.auth.getUser();
+  const userId = await idCasa();
   const { error } = await sb.from('settings').upsert({
-    user_id: utente.user!.id,
+    user_id: userId,
     moltiplicatore_porzioni: i.moltiplicatorePorzioni,
     ordine_aree: i.ordineAree,
     settimane_ciclo: i.settimaneCiclo,
@@ -117,8 +134,7 @@ export async function salvaSlotDefs(defs: MealSlotDef[]): Promise<void> {
     throw new Error(`I pasti configurabili devono essere da ${MIN_PASTI} a ${MAX_PASTI}: ricevuti ${defs.length}.`);
   }
   const sb = client();
-  const { data: utente } = await sb.auth.getUser();
-  const userId = utente.user!.id;
+  const userId = await idCasa();
 
   const idAttuali = new Set(defs.map((d) => d.id));
   const { data: esistenti, error: eSel } = await sb

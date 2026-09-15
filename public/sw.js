@@ -62,11 +62,23 @@ self.addEventListener('fetch', (e) => {
   // perché mostrerebbero dati vecchi come se fossero freschi. Offline ci
   // pensa la coda delle spunte.
   if (e.request.method !== 'GET' || url.origin !== self.location.origin) return;
+  // Le API dell'app (/api/prodotto/<ean> e quelle che verranno) sono dati,
+  // non guscio: non si mettono in cache e non si servono dalla cache. Senza
+  // questo un 502 o un 401 finirebbe riservito offline come se fosse la
+  // risposta buona, e i JSON dei prodotti resterebbero in Cache Storage
+  // senza scadenza. Non si chiama respondWith: la richiesta va alla rete
+  // come se il service worker non ci fosse, e offline fallisce con l'errore
+  // che la pagina già gestisce.
+  if (url.pathname.startsWith('/api/')) return;
   e.respondWith(
     fetch(e.request)
       .then((r) => {
-        const copia = r.clone();
-        caches.open(CACHE).then((c) => c.put(e.request, copia));
+        // Solo le risposte buone: un errore del server (500, 404) messo in
+        // cache verrebbe servito offline al posto della pagina che c'era.
+        if (r.ok) {
+          const copia = r.clone();
+          caches.open(CACHE).then((c) => c.put(e.request, copia));
+        }
         return r;
       })
       .catch(() =>

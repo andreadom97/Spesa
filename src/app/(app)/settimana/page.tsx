@@ -2,15 +2,20 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import type { AreaId, Dish, Ingredient, LottoPronto, MealSlot, MealSlotDef, StatoSlot } from '@/domain/types';
+import Link from 'next/link';
+import type { AreaId, Dish, Ingredient, LottoPronto, MealSlot, MealSlotDef, PantryState, StatoSlot } from '@/domain/types';
 import { applicaStato } from '@/domain/week-shape';
 import { descriviScelte } from '@/domain/opzioni';
 import { giorniDellaSettimana, lunediDi, sommaGiorni } from '@/domain/date';
 import { porzioniUtilizzabili } from '@/domain/pronti';
-import { leggiSettimanaCorrente, leggiSettimana, creaSettimana, aggiornaSlot, confermaSettimana } from '@/data/settimana';
+import { avvisiScadenza, etichettaScadenza, type AvvisoScadenza } from '@/domain/scadenza';
+import {
+  leggiSettimanaCorrente, leggiSettimana, creaSettimana, completaAssegnazioni, aggiornaSlot, confermaSettimana,
+} from '@/data/settimana';
 import { leggiRepertorio, leggiIngredienti } from '@/data/repertorio';
 import { leggiSlotDefs, leggiImpostazioni } from '@/data/impostazioni';
 import { leggiPronti } from '@/data/pronti';
+import { leggiDispensa } from '@/data/dispensa';
 import { generaListe } from '@/data/lista';
 import { Testata } from '@/components/Testata';
 import { StrisciaGiorni } from '@/components/StrisciaGiorni';
@@ -23,6 +28,20 @@ function oggiIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+/**
+ * La dispensa serve solo agli avvisi di scadenza del fresco (spec
+ * scadenza-fresco §3.1): un di più. Se la lettura fallisce, nessun avviso e
+ * la Settimana resta usabile — come fa la Dispensa col non ricomprato.
+ */
+async function leggiDispensaSenzaBloccare(): Promise<PantryState[]> {
+  try {
+    return await leggiDispensa();
+  } catch (e) {
+    console.error('settimana: lettura della dispensa fallita.', e);
+    return [];
+  }
+}
+
 interface Repertorio {
   settimana: {
     id: string;
@@ -33,6 +52,7 @@ interface Repertorio {
   slotDefs: MealSlotDef[];
   piatti: Dish[];
   ingredienti: Ingredient[];
+  dispensa: PantryState[];
   ordineAree: AreaId[];
 }
 
@@ -123,14 +143,29 @@ export default function Settimana() {
             }
           }
           if (!corrente) throw new Error('Settimana non disponibile dopo la creazione.');
+
+          // Una bozza con righe a casa ancora senza piatto (nata a repertorio
+          // vuoto, spec due-porte §2.4): si prova a compilarla adesso, così
+          // le righe si riempiono da sole appena i piatti ci sono, senza
+          // aspettare il lunedì dopo. Tollerante: se fallisce si mostra la
+          // settimana com'è, non è un errore di caricamento.
+          if (corrente.stato === 'bozza' && corrente.slots.some((s) => s.stato === 'casa' && s.dishId === null)) {
+            try {
+              const compilati = await completaAssegnazioni(corrente.id);
+              if (compilati > 0) corrente = (await leggiSettimanaCorrente()) ?? corrente;
+            } catch (erroreCompletamento) {
+              console.error('settimana: completamento delle assegnazioni fallito.', erroreCompletamento);
+            }
+          }
         }
 
-        const [slotDefs, piatti, ingredienti, impostazioni, lottiCaricati] = await Promise.all([
+        const [slotDefs, piatti, ingredienti, impostazioni, lottiCaricati, dispensa] = await Promise.all([
           leggiSlotDefs(),
           leggiRepertorio(),
           leggiIngredienti(),
           leggiImpostazioni(),
           leggiPronti(),
+          leggiDispensaSenzaBloccare(),
         ]);
         if (!vivo) return;
 
@@ -139,6 +174,7 @@ export default function Settimana() {
           slotDefs,
           piatti,
           ingredienti,
+          dispensa,
           ordineAree: impostazioni.ordineAree,
         });
         setLotti(lottiCaricati);
@@ -212,10 +248,32 @@ export default function Settimana() {
     return <Cornice />;
   }
 
-  const { settimana, slotDefs, piatti, ingredienti, ordineAree } = dati;
+  const { settimana, slotDefs, piatti, ingredienti, dispensa, ordineAree } = dati;
   const giorni = giorniDellaSettimana(settimana.dataInizio);
   const dataSelezionata = giorni[selezionato];
   const oggi = oggiIso();
+
+  // Avvisi di scadenza del fresco (spec scadenza-fresco §1.2, §3.1): un
+  // residuo che oggi conta ma che, per il modello, non ci sarà più il giorno
+  // di un pasto che lo usa. Una volta per render, non per riga. Solo nella
+  // vista corrente: il passato non si avvisa. Per un giorno già passato la
+  // lista è vuota per costruzione (avvisiScadenza guarda solo data ≥ oggi).
+  const avvisi: AvvisoScadenza[] = vista === 'corrente'
+    ? avvisiScadenza({ slots: settimana.slots, dishes: piatti, ingredients: ingredienti, pantry: dispensa, oggi })
+    : [];
+
+  /**
+   * Le righe di avviso per il pasto (dataSelezionata, slotDefId): copy esatto
+   * della spec §3.1. L'id è l'ingrediente: un avviso per ingrediente, mai due.
+   */
+  function avvisiDelPasto(slotDefId: string): { id: string; testo: string }[] {
+    return avvisi
+      .filter((a) => a.pastiDopo.some((p) => p.data === dataSelezionata && p.slotDefId === slotDefId))
+      .map((a) => ({
+        id: a.ingredientId,
+        testo: `${a.nome} in casa: scade ${etichettaScadenza(a.scadenza, oggi)}, prima di questo pasto`,
+      }));
+  }
 
   const piattiPerId = new Map(piatti.map((p) => [p.id, p]));
   const areaPerIngrediente = new Map(ingredienti.map((i) => [i.id, i.area]));
@@ -486,6 +544,29 @@ export default function Settimana() {
           <p style={{ margin: '0 4px 9px', fontSize: 12.5, color: 'var(--sec)' }}>{erroreCheckin}</p>
         )}
 
+        {vista === 'corrente' && piatti.length === 0 && (
+          // Repertorio vuoto (spec due-porte §2.4): ogni riga sotto direbbe
+          // solo "Nessun piatto assegnato", senza dire dove andare. Solo nella
+          // vista corrente: il passato non si compila.
+          <div style={{ marginBottom: 10, padding: '14px 16px', borderRadius: 18, background: 'var(--superficie)', border: '1px solid var(--bordo)' }}>
+            <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)', marginBottom: 4 }}>
+              Nessun piatto ancora
+            </div>
+            <div style={{ fontSize: 13, lineHeight: 1.45, color: 'var(--sec)' }}>
+              Le righe si riempiono da sole appena ce n’è qualcuno.
+            </div>
+            <Link
+              href="/piatti"
+              style={{
+                display: 'inline-flex', alignItems: 'center', minHeight: 44, marginTop: 2,
+                fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.11em', color: 'var(--ink)',
+              }}
+            >
+              COMINCIA DAI PIATTI ›
+            </Link>
+          </div>
+        )}
+
         <div key={dataSelezionata} className="anim-giorno" style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
           {pastiOrdinati.map((def) => {
             const slot = settimana.slots.find((s) => s.data === dataSelezionata && s.slotDefId === def.id);
@@ -511,6 +592,7 @@ export default function Settimana() {
                   // prescindere dallo stato (fattoreConsumo, spec §6).
                   : [slot.porzioniPreparate > 0 ? `+${slot.porzioniPreparate} ${slot.porzioniPreparate === 1 ? 'porzione' : 'porzioni'}` : null]
                 ).filter(Boolean).join(' · ') || null}
+                avvisi={avvisiDelPasto(def.id)}
                 onToggleStato={() => toggleStato(slot)}
                 onApriPiatto={piatto ? () => apriPiatto(piatto.id) : undefined}
                 hrefScegli={`/settimana/${dataSelezionata}/${def.id}/scegli`}

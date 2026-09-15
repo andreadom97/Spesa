@@ -71,7 +71,9 @@ export async function POST(request: Request): Promise<Response> {
     if (err instanceof EsitoNonValidoError) {
       return Response.json({ errore: 'non ho capito la nota, riprova' }, { status: 422 });
     }
-    const messaggio = err instanceof Error ? err.message : String(err);
-    return Response.json({ errore: messaggio }, { status: 500 });
+    // Un errore imprevisto nella validazione: come in import/estrai, al client va
+    // un messaggio generico, il dettaglio resta nel log (solo il nome, niente testo).
+    console.error('dispensa-ai: validazione fallita.', err instanceof Error ? err.name : 'errore');
+    return Response.json({ errore: 'correzione non riuscita, riprova' }, { status: 500 });
   }
 }
