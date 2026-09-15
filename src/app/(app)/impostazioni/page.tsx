@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Impostazioni, MealSlotDef } from '@/domain/types';
 import { leggiImpostazioni, leggiSlotDefs, salvaImpostazioni, salvaSlotDefs, pastiDiDefault, MAX_PORZIONI, MIN_PORZIONI } from '@/data/impostazioni';
-import { creaInvito, entraInCasa, esciDallaCasa, rimuoviMembro, statoCasa, type StatoCasa } from '@/data/casa';
+import { creaInvito, dimenticaIdCasa, eRifiutoRls, entraInCasa, esciDallaCasa, rimuoviMembro, statoCasa, type StatoCasa } from '@/data/casa';
 import { MAX_PASTI, MIN_PASTI } from '@/domain/pasti';
 import { coloreArea, nomeArea } from '@/domain/aree';
 import { MAX_SETTIMANE_CICLO, settimanaDelCiclo } from '@/domain/ciclo';
@@ -141,25 +141,30 @@ export default function Impostazioni() {
   const [casa, setCasa] = useState<StatoCasa | null>(null);
   const [erroreCasa, setErroreCasa] = useState<string | null>(null);
 
-  useEffect(() => {
-    let vivo = true;
-    statoCasa()
-      .then((stato) => {
-        if (vivo) setCasa(stato);
-      })
-      .catch((errore) => {
-        console.error('impostazioni: lettura della casa fallita.', errore);
-        if (vivo) setErroreCasa('Non riusciamo a leggere la casa. Riprova più tardi.');
-      });
-    return () => {
-      vivo = false;
-    };
-  }, []);
+  // Tutto quello che la pagina legge dal server (casa, impostazioni, pasti),
+  // definito nell'effect di montaggio come `carica` nella Lista e tenuto in
+  // un ref perché `persistiImpostazioni` lo richiami dopo un rifiuto RLS:
+  // la casa è cambiata e ogni dato a schermo è di un'altra casa.
+  const caricaTuttoRef = useRef<() => Promise<void>>(async () => {});
 
   useEffect(() => {
     let vivo = true;
-    Promise.all([leggiImpostazioni(), leggiSlotDefs()])
-      .then(async ([impostazioni, pastiLetti]) => {
+
+    /** Legge lo stato della casa (ruolo, membri) e aggiorna la scheda CASA. */
+    async function caricaCasa() {
+      try {
+        const stato = await statoCasa();
+        if (vivo) setCasa(stato);
+      } catch (errore) {
+        console.error('impostazioni: lettura della casa fallita.', errore);
+        if (vivo) setErroreCasa('Non riusciamo a leggere la casa. Riprova più tardi.');
+      }
+    }
+
+    /** Legge impostazioni e pasti dal server e li mette a schermo, come ultimo stato confermato. */
+    async function caricaImpostazioni() {
+      try {
+        const [impostazioni, pastiLetti] = await Promise.all([leggiImpostazioni(), leggiSlotDefs()]);
         if (!vivo) return;
         // Utente nuovo, mai passato da seed.sql: leggiSlotDefs() torna vuoto.
         // Si seminano subito i quattro pasti di default e si salvano davvero
@@ -172,11 +177,20 @@ export default function Impostazioni() {
         pastiSalvatiRef.current = pasti;
         impostazioniSalvateRef.current = impostazioni;
         setDati({ impostazioni, pasti });
-      })
-      .catch((errore) => {
+      } catch (errore) {
         console.error('impostazioni: caricamento fallito.', errore);
         if (vivo) setErroreCaricamento('Non riusciamo a caricare le impostazioni. Riprova più tardi.');
-      });
+      }
+    }
+
+    // La casa a parte, non nello stesso Promise.all delle impostazioni: se
+    // la sua RPC fallisce la sezione CASA lo dice, e il resto resta usabile.
+    async function caricaTutto() {
+      await Promise.all([caricaCasa(), caricaImpostazioni()]);
+    }
+
+    caricaTuttoRef.current = caricaTutto;
+    void caricaTutto();
     return () => {
       vivo = false;
     };
@@ -260,6 +274,19 @@ export default function Impostazioni() {
     } catch (errore) {
       console.error('impostazioni: salvataggio delle impostazioni fallito.', errore);
       if (!eUltima()) return;
+      if (eRifiutoRls(errore)) {
+        // La casa è cambiata sotto i piedi (un membro tolto dal proprietario
+        // da un altro dispositivo, prova del 15/09): l'id memorizzato è di
+        // una casa che non è più la sua, e ogni dato a schermo con lui. Si
+        // scarta la memoria e si ricarica tutto; la scrittura non si
+        // riprova da sola, era un tap su dati che l'utente deve prima
+        // rivedere.
+        dimenticaIdCasa();
+        await caricaTuttoRef.current();
+        if (!eUltima()) return;
+        setErroreSalvataggio('La casa è cambiata: dati ricaricati. Riprova.');
+        return;
+      }
       let salvate = impostazioniSalvateRef.current;
       try {
         salvate = await leggiImpostazioni();

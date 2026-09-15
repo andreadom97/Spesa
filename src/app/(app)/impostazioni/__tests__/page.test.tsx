@@ -24,14 +24,20 @@ vi.mock('@/data/impostazioni', () => ({
   ]),
 }));
 
-vi.mock('@/data/casa', () => ({
-  statoCasa: vi.fn(),
-  creaInvito: vi.fn(),
-  entraInCasa: vi.fn(),
-  esciDallaCasa: vi.fn(),
-  rimuoviMembro: vi.fn(),
-  dimenticaIdCasa: vi.fn(),
-}));
+// `eRifiutoRls` è quella vera: è pura, e la pagina si ramifica su di lei
+// quando un salvataggio è rifiutato dalla RLS (la casa è cambiata).
+vi.mock('@/data/casa', async () => {
+  const reale = await vi.importActual<typeof import('@/data/casa')>('@/data/casa');
+  return {
+    statoCasa: vi.fn(),
+    creaInvito: vi.fn(),
+    entraInCasa: vi.fn(),
+    esciDallaCasa: vi.fn(),
+    rimuoviMembro: vi.fn(),
+    dimenticaIdCasa: vi.fn(),
+    eRifiutoRls: reale.eRifiutoRls,
+  };
+});
 
 const back = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -39,7 +45,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 import { leggiImpostazioni, salvaImpostazioni, leggiSlotDefs, salvaSlotDefs } from '@/data/impostazioni';
-import { statoCasa, creaInvito, entraInCasa, esciDallaCasa, rimuoviMembro } from '@/data/casa';
+import { statoCasa, creaInvito, entraInCasa, esciDallaCasa, rimuoviMembro, dimenticaIdCasa } from '@/data/casa';
 import { lunediDi } from '@/domain/date';
 import Impostazioni from '../page';
 
@@ -356,6 +362,77 @@ describe('Impostazioni', () => {
       expect(leggiImpostazioni).toHaveBeenCalledTimes(2);
       expect(screen.queryByText(/La lista compra per/)).not.toBeInTheDocument();
       expect(screen.getByLabelText('Diminuisci porzioni')).toBeDisabled();
+      // Un errore qualsiasi non è un cambio di casa: la memoria dell'id resta.
+      expect(dimenticaIdCasa).not.toHaveBeenCalled();
+      expect(leggiSlotDefs).toHaveBeenCalledTimes(1);
+      expect(statoCasa).toHaveBeenCalledTimes(1);
+      errore.mockRestore();
+    });
+
+    // Prova del 15/09: il proprietario toglie il membro dal telefono; sulla
+    // scheda del membro, rimasta aperta sul PC, + scrive con l'id del
+    // proprietario e la RLS rifiuta (42501). Tredici tap, tredici 403. La
+    // pagina scarta la memoria dell'id, ricarica tutto (impostazioni, pasti,
+    // casa) e lo dice, senza riprovare la scrittura da sola: era un tap su
+    // una casa che non è più la sua, prima deve vedere i dati nuovi.
+    it('se la RLS rifiuta il salvataggio (la casa è cambiata) scarta l’id della casa, ricarica tutto e lo dice', async () => {
+      mockDati({ porzioni: 1 });
+      vi.mocked(statoCasa).mockResolvedValue({ ruolo: 'membro', email: ['a@b.it'], id: ['id-p'] });
+      render(<Impostazioni />);
+      await screen.findByDisplayValue('Colazione');
+      expect(await screen.findByText('Sei nella casa di a@b.it')).toBeInTheDocument();
+      const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+      vi.mocked(salvaImpostazioni).mockRejectedValue({
+        code: '42501',
+        message: 'new row violates row-level security policy for table "settings"',
+      });
+      // I dati della casa nuova (i propri, tornati in vista): porzioni 3, un
+      // pasto in più, da solo.
+      vi.mocked(leggiImpostazioni).mockResolvedValue({
+        moltiplicatorePorzioni: 3,
+        ordineAree: [...ORDINE_AREE_TEST],
+        settimaneCiclo: 1,
+        cicloOrigine: null,
+      });
+      vi.mocked(leggiSlotDefs).mockResolvedValue([
+        SLOT_COLAZIONE,
+        { id: 'sd-4', nome: 'Merenda', posizione: 1, assenzeAbituali: ASSENZE_VUOTE },
+        { ...SLOT_PRANZO, posizione: 2 },
+        { ...SLOT_CENA, posizione: 3 },
+      ]);
+      vi.mocked(statoCasa).mockResolvedValue({ ruolo: 'solo', email: [], id: [] });
+
+      fireEvent.click(screen.getByLabelText('Aumenta porzioni'));
+
+      expect(await screen.findByText('La casa è cambiata: dati ricaricati. Riprova.')).toBeInTheDocument();
+      expect(dimenticaIdCasa).toHaveBeenCalledTimes(1);
+      // Ricaricati tutti e tre: una chiamata per il caricamento iniziale, una per il ricaricamento.
+      expect(leggiImpostazioni).toHaveBeenCalledTimes(2);
+      expect(leggiSlotDefs).toHaveBeenCalledTimes(2);
+      expect(statoCasa).toHaveBeenCalledTimes(2);
+      expect(screen.getByLabelText('Porzioni')).toHaveTextContent('3');
+      expect(screen.getByDisplayValue('Merenda')).toBeInTheDocument();
+      expect(screen.getByText('4 DI 6')).toBeInTheDocument();
+      expect(screen.getByText('Fai la spesa con qualcuno?')).toBeInTheDocument();
+      expect(screen.queryByText('Sei nella casa di a@b.it')).not.toBeInTheDocument();
+      expect(screen.queryByText('Non siamo riusciti a salvare. Riprova.')).not.toBeInTheDocument();
+      // Nessun nuovo tentativo di scrittura da sola.
+      expect(salvaImpostazioni).toHaveBeenCalledTimes(1);
+      errore.mockRestore();
+    });
+
+    it('un rifiuto RLS riconosciuto dal solo messaggio (senza codice) ricarica allo stesso modo', async () => {
+      mockDati({ porzioni: 1 });
+      render(<Impostazioni />);
+      await screen.findByDisplayValue('Colazione');
+      const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+      vi.mocked(salvaImpostazioni).mockRejectedValue(new Error('new row violates row-level security policy'));
+
+      fireEvent.click(screen.getByLabelText('Aumenta porzioni'));
+
+      expect(await screen.findByText('La casa è cambiata: dati ricaricati. Riprova.')).toBeInTheDocument();
+      expect(dimenticaIdCasa).toHaveBeenCalledTimes(1);
+      expect(screen.getByLabelText('Porzioni')).toHaveTextContent('1');
       errore.mockRestore();
     });
   });

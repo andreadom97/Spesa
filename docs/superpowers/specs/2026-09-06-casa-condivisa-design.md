@@ -79,8 +79,10 @@ generico `Non siamo riusciti a entrare. Riprova.` (§4).
 `src/data/casa.ts`:
 
 ```ts
-export async function idCasa(): Promise<string>;         // rpc('casa_id'), memorizzata per sessione
-export function dimenticaIdCasa(): void;                 // dopo entra/esci, prima del reload
+export const SCADENZA_ID_CASA_MS = 60_000;               // quanto vale una lettura di idCasa
+export async function idCasa(): Promise<string>;         // rpc('casa_id'), memorizzata per un minuto
+export function dimenticaIdCasa(): void;                 // dopo entra/esci, al ritorno in primo piano, dopo un rifiuto RLS
+export function eRifiutoRls(errore: unknown): boolean;   // 42501 o "row-level security": la casa è cambiata
 export interface StatoCasa { ruolo: 'solo' | 'proprietario' | 'membro'; email: string[]; id: string[] } // id accoppiati per indice a email
 export async function statoCasa(): Promise<StatoCasa>;
 export async function creaInvito(): Promise<string>;
@@ -92,7 +94,9 @@ export async function rimuoviMembro(membro: string): Promise<void>;
 `idCasa()` sostituisce `utente.user!.id` in ogni punto di `src/data/*.ts` che scrive o
 filtra per `user_id` (26 punti in `dispensa`, `importa`, `impostazioni`, `lista`,
 `primo-avvio`, `pronti`, `repertorio`, `settimana`). La memoria è una promessa a livello
-di modulo: una RPC per apertura dell'app. Il valore cambia solo con entra/esci, che fanno
+di modulo, con l'istante della lettura: due chiamate partite insieme condividono una
+RPC, ma una lettura più vecchia di un minuto si rifà e al ritorno in primo piano si
+scarta (le tre cinture, §7). Il valore cambia con entra/esci, che fanno
 `dimenticaIdCasa()` e poi un reload completo su `/lista` (`window.location.assign`):
 ricaricare tutto è l'unico modo onesto di svuotare ogni stato di pagina.
 
@@ -182,14 +186,24 @@ nella stessa casa (piatti e pasti per persona, una lista sola): un'altra spec.
 - Entrare o uscire svuota anche la coda delle spunte offline (`svuotaCoda()`), oltre
   all'istantanea: i suoi `itemId` sono righe della lista dell'altra casa. Una spunta
   fatta senza rete e non ancora sincronizzata al momento del cambio si perde.
-- La memoria di `idCasa` non si invalida da sola: un membro tolto (o uscito da un altro
-  dispositivo), finché non ricarica l'app, continua a scrivere con l'id della casa
-  vecchia. Con RLS gli update e i delete non falliscono: toccano 0 righe in silenzio
-  (le spunte e le risposte ai controlli sembrano riuscite — `spunta` "riesce" a 0 righe
-  e la coda offline la considera confermata), mentre gli insert sono rifiutati con
-  `42501`. Nessuna invalidazione automatica sul primo errore: sarebbero troppi i punti
-  del data layer da cablare, e per le scritture a 0 righe non c'è nemmeno un errore da
-  intercettare.
+- La memoria di `idCasa` non è più "fino al reload" (limite dichiarato il 06/09, non
+  ha retto alla prova del 15/09: il proprietario toglie il membro dal telefono, la
+  scheda del membro sul PC scrive `settings` con l'id del proprietario, la RLS rifiuta
+  con `42501`, la rilettura filtrata su quell'id non vede niente e mostra 1 di default —
+  tredici tap, tredici 403). Tre cinture, in `casa.ts` e in Impostazioni:
+  1. la memoria scade: una lettura più vecchia di `SCADENZA_ID_CASA_MS` (un minuto) si
+     rifà alla chiamata successiva, una promessa ancora in volo si riusa;
+  2. al ritorno in primo piano (`visibilitychange` → `visible`, listener registrato
+     una volta dalla prima `idCasa()`, niente side effect all'import) la memoria si
+     scarta: la Lista rilegge dopo un `await`, quindi trova già l'id fresco;
+  3. un rifiuto RLS (`eRifiutoRls`: codice `42501` o messaggio con `row-level
+     security`) su `salvaImpostazioni` fa `dimenticaIdCasa()`, ricarica impostazioni,
+     pasti e casa, e dice `La casa è cambiata: dati ricaricati. Riprova.` senza
+     riprovare la scrittura da solo.
+  Resta dichiarato: entro il minuto, con la scheda in primo piano, gli update e i
+  delete di un membro tolto toccano 0 righe in silenzio (`spunta` "riesce" a 0 righe e
+  la coda offline la considera confermata), e la terza cintura è cablata solo sulle
+  impostazioni, non su ogni scrittura del data layer.
 - Il moltiplicatore "per quante persone cucini" vale per tutta la casa, non per
   persona, e presuppone porzioni uguali per tutti: chi mangia diverso lo lascia a 1 e
   scrive le quantità giuste nei piatti (§6).

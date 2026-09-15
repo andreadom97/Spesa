@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('../supabase', () => ({ client: vi.fn() }));
 // L'istantanea offline della lista e la coda delle spunte sono di una casa:
@@ -10,8 +10,10 @@ import { client } from '../supabase';
 import { cancellaIstantaneaLista } from '@/offline/lista-cache';
 import { svuotaCoda } from '@/offline/coda';
 import {
+  SCADENZA_ID_CASA_MS,
   creaInvito,
   dimenticaIdCasa,
+  eRifiutoRls,
   entraInCasa,
   esciDallaCasa,
   idCasa,
@@ -101,6 +103,126 @@ describe('idCasa — memoria per sessione', () => {
     rpc.mockResolvedValue({ data: '', error: null });
 
     await expect(idCasa()).rejects.toThrow('non autenticato');
+  });
+});
+
+// Prova del 15/09 (due account, casa condivisa): il proprietario toglie un
+// membro dal telefono, la scheda del membro sul PC conserva l'id del
+// proprietario e ogni scrittura è un 403 finché non ricarica. La memoria
+// quindi scade da sola e si scarta al ritorno in primo piano.
+describe('idCasa — la memoria scade', () => {
+  beforeEach(() => {
+    vi.mocked(client).mockReset();
+    dimenticaIdCasa();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-15T10:00:00Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('due chiamate entro la scadenza: una RPC sola', async () => {
+    const rpc = creaClientMock();
+    rpc.mockResolvedValue({ data: 'casa-1', error: null });
+
+    expect(await idCasa()).toBe('casa-1');
+    vi.setSystemTime(Date.now() + SCADENZA_ID_CASA_MS - 1_000);
+    expect(await idCasa()).toBe('casa-1');
+
+    expect(rpc).toHaveBeenCalledTimes(1);
+  });
+
+  it('una lettura più vecchia della scadenza si rifà: due RPC, e vale la nuova', async () => {
+    const rpc = creaClientMock();
+    rpc.mockResolvedValueOnce({ data: 'casa-1', error: null });
+    rpc.mockResolvedValueOnce({ data: 'casa-2', error: null });
+
+    expect(await idCasa()).toBe('casa-1');
+    vi.setSystemTime(Date.now() + SCADENZA_ID_CASA_MS + 1_000);
+    expect(await idCasa()).toBe('casa-2');
+
+    expect(rpc).toHaveBeenCalledTimes(2);
+  });
+
+  it('una promessa ancora in volo si riusa anche se è partita prima della scadenza', async () => {
+    const rpc = creaClientMock();
+    let risolvi: (v: { data: string; error: null }) => void = () => {};
+    rpc.mockReturnValue(new Promise((r) => { risolvi = r; }));
+
+    const prima = idCasa();
+    vi.setSystemTime(Date.now() + SCADENZA_ID_CASA_MS + 1_000);
+    const seconda = idCasa();
+    risolvi({ data: 'casa-1', error: null });
+
+    expect(await prima).toBe('casa-1');
+    expect(await seconda).toBe('casa-1');
+    expect(rpc).toHaveBeenCalledTimes(1);
+  });
+
+  it('la scadenza è di un minuto', () => {
+    expect(SCADENZA_ID_CASA_MS).toBe(60_000);
+  });
+});
+
+describe('idCasa — al ritorno in primo piano la memoria si scarta', () => {
+  beforeEach(() => {
+    vi.mocked(client).mockReset();
+    dimenticaIdCasa();
+  });
+
+  afterEach(() => {
+    // La proprietà definita sull'istanza nasconde il getter del prototipo: si toglie, così jsdom torna al suo.
+    delete (document as unknown as Record<string, unknown>).visibilityState;
+  });
+
+  function simulaVisibilita(stato: 'visible' | 'hidden') {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => stato });
+    document.dispatchEvent(new Event('visibilitychange'));
+  }
+
+  it('quando il documento torna visibile la chiamata successiva rifà la RPC', async () => {
+    const rpc = creaClientMock();
+    rpc.mockResolvedValueOnce({ data: 'casa-1', error: null });
+    rpc.mockResolvedValueOnce({ data: 'casa-2', error: null });
+
+    expect(await idCasa()).toBe('casa-1');
+    simulaVisibilita('visible');
+    expect(await idCasa()).toBe('casa-2');
+
+    expect(rpc).toHaveBeenCalledTimes(2);
+  });
+
+  it('quando il documento va in secondo piano la memoria resta', async () => {
+    const rpc = creaClientMock();
+    rpc.mockResolvedValue({ data: 'casa-1', error: null });
+
+    expect(await idCasa()).toBe('casa-1');
+    simulaVisibilita('hidden');
+    expect(await idCasa()).toBe('casa-1');
+
+    expect(rpc).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('eRifiutoRls', () => {
+  it.each([
+    ['codice 42501 (insufficient_privilege)', { code: '42501', message: 'permission denied for table settings' }],
+    ['messaggio di violazione RLS senza codice', { message: 'new row violates row-level security policy for table "settings"' }],
+    ['un Error con il messaggio RLS', new Error('new row violates row-level security policy')],
+  ])('riconosce %s', (_, errore) => {
+    expect(eRifiutoRls(errore)).toBe(true);
+  });
+
+  it.each([
+    ['un raise exception della funzione SQL', { code: 'P0001', message: 'codice non valido o scaduto' }],
+    ['una chiave duplicata', { code: '23505', message: 'duplicate key value violates unique constraint' }],
+    ['un errore di rete', new Error('Failed to fetch')],
+    ['null', null],
+    ['una stringa', 'row-level security'],
+    ['undefined', undefined],
+  ])('non riconosce %s', (_, errore) => {
+    expect(eRifiutoRls(errore)).toBe(false);
   });
 });
 
