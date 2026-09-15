@@ -21,7 +21,15 @@ import type { GiornoEstratto, PianoEstratto } from './types';
  * 4. titolo: il primo non nullo vince; un secondo diverso finisce in nota;
  * 5. noteEstrazione: quelle dell'indice, poi per ogni pagina le sue prefissate `pagina k: `,
  *    seguite dalle note che la fusione stessa produce per quella pagina (regole 1 e 4);
- * 6. settimane ordinate per numero, giorni per indice. Nessun'altra normalizzazione.
+ * 6. settimane ordinate per numero, giorni per indice;
+ * 7. alla fine, i pasti rimasti senza piatti si scartano (con una nota `settimana s giorno g:
+ *    pasto «nome» senza piatti, scartato`), poi i giorni rimasti senza pasti e le settimane
+ *    rimaste senza giorni (senza nota a parte). Un pasto vuoto arriva da `validaPianoParziale`,
+ *    che lo ammette perché una pagina può chiudere col solo titolo di un pasto (i piatti sono
+ *    sulla successiva, e la regola 3 li accoda al guscio) o riportare un pasto libero. Se
+ *    spariscono tutte le settimane il piano fuso ha `settimane: []` e `validaEsito` a valle lo
+ *    boccia (422 in route): è voluto, la dieta è davvero illeggibile.
+ * Nessun'altra normalizzazione.
  */
 export function fondiPagine(indice: IndiceEstrazione, pagine: { pagina: number; piano: PianoEstratto }[]): PianoEstratto {
   const note = [...indice.noteEstrazione];
@@ -69,15 +77,34 @@ export function fondiPagine(indice: IndiceEstrazione, pagine: { pagina: number; 
     }
   }
 
+  const settimaneOrdinate = [...settimane.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([numero, giorni]) => ({
+      numero,
+      giorni: [...giorni.values()].sort((a, b) => a.giorno - b.giorno),
+    }));
+
+  // Regola 7: via i pasti senza piatti (con nota), poi i giorni e le settimane rimasti vuoti.
+  const settimanePiene = settimaneOrdinate
+    .map((s) => ({
+      numero: s.numero,
+      giorni: s.giorni
+        .map((g) => ({
+          ...g,
+          pasti: g.pasti.filter((p) => {
+            if (p.piatti.length > 0) return true;
+            note.push(`settimana ${s.numero} giorno ${g.giorno}: pasto «${p.nomeOriginale}» senza piatti, scartato`);
+            return false;
+          }),
+        }))
+        .filter((g) => g.pasti.length > 0),
+    }))
+    .filter((s) => s.giorni.length > 0);
+
   return {
     archetipo: indice.archetipo,
     fonte: indice.fonte,
-    settimane: [...settimane.entries()]
-      .sort(([a], [b]) => a - b)
-      .map(([numero, giorni]) => ({
-        numero,
-        giorni: [...giorni.values()].sort((a, b) => a.giorno - b.giorno),
-      })),
+    settimane: settimanePiene,
     noteEstrazione: note,
   };
 }

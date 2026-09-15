@@ -52,11 +52,19 @@ function validaRiga(v: unknown, percorso: string): RigaEstratta {
   return { alimento, quantita: quantita as number | null, unita: (unita ?? null) as RigaEstratta['unita'], quantitaInferita, testoOriginale };
 }
 
-function validaPasto(v: unknown, percorso: string): PastoEstratto {
+/**
+ * `pastiVuotiAmmessi`: un pasto con `piatti: []` passa (la pagina di un'estrazione a pagine,
+ * v. `validaPianoParziale`) invece di essere un errore (il piano intero, v. `validaEsito`).
+ */
+interface OpzioniForma {
+  pastiVuotiAmmessi: boolean;
+}
+
+function validaPasto(v: unknown, percorso: string, opzioni: OpzioniForma): PastoEstratto {
   const p = ogg(v, percorso);
   const nomeOriginale = str(p.nomeOriginale, `${percorso}.nomeOriginale`);
   const piatti = arr(p.piatti, `${percorso}.piatti`);
-  if (piatti.length === 0) throw new PianoNonValidoError(`${percorso}.piatti`, 'vuoto');
+  if (piatti.length === 0 && !opzioni.pastiVuotiAmmessi) throw new PianoNonValidoError(`${percorso}.piatti`, 'vuoto');
   return {
     nomeOriginale,
     piatti: piatti.map((piatto, i) => {
@@ -101,7 +109,7 @@ const ARCHETIPI = new Set(['menu_settimanale', 'giornata_unica', 'griglia_altern
  * che vale anche per la pagina di un'estrazione a pagine, che può contenere la sola
  * settimana 2 o un giorno di giorni_tipo senza titolo perché continua dalla precedente.
  */
-function validaFormaPiano(v: unknown): PianoEstratto {
+function validaFormaPiano(v: unknown, opzioni: OpzioniForma): PianoEstratto {
   const p = ogg(v, 'piano');
   const archetipo = str(p.archetipo, 'piano.archetipo');
   if (!ARCHETIPI.has(archetipo)) throw new PianoNonValidoError('piano.archetipo', `sconosciuto: ${archetipo}`);
@@ -135,7 +143,7 @@ function validaFormaPiano(v: unknown): PianoEstratto {
           throw new PianoNonValidoError(`piano.settimane[${i}].giorni[${j}].titolo`, 'ammesso solo per giorni_tipo');
         const pasti = arr(gi.pasti, `piano.settimane[${i}].giorni[${j}].pasti`);
         if (pasti.length === 0) throw new PianoNonValidoError(`piano.settimane[${i}].giorni[${j}].pasti`, 'vuoto');
-        return { giorno, titolo: titoloGrezzo, pasti: pasti.map((pa, k) => validaPasto(pa, `piano.settimane[${i}].giorni[${j}].pasti[${k}]`)) };
+        return { giorno, titolo: titoloGrezzo, pasti: pasti.map((pa, k) => validaPasto(pa, `piano.settimane[${i}].giorni[${j}].pasti[${k}]`, opzioni)) };
       }),
     };
   });
@@ -178,13 +186,21 @@ function validaInsiemePiano(piano: PianoEstratto): void {
  * Il piano di UNA pagina di un'estrazione a pagine (spec 2026-09-05 §2.3): stessa forma e
  * stesse normalizzazioni legacy di `validaEsito`, senza le regole d'insieme, che la fusione
  * non può garantire per la singola pagina e che `validaEsito` verifica sul piano fuso.
+ *
+ * Un pasto con `piatti: []` qui è ammesso (bug di produzione del 15/09: sette pagine lette
+ * bene buttate con un 422 per un guscio vuoto): capita quando il titolo del pasto sta in fondo
+ * a una foto e i piatti sulla successiva (la fusione li accoda al guscio, regola 3), o quando
+ * il pasto è dichiarato libero/senza indicazioni. I gusci che nessuna pagina completa li
+ * scarta la fusione (regola 7) con una nota; sul piano fuso `validaEsito` resta rigida.
+ * `piatti` dev'essere comunque un array e `nomeOriginale` una stringa; i piatti presenti si
+ * validano come sempre.
  */
 export function validaPianoParziale(v: unknown): PianoEstratto {
-  return validaFormaPiano(v);
+  return validaFormaPiano(v, { pastiVuotiAmmessi: true });
 }
 
 function validaPiano(v: unknown): PianoEstratto {
-  const piano = validaFormaPiano(v);
+  const piano = validaFormaPiano(v, { pastiVuotiAmmessi: false });
   validaInsiemePiano(piano);
   return piano;
 }

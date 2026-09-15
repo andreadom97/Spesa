@@ -308,6 +308,9 @@ describe('estraiIndice ed estraiPagina', () => {
     expect(testo).toContain('cena');
     expect(testo).toMatch(/altre pagine/i);
     expect(testo).toMatch(/precedente/); // continuaDallaPrecedente: true → istruzione sulla coda del pasto
+    // Bug del 15/09: il titolo del pasto in fondo alla foto, i piatti su quella dopo → guscio vuoto, non piatti inventati.
+    expect(testo).toContain('Se un pasto su questa pagina ha solo il titolo (i piatti sono sulla pagina successiva) o è dichiarato libero o senza indicazioni, restituiscilo con "piatti": [] — non inventare piatti.');
+    expect(args.output_config.format.schema.anyOf[0].properties.piano.properties.settimane.items.properties.giorni.items.properties.pasti.items.properties.piatti.minItems).toBeUndefined();
     expect(esito.grezzo).toEqual(pianoDelGiorno(1, 1));
   });
 
@@ -457,6 +460,23 @@ describe('estraiPianoAPagine', () => {
     const esito = await estraiPianoAPagine(foto(2), 'claude-sonnet-5');
     expect(esito.uso).toMatchObject({ chiamate: 3, inputTokens: 1022, outputTokens: 600, cacheLetti: 1800, cacheScritti: 900 });
     expect(esito.uso.durataMs).toBeGreaterThanOrEqual(6);
+  });
+
+  it('una pagina con un pasto senza piatti non lancia più PianoNonValidoError: il pasto vuoto è scartato in fusione con una nota', async () => {
+    // Il bug di produzione del 15/09: pagina 1 chiude con il solo titolo "cena", che nessuna pagina completa.
+    const conGuscio = pianoDelGiorno(1, 0);
+    conGuscio.piano.settimane[0].giorni[0].pasti[1].piatti = [];
+    finto.stato.risposte.push(
+      { corpo: indiceDi([{ contenuto: [voce(1, 0)] }, { contenuto: [voce(1, 1)] }]) },
+      { perChiamata: (p) => (numeroPagina(p) === 1 ? conGuscio : pianoDelGiorno(1, 1)) },
+      { perChiamata: (p) => (numeroPagina(p) === 1 ? conGuscio : pianoDelGiorno(1, 1)) },
+    );
+    const esito = await estraiPianoAPagine(foto(2), 'claude-sonnet-5');
+    const valido = validaEsito(esito.grezzo);
+    if (valido.tipo !== 'piano') throw new Error('atteso piano');
+    expect(valido.piano.settimane[0].giorni[0].pasti.map((p) => p.nomeOriginale)).toEqual(['colazione', 'condimenti']);
+    expect(valido.piano.settimane[0].giorni[1]).toEqual(PIANO_MENU_SETTIMANALE.settimane[0].giorni[1]);
+    expect(valido.piano.noteEstrazione).toEqual(['dati inventati per i test', 'settimana 1 giorno 0: pasto «cena» senza piatti, scartato']);
   });
 
   it('il fixture spezzato per giorni su 3 pagine si rifonde in un piano che passa validaEsito ed è deep-equal all\'originale', async () => {

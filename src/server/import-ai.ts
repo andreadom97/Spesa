@@ -295,6 +295,8 @@ function istruzionePagina(pagina: PaginaIndice, indice: IndiceEstrazione, n: num
   if (pagina.continuaDallaPrecedente) {
     righe.push('La pagina continua un pasto iniziato sulla pagina precedente: trascrivi solo la parte presente su questa pagina, con lo stesso nomeOriginale.');
   }
+  // Bug del 15/09: un guscio vuoto lo accoda o scarta la fusione; un piatto inventato passa inosservato.
+  righe.push('Se un pasto su questa pagina ha solo il titolo (i piatti sono sulla pagina successiva) o è dichiarato libero o senza indicazioni, restituiscilo con "piatti": [] — non inventare piatti.');
   righe.push('Restituisci un piano con le sole settimane e i soli giorni di questa pagina, in ordine di lettura.');
   return righe.join('\n');
 }

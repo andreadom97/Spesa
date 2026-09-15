@@ -139,13 +139,25 @@ Regole, nell'ordine:
 4. `titolo`: il primo non nullo vince; un secondo diverso finisce in nota.
 5. `noteEstrazione`: quelle dell'indice, poi quelle di ogni pagina prefissate
    `pagina k:`.
-6. Settimane ordinate per numero, giorni per indice. Nessun'altra normalizzazione:
-   il risultato passa da `validaEsito` come qualsiasi estrazione, e se non passa è un
-   422 come oggi.
+6. Settimane ordinate per numero, giorni per indice.
+7. Alla fine, i pasti rimasti senza piatti si scartano, con una nota per ciascuno
+   (`settimana 1 giorno 0: pasto «Cena» senza piatti, scartato`); poi si scartano i
+   giorni rimasti senza pasti e le settimane rimaste senza giorni (senza nota a parte).
+   Se spariscono tutte le settimane, il piano fuso ha `settimane: []` e `validaEsito` lo
+   boccia con 422: è il comportamento voluto, la dieta è davvero illeggibile.
+
+Nessun'altra normalizzazione: il risultato passa da `validaEsito` come qualsiasi
+estrazione, e se non passa è un 422 come oggi.
 
 Le pagine parziali non passano da `validaEsito` prima della fusione (una pagina può
 contenere solo la settimana 2, e la contiguità è una regola del tutto): passano da
-`validaPianoParziale`, che controlla la sola forma e normalizza i campi legacy.
+`validaPianoParziale`, che controlla la sola forma e normalizza i campi legacy. A
+differenza di `validaEsito`, ammette un pasto con `piatti: []` (aggiunto il 15/09 dopo
+un 422 in produzione che ha buttato sette pagine lette bene): capita quando il titolo
+del pasto sta in fondo a una foto e i piatti sulla successiva (la regola 3 li accoda al
+guscio) o quando un pasto è dichiarato libero/senza indicazioni; l'istruzione di pagina
+chiede al modello proprio `"piatti": []` in quei casi, per non fargli inventare piatti.
+I gusci che nessuna pagina completa li scarta la regola 7.
 
 ### 2.4 Il caso a una pagina e il PDF
 

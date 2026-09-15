@@ -183,6 +183,68 @@ describe('fondiPagine', () => {
     expect(ind).toEqual(indPrima);
   });
 
+  describe('regola 7: pasti rimasti senza piatti', () => {
+    /** Il giorno (1, 1) del fixture con la cena ridotta a un guscio vuoto: il titolo in fondo alla pagina, i piatti sulla successiva. */
+    function martediConCenaVuota(): GiornoEstratto {
+      const g = giorno(1, 1, [0, 1]);
+      g.pasti[1].piatti = [];
+      return g;
+    }
+
+    it('un guscio vuoto sulla pagina k riceve i piatti dell\'omonimo sulla pagina k+1 (regola 3): un pasto solo, nessuna nota', () => {
+      const secondaMeta = giorno(1, 1, [1]);
+      secondaMeta.pasti[0].nomeOriginale = 'CENA';
+      const fuso = fondiPagine(indice([{}, { continuaDallaPrecedente: true }]), [
+        { pagina: 1, piano: piano([settimana(1, [martediConCenaVuota()])]) },
+        { pagina: 2, piano: piano([settimana(1, [secondaMeta])]) },
+      ]);
+      expect(fuso.settimane).toEqual([settimana(1, [giorno(1, 1, [0, 1])])]);
+      expect(fuso.settimane[0].giorni[0].pasti[1].piatti.map((p) => p.nome)).toEqual(['Merluzzo', 'Tonno in insalata']);
+      expect(fuso.noteEstrazione).toEqual([]);
+    });
+
+    it('un pasto vuoto che nessuna pagina completa è scartato, con una nota', () => {
+      const fuso = fondiPagine(indice([{}, {}]), [
+        { pagina: 1, piano: piano([settimana(1, [martediConCenaVuota()])]) },
+        { pagina: 2, piano: piano([settimana(1, [giorno(1, 0)])]) },
+      ]);
+      expect(fuso.settimane).toEqual([settimana(1, [giorno(1, 0), giorno(1, 1, [0])])]);
+      expect(fuso.noteEstrazione).toEqual(['settimana 1 giorno 1: pasto «cena» senza piatti, scartato']);
+    });
+
+    it('un giorno con soli pasti vuoti sparisce; una settimana con soli giorni così sparisce; una nota per pasto', () => {
+      const soloVuoti = giorno(2, 0);
+      for (const p of soloVuoti.pasti) p.piatti = [];
+      const fuso = fondiPagine(indice([{}, {}]), [
+        { pagina: 1, piano: piano([settimana(1, [giorno(1, 0)])]) },
+        { pagina: 2, piano: piano([settimana(2, [soloVuoti])]) },
+      ]);
+      expect(fuso.settimane).toEqual([settimana(1, [giorno(1, 0)])]);
+      expect(fuso.noteEstrazione).toEqual(soloVuoti.pasti.map((p) => `settimana 2 giorno 0: pasto «${p.nomeOriginale}» senza piatti, scartato`));
+    });
+
+    it('tutte le settimane sparite → settimane: [], e validaEsito a valle boccia (dieta illeggibile)', () => {
+      const soloVuoti = giorno(1, 0, [0]);
+      soloVuoti.pasti[0].piatti = [];
+      const fuso = fondiPagine(indice([{}]), [{ pagina: 1, piano: piano([settimana(1, [soloVuoti])]) }]);
+      expect(fuso.settimane).toEqual([]);
+      expect(fuso.noteEstrazione).toEqual(['settimana 1 giorno 0: pasto «colazione» senza piatti, scartato']);
+      expect(() => validaEsito({ tipo: 'piano', piano: fuso })).toThrow(/\(piano\.settimane\): da 1 a 4/);
+    });
+
+    it('il piano fuso, ripulito dei pasti vuoti, passa validaEsito', () => {
+      const fuso = fondiPagine(indice([{}, {}]), [
+        { pagina: 1, piano: piano([settimana(1, [martediConCenaVuota(), giorno(1, 0)])]) },
+        { pagina: 2, piano: piano([settimana(2, [giorno(2, 0)])]) },
+      ]);
+      const esito = validaEsito({ tipo: 'piano', piano: fuso });
+      expect(esito.tipo).toBe('piano');
+      if (esito.tipo !== 'piano') throw new Error('atteso piano');
+      expect(esito.piano.settimane[0].giorni[1].pasti.map((p) => p.nomeOriginale)).toEqual(['colazione']);
+      expect(esito.piano.noteEstrazione).toEqual(['settimana 1 giorno 1: pasto «cena» senza piatti, scartato']);
+    });
+  });
+
   it('il risultato della dieta spezzata e rifusa passa validaEsito ed è deep-equal all\'originale', () => {
     // Quattro pagine: lunedì spezzato per pasti fra 1 e 2; la cena di martedì spezzata per piatti fra 2 e 3
     // (continuaDallaPrecedente); la settimana 2 sulla pagina 4. Le note stanno tutte nell'indice.

@@ -240,16 +240,35 @@ describe('validaPianoParziale', () => {
     expect(parziale).toEqual(PIANO_MENU_SETTIMANALE);
   });
 
-  it('tiene le regole di forma della singola riga/pasto/giorno: giorno fuori 0..6, pasto senza piatti, archetipo ignoto', () => {
+  it('tiene le regole di forma della singola riga/pasto/giorno: giorno fuori 0..6, giorno senza pasti, archetipo ignoto', () => {
     const giorno7 = paginaLegacy(1);
     (giorno7 as any).settimane[0].giorni[0].giorno = 7;
     expect(() => validaPianoParziale(giorno7)).toThrow(PianoNonValidoError);
-    const senzaPiatti = paginaLegacy(1);
-    (senzaPiatti as any).settimane[0].giorni[0].pasti[0].piatti = [];
-    expect(() => validaPianoParziale(senzaPiatti)).toThrow(PianoNonValidoError);
+    const senzaPasti = paginaLegacy(1);
+    (senzaPasti as any).settimane[0].giorni[0].pasti = [];
+    expect(() => validaPianoParziale(senzaPasti)).toThrow(PianoNonValidoError);
     const ignoto = paginaLegacy(1);
     (ignoto as any).archetipo = 'boh';
     expect(() => validaPianoParziale(ignoto)).toThrow(PianoNonValidoError);
+  });
+
+  it('un pasto con piatti [] passa il parziale (titolo in fondo alla pagina, pasto libero) e resta vuoto; validaEsito lo rifiuta ancora', () => {
+    // Bug di produzione del 15/09: sette pagine buttate per un guscio "Cena" con i piatti sulla foto dopo.
+    const pagina = paginaLegacy(1);
+    (pagina as any).settimane[0].giorni[0].pasti.push({ nomeOriginale: 'Cena', piatti: [] });
+    const piano = validaPianoParziale(structuredClone(pagina));
+    expect(piano.settimane[0].giorni[0].pasti[1]).toEqual({ nomeOriginale: 'Cena', piatti: [] });
+    expect(() => validaEsito({ tipo: 'piano', piano: structuredClone(pagina) }))
+      .toThrow(/\(piano\.settimane\[0\]\.giorni\[0\]\.pasti\[1\]\.piatti\): vuoto/);
+  });
+
+  it('un pasto con piatti non array o senza nomeOriginale è rifiutato anche dal parziale', () => {
+    const nonArray = paginaLegacy(1);
+    (nonArray as any).settimane[0].giorni[0].pasti[0].piatti = null;
+    expect(() => validaPianoParziale(nonArray)).toThrow(/\(piano\.settimane\[0\]\.giorni\[0\]\.pasti\[0\]\.piatti\): non è un array/);
+    const senzaNome = paginaLegacy(1);
+    (senzaNome as any).settimane[0].giorni[0].pasti[0] = { piatti: [] };
+    expect(() => validaPianoParziale(senzaNome)).toThrow(/nomeOriginale\): non è una stringa/);
   });
 
   it('archetipo settimanale con titolo valorizzato resta invalido anche per una pagina', () => {
