@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import type { Impostazioni, MealSlotDef } from '@/domain/types';
 import { leggiImpostazioni, leggiSlotDefs, salvaImpostazioni, salvaSlotDefs, pastiDiDefault, MAX_PORZIONI, MIN_PORZIONI } from '@/data/impostazioni';
 import { creaInvito, dimenticaIdCasa, eRifiutoRls, entraInCasa, esciDallaCasa, rimuoviMembro, statoCasa, type StatoCasa } from '@/data/casa';
+import { emailAccount, esciDallAccount } from '@/data/sessione';
 import { MAX_PASTI, MIN_PASTI } from '@/domain/pasti';
 import { coloreArea, nomeArea } from '@/domain/aree';
 import { MAX_SETTIMANE_CICLO, settimanaDelCiclo } from '@/domain/ciclo';
@@ -142,6 +143,17 @@ export default function Impostazioni() {
   const [casa, setCasa] = useState<StatoCasa | null>(null);
   const [erroreCasa, setErroreCasa] = useState<string | null>(null);
 
+  // Cambiare le porzioni non rigenera la lista della settimana (spec
+  // rigenera-lista): la riga sotto lo stepper lo dice, ma solo dopo un
+  // cambio riuscito. Si accende e basta: sparisce al prossimo caricamento
+  // della pagina, non prima (spec esci §3).
+  const [avvisoPorzioni, setAvvisoPorzioni] = useState(false);
+
+  // L'email propria per la sezione ACCOUNT: da `auth.getUser()`, non da
+  // `statoCasa` (che elenca gli altri). `null` finché non arriva o se
+  // manca (sessione scaduta): la riga dice solo "Sei dentro".
+  const [email, setEmail] = useState<string | null>(null);
+
   // Tutto quello che la pagina legge dal server (casa, impostazioni, pasti),
   // definito nell'effect di montaggio come `carica` nella Lista e tenuto in
   // un ref perché `persistiImpostazioni` lo richiami dopo un rifiuto RLS:
@@ -184,10 +196,25 @@ export default function Impostazioni() {
       }
     }
 
+    /**
+     * L'email propria per la sezione ACCOUNT. `emailAccount()` non lancia
+     * già da sé, ma la riga è di cortesia: un fallimento qui non deve
+     * bloccare nient'altro, quindi si protegge lo stesso.
+     */
+    async function caricaEmail() {
+      try {
+        const letta = await emailAccount();
+        if (vivo) setEmail(letta);
+      } catch (errore) {
+        console.error('impostazioni: lettura dell\'email fallita.', errore);
+      }
+    }
+
     // La casa a parte, non nello stesso Promise.all delle impostazioni: se
     // la sua RPC fallisce la sezione CASA lo dice, e il resto resta usabile.
+    // L'email idem: senza, la sezione ACCOUNT dice solo "Sei dentro".
     async function caricaTutto() {
-      await Promise.all([caricaCasa(), caricaImpostazioni()]);
+      await Promise.all([caricaCasa(), caricaImpostazioni(), caricaEmail()]);
     }
 
     caricaTuttoRef.current = caricaTutto;
@@ -272,6 +299,9 @@ export default function Impostazioni() {
       if (!eUltima()) return;
       impostazioniSalvateRef.current = rilette;
       setDati((correnti) => (correnti ? { ...correnti, impostazioni: rilette } : correnti));
+      // Solo un cambio riuscito delle porzioni accende l'avviso: il ciclo
+      // non c'entra con la lista della settimana.
+      if ('moltiplicatorePorzioni' in patch) setAvvisoPorzioni(true);
     } catch (errore) {
       console.error('impostazioni: salvataggio delle impostazioni fallito.', errore);
       if (!eUltima()) return;
@@ -563,6 +593,11 @@ export default function Impostazioni() {
               La lista compra per {porzioni}. Le porzioni nel piatto restano quelle scritte.
             </div>
           )}
+          {avvisoPorzioni && (
+            <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', textAlign: 'center', marginTop: 10 }}>
+              La lista di questa settimana non cambia da sola: da Lista, RIFAI LA LISTA.
+            </div>
+          )}
         </div>
 
         <Etichetta margine="26px 4px 10px">SUPERMERCATO</Etichetta>
@@ -612,6 +647,9 @@ export default function Impostazioni() {
             <path d="M6 3.2 10.4 8 6 12.8" stroke="var(--ter)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </Link>
+
+        <Etichetta margine="26px 4px 10px">ACCOUNT</Etichetta>
+        <SezioneAccount email={email} router={router} />
       </div>
     </Cornice>
   );
@@ -634,6 +672,60 @@ const BOTTONE_LEGGERO: CSSProperties = {
   fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700,
   letterSpacing: '0.09em', color: 'var(--sec)',
 };
+
+/** Il tasto secondario (spec esci §1): bianco, bordo, testo scuro, mono; 54px alto, raggio 18. */
+const BOTTONE_SECONDARIO: CSSProperties = {
+  height: 54, width: '100%', borderRadius: 18,
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  background: 'var(--superficie)', border: '1px solid var(--bordo)',
+  fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700,
+  letterSpacing: '0.09em', color: 'var(--ink)',
+};
+
+/**
+ * La sezione ACCOUNT (spec esci §1): con quale email si è dentro e il tasto
+ * per uscire, a due tocchi. Si esce solo da questo dispositivo
+ * (`esciDallAccount`, `scope: 'local'`); poi `router.replace('/entra')`,
+ * per non aspettare che il proxy ci rimandi alla prossima navigazione. Se
+ * il server non chiude la sessione (niente rete) il data layer non ha
+ * cancellato nulla in locale: si dice e si resta dove si è. `uscendo`
+ * spegne il tasto durante la chiamata: un secondo tap non esce due volte.
+ */
+function SezioneAccount({ email, router }: { email: string | null; router: ReturnType<typeof useRouter> }) {
+  const [uscendo, setUscendo] = useState(false);
+  const [erroreUscita, setErroreUscita] = useState<string | null>(null);
+
+  async function esci() {
+    setUscendo(true);
+    setErroreUscita(null);
+    try {
+      await esciDallAccount();
+      router.replace('/entra');
+    } catch (errore) {
+      console.error('impostazioni: uscita dall\'account fallita.', errore);
+      setErroreUscita('Serve la rete per uscire. Riprova.');
+      setUscendo(false);
+    }
+  }
+
+  return (
+    <div style={SCHEDA}>
+      <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        {email ? `Sei dentro come ${email}` : 'Sei dentro'}
+      </div>
+      <BottoneDueTocchi
+        testo="ESCI DALL'ACCOUNT"
+        onConferma={esci}
+        disabled={uscendo}
+        style={{ ...BOTTONE_SECONDARIO, marginTop: 14, opacity: uscendo ? 0.35 : 1 }}
+      />
+      <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', textAlign: 'center', marginTop: 10 }}>
+        Esci solo da questo telefono: gli altri restano collegati.
+      </div>
+      {erroreUscita && <p style={{ margin: '10px 0 0', fontSize: 12.5, color: 'var(--sec)' }}>{erroreUscita}</p>}
+    </div>
+  );
+}
 
 /**
  * La scheda CASA (spec P6 §4), che si ramifica sul ruolo di chi è loggato:

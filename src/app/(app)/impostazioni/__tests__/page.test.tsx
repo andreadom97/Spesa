@@ -39,13 +39,21 @@ vi.mock('@/data/casa', async () => {
   };
 });
 
+// La sezione ACCOUNT: l'email propria e l'uscita dall'account (spec esci §1).
+vi.mock('@/data/sessione', () => ({
+  emailAccount: vi.fn(),
+  esciDallAccount: vi.fn(),
+}));
+
 const back = vi.fn();
+const replace = vi.fn();
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn(), back, replace: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), back, replace }),
 }));
 
 import { leggiImpostazioni, salvaImpostazioni, leggiSlotDefs, salvaSlotDefs } from '@/data/impostazioni';
 import { statoCasa, creaInvito, entraInCasa, esciDallaCasa, rimuoviMembro, dimenticaIdCasa } from '@/data/casa';
+import { emailAccount, esciDallAccount } from '@/data/sessione';
 import { lunediDi } from '@/domain/date';
 import Impostazioni from '../page';
 
@@ -71,7 +79,11 @@ function mockDati(overrides?: { porzioni?: number; pasti?: MealSlotDef[] }) {
   vi.mocked(salvaSlotDefs).mockResolvedValue(undefined);
   // Da solo per default: la scheda CASA c'è ma non tocca i test sui pasti.
   vi.mocked(statoCasa).mockResolvedValue({ ruolo: 'solo', email: [], id: [] });
+  // L'email propria per la sezione ACCOUNT.
+  vi.mocked(emailAccount).mockResolvedValue('io@esempio.it');
 }
+
+const RIGA_RIFAI_LISTA = 'La lista di questa settimana non cambia da sola: da Lista, RIFAI LA LISTA.';
 
 describe('Impostazioni', () => {
   beforeEach(() => {
@@ -367,6 +379,66 @@ describe('Impostazioni', () => {
       expect(leggiSlotDefs).toHaveBeenCalledTimes(1);
       expect(statoCasa).toHaveBeenCalledTimes(1);
       errore.mockRestore();
+    });
+
+    // Spec esci §3: cambiare le porzioni non rigenera la lista della
+    // settimana (spec rigenera-lista). La riga lo dice, ma solo dopo un
+    // cambio riuscito: non all'apertura, non dopo un errore.
+    it('all’apertura non dice che la lista non cambia da sola', async () => {
+      mockDati({ porzioni: 2 });
+      render(<Impostazioni />);
+
+      await screen.findByDisplayValue('Colazione');
+      expect(screen.queryByText(RIGA_RIFAI_LISTA)).not.toBeInTheDocument();
+    });
+
+    it('dopo un cambio riuscito dice che la lista non cambia da sola e come rifarla', async () => {
+      mockDati({ porzioni: 1 });
+      render(<Impostazioni />);
+
+      await screen.findByDisplayValue('Colazione');
+      vi.mocked(leggiImpostazioni).mockResolvedValue({
+        moltiplicatorePorzioni: 2,
+        ordineAree: [...ORDINE_AREE_TEST],
+        settimaneCiclo: 1,
+        cicloOrigine: null,
+      });
+      fireEvent.click(screen.getByLabelText('Aumenta porzioni'));
+
+      expect(await screen.findByText(RIGA_RIFAI_LISTA)).toBeInTheDocument();
+      expect(screen.getByLabelText('Porzioni')).toHaveTextContent('2');
+    });
+
+    it('dopo un cambio fallito non dice che la lista non cambia da sola', async () => {
+      mockDati({ porzioni: 1 });
+      vi.mocked(salvaImpostazioni).mockRejectedValue(new Error('rete'));
+      const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+      render(<Impostazioni />);
+
+      await screen.findByDisplayValue('Colazione');
+      fireEvent.click(screen.getByLabelText('Aumenta porzioni'));
+
+      expect(await screen.findByText('Non siamo riusciti a salvare. Riprova.')).toBeInTheDocument();
+      expect(screen.queryByText(RIGA_RIFAI_LISTA)).not.toBeInTheDocument();
+      errore.mockRestore();
+    });
+
+    it('un cambio riuscito del ciclo (non delle porzioni) non fa comparire la riga', async () => {
+      mockDati({ porzioni: 1 });
+      render(<Impostazioni />);
+
+      await screen.findByDisplayValue('Colazione');
+      vi.mocked(leggiImpostazioni).mockResolvedValue({
+        moltiplicatorePorzioni: 1,
+        ordineAree: [...ORDINE_AREE_TEST],
+        settimaneCiclo: 2,
+        cicloOrigine: lunediDi(new Date().toISOString().slice(0, 10)),
+      });
+      fireEvent.click(screen.getByRole('button', { name: '2 SETT.' }));
+
+      await waitFor(() => expect(salvaImpostazioni).toHaveBeenCalledTimes(1));
+      await waitFor(() => expect(leggiImpostazioni).toHaveBeenCalledTimes(2));
+      expect(screen.queryByText(RIGA_RIFAI_LISTA)).not.toBeInTheDocument();
     });
 
     // Prova del 15/09: il proprietario toglie il membro dal telefono; sulla
@@ -1048,5 +1120,114 @@ describe('Casa', () => {
     expect(screen.queryByText('Fai la spesa con qualcuno?')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'CREA UN CODICE' })).not.toBeInTheDocument();
     errore.mockRestore();
+  });
+});
+
+// Spec esci: la sezione ACCOUNT in fondo, dopo CASA. L'uscita è a due tocchi
+// e solo da questo telefono; se il server non chiude la sessione non si
+// cancella niente in locale e non si va da nessuna parte.
+describe('Account', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('dice con quale email sei dentro, offre ESCI DALL’ACCOUNT e spiega che esce solo da questo telefono', async () => {
+    mockDati();
+    render(<Impostazioni />);
+
+    expect(await screen.findByText('Sei dentro come io@esempio.it')).toBeInTheDocument();
+    expect(screen.getByText('ACCOUNT')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: "ESCI DALL'ACCOUNT" })).toBeInTheDocument();
+    expect(screen.getByText('Esci solo da questo telefono: gli altri restano collegati.')).toBeInTheDocument();
+    // La sezione ACCOUNT viene dopo CASA.
+    const etichette = screen.getAllByText(/^(CASA|ACCOUNT)$/).map((e) => e.textContent);
+    expect(etichette).toEqual(['CASA', 'ACCOUNT']);
+    expect(esciDallAccount).not.toHaveBeenCalled();
+  });
+
+  it('senza email (sessione scaduta) dice solo Sei dentro', async () => {
+    mockDati();
+    vi.mocked(emailAccount).mockResolvedValue(null);
+    render(<Impostazioni />);
+
+    expect(await screen.findByText('Sei dentro')).toBeInTheDocument();
+    expect(screen.queryByText(/Sei dentro come/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: "ESCI DALL'ACCOUNT" })).toBeInTheDocument();
+  });
+
+  it('se la lettura dell’email fallisce il resto della pagina si carica lo stesso', async () => {
+    mockDati();
+    vi.mocked(emailAccount).mockRejectedValue(new Error('rete'));
+    const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+    render(<Impostazioni />);
+
+    expect(await screen.findByDisplayValue('Colazione')).toBeInTheDocument();
+    expect(await screen.findByText('Sei dentro')).toBeInTheDocument();
+    expect(screen.getByText('Per quante persone cucini')).toBeInTheDocument();
+    errore.mockRestore();
+  });
+
+  it('ESCI DALL’ACCOUNT chiede conferma al primo tocco; al secondo esce e va a /entra', async () => {
+    mockDati();
+    vi.mocked(esciDallAccount).mockResolvedValue(undefined);
+    render(<Impostazioni />);
+
+    fireEvent.click(await screen.findByRole('button', { name: "ESCI DALL'ACCOUNT" }));
+    expect(screen.getByRole('button', { name: 'SICURO?' })).toBeInTheDocument();
+    expect(esciDallAccount).not.toHaveBeenCalled();
+    expect(replace).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'SICURO?' }));
+
+    await waitFor(() => expect(esciDallAccount).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/entra'));
+    // Il redirect viene dopo l'uscita, non prima.
+    expect(replace.mock.invocationCallOrder[0]).toBeGreaterThan(vi.mocked(esciDallAccount).mock.invocationCallOrder[0]);
+  });
+
+  it('ESCI armato: un tap fuori disarma senza uscire', async () => {
+    mockDati();
+    render(<Impostazioni />);
+
+    fireEvent.click(await screen.findByRole('button', { name: "ESCI DALL'ACCOUNT" }));
+    expect(screen.getByRole('button', { name: 'SICURO?' })).toBeInTheDocument();
+
+    fireEvent.click(document.body);
+
+    expect(screen.getByRole('button', { name: "ESCI DALL'ACCOUNT" })).toBeInTheDocument();
+    expect(esciDallAccount).not.toHaveBeenCalled();
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it('se uscire fallisce dice che serve la rete e non va da nessuna parte', async () => {
+    mockDati();
+    vi.mocked(esciDallAccount).mockRejectedValue(new Error('Failed to fetch'));
+    const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+    render(<Impostazioni />);
+
+    fireEvent.click(await screen.findByRole('button', { name: "ESCI DALL'ACCOUNT" }));
+    fireEvent.click(screen.getByRole('button', { name: 'SICURO?' }));
+
+    expect(await screen.findByText('Serve la rete per uscire. Riprova.')).toBeInTheDocument();
+    expect(replace).not.toHaveBeenCalled();
+    // Si può riprovare: il tasto è tornato disponibile.
+    expect(screen.getByRole('button', { name: "ESCI DALL'ACCOUNT" })).toBeEnabled();
+    errore.mockRestore();
+  });
+
+  it('mentre esce il tasto è disabilitato: un secondo tap non esce due volte', async () => {
+    mockDati();
+    let concludi: () => void = () => {};
+    vi.mocked(esciDallAccount).mockReturnValue(new Promise<void>((resolve) => { concludi = resolve; }));
+    render(<Impostazioni />);
+
+    fireEvent.click(await screen.findByRole('button', { name: "ESCI DALL'ACCOUNT" }));
+    fireEvent.click(screen.getByRole('button', { name: 'SICURO?' }));
+
+    await waitFor(() => expect(screen.getByRole('button', { name: "ESCI DALL'ACCOUNT" })).toBeDisabled());
+    expect(esciDallAccount).toHaveBeenCalledTimes(1);
+
+    concludi();
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/entra'));
   });
 });
