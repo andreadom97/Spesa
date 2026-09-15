@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { BottoneDueTocchi } from '@/components/BottoneDueTocchi';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Impostazioni, MealSlotDef } from '@/domain/types';
@@ -837,48 +838,6 @@ function SezioneCasa({ casa, onCambiata }: { casa: StatoCasa; onCambiata: (stato
       </div>
       {erroreEntrata && <p style={{ margin: '10px 6px 0', fontSize: 12.5, color: 'var(--sec)' }}>{erroreEntrata}</p>}
     </>
-  );
-}
-
-/**
- * Conferma in due tocchi, come RIPARTI: il primo tap arma il bottone (il
- * testo diventa "SICURO?"), solo il secondo chiama `onConferma`. Un tap
- * fuori dal bottone disarma. A differenza di RIPARTI non dipende da altro
- * stato della pagina, quindi vive da sé. `disabled` serve mentre una
- * conferma è in corso (TOGLI su un membro mentre un altro sta sparendo).
- */
-function BottoneDueTocchi({ testo, onConferma, disabled, style }: {
-  testo: string; onConferma: () => void; disabled?: boolean; style?: CSSProperties;
-}) {
-  const [armato, setArmato] = useState(false);
-  const ref = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (!armato) return;
-    function fuoriDalBottone(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setArmato(false);
-    }
-    document.addEventListener('click', fuoriDalBottone);
-    return () => document.removeEventListener('click', fuoriDalBottone);
-  }, [armato]);
-
-  return (
-    <button
-      ref={ref}
-      type="button"
-      disabled={disabled}
-      onClick={() => {
-        if (armato) {
-          setArmato(false);
-          onConferma();
-        } else {
-          setArmato(true);
-        }
-      }}
-      style={style}
-    >
-      {armato ? 'SICURO?' : testo}
-    </button>
   );
 }
 
