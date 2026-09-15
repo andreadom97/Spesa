@@ -231,10 +231,14 @@ export default function Lista() {
   const [settimanaLabelVuoto, setSettimanaLabelVuoto] = useState<string | undefined>(undefined);
   const [erroreCaricamento, setErroreCaricamento] = useState<string | null>(null);
   const [erroreAzione, setErroreAzione] = useState<string | null>(null);
+  // L'errore di RIFAI LA LISTA, separato da `erroreAzione`: quello compare
+  // in cima all'area scrollabile, mentre il tasto è in fondo e chi l'ha
+  // toccato guarda lì.
+  const [erroreRifai, setErroreRifai] = useState<string | null>(null);
   const [tab, setTab] = useState<'base' | 'topup'>('base');
   const [rigaInVolo, setRigaInVolo] = useState<string | null>(null);
   // Vero mentre RIFAI LA LISTA è in corso: il tasto si spegne, un secondo
-  // tap non parte.
+  // tap non parte, e le tessere non scrivono (vedi `toggleVoce`).
   const [rifacendo, setRifacendo] = useState(false);
   // Quante volte l'utente ha toccato la lista (spunte e risposte ai
   // controlli) da quando la pagina è montata. Serve a `rileggi` e a
@@ -497,7 +501,13 @@ export default function Lista() {
     };
   }, []);
 
+  // Durante RIFAI LA LISTA le tessere restano a schermo, ma una spunta o una
+  // risposta a un controllo in quella finestra scriverebbe fra il delete e
+  // l'insert di `generaListe` (upsert su una riga che sta per essere
+  // riscritta: violazione dell'unique) e farebbe fallire la rigenerazione.
+  // Si ignorano: la lista che arriva subito dopo è nuova comunque.
   function toggleVoce(voce: VoceSalvata) {
+    if (rifacendo) return;
     const nuovo = !voce.spuntato;
     versioneTocchi.current += 1;
     setStato((prev) => (prev ? { ...prev, lista: conSpuntaLocale(prev.lista, voce.id, nuovo) } : prev));
@@ -506,7 +516,7 @@ export default function Lista() {
   }
 
   async function rispondi(controllo: VoceSalvata, listaId: string | null, ancora: boolean) {
-    if (!listaId || rigaInVolo) return;
+    if (!listaId || rigaInVolo || rifacendo) return;
     versioneTocchi.current += 1;
     setErroreAzione(null);
     setRigaInVolo(controllo.id);
@@ -539,27 +549,50 @@ export default function Lista() {
   }
 
   /**
-   * Rifare la lista a mano (spec rigenera-lista §1): la coda offline se ne va
-   * prima — le spunte in attesa riguardano righe che stanno per sparire —
-   * poi il dato, poi l'istantanea, poi il caricamento intero come al ritorno
-   * della rete. La versione dei tocchi avanza prima di `carica()`, così una
-   * rilettura partita prima e arrivata dopo (che riporterebbe la lista
-   * vecchia) si scarta. In errore la lista a schermo resta quella di prima:
-   * il dato o riesce o lascia le righe vecchie.
+   * Rifare la lista a mano (spec rigenera-lista §1): prima il dato, poi la
+   * coda offline se ne va — le spunte in attesa riguardavano righe che non
+   * ci sono più — poi l'istantanea, poi il caricamento intero come al
+   * ritorno della rete. La coda si svuota DOPO la rigenerazione, non prima:
+   * se la rigenerazione fallisce la lista non è cambiata, e una spunta in
+   * attesa non deve andare persa (§1.4). Svuotarla dopo è solo pulizia: una
+   * spunta in coda su una riga cancellata aggiorna 0 righe senza errore, e
+   * `rimuoviConfermate` la toglierebbe al giro dopo.
+   *
+   * La versione dei tocchi avanza prima di `rigeneraListe` E prima di
+   * `carica()`: una rilettura partita prima del tap e arrivata durante la
+   * rigenerazione descrive la lista vecchia (o quella a metà: delete fatto,
+   * insert non ancora), e non deve andare né a schermo né nell'istantanea;
+   * il secondo avanzamento copre le riletture partite durante la
+   * rigenerazione stessa.
+   *
+   * In errore la lista a schermo resta quella di prima: il dato o riesce o
+   * lascia le righe vecchie. Due errori sono di stato, non di rete: la
+   * spesa è già chiusa o la settimana è tornata in bozza (un altro membro,
+   * un altro dispositivo). `statoSettimana` si legge solo al caricamento,
+   * quindi il tasto resterebbe lì e "Riprova" non riuscirebbe mai: si rifà
+   * `carica()`, che riallinea lo stato e fa sparire il tasto.
    */
   async function rifaiLista() {
     if (!stato || rifacendo) return;
+    const { weekId } = stato;
     setRifacendo(true);
-    setErroreAzione(null);
+    setErroreRifai(null);
+    versioneTocchi.current += 1;
     try {
+      await rigeneraListe(weekId);
       svuotaCoda();
-      await rigeneraListe(stato.weekId);
       cancellaIstantaneaLista();
       versioneTocchi.current += 1;
       await caricaRef.current();
     } catch (errore) {
       console.error('lista: rigenerazione fallita.', errore);
-      setErroreAzione('Non siamo riusciti a rifare la lista. Riprova.');
+      const messaggio = errore instanceof Error ? errore.message : '';
+      if (messaggio === 'spesa già chiusa' || messaggio === 'lista non ancora creata') {
+        setErroreRifai(messaggio === 'spesa già chiusa' ? 'La spesa è già chiusa.' : 'Non siamo riusciti a rifare la lista. Riprova.');
+        await caricaRef.current();
+      } else {
+        setErroreRifai('Non siamo riusciti a rifare la lista. Riprova.');
+      }
     } finally {
       setRifacendo(false);
     }
@@ -704,6 +737,11 @@ export default function Lista() {
             Ricalcola da piatti, dispensa e porzioni di adesso. Le spunte fatte si perdono.
           </p>
         </div>
+      )}
+      {/* Fuori dal blocco del tasto: dopo "spesa già chiusa" il tasto
+          sparisce (carica() ha riletto lo stato) e la riga deve restare. */}
+      {erroreRifai && (
+        <p style={{ margin: '8px 20px 0', fontSize: 12.5, lineHeight: 1.4, color: 'var(--sec)' }}>{erroreRifai}</p>
       )}
     </Cornice>
   );

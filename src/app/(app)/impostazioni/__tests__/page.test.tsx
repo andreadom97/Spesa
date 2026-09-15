@@ -55,6 +55,7 @@ import { leggiImpostazioni, salvaImpostazioni, leggiSlotDefs, salvaSlotDefs } fr
 import { statoCasa, creaInvito, entraInCasa, esciDallaCasa, rimuoviMembro, dimenticaIdCasa } from '@/data/casa';
 import { emailAccount, esciDallAccount } from '@/data/sessione';
 import { lunediDi } from '@/domain/date';
+import { dueTocchi, secondoTocco } from '@/components/__tests__/due-tocchi';
 import Impostazioni from '../page';
 
 const ASSENZE_VUOTE = [false, false, false, false, false, false, false];
@@ -295,6 +296,59 @@ describe('Impostazioni', () => {
       await waitFor(() => expect(screen.getByLabelText('Porzioni')).toHaveTextContent('2'));
       expect(leggiImpostazioni).toHaveBeenCalledTimes(3);
       expect(screen.getByText('La lista compra per 2. Le porzioni nel piatto restano quelle scritte.')).toBeInTheDocument();
+      errore.mockRestore();
+    });
+
+    // Review del 15/09 (bassa): due tap in fila, il primo riesce e il secondo
+    // fallisce. Il ramo di successo che accende l'avviso non si esegue mai
+    // (la rilettura del primo è superata, il secondo va nel catch), ma sul
+    // server le porzioni SONO cambiate: la lista della settimana non si
+    // aggiorna da sola, e va detto anche qui.
+    it('due tap veloci: se il primo riesce e il secondo fallisce, con le porzioni cambiate sul server la riga sulla lista compare', async () => {
+      mockDati({ porzioni: 1 });
+      render(<Impostazioni />);
+      await screen.findByDisplayValue('Colazione');
+      const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const salvataggi: Array<{ resolve: () => void; reject: (e: Error) => void }> = [];
+      vi.mocked(salvaImpostazioni).mockImplementation(
+        () => new Promise<void>((resolve, reject) => { salvataggi.push({ resolve, reject }); }),
+      );
+      vi.mocked(leggiImpostazioni).mockResolvedValue({
+        moltiplicatorePorzioni: 2, ordineAree: [...ORDINE_AREE_TEST], settimaneCiclo: 1, cicloOrigine: null,
+      });
+
+      fireEvent.click(screen.getByLabelText('Aumenta porzioni'));
+      await waitFor(() => expect(salvataggi).toHaveLength(1));
+      fireEvent.click(screen.getByLabelText('Aumenta porzioni'));
+      salvataggi[0].resolve();
+      await waitFor(() => expect(salvataggi).toHaveLength(2));
+      expect(screen.queryByText(RIGA_RIFAI_LISTA)).not.toBeInTheDocument();
+
+      salvataggi[1].reject(new Error('rete'));
+
+      expect(await screen.findByText('Non siamo riusciti a salvare. Riprova.')).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByLabelText('Porzioni')).toHaveTextContent('2'));
+      expect(screen.getByText(RIGA_RIFAI_LISTA)).toBeInTheDocument();
+      errore.mockRestore();
+    });
+
+    it('un cambio fallito del ciclo che rilegge porzioni diverse non fa comparire la riga: la patch non era sulle porzioni', async () => {
+      mockDati({ porzioni: 1 });
+      render(<Impostazioni />);
+      await screen.findByDisplayValue('Colazione');
+      const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+      vi.mocked(salvaImpostazioni).mockRejectedValue(new Error('rete'));
+      // Un altro dispositivo ha cambiato le porzioni nel frattempo.
+      vi.mocked(leggiImpostazioni).mockResolvedValue({
+        moltiplicatorePorzioni: 3, ordineAree: [...ORDINE_AREE_TEST], settimaneCiclo: 1, cicloOrigine: null,
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: '2 SETT.' }));
+
+      expect(await screen.findByText('Non siamo riusciti a salvare. Riprova.')).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByLabelText('Porzioni')).toHaveTextContent('3'));
+      expect(screen.queryByText(RIGA_RIFAI_LISTA)).not.toBeInTheDocument();
       errore.mockRestore();
     });
 
@@ -979,7 +1033,7 @@ describe('Casa', () => {
     // L'altro TOGLI non si è armato.
     expect(screen.getAllByRole('button', { name: 'TOGLI' })).toHaveLength(1);
 
-    fireEvent.click(screen.getByRole('button', { name: 'SICURO?' }));
+    secondoTocco();
 
     // L'id, non l'email: accoppiati per indice da stato_casa.
     await waitFor(() => expect(rimuoviMembro).toHaveBeenCalledWith('id-1'));
@@ -1000,8 +1054,7 @@ describe('Casa', () => {
     vi.mocked(rimuoviMembro).mockResolvedValue(undefined);
     render(<Impostazioni />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'TOGLI' }));
-    fireEvent.click(screen.getByRole('button', { name: 'SICURO?' }));
+    dueTocchi(await screen.findByRole('button', { name: 'TOGLI' }));
 
     expect(await screen.findByText('Fai la spesa con qualcuno?')).toBeInTheDocument();
     expect(screen.queryByText('La tua casa')).not.toBeInTheDocument();
@@ -1031,8 +1084,7 @@ describe('Casa', () => {
     render(<Impostazioni />);
 
     await screen.findByText('a@b.it');
-    fireEvent.click(screen.getAllByRole('button', { name: 'TOGLI' })[0]);
-    fireEvent.click(screen.getByRole('button', { name: 'SICURO?' }));
+    dueTocchi(screen.getAllByRole('button', { name: 'TOGLI' })[0]);
 
     expect(await screen.findByText('Non siamo riusciti a togliere. Riprova.')).toBeInTheDocument();
     expect(screen.getByText('a@b.it')).toBeInTheDocument();
@@ -1053,8 +1105,7 @@ describe('Casa', () => {
     render(<Impostazioni />);
 
     await screen.findByText('a@b.it');
-    fireEvent.click(screen.getAllByRole('button', { name: 'TOGLI' })[0]);
-    fireEvent.click(screen.getByRole('button', { name: 'SICURO?' }));
+    dueTocchi(screen.getAllByRole('button', { name: 'TOGLI' })[0]);
 
     await waitFor(() => expect(screen.queryByText('a@b.it')).not.toBeInTheDocument());
     expect(screen.getByText('c@d.it')).toBeInTheDocument();
@@ -1074,7 +1125,12 @@ describe('Casa', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'ESCI DALLA CASA' }));
     expect(esciDallaCasa).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'SICURO?' })).toBeInTheDocument();
+    // Un secondo click subito dopo il primo è un doppio tap involontario, e
+    // non conferma (BottoneDueTocchi): la conferma vera è `secondoTocco`.
     fireEvent.click(screen.getByRole('button', { name: 'SICURO?' }));
+    expect(esciDallaCasa).not.toHaveBeenCalled();
+    secondoTocco();
 
     await waitFor(() => expect(esciDallaCasa).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(assign).toHaveBeenCalledWith('/lista'));
@@ -1100,8 +1156,7 @@ describe('Casa', () => {
     vi.mocked(esciDallaCasa).mockRejectedValue(new Error('rete'));
     render(<Impostazioni />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'ESCI DALLA CASA' }));
-    fireEvent.click(screen.getByRole('button', { name: 'SICURO?' }));
+    dueTocchi(await screen.findByRole('button', { name: 'ESCI DALLA CASA' }));
 
     expect(await screen.findByText('Non siamo riusciti a uscire. Riprova.')).toBeInTheDocument();
     expect(assign).not.toHaveBeenCalled();
@@ -1124,8 +1179,9 @@ describe('Casa', () => {
 });
 
 // Spec esci: la sezione ACCOUNT in fondo, dopo CASA. L'uscita è a due tocchi
-// e solo da questo telefono; se il server non chiude la sessione non si
-// cancella niente in locale e non si va da nessuna parte.
+// e solo da questo telefono; se la sessione locale è ancora lì dopo un
+// errore (token scaduto senza rete) non si cancella niente e non si va da
+// nessuna parte; se la libreria l'ha già chiusa si pulisce e si esce comunque.
 describe('Account', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -1177,7 +1233,7 @@ describe('Account', () => {
     expect(esciDallAccount).not.toHaveBeenCalled();
     expect(replace).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole('button', { name: 'SICURO?' }));
+    secondoTocco();
 
     await waitFor(() => expect(esciDallAccount).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/entra'));
@@ -1205,8 +1261,7 @@ describe('Account', () => {
     const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
     render(<Impostazioni />);
 
-    fireEvent.click(await screen.findByRole('button', { name: "ESCI DALL'ACCOUNT" }));
-    fireEvent.click(screen.getByRole('button', { name: 'SICURO?' }));
+    dueTocchi(await screen.findByRole('button', { name: "ESCI DALL'ACCOUNT" }));
 
     expect(await screen.findByText('Serve la rete per uscire. Riprova.')).toBeInTheDocument();
     expect(replace).not.toHaveBeenCalled();
@@ -1221,8 +1276,7 @@ describe('Account', () => {
     vi.mocked(esciDallAccount).mockReturnValue(new Promise<void>((resolve) => { concludi = resolve; }));
     render(<Impostazioni />);
 
-    fireEvent.click(await screen.findByRole('button', { name: "ESCI DALL'ACCOUNT" }));
-    fireEvent.click(screen.getByRole('button', { name: 'SICURO?' }));
+    dueTocchi(await screen.findByRole('button', { name: "ESCI DALL'ACCOUNT" }));
 
     await waitFor(() => expect(screen.getByRole('button', { name: "ESCI DALL'ACCOUNT" })).toBeDisabled());
     expect(esciDallAccount).toHaveBeenCalledTimes(1);

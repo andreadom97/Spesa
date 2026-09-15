@@ -283,11 +283,18 @@ export default function Impostazioni() {
    * Le scritture partono una dopo l'altra (`codaScrittureRef`): così la
    * rilettura del rollback trova sul server anche le scritture dei tap
    * precedenti, già atterrate, e non un valore che sta per essere superato.
+   *
+   * Anche il rollback può accendere l'avviso sulle porzioni: con due tap in
+   * fila, il primo riuscito e il secondo fallito, il ramo di successo non
+   * si esegue mai (la rilettura del primo è superata), ma sul server le
+   * porzioni sono cambiate. Si confrontano quelle rilette con quelle
+   * confermate prima della scrittura.
    */
   async function persistiImpostazioni(patch: Partial<Impostazioni>) {
     if (!dati) return;
     const richiesta = ++richiestaImpostazioniRef.current;
     const eUltima = () => richiesta === richiestaImpostazioniRef.current;
+    const porzioniPrima = impostazioniSalvateRef.current?.moltiplicatorePorzioni;
     setErroreSalvataggio(null);
     const nuove = { ...dati.impostazioni, ...patch };
     setDati((correnti) => (correnti ? { ...correnti, impostazioni: nuove } : correnti));
@@ -323,6 +330,7 @@ export default function Impostazioni() {
         salvate = await leggiImpostazioni();
         if (!eUltima()) return;
         impostazioniSalvateRef.current = salvate;
+        if ('moltiplicatorePorzioni' in patch && salvate.moltiplicatorePorzioni !== porzioniPrima) setAvvisoPorzioni(true);
       } catch (erroreRilettura) {
         console.error('impostazioni: rilettura dopo il salvataggio fallito non riuscita.', erroreRilettura);
         if (!eUltima()) return;
@@ -686,10 +694,12 @@ const BOTTONE_SECONDARIO: CSSProperties = {
  * La sezione ACCOUNT (spec esci §1): con quale email si è dentro e il tasto
  * per uscire, a due tocchi. Si esce solo da questo dispositivo
  * (`esciDallAccount`, `scope: 'local'`); poi `router.replace('/entra')`,
- * per non aspettare che il proxy ci rimandi alla prossima navigazione. Se
- * il server non chiude la sessione (niente rete) il data layer non ha
- * cancellato nulla in locale: si dice e si resta dove si è. `uscendo`
- * spegne il tasto durante la chiamata: un secondo tap non esce due volte.
+ * per non aspettare che il proxy ci rimandi alla prossima navigazione. Senza
+ * rete la libreria chiude comunque la sessione locale e il data layer
+ * pulisce lo stesso: si esce. Il data layer lancia solo se la sessione
+ * locale è ancora lì (vedi `esciDallAccount`), e allora non ha cancellato
+ * nulla: si dice e si resta dove si è. `uscendo` spegne il tasto durante
+ * la chiamata: un secondo tap non esce due volte.
  */
 function SezioneAccount({ email, router }: { email: string | null; router: ReturnType<typeof useRouter> }) {
   const [uscendo, setUscendo] = useState(false);

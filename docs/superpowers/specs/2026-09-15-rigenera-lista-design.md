@@ -27,14 +27,25 @@ difesa in profondità C4). Offline il tasto non si mostra: la pagina sta mostran
 l'istantanea, che non porta lo stato della settimana, e comunque serve il server.
 
 **Cosa succede al tap confermato.**
-1. La coda offline delle spunte si svuota (`svuotaCoda`): le spunte in attesa
-   riguardano righe che stanno per sparire.
-2. `rigeneraListe(weekId)` (dato, §2).
+1. La versione dei tocchi avanza e `rigeneraListe(weekId)` (dato, §2). Durante la
+   rigenerazione le tessere e i controlli non scrivono (una spunta o un SÌ/NO fra il
+   delete e l'insert farebbe fallire la rigenerazione), e una rilettura partita prima
+   e arrivata durante si scarta.
+2. La coda offline delle spunte si svuota (`svuotaCoda`): le spunte in attesa
+   riguardavano righe che non ci sono più. Dopo la rigenerazione, non prima: se la
+   rigenerazione fallisce la lista non è cambiata e le spunte in attesa non si perdono
+   (punto 4). Una spunta in coda su una riga cancellata aggiornerebbe 0 righe senza
+   errore: svuotare è solo pulizia.
 3. L'istantanea offline si cancella (`cancellaIstantaneaLista`), la versione dei tocchi
-   avanza e la pagina rifà il caricamento intero (`carica()`), come al ritorno della rete.
-4. Errore → riga `Non siamo riusciti a rifare la lista. Riprova.` e la lista a schermo
+   avanza di nuovo e la pagina rifà il caricamento intero (`carica()`), come al ritorno
+   della rete.
+4. Errore → riga `Non siamo riusciti a rifare la lista. Riprova.` sotto il tasto (dove
+   chi l'ha toccato guarda, non in cima all'area scrollabile), e la lista a schermo
    resta quella di prima (nessun rollback da fare: il dato o riesce o lascia le righe
-   vecchie, vedi §2).
+   vecchie, vedi §2). Se l'errore è `spesa già chiusa` o `lista non ancora creata` lo
+   stato della settimana è cambiato sotto i piedi (un altro membro): si rifà `carica()`,
+   che riallinea lo stato e fa sparire il tasto, e la riga dice `La spesa è già
+   chiusa.` (o quella generica, con lo stato vuoto di sempre per la bozza).
 
 **Righe aggiunte a mano.** Le righe con `origine = 'manuale'` sopravvivono: si rileggono
 prima e si reinseriscono dopo, nella stessa lista (`tipo`), con `spuntato = false`. Sono
@@ -79,9 +90,12 @@ export async function rigeneraListe(weekId: string): Promise<void>;
   le righe manuali lette prima e reinserite dopo con `spuntato = false` e lo stesso
   `shopping_list_id`; senza righe manuali nessun insert.
 - Pagina: il tasto c'è solo a settimana confermata (non in bozza, non a chiusa, non
-  offline); primo tap → "SICURO?", secondo → `svuotaCoda`, `rigeneraListe(weekId)`,
-  `cancellaIstantaneaLista`, ricaricamento (`leggiListe` chiamata di nuovo); errore →
-  riga di errore e lista invariata.
+  offline); primo tap → "SICURO?", secondo → `rigeneraListe(weekId)` con la coda ancora
+  piena, poi `svuotaCoda`, `cancellaIstantaneaLista`, ricaricamento (`leggiListe`
+  chiamata di nuovo); errore → riga di errore sotto il tasto, lista e coda invariate;
+  `spesa già chiusa` → ricaricamento, tasto sparito, riga dedicata; una rilettura che
+  arriva durante la rigenerazione non tocca lo schermo; durante la rigenerazione spunte
+  e risposte ai controlli si ignorano.
 
 ## 4. Limiti dichiarati
 

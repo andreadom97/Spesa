@@ -48,6 +48,7 @@ import { accodaSpunta, leggiCoda } from '@/offline/coda';
 // su localStorage/jsdom: qui si prova l'integrazione fra la pagina e la copia
 // locale, non una controfigura.
 import { leggiIstantaneaLista, salvaIstantaneaLista } from '@/offline/lista-cache';
+import { dueTocchi } from '@/components/__tests__/due-tocchi';
 import Lista from '../page';
 
 const SETTIMANA = { id: 'week-1', dataInizio: '2026-08-24', stato: 'confermata' as const, slots: [] };
@@ -1243,10 +1244,11 @@ describe('Lista', () => {
 
   // Rifare la lista a mano (spec 2026-09-15-rigenera-lista-design.md §1 e
   // §3): un tasto a due tocchi in fondo, solo a settimana confermata e con la
-  // rete; al tap confermato coda svuotata, rigenerazione, istantanea via e
+  // rete; al tap confermato rigenerazione, coda svuotata, istantanea via e
   // caricamento intero da capo.
   describe('rifai la lista', () => {
     const AIUTO = 'Ricalcola da piatti, dispensa e porzioni di adesso. Le spunte fatte si perdono.';
+    const ERRORE_RIFAI = 'Non siamo riusciti a rifare la lista. Riprova.';
     let errore: ReturnType<typeof vi.spyOn>;
 
     beforeEach(() => {
@@ -1255,7 +1257,17 @@ describe('Lista', () => {
 
     afterEach(() => {
       errore.mockRestore();
+      delete (document as unknown as Record<string, unknown>).visibilityState;
     });
+
+    function simulaVisibilita(stato: 'visible' | 'hidden') {
+      Object.defineProperty(document, 'visibilityState', { value: stato, configurable: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+    }
+
+    function rifai() {
+      dueTocchi(screen.getByRole('button', { name: 'RIFAI LA LISTA' }));
+    }
 
     it('a settimana confermata mostra il tasto con la riga di aiuto, sotto HAI PRESO TUTTO', async () => {
       const lista = buildLista();
@@ -1312,10 +1324,12 @@ describe('Lista', () => {
       expect(rigeneraListe).not.toHaveBeenCalled();
     });
 
-    it('il secondo tap svuota la coda, rigenera, cancella l\'istantanea e ricarica tutto', async () => {
+    it('il secondo tap rigenera, poi svuota la coda, cancella l\'istantanea e ricarica tutto', async () => {
       vi.mocked(leggiListe).mockResolvedValue(buildLista());
       // Una spunta ferma in coda (scrittura fallita): riguarda una riga che
-      // sta per sparire, e deve sparire con lei prima di rigenerare.
+      // sta per sparire, ma se ne va solo DOPO la rigenerazione riuscita
+      // (review del 15/09, media): se la rigenerazione fallisse, la lista
+      // resterebbe quella di prima e la spunta non deve andare persa.
       vi.mocked(spunta).mockRejectedValue(new Error('offline'));
       let codaAllaRigenerazione: unknown = null;
       let istantaneaAllaRigenerazione: unknown = null;
@@ -1332,16 +1346,16 @@ describe('Lista', () => {
       // Il caricamento che segue si tiene in sospeso per guardare lo stato in mezzo.
       vi.mocked(leggiSettimanaCorrente).mockImplementationOnce(() => new Promise((resolve) => { risolviSettimana = resolve; }));
 
-      fireEvent.click(screen.getByRole('button', { name: 'RIFAI LA LISTA' }));
-      fireEvent.click(screen.getByRole('button', { name: 'SICURO?' }));
+      rifai();
 
       await waitFor(() => expect(rigeneraListe).toHaveBeenCalledWith('week-1'));
       expect(rigeneraListe).toHaveBeenCalledTimes(1);
-      // La coda era già vuota quando la rigenerazione è partita; l'istantanea
-      // c'era ancora e se ne va subito dopo, prima del caricamento.
-      expect(codaAllaRigenerazione).toEqual([]);
+      // Quando la rigenerazione parte la coda è ancora piena e l'istantanea
+      // c'è ancora: se ne vanno subito dopo, prima del caricamento.
+      expect(codaAllaRigenerazione).toEqual([{ itemId: 'item-riso', spuntato: true, ts: expect.any(Number) }]);
       expect(istantaneaAllaRigenerazione).not.toBeNull();
       await waitFor(() => expect(leggiSettimanaCorrente).toHaveBeenCalledTimes(2));
+      expect(leggiCoda()).toEqual([]);
       expect(leggiIstantaneaLista()).toBeNull();
       // Durante, il tasto è spento.
       expect(screen.getByRole('button', { name: 'RIFAI LA LISTA' })).toBeDisabled();
@@ -1355,25 +1369,163 @@ describe('Lista', () => {
       await screen.findByText('3 conf');
       expect(screen.queryByText('Pasta integrale')).not.toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'RIFAI LA LISTA' })).toBeEnabled();
-      expect(screen.queryByText('Non siamo riusciti a rifare la lista. Riprova.')).not.toBeInTheDocument();
+      expect(screen.queryByText(ERRORE_RIFAI)).not.toBeInTheDocument();
     });
 
-    it('se la rigenerazione fallisce mostra la riga di errore e la lista resta quella di prima', async () => {
+    it('se la rigenerazione fallisce mostra la riga di errore sotto il tasto, la lista resta quella di prima e la coda è intatta', async () => {
       vi.mocked(leggiListe).mockResolvedValue(buildLista());
-      vi.mocked(rigeneraListe).mockRejectedValue(new Error('spesa già chiusa'));
+      vi.mocked(spunta).mockRejectedValue(new Error('offline'));
+      vi.mocked(rigeneraListe).mockRejectedValue(new Error('rete'));
       render(<Lista />);
-      await screen.findByText('Riso Carnaroli');
+      const riso = (await screen.findByText('Riso Carnaroli')).closest('button')!;
+      fireEvent.click(riso);
+      await waitFor(() => expect(leggiCoda()).toHaveLength(1));
 
-      fireEvent.click(screen.getByRole('button', { name: 'RIFAI LA LISTA' }));
-      fireEvent.click(screen.getByRole('button', { name: 'SICURO?' }));
+      rifai();
 
-      expect(await screen.findByText('Non siamo riusciti a rifare la lista. Riprova.')).toBeInTheDocument();
+      const riga = await screen.findByText(ERRORE_RIFAI);
       expect(screen.getByText('Riso Carnaroli')).toBeInTheDocument();
       expect(screen.getByText('Pasta integrale')).toBeInTheDocument();
       expect(leggiListe).toHaveBeenCalledTimes(1);
       expect(leggiSettimanaCorrente).toHaveBeenCalledTimes(1);
-      expect(screen.getByRole('button', { name: 'RIFAI LA LISTA' })).toBeEnabled();
+      // La spunta in attesa non è andata persa: la lista non è cambiata.
+      expect(leggiCoda()).toEqual([{ itemId: 'item-riso', spuntato: true, ts: expect.any(Number) }]);
+      expect(leggiIstantaneaLista()).not.toBeNull();
+      const tasto = screen.getByRole('button', { name: 'RIFAI LA LISTA' });
+      expect(tasto).toBeEnabled();
+      // La riga di errore sta sotto il tasto (review del 15/09, bassa): il
+      // tasto è in fondo, un errore in cima all'area scrollabile non si vede.
+      expect(tasto.compareDocumentPosition(riga) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
       expect(errore).toHaveBeenCalledWith('lista: rigenerazione fallita.', expect.any(Error));
+    });
+
+    // Review del 15/09 (bassa): `statoSettimana` si legge una volta sola, al
+    // caricamento. Se un altro membro ha chiuso la spesa nel frattempo il
+    // tasto resta, e "Riprova" non riuscirebbe mai: si ricarica tutto, così
+    // il tasto sparisce, e si dice che la spesa è chiusa.
+    it('se la spesa è già chiusa (un altro membro l\'ha chiusa) ricarica tutto: il tasto sparisce e lo dice', async () => {
+      vi.mocked(leggiListe).mockResolvedValue(buildLista());
+      vi.mocked(rigeneraListe).mockRejectedValue(new Error('spesa già chiusa'));
+      vi.mocked(leggiSettimanaCorrente)
+        .mockResolvedValueOnce(SETTIMANA)
+        .mockResolvedValue({ ...SETTIMANA, stato: 'chiusa' });
+      render(<Lista />);
+      await screen.findByText('Riso Carnaroli');
+
+      rifai();
+
+      expect(await screen.findByText('La spesa è già chiusa.')).toBeInTheDocument();
+      await waitFor(() => expect(screen.queryByRole('button', { name: 'RIFAI LA LISTA' })).not.toBeInTheDocument());
+      expect(leggiSettimanaCorrente).toHaveBeenCalledTimes(2);
+      expect(leggiListe).toHaveBeenCalledTimes(2);
+      expect(screen.getByText('Riso Carnaroli')).toBeInTheDocument();
+      expect(screen.queryByText(ERRORE_RIFAI)).not.toBeInTheDocument();
+    });
+
+    it('se la lista non è ancora creata (settimana tornata in bozza) ricarica tutto e mostra lo stato vuoto', async () => {
+      vi.mocked(leggiListe).mockResolvedValueOnce(buildLista()).mockResolvedValue(null);
+      vi.mocked(rigeneraListe).mockRejectedValue(new Error('lista non ancora creata'));
+      vi.mocked(leggiSettimanaCorrente)
+        .mockResolvedValueOnce(SETTIMANA)
+        .mockResolvedValue({ ...SETTIMANA, stato: 'bozza' });
+      render(<Lista />);
+      await screen.findByText('Riso Carnaroli');
+
+      rifai();
+
+      expect(await screen.findByText('La lista non c’è ancora')).toBeInTheDocument();
+      expect(leggiSettimanaCorrente).toHaveBeenCalledTimes(2);
+      expect(screen.queryByRole('button', { name: 'RIFAI LA LISTA' })).not.toBeInTheDocument();
+    });
+
+    it('un errore qualsiasi non ricarica: la lista resta e si può riprovare', async () => {
+      vi.mocked(leggiListe).mockResolvedValue(buildLista());
+      vi.mocked(rigeneraListe).mockRejectedValueOnce(new Error('rete')).mockResolvedValue(undefined);
+      render(<Lista />);
+      await screen.findByText('Riso Carnaroli');
+
+      rifai();
+      await screen.findByText(ERRORE_RIFAI);
+      expect(leggiSettimanaCorrente).toHaveBeenCalledTimes(1);
+
+      rifai();
+
+      await waitFor(() => expect(rigeneraListe).toHaveBeenCalledTimes(2));
+      await waitFor(() => expect(screen.queryByText(ERRORE_RIFAI)).not.toBeInTheDocument());
+      await waitFor(() => expect(leggiSettimanaCorrente).toHaveBeenCalledTimes(2));
+    });
+
+    // Review del 15/09 (bassa): la versione dei tocchi avanza anche PRIMA
+    // di `rigeneraListe`, non solo dopo. Una rilettura partita prima del tap
+    // e arrivata durante la rigenerazione descrive la lista vecchia (o, se
+    // letta nel mezzo, quella a metà: righe cancellate, non ancora
+    // reinserite), e non deve andare né a schermo né nell'istantanea.
+    it('una rilettura che arriva durante la rigenerazione non aggiorna la lista a schermo', async () => {
+      let risolviRilettura: (l: ListaSalvata) => void = () => {};
+      vi.mocked(leggiListe)
+        .mockResolvedValueOnce(buildLista())
+        .mockImplementationOnce(() => new Promise<ListaSalvata | null>((resolve) => { risolviRilettura = resolve; }));
+      let risolviRigenerazione: () => void = () => {};
+      vi.mocked(rigeneraListe).mockImplementation(() => new Promise<void>((resolve) => { risolviRigenerazione = resolve; }));
+      render(<Lista />);
+      await screen.findByText('Riso Carnaroli');
+
+      // Rilettura in volo (ritorno in primo piano), poi il tap confermato.
+      simulaVisibilita('visible');
+      await waitFor(() => expect(leggiListe).toHaveBeenCalledTimes(2));
+      rifai();
+      await waitFor(() => expect(rigeneraListe).toHaveBeenCalledTimes(1));
+
+      // La rilettura torna adesso, con la pasta spuntata: è stantia.
+      const stantia = buildLista();
+      stantia.base[0].voci = [VOCE_RISO, { ...VOCE_PASTA, spuntato: true }];
+      risolviRilettura(stantia);
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(screen.getByText('Pasta integrale').closest('button')).toHaveAttribute('aria-pressed', 'false');
+      expect(leggiIstantaneaLista()?.lista).toEqual(buildLista());
+
+      // La rigenerazione finisce: il caricamento intero porta la lista nuova.
+      const nuova = buildLista();
+      nuova.base = [{ area: 'cereali', voci: [{ ...VOCE_RISO, id: 'item-riso-2', confezioni: 3 }], controlli: [] }];
+      vi.mocked(leggiListe).mockResolvedValue(nuova);
+      risolviRigenerazione();
+
+      await screen.findByText('3 conf');
+      expect(screen.queryByText('Pasta integrale')).not.toBeInTheDocument();
+    });
+
+    // Review del 15/09 (bassa): durante la rigenerazione le tessere restano
+    // a schermo. Una spunta o un SÌ/NO in quella finestra scriverebbero fra
+    // il delete e l'insert di `generaListe` (upsert su una riga che sta per
+    // essere riscritta: violazione dell'unique), facendo fallire la
+    // rigenerazione. Si ignorano.
+    it('durante la rigenerazione spunte e risposte ai controlli si ignorano', async () => {
+      vi.mocked(leggiListe).mockResolvedValue(buildLista());
+      let risolviRigenerazione: () => void = () => {};
+      vi.mocked(rigeneraListe).mockImplementation(() => new Promise<void>((resolve) => { risolviRigenerazione = resolve; }));
+      render(<Lista />);
+      const riso = (await screen.findByText('Riso Carnaroli')).closest('button')!;
+
+      rifai();
+      await waitFor(() => expect(screen.getByRole('button', { name: 'RIFAI LA LISTA' })).toBeDisabled());
+
+      fireEvent.click(riso);
+      fireEvent.click(screen.getByRole('button', { name: /Sì, hai ancora Olio/ }));
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(riso).toHaveAttribute('aria-pressed', 'false');
+      expect(leggiCoda()).toEqual([]);
+      expect(spunta).not.toHaveBeenCalled();
+      expect(rispondiControllo).not.toHaveBeenCalled();
+      expect(screen.getByText('Olio: ne hai ancora?')).toBeInTheDocument();
+
+      risolviRigenerazione();
+      await waitFor(() => expect(screen.getByRole('button', { name: 'RIFAI LA LISTA' })).toBeEnabled());
+
+      // Finita la rigenerazione, si spunta di nuovo come sempre.
+      fireEvent.click(screen.getByText('Riso Carnaroli').closest('button')!);
+      await waitFor(() => expect(spunta).toHaveBeenCalledWith('item-riso', true));
     });
   });
 });
