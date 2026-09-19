@@ -3,7 +3,7 @@ import "./globals.css";
 import { RegistraSW } from "@/components/RegistraSW";
 
 export const metadata: Metadata = {
-  title: "Spesa",
+  title: "Dispesa",
   description: "La spesa e la settimana della tua dieta: piano, lista e dispensa che si tengono aggiornati da soli.",
   manifest: "/manifest.json",
 };
