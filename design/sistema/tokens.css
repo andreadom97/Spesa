@@ -1,0 +1,96 @@
+/* Spesa — token del design system v2, approvato il 17/09/2026.
+   Fonte dei neutri, delle aree e dei font: src/app/globals.css.
+   Fonte dei cinque token nuovi e delle tre scale: DESIGN-SYSTEM.md §2 e §8.
+   I cinque token nuovi NON sono ancora in globals.css: entrano alla prima
+   modifica utile del file. Qui ci sono perché il design system li usa già. */
+
+:root {
+  /* ---------- Neutri (da globals.css) ---------- */
+  --fondo: #F1F0EE;                   /* fondo pagina e tema PWA; nessun testo ci sta sopra a meno di 4,5:1 */
+  --superficie: #FFFFFF;              /* schede, tessere accese, campi, pillole inattive */
+  --ink: #14163A;                     /* testo primario, tasti pieni, stati attivi, bordo "oggi" — 15,3:1 su fondo, 17,4:1 su bianco */
+  --ink-2: #3D4166;                   /* hover dei link (5 usi nel codice) e avvisi di scadenza nella riga pasto */
+  --sec: #8A8A96;                     /* SOLO decorazione: etichette mono, contatori, unità — 3,0:1 su fondo, 3,4:1 su bianco, sotto AA */
+  --ter: #A6A6B2;                     /* SOLO decorazione: metadati, unità, testo del tasto spento — 2,4:1 su bianco */
+  --off: #9A9AA6;                     /* icone di navigazione inattive nella tab bar — 2,4:1 su fondo */
+  --bordo: rgba(20, 22, 58, 0.07);    /* bordo di schede, campi e tasto secondario: 1 px, sempre questo */
+  --spento: rgba(20, 22, 58, 0.035);  /* fondo delle tessere prese e delle celle fuori casa */
+
+  /* ---------- Neutri e semantici nuovi (deciso 17/09, non ancora in globals.css) ---------- */
+  --testo-2: #5C5F7A;                 /* ogni testo che porta informazione: note, sottotitoli, righe di stato — 5,5:1 su fondo */
+  --avviso: #9A5C00;                  /* avviso in linea, es. riga non risolta nella revisione import — 5,4:1 su bianco */
+  --errore: #C4423E;                  /* errori di validazione, di caricamento e di scrittura; fondo del tasto distruttivo — 5,0:1 su bianco */
+  --freddo: #2F6FBF;                  /* marca il congelato in Dispensa e nel meal prep — 5,1:1 su bianco */
+  --icona-spenta: #C4C4CE;            /* kebab, chevron, X, icone spente: decorazione, non porta informazione — 1,7:1, di proposito */
+
+  /* ---------- Le sei aree (fisse, non personalizzabili; da src/domain/aree.ts) ---------- */
+  --area-ortofrutta: #A8D96A;         /* area 1 — ink sopra: 10,6:1 */
+  --area-macelleria: #F29B9B;         /* area 2, macelleria e pescheria — ink sopra: 8,2:1 */
+  --area-latticini: #9CC7F2;          /* area 3, latticini, uova e salumi — ink sopra: 9,8:1 */
+  --area-cereali: #F5CE5B;            /* area 4, pasta, riso e cereali — ink sopra: 11,5:1 */
+  --area-dispensa: #F2A465;           /* area 5, dispensa e conserve — ink sopra: 8,5:1 */
+  --area-surgelati: #B9AEF5;          /* area 6 — ink sopra: 8,7:1 */
+
+  /* ---------- Famiglie ---------- */
+  --font-testo: 'Plus Jakarta Sans', 'Helvetica Neue', Arial, sans-serif;  /* pesi 400/500/600/700/800, mai maiuscolo */
+  --font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;           /* pesi 400/500/700, sempre maiuscolo */
+
+  /* ---------- Scala tipografica, 9 livelli (deciso 17/09) ---------- */
+  --testo-schermata: 52px;            /* titolo di schermata, 800, -0.05em, lh 1, sans — una parola sola */
+  --testo-dettaglio: 32px;            /* titolo di dettaglio (Piatto, Ingrediente), 800, -0.045em, sans */
+  --testo-scheda: 21px;               /* titolo di scheda o stato vuoto, 800, -0.035em, lh 1.2, sans */
+  --testo-voce: 17px;                 /* nome di voce: tessere, righe pasto, 700, -0.03em, sans */
+  --testo-corpo: 14px;                /* corpo esplicativo, 400-500, lh 1.5, sans */
+  --testo-nota: 12.5px;               /* note ed errori sotto i campi, 400, lh 1.4, sans — taglia minima del sans */
+  --testo-tasto: 12px;                /* tasti e pillole, mono 700, 0.09em, maiuscolo */
+  --testo-sezione: 10px;              /* etichetta di sezione, mono 700, 0.16em, maiuscolo */
+  --testo-micro: 8.5px;               /* tab bar e unità dentro le tessere, mono 500-700, 0.12em — taglia minima assoluta */
+
+  /* ---------- Spaziatura, base 4 (deciso 17/09) ---------- */
+  --spazio-1: 4px;                    /* gap del marchio, distacco di un sottotitolo dal nome */
+  --spazio-2: 8px;                    /* gap tra tessere nella griglia della Lista */
+  --spazio-3: 12px;                   /* gap tra gruppi, lati della griglia di tessere, fondo della testata */
+  --spazio-4: 16px;                   /* bordo pagina e interno delle schede: il valore di default */
+  --spazio-5: 20px;                   /* alto della testata, respiro sopra la tab bar */
+  --spazio-6: 26px;                   /* interno verticale dello stato vuoto, fondo del foglio dal basso */
+  --spazio-fondo: 22px;               /* distanza dell'ultimo elemento dal fondo dello schermo */
+
+  /* ---------- Raggi, cinque e basta (regola da v1, confermata il 17/09) ---------- */
+  --raggio-pillola: 999px;            /* pillole, tasti SÌ/NO, pillola settimana */
+  --raggio-grande: 22px;              /* schede grandi, stato vuoto, foglio dal basso (22px 22px 0 0) */
+  --raggio-medio: 18px;               /* tasti da 54 px, schede medie, riga di controllo, riga pasto */
+  --raggio-piccolo: 14px;             /* tessere, campi di testo, segmenti a blocco, voce attiva della tab bar */
+  --raggio-micro: 4px;                /* quadratino d'area da 10 px, caselle del marchio (lato × 0.28) */
+
+  /* ---------- Bordi ---------- */
+  --bordo-1: 1px;                     /* schede, campi, tasto secondario — colore --bordo */
+  --bordo-15: 1.5px;                  /* stato selezionato, avviso sulla riga di revisione — colore --ink */
+  --bordo-2: 2px;                     /* caselle del marchio, tratteggiato degli "aggiungi" e degli stati vuoti */
+  --bordo-3: 3px;                     /* il giorno corrente nella striscia, dentro il riquadro — colore --ink */
+  --bordo-tratteggio: rgba(20, 22, 58, 0.20); /* il colore del tratteggio da 2 px */
+
+  /* ---------- Ombre, tre e basta ---------- */
+  --ombra-tessera: 0 1px 2px rgba(20, 22, 58, 0.05);  /* tessera accesa della Lista */
+  --ombra-casetta: 0 1px 3px rgba(20, 22, 58, 0.28);  /* casetta piena della riga pasto */
+  --ombra-tasto: 0 3px 10px rgba(20, 22, 58, 0.24);   /* tasto primario e tasto distruttivo */
+
+  /* ---------- Tratti SVG, due e basta (deciso 17/09) ---------- */
+  --tratto-nav: 1.8;                  /* icone di navigazione e di testata, 20-24 px */
+  --tratto-azione: 2.1;               /* icone d'azione piccole: X, +, chevron, 13-16 px */
+
+  /* ---------- Misure ricorrenti dei controlli ---------- */
+  --tap-minimo: 44px;                 /* area toccabile minima, anche quando il disegno è più piccolo */
+  --altezza-tasto: 54px;              /* tasti primario, secondario, spento, distruttivo */
+  --altezza-campo: 44px;              /* campo di testo e campo numerico */
+  --altezza-segmento: 46px;           /* segmento a blocco */
+  --altezza-pillola: 38px;            /* pillola d'azione disegnata (l'area di tap resta 44) */
+  --zona-casa: 60px;                  /* zona sinistra della riga pasto: il toggle casa/fuori */
+  --overlay-foglio: rgba(20, 22, 58, 0.35);  /* velo dietro il foglio dal basso e i dialoghi */
+
+  /* ---------- Movimento (solo dentro prefers-reduced-motion: no-preference) ---------- */
+  --moto-stato: 180ms;                /* .anim-stato: transizione di colore su un cambio di stato */
+  --moto-foglio: 200ms;               /* .anim-foglio: il foglio che sale dal basso */
+  --moto-apparsa: 180ms;              /* .anim-apparsa: comparsa di un elemento nuovo */
+  --moto-giorno: 160ms;               /* .anim-giorno: cambio di giorno nella Settimana */
+  --moto-easing: ease;                /* easing standard, nessuna curva d'autore */
+}

@@ -1,0 +1,99 @@
+<!-- @dsCard group="Fondamenta" name="Colori delle sei aree" subtitle="" viewport="720x600" -->
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Colori delle sei aree</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --fondo:#F1F0EE; --superficie:#FFFFFF; --ink:#14163A; --testo-2:#5C5F7A; --sec:#8A8A96;
+  --bordo:rgba(20,22,58,0.07);
+  --area-ortofrutta:#A8D96A; --area-macelleria:#F29B9B; --area-latticini:#9CC7F2;
+  --area-cereali:#F5CE5B; --area-dispensa:#F2A465; --area-surgelati:#B9AEF5;
+  --font-testo:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:var(--fondo);color:var(--ink);font-family:var(--font-testo);-webkit-font-smoothing:antialiased}
+.card{width:720px;max-width:100%;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.titolo{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.dida{font-size:12.5px;line-height:1.4;color:var(--testo-2);max-width:68ch}
+.griglia{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.area{background:var(--superficie);border:1px solid var(--bordo);border-radius:14px;padding:12px 13px 13px;display:flex;flex-direction:column;gap:9px}
+.area .nome{font-size:12.5px;font-weight:700;letter-spacing:-.01em;line-height:1.25}
+.pastello{height:44px;border-radius:14px;display:flex;align-items:center;padding:0 12px;font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--ink)}
+.rap{font-family:var(--font-mono);font-size:9px;letter-spacing:.06em;font-variant-numeric:tabular-nums}
+.usi{background:var(--superficie);border:1px solid var(--bordo);border-radius:22px;padding:16px;display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.uso{display:flex;flex-direction:column;gap:9px;align-items:flex-start}
+.uso .et{font-family:var(--font-mono);font-size:8.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink)}
+.uso .nt{font-size:12.5px;line-height:1.35;color:var(--testo-2)}
+.mini-tessera{width:100%;min-height:62px;background:var(--superficie);border:1px solid rgba(168,217,106,.45);border-radius:14px;box-shadow:0 1px 2px rgba(20,22,58,.05);padding:10px 12px;display:flex;flex-direction:column;gap:7px}
+.mini-tessera .p{align-self:flex-start;font-family:var(--font-mono);font-size:10.5px;font-weight:700;letter-spacing:.07em;border-radius:999px;padding:5px 10px;background:rgba(168,217,106,.32);color:var(--ink)}
+.mini-tessera .n{font-size:17px;font-weight:700;letter-spacing:-.032em}
+.sez{display:flex;align-items:center;gap:8px}
+.quad{width:10px;height:10px;border-radius:4px;flex:none}
+.sez .lb{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.tinta{width:100%;border-radius:18px;padding:14px 15px;background:rgba(242,164,101,.26)}
+.tinta .n{font-size:16px;font-weight:700;letter-spacing:-.024em}
+.marchio{display:grid;grid-template-columns:repeat(3,20px);gap:4px}
+.mc{width:20px;height:20px;border-radius:5.6px;border-width:2px;border-style:solid;box-sizing:border-box}
+.vietati{background:var(--superficie);border:1px solid var(--bordo);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.no{font-size:12.5px;line-height:1.4}
+@media(max-width:640px){.griglia{grid-template-columns:1fr 1fr}.usi{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="titolo">Fondamenta · Colori delle sei aree</div>
+  <div class="dida">Sei pastelli fissi, non personalizzabili: l'utente personalizza solo l'ordine di apparizione in Lista. Sono l'unico colore vivo dell'interfaccia; l'inchiostro blu-notte fa tutto il resto.</div>
+
+  <div class="griglia">
+    <div class="area"><div class="nome">1 &middot; Ortofrutta</div><div class="pastello" style="background:var(--area-ortofrutta)">#A8D96A</div><div class="rap">ink sopra: 10,6:1</div></div>
+    <div class="area"><div class="nome">2 &middot; Macelleria e pescheria</div><div class="pastello" style="background:var(--area-macelleria)">#F29B9B</div><div class="rap">ink sopra: 8,2:1</div></div>
+    <div class="area"><div class="nome">3 &middot; Latticini, uova e salumi</div><div class="pastello" style="background:var(--area-latticini)">#9CC7F2</div><div class="rap">ink sopra: 9,8:1</div></div>
+    <div class="area"><div class="nome">4 &middot; Pasta, riso e cereali</div><div class="pastello" style="background:var(--area-cereali)">#F5CE5B</div><div class="rap">ink sopra: 11,5:1</div></div>
+    <div class="area"><div class="nome">5 &middot; Dispensa e conserve</div><div class="pastello" style="background:var(--area-dispensa)">#F2A465</div><div class="rap">ink sopra: 8,5:1</div></div>
+    <div class="area"><div class="nome">6 &middot; Surgelati</div><div class="pastello" style="background:var(--area-surgelati)">#B9AEF5</div><div class="rap">ink sopra: 8,7:1</div></div>
+  </div>
+
+  <div class="usi">
+    <div class="uso">
+      <div class="et">1 · Bordo della tessera</div>
+      <div class="mini-tessera"><span class="p">1 conf</span><span class="n">Zucchine</span></div>
+      <div class="nt">Bordo 1 px nel colore al 45%; la protagonista ha il fondo pieno.</div>
+    </div>
+    <div class="uso">
+      <div class="et">2 · Quadratino 10 px</div>
+      <div class="sez"><span class="quad" style="background:var(--area-ortofrutta)"></span><span class="lb">Ortofrutta</span></div>
+      <div class="nt">Accanto all'etichetta di sezione, raggio 4.</div>
+    </div>
+    <div class="uso">
+      <div class="et">3 · Tinta al 26%</div>
+      <div class="tinta"><div class="n">Olio: ne hai ancora?</div></div>
+      <div class="nt">Dietro la riga di controllo, raggio 18.</div>
+    </div>
+    <div class="uso">
+      <div class="et">4 · Casella del marchio</div>
+      <div class="marchio" aria-hidden="true">
+        <div class="mc" style="border-color:var(--area-dispensa);background:var(--area-dispensa)"></div>
+        <div class="mc" style="border-color:var(--area-latticini);background:transparent"></div>
+        <div class="mc" style="border-color:var(--area-ortofrutta);background:var(--area-ortofrutta)"></div>
+        <div class="mc" style="border-color:var(--area-surgelati);background:var(--area-surgelati)"></div>
+        <div class="mc" style="border-color:var(--area-cereali);background:transparent"></div>
+        <div class="mc" style="border-color:var(--area-macelleria);background:var(--area-macelleria)"></div>
+      </div>
+      <div class="nt">Piena = non manca niente; contornata 2 px = manca qualcosa. Mai grigia.</div>
+    </div>
+  </div>
+
+  <div class="vietati">
+    <div class="titolo">I quattro usi sono tutti</div>
+    <div class="no">Mai il colore d'area come colore di testo: a 12,5 px su bianco nessuno dei sei arriva a 4,5:1.</div>
+    <div class="no">Mai il colore d'area come fondo di un tasto: i tasti sono ink, bianchi, grigi o in --errore.</div>
+    <div class="no">Mai un settimo colore, mai una sfumatura fra due aree, mai un'area come accento di brand.</div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,125 @@
+<!-- @dsCard group="Componenti" name="Tessere della Lista" subtitle="La tessera intera è l'interruttore: unica eccezione dichiarata alla regola "tap = apre". A" viewport="393x852" -->
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tessere della Lista</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --fondo:#F1F0EE; --superficie:#FFFFFF; --ink:#14163A; --testo-2:#5C5F7A; --sec:#8A8A96; --ter:#A6A6B2;
+  --bordo:rgba(20,22,58,0.07); --spento:rgba(20,22,58,0.035);
+  --area-ortofrutta:#A8D96A; --area-latticini:#9CC7F2;
+  --font-testo:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:var(--fondo);color:var(--ink);font-family:var(--font-testo);-webkit-font-smoothing:antialiased}
+.card{width:393px;max-width:100%;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.titolo{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.dida{font-size:12.5px;line-height:1.4;color:var(--testo-2)}
+.telefono{width:100%;background:var(--fondo);border:1px solid var(--bordo);border-radius:22px;overflow:hidden}
+.interno{padding:12px}
+.sez-riga{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 0 10px}
+.sez-sx{display:flex;align-items:center;gap:8px}
+.quad{width:10px;height:10px;border-radius:4px;flex:none}
+.sez-lb{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.sez-cont{font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:.10em;text-transform:uppercase;color:var(--sec)}
+.tessere{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tessera{min-height:104px;display:flex;flex-direction:column;padding:12px 14px 13px;border-radius:14px;text-align:left}
+.accesa{background:var(--superficie);box-shadow:0 1px 2px rgba(20,22,58,.05)}
+.spenta{background:var(--spento);border:1px solid transparent}
+.protagonista{grid-column:span 2;padding:13px 16px 14px;border-radius:18px;box-shadow:none}
+.alto{display:flex;align-items:center;gap:6px;flex:none}
+.pill{font-family:var(--font-mono);font-weight:700;font-size:10.5px;letter-spacing:.07em;border-radius:999px;padding:5px 10px}
+.qty{font-family:var(--font-mono);font-weight:500;font-size:10px;letter-spacing:.04em}
+.nome{font-size:17px;font-weight:700;letter-spacing:-.032em;line-height:1.1;margin-top:10px}
+.nome-grande{font-size:25px}
+.barrato{text-decoration:line-through;text-decoration-thickness:1.6px;color:rgba(20,22,58,.34)}
+.sub{font-family:var(--font-mono);font-size:8.5px;letter-spacing:.02em;margin-top:5px}
+.misure{background:var(--superficie);border:1px solid var(--bordo);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:7px}
+.misure p{margin:0;font-size:12.5px;line-height:1.45}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="titolo">Componenti · Tessere della Lista</div>
+  <div class="dida">La tessera intera è l'interruttore: unica eccezione dichiarata alla regola "tap = apre". Accesa = da prendere, spenta = presa. Niente checkbox, niente switch.</div>
+
+  <div class="telefono">
+    <div class="interno">
+      <div class="sez-riga">
+        <div class="sez-sx"><span class="quad" style="background:var(--area-ortofrutta)"></span><span class="sez-lb">Ortofrutta</span></div>
+        <span class="sez-cont">4 voci</span>
+      </div>
+      <div class="tessere">
+        <div class="tessera accesa protagonista" style="background:var(--area-ortofrutta);border:1px solid rgba(168,217,106,.9)">
+          <div class="alto">
+            <span class="pill" style="background:#FFFFFF;color:var(--ink)">2 conf</span>
+            <span class="qty" style="color:rgba(20,22,58,.55)">1250 g</span>
+          </div>
+          <div class="nome nome-grande">Pomodori pelati</div>
+          <div class="sub" style="color:rgba(20,22,58,.55)">serve 1100 g · in casa 0 g</div>
+        </div>
+        <div class="tessera accesa" style="border:1px solid rgba(168,217,106,.45)">
+          <div class="alto">
+            <span class="pill" style="background:rgba(168,217,106,.32);color:var(--ink)">1 conf</span>
+            <span class="qty" style="color:var(--sec)">400 g</span>
+          </div>
+          <div class="nome">Zucchine</div>
+          <div class="sub" style="color:var(--ter)">serve 360 g · in casa 0 g</div>
+        </div>
+        <div class="tessera spenta">
+          <div class="alto">
+            <span class="pill" style="background:rgba(20,22,58,.06);color:rgba(20,22,58,.34)">3 pz</span>
+            <span class="qty" style="color:rgba(20,22,58,.24)">3 pz</span>
+          </div>
+          <div class="nome barrato">Limoni</div>
+        </div>
+        <div class="tessera accesa" style="border:1px solid rgba(168,217,106,.45)">
+          <div class="alto">
+            <span class="pill" style="background:rgba(168,217,106,.32);color:var(--ink)">1 conf</span>
+            <span class="qty" style="color:var(--sec)">250 g</span>
+          </div>
+          <div class="nome">Insalata</div>
+        </div>
+      </div>
+
+      <div style="height:12px"></div>
+
+      <div class="sez-riga">
+        <div class="sez-sx"><span class="quad" style="background:var(--area-latticini)"></span><span class="sez-lb">Latticini, uova e salumi</span></div>
+        <span class="sez-cont">2 voci</span>
+      </div>
+      <div class="tessere">
+        <div class="tessera accesa protagonista" style="background:var(--area-latticini);border:1px solid rgba(156,199,242,.9)">
+          <div class="alto">
+            <span class="pill" style="background:#FFFFFF;color:var(--ink)">1 conf</span>
+            <span class="qty" style="color:rgba(20,22,58,.55)">6 pz</span>
+          </div>
+          <div class="nome nome-grande">Uova</div>
+        </div>
+        <div class="tessera spenta">
+          <div class="alto">
+            <span class="pill" style="background:rgba(20,22,58,.06);color:rgba(20,22,58,.34)">1 conf</span>
+            <span class="qty" style="color:rgba(20,22,58,.24)">500 g</span>
+          </div>
+          <div class="nome barrato">Yogurt bianco</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="misure">
+    <div class="titolo">Misure e stati</div>
+    <p>Griglia a due colonne, gap 8, altezza minima 104. <strong>La prima voce di ogni area è protagonista</strong>: span 2, fondo pieno nel colore dell'area, nome a 25 px, raggio 18, padding 13/16/14. Le altre: raggio 14, padding 12/14/13.</p>
+    <p>Dall'alto: pillola delle confezioni (mono 10.5/700/0.07em, raggio 999, padding 5/10) + quantità totale in mono 10, poi il nome 17/700/-0.032em, poi il dettaglio "serve X · in casa Y" in mono 8.5.</p>
+    <p><strong>Accesa</strong> &mdash; fondo bianco, bordo 1 px nel colore dell'area al 45%, ombra 0 1px 2px rgba(20,22,58,0.05).</p>
+    <p><strong>Spenta</strong> &mdash; fondo --spento, bordo trasparente, nome barrato a rgba(20,22,58,0.34) con tratto 1,6 px, nessuna ombra, nessun dettaglio.</p>
+    <p><strong>Etichetta di sezione</strong> &mdash; quadratino 10×10 raggio 4 nel colore dell'area, mono 10/700/0.16em in --ink; il contatore a destra in mono 10/500/0.10em in --sec, plurale corretto (1 VOCE / 2 VOCI).</p>
+    <p>aria-pressed porta lo stato; aria-label dice cosa fa il tap ("da prendere, tocca per segnare presa").</p>
+  </div>
+</div>
+</body>
+</html>

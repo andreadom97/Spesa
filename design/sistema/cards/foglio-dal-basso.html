@@ -1,0 +1,76 @@
+<!-- @dsCard group="Componenti" name="Foglio dal basso" subtitle="L'unico contenitore modale del sistema. Si apre dalla zona destra della riga pasto e…" viewport="393x852" -->
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Foglio dal basso</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --fondo:#F1F0EE; --superficie:#FFFFFF; --ink:#14163A; --testo-2:#5C5F7A; --sec:#8A8A96;
+  --bordo:rgba(20,22,58,0.07);
+  --font-testo:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:var(--fondo);color:var(--ink);font-family:var(--font-testo);-webkit-font-smoothing:antialiased}
+.card{width:393px;max-width:100%;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.titolo{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.dida{font-size:12.5px;line-height:1.4;color:var(--testo-2)}
+.telefono{width:100%;background:var(--fondo);border:1px solid var(--bordo);border-radius:22px;overflow:hidden}
+.et{font-family:var(--font-mono);font-size:8.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--sec)}
+.scena{background:rgba(20,22,58,.35);padding-top:44px;display:flex;align-items:flex-end}
+.foglio{width:100%;background:var(--superficie);border-radius:22px 22px 0 0;padding:16px 16px 26px;display:flex;flex-direction:column;gap:9px}
+.sep{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.13em;color:var(--sec);padding:6px 4px 4px}
+.voce{width:100%;min-height:50px;border-radius:14px;background:rgba(20,22,58,.04);display:flex;align-items:center;justify-content:center;font-size:15.5px;font-weight:700;letter-spacing:-.02em}
+.stepper{display:flex;align-items:center;gap:8px;padding:4px 2px}
+.sq{width:44px;min-height:44px;border-radius:14px;background:rgba(20,22,58,.04);display:flex;align-items:center;justify-content:center;font-size:15.5px;font-weight:700}
+.num{min-width:28px;text-align:center;font-size:17px;font-weight:800}
+.sw{flex:1;min-height:44px;border-radius:14px;background:rgba(20,22,58,.04);display:flex;align-items:center;justify-content:center;font-size:15.5px;font-weight:700;letter-spacing:-.02em}
+.sw-off{opacity:.45}
+.salva{width:74px;min-height:44px;border-radius:14px;background:var(--ink);color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-size:15.5px;font-weight:700;letter-spacing:-.02em}
+.misure{background:var(--superficie);border:1px solid var(--bordo);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:7px}
+.misure p{margin:0;font-size:12.5px;line-height:1.45}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="titolo">Componenti · Foglio dal basso</div>
+  <div class="dida">L'unico contenitore modale del sistema. Si apre dalla zona destra della riga pasto e raccoglie le eccezioni: qui non c'è una voce "Fatto", perché il default è già "mangiato come da piano".</div>
+
+  <div class="telefono">
+    <div class="scena">
+      <div class="foglio" role="dialog" aria-label="Com'è andata: Cena">
+        <span class="sep">COM'È ANDATA — CENA</span>
+        <div class="voce">Saltato</div>
+        <div class="voce">Ho mangiato fuori piano</div>
+        <div class="voce">Ho mangiato un altro piatto</div>
+        <div class="voce">Cucinato ma non mangiato</div>
+        <span class="sep">MEAL PREP</span>
+        <div class="voce">Uso una porzione pronta (2 pronte)</div>
+        <div class="voce">Ne preparo di più</div>
+        <div class="stepper">
+          <div class="sq">−</div>
+          <div class="num">2</div>
+          <div class="sq">+</div>
+          <div class="sw">Frigo</div>
+          <div class="sw sw-off">Freezer</div>
+          <div class="salva">Salva</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="misure">
+    <div class="titolo">Misure e comportamento</div>
+    <p>role="dialog" con un aria-label che dice il contesto ("Com'è andata: Cena" / "Prossimamente: Cena"), non solo il tipo.</p>
+    <p>Overlay rgba(20,22,58,0.35); il tap sull'overlay chiude. Foglio ancorato in basso, bianco, raggio 22px 22px 0 0, padding 16/16/26, gap 9. Nessuna ombra.</p>
+    <p>Voci alte almeno 50 (mai sotto 44), raggio 14, fondo rgba(20,22,58,0.04), testo 15.5/700/-0.02em centrato. Nessuna icona dentro le voci.</p>
+    <p>Separatori di sezione in mono 10/700/0.13em in --sec, padding 6/4/4.</p>
+    <p>Classe .anim-foglio: sale di 14 px in 200 ms, solo se l'utente non ha chiesto meno moto.</p>
+    <p>Un foglio non è un dialogo di conferma: le azioni distruttive non stanno qui, stanno in un dialogo a due tasti.</p>
+  </div>
+</div>
+</body>
+</html>

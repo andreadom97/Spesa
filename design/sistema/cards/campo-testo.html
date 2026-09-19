@@ -1,0 +1,88 @@
+<!-- @dsCard group="Componenti" name="Campo di testo" subtitle="Etichetta sempre sopra, mai un placeholder al posto dell'etichetta: un campo compilato…" viewport="393x852" -->
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Campo di testo</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --fondo:#F1F0EE; --superficie:#FFFFFF; --ink:#14163A; --testo-2:#5C5F7A; --sec:#8A8A96; --ter:#A6A6B2;
+  --bordo:rgba(20,22,58,0.07); --errore:#C4423E;
+  --font-testo:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:var(--fondo);color:var(--ink);font-family:var(--font-testo);-webkit-font-smoothing:antialiased}
+.card{width:393px;max-width:100%;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.titolo{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.dida{font-size:12.5px;line-height:1.4;color:var(--testo-2)}
+.telefono{width:100%;background:var(--fondo);border:1px solid var(--bordo);border-radius:22px;overflow:hidden}
+.interno{padding:16px;display:flex;flex-direction:column;gap:16px}
+.gruppo{display:flex;flex-direction:column;gap:7px}
+.lab{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.campo{height:44px;border-radius:14px;padding:0 14px;background:var(--superficie);border:1px solid var(--bordo);display:flex;align-items:center;font-size:14px}
+.vuoto{color:var(--ter)}
+.numerico{width:86px;justify-content:flex-end;font-family:var(--font-mono);font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
+.unita{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--ter)}
+.area{min-height:88px;border-radius:14px;padding:12px 14px;background:var(--superficie);border:1px solid var(--bordo);font-size:14px;line-height:1.5;align-items:flex-start;display:flex}
+.err-campo{border:1px solid var(--errore)}
+.err-testo{font-size:12.5px;line-height:1.4;color:var(--errore);margin:0 4px}
+.misure{background:var(--superficie);border:1px solid var(--bordo);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:7px}
+.misure p{margin:0;font-size:12.5px;line-height:1.45}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="titolo">Componenti · Campo di testo</div>
+  <div class="dida">Etichetta sempre sopra, mai un placeholder al posto dell'etichetta: un campo compilato deve continuare a dire cosa contiene.</div>
+
+  <div class="telefono">
+    <div class="interno">
+      <div class="gruppo">
+        <div class="lab">Nome del piatto</div>
+        <div class="campo">Pollo al limone</div>
+      </div>
+
+      <div class="gruppo">
+        <div class="lab">Nome del piatto</div>
+        <div class="campo vuoto">Scrivi il nome</div>
+      </div>
+
+      <div class="gruppo">
+        <div class="lab">Quantità</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="campo numerico">1250</div>
+          <span class="unita">G</span>
+        </div>
+      </div>
+
+      <div class="gruppo">
+        <div class="lab">Quantità</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="campo numerico err-campo">0</div>
+          <span class="unita">G</span>
+        </div>
+        <p class="err-testo">Manca la quantità di Petto di pollo.</p>
+      </div>
+
+      <div class="gruppo">
+        <div class="lab">Note</div>
+        <div class="area">Marinare almeno mezz'ora prima di cuocere.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="misure">
+    <div class="titolo">Misure e stati</div>
+    <p>Altezza 44, raggio 14, padding 0 14px, fondo bianco, bordo 1 px --bordo, testo 14. Nessuna ombra.</p>
+    <p>Etichetta sopra in mono 10/700/0.16em maiuscolo, gap 7 dal campo.</p>
+    <p>Placeholder in --ter: è un esempio, non un'istruzione, e sparisce appena si scrive.</p>
+    <p><strong>Campo numerico</strong> &mdash; largo 68&ndash;96, testo in mono 14/700 con tabular-nums allineato a destra, unità accanto in mono 10/700/0.1em in --ter.</p>
+    <p><strong>Errore</strong> &mdash; bordo del campo in --errore e sotto una nota 12.5 in --errore con margine 0 4px. Il testo dice cosa fare, non cosa è successo.</p>
+    <p><strong>Textarea</strong> &mdash; raggio 14, padding 12/14, resize: none, cresce con il contenuto.</p>
+  </div>
+</div>
+</body>
+</html>

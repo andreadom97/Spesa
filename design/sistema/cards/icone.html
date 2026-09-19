@@ -1,0 +1,164 @@
+<!-- @dsCard group="Fondamenta" name="Icone" subtitle="SVG inline, viewBox 0 0 24 24, solo tratto, stroke-linecap round, colore da token. Due…" viewport="720x600" -->
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Icone</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --fondo:#F1F0EE; --superficie:#FFFFFF; --ink:#14163A; --testo-2:#5C5F7A; --off:#9A9AA6;
+  --bordo:rgba(20,22,58,0.07); --icona-spenta:#C4C4CE;
+  --font-testo:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:var(--fondo);color:var(--ink);font-family:var(--font-testo);-webkit-font-smoothing:antialiased}
+.card{width:720px;max-width:100%;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.titolo{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.dida{font-size:12.5px;line-height:1.4;color:var(--testo-2);max-width:68ch}
+.scheda{background:var(--superficie);border:1px solid var(--bordo);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:18px}
+.blocco{display:flex;flex-direction:column;gap:12px}
+.fila{display:flex;flex-wrap:wrap;gap:10px}
+.box{width:100px;background:var(--fondo);border:1px solid var(--bordo);border-radius:14px;padding:13px 10px;display:flex;flex-direction:column;align-items:center;gap:9px}
+.box .n{font-family:var(--font-mono);font-size:8.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;text-align:center}
+.box .m{font-family:var(--font-mono);font-size:8.5px;letter-spacing:.06em;color:var(--testo-2);font-variant-numeric:tabular-nums}
+.regole{display:flex;flex-direction:column;gap:7px}
+.regole p{margin:0;font-size:12.5px;line-height:1.45}
+.taglie{display:flex;flex-direction:column;gap:9px}
+.taglia{display:grid;grid-template-columns:70px 1fr;gap:14px;align-items:center}
+.taglia .v{font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.08em;font-variant-numeric:tabular-nums}
+.taglia .u{font-size:12.5px;line-height:1.4;color:var(--testo-2)}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="titolo">Fondamenta · Icone</div>
+  <div class="dida">SVG inline, viewBox 0 0 24 24, solo tratto, stroke-linecap round, colore da token. Due spessori soli: 1.8 per navigazione e testata, 2.1 per le icone d'azione piccole. Le forme qui sotto sono quelle del codice, ridisegnate sui due spessori decisi il 17/09.</div>
+
+  <div class="scheda">
+    <div class="blocco">
+      <div class="titolo">Tratto 1.8 &middot; navigazione e testata</div>
+      <div class="fila">
+        <div class="box">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M4 6.5h16M4 12h16M4 17.5h11" stroke="#14163A" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+          <div class="n">Lista</div><div class="m">21 px &middot; 1.8</div>
+        </div>
+        <div class="box">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <rect x="3.6" y="5" width="16.8" height="15" rx="3" stroke="#14163A" stroke-width="1.8"/>
+            <path d="M3.6 10h16.8M9 3.4v3.2M15 3.4v3.2" stroke="#14163A" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+          <div class="n">Settimana</div><div class="m">21 px &middot; 1.8</div>
+        </div>
+        <div class="box">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M7.6 3.4v4.2M10 3.4v4.2M12.4 3.4v4.2" stroke="#14163A" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M7.6 7.4a2.4 2.4 0 0 0 4.8 0" stroke="#14163A" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M10 10v10.4" stroke="#14163A" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M16.6 3.4c2.1 2.3 2.5 6.2 1 8.8h-1v8.2" stroke="#14163A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <div class="n">Piatti</div><div class="m">21 px &middot; 1.8</div>
+        </div>
+        <div class="box">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M8 4.5h8M9.5 4.5v-1h5v1" stroke="#14163A" stroke-width="1.8" stroke-linecap="round"/>
+            <rect x="6.5" y="6.5" width="11" height="14" rx="2.5" stroke="#14163A" stroke-width="1.8"/>
+            <path d="M6.5 12h11" stroke="#14163A" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+          <div class="n">Dispensa</div><div class="m">21 px &middot; 1.8</div>
+        </div>
+        <div class="box">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="3.1" stroke="#14163A" stroke-width="1.8"/>
+            <path d="M12 2.8v2.4M12 18.8v2.4M21.2 12h-2.4M5.2 12H2.8M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2 5.5 5.5" stroke="#14163A" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+          <div class="n">Impostazioni</div><div class="m">24 px &middot; 1.8</div>
+        </div>
+        <div class="box">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="m12 4-8 6 8 6" stroke="#14163A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <div class="n">Indietro</div><div class="m">20 px &middot; 1.8</div>
+        </div>
+      </div>
+      <div class="fila">
+        <div class="box" style="background:var(--superficie)">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M4 6.5h16M4 12h16M4 17.5h11" stroke="#9A9AA6" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+          <div class="n" style="color:var(--off)">Inattiva</div><div class="m">--off</div>
+        </div>
+      </div>
+      <div class="dida">Nella tab bar la voce attiva è in --ink, l'inattiva in --off: la forma è la stessa, cambia solo il colore.</div>
+    </div>
+
+    <div class="blocco">
+      <div class="titolo">Tratto 2.1 &middot; icone d'azione piccole</div>
+      <div class="fila">
+        <div class="box">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M9 4.8 16.6 12 9 19.2" stroke="#C4C4CE" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <div class="n">Chevron</div><div class="m">13&ndash;16 px &middot; 2.1</div>
+        </div>
+        <div class="box">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M6 6l12 12M18 6 6 18" stroke="#14163A" stroke-width="2.1" stroke-linecap="round"/>
+          </svg>
+          <div class="n">Chiudi</div><div class="m">14&ndash;16 px &middot; 2.1</div>
+        </div>
+        <div class="box">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" stroke="#14163A" stroke-width="2.1" stroke-linecap="round"/>
+          </svg>
+          <div class="n">Aggiungi</div><div class="m">14&ndash;16 px &middot; 2.1</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="blocco">
+      <div class="titolo">Le due forme piene</div>
+      <div class="fila">
+        <div class="box">
+          <svg width="23" height="23" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M10 2.8 17.4 9.1v7.5a1 1 0 0 1-1 1h-3.6v-4.2H7.2v4.2H3.6a1 1 0 0 1-1-1V9.1Z" fill="#14163A"/>
+          </svg>
+          <div class="n">Casetta a casa</div><div class="m">23 px &middot; piena</div>
+        </div>
+        <div class="box">
+          <svg width="23" height="23" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M10 2.8 17.4 9.1v7.5a1 1 0 0 1-1 1h-3.6v-4.2H7.2v4.2H3.6a1 1 0 0 1-1-1V9.1Z" fill="#FFFFFF" stroke="#C4C4CE" stroke-width="1.8" stroke-linejoin="round"/>
+          </svg>
+          <div class="n">Casetta fuori</div><div class="m">23 px &middot; contorno</div>
+        </div>
+        <div class="box">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <circle cx="8" cy="3" r="1.5" fill="#C4C4CE"/><circle cx="8" cy="8" r="1.5" fill="#C4C4CE"/><circle cx="8" cy="13" r="1.5" fill="#C4C4CE"/>
+          </svg>
+          <div class="n">Kebab</div><div class="m">15 px &middot; pieno</div>
+        </div>
+      </div>
+      <div class="dida">Sono le due sole eccezioni al "solo tratto": la casetta perché è uno stato acceso/spento, il kebab perché tre punti di tratto non si leggono a 15 px. Senza il contorno, la casetta fuori casa sparisce sul fondo chiaro.</div>
+    </div>
+
+    <div class="blocco">
+      <div class="titolo">Taglie e regole</div>
+      <div class="taglie">
+        <div class="taglia"><div class="v">21 px</div><div class="u">Tab bar</div></div>
+        <div class="taglia"><div class="v">20&ndash;24 px</div><div class="u">Testata: freccia indietro 20, ingranaggio 24</div></div>
+        <div class="taglia"><div class="v">13&ndash;16 px</div><div class="u">Dentro righe e tessere: chevron, kebab, X, +</div></div>
+      </div>
+      <div class="regole">
+        <p>aria-hidden quando l'icona sta accanto a un testo; aria-label sul contenitore quando è sola.</p>
+        <p>L'area toccabile intorno a un'icona è sempre almeno 44 px, anche quando il disegno è 15.</p>
+        <p><strong>Mai emoji</strong>, in nessun punto dell'interfaccia. Nessuna illustrazione, nessuna foto, nessun avatar.</p>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

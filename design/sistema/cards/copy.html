@@ -1,0 +1,109 @@
+<!-- @dsCard group="Pattern" name="Copy" subtitle="Italiano, del tu, imperativo, senza esclamativi. Le etichette di servizio in maiuscolo…" viewport="720x600" -->
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Copy</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --fondo:#F1F0EE; --superficie:#FFFFFF; --ink:#14163A; --testo-2:#5C5F7A; --sec:#8A8A96;
+  --bordo:rgba(20,22,58,0.07); --errore:#C4423E;
+  --font-testo:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:var(--fondo);color:var(--ink);font-family:var(--font-testo);-webkit-font-smoothing:antialiased}
+.card{width:720px;max-width:100%;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.titolo{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.dida{font-size:12.5px;line-height:1.4;color:var(--testo-2);max-width:68ch}
+.scheda{background:var(--superficie);border:1px solid var(--bordo);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.regola{display:flex;flex-direction:column;gap:9px;padding-top:14px;border-top:1px solid var(--bordo)}
+.regola:first-of-type{border-top:0;padding-top:0}
+.regola h3{margin:0;font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
+.regola > p{margin:0;font-size:12.5px;line-height:1.45;max-width:72ch}
+.coppia{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.box{border-radius:14px;padding:11px 13px;display:flex;flex-direction:column;gap:5px}
+.si{background:var(--fondo);border:1.5px solid var(--ink)}
+.no{background:var(--fondo);border:1px solid var(--bordo)}
+.box .lb{font-family:var(--font-mono);font-size:8.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+.si .lb{color:var(--ink)}
+.no .lb{color:var(--errore)}
+.box .tx{font-size:12.5px;line-height:1.4}
+.box .mono-tx{font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;line-height:1.4}
+@media(max-width:600px){.coppia{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="titolo">Pattern · Copy</div>
+  <div class="dida">Italiano, del tu, imperativo, senza esclamativi. Le etichette di servizio in maiuscolo mono, il resto in frasi. Un'app che dice cosa fa e perché.</div>
+
+  <div class="scheda">
+    <div class="regola">
+      <h3>Etichette e tasti: maiuscolo mono, verbo all'imperativo</h3>
+      <p>Verbo all'imperativo o sostantivo secco. Il tasto dice l'azione, non il concetto.</p>
+      <div class="coppia">
+        <div class="box si"><div class="lb">Giusto</div><div class="mono-tx">Conferma e crea la lista</div><div class="mono-tx">Estrai la dieta</div><div class="mono-tx">Ho finito</div></div>
+        <div class="box no"><div class="lb">Sbagliato</div><div class="mono-tx">Ok</div><div class="mono-tx">Procedi</div><div class="mono-tx">Gestione lista</div></div>
+      </div>
+    </div>
+
+    <div class="regola">
+      <h3>Il copy spiega la causa, non l'effetto</h3>
+      <p>Chi legge deve capire da dove viene un numero, così sa se fidarsi o correggere.</p>
+      <div class="coppia">
+        <div class="box si"><div class="lb">Giusto</div><div class="tx">Calcolato da spesa e piano: correggi solo se non torna con la realtà.</div></div>
+        <div class="box no"><div class="lb">Sbagliato</div><div class="tx">Questi sono i tuoi dati aggiornati!</div></div>
+      </div>
+    </div>
+
+    <div class="regola">
+      <h3>Numeri esatti, con unità, plurali corretti</h3>
+      <p>Mai un arrotondamento gentile al posto del dato. Date in italiano.</p>
+      <div class="coppia">
+        <div class="box si"><div class="lb">Giusto</div><div class="tx">1250 g · 2 confezioni · 3 pasti a casa · 1 VOCE / 2 VOCI · il prossimo dal 12/09/2026</div></div>
+        <div class="box no"><div class="lb">Sbagliato</div><div class="tx">circa 1,3 kg · qualche confezione · 1 voci · next from 09/12/2026</div></div>
+      </div>
+    </div>
+
+    <div class="regola">
+      <h3>Nessun claim di salute, nessun euro senza prezzo dell'utente</h3>
+      <p>Spesa non dà consigli nutrizionali e non promette risparmi. Il risparmio si chiama "non hai ricomprato".</p>
+      <div class="coppia">
+        <div class="box si"><div class="lb">Giusto</div><div class="tx">Questo mese non hai ricomprato 4 confezioni che avevi già in casa.</div></div>
+        <div class="box no"><div class="lb">Sbagliato</div><div class="tx">Hai risparmiato 18 € e mangiato più sano!</div></div>
+      </div>
+    </div>
+
+    <div class="regola">
+      <h3>Un errore dice cosa fare, non cosa è successo</h3>
+      <p>La prima parola è l'azione possibile, non il codice del guasto.</p>
+      <div class="coppia">
+        <div class="box si"><div class="lb">Giusto</div><div class="tx">Il PDF non si apre: prova con le foto.</div><div class="tx">Hai superato il limite: riprova tra qualche minuto.</div></div>
+        <div class="box no"><div class="lb">Sbagliato</div><div class="tx">Errore 400: parsing failed.</div><div class="tx">Qualcosa è andato storto. Riprova più tardi.</div></div>
+      </div>
+    </div>
+
+    <div class="regola">
+      <h3>Del tu, senza esclamativi, senza formule</h3>
+      <p>Nessun "per favore", nessun corporate speak, nessun burocratese, nessuna emoji.</p>
+      <div class="coppia">
+        <div class="box si"><div class="lb">Giusto</div><div class="tx">Scegli i piatti e poi torna qui.</div><div class="tx">Sei offline: la lista è quella dell'ultima apertura.</div></div>
+        <div class="box no"><div class="lb">Sbagliato</div><div class="tx">Ti preghiamo gentilmente di selezionare le pietanze!</div><div class="tx">Attenzione: connettività non disponibile.</div></div>
+      </div>
+    </div>
+
+    <div class="regola">
+      <h3>Titoli di schermata: una parola</h3>
+      <p>A 52 px una seconda parola va a capo e rompe la testata.</p>
+      <div class="coppia">
+        <div class="box si"><div class="lb">Giusto</div><div class="tx">LISTA · SETTIMANA · PIATTI · DISPENSA · IMPOSTAZIONI</div></div>
+        <div class="box no"><div class="lb">Sbagliato</div><div class="tx">LA MIA LISTA · PIANO SETTIMANALE · I MIEI PIATTI</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

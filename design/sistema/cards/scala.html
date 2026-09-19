@@ -1,0 +1,86 @@
+<!-- @dsCard group="Tipografia" name="Scala tipografica" subtitle="Plus Jakarta Sans per testo e titoli, JetBrains Mono per etichette di servizio, quantità…" viewport="720x600" -->
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scala tipografica</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --fondo:#F1F0EE; --superficie:#FFFFFF; --ink:#14163A; --testo-2:#5C5F7A; --sec:#8A8A96;
+  --bordo:rgba(20,22,58,0.07);
+  --font-testo:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:var(--fondo);color:var(--ink);font-family:var(--font-testo);-webkit-font-smoothing:antialiased}
+.card{width:720px;max-width:100%;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.titolo{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.dida{font-size:12.5px;line-height:1.4;color:var(--testo-2);max-width:68ch}
+.scheda{background:var(--superficie);border:1px solid var(--bordo);border-radius:22px;padding:16px}
+.riga{display:grid;grid-template-columns:186px 1fr;gap:16px;align-items:baseline;padding:14px 0;border-top:1px solid var(--bordo)}
+.riga:first-child{border-top:0;padding-top:0}
+.meta{display:flex;flex-direction:column;gap:4px}
+.meta .liv{font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+.meta .spec{font-family:var(--font-mono);font-size:9px;letter-spacing:.04em;color:var(--testo-2);font-variant-numeric:tabular-nums}
+.es{min-width:0;overflow-wrap:anywhere}
+.regole{background:var(--superficie);border:1px solid var(--bordo);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.regole p{margin:0;font-size:12.5px;line-height:1.45}
+@media(max-width:620px){.riga{grid-template-columns:1fr;gap:8px}}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="titolo">Tipografia · Scala a nove livelli</div>
+  <div class="dida">Plus Jakarta Sans per testo e titoli, JetBrains Mono per etichette di servizio, quantità, contatori e tasti. Nove livelli e nessun altro: sotto, ogni livello è reso con il font vero e con testo dell'app.</div>
+
+  <div class="scheda">
+    <div class="riga">
+      <div class="meta"><div class="liv">Titolo di schermata</div><div class="spec">52 / 800 / -0.05em / lh 1 &middot; sans</div></div>
+      <div class="es" style="font-size:52px;font-weight:800;letter-spacing:-.05em;line-height:1">LISTA</div>
+    </div>
+    <div class="riga">
+      <div class="meta"><div class="liv">Titolo di dettaglio</div><div class="spec">32 / 800 / -0.045em / lh 1.05 &middot; sans</div></div>
+      <div class="es" style="font-size:32px;font-weight:800;letter-spacing:-.045em;line-height:1.05">Pollo al limone</div>
+    </div>
+    <div class="riga">
+      <div class="meta"><div class="liv">Titolo di scheda o stato vuoto</div><div class="spec">21 / 800 / -0.035em / lh 1.2 &middot; sans</div></div>
+      <div class="es" style="font-size:21px;font-weight:800;letter-spacing:-.035em;line-height:1.2">Hai preso tutto</div>
+    </div>
+    <div class="riga">
+      <div class="meta"><div class="liv">Nome di voce</div><div class="spec">17 / 700 / -0.03em &middot; sans</div></div>
+      <div class="es" style="font-size:17px;font-weight:700;letter-spacing:-.03em">Petto di pollo</div>
+    </div>
+    <div class="riga">
+      <div class="meta"><div class="liv">Corpo</div><div class="spec">14 / 400&ndash;500 / lh 1.5 &middot; sans</div></div>
+      <div class="es" style="font-size:14px;font-weight:400;line-height:1.5">Calcolato da spesa e piano: correggi solo se non torna con la realtà.</div>
+    </div>
+    <div class="riga">
+      <div class="meta"><div class="liv">Nota</div><div class="spec">12.5 / 400 / lh 1.4 &middot; sans</div></div>
+      <div class="es" style="font-size:12.5px;font-weight:400;line-height:1.4;color:var(--testo-2)">Sei offline: la lista è quella dell'ultima apertura.</div>
+    </div>
+    <div class="riga">
+      <div class="meta"><div class="liv">Tasto e pillola</div><div class="spec">12 / 700 / 0.09em &middot; mono maiuscolo</div></div>
+      <div class="es" style="font-family:var(--font-mono);font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase">Conferma e crea la lista</div>
+    </div>
+    <div class="riga">
+      <div class="meta"><div class="liv">Etichetta di sezione</div><div class="spec">10 / 700 / 0.16em &middot; mono maiuscolo</div></div>
+      <div class="es" style="font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase">Latticini, uova e salumi</div>
+    </div>
+    <div class="riga">
+      <div class="meta"><div class="liv">Micro</div><div class="spec">8.5 / 500&ndash;700 / 0.12em &middot; mono maiuscolo</div></div>
+      <div class="es" style="font-family:var(--font-mono);font-size:8.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase">Settimana &middot; 1250 g &middot; 2 conf</div>
+    </div>
+  </div>
+
+  <div class="regole">
+    <div class="titolo">Regole d'uso</div>
+    <p>Il mono è <strong>sempre</strong> maiuscolo e mai sotto 8,5 px. Il sans non è <strong>mai</strong> maiuscolo e mai sotto 12,5 px.</p>
+    <p>I titoli di schermata sono una parola sola &mdash; LISTA, SETTIMANA, PIATTI, DISPENSA, IMPOSTAZIONI: a 52 px una seconda parola va a capo.</p>
+    <p>I numeri in mono usano font-variant-numeric: tabular-nums, così le colonne di quantità non ballano.</p>
+    <p>Le taglie fuori scala già rese nei componenti storici (25 sul nome della tessera protagonista, 17.5 sul piatto nella riga pasto, 15.5 sulle voci del foglio, 16 sulla riga di controllo) sono eccezioni esistenti, non licenze: una schermata nuova usa i nove livelli.</p>
+  </div>
+</div>
+</body>
+</html>

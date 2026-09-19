@@ -31,3 +31,6 @@ tsconfig.tsbuildinfo
 diete:/
 diete/
 public/e2e-foto/
+
+# Materiale grezzo del competitor (screenshot), fuori da git
+Mise - competitor/
