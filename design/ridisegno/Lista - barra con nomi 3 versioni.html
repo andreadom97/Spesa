@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="design_doc_mode" content="canvas">
+<title>Lista — barra con i nomi, 3 versioni</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+--fondo:#F1F0EE;--superficie:#FFFFFF;--ink:#14163A;--ink-2:#3D4166;--testo-2:#5C5F7A;--sec:#8A8A96;--ter:#A6A6B2;--off:#9A9AA6;
+--bordo:rgba(20,22,58,0.07);--spento:rgba(20,22,58,0.035);
+--area-ortofrutta:#A8D96A;--area-macelleria:#F29B9B;--area-latticini:#9CC7F2;--area-cereali:#F5CE5B;--area-dispensa:#F2A465;--area-surgelati:#B9AEF5;
+--font-testo:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;--font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+--ombra-pannello:0 1px 2px rgba(20,22,58,.05),0 6px 16px rgba(20,22,58,.06);
+--ombra-nav:0 2px 6px rgba(20,22,58,.08),0 12px 30px rgba(20,22,58,.16);
+--moto-barra:200ms;--curva-barra:cubic-bezier(.2,.8,.25,1);
+}
+*{box-sizing:border-box}
+body{margin:0;background:#D8D7D4;font-family:var(--font-testo);color:var(--ink);-webkit-font-smoothing:antialiased}
+a{color:var(--ink)}a:hover{color:var(--ink-2)}
+.frame{position:absolute;width:393px}
+.sigla{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.intesta{display:flex;flex-direction:column;gap:6px;padding:0 2px 12px}
+.intesta p{margin:0;font-size:12.5px;line-height:1.4;color:#3D4166}
+
+.tel{width:393px;height:852px;border-radius:26px;overflow:hidden;position:relative;box-shadow:0 2px 4px rgba(20,22,58,.10),0 18px 40px rgba(20,22,58,.18);background:linear-gradient(180deg,#EDECEA 0%,#F2F1EF 34%,#F8F8F7 70%,#FCFCFB 100%);--fine:128px}
+.scroll{position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain;
+-webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - var(--fine)),rgba(0,0,0,.55) calc(100% - 74px),rgba(0,0,0,0) calc(100% - 30px));
+mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - var(--fine)),rgba(0,0,0,.55) calc(100% - 74px),rgba(0,0,0,0) calc(100% - 30px))}
+.scroll::-webkit-scrollbar{width:0}
+
+.testata{padding:20px 18px 12px;display:flex;flex-direction:column;gap:15px}
+.testata-alto{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.titolo-sch{font-size:52px;font-weight:800;letter-spacing:-.05em;line-height:1;margin:0}
+.pill-sett{height:34px;border-radius:999px;background:var(--ink);color:#fff;font-family:var(--font-mono);font-size:10.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;display:inline-flex;align-items:center;padding:0 14px;align-self:flex-start}
+.utente{height:50px;display:flex;align-items:center;gap:5px;margin:0 -2px -3px 0;background:rgba(20,22,58,.07);border:0;border-radius:999px;padding:0 12px 0 6px}
+.utente .tondo{width:38px;height:38px;border-radius:999px;background:var(--ink);display:flex;align-items:center;justify-content:center;flex:none}
+.iniziale{font-family:var(--font-mono);font-size:16px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;line-height:1;color:#fff}
+
+.stato-riga{font-size:12.5px;line-height:1.4;color:var(--testo-2);padding:0 16px 10px;margin:0}
+.sez{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 12px 10px}
+.sez-sx{display:flex;align-items:center;gap:8px}
+.quad{width:10px;height:10px;border-radius:4px;flex:none}
+.sez-lb{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.sez-cont{font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:.10em;text-transform:uppercase;color:var(--sec)}
+.griglia{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 12px;margin-bottom:12px}
+.tessera{min-height:104px;display:flex;flex-direction:column;padding:12px 14px 13px;border-radius:14px;text-align:left;border:1px solid transparent;background:none;font:inherit;color:inherit}
+.accesa{background:var(--superficie);box-shadow:var(--ombra-pannello)}
+.spenta{background:var(--spento)}
+.prot{grid-column:span 2;padding:13px 16px 14px;border-radius:18px;box-shadow:var(--ombra-pannello)}
+.alto{display:flex;align-items:center;gap:6px;flex:none}
+.pil{font-family:var(--font-mono);font-weight:700;font-size:10.5px;letter-spacing:.07em;border-radius:999px;padding:5px 10px;text-transform:uppercase}
+.qty{font-family:var(--font-mono);font-weight:500;font-size:10px;letter-spacing:.04em;text-transform:uppercase}
+.nome{font-size:17px;font-weight:700;letter-spacing:-.032em;line-height:1.1;margin-top:10px}
+.nome-g{font-size:25px}
+.barrato{text-decoration:line-through;text-decoration-thickness:1.6px;color:rgba(20,22,58,.34)}
+.sub{font-family:var(--font-mono);font-size:8.5px;letter-spacing:.02em;margin-top:5px;text-transform:uppercase}
+.controllo{margin:0 12px 12px;border-radius:18px;padding:14px 15px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.controllo-nome{font-size:16px;font-weight:700;letter-spacing:-.024em}
+.controllo-sub{font-family:var(--font-mono);font-size:8.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--testo-2);margin-top:4px}
+.sino{display:flex;gap:7px}
+.sino button{height:44px;min-width:52px;border-radius:999px;background:#fff;border:1px solid rgba(20,22,58,.09);font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink)}
+.coda{height:140px}
+
+/* ---- la barra ---- */
+.nav{position:absolute;left:16px;right:16px;bottom:22px;height:84px;border-radius:999px;display:flex;align-items:center;gap:2px;padding:6px;background:#fff;box-shadow:var(--ombra-nav)}
+.nav .voce{flex:1;height:72px;border:0;background:none;border-radius:999px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0;overflow:hidden}
+.nav .voce.on{background:rgba(20,22,58,.07)}
+.nav .segno{display:flex;align-items:center;justify-content:center;flex:none}
+.nav .lb{font-family:var(--font-mono);font-size:8.5px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--off);white-space:nowrap;max-height:12px;opacity:1}
+.nav .voce.on .lb{color:var(--ink);font-weight:700}
+.marchio{display:grid;gap:4px}
+.cas{border-radius:2.52px;border:2px solid transparent}
+
+/* stato ridotto: i nomi escono, la barra si stringe. Il bersaglio resta sopra 44. */
+.tel.giu .nav{height:66px}
+.tel.giu .nav .voce{height:54px;gap:0}
+.tel.giu .nav .lb{max-height:0;opacity:0}
+.tel.giu{--fine:110px}
+/* v2 stringe anche in larghezza */
+.tel.v2.giu .nav{left:46px;right:46px}
+/* v3 scala l'oggetto intero */
+.tel.v3 .nav{transform-origin:bottom center}
+.tel.v3.giu .nav{height:84px;transform:scale(.786)}
+.tel.v3.giu .nav .voce{height:72px}
+.tel.v3.giu{--fine:112px}
+
+@media (prefers-reduced-motion: no-preference){
+  .nav,.nav .voce,.nav .lb,.nav .segno svg,.marchio{transition:height var(--moto-barra) var(--curva-barra),max-height var(--moto-barra) var(--curva-barra),opacity 150ms linear,gap var(--moto-barra) var(--curva-barra),left var(--moto-barra) var(--curva-barra),right var(--moto-barra) var(--curva-barra),transform var(--moto-barra) var(--curva-barra),width var(--moto-barra) var(--curva-barra),grid-template-columns var(--moto-barra) var(--curva-barra),grid-auto-rows var(--moto-barra) var(--curva-barra)}
+}
+
+.note{width:393px;margin-top:12px;background:#fff;border:1px solid var(--bordo);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.note p{margin:0;font-size:12.5px;line-height:1.45;color:var(--testo-2)}
+.note strong{color:var(--ink)}
+.comp{font-family:var(--font-mono);font-size:9px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;color:var(--sec);line-height:1.7}
+.rompe{font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:#9A5C00;line-height:1.6}
+</style>
+</head>
+<body>
+<div id="canvas"></div>
+<script>
+const A={orto:'#A8D96A',mac:'#F29B9B',lat:'#9CC7F2',cer:'#F5CE5B',dis:'#F2A465',sur:'#B9AEF5'};
+const ORD=[[A.dis,1],[A.lat,1],[A.orto,0],[A.sur,1],[A.cer,1],[A.mac,0]];
+
+function marchio(lato){return `<span class="marchio" style="grid-template-columns:repeat(3,${lato}px);grid-auto-rows:${lato}px" aria-hidden="true">${ORD.map(([c,p])=>`<span class="cas" style="border-color:${c};background:${p?c:'transparent'};border-radius:${(lato*0.28).toFixed(2)}px"></span>`).join('')}</span>`}
+const IC={
+ settimana:s=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15.5" rx="4.4" fill="#9A9AA6"/><rect x="6.2" y="8.4" width="11.6" height="2.1" rx="1.05" fill="#fff" opacity=".92"/><circle cx="8.2" cy="14.6" r="1.7" fill="#fff" opacity=".92"/><circle cx="12" cy="14.6" r="1.7" fill="#fff" opacity=".92"/><circle cx="15.8" cy="14.6" r="1.7" fill="#fff" opacity=".92"/></svg>`,
+ piatti:s=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="#9A9AA6"/><circle cx="12" cy="12" r="4.1" fill="#fff" opacity=".92"/></svg>`,
+ dispensa:s=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="3.4" width="14" height="3.6" rx="1.8" fill="#9A9AA6"/><path d="M6 9.4h12a1 1 0 0 1 1 1v6.4a3.2 3.2 0 0 1-3.2 3.2H8.2A3.2 3.2 0 0 1 5 16.8v-6.4a1 1 0 0 1 1-1Z" fill="#9A9AA6"/><rect x="8.4" y="12.4" width="7.2" height="2.1" rx="1.05" fill="#fff" opacity=".92"/></svg>`};
+
+function nav(icona){return `<nav class="nav" aria-label="Sezioni">
+  <button type="button" class="voce on" aria-pressed="true" aria-label="Lista"><span class="segno">${marchio(icona.marchio)}</span><span class="lb">Lista</span></button>
+  <button type="button" class="voce" aria-pressed="false" aria-label="Settimana"><span class="segno">${IC.settimana(icona.px)}</span><span class="lb">Settimana</span></button>
+  <button type="button" class="voce" aria-pressed="false" aria-label="Piatti"><span class="segno">${IC.piatti(icona.px)}</span><span class="lb">Piatti</span></button>
+  <button type="button" class="voce" aria-pressed="false" aria-label="Dispensa"><span class="segno">${IC.dispensa(icona.px)}</span><span class="lb">Dispensa</span></button>
+</nav>`}
+
+function corpo(){return `<div class="scroll">
+  <div class="testata">
+    <div class="testata-alto">
+      <h1 class="titolo-sch">Lista</h1>
+      <button type="button" class="utente" aria-label="Andrea: profilo e impostazioni"><span class="tondo"><span class="iniziale" aria-hidden="true">A</span></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="5.2" r="2.1" fill="#14163A"/><circle cx="12" cy="12" r="2.1" fill="#14163A"/><circle cx="12" cy="18.8" r="2.1" fill="#14163A"/></svg></button>
+    </div>
+    <span class="pill-sett">Settimana del 21 settembre</span>
+  </div>
+  <p class="stato-riga">Sei offline: la lista è quella dell'ultima apertura.</p>
+  <div class="sez"><div class="sez-sx"><span class="quad" style="background:${A.orto}"></span><span class="sez-lb">Ortofrutta</span></div><span class="sez-cont">4 voci</span></div>
+  <div class="griglia">
+    <button type="button" class="tessera prot" style="background:${A.orto}" aria-pressed="true" aria-label="Pomodori ramati, da prendere, tocca per segnare presa">
+      <span class="alto"><span class="pil" style="background:#fff;color:var(--ink)">2 conf</span><span class="qty" style="color:rgba(20,22,58,.55)">1250 g</span></span>
+      <span class="nome nome-g">Pomodori ramati</span><span class="sub" style="color:rgba(20,22,58,.55)">serve 1100 g · in casa 0 g</span></button>
+    <button type="button" class="tessera accesa" style="border-color:rgba(168,217,106,.45)" aria-pressed="true" aria-label="Zucchine, da prendere, tocca per segnare presa">
+      <span class="alto"><span class="pil" style="background:rgba(168,217,106,.32);color:var(--ink)">1 conf</span><span class="qty" style="color:var(--sec)">600 g</span></span>
+      <span class="nome">Zucchine</span><span class="sub" style="color:var(--ter)">serve 540 g · in casa 0 g</span></button>
+    <button type="button" class="tessera spenta" aria-pressed="false" aria-label="Limoni, presa, tocca per rimetterla da prendere">
+      <span class="alto"><span class="pil" style="background:rgba(20,22,58,.06);color:rgba(20,22,58,.34)">4 pz</span><span class="qty" style="color:rgba(20,22,58,.24)">4 pz</span></span>
+      <span class="nome barrato">Limoni</span></button>
+    <button type="button" class="tessera accesa" style="border-color:rgba(168,217,106,.45)" aria-pressed="true" aria-label="Spinaci, da prendere, tocca per segnare presa">
+      <span class="alto"><span class="pil" style="background:rgba(168,217,106,.32);color:var(--ink)">2 conf</span><span class="qty" style="color:var(--sec)">500 g</span></span>
+      <span class="nome">Spinaci</span><span class="sub" style="color:var(--ter)">serve 460 g · in casa 0 g</span></button>
+  </div>
+  <div class="controllo" style="background:rgba(242,164,101,.26)">
+    <div><div class="controllo-nome">Olio: ne hai ancora?</div><div class="controllo-sub">controllo ogni 4 settimane</div></div>
+    <div class="sino"><button type="button">Sì</button><button type="button">No</button></div>
+  </div>
+  <div class="sez"><div class="sez-sx"><span class="quad" style="background:${A.lat}"></span><span class="sez-lb">Latticini, uova e salumi</span></div><span class="sez-cont">3 voci</span></div>
+  <div class="griglia">
+    <button type="button" class="tessera prot" style="background:${A.lat}" aria-pressed="true" aria-label="Uova medie, da prendere, tocca per segnare presa">
+      <span class="alto"><span class="pil" style="background:#fff;color:var(--ink)">1 conf</span><span class="qty" style="color:rgba(20,22,58,.55)">6 pz</span></span>
+      <span class="nome nome-g">Uova medie</span><span class="sub" style="color:rgba(20,22,58,.55)">serve 5 pz · in casa 0 pz</span></button>
+    <button type="button" class="tessera accesa" style="border-color:rgba(156,199,242,.45)" aria-pressed="true" aria-label="Ricotta, da prendere, tocca per segnare presa">
+      <span class="alto"><span class="pil" style="background:rgba(156,199,242,.32);color:var(--ink)">1 conf</span><span class="qty" style="color:var(--sec)">250 g</span></span>
+      <span class="nome">Ricotta</span><span class="sub" style="color:var(--ter)">serve 220 g · in casa 0 g</span></button>
+    <button type="button" class="tessera spenta" aria-pressed="false" aria-label="Parmigiano, presa, tocca per rimetterla da prendere">
+      <span class="alto"><span class="pil" style="background:rgba(20,22,58,.06);color:rgba(20,22,58,.34)">1 conf</span><span class="qty" style="color:rgba(20,22,58,.24)">200 g</span></span>
+      <span class="nome barrato">Parmigiano</span></button>
+  </div>
+  <div class="sez"><div class="sez-sx"><span class="quad" style="background:${A.cer}"></span><span class="sez-lb">Pasta, riso e cereali</span></div><span class="sez-cont">2 voci</span></div>
+  <div class="griglia">
+    <button type="button" class="tessera prot" style="background:${A.cer}" aria-pressed="true" aria-label="Spaghetti numero 5, da prendere, tocca per segnare presa">
+      <span class="alto"><span class="pil" style="background:#fff;color:var(--ink)">2 conf</span><span class="qty" style="color:rgba(20,22,58,.55)">1000 g</span></span>
+      <span class="nome nome-g">Spaghetti n. 5</span><span class="sub" style="color:rgba(20,22,58,.55)">serve 840 g · in casa 120 g</span></button>
+    <button type="button" class="tessera accesa" style="border-color:rgba(245,206,91,.45)" aria-pressed="true" aria-label="Riso carnaroli, da prendere, tocca per segnare presa">
+      <span class="alto"><span class="pil" style="background:rgba(245,206,91,.32);color:var(--ink)">1 conf</span><span class="qty" style="color:var(--sec)">1000 g</span></span>
+      <span class="nome">Riso carnaroli</span><span class="sub" style="color:var(--ter)">serve 640 g · in casa 0 g</span></button>
+  </div>
+  <div class="sez"><div class="sez-sx"><span class="quad" style="background:${A.mac}"></span><span class="sez-lb">Macelleria e pescheria</span></div><span class="sez-cont">2 voci</span></div>
+  <div class="griglia">
+    <button type="button" class="tessera prot" style="background:${A.mac}" aria-pressed="true" aria-label="Petto di pollo, da prendere, tocca per segnare presa">
+      <span class="alto"><span class="pil" style="background:#fff;color:var(--ink)">1 conf</span><span class="qty" style="color:rgba(20,22,58,.55)">600 g</span></span>
+      <span class="nome nome-g">Petto di pollo</span><span class="sub" style="color:rgba(20,22,58,.55)">serve 560 g · in casa 0 g</span></button>
+    <button type="button" class="tessera accesa" style="border-color:rgba(242,155,155,.45)" aria-pressed="true" aria-label="Guanciale, da prendere, tocca per segnare presa">
+      <span class="alto"><span class="pil" style="background:rgba(242,155,155,.32);color:var(--ink)">1 conf</span><span class="qty" style="color:var(--sec)">150 g</span></span>
+      <span class="nome">Guanciale</span><span class="sub" style="color:var(--ter)">serve 120 g · in casa 0 g</span></button>
+  </div>
+  <div class="coda"></div>
+</div>`}
+
+const V=[
+ {cl:'v1',id:'1',nome:'Si abbassa',
+  p:'La barra perde solo altezza: 84 → 66, cioè −21%. I nomi escono verso l\'alto mentre la riga si chiude su di sé, le icone restano a 26 e la larghezza non si muove. È la versione più quieta: l\'oggetto resta lo stesso, cambia solo quanto dice.',
+  icona:{px:26,marchio:9},
+  m:'Riposo: barra alta 84, voce 72, icona 26, nome mono 8,5 / 500 / 0,12em (700 sull\'attiva). Ridotta: barra 66, voce 54 — bersaglio ancora sopra i 44 — nome a max-height 0 e opacità 0. Larghezza fissa 16 px dai lati.',
+  r:'§7 momento nuovo: lo scorrimento come gesto che cambia la barra · §8 tab bar flottante raggio 999 · §6 icone piene'},
+
+ {cl:'v2',id:'2',nome:'Si abbassa e si stringe',
+  p:'Oltre all\'altezza si accorcia la larghezza: da 16 px dai lati a 46, cioè 361 → 301. Ridotta diventa un oggetto piccolo e centrato che galleggia, e lascia vedere più lista ai lati. Il moto è più evidente, e va verificato che non distragga in corsia.',
+  icona:{px:26,marchio:9},
+  m:'Riposo: barra alta 84, larga 361 (16 px dai lati), voce 72, icona 26. Ridotta: alta 66, larga 301 (46 px dai lati), voce 54, quindi ogni voce è larga 70,75 — bersaglio 70,75 × 54. I nomi escono come nella 1.',
+  r:'§7 momento nuovo: lo scorrimento come gesto che cambia la barra · §8 tab bar flottante raggio 999 e a larghezza variabile · §6 icone piene'},
+
+ {cl:'v3',id:'3',nome:'Si rimpicciolisce intera',
+  p:'Una trasformazione sola: scale 0,786 con origine sul fondo, quindi tutto — pillola, icone, marchio, pastiglia dell\'attiva — rimpicciolisce insieme e resta perfettamente sincronizzato. È la più fluida da guardare e la più economica da eseguire. In cambio le icone diventano 20,4 px effettivi, sotto i 21 della tab bar di §8.',
+  icona:{px:26,marchio:9},
+  m:'Riposo: barra alta 84, voce 72, icona 26. Ridotta: transform scale(0,786) con origine fondo-centro, quindi resa 66 di altezza e 284 di larghezza; voce resa 56,6 — sopra i 44; icone rese 20,4. I nomi escono prima della scala, così non si vedono rimpicciolire.',
+  r:'§7 momento nuovo: lo scorrimento come gesto che cambia la barra · §8 tab bar flottante raggio 999 · §6 icone piene e, ridotte, 20,4 px sotto i 21 dichiarati'}
+];
+
+const c=document.getElementById('canvas');
+V.forEach((v,i)=>{
+  const el=document.createElement('div');
+  el.className='frame';
+  el.style.left=(60+i*453)+'px';el.style.top='60px';
+  el.innerHTML=`<div class="intesta"><div class="sigla">Versione ${v.id} · ${v.nome}</div><p>${v.p}</p></div>
+  <div class="tel ${v.cl}" data-screen-label="Lista ${v.id}">${corpo()}${nav(v.icona)}</div>
+  <div class="note">
+    <div class="sigla">Misure della barra</div>
+    <p>${v.m}</p>
+    <div class="sigla" style="margin-top:4px">Il movimento</div>
+    <p>Gesto: <strong>scorri verso il basso</strong> (leggi la lista) → la barra si riduce; <strong>scorri verso l'alto</strong> o torna in cima → torna a grandezza naturale. Soglia 8 px, così un micro-movimento del pollice non la fa cambiare. Durata <strong>200 ms</strong>, curva <code>cubic-bezier(.2,.8,.25,1)</code>: una leggera decelerazione, dentro i 150-250 ms di §7. I nomi escono in 150 ms lineari, un filo prima della geometria, così non si vedono schiacciare. Ridotta, le quattro voci restano cliccabili con lo stesso <code>aria-label</code>: a cambiare è il disegno, non il controllo. Con <code>prefers-reduced-motion: reduce</code> i due stati si scambiano senza transizione, e la barra funziona identica.</p>
+    <div class="sigla" style="margin-top:4px">Componenti usati</div>
+    <div class="comp">Testata (titolo + menù utente) · Menù utente · Pillola settimana 34 px · Riga di stato · Etichetta di sezione · Tessera della Lista · Riga di controllo · Tab bar in pillola, due stati</div>
+    <div class="sigla" style="margin-top:4px">Regole di DESIGN.md che tocca</div>
+    <div class="rompe">§12 gradiente di sfondo · §5 ombra nuova sui pannelli e sulla barra · §8 componente nuovo: Menù utente · ${v.r}</div>
+  </div>`;
+  c.appendChild(el);
+
+  const tel=el.querySelector('.tel'), sc=el.querySelector('.scroll');
+  let ultimo=0;
+  sc.addEventListener('scroll',()=>{
+    const y=sc.scrollTop;
+    if(y<=4){tel.classList.remove('giu');ultimo=y;return}
+    if(Math.abs(y-ultimo)<8)return;
+    tel.classList.toggle('giu',y>ultimo);
+    ultimo=y;
+  },{passive:true});
+});
+</script>
+</body>
+</html>

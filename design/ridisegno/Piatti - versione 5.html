@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="design_doc_mode" content="canvas">
+<title>Piatti — versione 5</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+--fondo:#F1F0EE;--superficie:#FFFFFF;--ink:#14163A;--ink-2:#3D4166;--testo-2:#5C5F7A;--sec:#8A8A96;--ter:#A6A6B2;--off:#9A9AA6;
+--bordo:rgba(20,22,58,0.07);--spento:rgba(20,22,58,0.035);--icona-spenta:#C4C4CE;--bordo-tratteggio:rgba(20,22,58,0.20);
+--area-ortofrutta:#A8D96A;--area-macelleria:#F29B9B;--area-latticini:#9CC7F2;--area-cereali:#F5CE5B;--area-dispensa:#F2A465;--area-surgelati:#B9AEF5;
+--font-testo:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;--font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+--ombra-pannello:0 1px 2px rgba(20,22,58,.05),0 6px 16px rgba(20,22,58,.06);
+--ombra-nav:0 2px 6px rgba(20,22,58,.08),0 12px 30px rgba(20,22,58,.16);
+--moto-barra:200ms;--curva-barra:cubic-bezier(.2,.8,.25,1);
+}
+*{box-sizing:border-box}
+body{margin:0;background:#D8D7D4;font-family:var(--font-testo);color:var(--ink);-webkit-font-smoothing:antialiased}
+a{color:var(--ink)}a:hover{color:var(--ink-2)}
+.frame{position:absolute;width:393px}
+.sigla{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.intesta{display:flex;flex-direction:column;gap:6px;padding:0 2px 12px}
+.intesta p{margin:0;font-size:12.5px;line-height:1.4;color:#3D4166}
+
+.tel{width:393px;height:852px;border-radius:26px;overflow:hidden;position:relative;box-shadow:0 2px 4px rgba(20,22,58,.10),0 18px 40px rgba(20,22,58,.18);background:linear-gradient(180deg,#EDECEA 0%,#F2F1EF 34%,#F8F8F7 70%,#FCFCFB 100%);--fine:128px}
+.scroll{position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain;
+-webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - var(--fine)),rgba(0,0,0,.55) calc(100% - 74px),rgba(0,0,0,0) calc(100% - 30px));
+mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - var(--fine)),rgba(0,0,0,.55) calc(100% - 74px),rgba(0,0,0,0) calc(100% - 30px))}
+.scroll::-webkit-scrollbar{width:0}
+
+.testata{padding:20px 18px 12px;display:flex;flex-direction:column;gap:15px}
+.testata-alto{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.titolo-sch{font-size:52px;font-weight:800;letter-spacing:-.05em;line-height:1;margin:0}
+.utente{height:50px;display:flex;align-items:center;gap:5px;margin:0 -2px -3px 0;background:rgba(20,22,58,.07);border:0;border-radius:999px;padding:0 12px 0 6px}
+.utente .tondo{width:38px;height:38px;border-radius:999px;background:var(--ink);display:flex;align-items:center;justify-content:center;flex:none}
+.iniziale{font-family:var(--font-mono);font-size:16px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;line-height:1;color:#fff}
+
+.colonna{padding:0 16px;display:flex;flex-direction:column;gap:8px}
+.campo{height:44px;border-radius:14px;background:#fff;border:1px solid var(--bordo);box-shadow:var(--ombra-pannello);display:flex;align-items:center;gap:9px;padding:0 14px;margin-bottom:4px}
+.campo input{flex:1;min-width:0;border:0;outline:0;background:none;font-family:var(--font-testo);font-size:14px;color:var(--ink)}
+.campo input::placeholder{color:var(--testo-2)}
+.agg{width:100%;height:56px;border-radius:14px;border:2px dashed var(--bordo-tratteggio);background:none;display:flex;align-items:center;justify-content:center;gap:9px;font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink);margin-bottom:4px}
+
+.rp{display:flex;align-items:center;border-radius:14px;background:#fff;border:1px solid rgba(20,22,58,.09);box-shadow:var(--ombra-pannello);padding:0;min-height:68px;text-align:left;font:inherit;color:inherit;width:100%}
+.rp-corpo{flex:1;min-width:0;padding:12px 8px 12px 14px;display:flex;flex-direction:column;gap:3px}
+.rp-nome{font-size:17px;font-weight:700;letter-spacing:-.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rp-sub{font-family:var(--font-mono);font-size:9px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--ter)}
+.rp-aree{display:flex;gap:4px;margin-top:2px}
+.rp-aree i{width:8px;height:8px;border-radius:2.6px}
+.rp-dx{width:44px;flex:none;display:flex;align-items:center;justify-content:center}
+.coda{height:140px}
+
+.nav{position:absolute;left:16px;right:16px;bottom:22px;height:84px;border-radius:999px;display:flex;align-items:center;gap:2px;padding:6px;background:#fff;box-shadow:var(--ombra-nav)}
+.nav .voce{flex:1;height:72px;border:0;background:none;border-radius:999px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0;overflow:hidden}
+.nav .voce.on{background:rgba(20,22,58,.07)}
+.nav .segno{display:flex;align-items:center;justify-content:center;flex:none;height:26px}
+.nav .lb{font-family:var(--font-mono);font-size:8.5px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--off);white-space:nowrap;max-height:12px;opacity:1;line-height:1}
+.nav .voce.on .lb{color:var(--ink);font-weight:700}
+.marchio{display:grid;gap:4px}
+.cas{border-radius:2.52px;border:2px solid transparent}
+.tel.giu .nav{height:66px;left:46px;right:46px}
+.tel.giu .nav .voce{height:54px;gap:0}
+.tel.giu .nav .lb{max-height:0;opacity:0}
+.tel.giu{--fine:110px}
+@media (prefers-reduced-motion: no-preference){
+  .nav,.nav .voce,.nav .lb{transition:height var(--moto-barra) var(--curva-barra),max-height var(--moto-barra) var(--curva-barra),opacity 150ms linear,gap var(--moto-barra) var(--curva-barra),left var(--moto-barra) var(--curva-barra),right var(--moto-barra) var(--curva-barra)}
+}
+
+.note{width:393px;margin-top:12px;background:#fff;border:1px solid var(--bordo);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.note p{margin:0;font-size:12.5px;line-height:1.45;color:var(--testo-2)}
+.note strong{color:var(--ink)}
+.comp{font-family:var(--font-mono);font-size:9px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;color:var(--sec);line-height:1.7}
+.rompe{font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:#9A5C00;line-height:1.6}
+</style>
+</head>
+<body>
+<div id="canvas"></div>
+<script>
+const A={orto:'#A8D96A',mac:'#F29B9B',lat:'#9CC7F2',cer:'#F5CE5B',dis:'#F2A465',sur:'#B9AEF5'};
+const ORD=[[A.dis,1],[A.lat,1],[A.orto,0],[A.sur,1],[A.cer,1],[A.mac,0]];
+
+const P=[
+ {nome:'Pasta e fagioli',porz:2,ingr:7,aree:[A.cer,A.dis,A.orto]},
+ {nome:'Risotto alla milanese',porz:2,ingr:6,aree:[A.cer,A.lat]},
+ {nome:'Insalata di farro',porz:2,ingr:6,aree:[A.cer,A.orto]},
+ {nome:'Lasagne al forno',porz:4,ingr:10,aree:[A.cer,A.lat,A.mac]},
+ {nome:'Cous cous di verdure',porz:2,ingr:8,aree:[A.cer,A.orto]},
+ {nome:'Pollo al limone',porz:2,ingr:5,aree:[A.mac,A.orto]},
+ {nome:'Orata al forno',porz:2,ingr:5,aree:[A.mac,A.orto]},
+ {nome:'Frittata di zucchine',porz:2,ingr:4,aree:[A.lat,A.orto]},
+ {nome:'Parmigiana di melanzane',porz:4,ingr:7,aree:[A.orto,A.lat,A.dis]},
+ {nome:'Polpette al sugo',porz:4,ingr:8,aree:[A.mac,A.dis]},
+ {nome:'Torta salata di verdure',porz:4,ingr:9,aree:[A.orto,A.lat,A.cer]},
+ {nome:'Sformato di spinaci',porz:2,ingr:6,aree:[A.orto,A.lat]},
+ {nome:'Zuppa di lenticchie',porz:2,ingr:8,aree:[A.dis,A.orto]},
+ {nome:'Minestrone',porz:4,ingr:9,aree:[A.orto,A.dis]},
+ {nome:'Vellutata di zucca',porz:2,ingr:5,aree:[A.orto,A.lat]},
+ {nome:'Zuppa di ceci',porz:2,ingr:7,aree:[A.dis,A.orto]},
+ {nome:'Yogurt con avena',porz:1,ingr:3,aree:[A.lat,A.cer]},
+ {nome:'Pane e marmellata',porz:1,ingr:2,aree:[A.cer,A.dis]},
+ {nome:'Fette con ricotta e miele',porz:1,ingr:3,aree:[A.cer,A.lat]}
+];
+const plur=(n,s,p)=>`${n} ${n===1?s:p}`;
+const misura=p=>`${plur(p.porz,'porzione','porzioni')} · ${plur(p.ingr,'ingrediente','ingredienti')}`;
+
+const CHEV=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 5l7 7-7 7" stroke="#C4C4CE" stroke-width="2.1" stroke-linecap="round"/></svg>`;
+const LENTE=`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.6" stroke="#8A8A96" stroke-width="2.1"/><path d="M15.4 15.4 20 20" stroke="#8A8A96" stroke-width="2.1" stroke-linecap="round"/></svg>`;
+const PIU=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="#14163A" stroke-width="2.1" stroke-linecap="round"/></svg>`;
+
+function marchio(l){return `<span class="marchio" style="grid-template-columns:repeat(3,${l}px);grid-auto-rows:${l}px" aria-hidden="true">${ORD.map(([c,p])=>`<span class="cas" style="border-color:${c};background:${p?c:'transparent'}"></span>`).join('')}</span>`}
+const IC={
+ piano:s=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15.5" rx="4.4" fill="#9A9AA6"/><rect x="6.2" y="8.4" width="11.6" height="2.1" rx="1.05" fill="#fff" opacity=".92"/><circle cx="8.2" cy="14.6" r="1.7" fill="#fff" opacity=".92"/><circle cx="12" cy="14.6" r="1.7" fill="#fff" opacity=".92"/><circle cx="15.8" cy="14.6" r="1.7" fill="#fff" opacity=".92"/></svg>`,
+ piatti:(s,c)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="${c}"/><circle cx="12" cy="12" r="4.1" fill="#fff" opacity=".92"/></svg>`,
+ dispensa:s=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="3.4" width="14" height="3.6" rx="1.8" fill="#9A9AA6"/><path d="M6 9.4h12a1 1 0 0 1 1 1v6.4a3.2 3.2 0 0 1-3.2 3.2H8.2A3.2 3.2 0 0 1 5 16.8v-6.4a1 1 0 0 1 1-1Z" fill="#9A9AA6"/><rect x="8.4" y="12.4" width="7.2" height="2.1" rx="1.05" fill="#fff" opacity=".92"/></svg>`};
+
+const canvas=document.getElementById('canvas');
+const f=document.createElement('div');
+f.className='frame';f.style.left='60px';f.style.top='60px';
+f.innerHTML=`<div class="intesta"><div class="sigla">Piatti · elenco unico</div><p>Niente divisione per pasto: un elenco solo, ${P.length} piatti in ordine. Sopra, la ricerca che entra anche negli ingredienti, e il “nuovo piatto” tratteggiato a tutta larghezza al posto del segmento.</p></div>
+<div class="tel" data-screen-label="Piatti">
+  <div class="scroll">
+    <div class="testata">
+      <div class="testata-alto">
+        <h1 class="titolo-sch">Piatti</h1>
+        <button type="button" class="utente" aria-label="Andrea: profilo e impostazioni"><span class="tondo"><span class="iniziale" aria-hidden="true">A</span></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="5.2" r="2.1" fill="#14163A"/><circle cx="12" cy="12" r="2.1" fill="#14163A"/><circle cx="12" cy="18.8" r="2.1" fill="#14163A"/></svg></button>
+      </div>
+    </div>
+    <div class="colonna">
+      <div class="campo">${LENTE}<input type="search" aria-label="Cerca un piatto o un ingrediente" placeholder="Cerca un piatto o un ingrediente"></div>
+      <button type="button" class="agg">${PIU}Nuovo piatto</button>
+      ${P.map(p=>`<button type="button" class="rp" aria-label="Apri ${p.nome}">
+        <span class="rp-corpo">
+          <span class="rp-nome">${p.nome}</span>
+          <span class="rp-sub">${misura(p)}</span>
+          <span class="rp-aree">${p.aree.map(c=>`<i style="background:${c}"></i>`).join('')}</span>
+        </span>
+        <span class="rp-dx">${CHEV}</span></button>`).join('')}
+    </div>
+    <div class="coda"></div>
+  </div>
+  <nav class="nav" aria-label="Sezioni">
+    <button type="button" class="voce" aria-pressed="false" aria-label="Lista"><span class="segno">${marchio(9)}</span><span class="lb">Lista</span></button>
+    <button type="button" class="voce" aria-pressed="false" aria-label="Piano"><span class="segno">${IC.piano(26)}</span><span class="lb">Piano</span></button>
+    <button type="button" class="voce on" aria-pressed="true" aria-label="Piatti"><span class="segno">${IC.piatti(26,'#14163A')}</span><span class="lb">Piatti</span></button>
+    <button type="button" class="voce" aria-pressed="false" aria-label="Dispensa"><span class="segno">${IC.dispensa(26)}</span><span class="lb">Dispensa</span></button>
+  </nav>
+</div>
+<div class="note">
+  <div class="sigla">Misure</div>
+  <p>Una colonna sola a <strong>16 px</strong> dai lati — il bordo pagina di §4 — con gap 8. Campo di ricerca: alto <strong>44</strong>, raggio 14, bianco, bordo 1 px --bordo, ombra dei pannelli, padding 0 14, testo 14, lente 18 px a tratto 2,1. “Nuovo piatto”: alto <strong>56</strong>, larghezza piena, raggio 14, <strong>bordo 2 px tratteggiato</strong> in rgba(20,22,58,0.20), fondo trasparente, mono 11 / 700 / 0,08em con un più da 16 px. Righe piatto: minimo <strong>68</strong>, raggio 14, bianche con bordo 1 px rgba(20,22,58,0.09) e ombra dei pannelli; corpo con nome 17 / 700 / -0,03em troncato, sottoriga mono 9, pallini d'area 8 × 8 raggio 2,6; zona destra 44 col chevron in --icona-spenta.</p>
+  <div class="sigla" style="margin-top:4px">La ricerca</div>
+  <p>Il campo cerca <strong>nei nomi dei piatti e nei loro ingredienti</strong>: scrivendo “ricotta” escono Lasagne al forno e Fette con ricotta e miele, anche se la parola non è nel nome del primo. Il testo del segnaposto lo dice — “Cerca un piatto o un ingrediente” — ed è anche il nome accessibile del campo, perché §11 vuole un nome su ogni controllo e qui non c'è etichetta sopra.</p>
+  <div class="sigla" style="margin-top:4px">Cosa è stato tolto</div>
+  <p>Il <strong>segmento a blocco</strong> Tutti / Pranzo / Cena non c'è più: un piatto non appartiene a un pasto, ci va a finire quando lo metti nel piano, quindi il filtro chiedeva una decisione su un dato che l'app non ha. Al suo posto, nella stessa riga, l'azione che serve davvero.</p>
+  <div class="sigla" style="margin-top:4px">Componenti usati</div>
+  <div class="comp">Testata (titolo + menù utente) · Menù utente · Campo di testo in modalità ricerca · Aggiungi tratteggiato a tutta larghezza · Riga piatto, resa bianca · Tab bar in pillola a due stati, Lista col Marchio</div>
+  <div class="sigla" style="margin-top:4px">Regole di DESIGN.md che tocca</div>
+  <div class="rompe">§12 gradiente di sfondo · §5 ombra nuova sui pannelli e sulla barra · §8 menù utente e tab bar in pillola · §7 lo scorrimento come gesto · COMPONENTE NUOVO: Riga piatto · §8 il campo di testo in modalità ricerca, senza etichetta sopra, con la lente dentro · §8 l'azione principale non è un tasto primario in fondo: il fondo è occupato dalla barra flottante</div>
+</div>`;
+canvas.appendChild(f);
+
+const tel=f.querySelector('.tel'), sc=f.querySelector('.scroll');
+let ultimo=0;
+sc.addEventListener('scroll',()=>{const y=sc.scrollTop;if(y<=4){tel.classList.remove('giu');ultimo=y;return}if(Math.abs(y-ultimo)<8)return;tel.classList.toggle('giu',y>ultimo);ultimo=y},{passive:true});
+</script>
+</body>
+</html>

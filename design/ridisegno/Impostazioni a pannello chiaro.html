@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="design_doc_mode" content="canvas">
+<title>Impostazioni a pannello chiaro</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+--fondo:#F1F0EE;--superficie:#FFFFFF;--ink:#14163A;--ink-2:#3D4166;--testo-2:#5C5F7A;--sec:#8A8A96;--ter:#A6A6B2;--off:#9A9AA6;
+--bordo:rgba(20,22,58,0.07);--spento:rgba(20,22,58,0.035);--icona-spenta:#C4C4CE;--bordo-tratteggio:rgba(20,22,58,0.20);
+--avviso:#9A5C00;--errore:#C4423E;--freddo:#2F6FBF;
+--area-ortofrutta:#A8D96A;--area-macelleria:#F29B9B;--area-latticini:#9CC7F2;--area-cereali:#F5CE5B;--area-dispensa:#F2A465;--area-surgelati:#B9AEF5;
+--font-testo:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;--font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+--ombra-pannello:0 1px 2px rgba(20,22,58,.05),0 6px 16px rgba(20,22,58,.06);
+--ombra-nav:0 2px 6px rgba(20,22,58,.08),0 12px 30px rgba(20,22,58,.16);
+--ombra-alta:0 8px 24px rgba(20,22,58,.28),0 26px 64px rgba(20,22,58,.26);
+--velo-forte:rgba(20,22,58,0.55);
+--moto-barra:200ms;--curva-barra:cubic-bezier(.2,.8,.25,1);
+}
+*{box-sizing:border-box}
+body{margin:0;background:#D8D7D4;font-family:var(--font-testo);color:var(--ink);-webkit-font-smoothing:antialiased}
+a{color:var(--ink)}a:hover{color:var(--ink-2)}
+.frame{position:absolute;width:393px}
+.sigla{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.intesta{display:flex;flex-direction:column;gap:6px;padding:0 2px 12px}
+.intesta p{margin:0;font-size:12.5px;line-height:1.4;color:#3D4166}
+
+.tel{width:393px;height:852px;border-radius:26px;overflow:hidden;position:relative;box-shadow:0 2px 4px rgba(20,22,58,.10),0 18px 40px rgba(20,22,58,.18);background:linear-gradient(180deg,#EDECEA 0%,#F2F1EF 34%,#F8F8F7 70%,#FCFCFB 100%)}
+
+/* l'app dietro */
+.app{position:absolute;inset:0;overflow:hidden}
+.testata{padding:20px 18px 12px;display:flex;flex-direction:column;gap:15px}
+.testata-alto{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.titolo-sch{font-size:52px;font-weight:800;letter-spacing:-.05em;line-height:1;margin:0}
+.pill-sett{height:34px;border-radius:999px;background:var(--ink);color:#fff;font-family:var(--font-mono);font-size:10.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;display:inline-flex;align-items:center;padding:0 14px;align-self:flex-start}
+.utente{height:50px;display:flex;align-items:center;gap:5px;margin:0 -2px -3px 0;background:rgba(20,22,58,.07);border:0;border-radius:999px;padding:0 12px 0 6px}
+.utente .tondo{width:38px;height:38px;border-radius:999px;background:var(--ink);display:flex;align-items:center;justify-content:center;flex:none}
+.iniziale{font-family:var(--font-mono);font-size:16px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;line-height:1;color:#fff}
+.w{margin:0 16px 12px;background:#fff;border:1px solid var(--bordo);border-radius:22px;box-shadow:var(--ombra-pannello);padding:14px 12px 12px;display:flex;flex-direction:column;gap:10px}
+.w-testa{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:0 4px}
+.w-lb{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;display:flex;align-items:center;gap:8px}
+.quad{width:10px;height:10px;border-radius:4px;flex:none}
+.w-cont{font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:.10em;text-transform:uppercase;color:var(--sec)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.td{min-height:104px;border-radius:14px;padding:12px 14px 13px;display:flex;flex-direction:column}
+.td-pil{font-family:var(--font-mono);font-weight:700;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;border-radius:999px;padding:5px 10px;background:#fff;color:var(--ink);align-self:flex-start}
+.td-nome{font-size:17px;font-weight:700;letter-spacing:-.032em;line-height:1.1;margin-top:auto}
+.nav{position:absolute;left:16px;right:16px;bottom:22px;height:84px;border-radius:999px;display:flex;align-items:center;gap:2px;padding:6px;background:#fff;box-shadow:var(--ombra-nav)}
+.nav .voce{flex:1;height:72px;border:0;background:none;border-radius:999px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0}
+.nav .voce.on{background:rgba(20,22,58,.07)}
+.nav .segno{display:flex;align-items:center;justify-content:center;flex:none;height:26px}
+.nav .lb{font-family:var(--font-mono);font-size:8.5px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--off);line-height:1}
+.nav .voce.on .lb{color:var(--ink);font-weight:700}
+.marchio{display:grid;gap:4px}
+.cas{border-radius:2.52px;border:2px solid transparent}
+
+/* il velo e il pannello */
+.velo{position:absolute;inset:0;background:var(--velo-forte);z-index:2}
+.pan{position:absolute;top:76px;left:16px;right:16px;bottom:22px;background:var(--fondo);border:1.5px solid var(--ink);border-radius:22px;box-shadow:var(--ombra-alta);display:flex;flex-direction:column;overflow:hidden;z-index:3}
+.pan-testa{flex:none;padding:16px 16px 12px;display:flex;align-items:center;gap:10px}
+.pan-tit{font-size:32px;font-weight:800;letter-spacing:-.045em;line-height:1.05;margin:0;flex:1;min-width:0}
+.tondo-44{width:44px;height:44px;flex:none;border:0;border-radius:999px;background:rgba(20,22,58,.07);display:flex;align-items:center;justify-content:center;padding:0}
+.pan-corpo{flex:1;overflow-y:auto;padding:0 14px 16px;display:flex;flex-direction:column;gap:12px}
+.pan-corpo::-webkit-scrollbar{width:0}
+.pan-fondo{flex:none;padding:12px 18px 16px;border-top:1px solid var(--bordo);font-family:var(--font-mono);font-size:9px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;color:var(--testo-2)}
+
+/* widget dentro il pannello */
+.bl{background:#fff;border:1px solid var(--bordo);border-radius:18px;padding:12px 12px 10px;display:flex;flex-direction:column;gap:2px}
+.bl-lb{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;padding:0 4px 6px}
+.ri{display:flex;align-items:center;gap:10px;min-height:56px;border:0;background:none;padding:8px 4px;width:100%;text-align:left;font:inherit;color:inherit;border-top:1px solid var(--bordo)}
+.ri:first-of-type{border-top:0}
+.ri-corpo{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.ri-nome{font-size:15px;font-weight:700;letter-spacing:-.024em}
+.ri-nota{font-size:12.5px;line-height:1.35;color:var(--testo-2)}
+.ri-val{font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap}
+.ri-dx{width:20px;flex:none;display:flex;align-items:center;justify-content:flex-end}
+.sino{display:flex;gap:7px;flex:none}
+.sino button{height:44px;min-width:52px;border-radius:999px;background:#fff;border:1px solid rgba(20,22,58,.09);font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--sec)}
+.sino button.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.numero{height:44px;width:80px;flex:none;border-radius:14px;background:#fff;border:1px solid var(--bordo);display:flex;align-items:center;justify-content:flex-end;gap:5px;padding:0 12px;font-family:var(--font-mono);font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
+.numero em{font-style:normal;font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--ter)}
+
+/* la vista del default settimanale */
+.vista{display:none;flex-direction:column;flex:1;min-height:0}
+.pan.dentro .vista{display:flex}
+.pan.dentro .vista-elenco{display:none}
+.vista-elenco{display:flex;flex-direction:column;flex:1;min-height:0}
+.mat{display:flex;flex-direction:column;gap:6px}
+.mat-int{display:flex;gap:7px;padding-left:52px}
+.mat-int span{flex:1;font-family:var(--font-mono);font-size:8.5px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--testo-2);text-align:center}
+.mat-riga{display:flex;align-items:center;gap:7px}
+.mat-g{width:45px;flex:none;font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--testo-2)}
+.cella{flex:1;height:44px;border-radius:14px;border:1px solid rgba(20,22,58,.09);background:#fff;display:flex;align-items:center;justify-content:center;padding:0}
+.cella.casa{background:var(--ink);border-color:var(--ink);box-shadow:0 1px 3px rgba(20,22,58,.28)}
+.cella i{width:10px;height:10px;border-radius:999px;background:rgba(20,22,58,.16)}
+.cella.casa i{background:#fff}
+.nota-blocco{font-size:12.5px;line-height:1.45;color:var(--testo-2);margin:0;padding:0 4px}
+
+.note{width:393px;margin-top:12px;background:#fff;border:1px solid var(--bordo);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.note p{margin:0;font-size:12.5px;line-height:1.45;color:var(--testo-2)}
+.note strong{color:var(--ink)}
+.comp{font-family:var(--font-mono);font-size:9px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;color:var(--testo-2);line-height:1.7}
+.rompe{font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--avviso);line-height:1.6}
+</style>
+</head>
+<body>
+<div id="canvas"></div>
+<script>
+const A={orto:'#A8D96A',mac:'#F29B9B',lat:'#9CC7F2',cer:'#F5CE5B',dis:'#F2A465',sur:'#B9AEF5'};
+const ORD=[[A.dis,1],[A.lat,1],[A.orto,0],[A.sur,1],[A.cer,1],[A.mac,0]];
+const CHEV=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 5l7 7-7 7" stroke="#C4C4CE" stroke-width="2.1" stroke-linecap="round"/></svg>`;
+const INDIETRO=`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 5l-7 7 7 7" stroke="#14163A" stroke-width="1.8" stroke-linecap="round"/></svg>`;
+const X=`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="#14163A" stroke-width="2.1" stroke-linecap="round"/></svg>`;
+const KEBAB=`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="5.2" r="2.1" fill="#14163A"/><circle cx="12" cy="12" r="2.1" fill="#14163A"/><circle cx="12" cy="18.8" r="2.1" fill="#14163A"/></svg>`;
+
+const PASTI=['Colazione','Pranzo','Cena'];
+const DEF=[
+ {g:'Lun',v:[1,0,1]},{g:'Mar',v:[1,0,1]},{g:'Mer',v:[1,0,1]},{g:'Gio',v:[1,0,1]},
+ {g:'Ven',v:[1,0,1]},{g:'Sab',v:[1,1,0]},{g:'Dom',v:[1,1,1]}];
+const plur=(n,s,p)=>`${n} ${n===1?s:p}`;
+const contaFuori=()=>DEF.reduce((n,d)=>n+d.v.filter(x=>!x).length,0);
+
+function marchio(l){return `<span class="marchio" style="grid-template-columns:repeat(3,${l}px);grid-auto-rows:${l}px" aria-hidden="true">${ORD.map(([c,p])=>`<span class="cas" style="border-color:${c};background:${p?c:'transparent'}"></span>`).join('')}</span>`}
+const IC={
+ piano:s=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15.5" rx="4.4" fill="#9A9AA6"/><rect x="6.2" y="8.4" width="11.6" height="2.1" rx="1.05" fill="#fff" opacity=".92"/><circle cx="8.2" cy="14.6" r="1.7" fill="#fff" opacity=".92"/><circle cx="12" cy="14.6" r="1.7" fill="#fff" opacity=".92"/><circle cx="15.8" cy="14.6" r="1.7" fill="#fff" opacity=".92"/></svg>`,
+ piatti:s=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="#9A9AA6"/><circle cx="12" cy="12" r="4.1" fill="#fff" opacity=".92"/></svg>`,
+ dispensa:s=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="3.4" width="14" height="3.6" rx="1.8" fill="#9A9AA6"/><path d="M6 9.4h12a1 1 0 0 1 1 1v6.4a3.2 3.2 0 0 1-3.2 3.2H8.2A3.2 3.2 0 0 1 5 16.8v-6.4a1 1 0 0 1 1-1Z" fill="#9A9AA6"/><rect x="8.4" y="12.4" width="7.2" height="2.1" rx="1.05" fill="#fff" opacity=".92"/></svg>`};
+
+const canvas=document.getElementById('canvas');
+const f=document.createElement('div');
+f.className='frame';f.style.left='60px';f.style.top='60px';
+f.innerHTML=`<div class="intesta"><div class="sigla">Impostazioni · pannello chiaro</div><p>Fondo carta e bordo inchiostro, ombra alta, e dietro l'app scurita dal velo al 55%. Dentro, un widget per gruppo. Tocca “I pasti che fai a casa” per entrare nella matrice, la freccia per tornare, la X o il velo per chiudere.</p></div>
+<div class="tel" data-screen-label="Impostazioni">
+  <div class="app">
+    <div class="testata">
+      <div class="testata-alto">
+        <h1 class="titolo-sch">Lista</h1>
+        <button type="button" class="utente" aria-label="Andrea: profilo e impostazioni" aria-expanded="true"><span class="tondo"><span class="iniziale" aria-hidden="true">A</span></span>${KEBAB}</button>
+      </div>
+      <span class="pill-sett">Settimana del 21 settembre</span>
+    </div>
+    <section class="w">
+      <div class="w-testa"><span class="w-lb"><span class="quad" style="background:${A.orto}"></span>Ortofrutta</span><span class="w-cont">4 voci</span></div>
+      <div class="grid">
+        <div class="td" style="background:rgba(168,217,106,.26)"><span class="td-pil">1250 g</span><span class="td-nome">Pomodori ramati</span></div>
+        <div class="td" style="background:rgba(168,217,106,.26)"><span class="td-pil">600 g</span><span class="td-nome">Zucchine</span></div>
+      </div>
+    </section>
+    <section class="w">
+      <div class="w-testa"><span class="w-lb"><span class="quad" style="background:${A.lat}"></span>Latticini, uova e salumi</span><span class="w-cont">3 voci</span></div>
+      <div class="grid">
+        <div class="td" style="background:rgba(156,199,242,.26)"><span class="td-pil">6 pz</span><span class="td-nome">Uova medie</span></div>
+        <div class="td" style="background:rgba(156,199,242,.26)"><span class="td-pil">250 g</span><span class="td-nome">Ricotta</span></div>
+      </div>
+    </section>
+    <nav class="nav" aria-label="Sezioni">
+      <button type="button" class="voce on" aria-pressed="true" aria-label="Lista"><span class="segno">${marchio(9)}</span><span class="lb">Lista</span></button>
+      <button type="button" class="voce" aria-pressed="false" aria-label="Piano"><span class="segno">${IC.piano(26)}</span><span class="lb">Piano</span></button>
+      <button type="button" class="voce" aria-pressed="false" aria-label="Piatti"><span class="segno">${IC.piatti(26)}</span><span class="lb">Piatti</span></button>
+      <button type="button" class="voce" aria-pressed="false" aria-label="Dispensa"><span class="segno">${IC.dispensa(26)}</span><span class="lb">Dispensa</span></button>
+    </nav>
+  </div>
+
+  <div class="velo" data-chiudi></div>
+
+  <div class="pan" role="dialog" aria-label="Impostazioni">
+    <div class="vista-elenco">
+      <div class="pan-testa">
+        <h2 class="pan-tit">Impostazioni</h2>
+        <button type="button" class="tondo-44" data-chiudi aria-label="Chiudi le impostazioni">${X}</button>
+      </div>
+      <div class="pan-corpo">
+        <section class="bl">
+          <div class="bl-lb">La settimana di base</div>
+          <button type="button" class="ri" data-dentro>
+            <span class="ri-corpo"><span class="ri-nome">I pasti che fai a casa</span><span class="ri-nota">Il default con cui nasce ogni settimana nuova.</span></span>
+            <span class="ri-val" data-conta>6 fuori casa</span><span class="ri-dx">${CHEV}</span>
+          </button>
+        </section>
+        <section class="bl">
+          <div class="bl-lb">Come calcolo la lista</div>
+          <div class="ri"><span class="ri-corpo"><span class="ri-nome">Porzioni di default</span><span class="ri-nota">Quante ne conto quando metti un piatto nel piano.</span></span><span class="numero">2<em>porz</em></span></div>
+          <div class="ri"><span class="ri-corpo"><span class="ri-nome">Arrotonda alle confezioni</span><span class="ri-nota">Con 540 g di zucchine la lista chiede 1 confezione da 600 g.</span></span><span class="sino"><button type="button" class="on" aria-pressed="true">Sì</button><button type="button" aria-pressed="false">No</button></span></div>
+          <button type="button" class="ri"><span class="ri-corpo"><span class="ri-nome">Cadenza dei controlli</span><span class="ri-nota">Ogni quanto ti chiedo se hai ancora olio, sale, farina.</span></span><span class="ri-val">4 settimane</span><span class="ri-dx">${CHEV}</span></button>
+        </section>
+        <section class="bl">
+          <div class="bl-lb">Come la vedi in corsia</div>
+          <button type="button" class="ri"><span class="ri-corpo"><span class="ri-nome">Ordine delle aree</span><span class="ri-nota">L'ordine in cui compaiono in Lista: mettilo come gira il tuo supermercato.</span></span><span class="ri-val">Personalizzato</span><span class="ri-dx">${CHEV}</span></button>
+          <button type="button" class="ri"><span class="ri-corpo"><span class="ri-nome">Unità di misura</span><span class="ri-nota">Grammi e millilitri, oppure pezzi e confezioni dove ha senso.</span></span><span class="ri-val">Grammi e ml</span><span class="ri-dx">${CHEV}</span></button>
+        </section>
+        <section class="bl">
+          <div class="bl-lb">I tuoi dati</div>
+          <button type="button" class="ri"><span class="ri-corpo"><span class="ri-nome">Importa un piano</span><span class="ri-nota">Da un PDF o dalle foto di un piano che hai già.</span></span><span class="ri-dx">${CHEV}</span></button>
+          <button type="button" class="ri"><span class="ri-corpo"><span class="ri-nome">Esporta i tuoi dati</span><span class="ri-nota">Piatti, piano e dispensa in un file che puoi tenere.</span></span><span class="ri-dx">${CHEV}</span></button>
+          <button type="button" class="ri"><span class="ri-corpo"><span class="ri-nome">Cancella la dispensa</span><span class="ri-nota">Svuota quello che hai in casa. I piatti e il piano restano.</span></span><span class="ri-dx">${CHEV}</span></button>
+        </section>
+        <section class="bl">
+          <div class="bl-lb">Account</div>
+          <button type="button" class="ri"><span class="ri-corpo"><span class="ri-nome">Andrea</span><span class="ri-nota">andrea@esempio.it</span></span><span class="ri-dx">${CHEV}</span></button>
+          <button type="button" class="ri"><span class="ri-corpo"><span class="ri-nome">Esci</span></span><span class="ri-dx">${CHEV}</span></button>
+        </section>
+      </div>
+      <div class="pan-fondo">Versione 2.0.4 · ultimo salvataggio il 18/09/2026 alle 9:12</div>
+    </div>
+
+    <div class="vista">
+      <div class="pan-testa">
+        <button type="button" class="tondo-44" data-fuori aria-label="Torna alle impostazioni">${INDIETRO}</button>
+        <h2 class="pan-tit">Pasti a casa</h2>
+      </div>
+      <div class="pan-corpo">
+        <section class="bl">
+          <div class="bl-lb">La settimana di base</div>
+          <p class="nota-blocco" style="padding-bottom:10px">Acceso vuole dire a casa. Ogni settimana nuova nasce così: nel Piano puoi correggere il singolo giorno senza cambiare questo default.</p>
+          <div class="mat" role="group" aria-label="Pasti che di base fai a casa">
+            <div class="mat-int" aria-hidden="true">${PASTI.map(p=>`<span>${p}</span>`).join('')}</div>
+            ${DEF.map((d,r)=>`<div class="mat-riga"><span class="mat-g">${d.g}</span>${d.v.map((x,i)=>`<button type="button" class="cella ${x?'casa':''}" data-r="${r}" data-i="${i}" aria-pressed="${!!x}" aria-label="${d.g} ${PASTI[i].toLowerCase()}: ${x?'di base a casa, tocca per mettere fuori casa':'di base fuori casa, tocca per mettere a casa'}"><i></i></button>`).join('')}</div>`).join('')}
+          </div>
+        </section>
+        <section class="bl">
+          <div class="bl-lb">Cosa cambia</div>
+          <p class="nota-blocco" data-riepilogo style="padding-bottom:6px">Di base sei a casa per 15 pasti su 21. La Lista conta solo quelli: i 6 fuori casa non entrano nella spesa.</p>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="note">
+  <div class="sigla">Il pannello</div>
+  <p>Fondo <strong>--fondo #F1F0EE</strong>, pieno e non trasparente, con <strong>bordo 1,5 px --ink</strong> e raggio 22. Ancorato sotto il menù utente: alto 76, lati 16, fondo 22. Dietro, un velo <strong>rgba(20,22,58,0.55)</strong> scurisce l'app, e il pannello proietta <strong>0 8px 24px / 0 26px 64px</strong> di ombra: si legge come un foglio staccato che sta sopra, non come un livello trasparente. Testata del pannello: titolo di dettaglio 32 / 800 e un tondo da 44 su rgba(20,22,58,0.07) con la X.</p>
+  <div class="sigla" style="margin-top:4px">Widget dentro il widget</div>
+  <p>Ogni gruppo è un <strong>blocco bianco</strong> dentro il pannello: raggio <strong>18</strong> — le schede medie di §5 — bordo 1 px --bordo, padding 12 / 12 / 10, gap 12 tra un blocco e l'altro. Il fondo carta del pannello li stacca come il fondo pagina stacca i widget nelle altre schermate: la stessa gerarchia, un livello più in dentro. Cinque blocchi: la settimana di base, il calcolo, la corsia, i dati, l'account.</p>
+  <div class="sigla" style="margin-top:4px">Il default della settimana</div>
+  <p>Nel menù è <strong>una riga sola</strong> col suo valore — “6 FUORI CASA” — e un chevron: non sporca l'elenco. Il tap porta a una seconda vista dentro lo stesso pannello, con la freccia indietro al posto della X. Là c'è la <strong>matrice</strong>: sette giorni per tre pasti, celle alte <strong>44</strong> e <code>flex: 1</code> — sigla del giorno larga 45, gap 7, quindi (304 − 45 − 21) / 3 = <strong>79,3</strong> px qui — raggio 14. <strong>Accesa</strong> = di base a casa: fondo --ink pieno col pallino bianco e l'ombra della casetta. <strong>Spenta</strong> = di base fuori: bianca con bordo 1 px e pallino grigio. È la stessa grammatica della casetta della Riga pasto. Toccando le celle il riepilogo e il valore nel menù si aggiornano.</p>
+  <div class="sigla" style="margin-top:4px">Componenti usati</div>
+  <div class="comp">Pannello delle impostazioni (componente nuovo) · Blocco di gruppo (scheda media 18) · Riga di impostazione (componente nuovo) · Matrice del default settimanale (componente nuovo) · Titolo di dettaglio 32 · Campo numerico · Pillole SÌ/NO · Nota · Menù utente come origine</div>
+  <div class="sigla" style="margin-top:4px">Regole di DESIGN.md che tocca</div>
+  <div class="rompe">§5 sesta ombra, più profonda delle tre ammesse, perché il pannello sta sopra l'app · §5 bordo 1,5 px --ink usato per delimitare una superficie, non per uno stato selezionato · §8 velo a 0,55 invece dello 0,35 del foglio dal basso · §8 componenti nuovi: pannello, riga di impostazione, matrice del default · §8 il pannello copre la tab bar: la navigazione è sospesa finché è aperto · il gruppo Account presuppone un login che il sistema non ha mai nominato</div>
+</div>`;
+canvas.appendChild(f);
+
+const tel=f.querySelector('.tel'), pan=tel.querySelector('.pan'), velo=tel.querySelector('.velo');
+const utente=tel.querySelector('.utente'), conta=tel.querySelector('[data-conta]'), riep=tel.querySelector('[data-riepilogo]');
+function aggiorna(){
+  const fuori=contaFuori(), casa=21-fuori;
+  conta.textContent=`${fuori} fuori casa`;
+  riep.textContent=`Di base sei a casa per ${plur(casa,'pasto','pasti')} su 21. La Lista conta solo quelli: i ${fuori} fuori casa non entrano nella spesa.`;
+}
+function apri(v){pan.style.display=v?'flex':'none';velo.style.display=v?'block':'none';utente.setAttribute('aria-expanded',String(v))}
+tel.addEventListener('click',e=>{
+  if(e.target.closest('[data-chiudi]')){apri(false);pan.classList.remove('dentro');return}
+  if(e.target.closest('.utente')){apri(pan.style.display==='none');return}
+  if(e.target.closest('[data-dentro]')){pan.classList.add('dentro');return}
+  if(e.target.closest('[data-fuori]')){pan.classList.remove('dentro');return}
+  const cella=e.target.closest('.cella');
+  if(cella){
+    const on=cella.getAttribute('aria-pressed')==='true';
+    DEF[+cella.dataset.r].v[+cella.dataset.i]=on?0:1;
+    cella.setAttribute('aria-pressed',String(!on));
+    cella.classList.toggle('casa',!on);
+    const g=DEF[+cella.dataset.r].g, p=PASTI[+cella.dataset.i].toLowerCase();
+    cella.setAttribute('aria-label',`${g} ${p}: ${!on?'di base a casa, tocca per mettere fuori casa':'di base fuori casa, tocca per mettere a casa'}`);
+    aggiorna();
+  }
+});
+aggiorna();
+</script>
+</body>
+</html>

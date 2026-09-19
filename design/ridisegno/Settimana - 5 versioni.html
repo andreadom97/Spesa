@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="design_doc_mode" content="canvas">
+<title>Settimana — 5 versioni</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+--fondo:#F1F0EE;--superficie:#FFFFFF;--ink:#14163A;--ink-2:#3D4166;--testo-2:#5C5F7A;--sec:#8A8A96;--ter:#A6A6B2;--off:#9A9AA6;
+--bordo:rgba(20,22,58,0.07);--spento:rgba(20,22,58,0.035);--icona-spenta:#C4C4CE;
+--area-ortofrutta:#A8D96A;--area-macelleria:#F29B9B;--area-latticini:#9CC7F2;--area-cereali:#F5CE5B;--area-dispensa:#F2A465;--area-surgelati:#B9AEF5;
+--font-testo:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;--font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+--ombra-pannello:0 1px 2px rgba(20,22,58,.05),0 6px 16px rgba(20,22,58,.06);
+--ombra-nav:0 2px 6px rgba(20,22,58,.08),0 12px 30px rgba(20,22,58,.16);
+--moto-barra:200ms;--curva-barra:cubic-bezier(.2,.8,.25,1);
+}
+*{box-sizing:border-box}
+body{margin:0;background:#D8D7D4;font-family:var(--font-testo);color:var(--ink);-webkit-font-smoothing:antialiased}
+a{color:var(--ink)}a:hover{color:var(--ink-2)}
+.frame{position:absolute;width:393px}
+.sigla{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.intesta{display:flex;flex-direction:column;gap:6px;padding:0 2px 12px}
+.intesta p{margin:0;font-size:12.5px;line-height:1.4;color:#3D4166}
+
+.tel{width:393px;height:852px;border-radius:26px;overflow:hidden;position:relative;box-shadow:0 2px 4px rgba(20,22,58,.10),0 18px 40px rgba(20,22,58,.18);background:linear-gradient(180deg,#EDECEA 0%,#F2F1EF 34%,#F8F8F7 70%,#FCFCFB 100%);--fine:128px}
+.scroll{position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain;
+-webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - var(--fine)),rgba(0,0,0,.55) calc(100% - 74px),rgba(0,0,0,0) calc(100% - 30px));
+mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - var(--fine)),rgba(0,0,0,.55) calc(100% - 74px),rgba(0,0,0,0) calc(100% - 30px))}
+.scroll::-webkit-scrollbar{width:0}
+
+.testata{padding:20px 18px 12px;display:flex;flex-direction:column;gap:15px}
+.testata-alto{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.titolo-sch{font-size:52px;font-weight:800;letter-spacing:-.05em;line-height:1;margin:0}
+.pill-sett{height:34px;border-radius:999px;background:var(--ink);color:#fff;font-family:var(--font-mono);font-size:10.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;display:inline-flex;align-items:center;padding:0 14px;align-self:flex-start}
+.utente{height:50px;display:flex;align-items:center;gap:5px;margin:0 -2px -3px 0;background:rgba(20,22,58,.07);border:0;border-radius:999px;padding:0 12px 0 6px}
+.utente .tondo{width:38px;height:38px;border-radius:999px;background:var(--ink);display:flex;align-items:center;justify-content:center;flex:none}
+.iniziale{font-family:var(--font-mono);font-size:16px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;line-height:1;color:#fff}
+
+/* striscia dei giorni */
+.striscia{display:flex;gap:3px;padding:0 12px 12px}
+.giorno{flex:1;border:0;background:#fff;border-radius:14px;padding:9px 0 10px;display:flex;flex-direction:column;align-items:center;gap:5px;box-shadow:var(--ombra-pannello)}
+.g-sigla{font-family:var(--font-mono);font-size:8.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ter)}
+.g-num{font-size:15px;font-weight:800;letter-spacing:-.02em;line-height:1}
+.g-pall{display:flex;gap:3px}
+.g-pall i{width:5px;height:5px;border-radius:999px;background:rgba(20,22,58,.22)}
+.g-pall i.pieno{background:var(--ink)}
+.giorno.oggi{box-shadow:var(--ombra-pannello),inset 0 0 0 3px var(--ink)}
+.giorno.scelto{background:var(--ink)}
+.giorno.scelto .g-sigla{color:rgba(255,255,255,.62)}
+.giorno.scelto .g-num{color:#fff}
+.giorno.scelto .g-pall i{background:rgba(255,255,255,.34)}
+.giorno.scelto .g-pall i.pieno{background:#fff}
+
+/* widget di sezione — versione 1 della Lista: scheda bianca, righe nude */
+.w{margin:0 12px 12px;background:#fff;border:1px solid var(--bordo);border-radius:22px;box-shadow:var(--ombra-pannello);padding:14px 12px 12px;display:flex;flex-direction:column;gap:10px}
+.w-testa{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 2px}
+.w-lb{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.w-cont{font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:.10em;text-transform:uppercase;color:var(--sec)}
+.w.oggi{border:3px solid var(--ink)}
+.righe{display:flex;flex-direction:column;gap:8px}
+
+/* riga pasto */
+.riga{display:flex;align-items:stretch;border-radius:18px;border:1px solid rgba(20,22,58,.09);background:#fff;overflow:hidden;min-height:76px}
+.riga.nuda{background:none;box-shadow:none}
+.riga.fuori{background:rgba(20,22,58,.04);border-color:transparent}
+.casa{width:60px;flex:none;display:flex;align-items:center;justify-content:center;border:0;background:none;padding:0}
+.casetta{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center}
+.casetta.piena{background:var(--ink);box-shadow:0 1px 3px rgba(20,22,58,.28)}
+.casetta.vuota{background:#fff;border:1px solid rgba(20,22,58,.16)}
+.corpo{flex:1;min-width:0;border:0;background:none;text-align:left;padding:12px 4px 12px 0;display:flex;flex-direction:column;gap:3px;font:inherit;color:inherit}
+.p-pasto{font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--sec)}
+.p-nome{font-size:17.5px;font-weight:700;letter-spacing:-.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.p-nome.barrato{text-decoration:line-through;text-decoration-thickness:1.6px;color:rgba(20,22,58,.34)}
+.p-sub{font-family:var(--font-mono);font-size:9px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--ter)}
+.p-sub.motivo{color:var(--testo-2);font-weight:700}
+.p-avv{font-size:12px;font-weight:600;color:var(--ink-2)}
+.p-aree{display:flex;gap:4px;margin-top:2px}
+.p-aree i{width:8px;height:8px;border-radius:2.6px}
+.kebab{width:44px;flex:none;border:0;background:none;display:flex;align-items:center;justify-content:center;padding:0}
+
+/* v4: giorno a pagina piena */
+.giorno-testa{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 16px 12px}
+.giorno-tit{font-size:32px;font-weight:800;letter-spacing:-.045em;line-height:1.05;margin:0}
+.frecce{display:flex;gap:7px}
+.frecce button{width:44px;height:44px;border-radius:999px;background:#fff;border:1px solid var(--bordo);box-shadow:var(--ombra-pannello);display:flex;align-items:center;justify-content:center;padding:0}
+.oggi-pill{font-family:var(--font-mono);font-size:8.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#fff;background:var(--ink);border-radius:999px;padding:4px 9px;align-self:flex-start;margin:0 16px 10px}
+
+.coda{height:140px}
+
+.nav{position:absolute;left:16px;right:16px;bottom:22px;height:84px;border-radius:999px;display:flex;align-items:center;gap:2px;padding:6px;background:#fff;box-shadow:var(--ombra-nav)}
+.nav .voce{flex:1;height:72px;border:0;background:none;border-radius:999px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0;overflow:hidden}
+.nav .voce.on{background:rgba(20,22,58,.07)}
+.nav .segno{display:flex;align-items:center;justify-content:center;flex:none}
+.nav .lb{font-family:var(--font-mono);font-size:8.5px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--off);white-space:nowrap;max-height:12px;opacity:1}
+.nav .voce.on .lb{color:var(--ink);font-weight:700}
+.marchio{display:grid;gap:4px}
+.cas{border-radius:2.52px;border:2px solid transparent}
+.tel.giu .nav{height:66px;left:46px;right:46px}
+.tel.giu .nav .voce{height:54px;gap:0}
+.tel.giu .nav .lb{max-height:0;opacity:0}
+.tel.giu{--fine:110px}
+@media (prefers-reduced-motion: no-preference){
+  .nav,.nav .voce,.nav .lb{transition:height var(--moto-barra) var(--curva-barra),max-height var(--moto-barra) var(--curva-barra),opacity 150ms linear,gap var(--moto-barra) var(--curva-barra),left var(--moto-barra) var(--curva-barra),right var(--moto-barra) var(--curva-barra)}
+}
+
+.note{width:393px;margin-top:12px;background:#fff;border:1px solid var(--bordo);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.note p{margin:0;font-size:12.5px;line-height:1.45;color:var(--testo-2)}
+.note strong{color:var(--ink)}
+.comp{font-family:var(--font-mono);font-size:9px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;color:var(--sec);line-height:1.7}
+.rompe{font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:#9A5C00;line-height:1.6}
+</style>
+</head>
+<body>
+<div id="canvas"></div>
+<script>
+const A={orto:'#A8D96A',mac:'#F29B9B',lat:'#9CC7F2',cer:'#F5CE5B',dis:'#F2A465',sur:'#B9AEF5'};
+const ORD=[[A.dis,1],[A.lat,1],[A.orto,0],[A.sur,1],[A.cer,1],[A.mac,0]];
+
+const SETT=[
+ {s:'Lun',n:14,nome:'Lunedì',pasti:[
+  {pasto:'Colazione',nome:'Fette con ricotta e miele',sub:'1 porzione',casa:true,aree:[A.cer,A.lat]},
+  {pasto:'Pranzo',nome:'Risotto alla milanese',sub:'2 porzioni',casa:true,aree:[A.cer,A.lat]},
+  {pasto:'Cena',nome:'Zuppa di lenticchie',sub:'2 porzioni',casa:true,aree:[A.dis,A.orto]}]},
+ {s:'Mar',n:15,nome:'Martedì',pasti:[
+  {pasto:'Colazione',nome:'Yogurt con avena',sub:'1 porzione',casa:true,aree:[A.lat,A.cer]},
+  {pasto:'Pranzo',nome:'Insalata di farro',sub:'2 porzioni',casa:true,aree:[A.cer,A.orto]},
+  {pasto:'Cena',nome:'Pollo al limone',sub:'2 porzioni',casa:true,aree:[A.mac,A.orto]}]},
+ {s:'Mer',n:16,nome:'Mercoledì',pasti:[
+  {pasto:'Colazione',nome:'Nessun piatto',sub:'Saltato',casa:false,aree:[]},
+  {pasto:'Pranzo',nome:'Ho mangiato fuori piano',sub:'Fuori casa',casa:false,aree:[]},
+  {pasto:'Cena',nome:'Frittata di zucchine',sub:'2 porzioni',casa:true,aree:[A.lat,A.orto]}]},
+ {s:'Gio',n:17,nome:'Giovedì',oggi:true,scelto:true,pasti:[
+  {pasto:'Colazione',nome:'Yogurt con avena e mirtilli',sub:'1 porzione',casa:true,aree:[A.lat,A.cer,A.orto]},
+  {pasto:'Pranzo',nome:'Pasta e fagioli',sub:'2 porzioni',casa:true,aree:[A.cer,A.dis],avv:'La ricotta scade il 19/09'},
+  {pasto:'Cena',nome:'Frittata di zucchine',sub:'Fuori casa',casa:false,aree:[A.lat,A.orto]}]},
+ {s:'Ven',n:18,nome:'Venerdì',pasti:[
+  {pasto:'Colazione',nome:'Pane e marmellata',sub:'1 porzione',casa:true,aree:[A.cer,A.dis]},
+  {pasto:'Pranzo',nome:'Minestrone',sub:'2 porzioni',casa:true,aree:[A.orto,A.dis]},
+  {pasto:'Cena',nome:'Orata al forno',sub:'2 porzioni',casa:true,aree:[A.mac,A.orto]}]},
+ {s:'Sab',n:19,nome:'Sabato',pasti:[
+  {pasto:'Colazione',nome:'Cornetto al bar',sub:'Fuori casa',casa:false,aree:[]},
+  {pasto:'Pranzo',nome:'Pizza con gli amici',sub:'Fuori casa',casa:false,aree:[]},
+  {pasto:'Cena',nome:'Vellutata di zucca',sub:'2 porzioni',casa:true,aree:[A.orto,A.lat]}]},
+ {s:'Dom',n:20,nome:'Domenica',pasti:[
+  {pasto:'Colazione',nome:'Yogurt con avena',sub:'1 porzione',casa:true,aree:[A.lat,A.cer]},
+  {pasto:'Pranzo',nome:'Lasagne al forno',sub:'4 porzioni',casa:true,aree:[A.cer,A.lat,A.mac]},
+  {pasto:'Cena',nome:'Ho mangiato fuori piano',sub:'Fuori casa',casa:false,aree:[]}]}
+];
+
+const aCasa=g=>g.pasti.filter(p=>p.casa&&p.nome!=='Nessun piatto').length;
+const conta=n=>`${n} ${n===1?'pasto':'pasti'} a casa`;
+const OGGI=SETT.find(g=>g.oggi);
+const PASTI=OGGI.pasti;
+
+/* la settimana vista per pasto: un widget per pasto, sette giorni dentro */
+const PER_PASTO=['Colazione','Pranzo','Cena'].map((nome,i)=>({
+  pasto:nome,n:'7 giorni',
+  righe:SETT.map(g=>({...g.pasti[i],pasto:`${g.nome} ${g.n}`}))
+}));
+
+const CASETTA=c=>`<svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3.4 21 11h-2.6v8.2a1.4 1.4 0 0 1-1.4 1.4h-3.2V15h-3.6v5.6H7a1.4 1.4 0 0 1-1.4-1.4V11H3Z" fill="${c}"/></svg>`;
+const KEBAB=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="5.2" r="2.1" fill="#C4C4CE"/><circle cx="12" cy="12" r="2.1" fill="#C4C4CE"/><circle cx="12" cy="18.8" r="2.1" fill="#C4C4CE"/></svg>`;
+const CHEV=d=>`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="${d==='sx'?'M15 5l-7 7 7 7':'M9 5l7 7-7 7'}" stroke="#14163A" stroke-width="2.1" stroke-linecap="round"/></svg>`;
+
+function riga(p,nuda){return `<div class="riga ${nuda?'nuda':''} ${p.casa?'':'fuori'}">
+  <button type="button" class="casa" aria-pressed="${p.casa}" aria-label="${p.pasto}: ${p.casa?'a casa, tocca per mettere fuori casa':'fuori casa, tocca per mettere a casa'}"><span class="casetta ${p.casa?'piena':'vuota'}">${CASETTA(p.casa?'#FFFFFF':'#C4C4CE')}</span></button>
+  <button type="button" class="corpo" aria-label="Apri ${p.nome}">
+    <span class="p-pasto">${p.pasto}</span>
+    <span class="p-nome ${p.casa?'':'barrato'}">${p.nome}</span>
+    <span class="p-sub ${p.casa?'':'motivo'}">${p.sub}</span>
+    ${p.avv?`<span class="p-avv">${p.avv}</span>`:''}
+    ${p.aree.length?`<span class="p-aree">${p.aree.map(c=>`<i style="background:${c}"></i>`).join('')}</span>`:''}
+  </button>
+  <button type="button" class="kebab" aria-label="Altre azioni su ${p.nome}">${KEBAB}</button>
+</div>`}
+
+function striscia(){return `<div class="striscia" role="group" aria-label="Giorni della settimana">${SETT.map(g=>`<button type="button" class="giorno ${g.oggi?'oggi':''} ${g.scelto?'scelto':''}" aria-pressed="${!!g.scelto}" aria-label="${g.nome} ${g.n}, ${conta(aCasa(g))}${g.scelto?', selezionato':''}">
+  <span class="g-sigla">${g.s}</span><span class="g-num">${g.n}</span>
+  <span class="g-pall" aria-hidden="true">${g.pasti.map(p=>`<i class="${p.casa&&p.nome!=='Nessun piatto'?'pieno':''}"></i>`).join('')}</span></button>`).join('')}</div>`}
+
+function testata(){return `<div class="testata">
+  <div class="testata-alto">
+    <h1 class="titolo-sch">Settimana</h1>
+    <button type="button" class="utente" aria-label="Andrea: profilo e impostazioni"><span class="tondo"><span class="iniziale" aria-hidden="true">A</span></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="5.2" r="2.1" fill="#14163A"/><circle cx="12" cy="12" r="2.1" fill="#14163A"/><circle cx="12" cy="18.8" r="2.1" fill="#14163A"/></svg></button>
+  </div>
+  <span class="pill-sett">Settimana del 14 settembre</span>
+</div>`}
+
+function marchio(l){return `<span class="marchio" style="grid-template-columns:repeat(3,${l}px);grid-auto-rows:${l}px" aria-hidden="true">${ORD.map(([c,p])=>`<span class="cas" style="border-color:${c};background:${p?c:'transparent'}"></span>`).join('')}</span>`}
+const IC={
+ lista:s=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="3.2" rx="1.6" fill="#9A9AA6"/><rect x="3" y="10.4" width="18" height="3.2" rx="1.6" fill="#9A9AA6"/><rect x="3" y="15.8" width="12" height="3.2" rx="1.6" fill="#9A9AA6"/></svg>`,
+ settimana:(s,c)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15.5" rx="4.4" fill="${c}"/><rect x="6.2" y="8.4" width="11.6" height="2.1" rx="1.05" fill="#fff" opacity=".92"/><circle cx="8.2" cy="14.6" r="1.7" fill="#fff" opacity=".92"/><circle cx="12" cy="14.6" r="1.7" fill="#fff" opacity=".92"/><circle cx="15.8" cy="14.6" r="1.7" fill="#fff" opacity=".92"/></svg>`,
+ piatti:s=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="#9A9AA6"/><circle cx="12" cy="12" r="4.1" fill="#fff" opacity=".92"/></svg>`,
+ dispensa:s=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="3.4" width="14" height="3.6" rx="1.8" fill="#9A9AA6"/><path d="M6 9.4h12a1 1 0 0 1 1 1v6.4a3.2 3.2 0 0 1-3.2 3.2H8.2A3.2 3.2 0 0 1 5 16.8v-6.4a1 1 0 0 1 1-1Z" fill="#9A9AA6"/><rect x="8.4" y="12.4" width="7.2" height="2.1" rx="1.05" fill="#fff" opacity=".92"/></svg>`};
+const NAV=`<nav class="nav" aria-label="Sezioni">
+  <button type="button" class="voce" aria-pressed="false" aria-label="Lista"><span class="segno">${IC.lista(26)}</span><span class="lb">Lista</span></button>
+  <button type="button" class="voce on" aria-pressed="true" aria-label="Settimana"><span class="segno">${IC.settimana(26,'#14163A')}</span><span class="lb">Settimana</span></button>
+  <button type="button" class="voce" aria-pressed="false" aria-label="Piatti"><span class="segno">${IC.piatti(26)}</span><span class="lb">Piatti</span></button>
+  <button type="button" class="voce" aria-pressed="false" aria-label="Dispensa"><span class="segno">${IC.dispensa(26)}</span><span class="lb">Dispensa</span></button>
+</nav>`;
+
+const CORPI={
+ v1:()=>`${striscia()}<section class="w"><div class="w-testa"><span class="w-lb">Giovedì 17 · Oggi</span><span class="w-cont">${conta(aCasa(OGGI))}</span></div><div class="righe">${PASTI.map(p=>riga(p,true)).join('')}</div></section>`,
+
+ v2:()=>SETT.map(g=>`<section class="w ${g.oggi?'oggi':''}"><div class="w-testa"><span class="w-lb">${g.nome} ${g.n}${g.oggi?' · Oggi':''}</span><span class="w-cont">${conta(aCasa(g))}</span></div><div class="righe">${g.pasti.map(p=>riga(p,true)).join('')}</div></section>`).join(''),
+ v3:()=>`${striscia()}${PER_PASTO.map(s=>`<section class="w"><div class="w-testa"><span class="w-lb">${s.pasto}</span><span class="w-cont">${s.n}</span></div><div class="righe">${s.righe.map(p=>riga(p,true)).join('')}</div></section>`).join('')}`,
+
+ v4:()=>`<div class="giorno-testa"><h2 class="giorno-tit">Giovedì 17</h2><div class="frecce"><button type="button" aria-label="Giorno precedente">${CHEV('sx')}</button><button type="button" aria-label="Giorno successivo">${CHEV('dx')}</button></div></div><span class="oggi-pill">Oggi · ${conta(aCasa(OGGI))}</span>${PASTI.map(p=>`<section class="w"><div class="w-testa"><span class="w-lb">${p.pasto}</span><span class="w-cont">${p.casa?'A casa':'Fuori casa'}</span></div><div class="righe">${riga({...p,pasto:'Giovedì 17'},true)}</div></section>`).join('')}`,
+
+ v5:()=>`${striscia()}<div style="padding:0 12px 12px;display:flex;flex-direction:column;gap:8px">${PASTI.map(p=>riga(p,false)).join('')}</div>`
+};
+
+const V=[
+ {k:'v1',id:'1',nome:'Striscia e un widget per il giorno',
+  p:'La traduzione più diretta della Lista: la striscia resta com\'è in §8, e il giorno scelto diventa un widget — scheda bianca da 22 con intestazione "Giovedì 17 · Oggi" e contatore "2 pasti a casa". Dentro, le tre righe pasto perdono il proprio fondo, come le tessere nude della versione 1.',
+  m:'Striscia: sette riquadri flex 1, gap 3, raggio 14, padding 9 / 0 / 10, ombra dei pannelli; oggi bordo 3 px --ink dentro il riquadro, scelto fondo --ink. Widget: raggio 22, bordo 1, ombra dei pannelli, padding 14 / 12 / 12, gap 10. Righe pasto nude: casa 60, corpo flessibile, kebab 44, minimo 76.',
+  r:'§8 involucro nuovo attorno al giorno · §8 la riga pasto perde il fondo bianco previsto'},
+
+ {k:'v2',id:'2',nome:'Sette widget, uno per giorno',
+  p:'Via la striscia: la settimana è una colonna di sette schede, una per giorno, e si scorre. Ogni widget porta il nome del giorno, la data e quanti pasti sono a casa; oggi ha il bordo 3 px. Si vede tutta la settimana leggendo, non toccando — e pianificare la domenica seduti diventa un unico scorrimento.',
+  m:'Un widget per giorno: raggio 22, bordo 1, ombra dei pannelli, padding 14 / 12 / 12, gap 10, margine 0 12 12. Oggi: bordo 3 px --ink al posto del bordo 1. Intestazione: nome e data in mono 10 / 700 / 0,16em, contatore in mono 10 / 500 / 0,10em. Righe pasto nude.',
+  r:'§8 involucro nuovo attorno al giorno · §8 la striscia dei giorni non viene usata · §8 la riga pasto perde il fondo bianco'},
+
+ {k:'v3',id:'3',nome:'Un widget per pasto',
+  p:'Si gira l\'asse: non sette giorni con tre pasti, ma tre pasti con sette giorni. Un widget Colazione, uno Pranzo, uno Cena. Serve a chi cucina in blocco — vedere tutte le cene di fila dice subito se la settimana si ripete troppo. La striscia resta in cima per saltare a un giorno.',
+  m:'Striscia come nella 1. Tre widget, uno per pasto: stesse misure della 1 (raggio 22, bordo 1, padding 14 / 12 / 12, gap 10). Dentro, la riga pasto porta il giorno al posto del nome del pasto, in mono 9 / 700 / 0,13em. Contatore "7 GIORNI".',
+  r:'§8 involucro nuovo attorno al pasto · §8 la riga pasto cambia significato dell\'etichetta mono: giorno invece di pasto · §8 la riga pasto perde il fondo bianco'},
+
+ {k:'v4',id:'4',nome:'Il giorno è la pagina',
+  p:'Niente striscia e niente lista di giorni: c\'è un giorno solo, col suo titolo a 32 e due frecce da 44 per cambiarlo. Ogni pasto è un widget. È la più calma e la più leggibile in piedi, ed è l\'unica che perde la vista d\'insieme: per sapere com\'è sabato bisogna arrivarci.',
+  m:'Titolo di giorno 32 / 800 / -0,045em. Frecce: due tondi 44, raggio 999, bianchi, bordo 1, ombra dei pannelli, chevron 20 px a tratto 2,1. Pillola "Oggi · 2 pasti a casa" in mono 8,5 su --ink. Un widget per pasto: raggio 22, bordo 1, padding 14 / 12 / 12.',
+  r:'§8 la striscia dei giorni non viene usata · §8 involucro nuovo attorno al pasto · §8 coppia di frecce di navigazione non prevista in §8'},
+
+ {k:'v5',id:'5',nome:'Striscia e righe, senza scatole',
+  p:'Il termine di paragone: striscia in cima e le tre righe pasto direttamente sul gradiente, col loro fondo bianco, come §8 le prevede oggi. Serve a rispondere alla domanda vera — se in Settimana ci sono tre righe per volta, la scatola attorno aggiunge qualcosa o solo un bordo in più.',
+  m:'Striscia come nella 1. Righe pasto come §8: raggio 18, fondo bianco con bordo 1 px rgba(20,22,58,0.09) a casa, fondo rgba(20,22,58,0.04) e bordo trasparente fuori casa. Casa 60, corpo, destra 44. Gap 8, lati 12.',
+  r:'nessun componente nuovo: solo il gradiente, l\'ombra dei pannelli e la barra in pillola, già in discussione dalla Lista'}
+];
+
+const c=document.getElementById('canvas');
+V.forEach((v,i)=>{
+  const el=document.createElement('div');
+  el.className='frame';
+  el.style.left=(60+i*453)+'px';el.style.top='60px';
+  el.innerHTML=`<div class="intesta"><div class="sigla">Versione ${v.id} · ${v.nome}</div><p>${v.p}</p></div>
+  <div class="tel" data-screen-label="Settimana ${v.id}"><div class="scroll">${testata()}${CORPI[v.k]()}<div class="coda"></div></div>${NAV}</div>
+  <div class="note">
+    <div class="sigla">Misure</div>
+    <p>${v.m}</p>
+    <div class="sigla" style="margin-top:4px">Contrasto della riga pasto</div>
+    <p>Nella riga pasto la sottoriga mono ha <strong>due ruoli e due colori</strong>. Quando dice una quantità (“2 porzioni”) è metadato e sta in <strong>--ter</strong>, come ammette §2.1. Quando dice il <strong>motivo</strong> per cui un pasto non è a casa (“Fuori casa”, “Saltato”, “Ho mangiato fuori piano”) porta informazione, quindi sta in <strong>--testo-2 a peso 700</strong>: 5,5:1, sopra la soglia di §11. Era l'unica stringa della schermata che spiegava una cosa e stava sotto AA.</p>
+    <div class="sigla" style="margin-top:4px">Componenti usati</div>
+    <div class="comp">Testata (titolo + menù utente) · Menù utente · Pillola settimana · ${v.k==='v2'||v.k==='v4'?'':'Striscia dei giorni · '}Riga pasto (casa 60 / corpo / kebab 44) · Widget di sezione · Tab bar in pillola a due stati</div>
+    <div class="sigla" style="margin-top:4px">Regole di DESIGN.md che tocca</div>
+    <div class="rompe">§12 gradiente di sfondo · §5 ombra nuova sui pannelli e sulla barra · §8 menù utente e tab bar in pillola · §7 lo scorrimento come gesto · ${v.r}</div>
+  </div>`;
+  c.appendChild(el);
+
+  const tel=el.querySelector('.tel'), sc=el.querySelector('.scroll');
+  let ultimo=0;
+  sc.addEventListener('scroll',()=>{
+    const y=sc.scrollTop;
+    if(y<=4){tel.classList.remove('giu');ultimo=y;return}
+    if(Math.abs(y-ultimo)<8)return;
+    tel.classList.toggle('giu',y>ultimo);
+    ultimo=y;
+  },{passive:true});
+});
+</script>
+</body>
+</html>

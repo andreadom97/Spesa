@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fotografa il piano — scatto</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+--fondo:#F1F0EE;--superficie:#FFFFFF;--ink:#14163A;--ink-2:#3D4166;--testo-2:#5C5F7A;--sec:#8A8A96;
+--bordo:rgba(20,22,58,0.07);--avviso:#9A5C00;
+--font-testo:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;--font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+--ombra-nav:0 2px 6px rgba(20,22,58,.08),0 12px 30px rgba(20,22,58,.16);
+--ombra-alta:0 8px 24px rgba(20,22,58,.28),0 26px 64px rgba(20,22,58,.26);
+--banda:rgba(20,22,58,0.72);
+}
+*{box-sizing:border-box}
+body{margin:0;background:#D8D7D4;font-family:var(--font-testo);color:var(--ink);-webkit-font-smoothing:antialiased;display:flex;justify-content:center;padding:40px 20px}
+a{color:var(--ink)}a:hover{color:var(--ink-2)}
+.wrap{width:393px}
+.sigla{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.intesta{display:flex;flex-direction:column;gap:6px;padding:0 2px 12px}
+.intesta p{margin:0;font-size:12.5px;line-height:1.4;color:#3D4166}
+
+.tel{width:393px;height:852px;border-radius:26px;overflow:hidden;position:relative;background:#1B1D33;box-shadow:0 2px 4px rgba(20,22,58,.10),0 18px 40px rgba(20,22,58,.18)}
+.mirino{position:absolute;inset:0;background:#1B1D33;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.05) 0 10px,rgba(255,255,255,0) 10px 20px);display:flex;align-items:center;justify-content:center}
+.mirino-lb{font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.72);text-align:center;line-height:1.8;padding:0 24px}
+
+.chrome-alto{position:absolute;top:22px;left:16px;right:16px;display:flex;align-items:center;gap:8px;z-index:3}
+.tondo-44{width:44px;height:44px;flex:none;border:0;border-radius:999px;background:#fff;box-shadow:var(--ombra-nav);display:flex;align-items:center;justify-content:center;padding:0}
+.pill-tit{height:44px;display:flex;align-items:center;padding:0 16px;border-radius:999px;background:#fff;box-shadow:var(--ombra-nav);font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+
+.guida{position:absolute;inset:88px 40px 268px;pointer-events:none;z-index:1}
+.ang{position:absolute;width:30px;height:30px;border:3px solid rgba(255,255,255,.92)}
+.ang.tl{top:0;left:0;border-right:0;border-bottom:0;border-radius:14px 0 0 0}
+.ang.tr{top:0;right:0;border-left:0;border-bottom:0;border-radius:0 14px 0 0}
+.ang.bl{bottom:0;left:0;border-right:0;border-top:0;border-radius:0 0 0 14px}
+.ang.br{bottom:0;right:0;border-left:0;border-top:0;border-radius:0 0 14px 0}
+
+.banda{position:absolute;left:0;right:0;bottom:0;z-index:2;background:var(--banda);border-radius:22px 22px 0 0;padding:20px 16px 26px;display:flex;flex-direction:column;gap:12px}
+.riga-scatto{display:flex;align-items:center;gap:12px}
+.lato{flex:1;min-width:0;display:flex;align-items:center}
+.lato.destra{justify-content:flex-end}
+
+.scatta{width:76px;height:76px;flex:none;border:2px solid #fff;border-radius:999px;background:none;padding:0;display:flex;align-items:center;justify-content:center;transition:transform 180ms cubic-bezier(.2,.8,.25,1)}
+.scatta i{width:62px;height:62px;border-radius:999px;background:#fff;transition:transform 180ms cubic-bezier(.2,.8,.25,1)}
+.scatta:active{transform:scale(.96)}
+.scatta:active i{transform:scale(.88)}
+.scatta:focus-visible{outline:2px solid #fff;outline-offset:4px}
+
+.presi{display:flex;align-items:center;gap:8px}
+.mini{width:44px;height:44px;border-radius:14px;background:#fff;border:0;padding:0;position:relative;box-shadow:var(--ombra-nav);overflow:hidden;display:block}
+.mini .righe{position:absolute;inset:7px;background-image:repeating-linear-gradient(180deg,rgba(20,22,58,.16) 0 2px,rgba(20,22,58,0) 2px 7px)}
+.cont{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:#fff}
+.finito{height:44px;border:0;border-radius:999px;background:#fff;color:var(--ink);box-shadow:var(--ombra-nav);padding:0 16px;font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.galleria{min-height:50px;width:100%;border:1.5px solid rgba(255,255,255,.62);border-radius:18px;background:none;color:#fff;font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:10px}
+.ultimo{font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:#fff;padding:0 2px}
+
+.note{width:393px;margin-top:12px;background:#fff;border:1px solid var(--bordo);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.note p{margin:0;font-size:12.5px;line-height:1.45;color:var(--testo-2)}
+.note strong{color:var(--ink)}
+.comp{font-family:var(--font-mono);font-size:9px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;color:var(--testo-2);line-height:1.7}
+.rompe{font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--avviso);line-height:1.6}
+@media (prefers-reduced-motion:reduce){.scatta,.scatta i{transition:none}.scatta:active,.scatta:active i{transform:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="intesta"><div class="sigla">Fotografa il piano · scatto</div><p>Anteprima piena, banda semitrasparente in inchiostro, scatto bianco al centro. A sinistra i fogli già presi con il loro dettaglio, a destra HO FINITO; sotto, la galleria.</p></div>
+
+<div class="tel" data-screen-label="Fotocamera">
+  <div class="mirino"><span class="mirino-lb">anteprima della fotocamera</span></div>
+  <div class="guida" aria-hidden="true"><span class="ang tl"></span><span class="ang tr"></span><span class="ang bl"></span><span class="ang br"></span></div>
+  <div class="chrome-alto"><button type="button" class="tondo-44" aria-label="Indietro"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 5l-7 7 7 7" stroke="#14163A" stroke-width="1.8" stroke-linecap="round"/></svg></button><span class="pill-tit">Fotografa il piano</span></div>
+  <div class="banda">
+    <div class="riga-scatto">
+      <span class="lato">
+        <span class="presi">
+          <button type="button" class="mini" aria-label="Rivedi i 2 fogli presi"><span class="righe"></span></button>
+          <span class="cont">2 fogli</span>
+        </span>
+      </span>
+      <button type="button" class="scatta" aria-label="Scatta la foto del foglio"><i></i></button>
+      <span class="lato destra"><button type="button" class="finito">Ho finito</button></span>
+    </div>
+    <span class="ultimo">Ultimo foglio alle 18:04</span>
+    <button type="button" class="galleria">Seleziona dalla galleria</button>
+  </div>
+</div>
+
+<div class="note">
+  <div class="sigla">Misure</div>
+  <p>Banda: lati e fondo 0, raggio <strong>22px 22px 0 0</strong>, fondo <strong>rgba(20,22,58,0.72)</strong>, padding 20 / 16 / 26, gap 12. Riga dello scatto: due lati <code>flex: 1</code> e lo scatto al centro, quindi resta centrato sui 393 px anche quando i due lati hanno larghezze diverse. Fogli presi: miniatura 44 raggio 14 bianca con le righe finte e accanto il contatore in mono 10 / 700 / 0,11em; il dettaglio dell'ultimo scatto sta su una riga sua sotto la riga dello scatto, dove ci sta per intero senza andare a capo. HO FINITO: pillola bianca alta 44, mono 11 / 700 / 0,08em. Galleria: alta almeno 50, raggio 18, bordo 1,5 px in bianco al 62%. Cornice guida: inset 88 / 40 / 268, quattro angoli 30 × 30 a tratto 3 px.</p>
+  <div class="sigla" style="margin-top:4px">Lo scatto</div>
+  <p><strong>COMPONENTE NUOVO: Tasto di scatto.</strong> Anello da <strong>76</strong> con bordo <strong>2 px bianco</strong> e fondo trasparente, dentro un disco bianco da <strong>62</strong>: il vuoto fra i due è l'unico segno, niente icona e niente etichetta. Alla pressione l'anello va a 0,96 e il disco a 0,88 in <strong>180 ms</strong>, poi torna — dentro il momento “conferma di un'azione” di §7, e senza gesto non si muove niente. Con <code>prefers-reduced-motion</code> resta fermo. Il nome accessibile è “Scatta la foto del foglio”.</p>
+  <div class="sigla" style="margin-top:4px">Perché il testo è bianco pieno</div>
+  <p>Sulla banda a 0,72 il bianco pieno sta oltre 4,5:1 qualunque sia l'anteprima dietro; un bianco a bassa opacità no. Per questo dettagli, contatore e galleria sono <strong>#FFFFFF</strong>, e HO FINITO è una pillola bianca con inchiostro sopra invece del primario pieno, che su fondo scuro sparirebbe.</p>
+  <div class="sigla" style="margin-top:4px">Componenti usati</div>
+  <div class="comp">Testata in modalità indietro · Pillola di titolo · Tasto di scatto (componente nuovo) · Banda dei comandi (componente nuovo) · Miniatura del foglio preso · Pillola d'azione 44 · Tasto contornato 50</div>
+  <div class="sigla" style="margin-top:4px">Regole di DESIGN.md che tocca</div>
+  <div class="rompe">§12 nessuna foto: l'anteprima è contenuto del dispositivo, da dichiarare come eccezione · §5 fondo semitrasparente in inchiostro a 0,72 e bordo bianco a 0,62, due alfa fuori dalle quattro · §5 sesta ombra sul chrome sopra l'anteprima · §8 due componenti nuovi da scrivere prima della seconda schermata</div>
+</div>
+</div>
+</body>
+</html>
