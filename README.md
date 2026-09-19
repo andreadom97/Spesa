@@ -248,7 +248,7 @@ sopra "CHIUDENDO LA SPESA": `3 confezioni · 1,4 kg · circa 11 €`, con sotto 
 ingredienti con prezzo` quando non tutti gli evitati hanno un prezzo, o l'invito a
 metterlo quando nessuno ce l'ha; con zero evitate, `Niente, questa settimana: il residuo
 si costruisce spesa dopo spesa`; senza piano, nessuna scheda. In Dispensa una riga sotto
-la testata, `Da quando usi Spesa: 9 confezioni non ricomprate · 4,1 kg · circa 32 €`,
+la testata, `Da quando usi Dispesa: 9 confezioni non ricomprate · 4,1 kg · circa 32 €`,
 sommata **solo sulle settimane chiuse** — il totale racconta spese fatte davvero, non
 liste generate e abbandonate — e assente finché il totale è zero.
 

@@ -87,7 +87,7 @@ describe('GET /api/prodotto/[ean]', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0]! as [string, RequestInit & { next?: { revalidate?: number } }];
     expect(url).toBe(`https://world.openfoodfacts.org/api/v2/product/${EAN}.json?fields=product_name,brands,quantity,product_quantity,product_quantity_unit`);
-    expect((init.headers as Record<string, string>)['User-Agent']).toMatch(/^Spesa\//);
+    expect((init.headers as Record<string, string>)['User-Agent']).toMatch(/^Dispesa\//);
     // Cache per URL = per codice: nessun dato utente. `cache: 'no-store'` e
     // `revalidate` insieme si annullerebbero a vicenda (docs di fetch).
     expect(init.next).toEqual({ revalidate: 86400 });
