@@ -22,11 +22,14 @@ export function calcolaStatoBarra(prec: StatoBarra, scrollTop: number, delta: nu
  * nulla. Lo stato è esposto come `data-barra`: il CSS decide --fine e misure.
  */
 export function Guscio({ children }: { children: ReactNode }) {
-  const [barra, setBarra] = useState<StatoBarra>('grande');
   const pathname = usePathname();
+  const [stato, setStato] = useState<{ barra: StatoBarra; percorso: string | null }>({ barra: 'grande', percorso: pathname });
   const ultimo = useRef(new WeakMap<Element, number>());
 
-  useEffect(() => { setBarra('grande'); }, [pathname]);
+  // Cambio di route: la barra torna grande. Aggiustamento dello stato durante il
+  // render (pattern React per "stato derivato da una prop"), non in un effetto.
+  if (stato.percorso !== pathname) setStato({ barra: 'grande', percorso: pathname });
+  const barra = stato.percorso === pathname ? stato.barra : 'grande';
 
   useEffect(() => {
     const h = (e: Event) => {
@@ -37,7 +40,7 @@ export function Guscio({ children }: { children: ReactNode }) {
       // (altrimenti il primo evento avrebbe sempre delta 0 e non ridurrebbe mai la barra).
       const prec = ultimo.current.get(t) ?? 0;
       ultimo.current.set(t, top);
-      setBarra((s) => calcolaStatoBarra(s, top, top - prec));
+      setStato((s) => ({ barra: calcolaStatoBarra(s.barra, top, top - prec), percorso: s.percorso }));
     };
     document.addEventListener('scroll', h, { capture: true, passive: true });
     return () => document.removeEventListener('scroll', h, { capture: true });
