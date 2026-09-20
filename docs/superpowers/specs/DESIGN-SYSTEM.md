@@ -376,7 +376,7 @@ azioni distruttive, swipe nascosti, dark mode (per ora), caratteri sotto 8,5 px.
 | `#FFFFFF` letterale | 84 usi contro 39 `var(--superficie)` | token | sostituire |
 | `#14163A` e `#8A8A96` letterali | 20 e 17 usi (a fronte di 195 e 149 con `var()`) | token | sostituire; `Tessera`, `RigaControllo`, `RigaPasto` ridefiniscono `INK`/`MUT` come costanti locali |
 | Grigi decorativi `#C4C4CE` `#BFBFC9` `#B6B6C0` | 14 usi, nessun token | §2.3 | un token `--icona-spenta` |
-| Avviso/errore/congelato senza token | 3 + 1 + 2 usi | §2.3 | tre token, scuriti a 4,5:1 |
+| Avviso/errore/congelato senza token | 3 + 1 + 2 usi | §2.3 | tre token, scuriti a 4,5:1 — i token esistono in globals.css dal 20/09 (guscio comune); i letterali nei file restano finché non si toccano |
 | 22 taglie di carattere, 12 spaziature | grep `fontSize`/`letterSpacing` | §2.4 | scala a 9 livelli |
 | 15 raggi | grep `borderRadius` | §2.6 | scala a 5 |
 | 8 spessori di tratto SVG | grep `strokeWidth` | §2.8 | 1.8 e 2.1 |

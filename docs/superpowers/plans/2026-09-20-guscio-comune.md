@@ -148,7 +148,7 @@ git commit -m "feat(guscio): token del ridisegno, sei ombre, gradiente di scherm
 - Create: `src/components/Guscio.tsx`
 - Modify: `src/app/(app)/layout.tsx`
 - Modify: `src/app/globals.css` (aggiungi `.scroll-app`, `[data-barra]`, `.anim-barra`)
-- Modify: i 18 scroller delle pagine (`className="sc"` → `className="sc scroll-app"`): `src/app/(app)/lista/page.tsx:552,597`, `lista/fatta/page.tsx:186` (qui non c'è `className`: aggiungi `className="scroll-app"`), `lista/confezioni/page.tsx:351`, `settimana/page.tsx:508`, `settimana/[data]/[slotDefId]/scegli/page.tsx:480`, `dispensa/page.tsx:318`, `piatti/page.tsx:124,256`, `piatti/veloce/page.tsx:272`, `piatti/[id]/page.tsx:620` (NON la 1093, che è il foglio), `piatti/[id]/ingredienti/[ingId]/page.tsx:293`, `impostazioni/page.tsx:395`, `impostazioni/ingredienti/page.tsx:91`, `impostazioni/reparti/page.tsx:96`, `importa/page.tsx:344,657`.
+- Modify: i 17 scroller delle pagine (`className="sc"` → `className="sc scroll-app"`): `src/app/(app)/lista/page.tsx:552,597`, `lista/fatta/page.tsx:186` (qui non c'è `className`: aggiungi `className="scroll-app"`), `lista/confezioni/page.tsx:351`, `settimana/page.tsx:508`, `settimana/[data]/[slotDefId]/scegli/page.tsx:480`, `dispensa/page.tsx:318`, `piatti/page.tsx:124,256`, `piatti/veloce/page.tsx:272`, `piatti/[id]/page.tsx:620` (NON la 1093, che è il foglio), `piatti/[id]/ingredienti/[ingId]/page.tsx:293`, `impostazioni/page.tsx:395`, `impostazioni/ingredienti/page.tsx:91`, `impostazioni/reparti/page.tsx:96`, `importa/page.tsx:344,657`.
 - Test: `src/components/__tests__/guscio.test.tsx` (nuovo)
 
 **Interfaces:**
@@ -315,7 +315,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 }
 ```
 
-- [ ] **Step 6: Censimento dei 18 scroller**
+- [ ] **Step 6: Censimento dei 17 scroller**
 
 In ogni file elencato sopra, sulla riga indicata, `className="sc"` diventa `className="sc scroll-app"`; in `lista/fatta/page.tsx:186` il `div` non ha `className`: aggiungi `className="scroll-app"`. Non toccare `piatti/[id]/page.tsx:1093` (è il foglio del selettore). Verifica con:
 

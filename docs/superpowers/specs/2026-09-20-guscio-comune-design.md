@@ -70,7 +70,7 @@ almeno 6 px o `scrollTop < 8`. Il cambio di route riporta a grande. Il listener 
 il calcolo è un confronto di due numeri: niente `requestAnimationFrame`, niente throttling.
 
 **Gli scroller delle pagine.** Ogni pagina ha già il proprio contenitore `className="sc"`
-con `overflowY: auto` (18 occorrenze in 15 file). Ognuno prende la classe `scroll-app`, definita
+con `overflowY: auto` (17 occorrenze in 15 file). Ognuno prende la classe `scroll-app`, definita
 in `globals.css`:
 
 ```css
@@ -85,11 +85,11 @@ in `globals.css`:
 ```
 
 `--coda` è 140 (84 di barra + 22 + 34 di respiro) e diventa 194 in fase 2 dove c'è il Dock.
-L'`!important` serve perché i padding sono inline nei file: toccare 18 stili inline per un
+L'`!important` serve perché i padding sono inline nei file: toccare 17 stili inline per un
 solo valore è la modifica che questa spec vuole evitare; la classe vince e il padding
 orizzontale inline resta (si applica solo `padding-bottom`). Le pagine non cambiano altro.
 Una pagina senza `scroll-app` funziona comunque: il contenuto finisce sotto la barra senza
-sfumatura. Il censimento delle 18 occorrenze è nel piano.
+sfumatura. Il censimento delle 17 occorrenze è nel piano.
 
 ## C. La tab bar
 
@@ -211,7 +211,7 @@ Nessun altro copy cambia.
 ## I. Esecuzione
 
 Un piano in `docs/superpowers/plans/2026-09-20-guscio-comune.md`, subagent-driven, task
-disgiunti: (1) token e fondo; (2) `Guscio` + `scroll-app` + censimento dei 18 scroller;
+disgiunti: (1) token e fondo; (2) `Guscio` + `scroll-app` + censimento dei 17 scroller;
 (3) `TabBar` + `Marchio` + contesto; (4) `Testata` + `useUtente` + Dispensa; (5) rinomina
 Piano + redirect + sw; (6) aggiornamento dei test di pagina; (7) verifica browser e README.
 Prima della PR: review di correttezza e di sicurezza (il `useUtente` legge dati dell'utente;

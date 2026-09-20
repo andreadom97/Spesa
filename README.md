@@ -397,6 +397,9 @@ la correzione si fa prima di chiudere la spesa. Spec:
 | `design/*.dc.html` | 69 artboard. Le 12 definitive sono elencate sotto; il resto è l'archivio delle direzioni esplorate |
 | `design/canvas.json` | Impaginazione del canvas: pagina 1 = v1 definitiva, pagina 2 = archivio |
 | `design/build.sh` | Rigenera il canvas da tutti gli artboard |
+| `src/components/Guscio.tsx` | Stato della barra, listener di scorrimento in cattura, gradiente |
+| `src/components/marchio-context.tsx` | Le aree mancanti dalla Lista al Marchio in tab bar |
+| `src/data/utente.ts` | L'iniziale per il menù utente |
 
 **Canvas pubblicato:** <https://claude.ai/code/artifact/154c7e8b-23fb-4300-bd72-5d71733e4b30>
 Per aggiornarlo: `bash design/build.sh`, poi ripubblicare quello stesso URL con lo strumento Artifact.
@@ -416,6 +419,19 @@ non ha una specifica visiva contro cui confrontarsi — a differenza di tutte le
 Tutto il resto in `design/` è archivio: direzioni visive scartate (`Dir*`, `Mag*`,
 `Rail*`, `Hero*`), prove di testata e logo (`Hdr*`, `Logo*`, `Grid*`, `Casa*`, `Ico*`),
 e varianti di interazione (`Int*`, `Set*`). Servono a non riaprire discussioni già chiuse.
+
+## Il guscio del redesign (20/09/2026)
+
+Dal 20/09 tutte le schermate vivono nel guscio del redesign approvato in Claude Design
+(`design/sistema/DESIGN.md` v3): fondo a gradiente, tab bar flottante che si restringe
+scorrendo (`src/components/Guscio.tsx` ascolta gli scroller con un solo listener in cattura
+ed espone `data-barra`; `TabBar.tsx` porta il Marchio come icona della Lista, alimentato da
+`marchio-context.tsx`), testata con il menù utente al posto dell'ingranaggio
+(`Testata.tsx`, iniziale da `src/data/utente.ts`), titoli in sentence case e la sezione
+Settimana che si chiama **Piano** (`/piano`, con redirect permanente da `/settimana`). Il
+corpo delle schermate è quello di prima: le fasi 2–5 del redesign lo cambiano una coppia di
+schermate per volta. Gli scroller delle pagine portano la classe `scroll-app`, che aggiunge
+la sfumatura e la coda di 140 px sopra la barra.
 
 ## Le decisioni che non si deducono dal codice
 

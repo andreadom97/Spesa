@@ -21,8 +21,8 @@ con `ELEMENTO NUOVO:`; uno tolto con `ELEMENTO TOLTO:`.
 | 1 | Lista | `/lista` | LISTA | in corsia, il sabato |
 | 2 | Hai preso tutto | `/lista/fatta` | LISTA | a fine spesa |
 | 3 | Confezioni diverse | `/lista/confezioni` | LISTA | a fine spesa, se una confezione è diversa |
-| 4 | Settimana | `/settimana` | SETTIMANA | la domenica per pianificare, la sera per la spunta |
-| 5 | Scegli | `/settimana/{data}/{slotDefId}/scegli` | SETTIMANA | cambiare il piatto di un pasto |
+| 4 | Piano (ex Settimana) | `/piano` | PIANO | la domenica per pianificare, la sera per la spunta |
+| 5 | Scegli | `/piano/{data}/{slotDefId}/scegli` | PIANO | cambiare il piatto di un pasto |
 | 6 | Dispensa | `/dispensa` | DISPENSA | controllo del residuo, Pronti, correzione con nota |
 | 7 | Primo avvio | nessuna route (cancello) | — | prima apertura dell'app |
 | 8 | Piatti | `/piatti` | PIATTI | repertorio, due porte quando è vuoto |
@@ -441,6 +441,8 @@ proposto di confezioni è ricalcolato in locale con la stessa aritmetica della l
 ---
 
 ## 4. Settimana — `/settimana`
+
+> Dal 20/09 la route è `/piano` e la schermata si chiama Piano (fase 1 del redesign); il corpo descritto qui è ancora quello attuale.
 
 **File:** `src/app/(app)/settimana/page.tsx`; `src/components/RigaPasto.tsx`,
 `src/components/StrisciaGiorni.tsx`, `src/components/FoglioAzioniPasto.tsx`,
@@ -2020,14 +2022,14 @@ design system, non dal codice: qui il redesign è già deciso, va solo applicato
 
 | Fatto nel codice | Regola del design system | Schermate |
 |---|---|---|
-| Titoli passati a `Testata`: `Spesa`, `Settimana`, `Piatti`, `Importa la dieta` in sentence case | §2.4: una parola sola in maiuscolo (`LISTA`, `SETTIMANA`, `PIATTI`) | 1, 2, 4, 8, 15 |
+| Titoli passati a `Testata`: `Spesa`, `Settimana`, `Piatti`, `Importa la dieta` in sentence case | §2.4: una parola sola in maiuscolo (`LISTA`, `SETTIMANA`, `PIATTI`) | 1, 2, 4, 8, 15 — **chiusa il 20/09 dal guscio comune** |
 | Nessuna azione irreversibile della parte spesa ha un dialogo: `CHIUDI LA SPESA`, `SOSTITUISCI`, `AGGIORNA`, eliminazione di un lotto Pronti sono un tap | §4 Conferme: dialogo a due tasti | 2, 3, 5, 6 |
 | Conferme in Impostazioni a due tocchi sullo stesso tasto (`SICURO?`) | §4: dialogo a due tasti | 12 |
 | `ELIMINA` nei dialoghi di Piatto e Ingrediente è in ink pieno | §3 Tasti: distruttivo pieno in `--errore` | 10, 11 |
 | Dispensa, Piatti veloce, Impostazioni, Ingredienti, Ordine reparti **non usano `Testata`**: header ridotto proprio, con freccia | §3 Testata: marchio + titolo 52 sulle radice, freccia sulle figlie | 6, 9, 12, 13, 14 |
-| Dispensa è una voce di tab bar ma ha la freccia verso `/impostazioni` | una pagina radice non ha freccia | 6 |
+| Dispensa è una voce di tab bar ma ha la freccia verso `/impostazioni` | una pagina radice non ha freccia | 6 — **chiusa il 20/09 dal guscio comune** |
 | Quattro controlli senza nome accessibile: frecce di Piatto in modifica, Ingrediente, Ordine reparti; interruttore DEPERIBILE | §4 Accessibilità: ogni controllo ha un nome | 10, 11, 14 |
-| Errori e note tutti in `--sec`; congelato `#4A90D9`; grigi decorativi letterali | §2.1 e §2.3: `--testo-2`, `--errore`, `--freddo`, `--icona-spenta` | tutte |
+| Errori e note tutti in `--sec`; congelato `#4A90D9`; grigi decorativi letterali | §2.1 e §2.3: `--testo-2`, `--errore`, `--freddo`, `--icona-spenta` | tutte — **i cinque token sono in globals.css dal 20/09; i letterali nei file restano** |
 | Nessun logout in tutta l'app | non è una regola del design system: è una feature mancante (nel backlog dal 15/09) | 12 |
 | `/entra` è l'unica schermata in Tailwind, misure 52/18 fuori scala | §2.4–2.6 | 16 |
 | Input file nativo visibile nel ramo PDF dell'import | §3 Campo: input nascosto dietro label-bottone | 15 |
