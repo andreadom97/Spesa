@@ -119,7 +119,7 @@ export default function Piatti() {
       </div>
 
       <div
-        className="sc"
+        className="sc scroll-app"
         style={{
           flex: 1, minHeight: 0, overflowY: 'auto',
           padding: '2px 16px 14px', display: 'flex', flexDirection: 'column', gap: 10,
@@ -253,7 +253,7 @@ function SchedaPiatto({ piatto, nomeSlot, aree }: PropsScheda) {
 function VuotoPiatti() {
   return (
     <Cornice>
-      <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 16px' }}>
+      <div className="sc scroll-app" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 16px' }}>
         <div
           style={{
             fontSize: 21, fontWeight: 800, letterSpacing: '-0.035em', lineHeight: 1.2,

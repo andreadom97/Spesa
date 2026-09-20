@@ -181,7 +181,7 @@ export default function ListaFatta() {
   return (
     <Cornice settimana={stato.settimanaLabel}>
       <div
-        className="sc"
+        className="sc scroll-app"
         style={{
           flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 16px',
           display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 12,

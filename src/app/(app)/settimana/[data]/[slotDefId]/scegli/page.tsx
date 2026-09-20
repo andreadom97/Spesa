@@ -477,7 +477,7 @@ export default function ScegliPiatto() {
 
   return (
     <Cornice etichetta={etichettaHeader}>
-      <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 16px' }}>
+      <div className="sc scroll-app" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 16px' }}>
         <div style={{ fontSize: 32, fontWeight: 800, letterSpacing: '-0.045em', lineHeight: 1.05, color: 'var(--ink)', padding: '0 2px 16px' }}>
           Cosa mangi
         </div>

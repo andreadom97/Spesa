@@ -617,7 +617,7 @@ export default function Piatto() {
 
   return (
     <Cornice onCestino={tapCestino}>
-      <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 14px' }}>
+      <div className="sc scroll-app" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 14px' }}>
         <textarea
           ref={nomeRef}
           rows={1}

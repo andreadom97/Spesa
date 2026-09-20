@@ -315,7 +315,7 @@ export default function Dispensa() {
 
   return (
     <Cornice>
-      <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 16px 20px' }}>
+      <div className="sc scroll-app" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 16px 20px' }}>
         {/* Il residuo derivato, sommato sulle settimane chiuse: una riga e
             basta, e solo quando c'è qualcosa da dire. */}
         {totaleNonRicomprato && (

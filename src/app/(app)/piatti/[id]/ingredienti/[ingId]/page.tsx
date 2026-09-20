@@ -290,7 +290,7 @@ export default function IngredienteEditor() {
 
   return (
     <Cornice dishId={id} onCestino={tapCestino}>
-      <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 16px' }}>
+      <div className="sc scroll-app" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 16px' }}>
         <input
           type="text"
           value={nome}

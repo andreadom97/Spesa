@@ -505,7 +505,7 @@ export default function Settimana() {
         />
       </div>
 
-      <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 16px 12px' }}>
+      <div className="sc scroll-app" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 16px 12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '0 0 10px' }}>
           <button
             type="button"

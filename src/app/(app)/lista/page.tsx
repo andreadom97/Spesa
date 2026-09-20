@@ -549,7 +549,7 @@ export default function Lista() {
       };
     return (
       <Cornice titolo="Spesa" settimana={settimanaLabelVuoto} aree={[]}>
-        <div className="sc" style={{ flex: 1, overflowY: 'auto', padding: '6px 16px 16px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <div className="sc scroll-app" style={{ flex: 1, overflowY: 'auto', padding: '6px 16px 16px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
           <div style={{ padding: '26px 20px', borderRadius: 22, background: '#FFFFFF', border: '1px solid rgba(20,22,58,0.07)', textAlign: 'center' }}>
             <div style={{ width: 46, height: 46, margin: '0 auto 20px', borderRadius: 14, border: '2px dashed rgba(20,22,58,0.20)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -594,7 +594,7 @@ export default function Lista() {
 
   return (
     <Cornice titolo="Spesa" settimana={stato.settimanaLabel} aree={areeMancanti(lista)}>
-      <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="sc scroll-app" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
         {stato.offline && (
           <p style={{ margin: '0 4px', fontSize: 12.5, lineHeight: 1.4, color: 'var(--sec)' }}>
             {`Sei offline: questa è la lista di ${stato.settimanaLabel} salvata l'ultima volta che l'hai aperta. Le spunte si sincronizzano appena torna la rete.`}

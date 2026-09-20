@@ -341,7 +341,7 @@ function SchermataAcquisizione({ tab, onTab, foto, onFoto, pdf, onPdf, onEstrai 
         />
       </div>
 
-      <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 16px 16px' }}>
+      <div className="sc scroll-app" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 16px 16px' }}>
         {tab === 'foto' ? (
           // `iniziali={foto}`: Camera si smonta e rimonta a ogni uscita/rientro
           // in questa vista (es. dopo un errore di estrazione, RIPROVA torna
@@ -654,7 +654,7 @@ function Riepilogo({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-      <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 16px 16px' }}>
+      <div className="sc scroll-app" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 16px 16px' }}>
         {pronto && (
           <div style={{ padding: '16px 15px', borderRadius: 18, background: 'var(--superficie)', border: '1px solid var(--bordo)', fontSize: 14.5, lineHeight: 1.5, color: 'var(--ink)' }}>
             {nPiatti} piatti su {mSettimane} settimane · {kIngredienti} ingredienti nuovi · {xDisattivati} piatti del piano attuale verranno disattivati
