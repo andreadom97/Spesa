@@ -361,7 +361,7 @@ describe('Settimana (piano alimentare)', () => {
     await screen.findByText('Yogurt e frutta');
 
     const freccia = screen.getByLabelText('Scegli il piatto per Colazione');
-    expect(freccia).toHaveAttribute('href', `/settimana/${OGGI}/sd-1/scegli`);
+    expect(freccia).toHaveAttribute('href', `/piano/${OGGI}/sd-1/scegli`);
   });
 
   it('il contatore conta solo i pasti a casa con un piatto assegnato', async () => {

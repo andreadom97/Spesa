@@ -330,7 +330,7 @@ describe('Lista', () => {
     render(<Lista />);
 
     expect(await screen.findByText('La lista non c’è ancora')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'VAI ALLA SETTIMANA' })).toHaveAttribute('href', '/settimana');
+    expect(screen.getByRole('link', { name: 'VAI ALLA SETTIMANA' })).toHaveAttribute('href', '/piano');
   });
 
   it('senza settimana corrente mostra lo stato vuoto senza pillola', async () => {
@@ -373,7 +373,7 @@ describe('Lista', () => {
     render(<Lista />);
 
     expect(await screen.findByText('La lista non c’è ancora')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'VAI ALLA SETTIMANA' })).toHaveAttribute('href', '/settimana');
+    expect(screen.getByRole('link', { name: 'VAI ALLA SETTIMANA' })).toHaveAttribute('href', '/piano');
     expect(screen.queryByText('Prima servono i piatti')).not.toBeInTheDocument();
   });
 
@@ -384,7 +384,7 @@ describe('Lista', () => {
     render(<Lista />);
 
     expect(await screen.findByText('La lista non c’è ancora')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'VAI ALLA SETTIMANA' })).toHaveAttribute('href', '/settimana');
+    expect(screen.getByRole('link', { name: 'VAI ALLA SETTIMANA' })).toHaveAttribute('href', '/piano');
     expect(screen.queryByText('Non riusciamo a caricare la lista. Riprova più tardi.')).not.toBeInTheDocument();
     expect(errore).toHaveBeenCalledWith('lista: lettura del repertorio fallita.', expect.any(Error));
     errore.mockRestore();

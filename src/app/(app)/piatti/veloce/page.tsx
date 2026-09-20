@@ -427,7 +427,7 @@ export default function PiattiVeloce() {
 
       <div style={{ padding: '8px 16px 22px', display: 'flex', gap: 9 }}>
         <Link
-          href="/settimana"
+          href="/piano"
           data-primario={puoGirare ? 'true' : 'false'}
           style={{
             ...TASTO_BASE,

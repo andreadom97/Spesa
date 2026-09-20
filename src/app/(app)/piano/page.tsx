@@ -595,7 +595,7 @@ export default function Settimana() {
                 avvisi={avvisiDelPasto(def.id)}
                 onToggleStato={() => toggleStato(slot)}
                 onApriPiatto={piatto ? () => apriPiatto(piatto.id) : undefined}
-                hrefScegli={`/settimana/${dataSelezionata}/${def.id}/scegli`}
+                hrefScegli={`/piano/${dataSelezionata}/${def.id}/scegli`}
                 onApriAzioni={apribile ? () => setFoglio({ slot, def }) : undefined}
               />
             );
@@ -640,7 +640,7 @@ export default function Settimana() {
           prontiCongelato={lotti.find((l) => l.mealSlotId === foglio.slot.id)?.congelato ?? false}
           daPronti={foglio.slot.daPronti}
           prontiDisponibili={foglio.slot.dishId ? prontiPerPiatto.get(foglio.slot.dishId) ?? 0 : 0}
-          hrefScegli={`/settimana/${foglio.slot.data}/${foglio.def.id}/scegli`}
+          hrefScegli={`/piano/${foglio.slot.data}/${foglio.def.id}/scegli`}
           onSaltato={() => spuntaStato(foglio.slot, 'saltato')}
           onMangiatoAltro={() => spuntaStato(foglio.slot, 'sostituito')}
           onTornaAlPiano={() => tornaAlPiano(foglio.slot)}

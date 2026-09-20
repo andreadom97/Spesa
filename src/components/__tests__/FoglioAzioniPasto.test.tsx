@@ -20,7 +20,7 @@ function renderFoglio(sovrascrivi: Partial<Parameters<typeof FoglioAzioniPasto>[
       prontiCongelato={false}
       daPronti={false}
       prontiDisponibili={0}
-      hrefScegli="/settimana/2026-08-26/sd-3/scegli"
+      hrefScegli="/piano/2026-08-26/sd-3/scegli"
       {...handlers}
       {...sovrascrivi}
     />,

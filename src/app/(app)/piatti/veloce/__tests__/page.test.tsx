@@ -197,7 +197,7 @@ describe('Piatti veloce (/piatti/veloce)', () => {
         screen.getByText('11 piatti salvati · manca 1 piatto per Spuntino (o esci con HO FINITO)'),
       ).toBeInTheDocument();
       const hoFinito = screen.getByRole('link', { name: 'HO FINITO' });
-      expect(hoFinito).toHaveAttribute('href', '/settimana');
+      expect(hoFinito).toHaveAttribute('href', '/piano');
       expect(hoFinito).toHaveAttribute('data-primario', 'false');
     });
 
@@ -598,7 +598,7 @@ describe('Piatti veloce (/piatti/veloce)', () => {
   describe('navigazione', () => {
     it('HO FINITO porta alla Settimana e la freccia torna ai Piatti', async () => {
       await apri();
-      expect(screen.getByRole('link', { name: 'HO FINITO' })).toHaveAttribute('href', '/settimana');
+      expect(screen.getByRole('link', { name: 'HO FINITO' })).toHaveAttribute('href', '/piano');
       expect(screen.getByRole('link', { name: 'Torna ai piatti' })).toHaveAttribute('href', '/piatti');
     });
 
@@ -612,7 +612,7 @@ describe('Piatti veloce (/piatti/veloce)', () => {
       await apri(repertorioPerPasto([2, 2, 2, 2]), QUATTRO_PASTI);
       expect(screen.getByText('Ne hai 8: la settimana può girare. Aggiungine quanti vuoi.')).toBeInTheDocument();
       const hoFinito = screen.getByRole('link', { name: 'HO FINITO' });
-      expect(hoFinito).toHaveAttribute('href', '/settimana');
+      expect(hoFinito).toHaveAttribute('href', '/piano');
       expect(hoFinito).toHaveAttribute('data-primario', 'true');
       expect(screen.getByRole('button', { name: 'SALVA E AVANTI' })).toHaveAttribute('data-primario', 'false');
     });

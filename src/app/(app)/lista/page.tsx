@@ -545,7 +545,7 @@ export default function Lista() {
       : {
         titolo: 'La lista non c’è ancora',
         testo: 'Nasce dalla settimana: appena confermi quali pasti farai a casa, qui trovi cosa comprare e quante confezioni.',
-        href: '/settimana',
+        href: '/piano',
         bottone: 'VAI ALLA SETTIMANA',
       };
     return (

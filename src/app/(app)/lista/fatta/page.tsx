@@ -120,7 +120,7 @@ export default function ListaFatta() {
         // Spesa già chiusa (un link vecchio, il tasto indietro): il traguardo
         // è passato e CHIUDI sarebbe un no-op che sembra fare qualcosa.
         if (settimana.stato === 'chiusa') {
-          router.replace('/settimana');
+          router.replace('/piano');
           return;
         }
         const lista = await leggiListe(settimana.id);
@@ -155,7 +155,7 @@ export default function ListaFatta() {
     setErroreChiusura(null);
     try {
       await chiudiSpesa(stato.weekId);
-      router.push('/settimana');
+      router.push('/piano');
     } catch (errore) {
       console.error('lista/fatta: chiusura della spesa fallita.', errore);
       setErroreChiusura('Non siamo riusciti a chiudere la spesa. Riprova.');

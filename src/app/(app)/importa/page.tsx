@@ -601,7 +601,7 @@ function Riepilogo({
     setErroreEsecuzione(null);
     try {
       await eseguiScritture(scritture);
-      router.push('/settimana');
+      router.push('/piano');
     } catch (e) {
       console.error('importa: esecuzione dell’import fallita.', e);
       setErroreEsecuzione('Qualcosa si è fermato: riprova, l’import riprende da dove era.');

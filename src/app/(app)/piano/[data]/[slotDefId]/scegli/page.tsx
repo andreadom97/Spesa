@@ -430,7 +430,7 @@ export default function ScegliPiatto() {
       // scrive `fonte_stato` — scegliere un piatto non è di per sé una
       // transizione di stato casa/fuori.
       await aggiornaSlot(dati.slotId, patch, 'correzione');
-      router.push('/settimana');
+      router.push('/piano');
     } catch (errore) {
       console.error('scegli: salvataggio della scelta fallito.', errore);
       setErroreSalva('Non siamo riusciti a salvare la scelta. Riprova.');
@@ -674,7 +674,7 @@ export default function ScegliPiatto() {
 
       <div style={{ padding: '8px 16px 22px', display: 'flex', gap: 9 }}>
         <Link
-          href="/settimana"
+          href="/piano"
           style={{
             flex: 'none',
             width: 104,
@@ -724,15 +724,15 @@ export default function ScegliPiatto() {
 /**
  * Header minimale dell'artboard: freccia indietro, etichetta centrale
  * ("GIOVEDÌ 4 · CENA"), spaziatore a destra per tenere l'etichetta centrata.
- * Torna sempre a `/settimana`: questa schermata si apre solo da lì.
+ * Torna sempre a `/piano`: questa schermata si apre solo da lì.
  */
 function Cornice({ etichetta, children }: { etichetta: string; children?: ReactNode }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       <div style={{ padding: '18px 16px 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Link
-          href="/settimana"
-          aria-label="Torna alla Settimana"
+          href="/piano"
+          aria-label="Torna al Piano"
           style={{ width: 44, height: 44, margin: '0 0 0 -10px', flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
           <svg width="23" height="23" viewBox="0 0 24 24" fill="none">

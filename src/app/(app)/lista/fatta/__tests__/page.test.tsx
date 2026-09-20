@@ -67,12 +67,12 @@ beforeEach(() => {
 });
 
 describe('Lista fatta — accesso', () => {
-  it('a settimana chiusa rimanda a /settimana senza leggere le liste', async () => {
+  it('a settimana chiusa rimanda a /piano senza leggere le liste', async () => {
     vi.mocked(leggiSettimanaCorrente).mockResolvedValue({ ...SETTIMANA, stato: 'chiusa' });
 
     render(<ListaFatta />);
 
-    await waitFor(() => expect(replace).toHaveBeenCalledWith('/settimana'));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/piano'));
     expect(leggiListe).not.toHaveBeenCalled();
     expect(leggiRisparmioSettimana).not.toHaveBeenCalled();
     expect(screen.queryByText('Hai preso tutto')).not.toBeInTheDocument();
@@ -191,7 +191,7 @@ describe('Lista fatta — NON RICOMPRATO QUESTA SETTIMANA', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'CHIUDI LA SPESA' }));
     await waitFor(() => expect(chiudiSpesa).toHaveBeenCalledWith('week-1'));
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/settimana'));
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/piano'));
 
     errore.mockRestore();
   });

@@ -176,7 +176,7 @@ export default function Confezioni() {
         // A spesa chiusa il residuo è già accreditato: correggere qui non
         // cambierebbe niente (spec §1), e il data layer rifiuterebbe comunque.
         if (settimana.stato === 'chiusa') {
-          router.replace('/settimana');
+          router.replace('/piano');
           return;
         }
         const lista = await leggiListe(settimana.id);
@@ -272,7 +272,7 @@ export default function Confezioni() {
       }
     } catch (errore) {
       if (errore instanceof Error && errore.message === 'spesa già chiusa') {
-        router.replace('/settimana');
+        router.replace('/piano');
         return;
       }
       console.error('lista/confezioni: aggiornamento del formato fallito.', errore);

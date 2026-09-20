@@ -158,7 +158,7 @@ describe('Confezioni — accesso ed elenco', () => {
 
     render(<Confezioni />);
 
-    await waitFor(() => expect(replace).toHaveBeenCalledWith('/settimana'));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/piano'));
     expect(leggiListe).not.toHaveBeenCalled();
     expect(leggiVociComprate).not.toHaveBeenCalled();
   });
@@ -468,7 +468,7 @@ describe('Confezioni — scansione', () => {
     await scansiona();
     fireEvent.click(await screen.findByRole('button', { name: 'AGGIORNA' }));
 
-    await waitFor(() => expect(replace).toHaveBeenCalledWith('/settimana'));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/piano'));
   });
 
   it('altro errore in scrittura: messaggio e si può riprovare', async () => {
