@@ -15,6 +15,7 @@ import { leggiIstantaneaLista, salvaIstantaneaLista, cancellaIstantaneaLista } f
 import { Testata } from '@/components/Testata';
 import { Tessera } from '@/components/Tessera';
 import { RigaControllo } from '@/components/RigaControllo';
+import { useAreeMancanti } from '@/components/marchio-context';
 
 const INK = '#14163A';
 const MUT = '#8A8A96';
@@ -778,6 +779,7 @@ function SelettoreTab({
 
 /** Colonna a tutta altezza con la testata fissa in cima: solo il corpo passato come children scorre. */
 function Cornice({ titolo, settimana, aree, children }: { titolo: string; settimana?: string; aree?: AreaId[]; children?: ReactNode }) {
+  useAreeMancanti(aree ?? []);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       <Testata titolo={titolo} settimana={settimana} aree={aree} />

@@ -118,3 +118,14 @@
   .anim-barra-voce { transition: height var(--moto-barra) var(--curva-barra), gap var(--moto-barra) var(--curva-barra); }
   .anim-barra-etichetta { transition: max-height var(--moto-barra) var(--curva-barra), opacity 150ms linear; }
 }
+
+/* ---------- tab bar versione B (spec 20/09 §C) ---------- */
+.barra { position: absolute; left: var(--barra-lato); right: var(--barra-lato); bottom: var(--barra-fondo); height: var(--barra-alta); border-radius: 999px; display: flex; align-items: center; gap: var(--barra-gap); padding: var(--barra-padding); background: var(--superficie); box-shadow: var(--ombra-nav); z-index: 20; }
+.barra-voce { flex: 1; height: var(--barra-voce); border-radius: 999px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; overflow: hidden; text-decoration: none; }
+.barra-voce.attiva { background: var(--barra-attiva); }
+.barra-segno { display: flex; align-items: center; justify-content: center; flex: none; height: var(--barra-segno); }
+.barra-etichetta { font-family: var(--font-mono); font-size: 8.5px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--off); white-space: nowrap; max-height: 12px; opacity: 1; line-height: 1; }
+.barra-voce.attiva .barra-etichetta { color: var(--ink); font-weight: 700; }
+.guscio[data-barra="ridotta"] .barra { height: var(--barra-bassa); left: var(--barra-lato-giu); right: var(--barra-lato-giu); }
+.guscio[data-barra="ridotta"] .barra-voce { height: var(--barra-voce-giu); gap: 0; }
+.guscio[data-barra="ridotta"] .barra-etichetta { max-height: 0; opacity: 0; }
