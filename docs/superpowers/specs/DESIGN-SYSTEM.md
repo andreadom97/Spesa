@@ -434,3 +434,45 @@ Token da aggiungere a `globals.css` alla prima modifica utile (non ancora nel co
 --freddo: #2F6FBF;
 --icona-spenta: #C4C4CE;
 ```
+
+---
+
+## 9. Redesign del 19–20/09: cosa cambia
+
+**La fonte di verità per il design non è più questo file: è `design/sistema/DESIGN.md` v3
+(20/09/2026).** Questo documento resta il **registro delle derive del codice** — §6 con i
+conteggi misurati su `src/` e §7 con le regole per chi scrive codice — e va letto insieme a
+`DESIGN.md` v3, non al posto suo. Dove i due divergono, per il **disegno** vale `DESIGN.md` v3;
+per **quanto il codice si scosta**, vale §6 qui. La cronaca delle decisioni sta in
+`design/sistema/CLAUDE.md`, l'analisi che le ha prodotte in `design/ridisegno/ANALISI.md`.
+
+Le dieci regole cambiate, in una riga ciascuna:
+
+1. **Gradiente** — il fondo della schermata è `linear-gradient(180deg,#EDECEA,#F2F1EF 34%,#F8F8F7 70%,#FCFCFB)`: cade il «Nessun gradiente» di §1 principio 5 e la prima voce di §5, e l'unica eccezione è l'anteprima della fotocamera (nessun gradiente resta ammesso **sugli oggetti**).
+2. **Ombre** — da tre a **sei**: restano le tre di §2.7 e si aggiungono `--ombra-pannello`, `--ombra-nav` e `--ombra-alta`, a due strati, sulle superfici flottanti; cade «Nient'altro ha ombra».
+3. **Tab bar** — pillola **flottante** `left/right 16` `bottom 22` alta **84**, raggio 999, icone **26 piene**, voce attiva a 0,07, e un **secondo stato** a 66 con i lati a 46 e le etichette nascoste ma cliccabili: cadono i 21 px, il raggio 14 e il `padding 10 16 20` nel flusso di §3.
+4. **Nomi della barra** — `SETTIMANA` diventa **Piano**, l'ordine è **Lista · Piano · Piatti · Dispensa**, e l'**icona della Lista è il Marchio** (3 × 2, lato 9, raggio 2,52): il Marchio esce dalla Testata e con lui il link `Vai alla lista`.
+5. **Menù utente** — l'ingranaggio 24 px di §3 Testata è sostituito da una pillola 81 × 50 col tondo 38 e l'iniziale in mono 16, che apre il pannello delle impostazioni.
+6. **Piano** — la schermata Settimana si chiama Piano, guadagna la pillola settimana e l'etichetta del giorno scelto, e la cella della striscia ha un **quarto stato** («oggi e selezionato»).
+7. **Sentence case** — i titoli di schermata sono `Lista`, `Piano`, `Piatti`, `Dispensa`, `Impostazioni`: chiude la divergenza n. 1 di «Non determinato dal codice» contro il maiuscolo di §2.4 (il codice oggi passa `Spesa`).
+8. **Dock** — il tasto primario non sta più in coda al contenuto ma in un componente condiviso sopra la tab bar (`bottom` 114 → 96), che si restringe con lei: `HAI PRESO TUTTO`, `CONFERMA E CREA LA LISTA`, `HO FINITO`, i primari degli stati vuoti.
+9. **Componenti nuovi** — Menù utente, Dock, Tessera widget di sezione, Riga piatto, Tessera di dispensa (tinta d'area al 26%: **quinto** uso del colore, contro i quattro di §2.2), Pannello impostazioni, Riga di impostazione, Matrice dei pasti, Tasto di scatto, Banda dei comandi, Striscia dei fogli presi, stato «Registro».
+10. **Scale ed eccezioni** — due raggi fuori dai cinque, **dichiarati** (26 sulla cornice, 2,52 sulle caselle del Marchio in barra, che rispetta `lato × 0,28`); la tabella degli alfa ammessi è aperta a 0,26 · 0,55 · 0,62 · 0,72; la maschera di scorrimento (`--fine` 128 / 110) e `.anim-barra` a 200 ms sono il quinto momento di movimento.
+
+Le cinque risposte di Andrea del **20/09**, che chiudono le domande di `ANALISI.md` §6:
+
+1. **Dispensa** — il dock `Fai una modifica` apre un **foglio dal basso con tre vie**: a mano (campo residuo, congelatore, Pronti), con una nota (testo o voce), scansione. **Nessuna funzione attuale si perde.**
+2. **Impostazioni** — casa condivisa, rotazione del piano, gestione dei pasti, ingredienti, reparti e importa **restano nel prodotto**, in **sotto-schermate** del pannello; la riga `Esci` resta ma è **spenta** (il logout arriva dopo).
+3. **Tasti primari** — quelli che il ridisegno non collocava vanno nel **Dock**.
+4. **Matrice dei pasti** — regge **da 3 a 6 pasti**: pasti in riga, giorni in colonna, celle mai sotto 44 px.
+5. **Titoli** — restano in **sentence case**.
+
+E le tre incoerenze fra scheda di decisione e file HTML, risolte **a favore dei file**: il
+Marchio in barra è **3 × 2** (non 3 × 3); `--fine` vale **128** a barra grande (non 140); il
+tasto di scatto è **76 / 62 bianco** (non 72 / 52 in `--ink`).
+
+**Cosa vuol dire per il codice.** Nessuna di queste regole è ancora in `src/`: sono tutte
+derive *future*, non misurate qui, e §6 non le conta. La prima schermata assemblata e pronta da
+ricollegare è `design/sistema/schermate/lista.html` (inventario §1, `/lista`), dove ogni
+controllo porta `data-elemento` col nome della colonna Elemento di
+`docs/2026-09-19-inventario-schermate.md`.

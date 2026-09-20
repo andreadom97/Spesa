@@ -1,0 +1,259 @@
+<!-- @dsCard group="Schermate" name="Lista" subtitle="assemblata il 20/09: E v2 + widget 1 + barra B + menù E + dock" viewport="393x1100" -->
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lista — assemblata</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+--fondo:#F1F0EE;--superficie:#FFFFFF;--ink:#14163A;--ink-2:#3D4166;--testo-2:#5C5F7A;--sec:#8A8A96;--ter:#A6A6B2;--off:#9A9AA6;
+--bordo:rgba(20,22,58,0.07);--spento:rgba(20,22,58,0.035);--bordo-tratteggio:rgba(20,22,58,0.20);
+--avviso:#9A5C00;
+--area-ortofrutta:#A8D96A;--area-macelleria:#F29B9B;--area-latticini:#9CC7F2;--area-cereali:#F5CE5B;--area-dispensa:#F2A465;--area-surgelati:#B9AEF5;
+--font-testo:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;--font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+--ombra-pannello:0 1px 2px rgba(20,22,58,.05),0 6px 16px rgba(20,22,58,.06);
+--ombra-nav:0 2px 6px rgba(20,22,58,.08),0 12px 30px rgba(20,22,58,.16);
+--ombra-tasto:0 3px 10px rgba(20,22,58,.24);
+--moto-barra:200ms;--curva-barra:cubic-bezier(.2,.8,.25,1);
+}
+*{box-sizing:border-box}
+body{margin:0;background:#D8D7D4;font-family:var(--font-testo);color:var(--ink);-webkit-font-smoothing:antialiased;display:flex;flex-direction:column;align-items:center;gap:12px;padding:40px 20px}
+a{color:var(--ink)}a:hover{color:var(--ink-2)}
+.sigla{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.intesta{width:393px;display:flex;flex-direction:column;gap:6px}
+.intesta p{margin:0;font-size:12.5px;line-height:1.4;color:#3D4166}
+
+/* ---------- cornice: 393 x 852, raggio 26 (eccezione dichiarata), fondo a gradiente ---------- */
+.tel{width:393px;height:852px;border-radius:26px;overflow:hidden;position:relative;box-shadow:0 2px 4px rgba(20,22,58,.10),0 18px 40px rgba(20,22,58,.18);background:linear-gradient(180deg,#EDECEA 0%,#F2F1EF 34%,#F8F8F7 70%,#FCFCFB 100%);--fine:128px}
+
+/* la maschera sta sul contenitore che scorre, non è un velo sopra il contenuto:
+   opaca fino a --fine (128 a barra grande), 55% a 74, nulla a 30 */
+.scroll{position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain;
+-webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - var(--fine)),rgba(0,0,0,.55) calc(100% - 74px),rgba(0,0,0,0) calc(100% - 30px));
+mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - var(--fine)),rgba(0,0,0,.55) calc(100% - 74px),rgba(0,0,0,0) calc(100% - 30px))}
+.scroll::-webkit-scrollbar{width:0}
+
+/* ---------- testata: titolo in sentence case + menù utente (variante E ingrandita) ---------- */
+.testata{padding:20px 18px 12px;display:flex;flex-direction:column;gap:15px}
+.testata-alto{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.titolo-sch{font-size:52px;font-weight:800;letter-spacing:-.05em;line-height:1;margin:0}
+.utente{height:50px;display:flex;align-items:center;gap:5px;margin:0 -2px -3px 0;background:rgba(20,22,58,.07);border:0;border-radius:999px;padding:0 12px 0 6px}
+.utente .tondo{width:38px;height:38px;border-radius:999px;background:var(--ink);display:flex;align-items:center;justify-content:center;flex:none}
+.iniziale{font-family:var(--font-mono);font-size:16px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;line-height:1;color:#fff}
+.pill-sett{height:34px;border-radius:999px;background:var(--ink);color:#fff;font-family:var(--font-mono);font-size:10.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;display:inline-flex;align-items:center;padding:0 14px;align-self:flex-start}
+
+/* ---------- etichetta di sezione, tessere, riga di controllo ---------- */
+.sez{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sez-sx{display:flex;align-items:center;gap:8px}
+.quad{width:10px;height:10px;border-radius:4px;flex:none}
+.sez-lb{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.sez-cont{font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:.10em;text-transform:uppercase;color:var(--sec)}
+.griglia{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tessera{min-height:104px;display:flex;flex-direction:column;padding:12px 14px 13px;border-radius:14px;text-align:left;border:1px solid transparent;background:none;font:inherit;color:inherit}
+.spenta{background:var(--spento)}
+.prot{grid-column:span 2;padding:13px 16px 14px;border-radius:18px}
+.alto{display:flex;align-items:center;gap:6px;flex:none}
+.pil{font-family:var(--font-mono);font-weight:700;font-size:10.5px;letter-spacing:.07em;border-radius:999px;padding:5px 10px;text-transform:uppercase}
+.qty{font-family:var(--font-mono);font-weight:500;font-size:10px;letter-spacing:.04em;text-transform:uppercase;font-variant-numeric:tabular-nums}
+.nome{font-size:17px;font-weight:700;letter-spacing:-.032em;line-height:1.1;margin-top:10px}
+.nome-g{font-size:25px}
+.barrato{text-decoration:line-through;text-decoration-thickness:1.6px;color:rgba(20,22,58,.34)}
+.sub{font-family:var(--font-mono);font-size:8.5px;letter-spacing:.02em;margin-top:5px;text-transform:uppercase}
+.controllo{border-radius:18px;padding:14px 15px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.controllo-nome{font-size:16px;font-weight:700;letter-spacing:-.024em}
+.controllo-sub{font-family:var(--font-mono);font-size:8.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--testo-2);margin-top:4px}
+.sino{display:flex;gap:7px}
+.sino button{height:44px;min-width:52px;border-radius:999px;background:#fff;border:1px solid rgba(20,22,58,.09);font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink)}
+
+/* ---------- tessera widget di sezione (variante 1): scheda bianca, tessere accese nude ---------- */
+.widget{margin:0 12px 12px;background:#fff;border:1px solid var(--bordo);border-radius:22px;box-shadow:var(--ombra-pannello);padding:14px 12px 12px;display:flex;flex-direction:column;gap:12px}
+
+/* coda di scorrimento: 124 di dock + 114 dal fondo + 10 di respiro = 248 */
+.coda{height:248px}
+
+/* ---------- dock a due righe: selettore sopra, primario sotto ---------- */
+/* bottom 114 = 84 (barra) + 22 (distacco dal fondo) + 8 (respiro); scende a 96 con la barra ridotta.
+   Contenitore raggio 22 e non 999: a due righe piene la curva della pillola taglierebbe gli angoli
+   del segmento e del primario. Altezza 124 = 8 + 46 (segmento) + 8 (gap) + 54 (primario) + 8. */
+.dock{position:absolute;left:16px;right:16px;bottom:114px;background:#fff;border-radius:22px;box-shadow:var(--ombra-nav);padding:8px;display:flex;flex-direction:column;gap:8px}
+.dock-riga{display:flex;gap:7px}
+.blocco{flex:1;height:46px;border-radius:14px;border:1px solid rgba(20,22,58,.09);background:#fff;color:var(--sec);font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:7px;font-variant-numeric:tabular-nums}
+.blocco.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.blocco .n{opacity:.62}
+.blocco.on .n{opacity:.72}
+.primario{height:54px;width:100%;border-radius:18px;background:var(--ink);border:1px solid var(--ink);color:#fff;box-shadow:var(--ombra-tasto);font-family:var(--font-mono);font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase}
+
+/* ---------- tab bar versione B: 84 a riposo, i nomi sotto le icone ---------- */
+.nav{position:absolute;left:16px;right:16px;bottom:22px;height:84px;border-radius:999px;display:flex;align-items:center;gap:2px;padding:6px;background:#fff;box-shadow:var(--ombra-nav)}
+.nav .voce{flex:1;height:72px;border:0;background:none;border-radius:999px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0;overflow:hidden}
+.nav .voce.on{background:rgba(20,22,58,.07)}
+.nav .segno{display:flex;align-items:center;justify-content:center;flex:none;height:26px}
+.nav .lb{font-family:var(--font-mono);font-size:8.5px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--off);white-space:nowrap;max-height:12px;opacity:1;line-height:1}
+.nav .voce.on .lb{color:var(--ink);font-weight:700}
+.marchio{display:grid;grid-template-columns:repeat(3,9px);grid-auto-rows:9px;gap:4px}
+.cas{border-radius:2.52px;border:2px solid transparent}
+
+/* stato ridotto: la scheda è statica e non lo attiva (nessuno script), ma le misure stanno qui */
+.tel.giu .nav{height:66px;left:46px;right:46px}
+.tel.giu .nav .voce{height:54px;gap:0}
+.tel.giu .nav .lb{max-height:0;opacity:0}
+.tel.giu .dock{bottom:96px}
+.tel.giu{--fine:110px}
+@media (prefers-reduced-motion: no-preference){
+  .nav,.nav .voce,.nav .lb{transition:height var(--moto-barra) var(--curva-barra),max-height var(--moto-barra) var(--curva-barra),opacity 150ms linear,gap var(--moto-barra) var(--curva-barra),left var(--moto-barra) var(--curva-barra),right var(--moto-barra) var(--curva-barra)}
+  .dock{transition:bottom var(--moto-barra) var(--curva-barra)}
+}
+
+/* ---------- i tre blocchi di consegna, fuori dalla cornice ---------- */
+.note{width:393px;background:#fff;border:1px solid var(--bordo);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.note p{margin:0;font-size:12.5px;line-height:1.45;color:var(--testo-2)}
+.note strong{color:var(--ink)}
+.comp{font-family:var(--font-mono);font-size:9px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;color:var(--sec);line-height:1.7}
+.rompe{font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--avviso);line-height:1.6}
+</style>
+</head>
+<body>
+<div class="intesta">
+  <div class="sigla">Inventario §1 · Lista · /lista</div>
+  <p>La Lista approvata, montata da quattro file: cornice, gradiente e testata da <strong>Lista - variante E v2</strong>; sezioni come widget dalla <strong>versione 1</strong>; barra con i nomi dalla <strong>versione B</strong>; menù utente dalla <strong>variante E ingrandita</strong>. Il Dock è nuovo qui: porta il selettore BASE / TOP-UP e il primario HAI PRESO TUTTO, che il ridisegno aveva lasciato senza posto. Riga di stato offline assente, di proposito: questa è la schermata con rete.</p>
+</div>
+
+<div class="tel" data-screen-label="Lista">
+  <div class="scroll">
+    <div class="testata">
+      <div class="testata-alto">
+        <h1 class="titolo-sch">Lista</h1>
+        <button type="button" class="utente" data-elemento="Ingranaggio" aria-label="Andrea: profilo e impostazioni" aria-expanded="false"><span class="tondo"><span class="iniziale" aria-hidden="true">A</span></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="5.2" r="2.1" fill="#14163A"/><circle cx="12" cy="12" r="2.1" fill="#14163A"/><circle cx="12" cy="18.8" r="2.1" fill="#14163A"/></svg></button>
+      </div>
+      <span class="pill-sett">Settimana del 21 settembre</span>
+    </div>
+
+    <section class="widget">
+      <div class="sez"><div class="sez-sx"><span class="quad" style="background:var(--area-ortofrutta)"></span><span class="sez-lb">Ortofrutta</span></div><span class="sez-cont">4 voci</span></div>
+      <div class="griglia">
+        <button type="button" class="tessera prot" style="background:var(--area-ortofrutta)" data-elemento="Tessera (tutta)" aria-pressed="true" aria-label="Pomodori ramati, da prendere, tocca per segnare presa">
+          <span class="alto"><span class="pil" style="background:#fff;color:var(--ink)">2 conf</span><span class="qty" style="color:rgba(20,22,58,.55)">1250 g</span></span>
+          <span class="nome nome-g">Pomodori ramati</span>
+          <span class="sub" style="color:rgba(20,22,58,.55)">serve 1100 g · in casa 0 g</span>
+        </button>
+        <button type="button" class="tessera" style="border-color:rgba(168,217,106,.45)" data-elemento="Tessera (tutta)" aria-pressed="true" aria-label="Zucchine, da prendere, tocca per segnare presa">
+          <span class="alto"><span class="pil" style="background:rgba(168,217,106,.32);color:var(--ink)">1 conf</span><span class="qty" style="color:var(--sec)">600 g</span></span>
+          <span class="nome">Zucchine</span>
+          <span class="sub" style="color:var(--ter)">serve 540 g · in casa 0 g</span>
+        </button>
+        <button type="button" class="tessera" style="border-color:rgba(168,217,106,.45)" data-elemento="Tessera (tutta)" aria-pressed="true" aria-label="Spinaci, da prendere, tocca per segnare presa">
+          <span class="alto"><span class="pil" style="background:rgba(168,217,106,.32);color:var(--ink)">2 conf</span><span class="qty" style="color:var(--sec)">500 g</span></span>
+          <span class="nome">Spinaci</span>
+          <span class="sub" style="color:var(--ter)">serve 460 g · in casa 0 g</span>
+        </button>
+        <button type="button" class="tessera" style="border-color:rgba(168,217,106,.45)" data-elemento="Tessera (tutta)" aria-pressed="true" aria-label="Limoni, da prendere, tocca per segnare presa">
+          <span class="alto"><span class="pil" style="background:rgba(168,217,106,.32);color:var(--ink)">4 pz</span><span class="qty" style="color:var(--sec)">4 pz</span></span>
+          <span class="nome">Limoni</span>
+          <span class="sub" style="color:var(--ter)">serve 4 pz · in casa 0 pz</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="widget">
+      <div class="sez"><div class="sez-sx"><span class="quad" style="background:var(--area-latticini)"></span><span class="sez-lb">Latticini, uova e salumi</span></div><span class="sez-cont">3 voci</span></div>
+      <div class="griglia">
+        <button type="button" class="tessera prot" style="background:var(--area-latticini)" data-elemento="Tessera (tutta)" aria-pressed="true" aria-label="Uova medie, da prendere, tocca per segnare presa">
+          <span class="alto"><span class="pil" style="background:#fff;color:var(--ink)">1 conf</span><span class="qty" style="color:rgba(20,22,58,.55)">6 pz</span></span>
+          <span class="nome nome-g">Uova medie</span>
+          <span class="sub" style="color:rgba(20,22,58,.55)">serve 5 pz · in casa 0 pz</span>
+        </button>
+        <button type="button" class="tessera" style="border-color:rgba(156,199,242,.45)" data-elemento="Tessera (tutta)" aria-pressed="true" aria-label="Ricotta, da prendere, tocca per segnare presa">
+          <span class="alto"><span class="pil" style="background:rgba(156,199,242,.32);color:var(--ink)">1 conf</span><span class="qty" style="color:var(--sec)">250 g</span></span>
+          <span class="nome">Ricotta</span>
+          <span class="sub" style="color:var(--ter)">serve 220 g · in casa 0 g</span>
+        </button>
+        <button type="button" class="tessera spenta" data-elemento="Tessera (tutta)" aria-pressed="false" aria-label="Parmigiano, presa, tocca per rimetterla da prendere">
+          <span class="alto"><span class="pil" style="background:rgba(20,22,58,.06);color:rgba(20,22,58,.34)">1 conf</span><span class="qty" style="color:rgba(20,22,58,.24)">200 g</span></span>
+          <span class="nome barrato">Parmigiano</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="widget">
+      <div class="sez"><div class="sez-sx"><span class="quad" style="background:var(--area-cereali)"></span><span class="sez-lb">Pasta, riso e cereali</span></div><span class="sez-cont">2 voci</span></div>
+      <div class="griglia">
+        <button type="button" class="tessera prot" style="background:var(--area-cereali)" data-elemento="Tessera (tutta)" aria-pressed="true" aria-label="Spaghetti n. 5, da prendere, tocca per segnare presa">
+          <span class="alto"><span class="pil" style="background:#fff;color:var(--ink)">2 conf</span><span class="qty" style="color:rgba(20,22,58,.55)">1000 g</span></span>
+          <span class="nome nome-g">Spaghetti n. 5</span>
+          <span class="sub" style="color:rgba(20,22,58,.55)">serve 840 g · in casa 120 g</span>
+        </button>
+        <button type="button" class="tessera" style="border-color:rgba(245,206,91,.45)" data-elemento="Tessera (tutta)" aria-pressed="true" aria-label="Riso carnaroli, da prendere, tocca per segnare presa">
+          <span class="alto"><span class="pil" style="background:rgba(245,206,91,.32);color:var(--ink)">1 conf</span><span class="qty" style="color:var(--sec)">1000 g</span></span>
+          <span class="nome">Riso carnaroli</span>
+          <span class="sub" style="color:var(--ter)">serve 640 g · in casa 0 g</span>
+        </button>
+      </div>
+      <div class="controllo" style="background:rgba(245,206,91,.26)">
+        <div><div class="controllo-nome">Farina: ne hai ancora?</div><div class="controllo-sub">controllo ogni 4 settimane</div></div>
+        <div class="sino">
+          <button type="button" data-elemento="Pillola SÌ (riga di controllo)" aria-label="Sì, hai ancora farina">Sì</button>
+          <button type="button" data-elemento="Pillola NO (riga di controllo)" aria-label="No, comprane una confezione di farina">No</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="coda"></div>
+  </div>
+
+  <div class="dock">
+    <div class="dock-riga">
+      <button type="button" class="blocco on" data-elemento="Blocco BASE" aria-pressed="true" aria-label="Base, 4 da prendere">Base <span class="n">4</span></button>
+      <button type="button" class="blocco" data-elemento="Blocco TOP-UP" aria-pressed="false" aria-label="Top-up, 2 da prendere">Top-up <span class="n">2</span></button>
+    </div>
+    <button type="button" class="primario" data-elemento="Tasto primario finale">Hai preso tutto</button>
+  </div>
+
+  <nav class="nav" aria-label="Sezioni">
+    <button type="button" class="voce on" data-elemento="Tab bar" aria-pressed="true" aria-label="Lista">
+      <span class="segno"><span class="marchio" aria-hidden="true">
+        <span class="cas" style="border-color:var(--area-dispensa);background:var(--area-dispensa)"></span>
+        <span class="cas" style="border-color:var(--area-latticini);background:var(--area-latticini)"></span>
+        <span class="cas" style="border-color:var(--area-ortofrutta);background:transparent"></span>
+        <span class="cas" style="border-color:var(--area-surgelati);background:var(--area-surgelati)"></span>
+        <span class="cas" style="border-color:var(--area-cereali);background:var(--area-cereali)"></span>
+        <span class="cas" style="border-color:var(--area-macelleria);background:transparent"></span>
+      </span></span>
+      <span class="lb">Lista</span>
+    </button>
+    <button type="button" class="voce" data-elemento="Tab bar" aria-pressed="false" aria-label="Piano">
+      <span class="segno"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15.5" rx="4.4" fill="#9A9AA6"/><rect x="6.2" y="8.4" width="11.6" height="2.1" rx="1.05" fill="#fff" opacity=".92"/><circle cx="8.2" cy="14.6" r="1.7" fill="#fff" opacity=".92"/><circle cx="12" cy="14.6" r="1.7" fill="#fff" opacity=".92"/><circle cx="15.8" cy="14.6" r="1.7" fill="#fff" opacity=".92"/></svg></span>
+      <span class="lb">Piano</span>
+    </button>
+    <button type="button" class="voce" data-elemento="Tab bar" aria-pressed="false" aria-label="Piatti">
+      <span class="segno"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="#9A9AA6"/><circle cx="12" cy="12" r="4.1" fill="#fff" opacity=".92"/></svg></span>
+      <span class="lb">Piatti</span>
+    </button>
+    <button type="button" class="voce" data-elemento="Tab bar" aria-pressed="false" aria-label="Dispensa">
+      <span class="segno"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="3.4" width="14" height="3.6" rx="1.8" fill="#9A9AA6"/><path d="M6 9.4h12a1 1 0 0 1 1 1v6.4a3.2 3.2 0 0 1-3.2 3.2H8.2A3.2 3.2 0 0 1 5 16.8v-6.4a1 1 0 0 1 1-1Z" fill="#9A9AA6"/><rect x="8.4" y="12.4" width="7.2" height="2.1" rx="1.05" fill="#fff" opacity=".92"/></svg></span>
+      <span class="lb">Dispensa</span>
+    </button>
+  </nav>
+</div>
+
+<div class="note">
+  <div class="sigla">Misure</div>
+  <p><strong>Cornice</strong> 393 × 852, raggio 26, gradiente a quattro fermate #EDECEA → #F2F1EF → #F8F8F7 → #FCFCFB. <strong>Maschera</strong> sul contenitore: opaca fino a <strong>--fine 128</strong>, 55% a 74, nulla a 30; a barra ridotta --fine passa a 110.</p>
+  <p><strong>Testata</strong> padding 20 / 18 / 12, gap 15; titolo <strong>Lista</strong> sans 52 / 800 / -0,05em in sentence case; <strong>menù utente</strong> pillola 81 × 50 su rgba(20,22,58,.07), tondo 38 in --ink, iniziale mono 16 / 700 / 0,06em, kebab 20; pillola settimana alta 34, mono 10,5 / 700 / 0,13em.</p>
+  <p><strong>Tessera widget di sezione</strong> margine 0 12 12, raggio 22, bordo 1 px --bordo, ombra dei pannelli, padding 14 / 12 / 12, gap 12. Dentro: griglia 2 colonne gap 8, tessere minimo 104 raggio 14 padding 12 / 14 / 13; protagonista span 2, raggio 18, padding 13 / 16 / 14, nome 25; <strong>accesa senza fondo bianco</strong>, solo filo 1 px nel colore d'area al 45%; spenta su --spento col nome barrato 1,6 px. Riga di controllo raggio 18, padding 14 / 15, tinta d'area al 26%, pillole Sì / No alte 44 min-width 52 gap 7.</p>
+  <p><strong>Dock</strong> left/right 16, <strong>bottom 114</strong> (84 di barra + 22 di distacco + 8 di respiro), raggio 22, padding 8, gap 8, ombra della barra. Segmento: due blocchi flex 1 alti 46, raggio 14, gap 7, mono 11 / 700 / 0,08em; attivo pieno in --ink. Primario alto 54, raggio 18, larghezza piena, mono 12 / 700 / 0,09em, ombra del tasto. <strong>Altezza 124</strong> = 8 + 46 + 8 + 54 + 8. A barra ridotta scende a bottom 96, in 200 ms con la stessa curva.</p>
+  <p><strong>Tab bar</strong> left/right 16, bottom 22, altezza 84, raggio 999, padding 6, gap 2; quattro voci flex 1 alte 72 (bersaglio reale 72), gap interno 4, attiva su rgba(20,22,58,.07); <strong>segno ad altezza fissa 26</strong>, icone piene 26, etichette mono 8,5 / 0,12em. Marchio 3 × 2, lato 9, gap 4, raggio 2,52 (9 × 0,28), bordo 2, ordine fisso delle aree. Ridotta: 84 → 66, voci 54, lati 16 → 46, etichette a max-height 0 ma cliccabili. <strong>Coda di scorrimento 248</strong> = 124 di dock + 114 dal fondo + 10 di respiro.</p>
+  <p><strong>Perché queste misure del Dock.</strong> Il contenitore è a raggio 22 e non 999: con due righe a larghezza piena la curva della pillola taglierebbe gli angoli del segmento e del primario. Il bottom 114 e il 96 sono gli stessi del dock della Dispensa, così i due dock si muovono insieme. Il primario resta a larghezza piena perché è l'azione della schermata, e il segmento gli sta sopra perché cambia la vista, non la conclude.</p>
+
+  <div class="sigla" style="margin-top:4px">Componenti usati</div>
+  <div class="comp">Testata (titolo + menù utente, senza marchio) · Menù utente · Pillola settimana 34 · Tessera widget di sezione (variante 1) · Etichetta di sezione con quadratino 10 e contatore · Tessera della Lista (protagonista span 2 · accesa nuda · spenta barrata) · Riga di controllo con pillole d'azione Sì / No · Dock a due righe · Segmento a blocco (BASE / TOP-UP) · Tasto primario · Tab bar versione B a due stati · Marchio 3 × 2 come icona della Lista · Maschera di scorrimento</div>
+
+  <div class="sigla" style="margin-top:4px">Regole di DESIGN.md che tocca</div>
+  <div class="rompe">§2.4 fondo a gradiente · §2.5 alfa 0,07 sul menù utente e sulla voce attiva, 0,45 sul filo d'area, 0,26 sulla riga di controllo · §3 titolo in sentence case · §3 mono 16 sull'iniziale, unica eccezione ammessa · §5 raggio 26 sulla cornice e 2,52 sulle caselle in barra, eccezioni dichiarate · §5 ombra dei pannelli e della barra · §6 icone di navigazione piene a 26 · §7 .anim-barra e maschera di scorrimento · §8 tab bar flottante con i nomi e Marchio come icona · §8 Menù utente · §8 Dock a due righe: il primario non è più in coda al contenuto · §8 Tessera widget di sezione: la tessera accesa perde il fondo bianco · §4 coda 248 al posto di 140, perché il dock è a due righe</div>
+
+  <div class="sigla" style="margin-top:4px">Cosa non rende, dell'inventario §1</div>
+  <div class="comp">Tolti: marchio in testata e con esso il link Vai alla lista · ingranaggio, sostituito dal menù utente (marcato data-elemento="Ingranaggio") · le due righe di spiegazione della vista attiva. Non mostrati: caricamento CARICO… · errore di caricamento · Vuoto A e Vuoto B · Niente da comprare qui. · riga di stato offline · riga d'errore d'azione · pillole disabilitate mentre la risposta è in volo · barra ridotta (la scheda è statica: le misure sono nel CSS, nessuno script).</div>
+</div>
+</body>
+</html>
