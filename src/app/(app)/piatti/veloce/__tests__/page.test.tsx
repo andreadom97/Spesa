@@ -596,7 +596,7 @@ describe('Piatti veloce (/piatti/veloce)', () => {
   });
 
   describe('navigazione', () => {
-    it('HO FINITO porta alla Settimana e la freccia torna ai Piatti', async () => {
+    it('HO FINITO porta al Piano e la freccia torna ai Piatti', async () => {
       await apri();
       expect(screen.getByRole('link', { name: 'HO FINITO' })).toHaveAttribute('href', '/piano');
       expect(screen.getByRole('link', { name: 'Torna ai piatti' })).toHaveAttribute('href', '/piatti');

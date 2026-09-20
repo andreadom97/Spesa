@@ -138,7 +138,7 @@ function necessarieCon(voce: VoceComprata, formato: number): number {
  * Raggiungibile solo a lista tutta spuntata, come "Hai preso tutto": prima
  * non si sa cosa si è comprato, dopo la chiusura il residuo è già
  * accreditato e la correzione non cambierebbe niente (si rimanda a
- * /settimana). Lo scanner non parla con la rete: è questa pagina che chiama
+ * /piano). Lo scanner non parla con la rete: è questa pagina che chiama
  * `/api/prodotto/[ean]` e decide cosa proporre.
  */
 export default function Confezioni() {

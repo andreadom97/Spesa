@@ -406,7 +406,7 @@ describe('Scegli il piatto', () => {
     expect(await screen.findByText('Non troviamo questo pasto.')).toBeInTheDocument();
   });
 
-  it('il link "torna" e il bottone "annulla" puntano a /settimana senza chiamare aggiornaSlot', async () => {
+  it('il link "torna" e il bottone "annulla" puntano a /piano senza chiamare aggiornaSlot', async () => {
     mockCarico();
     render(<ScegliPiatto />);
     await screen.findByText('Pollo e riso');
