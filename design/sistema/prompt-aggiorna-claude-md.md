@@ -38,11 +38,10 @@ fonti sono `DESIGN.md` (versione 3, già nel progetto) e le decisioni di Andrea 
 - **Niente più Base e Top-up.** La Lista è una sola, divisa per reparto nell'ordine scelto
   dall'utente. Il selettore `BASE` / `TOP-UP` sparisce; la distinzione tra secco e fresco
   resta nel calcolo (scadenze), non in corsia.
-- **Chiusura della spesa: aperta.** Oggi `HAI PRESO TUTTO` porta a una schermata di traguardo
-  con il riepilogo "non ricomprato", il link "Confezioni diverse? Scansiona" e il tasto
-  `CHIUDI LA SPESA`, l'unico atto irreversibile. Da decidere se diventa un solo tasto nel
-  Dock che apre il traguardo come foglio dal basso. Finché non è deciso, il Dock della Lista
-  mostra il solo primario `HAI PRESO TUTTO`, visibile quando tutto è spuntato.
+- **Chiusura della spesa (opzione b).** Il Dock della Lista mostra `HAI PRESO TUTTO` **solo quando
+  ogni voce è spuntata** e nessun controllo è in sospeso; a lista non finita il Dock non c'è. Il
+  tasto porta al traguardo: riepilogo "non ricomprato", link "Confezioni diverse? Scansiona",
+  tasto `CHIUDI LA SPESA`, l'unico atto irreversibile. Due passi, come oggi.
 
 ## 3. Sostituisci la sezione "Debito verso DESIGN.md"
 

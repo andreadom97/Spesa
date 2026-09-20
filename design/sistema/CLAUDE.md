@@ -151,9 +151,10 @@ quando il disegno è più piccolo (area trasparente sporgente).
 
 - **Niente più Base e Top-up (20/09).** La Lista è una sola, per reparto. Il selettore sparisce;
   `deperibile` resta nel calcolo per scadenze e decadimento. Il Dock torna a una riga sola.
-- **Chiusura della spesa: aperta (20/09).** `HAI PRESO TUTTO` → traguardo (`/lista/fatta`) con
-  non ricomprato, scansione, `CHIUDI LA SPESA` (irreversibile). Da decidere se un solo tasto nel
-  Dock apre il traguardo come foglio dal basso.
+- **Chiusura della spesa, decisa (20/09, opzione b).** Il Dock della Lista mostra `HAI PRESO TUTTO`
+  **solo quando ogni voce è spuntata** e nessun controllo è in sospeso; porta al traguardo
+  (`/lista/fatta`: non ricomprato, `CONFEZIONI DIVERSE? SCANSIONA`, `CHIUDI LA SPESA`
+  irreversibile). Due passi, come oggi. Il Dock a lista non finita non c'è.
 
 ## Assorbito in DESIGN.md v3 il 20/09
 

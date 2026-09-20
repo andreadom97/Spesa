@@ -1,4 +1,4 @@
-<!-- @dsCard group="Schermate" name="Lista" subtitle="assemblata il 20/09: E v2 + widget 1 + barra B + menù E + dock" viewport="393x1100" -->
+<!-- @dsCard group="Schermate" name="Lista" subtitle="assemblata il 20/09: E v2 + widget 1 + barra B + menù E + dock a una riga, senza Base/Top-up" viewport="393x1100" -->
 <!DOCTYPE html>
 <html lang="it">
 <head>
@@ -70,14 +70,14 @@ mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - var(--fine)),rgba(0,0,
 /* ---------- tessera widget di sezione (variante 1): scheda bianca, tessere accese nude ---------- */
 .widget{margin:0 12px 12px;background:#fff;border:1px solid var(--bordo);border-radius:22px;box-shadow:var(--ombra-pannello);padding:14px 12px 12px;display:flex;flex-direction:column;gap:12px}
 
-/* coda di scorrimento: 124 di dock + 114 dal fondo + 10 di respiro = 248 */
-.coda{height:248px}
+/* coda di scorrimento: 70 di dock + 114 dal fondo + 10 di respiro = 194 */
+.coda{height:194px}
 
-/* ---------- dock a due righe: selettore sopra, primario sotto ---------- */
+/* ---------- dock a una riga: solo il primario (decisione del 20/09: via Base/Top-up) ---------- */
 /* bottom 114 = 84 (barra) + 22 (distacco dal fondo) + 8 (respiro); scende a 96 con la barra ridotta.
-   Contenitore raggio 22 e non 999: a due righe piene la curva della pillola taglierebbe gli angoli
-   del segmento e del primario. Altezza 124 = 8 + 46 (segmento) + 8 (gap) + 54 (primario) + 8. */
-.dock{position:absolute;left:16px;right:16px;bottom:114px;background:#fff;border-radius:22px;box-shadow:var(--ombra-nav);padding:8px;display:flex;flex-direction:column;gap:8px}
+   Pillola bianca raggio 999 come il dock della Dispensa, padding 8: altezza 70 = 8 + 54 (primario) + 8.
+   Compare SOLO a lista tutta spuntata: qui è resa visibile per mostrarla; nello stato normale non c'è. */
+.dock{position:absolute;left:16px;right:16px;bottom:114px;background:#fff;border-radius:999px;box-shadow:var(--ombra-nav);padding:8px;display:flex;flex-direction:column;gap:8px}
 .dock-riga{display:flex;gap:7px}
 .blocco{flex:1;height:46px;border-radius:14px;border:1px solid rgba(20,22,58,.09);background:#fff;color:var(--sec);font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:7px;font-variant-numeric:tabular-nums}
 .blocco.on{background:var(--ink);border-color:var(--ink);color:#fff}
@@ -117,7 +117,7 @@ mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - var(--fine)),rgba(0,0,
 <body>
 <div class="intesta">
   <div class="sigla">Inventario §1 · Lista · /lista</div>
-  <p>La Lista approvata, montata da quattro file: cornice, gradiente e testata da <strong>Lista - variante E v2</strong>; sezioni come widget dalla <strong>versione 1</strong>; barra con i nomi dalla <strong>versione B</strong>; menù utente dalla <strong>variante E ingrandita</strong>. Il Dock è nuovo qui: porta il selettore BASE / TOP-UP e il primario HAI PRESO TUTTO, che il ridisegno aveva lasciato senza posto. Riga di stato offline assente, di proposito: questa è la schermata con rete.</p>
+  <p>La Lista approvata, montata da quattro file: cornice, gradiente e testata da <strong>Lista - variante E v2</strong>; sezioni come widget dalla <strong>versione 1</strong>; barra con i nomi dalla <strong>versione B</strong>; menù utente dalla <strong>variante E ingrandita</strong>. Il Dock è nuovo qui: porta il solo primario HAI PRESO TUTTO, che compare a lista tutta spuntata e porta al traguardo con CHIUDI LA SPESA (decisione b del 20/09). Base e Top-up non esistono più: la lista è una, per reparto. Riga di stato offline assente, di proposito: questa è la schermata con rete.</p>
 </div>
 
 <div class="tel" data-screen-label="Lista">
@@ -202,12 +202,8 @@ mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - var(--fine)),rgba(0,0,
     <div class="coda"></div>
   </div>
 
-  <div class="dock">
-    <div class="dock-riga">
-      <button type="button" class="blocco on" data-elemento="Blocco BASE" aria-pressed="true" aria-label="Base, 4 da prendere">Base <span class="n">4</span></button>
-      <button type="button" class="blocco" data-elemento="Blocco TOP-UP" aria-pressed="false" aria-label="Top-up, 2 da prendere">Top-up <span class="n">2</span></button>
-    </div>
-    <button type="button" class="primario" data-elemento="Tasto primario finale">Hai preso tutto</button>
+  <div class="dock" data-quando="solo a lista tutta spuntata">
+    <button type="button" class="primario" style="border-radius:999px" data-elemento="Tasto primario finale">Hai preso tutto</button>
   </div>
 
   <nav class="nav" aria-label="Sezioni">
@@ -242,18 +238,18 @@ mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - var(--fine)),rgba(0,0,
   <p><strong>Cornice</strong> 393 × 852, raggio 26, gradiente a quattro fermate #EDECEA → #F2F1EF → #F8F8F7 → #FCFCFB. <strong>Maschera</strong> sul contenitore: opaca fino a <strong>--fine 128</strong>, 55% a 74, nulla a 30; a barra ridotta --fine passa a 110.</p>
   <p><strong>Testata</strong> padding 20 / 18 / 12, gap 15; titolo <strong>Lista</strong> sans 52 / 800 / -0,05em in sentence case; <strong>menù utente</strong> pillola 81 × 50 su rgba(20,22,58,.07), tondo 38 in --ink, iniziale mono 16 / 700 / 0,06em, kebab 20; pillola settimana alta 34, mono 10,5 / 700 / 0,13em.</p>
   <p><strong>Tessera widget di sezione</strong> margine 0 12 12, raggio 22, bordo 1 px --bordo, ombra dei pannelli, padding 14 / 12 / 12, gap 12. Dentro: griglia 2 colonne gap 8, tessere minimo 104 raggio 14 padding 12 / 14 / 13; protagonista span 2, raggio 18, padding 13 / 16 / 14, nome 25; <strong>accesa senza fondo bianco</strong>, solo filo 1 px nel colore d'area al 45%; spenta su --spento col nome barrato 1,6 px. Riga di controllo raggio 18, padding 14 / 15, tinta d'area al 26%, pillole Sì / No alte 44 min-width 52 gap 7.</p>
-  <p><strong>Dock</strong> left/right 16, <strong>bottom 114</strong> (84 di barra + 22 di distacco + 8 di respiro), raggio 22, padding 8, gap 8, ombra della barra. Segmento: due blocchi flex 1 alti 46, raggio 14, gap 7, mono 11 / 700 / 0,08em; attivo pieno in --ink. Primario alto 54, raggio 18, larghezza piena, mono 12 / 700 / 0,09em, ombra del tasto. <strong>Altezza 124</strong> = 8 + 46 + 8 + 54 + 8. A barra ridotta scende a bottom 96, in 200 ms con la stessa curva.</p>
-  <p><strong>Tab bar</strong> left/right 16, bottom 22, altezza 84, raggio 999, padding 6, gap 2; quattro voci flex 1 alte 72 (bersaglio reale 72), gap interno 4, attiva su rgba(20,22,58,.07); <strong>segno ad altezza fissa 26</strong>, icone piene 26, etichette mono 8,5 / 0,12em. Marchio 3 × 2, lato 9, gap 4, raggio 2,52 (9 × 0,28), bordo 2, ordine fisso delle aree. Ridotta: 84 → 66, voci 54, lati 16 → 46, etichette a max-height 0 ma cliccabili. <strong>Coda di scorrimento 248</strong> = 124 di dock + 114 dal fondo + 10 di respiro.</p>
-  <p><strong>Perché queste misure del Dock.</strong> Il contenitore è a raggio 22 e non 999: con due righe a larghezza piena la curva della pillola taglierebbe gli angoli del segmento e del primario. Il bottom 114 e il 96 sono gli stessi del dock della Dispensa, così i due dock si muovono insieme. Il primario resta a larghezza piena perché è l'azione della schermata, e il segmento gli sta sopra perché cambia la vista, non la conclude.</p>
+  <p><strong>Dock</strong> left/right 16, <strong>bottom 114</strong> (84 di barra + 22 di distacco + 8 di respiro), raggio 999, padding 8, ombra della barra, <strong>una riga sola</strong>: il primario alto 54, raggio 999, larghezza piena, mono 12 / 700 / 0,09em, ombra del tasto. <strong>Altezza 70</strong> = 8 + 54 + 8. Compare solo quando ogni voce è spuntata e nessun controllo è in sospeso; porta al traguardo (Hai preso tutto, inventario §2) dove sta <code>CHIUDI LA SPESA</code>. A barra ridotta scende a bottom 96, in 200 ms con la stessa curva.</p>
+  <p><strong>Tab bar</strong> left/right 16, bottom 22, altezza 84, raggio 999, padding 6, gap 2; quattro voci flex 1 alte 72 (bersaglio reale 72), gap interno 4, attiva su rgba(20,22,58,.07); <strong>segno ad altezza fissa 26</strong>, icone piene 26, etichette mono 8,5 / 0,12em. Marchio 3 × 2, lato 9, gap 4, raggio 2,52 (9 × 0,28), bordo 2, ordine fisso delle aree. Ridotta: 84 → 66, voci 54, lati 16 → 46, etichette a max-height 0 ma cliccabili. <strong>Coda di scorrimento 194</strong> = 70 di dock + 114 dal fondo + 10 di respiro (senza dock, a lista non finita, basta 140).</p>
+  <p><strong>Perché queste misure del Dock.</strong> Una riga sola e raggio 999, come il dock della Dispensa: il 20/09 Andrea ha tolto la divisione Base / Top-up (la lista è una, per reparto; secco e fresco restano nel calcolo delle scadenze, non in corsia). Il bottom 114 e il 96 sono gli stessi del dock della Dispensa, così i due si muovono insieme. Il dock non è un elemento fisso della schermata: è il traguardo che appare quando la spesa è finita.</p>
 
   <div class="sigla" style="margin-top:4px">Componenti usati</div>
-  <div class="comp">Testata (titolo + menù utente, senza marchio) · Menù utente · Pillola settimana 34 · Tessera widget di sezione (variante 1) · Etichetta di sezione con quadratino 10 e contatore · Tessera della Lista (protagonista span 2 · accesa nuda · spenta barrata) · Riga di controllo con pillole d'azione Sì / No · Dock a due righe · Segmento a blocco (BASE / TOP-UP) · Tasto primario · Tab bar versione B a due stati · Marchio 3 × 2 come icona della Lista · Maschera di scorrimento</div>
+  <div class="comp">Testata (titolo + menù utente, senza marchio) · Menù utente · Pillola settimana 34 · Tessera widget di sezione (variante 1) · Etichetta di sezione con quadratino 10 e contatore · Tessera della Lista (protagonista span 2 · accesa nuda · spenta barrata) · Riga di controllo con pillole d'azione Sì / No · Dock a una riga · Tasto primario (solo a lista finita) · Tab bar versione B a due stati · Marchio 3 × 2 come icona della Lista · Maschera di scorrimento</div>
 
   <div class="sigla" style="margin-top:4px">Regole di DESIGN.md che tocca</div>
   <div class="rompe">§2.4 fondo a gradiente · §2.5 alfa 0,07 sul menù utente e sulla voce attiva, 0,45 sul filo d'area, 0,26 sulla riga di controllo · §3 titolo in sentence case · §3 mono 16 sull'iniziale, unica eccezione ammessa · §5 raggio 26 sulla cornice e 2,52 sulle caselle in barra, eccezioni dichiarate · §5 ombra dei pannelli e della barra · §6 icone di navigazione piene a 26 · §7 .anim-barra e maschera di scorrimento · §8 tab bar flottante con i nomi e Marchio come icona · §8 Menù utente · §8 Dock a due righe: il primario non è più in coda al contenuto · §8 Tessera widget di sezione: la tessera accesa perde il fondo bianco · §4 coda 248 al posto di 140, perché il dock è a due righe</div>
 
   <div class="sigla" style="margin-top:4px">Cosa non rende, dell'inventario §1</div>
-  <div class="comp">Tolti: marchio in testata e con esso il link Vai alla lista · ingranaggio, sostituito dal menù utente (marcato data-elemento="Ingranaggio") · le due righe di spiegazione della vista attiva. Non mostrati: caricamento CARICO… · errore di caricamento · Vuoto A e Vuoto B · Niente da comprare qui. · riga di stato offline · riga d'errore d'azione · pillole disabilitate mentre la risposta è in volo · barra ridotta (la scheda è statica: le misure sono nel CSS, nessuno script).</div>
+  <div class="comp">Tolti: marchio in testata e con esso il link Vai alla lista · ingranaggio, sostituito dal menù utente (marcato data-elemento="Ingranaggio") · le due righe di spiegazione della vista attiva · il selettore BASE / TOP-UP e le due liste separate (decisione del 20/09: una lista sola). Non mostrati: caricamento CARICO… · errore di caricamento · Vuoto A e Vuoto B · Niente da comprare qui. · riga di stato offline · riga d'errore d'azione · pillole disabilitate mentre la risposta è in volo · barra ridotta (la scheda è statica: le misure sono nel CSS, nessuno script).</div>
 </div>
 </body>
 </html>

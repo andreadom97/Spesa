@@ -808,6 +808,7 @@ Prese in Claude Design sulle schermate rese (19/09) e sulle sette domande aperte
   Il selettore `BASE` / `TOP-UP` sparisce dalla presentazione; il flag `deperibile` resta nel
   dominio per decadimento e scadenze. Il **Dock è a una riga sola**: la forma a due righe
   descritta in §8 per la Lista decade.
-- **Chiusura della spesa: aperta.** `HAI PRESO TUTTO` porta oggi al traguardo (`/lista/fatta`:
-  non ricomprato, `CONFEZIONI DIVERSE? SCANSIONA`, `CHIUDI LA SPESA` irreversibile). Da decidere
-  se diventa un solo tasto nel Dock che apre il traguardo come foglio dal basso.
+- **Chiusura della spesa, decisa (opzione b).** Il Dock della Lista mostra `HAI PRESO TUTTO` **solo
+  a lista tutta spuntata** e senza controlli in sospeso; porta al traguardo (`/lista/fatta`: non
+  ricomprato, `CONFEZIONI DIVERSE? SCANSIONA`, `CHIUDI LA SPESA` irreversibile). Due passi, come
+  oggi. A lista non finita il Dock della Lista non esiste: la coda di scorrimento è 140.
