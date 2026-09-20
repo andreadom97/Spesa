@@ -12,6 +12,48 @@
   --bordo: rgba(20, 22, 58, 0.07);
   --spento: rgba(20, 22, 58, 0.035);
 
+  /* Testi che portano informazione (deciso 17/09): note, sottotitoli, errori, avvisi. */
+  --testo-2: #5C5F7A;
+  --avviso: #9A5C00;
+  --errore: #C4423E;
+  --freddo: #2F6FBF;
+  --icona-spenta: #C4C4CE;
+
+  /* Le sei ombre: tre storiche come token, tre del ridisegno (19/09). */
+  --ombra-tessera: 0 1px 2px rgba(20, 22, 58, 0.05);
+  --ombra-casetta: 0 1px 3px rgba(20, 22, 58, 0.28);
+  --ombra-tasto: 0 3px 10px rgba(20, 22, 58, 0.24);
+  --ombra-pannello: 0 1px 2px rgba(20, 22, 58, .05), 0 6px 16px rgba(20, 22, 58, .06);
+  --ombra-nav: 0 2px 6px rgba(20, 22, 58, .08), 0 12px 30px rgba(20, 22, 58, .16);
+  --ombra-alta: 0 8px 24px rgba(20, 22, 58, .28), 0 26px 64px rgba(20, 22, 58, .26);
+
+  /* Il fondo della schermata: in alto grigio tenue, in basso quasi bianco, mai bianco puro. */
+  --sfondo-schermata: linear-gradient(180deg, #EDECEA 0%, #F2F1EF 34%, #F8F8F7 70%, #FCFCFB 100%);
+
+  /* La tab bar flottante (versione B) e il suo movimento. */
+  --barra-lato: 16px;
+  --barra-lato-giu: 46px;
+  --barra-fondo: 22px;
+  --barra-alta: 84px;
+  --barra-bassa: 66px;
+  --barra-voce: 72px;
+  --barra-voce-giu: 54px;
+  --barra-padding: 6px;
+  --barra-gap: 2px;
+  --barra-icona: 26px;
+  --barra-segno: 26px;
+  --barra-attiva: rgba(20, 22, 58, 0.07);
+  --raggio-casella-barra: 2.52px;
+  --moto-barra: 200ms;
+  --curva-barra: cubic-bezier(.2, .8, .25, 1);
+
+  /* La maschera di scorrimento: fino a --fine il contenuto è opaco, poi sfuma dietro la barra. */
+  --fine-barra-grande: 128px;
+  --fine-barra-piccola: 110px;
+  --fine: var(--fine-barra-grande);
+  /* Coda in fondo agli scroller: 84 di barra + 22 dal fondo + 34 di respiro. Con il Dock (fase 2) diventa 194. */
+  --coda: 140px;
+
   --area-ortofrutta: #A8D96A;
   --area-macelleria: #F29B9B;
   --area-latticini: #9CC7F2;
