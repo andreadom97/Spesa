@@ -17,12 +17,22 @@ export async function leggiIniziale(): Promise<string> {
   }
 }
 
+// La Testata monta a ogni pagina: senza cache, ogni montaggio richiamerebbe
+// `getUser` da capo per la stessa sessione. Una sola promessa condivisa a
+// livello di modulo, azzerabile dai test con `dimenticaIniziale`.
+let promessa: Promise<string> | null = null;
+
 export function useIniziale(): string {
   const [iniziale, setIniziale] = useState('·');
   useEffect(() => {
     let vivo = true;
-    leggiIniziale().then((i) => { if (vivo) setIniziale(i); });
+    (promessa ??= leggiIniziale()).then((i) => { if (vivo) setIniziale(i); });
     return () => { vivo = false; };
   }, []);
   return iniziale;
+}
+
+/** Solo per i test: azzera la promessa condivisa così il prossimo `useIniziale` rilegge. */
+export function dimenticaIniziale(): void {
+  promessa = null;
 }

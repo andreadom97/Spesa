@@ -181,7 +181,7 @@ export default function ListaFatta() {
   return (
     <Cornice settimana={stato.settimanaLabel}>
       <div
-        className="sc scroll-app"
+        className="sc scroll-app con-piede"
         style={{
           flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 16px',
           display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 12,
@@ -235,7 +235,7 @@ export default function ListaFatta() {
       {erroreChiusura && (
         <p style={{ margin: '0 16px 4px', fontSize: 12.5, color: 'var(--sec)' }}>{erroreChiusura}</p>
       )}
-      <div style={{ padding: '6px 16px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div className="coda-barra" style={{ padding: '6px 16px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
         {/* Prima di chiudere: le confezioni vere (spec scan-confezione §1).
             Dopo la chiusura il residuo è già accreditato e la correzione non
             avrebbe più effetto, per questo il link sta qui e non altrove. */}

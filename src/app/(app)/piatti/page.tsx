@@ -119,7 +119,7 @@ export default function Piatti() {
       </div>
 
       <div
-        className="sc scroll-app"
+        className="sc scroll-app con-piede"
         style={{
           flex: 1, minHeight: 0, overflowY: 'auto',
           padding: '2px 16px 14px', display: 'flex', flexDirection: 'column', gap: 10,
@@ -143,7 +143,7 @@ export default function Piatti() {
         )}
       </div>
 
-      <div style={{ padding: '4px 16px 0' }}>
+      <div className="coda-barra" style={{ padding: '4px 16px 0' }}>
         <Link
           href="/piatti/nuovo"
           style={{

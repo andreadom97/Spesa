@@ -43,4 +43,33 @@ describe('Guscio', () => {
     expect(guscio.className).toContain('guscio');
     expect(container.querySelector('nav[aria-label="Sezioni"]')).toBeInTheDocument();
   });
+
+  it('il cambio di route riporta la barra a grande', () => {
+    percorso.valore = '/lista';
+    const { container, rerender } = render(
+      <Guscio><div className="sc scroll-app" data-testid="s" style={{ height: 100, overflowY: 'auto' }}><div style={{ height: 1000 }} /></div></Guscio>,
+    );
+    const guscio = container.firstElementChild as HTMLElement;
+    const s = container.querySelector('[data-testid="s"]') as HTMLElement;
+    Object.defineProperty(s, 'scrollTop', { value: 80, configurable: true, writable: true });
+    fireEvent.scroll(s);
+    expect(guscio.dataset.barra).toBe('ridotta');
+
+    percorso.valore = '/piano';
+    rerender(
+      <Guscio><div className="sc scroll-app" data-testid="s" style={{ height: 100, overflowY: 'auto' }}><div style={{ height: 1000 }} /></div></Guscio>,
+    );
+    expect(guscio.dataset.barra).toBe('grande');
+  });
+
+  it('uno scroll su un elemento senza scroll-app non cambia lo stato', () => {
+    const { container } = render(
+      <Guscio><div data-testid="altro" style={{ height: 100, overflowY: 'auto' }}><div style={{ height: 1000 }} /></div></Guscio>,
+    );
+    const guscio = container.firstElementChild as HTMLElement;
+    const altro = container.querySelector('[data-testid="altro"]') as HTMLElement;
+    Object.defineProperty(altro, 'scrollTop', { value: 80, configurable: true, writable: true });
+    fireEvent.scroll(altro);
+    expect(guscio.dataset.barra).toBe('grande');
+  });
 });

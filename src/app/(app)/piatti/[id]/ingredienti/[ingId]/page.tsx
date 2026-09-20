@@ -290,7 +290,7 @@ export default function IngredienteEditor() {
 
   return (
     <Cornice dishId={id} onCestino={tapCestino}>
-      <div className="sc scroll-app" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 16px' }}>
+      <div className="sc scroll-app con-piede" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 16px' }}>
         <input
           type="text"
           value={nome}
@@ -543,7 +543,7 @@ export default function IngredienteEditor() {
         {errore && <p style={{ margin: '14px 6px 0', color: 'var(--sec)', fontSize: 13 }}>{errore}</p>}
       </div>
 
-      <div style={{ padding: '8px 16px 22px', display: 'flex', gap: 9 }}>
+      <div className="coda-barra" style={{ padding: '8px 16px 22px', display: 'flex', gap: 9 }}>
         <Link
           href={destinazioneRitorno}
           style={{

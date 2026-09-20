@@ -477,7 +477,7 @@ export default function ScegliPiatto() {
 
   return (
     <Cornice etichetta={etichettaHeader}>
-      <div className="sc scroll-app" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 16px' }}>
+      <div className="sc scroll-app con-piede" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 16px' }}>
         <div style={{ fontSize: 32, fontWeight: 800, letterSpacing: '-0.045em', lineHeight: 1.05, color: 'var(--ink)', padding: '0 2px 16px' }}>
           Cosa mangi
         </div>
@@ -672,7 +672,7 @@ export default function ScegliPiatto() {
         {erroreSalva && <p style={{ margin: '10px 6px 0', fontSize: 12.5, color: 'var(--sec)' }}>{erroreSalva}</p>}
       </div>
 
-      <div style={{ padding: '8px 16px 22px', display: 'flex', gap: 9 }}>
+      <div className="coda-barra" style={{ padding: '8px 16px 22px', display: 'flex', gap: 9 }}>
         <Link
           href="/piano"
           style={{

@@ -11,7 +11,7 @@ describe('token del guscio comune (spec 20/09 §A)', () => {
     ['--fine-barra-grande', '128px'], ['--fine-barra-piccola', '110px'],
     ['--moto-barra', '200ms'], ['--curva-barra', 'cubic-bezier(.2, .8, .25, 1)'],
     ['--barra-alta', '84px'], ['--barra-bassa', '66px'], ['--barra-lato', '16px'],
-    ['--barra-lato-giu', '46px'], ['--coda', '140px'], ['--raggio-casella-barra', '2.52px'],
+    ['--barra-lato-giu', '46px'], ['--coda', '140px'],
   ])('%s vale %s', (nome, valore) => {
     expect(css).toMatch(new RegExp(`${nome}:\\s*${valore.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*;`));
   });

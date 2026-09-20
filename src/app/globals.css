@@ -43,7 +43,6 @@
   --barra-icona: 26px;
   --barra-segno: 26px;
   --barra-attiva: rgba(20, 22, 58, 0.07);
-  --raggio-casella-barra: 2.52px;
   --moto-barra: 200ms;
   --curva-barra: cubic-bezier(.2, .8, .25, 1);
 
@@ -111,6 +110,17 @@
   -webkit-mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - var(--fine)), rgba(0,0,0,.55) calc(100% - 74px), rgba(0,0,0,0) calc(100% - 30px));
   mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - var(--fine)), rgba(0,0,0,.55) calc(100% - 74px), rgba(0,0,0,0) calc(100% - 30px));
   padding-bottom: var(--coda) !important;
+}
+
+/* Riga d'azione fuori dallo scroller (tasti primari in fondo alla pagina): resta sopra la
+   barra flottante. Il Dock della fase 2 sostituirà queste righe; finché ci sono, il
+   respiro è quello del dock: barra + distacco + 8. */
+.coda-barra { padding-bottom: calc(var(--barra-fondo) + var(--barra-alta) + 8px) !important; }
+.guscio[data-barra="ridotta"] .coda-barra { padding-bottom: calc(var(--barra-fondo) + var(--barra-bassa) + 8px) !important; }
+/* Lo scroller di una pagina con la riga d'azione fuori: la coda serve solo a respirare sopra la riga. */
+.scroll-app.con-piede { --coda: 16px; }
+@media (prefers-reduced-motion: no-preference) {
+  .coda-barra { transition: padding-bottom var(--moto-barra) var(--curva-barra); }
 }
 
 @media (prefers-reduced-motion: no-preference) {

@@ -93,7 +93,7 @@ export default function OrdineReparti() {
 
   return (
     <Cornice>
-      <div className="sc scroll-app" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 18px' }}>
+      <div className="sc scroll-app con-piede" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 18px' }}>
         <div style={{ fontSize: 32, fontWeight: 800, letterSpacing: '-0.045em', lineHeight: 1.05, color: 'var(--ink)', padding: '0 2px' }}>
           Ordine
           <br />
@@ -173,7 +173,7 @@ export default function OrdineReparti() {
         {erroreSalvataggio && <p style={{ margin: '14px 6px 0', fontSize: 13, color: 'var(--sec)' }}>{erroreSalvataggio}</p>}
       </div>
 
-      <div style={{ padding: '8px 16px 22px' }}>
+      <div className="coda-barra" style={{ padding: '8px 16px 22px' }}>
         <button
           type="button"
           onClick={salva}

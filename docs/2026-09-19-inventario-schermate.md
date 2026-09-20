@@ -151,6 +151,9 @@ spuntate (`ordinaPerCarrello`), conservando l'ordine di generazione dentro i due
 | Tasto dello stato vuoto (con piatti) | `VAI ALLA SETTIMANA` | naviga | `/settimana` | no | mai |
 | Tab bar | `LISTA` `SETTIMANA` `PIATTI` `DISPENSA` | naviga | `/lista` `/settimana` `/piatti` `/dispensa` | no | mai |
 
+ELEMENTO TOLTO (20/09, guscio comune): Marchio in testata con il link "Vai alla lista" — il Marchio vive nella tab bar come icona della Lista.
+ELEMENTO NUOVO (20/09, guscio comune): Menù utente — tondo con l'iniziale, aria-label="Impostazioni", porta a /impostazioni; sostituisce l'ingranaggio.
+
 **Stati della schermata:**
 - **Caricamento:** solo la Testata con titolo `Spesa`, marchio pieno, nessuna pillola,
   nessun corpo (commento nel codice: «Nessuno stato di caricamento nell'artboard»).
@@ -260,6 +263,9 @@ sempre **tutto pieno** (`aree={[]}`). Ingranaggio **sì**.
 | Tasto primario | `CHIUDI LA SPESA` | chiude la spesa sul server (registra acquisti e accredita il residuo) | poi naviga a `/settimana` | **no dialogo**: un solo tap | mentre la chiusura è in volo (`disabled`, opacità 0,7) |
 | Tasto secondario | `TORNA ALLA LISTA` | naviga | `/lista` | no | mai |
 | Tab bar | `LISTA` `SETTIMANA` `PIATTI` `DISPENSA` | naviga | — | no | mai |
+
+ELEMENTO TOLTO (20/09, guscio comune): Marchio in testata con il link "Vai alla lista" — il Marchio vive nella tab bar come icona della Lista.
+ELEMENTO NUOVO (20/09, guscio comune): Menù utente — tondo con l'iniziale, aria-label="Impostazioni", porta a /impostazioni; sostituisce l'ingranaggio.
 
 **Stati della schermata:**
 - **Caricamento:** solo Testata (titolo `Spesa`, nessuna pillola), corpo vuoto.
@@ -521,6 +527,9 @@ piatto; **destra 44 px** = kebab (tre punti `#C4C4CE`) **oppure** chevron `#C4C4
 | Stepper · freezer | `Freezer`, `aria-pressed={congelato}` | sceglie freezer | idem | no | mai |
 | Stepper · salva | `Salva`, `aria-label="Salva porzioni"` | scrive porzioni preparate + destinazione | chiude il foglio, ricarica i Pronti | no | mai |
 
+ELEMENTO TOLTO (20/09, guscio comune): Marchio in testata con il link "Vai alla lista" — il Marchio vive nella tab bar come icona della Lista.
+ELEMENTO NUOVO (20/09, guscio comune): Menù utente — tondo con l'iniziale, aria-label="Impostazioni", porta a /impostazioni; sostituisce l'ingranaggio.
+
 **Il foglio dal basso — TUTTE le voci e la condizione esatta in cui compaiono**
 (`FoglioAzioniPasto.tsx`; `role="dialog"`, `aria-label="Com'è andata: {Pasto}"` per i
 giorni ≤ oggi, `"Prossimamente: {Pasto}"` per i futuri; overlay `rgba(20,22,58,0.35)`,
@@ -776,6 +785,9 @@ campo numerico 62×38 allineato a destra + unità.
 | Pillola su riga proposta | `Conferma` | applica la proposta | la riga passa a "applicata" | no | come sopra |
 | Tab bar | `LISTA` `SETTIMANA` `PIATTI` `DISPENSA` | naviga | — | no | mai |
 
+ELEMENTO TOLTO (20/09, guscio comune): freccia "Torna alle impostazioni" — la Dispensa usa la Testata con il menù utente.
+ELEMENTO NUOVO (20/09, guscio comune): Menù utente — tondo con l'iniziale, aria-label="Impostazioni", porta a /impostazioni; sostituisce l'ingranaggio.
+
 **La scheda AI della Dispensa — TUTTE le voci e la condizione esatta**
 (`NotaDispensa.tsx`; etichetta di sezione `CORREGGI CON UNA NOTA`, poi una scheda bianca
 raggio 18 bordo 1 px `--bordo`):
@@ -971,6 +983,9 @@ Lista e Settimana (dichiarati nel design system §3 "Stato vuoto"), e come ritor
 | Porta 2 (stato vuoto) | `SCRIVI I MIEI PIATTI` | naviga | `/piatti/veloce` | no | mai |
 | Link editor completo | `Crea un piatto dall'editor completo` | naviga | `/piatti/nuovo` | no | mai |
 | Voci TabBar (4) | `LISTA` `SETTIMANA` `PIATTI` `DISPENSA` | naviga | `/lista` `/settimana` `/piatti` `/dispensa` | no | mai |
+
+ELEMENTO TOLTO (20/09, guscio comune): Marchio in testata con il link "Vai alla lista" — il Marchio vive nella tab bar come icona della Lista.
+ELEMENTO NUOVO (20/09, guscio comune): Menù utente — tondo con l'iniziale, aria-label="Impostazioni", porta a /impostazioni; sostituisce l'ingranaggio.
 
 **Stati della schermata:**
 - **Vuoto (zero piatti):** le due porte, come sopra. Non è una scheda centrata con icona

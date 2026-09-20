@@ -505,7 +505,10 @@ export default function Settimana() {
         />
       </div>
 
-      <div className="sc scroll-app" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 16px 12px' }}>
+      {/* La coda ridotta si applica solo quando il tasto CONFERMA E CREA LA LISTA è
+          renderizzato sotto (vista corrente): senza quel tasto lo scroller resta
+          l'ultimo elemento e gli serve la coda intera per non finire sotto la barra. */}
+      <div className={`sc scroll-app${vista === 'corrente' ? ' con-piede' : ''}`} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 16px 12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '0 0 10px' }}>
           <button
             type="button"
@@ -604,7 +607,7 @@ export default function Settimana() {
       </div>
 
       {vista === 'corrente' && (
-        <div style={{ padding: '6px 16px 0', display: 'flex', flexDirection: 'column', gap: 9 }}>
+        <div className="coda-barra" style={{ padding: '6px 16px 0', display: 'flex', flexDirection: 'column', gap: 9 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '0 4px' }}>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.11em', color: 'var(--ink)' }}>
               {nCasaSettimana} PASTI A CASA IN SETTIMANA

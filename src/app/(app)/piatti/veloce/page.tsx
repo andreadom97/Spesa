@@ -269,7 +269,7 @@ export default function PiattiVeloce() {
         {testoContatore(n, perPasto, dati.slotDefs)}
       </div>
 
-      <div className="sc scroll-app" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 16px 16px' }}>
+      <div className="sc scroll-app con-piede" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 16px 16px' }}>
         {ultimoSalvato !== null && (
           <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ink-2)', margin: '2px 4px 10px' }}>
             Salvato: {ultimoSalvato}
@@ -425,7 +425,7 @@ export default function PiattiVeloce() {
         )}
       </div>
 
-      <div style={{ padding: '8px 16px 22px', display: 'flex', gap: 9 }}>
+      <div className="coda-barra" style={{ padding: '8px 16px 22px', display: 'flex', gap: 9 }}>
         <Link
           href="/piano"
           data-primario={puoGirare ? 'true' : 'false'}

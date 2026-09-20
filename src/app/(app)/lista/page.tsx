@@ -550,7 +550,7 @@ export default function Lista() {
       };
     return (
       <Cornice titolo="Lista" settimana={settimanaLabelVuoto} aree={[]}>
-        <div className="sc scroll-app" style={{ flex: 1, overflowY: 'auto', padding: '6px 16px 16px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <div className="sc scroll-app con-piede" style={{ flex: 1, overflowY: 'auto', padding: '6px 16px 16px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
           <div style={{ padding: '26px 20px', borderRadius: 22, background: '#FFFFFF', border: '1px solid rgba(20,22,58,0.07)', textAlign: 'center' }}>
             <div style={{ width: 46, height: 46, margin: '0 auto 20px', borderRadius: 14, border: '2px dashed rgba(20,22,58,0.20)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -565,7 +565,7 @@ export default function Lista() {
             </div>
           </div>
         </div>
-        <div style={{ padding: '6px 16px 0' }}>
+        <div className="coda-barra" style={{ padding: '6px 16px 0' }}>
           <Link
             href={vuoto.href}
             style={{
@@ -592,10 +592,14 @@ export default function Lista() {
   const listaIdAttiva = tab === 'base' ? lista.baseListaId : lista.topupListaId;
   const tallyBase = tally(lista.base);
   const tallyTopup = tally(lista.topup);
+  // Il selettore BASE/TOP-UP e la riga HAI PRESO TUTTO sono entrambi fuori dallo
+  // scroller: il respiro sopra la barra va solo sull'ultimo dei due (quello che tocca
+  // il fondo), altrimenti si sommerebbe due volte.
+  const finito = tuttoFatto(lista);
 
   return (
     <Cornice titolo="Lista" settimana={stato.settimanaLabel} aree={areeMancanti(lista)}>
-      <div className="sc scroll-app" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="sc scroll-app con-piede" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
         {stato.offline && (
           <p style={{ margin: '0 4px', fontSize: 12.5, lineHeight: 1.4, color: 'var(--sec)' }}>
             {`Sei offline: questa è la lista di ${stato.settimanaLabel} salvata l'ultima volta che l'hai aperta. Le spunte si sincronizzano appena torna la rete.`}
@@ -629,10 +633,11 @@ export default function Lista() {
         daPrendereBase={tallyBase.totale - tallyBase.fatte}
         daPrendereTopup={tallyTopup.totale - tallyTopup.fatte}
         onCambia={setTab}
+        className={finito ? undefined : 'coda-barra'}
       />
 
-      {tuttoFatto(lista) && (
-        <div style={{ padding: '8px 16px 0' }}>
+      {finito && (
+        <div className="coda-barra" style={{ padding: '8px 16px 0' }}>
           <Link
             href="/lista/fatta"
             style={{
@@ -729,12 +734,13 @@ function CartaSezione({
 }
 
 function SelettoreTab({
-  tab, daPrendereBase, daPrendereTopup, onCambia,
+  tab, daPrendereBase, daPrendereTopup, onCambia, className,
 }: {
   tab: 'base' | 'topup';
   daPrendereBase: number;
   daPrendereTopup: number;
   onCambia: (t: 'base' | 'topup') => void;
+  className?: string;
 }) {
   const acceso = { flex: 1, padding: '13px 16px', borderRadius: 18, background: INK };
   const spento = { flex: 'none' as const, width: 96, padding: '13px 12px', borderRadius: 18, background: 'rgba(20,22,58,0.05)' };
@@ -746,7 +752,7 @@ function SelettoreTab({
   const contoSpento = { fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, color: 'rgba(20,22,58,0.34)' };
 
   return (
-    <div style={{ padding: '8px 16px 0', display: 'flex', gap: 8, alignItems: 'center' }}>
+    <div className={className} style={{ padding: '8px 16px 0', display: 'flex', gap: 8, alignItems: 'center' }}>
       <button
         type="button"
         onClick={() => onCambia('base')}

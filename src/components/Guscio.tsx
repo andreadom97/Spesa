@@ -24,7 +24,9 @@ export function calcolaStatoBarra(prec: StatoBarra, scrollTop: number, delta: nu
 export function Guscio({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [stato, setStato] = useState<{ barra: StatoBarra; percorso: string | null }>({ barra: 'grande', percorso: pathname });
-  const ultimo = useRef(new WeakMap<Element, number>());
+  // Inizializzazione pigra: una WeakMap allocata una volta sola, non a ogni render.
+  const ultimo = useRef<WeakMap<Element, number> | null>(null);
+  if (ultimo.current == null) { ultimo.current = new WeakMap(); }
 
   // Cambio di route: la barra torna grande. Aggiustamento dello stato durante il
   // render (pattern React per "stato derivato da una prop"), non in un effetto.
@@ -38,9 +40,12 @@ export function Guscio({ children }: { children: ReactNode }) {
       const top = t.scrollTop;
       // Primo scroll mai visto per questo elemento: la base è la cima (0), non `top` stesso
       // (altrimenti il primo evento avrebbe sempre delta 0 e non ridurrebbe mai la barra).
-      const prec = ultimo.current.get(t) ?? 0;
-      ultimo.current.set(t, top);
-      setStato((s) => ({ barra: calcolaStatoBarra(s.barra, top, top - prec), percorso: s.percorso }));
+      const prec = ultimo.current!.get(t) ?? 0;
+      ultimo.current!.set(t, top);
+      setStato((s) => {
+        const b = calcolaStatoBarra(s.barra, top, top - prec);
+        return b === s.barra ? s : { barra: b, percorso: s.percorso };
+      });
     };
     document.addEventListener('scroll', h, { capture: true, passive: true });
     return () => document.removeEventListener('scroll', h, { capture: true });
