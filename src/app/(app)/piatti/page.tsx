@@ -40,8 +40,8 @@ interface Repertorio {
 /**
  * Il repertorio: i piatti reali dell'utente, filtrabili per pasto.
  *
- * Il marchio in questa schermata è sempre tutto pieno (aree=[]): solo la
- * Lista calcola le aree mancanti.
+ * Il marchio non è più in testata (redesign 19/09): vive nella tab bar come
+ * icona della Lista, unica schermata che calcola le aree mancanti.
  */
 export default function Piatti() {
   const [repertorio, setRepertorio] = useState<Repertorio | null>(null);
@@ -164,7 +164,7 @@ export default function Piatti() {
 function Cornice({ children }: { children?: ReactNode }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <Testata titolo="Piatti" aree={[]} />
+      <Testata titolo="Piatti" />
       {children}
     </div>
   );

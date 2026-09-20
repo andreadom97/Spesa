@@ -281,7 +281,7 @@ export default function ListaFatta() {
 function Cornice({ settimana, children }: { settimana?: string; children?: ReactNode }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <Testata titolo="Spesa" settimana={settimana} aree={[]} />
+      <Testata titolo="Lista" settimana={settimana} />
       {children}
     </div>
   );
