@@ -149,6 +149,12 @@ misure, e perché nessuno esistente bastava. Ogni elemento interattivo conserva 
 colonna **Elemento** dell'inventario, marcato con `data-elemento="…"`. Bersagli ≥ 44 anche
 quando il disegno è più piccolo (area trasparente sporgente).
 
+- **Niente più Base e Top-up (20/09).** La Lista è una sola, per reparto. Il selettore sparisce;
+  `deperibile` resta nel calcolo per scadenze e decadimento. Il Dock torna a una riga sola.
+- **Chiusura della spesa: aperta (20/09).** `HAI PRESO TUTTO` → traguardo (`/lista/fatta`) con
+  non ricomprato, scansione, `CHIUDI LA SPESA` (irreversibile). Da decidere se un solo tasto nel
+  Dock apre il traguardo come foglio dal basso.
+
 ## Assorbito in DESIGN.md v3 il 20/09
 
 Quello che era «debito verso `DESIGN.md`» non è più debito: è scritto. Dove guardare:

@@ -801,3 +801,13 @@ Prese in Claude Design sulle schermate rese (19/09) e sulle sette domande aperte
 | 26 | Marchio in barra | **[20/09]** è **3 × 2**, non 3 × 3: vincono i file | §8 Marchio |
 | 27 | `--fine` | **[20/09]** vale **128** a barra grande, non 140: vincono i file | §7 |
 | 28 | Tasto di scatto | **[20/09]** **76 / 62 bianco**, non 72 / 52 in `--ink`: vincono i file | §8 |
+
+### Decisioni del 20/09, secondo giro
+
+- **Niente più Base e Top-up.** La Lista è una sola, sezioni per area nell'ordine dei reparti.
+  Il selettore `BASE` / `TOP-UP` sparisce dalla presentazione; il flag `deperibile` resta nel
+  dominio per decadimento e scadenze. Il **Dock è a una riga sola**: la forma a due righe
+  descritta in §8 per la Lista decade.
+- **Chiusura della spesa: aperta.** `HAI PRESO TUTTO` porta oggi al traguardo (`/lista/fatta`:
+  non ricomprato, `CONFEZIONI DIVERSE? SCANSIONA`, `CHIUDI LA SPESA` irreversibile). Da decidere
+  se diventa un solo tasto nel Dock che apre il traguardo come foglio dal basso.
