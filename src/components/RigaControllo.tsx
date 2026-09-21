@@ -2,6 +2,7 @@
 
 import type { AreaId } from '@/domain/types';
 import { coloreArea } from '@/domain/aree';
+import { GIORNI_CONTROLLO_STAPLE } from '@/domain/pantry';
 
 interface Props {
   nome: string;
@@ -61,7 +62,7 @@ export function RigaControllo({ nome, area, onSi, onNo, disabilitato = false }: 
     <div
       style={{
         display: 'flex', alignItems: 'center', gap: 12,
-        margin: '0 12px 12px', padding: '14px 15px', borderRadius: 18,
+        margin: 0, padding: '14px 15px', borderRadius: 18,
         background: rgba(colore, 0.26),
       }}
     >
@@ -69,8 +70,10 @@ export function RigaControllo({ nome, area, onSi, onNo, disabilitato = false }: 
         <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.024em', color: INK }}>
           {nome}: ne hai ancora?
         </div>
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 8.5, letterSpacing: '0.11em', color: rgba(INK, 0.5), marginTop: 4 }}>
-          CONTROLLO OGNI 90 GIORNI · SCADUTO
+        {/* La riga esiste solo quando il controllo è scaduto: dirlo di nuovo era
+            ridondante. Il numero viene dalla costante del dominio, non riscritto qui. */}
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 8.5, letterSpacing: '0.11em', color: 'var(--testo-2)', marginTop: 4 }}>
+          {`CONTROLLO OGNI ${GIORNI_CONTROLLO_STAPLE} GIORNI`}
         </div>
       </div>
       <div style={{ display: 'flex', gap: 7 }}>

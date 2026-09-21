@@ -230,15 +230,18 @@ describe('Settimana (piano alimentare)', () => {
     expect(leggiSettimanaCorrente).toHaveBeenCalledTimes(2);
   });
 
-  it('la striscia mostra sette giorni con tre pallini ciascuno, e il bordo di oggi resta anche selezionando un altro giorno', async () => {
+  it('la striscia mostra sette giorni con tre pallini ciascuno, e l\'inset di oggi resta anche selezionando un altro giorno', async () => {
     mockCarico();
     const { container } = render(<Settimana />);
     await screen.findByText('Yogurt e frutta');
 
     const cellaOggi = container.querySelector(`[data-giorno="${OGGI}"]`) as HTMLElement;
     expect(cellaOggi).toBeTruthy();
-    // jsdom normalizza i colori esadecimali in rgb(): la forma nota già dal Task 8.
-    expect(cellaOggi.style.border).toBe('3px solid rgb(20, 22, 58)');
+    // Task 3: i quattro stati della cella stanno nel box-shadow, mai nel
+    // bordo (sempre 0) — un bordo di 3px rimpiccioliva l'ingombro interno
+    // solo della cella di oggi rispetto alle altre sei.
+    expect(cellaOggi.style.border).toBe('0px');
+    expect(cellaOggi.style.boxShadow).toContain('inset 0 0 0 3px');
     expect(cellaOggi.querySelectorAll('span[style*="border-radius: 999px"]')).toHaveLength(3); // 3 pallini, non 4
 
     // Seleziono un altro giorno (quello successivo a oggi nella striscia).
@@ -247,8 +250,8 @@ describe('Settimana (piano alimentare)', () => {
     fireEvent.click(cellaAltra);
 
     await waitFor(() => expect(cellaAltra.getAttribute('aria-pressed')).toBe('true'));
-    // Il bordo di oggi non dipende dalla selezione.
-    expect(cellaOggi.style.border).toBe('3px solid rgb(20, 22, 58)');
+    // L'inset di oggi non dipende dalla selezione.
+    expect(cellaOggi.style.boxShadow).toContain('inset 0 0 0 3px');
     expect(cellaOggi.getAttribute('aria-pressed')).toBe('false');
   });
 
