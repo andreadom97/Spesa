@@ -348,7 +348,7 @@ export default function Confezioni() {
 
   return (
     <Cornice>
-      <div className="sc scroll-app" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="sc scroll-app con-piede" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div>
           <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-0.035em', lineHeight: 1.2, color: 'var(--ink)', marginBottom: 6 }}>
             Le confezioni vere
@@ -525,7 +525,7 @@ export default function Confezioni() {
         })}
       </div>
 
-      <div style={{ padding: '6px 16px 0' }}>
+      <div className="coda-barra" style={{ padding: '6px 16px 0' }}>
         <Link
           href="/lista/fatta"
           style={{
