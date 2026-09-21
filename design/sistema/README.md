@@ -17,6 +17,7 @@ del 20/09 sono già incorporati: qui non esiste più nessun "da decidere".
 | `prompt-iniziale.md` | Il testo da incollare come primo messaggio in Claude Design, per fargli adottare il sistema. |
 | `prompt-aggiorna-claude-md.md` | Il prompt del 20/09 per far aggiornare a Claude Design il `CLAUDE.md` del progetto: `CLAUDE.md` è un percorso riservato e DesignSync non lo scrive. Già usato. |
 | `prompt-nome-dispesa.md` | Il prompt del 21/09 per la stessa ragione: l'app si chiama **Dispesa** e il `CLAUDE.md` del progetto va corretto a mano. |
+| `prompt-delta.md` | Il prompt del 21/09 che insegna a Claude Design a **chiudere ogni sessione con un delta**: cosa è stato deciso, quali valori cambiano, quali regole tocca, cosa resta aperto. Stessa ragione degli altri due prompt: `CLAUDE.md` è un percorso riservato. |
 | `cards/*.html` | Ventidue schede, una per file: la resa visiva dei componenti. Ogni scheda è un HTML autonomo con CSS inline. |
 | `schermate/*.html` | Le **schermate assemblate**: una schermata intera dentro la cornice 393 × 852, montata dai pezzi approvati, con sotto i tre blocchi di consegna (Misure, Componenti usati, Regole di `DESIGN.md` che tocca). Oggi c'è `lista.html` (20/09). Stesso formato delle schede, gruppo `Schermate`. |
 
@@ -86,6 +87,17 @@ Pattern, Schermate. Un file senza quel marcatore in prima riga non entra nell'in
   `#14163A`, niente emoji, niente ombre colorate. Il **gradiente del fondo** vale per le
   schermate dentro la cornice (`DESIGN.md` §2.4), non per il fondo delle schede di token.
 
+## Il delta: come torna indietro una decisione
+
+Il pacchetto va in una direzione sola — da qui a Claude Design. Quello che torna è il **delta**
+di fine sessione (`CLAUDE.md`, sezione «Come si chiude una sessione»): un blocco di sei righe
+con la decisione, i valori cambiati, le regole toccate, le varianti scartate e cosa resta
+aperto. Nel repo i delta vivono in `docs/design-delta/`, un file per sessione, nome
+`DELTA-<aaaa-mm-gg>-<argomento>.md`.
+
+Serve a togliere il lavoro di ricostruzione: chi scrive codice parte dal delta, non dai mockup.
+I mockup restano il **verbale** di una decisione — si archiviano, non si riallineano mai.
+
 ## Rapporto con il codice
 
 Il codice dell'app (`src/`) non è toccato da questo pacchetto, ma dal 21/09 lo segue: i cinque
@@ -94,3 +106,10 @@ del blocco "ridisegno" di `tokens.css` sono **in** `src/app/globals.css`, entrat
 del ridisegno (guscio comune, commit `7f6bfb0`). Il registro delle **derive del codice** resta
 `docs/superpowers/specs/DESIGN-SYSTEM.md`, che dal 20/09 rimanda a `DESIGN.md` v3 come fonte di
 verità per il design e tiene solo la parte che riguarda il codice.
+
+Che i due file non divergano in silenzio non è più affidato alla memoria: `npm test` confronta
+`tokens.css` con `src/app/globals.css` e fallisce se lo stesso token vale due cose diverse
+(`scripts/__tests__/token-check.test.ts`, o da solo con `npm run design:token`). Il confronto
+copre i token che esistono in tutti e due i file; quelli che il design dichiara e il codice non
+ha ancora — spazi, raggi, scala tipografica, dock, moto — sono elencati dal test come lavoro
+aperto, non come errore.

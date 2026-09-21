@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "design:token": "vitest run scripts/__tests__/token-check.test.ts",
     "test:watch": "vitest",
     "eval:dispensa": "vitest run --config vitest.eval.config.ts --reporter=verbose --disable-console-intercept",
     "eval:import": "vitest run --config vitest.eval-import.config.ts --reporter=verbose --disable-console-intercept"

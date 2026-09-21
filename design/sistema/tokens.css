@@ -36,7 +36,7 @@
 
   /* ---------- Famiglie ---------- */
   --font-testo: 'Plus Jakarta Sans', 'Helvetica Neue', Arial, sans-serif;  /* pesi 400/500/600/700/800, mai maiuscolo */
-  --font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;           /* pesi 400/500/700, sempre maiuscolo */
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;                 /* pesi 400/500/700, sempre maiuscolo */
 
   /* ---------- Scala tipografica, 9 livelli (deciso 17/09) ---------- */
   --testo-schermata: 52px;            /* titolo di schermata, 800, -0.05em, lh 1, sans — una parola sola */
