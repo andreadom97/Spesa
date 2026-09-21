@@ -562,22 +562,23 @@ export default function Lista() {
   return (
     <Cornice titolo="Lista" settimana={stato.settimanaLabel} aree={areeMancanti(lista)}>
       {/* Padding laterale 4: i 12 di margine di ogni tessera-widget danno i 16
-          finali dal bordo della cornice. Le righe di testo, che non sono
-          widget, si riprendono il margine da sole. */}
+          finali dal bordo della cornice. Anche le righe di testo qui dentro
+          portano 12 e non 16, perché i 4 px di padding si sommano: 12 + 4 le
+          allinea al bordo delle tessere, 16 + 4 le sposterebbe a 20. */}
       <div
         className={`sc scroll-app${finito ? ' con-dock' : ''}`}
         style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 4px 14px', display: 'flex', flexDirection: 'column' }}
       >
         {stato.offline && (
-          <p style={{ margin: '0 16px 12px', fontSize: 12.5, lineHeight: 1.4, color: 'var(--testo-2)' }}>
+          <p style={{ margin: '0 12px 12px', fontSize: 12.5, lineHeight: 1.4, color: 'var(--testo-2)' }}>
             {`Sei offline: questa è la lista di ${stato.settimanaLabel} salvata l'ultima volta che l'hai aperta. Le spunte si sincronizzano appena torna la rete.`}
           </p>
         )}
         {erroreAzione && (
-          <p style={{ margin: '0 16px 12px', fontSize: 12.5, color: 'var(--errore)' }}>{erroreAzione}</p>
+          <p style={{ margin: '0 12px 12px', fontSize: 12.5, color: 'var(--errore)' }}>{erroreAzione}</p>
         )}
         {sezioni.length === 0 && (
-          <p style={{ margin: '20px 16px', fontSize: 14, color: 'var(--testo-2)', textAlign: 'center' }}>
+          <p style={{ margin: '20px 12px', fontSize: 14, color: 'var(--testo-2)', textAlign: 'center' }}>
             Niente da comprare qui.
           </p>
         )}
