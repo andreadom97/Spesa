@@ -3,8 +3,8 @@ import { metadata } from '../layout';
 import Home from '../page';
 
 describe('identità', () => {
-  it('il title è Spesa, non il default del template', () => {
-    expect(metadata.title).toBe('Spesa');
+  it('il title è Dispesa, non il default del template', () => {
+    expect(metadata.title).toBe('Dispesa');
     expect(String(metadata.description)).not.toMatch(/create next app/i);
   });
 

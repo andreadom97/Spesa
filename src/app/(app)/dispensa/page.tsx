@@ -76,7 +76,7 @@ async function leggiRisparmioSenzaBloccare(): Promise<VoceEvitata[]> {
 }
 
 /**
- * "Da quando usi Spesa: 9 confezioni non ricomprate · 4,1 kg · circa 32 €"
+ * "Da quando usi Dispesa: 9 confezioni non ricomprate · 4,1 kg · circa 32 €"
  * (spec §5). Null con zero confezioni: la Dispensa non fa rumore. Quantità ed
  * euro compaiono solo se c'è qualcosa da dire.
  */
@@ -87,7 +87,7 @@ function rigaTotaleNonRicomprato(voci: VoceEvitata[]): string | null {
   const quantita = formattaQuantita(r.quantita);
   if (quantita) segmenti.push(quantita);
   if (r.euro !== null) segmenti.push(formattaEuro(r.euro));
-  return `Da quando usi Spesa: ${segmenti.join(' · ')}`;
+  return `Da quando usi Dispesa: ${segmenti.join(' · ')}`;
 }
 
 /**

@@ -263,7 +263,7 @@ function VuotoPiatti() {
           Da dove partiamo?
         </div>
         <div style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--sec)', margin: '0 6px 16px' }}>
-          Spesa costruisce la lista dai piatti che mangi. Ce li dici una volta sola, in uno di questi due modi.
+          Dispesa costruisce la lista dai piatti che mangi. Ce li dici una volta sola, in uno di questi due modi.
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

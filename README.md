@@ -1,4 +1,7 @@
-# Spesa
+# Dispesa
+
+Dispensa + spesa. Il nome è deciso il 18/09/2026 (prima era il placeholder "Spesa"):
+candidati, verifiche e motivi in [spesa-nome-brainstorm.md](spesa-nome-brainstorm.md).
 
 App personale che trasforma un piano alimentare già esistente in una lista della spesa
 ordinata come cammini nel supermercato. Costruita per uso proprio, con la porta aperta
@@ -245,7 +248,7 @@ sopra "CHIUDENDO LA SPESA": `3 confezioni · 1,4 kg · circa 11 €`, con sotto 
 ingredienti con prezzo` quando non tutti gli evitati hanno un prezzo, o l'invito a
 metterlo quando nessuno ce l'ha; con zero evitate, `Niente, questa settimana: il residuo
 si costruisce spesa dopo spesa`; senza piano, nessuna scheda. In Dispensa una riga sotto
-la testata, `Da quando usi Spesa: 9 confezioni non ricomprate · 4,1 kg · circa 32 €`,
+la testata, `Da quando usi Dispesa: 9 confezioni non ricomprate · 4,1 kg · circa 32 €`,
 sommata **solo sulle settimane chiuse** — il totale racconta spese fatte davvero, non
 liste generate e abbandonate — e assente finché il totale è zero.
 
@@ -260,7 +263,7 @@ cambiato dopo, un top-up allineato o un pasto saltato non lo aggiornano (rigener
 lista prima della chiusura sovrascrive la riga della settimana); la classe `stima` non
 conta, perché per contratto non tiene residuo; il prezzo è a mano, nessuna proposta
 automatica e nessun listino, e la stima in euro copre solo gli ingredienti con prezzo e lo
-dice; la baseline "senza memoria" è una convenzione — assume che senza Spesa si
+dice; la baseline "senza memoria" è una convenzione — assume che senza Dispesa si
 ricomprerebbe ogni settimana tutto il fabbisogno, generosa per chi ha buona memoria e
 giusta per chi compra a caso; le settimane chiuse prima della migrazione 0011 non hanno
 righe, il totale parte da lì. Spec:

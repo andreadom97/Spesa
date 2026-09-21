@@ -28,7 +28,7 @@ type Vista =
   | 'bozza';
 
 const SPIEGAZIONE_RIFIUTO =
-  'Prescrive obiettivi nutrizionali, non alimenti: Spesa costruisce la lista dai piatti, e qui non ci sono piatti da cui partire.';
+  'Prescrive obiettivi nutrizionali, non alimenti: Dispesa costruisce la lista dai piatti, e qui non ci sono piatti da cui partire.';
 
 const MESSAGGIO_503 = "L'estrazione non è disponibile su questo ambiente.";
 const MESSAGGIO_ERRORE_GENERICO = 'Non siamo riusciti a leggere la dieta. Riprova.';

@@ -142,7 +142,7 @@ describe('Le due porte', () => {
 
     expect(await screen.findByText('Da dove partiamo?')).toBeInTheDocument();
     expect(
-      screen.getByText('Spesa costruisce la lista dai piatti che mangi. Ce li dici una volta sola, in uno di questi due modi.'),
+      screen.getByText('Dispesa costruisce la lista dai piatti che mangi. Ce li dici una volta sola, in uno di questi due modi.'),
     ).toBeInTheDocument();
   });
 

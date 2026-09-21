@@ -12,7 +12,7 @@ function paginaOffline() {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Spesa — offline</title>
+<title>Dispesa — offline</title>
 <style>
   body {
     margin: 0;

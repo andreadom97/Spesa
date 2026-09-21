@@ -374,7 +374,7 @@ describe('Dispensa', () => {
   });
   // Il totale del non ricomprato (spec 2026-09-05-non-ricomprato-design.md §5):
   // una riga sotto la testata, solo se le settimane chiuse hanno confezioni > 0.
-  describe('Da quando usi Spesa', () => {
+  describe('Da quando usi Dispesa', () => {
     it('mostra la riga del totale con confezioni, quantità ed euro', async () => {
       mockBase(statoDispensa([{ ingredientId: 'i-riso', residuo: 920 }]));
       vi.mocked(leggiRisparmioTotale).mockResolvedValue([
@@ -384,10 +384,10 @@ describe('Dispensa', () => {
 
       const { container } = render(<Dispensa />);
 
-      expect(await screen.findByText('Da quando usi Spesa: 9 confezioni non ricomprate · 4,1 kg · circa 32 €')).toBeInTheDocument();
+      expect(await screen.findByText('Da quando usi Dispesa: 9 confezioni non ricomprate · 4,1 kg · circa 32 €')).toBeInTheDocument();
       // Sotto la testata, prima dell'inventario.
       const testo = container.textContent ?? '';
-      expect(testo.indexOf('Da quando usi Spesa')).toBeLessThan(testo.indexOf('IN CASA'));
+      expect(testo.indexOf('Da quando usi Dispesa')).toBeLessThan(testo.indexOf('IN CASA'));
     });
 
     it('senza prezzi la riga non ha la parte in euro', async () => {
@@ -398,7 +398,7 @@ describe('Dispensa', () => {
 
       render(<Dispensa />);
 
-      expect(await screen.findByText('Da quando usi Spesa: 2 confezioni non ricomprate · 500 g')).toBeInTheDocument();
+      expect(await screen.findByText('Da quando usi Dispesa: 2 confezioni non ricomprate · 500 g')).toBeInTheDocument();
     });
 
     it('con una sola confezione usa il singolare', async () => {
@@ -409,7 +409,7 @@ describe('Dispensa', () => {
 
       render(<Dispensa />);
 
-      expect(await screen.findByText('Da quando usi Spesa: 1 confezione non ricomprata · 1,0 kg · circa 3 €')).toBeInTheDocument();
+      expect(await screen.findByText('Da quando usi Dispesa: 1 confezione non ricomprata · 1,0 kg · circa 3 €')).toBeInTheDocument();
     });
 
     it('con zero confezioni non fa rumore', async () => {
@@ -421,7 +421,7 @@ describe('Dispensa', () => {
       render(<Dispensa />);
 
       await screen.findByText('IN CASA');
-      expect(screen.queryByText(/Da quando usi Spesa/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Da quando usi Dispesa/)).not.toBeInTheDocument();
     });
 
     it('se la lettura fallisce la pagina resta usabile, senza riga', async () => {
@@ -433,7 +433,7 @@ describe('Dispensa', () => {
 
       expect(await screen.findByText('IN CASA')).toBeInTheDocument();
       expect(screen.getByLabelText('Residuo di Riso')).toHaveValue(920);
-      expect(screen.queryByText(/Da quando usi Spesa/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Da quando usi Dispesa/)).not.toBeInTheDocument();
       expect(errore).toHaveBeenCalled();
       errore.mockRestore();
     });

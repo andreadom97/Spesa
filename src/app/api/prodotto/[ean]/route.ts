@@ -5,7 +5,7 @@ import { eanValido, analizzaQuantitaOFF } from '@/domain/ean';
 const OFF_BASE = 'https://world.openfoodfacts.org/api/v2/product/';
 const OFF_FIELDS = 'product_name,brands,quantity,product_quantity,product_quantity_unit';
 /** OFF chiede un User-Agent che dica chi chiama: lo mette il server, il browser non può. */
-const USER_AGENT = 'Spesa/1.0 (https://github.com/andreadom97/Spesa)';
+const USER_AGENT = 'Dispesa/1.0 (https://github.com/andreadom97/Spesa)';
 const TIMEOUT_MS = 8000;
 const MAX_CARATTERI = 80;
 
