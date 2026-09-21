@@ -6,8 +6,12 @@ import type { AreaId, Dish } from '@/domain/types';
 import { coloreArea, nomeArea } from '@/domain/aree';
 import { leggiSettimanaCorrente } from '@/data/settimana';
 import { leggiRepertorio } from '@/data/repertorio';
-import { leggiListe, spunta, allineaTopUp, type ListaSalvata, type SezioneSalvata, type VoceSalvata } from '@/data/lista';
+import {
+  leggiListe, spunta, allineaTopUp, fondiSezioni,
+  type ListaSalvata, type SezioneSalvata, type VoceSalvata, type SezioneFusa, type VoceFusa,
+} from '@/data/lista';
 import { rispondiControllo } from '@/data/dispensa';
+import { etichettaSettimana } from '@/domain/settimana-label';
 import { idCasa } from '@/data/casa';
 import { client } from '@/data/supabase';
 import { accodaSpunta, leggiCoda, rimuoviConfermate, applicaCodaSuVoci, type Spunta } from '@/offline/coda';
@@ -15,46 +19,11 @@ import { leggiIstantaneaLista, salvaIstantaneaLista, cancellaIstantaneaLista } f
 import { Testata } from '@/components/Testata';
 import { Tessera } from '@/components/Tessera';
 import { RigaControllo } from '@/components/RigaControllo';
+import { Dock } from '@/components/Dock';
 import { useAreeMancanti } from '@/components/marchio-context';
 
 const INK = '#14163A';
 const MUT = '#8A8A96';
-
-const MESI = ['GEN', 'FEB', 'MAR', 'APR', 'MAG', 'GIU', 'LUG', 'AGO', 'SET', 'OTT', 'NOV', 'DIC'];
-
-/**
- * Cosa distingue le due liste. La regola esiste nella spec (riga 15: base
- * settimanale sui non deperibili, top-up per il fresco) ed e' nel codice — e'
- * il flag `deperibile` dell'ingrediente a smistare — ma non era scritta da
- * nessuna parte nell'app: due parole in un selettore non spiegano perche' la
- * stessa spesa sia divisa in due, e chi apre la lista in corsia deve capirlo
- * a colpo d'occhio, non dedurlo.
- */
-const SPIEGA_TAB: Record<'base' | 'topup', string> = {
-  base: 'La spesa grossa, una volta a settimana: quello che si conserva.',
-  topup: 'Il fresco, e quello che si aggiunge strada facendo se il piano cambia.',
-};
-
-/** "31 AGO — 6 SET": il lunedì e la domenica della settimana, come nell'artboard. */
-function formattaPillola(dataInizio: string): string {
-  const inizio = new Date(`${dataInizio}T00:00:00Z`);
-  const fine = new Date(inizio.getTime() + 6 * 86_400_000);
-  const g = (d: Date) => `${d.getUTCDate()} ${MESI[d.getUTCMonth()]}`;
-  return `${g(inizio)} — ${g(fine)}`;
-}
-
-/** Voci totali e voci spuntate della sola classe "voci" (i controlli non contano, come in Lista.dc.html). */
-function tally(sezioni: SezioneSalvata[]): { totale: number; fatte: number } {
-  let totale = 0;
-  let fatte = 0;
-  for (const s of sezioni) {
-    for (const v of s.voci) {
-      totale += 1;
-      if (v.spuntato) fatte += 1;
-    }
-  }
-  return { totale, fatte };
-}
 
 /**
  * Vero solo quando non resta più nulla da fare: ogni voce spuntata *e*
@@ -224,7 +193,6 @@ export default function Lista() {
   const [settimanaLabelVuoto, setSettimanaLabelVuoto] = useState<string | undefined>(undefined);
   const [erroreCaricamento, setErroreCaricamento] = useState<string | null>(null);
   const [erroreAzione, setErroreAzione] = useState<string | null>(null);
-  const [tab, setTab] = useState<'base' | 'topup'>('base');
   const [rigaInVolo, setRigaInVolo] = useState<string | null>(null);
   // Quante volte l'utente ha toccato la lista (spunte e risposte ai
   // controlli) da quando la pagina è montata. Serve a `rileggi` e a
@@ -293,7 +261,7 @@ export default function Lista() {
           }
           return;
         }
-        const label = formattaPillola(settimana.dataInizio);
+        const label = etichettaSettimana(settimana.dataInizio);
         // Prima di leggere, non dopo: se il piano è cambiato da quando la
         // lista è stata creata (un pasto spostato, un piatto aggiunto), qui
         // il mancante entra nel top-up. È il solo punto in cui serve —
@@ -491,8 +459,13 @@ export default function Lista() {
     void sincronizzaCoda();
   }
 
-  async function rispondi(controllo: VoceSalvata, listaId: string | null, ancora: boolean) {
-    if (!listaId || rigaInVolo) return;
+  // Il `listaId` arriva dalla voce, non dalla vista: con la lista unica la
+  // tab attiva non c'è più, e rispondere a un controllo del fresco deve
+  // scrivere sulla riga `shopping_list` del fresco. `fondiSezioni` scarta le
+  // voci di una lista senza id, quindi qui l'id c'è sempre: la vecchia
+  // guardia `if (!listaId)` non ha più un caso da coprire.
+  async function rispondi(controllo: VoceFusa, listaId: string, ancora: boolean) {
+    if (rigaInVolo) return;
     versioneTocchi.current += 1;
     setErroreAzione(null);
     setRigaInVolo(controllo.id);
@@ -527,7 +500,7 @@ export default function Lista() {
   if (erroreCaricamento) {
     return (
       <Cornice titolo="Lista" aree={[]}>
-        <p style={{ margin: '20px 18px', color: 'var(--sec)' }}>{erroreCaricamento}</p>
+        <p style={{ margin: '20px 18px', color: 'var(--errore)' }}>{erroreCaricamento}</p>
       </Cornice>
     );
   }
@@ -546,11 +519,11 @@ export default function Lista() {
         titolo: 'La lista non c’è ancora',
         testo: 'Nasce dalla settimana: appena confermi quali pasti farai a casa, qui trovi cosa comprare e quante confezioni.',
         href: '/piano',
-        bottone: 'VAI ALLA SETTIMANA',
+        bottone: 'VAI AL PIANO',
       };
     return (
       <Cornice titolo="Lista" settimana={settimanaLabelVuoto} aree={[]}>
-        <div className="sc scroll-app con-piede" style={{ flex: 1, overflowY: 'auto', padding: '6px 16px 16px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <div className="sc scroll-app con-dock" style={{ flex: 1, overflowY: 'auto', padding: '6px 16px 16px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
           <div style={{ padding: '26px 20px', borderRadius: 22, background: '#FFFFFF', border: '1px solid rgba(20,22,58,0.07)', textAlign: 'center' }}>
             <div style={{ width: 46, height: 46, margin: '0 auto 20px', borderRadius: 14, border: '2px dashed rgba(20,22,58,0.20)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -565,18 +538,9 @@ export default function Lista() {
             </div>
           </div>
         </div>
-        <div className="coda-barra" style={{ padding: '6px 16px 0' }}>
-          <Link
-            href={vuoto.href}
-            style={{
-              width: '100%', height: 54, borderRadius: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700, letterSpacing: '0.09em',
-              background: '#14163A', boxShadow: '0 3px 10px rgba(20,22,58,0.24)', color: '#FFFFFF',
-            }}
-          >
-            {vuoto.bottone}
-          </Link>
-        </div>
+        <Dock>
+          <Link href={vuoto.href} className="dock-primario">{vuoto.bottone}</Link>
+        </Dock>
       </Cornice>
     );
   }
@@ -587,68 +551,52 @@ export default function Lista() {
   }
 
   const { lista } = stato;
-  const sezioniAttive = (tab === 'base' ? lista.base : lista.topup)
-    .filter((s) => s.voci.length > 0 || s.controlli.length > 0);
-  const listaIdAttiva = tab === 'base' ? lista.baseListaId : lista.topupListaId;
-  const tallyBase = tally(lista.base);
-  const tallyTopup = tally(lista.topup);
-  // Il selettore BASE/TOP-UP e la riga HAI PRESO TUTTO sono entrambi fuori dallo
-  // scroller: il respiro sopra la barra va solo sull'ultimo dei due (quello che tocca
-  // il fondo), altrimenti si sommerebbe due volte.
+  // La lista è una sola, per reparto (decisione del 20/09): la fusione delle
+  // due righe `shopping_list` avviene qui, in lettura, e il database resta
+  // com'è. Ogni voce porta il `listaId` della sua, che serve a `rispondi`.
+  const sezioni = fondiSezioni(lista);
+  // Un solo booleano decide due cose che non possono divergere: se il Dock
+  // c'è, e se lo scroller deve lasciargli la coda.
   const finito = tuttoFatto(lista);
 
   return (
     <Cornice titolo="Lista" settimana={stato.settimanaLabel} aree={areeMancanti(lista)}>
-      <div className="sc scroll-app con-piede" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Padding laterale 4: i 12 di margine di ogni tessera-widget danno i 16
+          finali dal bordo della cornice. Le righe di testo, che non sono
+          widget, si riprendono il margine da sole. */}
+      <div
+        className={`sc scroll-app${finito ? ' con-dock' : ''}`}
+        style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 4px 14px', display: 'flex', flexDirection: 'column' }}
+      >
         {stato.offline && (
-          <p style={{ margin: '0 4px', fontSize: 12.5, lineHeight: 1.4, color: 'var(--sec)' }}>
+          <p style={{ margin: '0 16px 12px', fontSize: 12.5, lineHeight: 1.4, color: 'var(--testo-2)' }}>
             {`Sei offline: questa è la lista di ${stato.settimanaLabel} salvata l'ultima volta che l'hai aperta. Le spunte si sincronizzano appena torna la rete.`}
           </p>
         )}
         {erroreAzione && (
-          <p style={{ margin: '0 4px', fontSize: 12.5, color: 'var(--sec)' }}>{erroreAzione}</p>
+          <p style={{ margin: '0 16px 12px', fontSize: 12.5, color: 'var(--errore)' }}>{erroreAzione}</p>
         )}
-        <p style={{ margin: '0 4px', fontSize: 12.5, lineHeight: 1.4, color: 'var(--sec)' }}>
-          {SPIEGA_TAB[tab]}
-        </p>
-        {sezioniAttive.length === 0 && (
-          <p style={{ margin: '20px 4px', fontSize: 14, color: 'var(--sec)', textAlign: 'center' }}>
+        {sezioni.length === 0 && (
+          <p style={{ margin: '20px 16px', fontSize: 14, color: 'var(--testo-2)', textAlign: 'center' }}>
             Niente da comprare qui.
           </p>
         )}
-        {sezioniAttive.map((sezione) => (
+        {sezioni.map((sezione) => (
           <CartaSezione
             key={sezione.area}
             sezione={sezione}
             rigaInVolo={rigaInVolo}
             onToggleVoce={toggleVoce}
-            onSi={(c) => rispondi(c, listaIdAttiva, true)}
-            onNo={(c) => rispondi(c, listaIdAttiva, false)}
+            onSi={(c) => rispondi(c, c.listaId, true)}
+            onNo={(c) => rispondi(c, c.listaId, false)}
           />
         ))}
       </div>
 
-      <SelettoreTab
-        tab={tab}
-        daPrendereBase={tallyBase.totale - tallyBase.fatte}
-        daPrendereTopup={tallyTopup.totale - tallyTopup.fatte}
-        onCambia={setTab}
-        className={finito ? undefined : 'coda-barra'}
-      />
-
       {finito && (
-        <div className="coda-barra" style={{ padding: '8px 16px 0' }}>
-          <Link
-            href="/lista/fatta"
-            style={{
-              width: '100%', height: 54, borderRadius: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700, letterSpacing: '0.09em',
-              background: '#14163A', boxShadow: '0 3px 10px rgba(20,22,58,0.24)', color: '#FFFFFF',
-            }}
-          >
-            HAI PRESO TUTTO
-          </Link>
-        </div>
+        <Dock>
+          <Link href="/lista/fatta" className="dock-primario">HAI PRESO TUTTO</Link>
+        </Dock>
       )}
     </Cornice>
   );
@@ -663,18 +611,25 @@ export default function Lista() {
  * averla spuntata, e in corsia si continuava a leggere in grande una cosa
  * gia' fatta. `sort` su una copia: l'array arriva dallo stato di React.
  */
-function ordinaPerCarrello(voci: VoceSalvata[]): VoceSalvata[] {
+function ordinaPerCarrello<T extends { spuntato: boolean }>(voci: T[]): T[] {
   return [...voci].sort((a, b) => Number(a.spuntato) - Number(b.spuntato));
 }
 
+/**
+ * Un reparto = una tessera-widget (DESIGN.md §8 Scheda): fondo bianco, raggio
+ * 22, bordo 1 px e `--ombra-pannello`, che è l'ombra delle superfici
+ * flottanti. Le tessere accese che ci stanno dentro hanno perso il fondo
+ * bianco proprio perché ora ce l'ha il widget: due bianchi sovrapposti non
+ * disegnavano più nessun confine.
+ */
 function CartaSezione({
   sezione, rigaInVolo, onToggleVoce, onSi, onNo,
 }: {
-  sezione: SezioneSalvata;
+  sezione: SezioneFusa;
   rigaInVolo: string | null;
-  onToggleVoce: (v: VoceSalvata) => void;
-  onSi: (c: VoceSalvata) => void;
-  onNo: (c: VoceSalvata) => void;
+  onToggleVoce: (v: VoceFusa) => void;
+  onSi: (c: VoceFusa) => void;
+  onNo: (c: VoceFusa) => void;
 }) {
   return (
     // flexShrink: 0 non e' cosmetico. La carta sta in un contenitore flex in
@@ -684,12 +639,14 @@ function CartaSezione({
     // il difetto non si vedeva; su un telefono si vede subito.
     <div
       style={{
-        background: '#FFFFFF', borderRadius: 22, border: '1px solid rgba(20,22,58,0.07)',
+        margin: '0 12px 12px', background: '#FFFFFF', borderRadius: 22,
+        border: '1px solid var(--bordo)', boxShadow: 'var(--ombra-pannello)',
+        padding: '14px 12px 12px', display: 'flex', flexDirection: 'column', gap: 12,
         overflow: 'hidden', flexShrink: 0,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '15px 16px 10px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
           <span style={{ width: 10, height: 10, borderRadius: 4, flex: 'none', background: coloreArea(sezione.area), display: 'inline-block' }} />
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: INK }}>
             {nomeArea(sezione.area)}
@@ -699,7 +656,7 @@ function CartaSezione({
           {sezione.voci.length} {sezione.voci.length === 1 ? 'VOCE' : 'VOCI'}
         </span>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, padding: '0 12px 12px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
         {ordinaPerCarrello(sezione.voci).map((v, i) => (
           <Tessera
             key={v.id}
@@ -729,56 +686,6 @@ function CartaSezione({
           disabilitato={rigaInVolo === c.id}
         />
       ))}
-    </div>
-  );
-}
-
-function SelettoreTab({
-  tab, daPrendereBase, daPrendereTopup, onCambia, className,
-}: {
-  tab: 'base' | 'topup';
-  daPrendereBase: number;
-  daPrendereTopup: number;
-  onCambia: (t: 'base' | 'topup') => void;
-  className?: string;
-}) {
-  const acceso = { flex: 1, padding: '13px 16px', borderRadius: 18, background: INK };
-  const spento = { flex: 'none' as const, width: 96, padding: '13px 12px', borderRadius: 18, background: 'rgba(20,22,58,0.05)' };
-  const rigaAccesa = { display: 'flex', alignItems: 'baseline' as const, justifyContent: 'space-between' as const, gap: 10 };
-  const rigaSpenta = { display: 'flex', alignItems: 'baseline' as const, justifyContent: 'center' as const, gap: 6 };
-  const etichettaAccesa = { fontSize: 17, fontWeight: 800, letterSpacing: '-0.03em', color: '#FFFFFF' };
-  const etichettaSpenta = { fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: MUT };
-  const contoAcceso = { fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.62)' };
-  const contoSpento = { fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, color: 'rgba(20,22,58,0.34)' };
-
-  return (
-    <div className={className} style={{ padding: '8px 16px 0', display: 'flex', gap: 8, alignItems: 'center' }}>
-      <button
-        type="button"
-        onClick={() => onCambia('base')}
-        aria-label={`Base, ${daPrendereBase} da prendere`}
-        style={tab === 'base' ? acceso : spento}
-      >
-        <div style={tab === 'base' ? rigaAccesa : rigaSpenta}>
-          <span style={tab === 'base' ? etichettaAccesa : etichettaSpenta}>BASE</span>
-          <span style={tab === 'base' ? contoAcceso : contoSpento}>
-            {tab === 'base' ? `${daPrendereBase} DA PRENDERE` : String(daPrendereBase)}
-          </span>
-        </div>
-      </button>
-      <button
-        type="button"
-        onClick={() => onCambia('topup')}
-        aria-label={`Top-up, ${daPrendereTopup} da prendere`}
-        style={tab === 'topup' ? acceso : spento}
-      >
-        <div style={tab === 'topup' ? rigaAccesa : rigaSpenta}>
-          <span style={tab === 'topup' ? etichettaAccesa : etichettaSpenta}>TOP-UP</span>
-          <span style={tab === 'topup' ? contoAcceso : contoSpento}>
-            {tab === 'topup' ? `${daPrendereTopup} DA PRENDERE` : String(daPrendereTopup)}
-          </span>
-        </div>
-      </button>
     </div>
   );
 }
