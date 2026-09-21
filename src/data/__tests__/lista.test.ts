@@ -75,6 +75,112 @@ describe('raggruppaInSezioni', () => {
     expect(sezioni[0].voci.map((v) => v.nome)).toEqual(['Riso']);
     expect(sezioni[0].controlli.map((c) => c.nome)).toEqual(['Avena']);
   });
+
+  /**
+   * Round 2 del fix Task 1: il comparatore condiviso con fondiSezioni
+   * (ordinaVoci/ordinaControlli) era garantito solo dalla lettura del diff —
+   * nessun test esercitava l'ordinamento di raggruppaInSezioni da sola.
+   */
+  it('dentro un\'area, più voci si ordinano per confezioni decrescenti', () => {
+    const righe = [
+      riga({
+        id: 'item-aceto', ingredient_id: 'ing-aceto', area: 'dispensa',
+        confezioni: 1, quantita_totale: 100, origine: 'piano',
+        ingredient: { nome: 'Aceto', classe_residuo: 'stima' },
+      }),
+      riga({
+        id: 'item-burro', ingredient_id: 'ing-burro', area: 'dispensa',
+        confezioni: 5, quantita_totale: 500, origine: 'piano',
+        ingredient: { nome: 'Burro', classe_residuo: 'stima' },
+      }),
+      riga({
+        id: 'item-cacao', ingredient_id: 'ing-cacao', area: 'dispensa',
+        confezioni: 3, quantita_totale: 300, origine: 'piano',
+        ingredient: { nome: 'Cacao', classe_residuo: 'stima' },
+      }),
+    ];
+
+    const sezioni = raggruppaInSezioni(righe, ORDINE);
+
+    expect(sezioni[0].voci.map((v) => v.nome)).toEqual(['Burro', 'Cacao', 'Aceto']);
+  });
+
+  /**
+   * A pari confezioni, il tie-break è per nome con localeCompare('it'), non
+   * un confronto binario sui code unit. "Èvo" e "Zucchine" sono la prova: in
+   * italiano È è una variante di E e "Èvo" va ordinato vicino alla lettera E,
+   * ben prima di "Zucchine" — ma un confronto binario (quello che useremmo
+   * senza `'it'`, o con un `<` semplice) mette prima "Zucchine", perché il
+   * code unit di 'Z' (90) è più piccolo di quello di 'È' (200). Le due
+   * strade danno esiti opposti: non è una tautologia, è la prova che qui
+   * serve davvero il collate italiano [misurato ora con
+   * 'Èvo'.localeCompare('Zucchine', 'it') === -1 e 'Èvo' < 'Zucchine' === false].
+   */
+  it('a pari confezioni, il tie-break sul nome usa il collate italiano', () => {
+    const righe = [
+      riga({
+        id: 'item-zucchine', ingredient_id: 'ing-zucchine', area: 'dispensa',
+        confezioni: 2, quantita_totale: 200, origine: 'piano',
+        ingredient: { nome: 'Zucchine', classe_residuo: 'stima' },
+      }),
+      riga({
+        id: 'item-evo', ingredient_id: 'ing-evo', area: 'dispensa',
+        confezioni: 2, quantita_totale: 200, origine: 'piano',
+        ingredient: { nome: 'Èvo', classe_residuo: 'stima' },
+      }),
+    ];
+
+    const sezioni = raggruppaInSezioni(righe, ORDINE);
+
+    expect(sezioni[0].voci.map((v) => v.nome)).toEqual(['Èvo', 'Zucchine']);
+  });
+
+  it('i controlli si ordinano per nome e restano separati dalle voci', () => {
+    const righe = [
+      riga({
+        id: 'item-riso', ingredient_id: 'ing-riso', area: 'cereali',
+        confezioni: 1, quantita_totale: 1000, fabbisogno: 820, origine: 'piano',
+        ingredient: { nome: 'Riso', classe_residuo: 'intero' },
+      }),
+      riga({
+        id: 'item-zucchero', ingredient_id: 'ing-zucchero', area: 'cereali',
+        confezioni: 0, quantita_totale: 0, origine: 'controllo',
+        ingredient: { nome: 'Zucchero', classe_residuo: 'stima' },
+      }),
+      riga({
+        id: 'item-avena', ingredient_id: 'ing-avena', area: 'cereali',
+        confezioni: 0, quantita_totale: 0, origine: 'controllo',
+        ingredient: { nome: 'Avena', classe_residuo: 'stima' },
+      }),
+    ];
+
+    const sezioni = raggruppaInSezioni(righe, ORDINE);
+
+    expect(sezioni[0].voci.map((v) => v.nome)).toEqual(['Riso']);
+    expect(sezioni[0].controlli.map((c) => c.nome)).toEqual(['Avena', 'Zucchero']);
+  });
+
+  it('le aree escono nell\'ordine passato in ingresso, e un\'area senza niente non compare', () => {
+    const righe = [
+      riga({
+        id: 'item-pasta', ingredient_id: 'ing-pasta', area: 'cereali',
+        confezioni: 1, quantita_totale: 100, origine: 'piano',
+        ingredient: { nome: 'Pasta', classe_residuo: 'intero' },
+      }),
+      riga({
+        id: 'item-patate', ingredient_id: 'ing-patate', area: 'ortofrutta',
+        confezioni: 1, quantita_totale: 100, origine: 'piano',
+        ingredient: { nome: 'Patate', classe_residuo: 'intero' },
+      }),
+    ];
+    // 'dispensa' è prima nell'ordine ma non ha righe: deve sparire, non
+    // comparire vuota.
+    const ordinePersonalizzato: AreaId[] = ['dispensa', 'ortofrutta', 'cereali'];
+
+    const sezioni = raggruppaInSezioni(righe, ordinePersonalizzato);
+
+    expect(sezioni.map((s) => s.area)).toEqual(['ortofrutta', 'cereali']);
+  });
 });
 
 function voce(nome: string, area: VoceSalvata['area'], confezioni: number, extra: Partial<VoceSalvata> = {}): VoceSalvata {
