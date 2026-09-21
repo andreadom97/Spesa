@@ -105,6 +105,10 @@ export default function Settimana() {
     setPrecedenteVuota(false);
     setFoglio(null);
     setErroreCaricamento(null);
+    // Anche l'errore di conferma: da quando vive nello scroller — reso in
+    // entrambe le viste — resterebbe a schermo sopra il piano della settimana
+    // scorsa, dove il tasto che lo genera non esiste nemmeno.
+    setErroreConferma(null);
     setVista(v);
   }
 
@@ -204,7 +208,7 @@ export default function Settimana() {
   if (erroreCaricamento) {
     return (
       <Cornice>
-        <p style={{ margin: '20px 18px', color: 'var(--sec)' }}>{erroreCaricamento}</p>
+        <p style={{ margin: '20px 18px', color: 'var(--errore)' }}>{erroreCaricamento}</p>
         {vista === 'precedente' && (
           <div style={{ padding: '0 16px' }}>
             <button

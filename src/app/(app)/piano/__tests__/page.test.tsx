@@ -815,7 +815,7 @@ describe('settimana precedente', () => {
     });
     vi.mocked(leggiPronti).mockResolvedValue([]);
 
-    render(<StrictMode><Settimana /></StrictMode>);
+    rendi(<StrictMode><Settimana /></StrictMode>);
     await screen.findByText('Yogurt e frutta');
 
     fireEvent.click(screen.getByRole('button', { name: '‹ SETTIMANA SCORSA' }));
@@ -878,6 +878,30 @@ describe('settimana precedente', () => {
     fireEvent.click(bottoneRitorno);
 
     expect(await screen.findByText('Yogurt e frutta')).toBeInTheDocument();
+  });
+
+  it('l\'errore di conferma non segue il cambio vista: cambiare settimana lo pulisce', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const corrente: SettimanaCorrente = { id: 'w-1', dataInizio: LUNEDI, stato: 'bozza', slots: buildSlots() };
+    const precedente: SettimanaCorrente = { id: 'w-0', dataInizio: LUNEDI_PREC, stato: 'chiusa', slots: slotsPrecedenti() };
+    mockCarico(corrente);
+    vi.mocked(leggiSettimana).mockResolvedValue(precedente);
+    vi.mocked(confermaSettimana).mockRejectedValue(new Error('rete assente'));
+    rendi();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'CONFERMA E CREA LA LISTA' }));
+    const errore = await screen.findByText('Non siamo riusciti a confermare la settimana. Riprova.');
+    expect(errore).toBeInTheDocument();
+
+    // L'errore vive nello scroller, che è reso in entrambe le viste: senza
+    // azzerarlo resterebbe sopra il piano della settimana scorsa, dove il
+    // tasto che lo ha generato non esiste nemmeno.
+    fireEvent.click(screen.getByRole('button', { name: '‹ SETTIMANA SCORSA' }));
+    await screen.findByRole('button', { name: 'SETTIMANA CORRENTE ›' });
+
+    expect(screen.queryByText('Non siamo riusciti a confermare la settimana. Riprova.')).not.toBeInTheDocument();
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
   });
 
   it('nella vista precedente il Dock non c\'è, e lo scroller non tiene la coda del dock', async () => {
