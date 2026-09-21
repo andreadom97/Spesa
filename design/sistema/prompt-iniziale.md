@@ -1,14 +1,14 @@
 # Prompt iniziale per Claude Design
 
 Incolla il testo qui sotto come **primo messaggio** nella conversazione del progetto design
-system di Spesa. Tutto quello che segue la riga di separazione è il prompt.
+system di Dispesa. Tutto quello che segue la riga di separazione è il prompt.
 
 Aggiornato al **20/09/2026**, design system **v3**: le scelte fatte il 19/09 in Claude Design e
 le risposte di Andrea del 20/09 non sono più proposte, sono **regole scritte in `DESIGN.md`**.
 
 ---
 
-Disegni schermate per **Spesa**, un'app mobile italiana. Da ora in poi ogni schermata che
+Disegni schermate per **Dispesa**, un'app mobile italiana. Da ora in poi ogni schermata che
 produci sta dentro il suo design system, **versione 3 del 20/09/2026**. Il sistema è nei file
 del progetto: **`DESIGN.md` è la fonte di verità** (token, taglie, misure, stati),
 `tokens.css` sono le variabili, `CLAUDE.md` registra le decisioni prese con Andrea,
@@ -18,7 +18,7 @@ del progetto: **`DESIGN.md` è la fonte di verità** (token, taglie, misure, sta
 
 ## Chi è l'utente
 
-Una persona che cucina a casa a Milano e fa la spesa una volta a settimana. Usa Spesa in tre
+Una persona che cucina a casa a Milano e fa la spesa una volta a settimana. Usa Dispesa in tre
 momenti diversi: la domenica, seduta, per pianificare i pasti; il sabato, dentro un
 supermercato, **in piedi, con una mano, di fretta e spesso senza rete**; la sera, per dire cosa
 ha mangiato davvero. La schermata della Lista è quella usata in corsia: deve essere leggibile a
@@ -91,7 +91,7 @@ e va nominato.
 
 ## Regole non negoziabili
 
-- **Niente claim di salute.** Spesa non dice che qualcosa fa bene, non parla di calorie, non dà
+- **Niente claim di salute.** Dispesa non dice che qualcosa fa bene, non parla di calorie, non dà
   consigli nutrizionali.
 - **Niente cifre in euro** se l'utente non ha dato un prezzo. Il risparmio si chiama "non hai
   ricomprato", mai "hai risparmiato X €".

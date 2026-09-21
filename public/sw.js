@@ -1,4 +1,4 @@
-const CACHE = 'spesa-v2';
+const CACHE = 'dispesa-v1';
 const GUSCIO = ['/lista', '/piano', '/piatti', '/manifest.json'];
 
 // Ultima rete di sicurezza: se offline e nemmeno '/lista' è in cache (mai

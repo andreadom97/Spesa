@@ -1,7 +1,7 @@
-# Pacchetto design system — Spesa
+# Pacchetto design system — Dispesa
 
 Questa cartella è il pacchetto da caricare in un progetto **design system** di Claude Design
-(claude.ai/design), così che ogni schermata generata lì nasca già dentro il sistema di Spesa.
+(claude.ai/design), così che ogni schermata generata lì nasca già dentro il sistema di Dispesa.
 
 Versione del sistema: **v3, aggiornata il 20/09/2026** (la v2 era stata approvata il
 17/09/2026). Le otto decisioni del 17/09, il ridisegno del 19/09 e le cinque risposte di Andrea
@@ -15,7 +15,9 @@ del 20/09 sono già incorporati: qui non esiste più nessun "da decidere".
 | `CLAUDE.md` | **Le decisioni prese con Andrea**, con la cronaca di come sono state prese: il ridisegno del 19/09 e le cinque risposte del 20/09. Se contraddice `DESIGN.md`, vince `DESIGN.md`: qui c'è la cronaca, là la regola. |
 | `tokens.css` | Tutte le variabili CSS, una per riga con il suo commento: i neutri e le aree di `src/app/globals.css`, i cinque token semantici, le scale (tipografia, spaziatura, raggi, bordi, ombre, tratti, misure dei controlli) e il blocco del **ridisegno** — gradiente, tre ombre nuove, `--fine-barra-grande` 128 e `--fine-barra-piccola` 110, `--moto-barra` 200ms con `--curva-barra`, le misure della tab bar e del dock, raggio cornice 26. |
 | `prompt-iniziale.md` | Il testo da incollare come primo messaggio in Claude Design, per fargli adottare il sistema. |
-| `cards/*.html` | Ventuno schede, una per file: la resa visiva dei componenti. Ogni scheda è un HTML autonomo con CSS inline. |
+| `prompt-aggiorna-claude-md.md` | Il prompt del 20/09 per far aggiornare a Claude Design il `CLAUDE.md` del progetto: `CLAUDE.md` è un percorso riservato e DesignSync non lo scrive. Già usato. |
+| `prompt-nome-dispesa.md` | Il prompt del 21/09 per la stessa ragione: l'app si chiama **Dispesa** e il `CLAUDE.md` del progetto va corretto a mano. |
+| `cards/*.html` | Ventidue schede, una per file: la resa visiva dei componenti. Ogni scheda è un HTML autonomo con CSS inline. |
 | `schermate/*.html` | Le **schermate assemblate**: una schermata intera dentro la cornice 393 × 852, montata dai pezzi approvati, con sotto i tre blocchi di consegna (Misure, Componenti usati, Regole di `DESIGN.md` che tocca). Oggi c'è `lista.html` (20/09). Stesso formato delle schede, gruppo `Schermate`. |
 
 Le schede sono raggruppate dal marcatore in prima riga, `<!-- @dsCard group="…" -->`:
@@ -61,7 +63,7 @@ Pattern, Schermate. Un file senza quel marcatore in prima riga non entra nell'in
 
 ### Via 2 — caricamento manuale
 
-1. Apri claude.ai/design e crea (o apri) il progetto **design system** di Spesa.
+1. Apri claude.ai/design e crea (o apri) il progetto **design system** di Dispesa.
 2. Carica `DESIGN.md`, `CLAUDE.md` e `tokens.css` come documenti del progetto. Carica anche
    `docs/2026-09-19-inventario-schermate.md` col nome `INVENTARIO-SCHERMATE.md`: il prompt
    iniziale lo cita e ogni schermata nuova deve poterlo nominare.
@@ -86,9 +88,9 @@ Pattern, Schermate. Un file senza quel marcatore in prima riga non entra nell'in
 
 ## Rapporto con il codice
 
-Il codice dell'app (`src/`) non è toccato da questo pacchetto. I cinque token semantici
-(`--testo-2`, `--avviso`, `--errore`, `--freddo`, `--icona-spenta`) e tutti i token del blocco
-"ridisegno" di `tokens.css` sono decisi ma non ancora in `src/app/globals.css`: entrano alla
-prima modifica utile di quel file. Il registro delle **derive del codice** resta
+Il codice dell'app (`src/`) non è toccato da questo pacchetto, ma dal 21/09 lo segue: i cinque
+token semantici (`--testo-2`, `--avviso`, `--errore`, `--freddo`, `--icona-spenta`) e i token
+del blocco "ridisegno" di `tokens.css` sono **in** `src/app/globals.css`, entrati con la fase 1
+del ridisegno (guscio comune, commit `7f6bfb0`). Il registro delle **derive del codice** resta
 `docs/superpowers/specs/DESIGN-SYSTEM.md`, che dal 20/09 rimanda a `DESIGN.md` v3 come fonte di
 verità per il design e tiene solo la parte che riguarda il codice.

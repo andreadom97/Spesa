@@ -1,8 +1,8 @@
-# Spesa — design system
+# Dispesa — design system
 
 **Versione 3, aggiornata il 20/09/2026.** La v2 è stata approvata da Andrea il 17/09/2026; la
 v3 incorpora il ridisegno fatto in Claude Design il 19/09 e le cinque risposte di Andrea del
-20/09. Questo documento è la fonte di verità per chi disegna una schermata nuova di Spesa —
+20/09. Questo documento è la fonte di verità per chi disegna una schermata nuova di Dispesa —
 designer o modello. Contiene i valori, non le intenzioni: ogni token, taglia, misura e stato è
 scritto qui, e una schermata che li rispetta esce coerente con l'app senza ritocchi.
 
@@ -10,7 +10,7 @@ scritto qui, e una schermata che li rispetta esce coerente con l'app senza ritoc
 altrove. Un valore fuori dalle scale di §3, §4 e §5 è un errore, non una variante — salvo le
 **eccezioni dichiarate**, che sono elencate una per una in §5 e non si estendono per analogia.
 
-**Cosa è Spesa.** Un'app mobile italiana che tiene insieme il piano dei pasti della settimana,
+**Cosa è Dispesa.** Un'app mobile italiana che tiene insieme il piano dei pasti della settimana,
 la lista della spesa che ne deriva e la dispensa di casa. La lista si usa in piedi, con una
 mano, dentro un supermercato. Non è un'app di fitness, non dà consigli di salute, non parla di
 calorie né di risparmio.

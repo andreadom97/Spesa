@@ -1,4 +1,4 @@
-# Spesa — decisioni prese in questo progetto
+# Dispesa — decisioni prese in questo progetto
 
 `DESIGN.md` resta la fonte di verità del sistema, **ora alla v3 del 20/09/2026**. Questo file
 registra le **scelte fatte insieme ad Andrea dopo l'approvazione del 17/09/2026**: il ridisegno

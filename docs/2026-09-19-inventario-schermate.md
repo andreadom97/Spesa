@@ -1,4 +1,4 @@
-# Inventario delle schermate di Spesa — 19/09/2026
+# Inventario delle schermate di Dispesa — 19/09/2026
 
 **Obiettivo:** dare a chi ridisegna in Claude Design l'elenco esatto di ogni schermata,
 zona, pulsante, stato e testo dell'app com'è oggi su `main` (commit `6e4837c`), così che
@@ -7,12 +7,32 @@ senza ambiguità. Letto dal codice il 19/09/2026, non dall'app: ogni etichetta �
 dal file indicato, maiuscole comprese. Dove il codice non determina qualcosa, è scritto
 in coda in "Non determinato", non inventato.
 
-**Come usarlo con Claude Design.** Caricalo nel progetto design system "Spesa" accanto a
+**Come usarlo con Claude Design.** Caricalo nel progetto design system di Claude Design (etichettato "Spesa", l'app si chiama Dispesa) accanto a
 `DESIGN.md`. Quando chiedi una schermata, nomina il numero e il titolo di questo file
 ("ridisegna la 6, Dispensa") e chiedi che il risultato conservi **i nomi degli elementi
 interattivi della tabella** (colonna "Elemento") come `data-elemento` o come didascalia:
 sono la chiave con cui il codice ricollega ogni pulsante. Un elemento nuovo va dichiarato
 con `ELEMENTO NUOVO:`; uno tolto con `ELEMENTO TOLTO:`.
+
+## Cosa è cambiato dopo lo snapshot
+
+Il corpo di questo file resta la lettura fedele del codice al commit `6e4837c` del 19/09: non
+lo riscrivo, perché il suo valore è essere una fotografia datata. Quello che le fasi del
+ridisegno hanno già cambiato in produzione sta qui, e vince sul corpo.
+
+**Fase 1 — guscio comune (mergiata il 21/09, commit `7f6bfb0`):**
+
+- L'app si chiama **Dispesa**, non Spesa. Ovunque il corpo scriva "Spesa" come nome del
+  prodotto, leggi "Dispesa".
+- Il titolo della Lista non è più `Spesa`: è **`Lista`**. Vale anche per Hai preso tutto.
+  I titoli sono in sentence case: `Lista`, `Piano`, `Piatti`, `Dispensa`, `Impostazioni`.
+- `Settimana` si chiama **`Piano`** e sta su `/piano`. `/settimana` reindirizza in permanente.
+- La `Testata` non riceve più `aree`: la firma è `{ titolo, settimana?, indietro? }`. Il
+  Marchio è passato alla tab bar, dov'è l'icona della voce Lista.
+- L'ingranaggio della Testata è diventato il **menù utente**: pillola con il tondo
+  dell'iniziale e il kebab, che porta a `/impostazioni`.
+- La tab bar è la pillola flottante a quattro voci `Lista` `Piano` `Piatti` `Dispensa`, alta
+  84 px e ridotta a 66 px allo scorrimento.
 
 ## Le 16 schermate
 
