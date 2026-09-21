@@ -9,6 +9,7 @@ import { descriviScelte } from '@/domain/opzioni';
 import { giorniDellaSettimana, lunediDi, sommaGiorni } from '@/domain/date';
 import { porzioniUtilizzabili } from '@/domain/pronti';
 import { avvisiScadenza, etichettaScadenza, type AvvisoScadenza } from '@/domain/scadenza';
+import { etichettaSettimana, parolaTemporale } from '@/domain/settimana-label';
 import {
   leggiSettimanaCorrente, leggiSettimana, creaSettimana, completaAssegnazioni, aggiornaSlot, confermaSettimana,
 } from '@/data/settimana';
@@ -21,6 +22,7 @@ import { Testata } from '@/components/Testata';
 import { StrisciaGiorni } from '@/components/StrisciaGiorni';
 import { RigaPasto } from '@/components/RigaPasto';
 import { FoglioAzioniPasto } from '@/components/FoglioAzioniPasto';
+import { Dock } from '@/components/Dock';
 
 const LUNGHI = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
 
@@ -476,11 +478,15 @@ export default function Settimana() {
   }
 
   const pastiOrdinati = [...slotDefs].sort((a, b) => a.posizione - b.posizione);
-  const nCasaSettimana = settimana.slots.filter((s) => s.stato === 'casa' && s.dishId !== null).length;
+  // Il conteggio del giorno scelto, non della settimana: decisione del 21/09.
+  // Il totale settimanale sparisce con la riga che lo conteneva.
+  const nCasaGiorno = settimana.slots
+    .filter((s) => s.data === dataSelezionata && s.stato === 'casa' && s.dishId !== null).length;
+  const quandoSelezionato = parolaTemporale(dataSelezionata, oggi);
   const testoConferma = settimana.stato === 'bozza' ? 'CONFERMA E CREA LA LISTA' : 'VAI ALLA LISTA';
 
   return (
-    <Cornice>
+    <Cornice settimana={etichettaSettimana(settimana.dataInizio)}>
       <div style={{ display: 'flex', justifyContent: 'center', padding: '2px 16px 0' }}>
         <button
           type="button"
@@ -505,46 +511,36 @@ export default function Settimana() {
         />
       </div>
 
-      {/* La coda ridotta si applica solo quando il tasto CONFERMA E CREA LA LISTA è
-          renderizzato sotto (vista corrente): senza quel tasto lo scroller resta
-          l'ultimo elemento e gli serve la coda intera per non finire sotto la barra. */}
-      <div className={`sc scroll-app${vista === 'corrente' ? ' con-piede' : ''}`} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 16px 12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '0 0 10px' }}>
-          <button
-            type="button"
-            onClick={() => setSelezionato((s) => (s + 6) % 7)}
-            aria-label="Giorno precedente"
-            style={{
-              width: 36, height: 36, flex: 'none', borderRadius: 999,
-              background: 'rgba(20,22,58,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-              <path d="M10 3.2 5.6 8 10 12.8" stroke="#14163A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', justifyContent: 'center' }}>
-            <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-0.035em', color: 'var(--ink)' }}>
-              {LUNGHI[selezionato]} {Number(dataSelezionata.slice(8, 10))}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setSelezionato((s) => (s + 1) % 7)}
-            aria-label="Giorno successivo"
-            style={{
-              width: 36, height: 36, flex: 'none', borderRadius: 999,
-              background: 'rgba(20,22,58,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-              <path d="M6 3.2 10.4 8 6 12.8" stroke="#14163A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
+      {/* La coda del Dock si applica solo dove il Dock c'è (vista corrente): nella
+          precedente lo scroller resta l'ultimo elemento e gli serve la coda intera
+          per non finire sotto la barra. */}
+      <div className={`sc scroll-app${vista === 'corrente' ? ' con-dock' : ''}`} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 16px 12px' }}>
+        {/* L'etichetta di sezione titola il giorno scelto: nome, parola temporale per
+            ieri/oggi/domani, e a destra i pasti a casa di QUEL giorno. Le frecce non
+            servono più — la striscia sopra fa la stessa cosa con sette bersagli. */}
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, padding: '0 0 10px' }}>
+          {/* Maiuscola dal `text-transform`, non nelle stringhe: "Lunedì" e "Oggi" si
+              scrivono in sentence case come nell'etichetta accessibile della striscia,
+              e a leggerle VENERDÌ 18 · DOMANI è l'etichetta (DESIGN.md §Etichetta di sezione). */}
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--ink)' }}>
+            {`${LUNGHI[selezionato]} ${Number(dataSelezionata.slice(8, 10))}`}
+            {quandoSelezionato && (
+              <span style={{ color: 'var(--testo-2)' }}>{` · ${quandoSelezionato}`}</span>
+            )}
+          </span>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 500, letterSpacing: '0.1em', color: 'var(--sec)' }}>
+            {`${nCasaGiorno} ${nCasaGiorno === 1 ? 'PASTO' : 'PASTI'} A CASA`}
+          </span>
         </div>
 
         {erroreCheckin && (
-          <p style={{ margin: '0 4px 9px', fontSize: 12.5, color: 'var(--sec)' }}>{erroreCheckin}</p>
+          <p style={{ margin: '0 4px 9px', fontSize: 12.5, color: 'var(--errore)' }}>{erroreCheckin}</p>
+        )}
+
+        {/* L'errore di conferma sta nello scroller accanto a quello di check-in, non
+            accanto al tasto: nel Dock non c'è posto per un paragrafo. */}
+        {erroreConferma && (
+          <p style={{ margin: '0 4px 9px', fontSize: 12.5, color: 'var(--errore)' }}>{erroreConferma}</p>
         )}
 
         {vista === 'corrente' && piatti.length === 0 && (
@@ -607,29 +603,11 @@ export default function Settimana() {
       </div>
 
       {vista === 'corrente' && (
-        <div className="coda-barra" style={{ padding: '6px 16px 0', display: 'flex', flexDirection: 'column', gap: 9 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '0 4px' }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.11em', color: 'var(--ink)' }}>
-              {nCasaSettimana} PASTI A CASA IN SETTIMANA
-            </span>
-          </div>
-          {erroreConferma && (
-            <p style={{ margin: '0 4px', fontSize: 12.5, color: 'var(--sec)' }}>{erroreConferma}</p>
-          )}
-          <button
-            type="button"
-            onClick={confermaEVaiLista}
-            disabled={confermando}
-            style={{
-              width: '100%', height: 54, borderRadius: 18, textAlign: 'center',
-              fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700, letterSpacing: '0.09em',
-              background: '#14163A', boxShadow: '0 3px 10px rgba(20,22,58,0.24)', color: '#FFFFFF',
-              opacity: confermando ? 0.7 : 1,
-            }}
-          >
+        <Dock>
+          <button type="button" onClick={confermaEVaiLista} disabled={confermando} className="dock-primario">
             {testoConferma}
           </button>
-        </div>
+        </Dock>
       )}
 
       {foglio && (
@@ -659,10 +637,10 @@ export default function Settimana() {
 }
 
 /** Colonna a tutta altezza con la testata fissa in cima: solo il corpo passato come children scorre. */
-function Cornice({ children }: { children?: ReactNode }) {
+function Cornice({ settimana, children }: { settimana?: string; children?: ReactNode }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <Testata titolo="Piano" />
+      <Testata titolo="Piano" settimana={settimana} />
       {children}
     </div>
   );

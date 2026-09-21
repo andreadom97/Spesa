@@ -5,7 +5,8 @@ import { useIniziale } from '@/data/utente';
 
 interface Props {
   titolo: string;
-  /** Etichetta della pillola settimana (es. "31 AGO — 6 SET"). Assente = niente pillola. */
+  /** Etichetta della pillola settimana, in sentence case ("Settimana del 21 settembre"): la
+   *  pillola la rende maiuscola da sé (DESIGN.md §3). Assente = niente pillola. */
   settimana?: string;
   /** Modalità indietro: freccia di ritorno a /impostazioni al posto del menù utente. */
   indietro?: boolean;
@@ -60,7 +61,7 @@ export function Testata({ titolo, settimana, indietro = false }: Props) {
       </div>
       {settimana && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, alignSelf: 'flex-start', height: 34, padding: '0 14px', borderRadius: 999, background: 'var(--ink)' }}>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.13em', color: 'var(--superficie)' }}>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.13em', textTransform: 'uppercase', color: 'var(--superficie)' }}>
             {settimana}
           </span>
         </div>
