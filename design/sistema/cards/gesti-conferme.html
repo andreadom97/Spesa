@@ -1,0 +1,104 @@
+<!-- @dsCard group="Pattern" name="Gesti, conferme, feedback" subtitle="Come si comporta l'app, non come è fatta. Queste regole valgono per ogni schermata nuova…" viewport="720x600" -->
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gesti, conferme, feedback</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --fondo:#F1F0EE; --superficie:#FFFFFF; --ink:#14163A; --testo-2:#5C5F7A; --sec:#8A8A96;
+  --bordo:rgba(20,22,58,0.07); --errore:#C4423E;
+  --font-testo:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:var(--fondo);color:var(--ink);font-family:var(--font-testo);-webkit-font-smoothing:antialiased}
+.card{width:720px;max-width:100%;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.titolo{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.dida{font-size:12.5px;line-height:1.4;color:var(--testo-2);max-width:68ch}
+.scheda{background:var(--superficie);border:1px solid var(--bordo);border-radius:22px;padding:16px}
+.voci{columns:2;column-gap:26px}
+.voce{break-inside:avoid;margin-bottom:16px;display:flex;flex-direction:column;gap:5px}
+.voce h3{margin:0;font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
+.voce p{margin:0;font-size:12.5px;line-height:1.45}
+.voce p+p{margin-top:5px}
+.no{color:var(--errore)}
+@media(max-width:620px){.voci{columns:1}}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="titolo">Pattern · Gesti, conferme, feedback, offline</div>
+  <div class="dida">Come si comporta l'app, non come è fatta. Queste regole valgono per ogni schermata nuova: se una di esse va infranta, va infranta qui prima che nel disegno.</div>
+
+  <div class="scheda">
+    <div class="voci">
+      <div class="voce">
+        <h3>Gesti</h3>
+        <p>Tap sulla card = apre. Cambiare stato ha sempre un controllo suo: la casetta della riga pasto, una pillola, un segmento.</p>
+        <p>Eccezione dichiarata e unica: <strong>la tessera della Lista è essa stessa l'interruttore</strong> &mdash; in corsia, con una mano, un bersaglio da 44 px dentro una tessera è un bersaglio sbagliato.</p>
+        <p class="no">Nessuno swipe, nessun long-press: non si scoprono e non si annunciano.</p>
+      </div>
+
+      <div class="voce">
+        <h3>Conferme</h3>
+        <p>Ogni azione distruttiva o non reversibile &mdash; elimina piatto, riparti dalla settimana 1, rigenera la lista &mdash; passa da un dialogo a due tasti: il distruttivo pieno in --errore, ANNULLA secondario accanto.</p>
+        <p>Il dialogo dice cosa sparisce e cosa resta, non "sei sicuro?".</p>
+        <p>Le azioni reversibili (spunta di una tessera, toggle casa/fuori) non chiedono niente e si annullano rifacendo lo stesso gesto.</p>
+        <p class="no">Mai un solo tap per un'azione che non si può disfare.</p>
+      </div>
+
+      <div class="voce">
+        <h3>Feedback di scrittura</h3>
+        <p>Un'azione che scrive mostra lo stato <strong>sul controllo stesso</strong>: opacità 0,5 e disabled mentre è in volo.</p>
+        <p>La conferma è il cambio di stato del dato, non un messaggio: la tessera si spegne, la riga sparisce, il numero cambia.</p>
+        <p>Se la scrittura fallisce, un messaggio in --errore dice cosa fare e accanto compare RIPROVA.</p>
+        <p class="no">Nessun toast, nessuna snackbar, nessun segno di spunta animato.</p>
+      </div>
+
+      <div class="voce">
+        <h3>Caricamento</h3>
+        <p>La testata è già disegnata; al posto del contenuto una sola riga mono "CARICO…" in --sec.</p>
+        <p class="no">Nessuno spinner, nessuno scheletro, nessuna barra di progresso: un'attesa non deve sembrare un'animazione.</p>
+      </div>
+
+      <div class="voce">
+        <h3>Stati vuoti</h3>
+        <p>Ogni lista vuota dice <strong>perché</strong> è vuota e qual è la prossima azione, con un tasto primario che ci porta.</p>
+        <p>Lista e Settimana vuote rimandano a Piatti: la prossima azione è quella che sblocca il resto.</p>
+        <p class="no">Mai una pagina bianca, mai un vicolo cieco.</p>
+      </div>
+
+      <div class="voce">
+        <h3>Offline</h3>
+        <p>La Lista si legge <strong>sempre</strong> dall'istantanea locale: è la schermata che si usa dentro un supermercato, dove la rete non c'è.</p>
+        <p>Una riga di stato lo dice in chiaro: "Sei offline: la lista è quella dell'ultima apertura".</p>
+        <p>Le spunte si accodano e non si perdono. Le altre pagine possono fallire con un messaggio; la Lista no.</p>
+      </div>
+
+      <div class="voce">
+        <h3>Movimento</h3>
+        <p>Solo CSS, 150&ndash;250 ms, easing standard, tutto dentro prefers-reduced-motion: no-preference, e solo causa-effetto.</p>
+        <p>Quattro animazioni in tutto: cambio di stato 180 ms, foglio che sale 200 ms, comparsa 180 ms, cambio di giorno 160 ms.</p>
+        <p class="no">Vietati ingresso pagina, parallax, cascate, contatori animati, e qualunque animazione che ritardi un'azione.</p>
+      </div>
+
+      <div class="voce">
+        <h3>Accessibilità</h3>
+        <p>Ogni controllo ha un nome: testo visibile o aria-label. aria-pressed su ogni toggle e segmento; role="dialog" con nome su ogni foglio.</p>
+        <p>Bersagli ≥ 44 px anche quando il disegno è più piccolo. lang="it" sul documento.</p>
+        <p>Contrasto ≥ 4,5:1 su ogni testo che informa: --testo-2, --errore, --avviso, --ink. I grigi --sec, --ter, --off e --icona-spenta solo su decorazione.</p>
+        <p>Nessuno stato affidato al solo colore: pieno o contornato, barrato o no, casetta piena o vuota.</p>
+      </div>
+
+      <div class="voce">
+        <h3>Dark mode</h3>
+        <p>Fuori scope. I token esistono, il tema scuro no: non disegnare varianti scure di una schermata.</p>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

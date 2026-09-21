@@ -1,0 +1,96 @@
+<!-- @dsCard group="Fondamenta" name="Colori neutri" subtitle="" viewport="720x600" -->
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Colori neutri</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --fondo:#F1F0EE; --superficie:#FFFFFF; --ink:#14163A; --ink-2:#3D4166;
+  --testo-2:#5C5F7A; --sec:#8A8A96; --ter:#A6A6B2; --off:#9A9AA6;
+  --bordo:rgba(20,22,58,0.07); --spento:rgba(20,22,58,0.035);
+  --font-testo:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:var(--fondo);color:var(--ink);font-family:var(--font-testo);-webkit-font-smoothing:antialiased}
+.card{width:720px;max-width:100%;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.titolo{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.dida{font-size:12.5px;line-height:1.4;color:var(--testo-2);max-width:68ch}
+.griglia{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.riga{display:flex;align-items:center;gap:12px;background:var(--superficie);border:1px solid var(--bordo);border-radius:14px;padding:11px 13px}
+.chip{width:42px;height:42px;border-radius:14px;flex:none;border:1px solid var(--bordo);position:relative;overflow:hidden;background:var(--superficie)}
+.chip i{position:absolute;inset:0;display:block}
+.t{display:flex;flex-direction:column;gap:3px;min-width:0}
+.nome{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.1em}
+.ruolo{font-size:12.5px;line-height:1.35;color:var(--testo-2)}
+.rap{font-family:var(--font-mono);font-size:9px;letter-spacing:.06em;font-variant-numeric:tabular-nums;color:var(--ink)}
+.flag{display:inline-flex;align-items:center;height:17px;padding:0 7px;border-radius:999px;border:1.5px solid var(--ink);font-family:var(--font-mono);font-size:8.5px;font-weight:700;letter-spacing:.1em;margin-left:6px;white-space:nowrap}
+.prova{background:var(--superficie);border:1px solid var(--bordo);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.prova-riga{display:grid;grid-template-columns:104px 1fr;gap:14px;align-items:baseline}
+.prova-et{font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink)}
+.prova-testo{font-size:12.5px;line-height:1.4}
+@media(max-width:560px){.griglia{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="titolo">Fondamenta · Colori neutri</div>
+  <div class="dida">Nove neutri, uno solo per il testo primario. I rapporti WCAG sono calcolati sui valori esatti: <strong>--sec</strong> e <strong>--ter</strong> stanno sotto la soglia AA e restano tali di proposito, perché vestono solo testo decorativo. Un testo che porta informazione va in --testo-2 o in --ink.</div>
+
+  <div class="griglia">
+    <div class="riga">
+      <div class="chip" style="background:#F1F0EE"></div>
+      <div class="t"><div class="nome">--fondo &middot; #F1F0EE</div><div class="ruolo">Fondo pagina, tema PWA</div><div class="rap">&mdash;</div></div>
+    </div>
+    <div class="riga">
+      <div class="chip" style="background:#FFFFFF"></div>
+      <div class="t"><div class="nome">--superficie &middot; #FFFFFF</div><div class="ruolo">Schede, tessere accese, campi</div><div class="rap">&mdash;</div></div>
+    </div>
+    <div class="riga">
+      <div class="chip" style="background:#14163A"></div>
+      <div class="t"><div class="nome">--ink &middot; #14163A</div><div class="ruolo">Testo primario, tasti pieni, stati attivi, bordo "oggi"</div><div class="rap">15,3:1 su fondo &middot; 17,4:1 su bianco</div></div>
+    </div>
+    <div class="riga">
+      <div class="chip" style="background:#3D4166"></div>
+      <div class="t"><div class="nome">--ink-2 &middot; #3D4166</div><div class="ruolo">Hover dei link, avvisi di scadenza nella riga pasto</div><div class="rap">&mdash;</div></div>
+    </div>
+    <div class="riga">
+      <div class="chip" style="background:#5C5F7A"></div>
+      <div class="t"><div class="nome">--testo-2 &middot; #5C5F7A</div><div class="ruolo">Ogni testo che porta informazione: note, sottotitoli, righe di stato</div><div class="rap">5,5:1 su fondo</div></div>
+    </div>
+    <div class="riga">
+      <div class="chip" style="background:#8A8A96"></div>
+      <div class="t"><div class="nome">--sec &middot; #8A8A96</div><div class="ruolo">Solo decorazione: etichette mono, contatori, unità</div><div class="rap">3,0:1 su fondo &middot; 3,4:1 su bianco <span class="flag">sotto 4,5:1</span></div></div>
+    </div>
+    <div class="riga">
+      <div class="chip" style="background:#A6A6B2"></div>
+      <div class="t"><div class="nome">--ter &middot; #A6A6B2</div><div class="ruolo">Solo decorazione: metadati, unità, testo del tasto spento</div><div class="rap">2,4:1 su bianco <span class="flag">sotto 4,5:1</span></div></div>
+    </div>
+    <div class="riga">
+      <div class="chip" style="background:#9A9AA6"></div>
+      <div class="t"><div class="nome">--off &middot; #9A9AA6</div><div class="ruolo">Icone di navigazione inattive nella tab bar</div><div class="rap">2,4:1 su fondo <span class="flag">sotto 4,5:1</span></div></div>
+    </div>
+    <div class="riga">
+      <div class="chip"><i style="background:rgba(20,22,58,0.07)"></i></div>
+      <div class="t"><div class="nome">--bordo &middot; rgba(20,22,58,0.07)</div><div class="ruolo">Bordi di schede, campi, tasto secondario: 1 px, sempre questo</div><div class="rap">&mdash;</div></div>
+    </div>
+    <div class="riga">
+      <div class="chip"><i style="background:rgba(20,22,58,0.035)"></i></div>
+      <div class="t"><div class="nome">--spento &middot; rgba(20,22,58,0.035)</div><div class="ruolo">Tessere prese, celle fuori casa</div><div class="rap">&mdash;</div></div>
+    </div>
+  </div>
+
+  <div class="prova">
+    <div class="titolo">La stessa nota nei quattro grigi, a 12,5 px su fondo carta</div>
+    <div class="prova-riga"><div class="prova-et">--ink</div><div class="prova-testo" style="color:#14163A">Sei offline: la lista è quella dell'ultima apertura.</div></div>
+    <div class="prova-riga"><div class="prova-et">--testo-2</div><div class="prova-testo" style="color:#5C5F7A">Sei offline: la lista è quella dell'ultima apertura.</div></div>
+    <div class="prova-riga"><div class="prova-et">--sec</div><div class="prova-testo" style="color:#8A8A96">Sei offline: la lista è quella dell'ultima apertura.</div></div>
+    <div class="prova-riga"><div class="prova-et">--ter</div><div class="prova-testo" style="color:#A6A6B2">Sei offline: la lista è quella dell'ultima apertura.</div></div>
+    <div class="dida">Le due righe in basso non passano AA: per questo la riga di stato vive in --testo-2.</div>
+  </div>
+</div>
+</body>
+</html>

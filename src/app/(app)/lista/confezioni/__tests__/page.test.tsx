@@ -153,12 +153,12 @@ describe('Confezioni — accesso ed elenco', () => {
     expect(leggiVociComprate).not.toHaveBeenCalled();
   });
 
-  it('a settimana chiusa rimanda a /settimana senza leggere le liste', async () => {
+  it('a settimana chiusa rimanda a /piano senza leggere le liste', async () => {
     vi.mocked(leggiSettimanaCorrente).mockResolvedValue({ ...SETTIMANA, stato: 'chiusa' });
 
     render(<Confezioni />);
 
-    await waitFor(() => expect(replace).toHaveBeenCalledWith('/settimana'));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/piano'));
     expect(leggiListe).not.toHaveBeenCalled();
     expect(leggiVociComprate).not.toHaveBeenCalled();
   });
@@ -460,7 +460,7 @@ describe('Confezioni — scansione', () => {
     expect(screen.queryByLabelText('Formato a mano')).not.toBeInTheDocument();
   });
 
-  it('errore "spesa già chiusa" in scrittura rimanda a /settimana', async () => {
+  it('errore "spesa già chiusa" in scrittura rimanda a /piano', async () => {
     fetchMock.mockResolvedValue(rispostaJson(OFF_500G));
     vi.mocked(aggiornaFormatoDaScansione).mockRejectedValue(new Error('spesa già chiusa'));
 
@@ -468,7 +468,7 @@ describe('Confezioni — scansione', () => {
     await scansiona();
     fireEvent.click(await screen.findByRole('button', { name: 'AGGIORNA' }));
 
-    await waitFor(() => expect(replace).toHaveBeenCalledWith('/settimana'));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/piano'));
   });
 
   it('altro errore in scrittura: messaggio e si può riprovare', async () => {

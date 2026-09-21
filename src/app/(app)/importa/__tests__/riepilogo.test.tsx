@@ -90,7 +90,7 @@ describe('Riepilogo', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /sì, sostituisci/i }));
     await waitFor(() => expect(eseguiScritture).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/settimana'));
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/piano'));
   });
 
   it('BozzaIncompletaError: mostra il messaggio e un link che riporta alla revisione', async () => {
@@ -157,6 +157,6 @@ describe('Riepilogo', () => {
     expect(scrittureRicalcolate.piattiDaCreare[0].righe).toContainEqual({
       ingredientId: 'i-pasta-gia-creata', quantita: 80, unita: 'g',
     });
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/settimana'));
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/piano'));
   });
 });

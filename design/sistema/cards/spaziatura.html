@@ -1,0 +1,84 @@
+<!-- @dsCard group="Fondamenta" name="Spaziatura" subtitle="" viewport="720x600" -->
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spaziatura</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --fondo:#F1F0EE; --superficie:#FFFFFF; --ink:#14163A; --testo-2:#5C5F7A; --sec:#8A8A96;
+  --bordo:rgba(20,22,58,0.07);
+  --font-testo:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:var(--fondo);color:var(--ink);font-family:var(--font-testo);-webkit-font-smoothing:antialiased}
+.card{width:720px;max-width:100%;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.titolo{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.dida{font-size:12.5px;line-height:1.4;color:var(--testo-2);max-width:68ch}
+.scheda{background:var(--superficie);border:1px solid var(--bordo);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.riga{display:grid;grid-template-columns:78px 132px 1fr;gap:14px;align-items:center}
+.val{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.06em;font-variant-numeric:tabular-nums}
+.barra{height:14px;border-radius:4px;background:var(--ink)}
+.uso{font-size:12.5px;line-height:1.4;color:var(--testo-2)}
+.mappa{display:flex;flex-direction:column;gap:10px}
+.mappa-riga{display:grid;grid-template-columns:200px 1fr;gap:14px;align-items:baseline;padding-top:10px;border-top:1px solid var(--bordo)}
+.mappa-riga:first-of-type{border-top:0;padding-top:0}
+.mappa-che{font-size:12.5px;font-weight:700}
+.mappa-v{font-family:var(--font-mono);font-size:10px;letter-spacing:.04em;font-variant-numeric:tabular-nums;color:var(--ink)}
+.fuori{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.vchip{display:inline-flex;align-items:center;justify-content:center;height:24px;min-width:38px;padding:0 8px;border-radius:999px;font-family:var(--font-mono);font-size:9.5px;font-weight:700;letter-spacing:.04em;font-variant-numeric:tabular-nums;background:rgba(20,22,58,.06);border:1px solid transparent}
+.vchip-si{background:var(--ink);color:#FFFFFF;border-color:var(--ink)}
+@media(max-width:600px){.riga{grid-template-columns:70px 1fr}.riga .uso{grid-column:1 / -1}.mappa-riga{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="titolo">Fondamenta · Spaziatura</div>
+  <div class="dida">Scala a base 4, sei passi più il distacco dal fondo. Nessun valore intermedio: 13, 14 e 15 diventano 12 o 16.</div>
+
+  <div class="scheda">
+    <div class="riga"><div class="val">--spazio-1</div><div><div class="barra" style="width:4px"></div></div><div class="uso">4 &mdash; gap del marchio, distacco di un sottotitolo dal nome</div></div>
+    <div class="riga"><div class="val">--spazio-2</div><div><div class="barra" style="width:8px"></div></div><div class="uso">8 &mdash; gap tra tessere nella griglia della Lista</div></div>
+    <div class="riga"><div class="val">--spazio-3</div><div><div class="barra" style="width:12px"></div></div><div class="uso">12 &mdash; tra un gruppo e l'altro, lati della griglia, fondo della testata</div></div>
+    <div class="riga"><div class="val">--spazio-4</div><div><div class="barra" style="width:16px"></div></div><div class="uso">16 &mdash; bordo pagina e interno delle schede: il valore di default</div></div>
+    <div class="riga"><div class="val">--spazio-5</div><div><div class="barra" style="width:20px"></div></div><div class="uso">20 &mdash; alto della testata, respiro sopra la tab bar</div></div>
+    <div class="riga"><div class="val">--spazio-6</div><div><div class="barra" style="width:26px"></div></div><div class="uso">26 &mdash; interno verticale dello stato vuoto, fondo del foglio dal basso</div></div>
+    <div class="riga"><div class="val">--spazio-fondo</div><div><div class="barra" style="width:22px"></div></div><div class="uso">22 &mdash; distanza dell'ultimo elemento dal fondo dello schermo</div></div>
+  </div>
+
+  <div class="scheda">
+    <div class="titolo">Dove va cosa</div>
+    <div class="mappa">
+      <div class="mappa-riga"><div class="mappa-che">Bordo pagina</div><div class="mappa-v">16</div></div>
+      <div class="mappa-riga"><div class="mappa-che">Testata</div><div class="mappa-v">20 alto &middot; 18 lati &middot; 12 basso &middot; gap interno 15</div></div>
+      <div class="mappa-riga"><div class="mappa-che">Interno di una scheda</div><div class="mappa-v">16 &middot; 26 verticale e 20 laterale negli stati vuoti</div></div>
+      <div class="mappa-riga"><div class="mappa-che">Griglia di tessere</div><div class="mappa-v">gap 8 &middot; 12 ai lati</div></div>
+      <div class="mappa-riga"><div class="mappa-che">Tra un gruppo e l'altro</div><div class="mappa-v">12</div></div>
+      <div class="mappa-riga"><div class="mappa-che">Tab bar</div><div class="mappa-v">10 alto &middot; 16 lati &middot; 20 basso &middot; gap 4</div></div>
+      <div class="mappa-riga"><div class="mappa-che">Foglio dal basso</div><div class="mappa-v">16 &middot; 16 &middot; 26 &middot; gap 9</div></div>
+      <div class="mappa-riga"><div class="mappa-che">Ultimo elemento dal fondo</div><div class="mappa-v">22</div></div>
+    </div>
+  </div>
+
+  <div class="scheda">
+    <div class="titolo">Valori dentro e fuori scala</div>
+    <div class="fuori">
+      <span class="vchip vchip-si">4</span>
+      <span class="vchip vchip-si">8</span>
+      <span class="vchip vchip-si">12</span>
+      <span class="vchip">13</span>
+      <span class="vchip">14</span>
+      <span class="vchip">15</span>
+      <span class="vchip vchip-si">16</span>
+      <span class="vchip vchip-si">20</span>
+      <span class="vchip vchip-si">22</span>
+      <span class="vchip vchip-si">26</span>
+    </div>
+    <div class="dida">Piene le otto della scala, tinte le tre che la scala assorbe. Un valore fuori scala in una schermata nuova è un errore, non una variante.</div>
+  </div>
+</div>
+</body>
+</html>

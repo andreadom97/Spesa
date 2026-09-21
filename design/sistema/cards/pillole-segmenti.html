@@ -1,0 +1,94 @@
+<!-- @dsCard group="Componenti" name="Pillole e segmenti" subtitle="Due forme per la stessa cosa: un valore attivo alla volta in una fila. La pillola per i…" viewport="393x852" -->
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pillole e segmenti</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --fondo:#F1F0EE; --superficie:#FFFFFF; --ink:#14163A; --testo-2:#5C5F7A; --sec:#8A8A96;
+  --bordo:rgba(20,22,58,0.07);
+  --font-testo:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:var(--fondo);color:var(--ink);font-family:var(--font-testo);-webkit-font-smoothing:antialiased}
+.card{width:393px;max-width:100%;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.titolo{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.dida{font-size:12.5px;line-height:1.4;color:var(--testo-2)}
+.telefono{width:100%;background:var(--fondo);border:1px solid var(--bordo);border-radius:22px;overflow:hidden}
+.interno{padding:16px;display:flex;flex-direction:column;gap:14px}
+.et{font-family:var(--font-mono);font-size:8.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--sec)}
+.fila{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.tap44{height:44px;display:inline-flex;align-items:center}
+.pillola{display:inline-flex;align-items:center;justify-content:center;height:38px;padding:0 15px;border-radius:999px;font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.p-attiva{background:var(--ink);color:#FFFFFF;border:1px solid var(--ink)}
+.p-inattiva{background:var(--superficie);color:var(--sec);border:1px solid rgba(20,22,58,.09);font-weight:500}
+.p44{height:44px;min-width:52px;padding:0 14px;color:var(--ink);background:var(--superficie);border:1px solid transparent}
+.segmento{display:flex;gap:7px}
+.sv{flex:1;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.s-attivo{background:var(--ink);color:#FFFFFF;border:1px solid var(--ink)}
+.s-inattivo{background:var(--superficie);color:var(--sec);border:1px solid rgba(20,22,58,.09)}
+.disabilitato{opacity:.5}
+.tap-prova{position:relative;background:var(--superficie);border:1px solid var(--bordo);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.tap-mostra{height:44px;border:1.5px dashed rgba(20,22,58,.20);border-radius:999px;display:inline-flex;align-items:center;justify-content:center;padding:0 3px;align-self:flex-start}
+.misure{background:var(--superficie);border:1px solid var(--bordo);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:7px}
+.misure p{margin:0;font-size:12.5px;line-height:1.45}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="titolo">Componenti · Pillole e segmenti</div>
+  <div class="dida">Due forme per la stessa cosa: un valore attivo alla volta in una fila. La pillola per i filtri che scorrono, il blocco per le scelte a piena larghezza.</div>
+
+  <div class="telefono">
+    <div class="interno">
+      <div class="et">Pillole d'azione &middot; filtro dei pasti</div>
+      <div class="fila">
+        <div class="tap44"><span class="pillola p-attiva">Tutti</span></div>
+        <div class="tap44"><span class="pillola p-inattiva">Colazione</span></div>
+        <div class="tap44"><span class="pillola p-inattiva">Pranzo</span></div>
+        <div class="tap44"><span class="pillola p-inattiva">Cena</span></div>
+      </div>
+
+      <div class="et">Pillole SÌ/NO &middot; già 44 px</div>
+      <div class="fila">
+        <span class="pillola p44">SÌ</span>
+        <span class="pillola p44">NO</span>
+      </div>
+
+      <div class="et">Segmento a blocco &middot; unità</div>
+      <div class="segmento">
+        <div class="sv s-attivo">Grammi</div>
+        <div class="sv s-inattivo">Pezzi</div>
+        <div class="sv s-inattivo">Litri</div>
+      </div>
+
+      <div class="et">Segmento disabilitato &middot; disabled + opacità 0,5 sulla fila</div>
+      <div class="segmento disabilitato">
+        <div class="sv s-inattivo">Grammi</div>
+        <div class="sv s-attivo">Pezzi</div>
+        <div class="sv s-inattivo">Litri</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tap-prova">
+    <div class="titolo">L'area di tap è 44, il disegno è 38</div>
+    <div class="tap-mostra"><span class="pillola p-attiva">Colazione</span></div>
+    <div class="dida">Il tratteggio è l'area toccabile: il bottone è trasparente e più alto della pillola. Un pollice in corsia non deve sbagliare bersaglio perché il disegno è sottile.</div>
+  </div>
+
+  <div class="misure">
+    <div class="titolo">Misure e stati</div>
+    <p><strong>Pillola</strong> &mdash; disegno 38 px (44 nei SÌ/NO), raggio 999, padding 0 15px, mono 11/700/0.08em maiuscolo. Area di tap sempre 44.</p>
+    <p>Attiva: fondo --ink, testo bianco, peso 700. Inattiva: fondo bianco, testo --sec, peso 500, bordo 1 px rgba(20,22,58,0.09).</p>
+    <p><strong>Segmento a blocco</strong> &mdash; rettangoli flex: 1, alti 46, raggio 14, gap 7, stessi colori delle pillole. Un attivo alla volta, aria-pressed su ciascuno.</p>
+    <p>La fila di pillole scorre in orizzontale senza scrollbar visibile; la fila di blocchi non scorre mai.</p>
+    <p>I SÌ/NO della riga di controllo sono bianchi con bordo trasparente: il contesto è già una tinta d'area.</p>
+  </div>
+</div>
+</body>
+</html>

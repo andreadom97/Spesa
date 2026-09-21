@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lista — variante E</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+--fondo:#F1F0EE;--superficie:#FFFFFF;--ink:#14163A;--ink-2:#3D4166;--testo-2:#5C5F7A;--sec:#8A8A96;--ter:#A6A6B2;--off:#9A9AA6;
+--bordo:rgba(20,22,58,0.07);--spento:rgba(20,22,58,0.035);
+--area-ortofrutta:#A8D96A;--area-macelleria:#F29B9B;--area-latticini:#9CC7F2;--area-cereali:#F5CE5B;--area-dispensa:#F2A465;--area-surgelati:#B9AEF5;
+--font-testo:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;--font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+--ombra-pannello:0 1px 2px rgba(20,22,58,.05),0 6px 16px rgba(20,22,58,.06);
+--ombra-nav:0 2px 6px rgba(20,22,58,.08),0 12px 30px rgba(20,22,58,.16);
+}
+*{box-sizing:border-box}
+body{margin:0;background:#D8D7D4;font-family:var(--font-testo);color:var(--ink);-webkit-font-smoothing:antialiased;display:flex;flex-direction:column;align-items:center;gap:12px;padding:40px 20px}
+a{color:var(--ink)}a:hover{color:var(--ink-2)}
+.sigla{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.intesta{width:393px;display:flex;flex-direction:column;gap:6px}
+.intesta p{margin:0;font-size:12.5px;line-height:1.4;color:#3D4166}
+
+.tel{width:393px;height:852px;border-radius:26px;overflow:hidden;position:relative;box-shadow:0 2px 4px rgba(20,22,58,.10),0 18px 40px rgba(20,22,58,.18);background:linear-gradient(180deg,#EDECEA 0%,#F2F1EF 34%,#F8F8F7 70%,#FCFCFB 100%)}
+/* lo scorrimento sfuma dietro la pillola: la maschera sta sul contenitore, non sul contenuto */
+.scroll{position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain;
+-webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 108px),rgba(0,0,0,.55) calc(100% - 68px),rgba(0,0,0,0) calc(100% - 30px));
+mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 108px),rgba(0,0,0,.55) calc(100% - 68px),rgba(0,0,0,0) calc(100% - 30px))}
+.scroll::-webkit-scrollbar{width:0}
+
+.testata{padding:20px 18px 12px;display:flex;flex-direction:column;gap:15px}
+.testata-alto{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.titolo-sch{font-size:52px;font-weight:800;letter-spacing:-.05em;line-height:1;margin:0}
+.ingr{width:44px;height:44px;display:flex;align-items:center;justify-content:center;margin:0 -10px -4px 0;background:none;border:0;padding:0}
+.pill-sett{height:34px;border-radius:999px;background:var(--ink);color:#fff;font-family:var(--font-mono);font-size:10.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;display:inline-flex;align-items:center;padding:0 14px;align-self:flex-start}
+
+.stato-riga{font-size:12.5px;line-height:1.4;color:var(--testo-2);padding:0 16px 10px;margin:0}
+.sez{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 12px 10px}
+.sez-sx{display:flex;align-items:center;gap:8px}
+.quad{width:10px;height:10px;border-radius:4px;flex:none}
+.sez-lb{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.sez-cont{font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:.10em;text-transform:uppercase;color:var(--sec)}
+.griglia{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 12px;margin-bottom:12px}
+.tessera{min-height:104px;display:flex;flex-direction:column;padding:12px 14px 13px;border-radius:14px;text-align:left;border:1px solid transparent;background:none;font:inherit;color:inherit}
+.accesa{background:var(--superficie);box-shadow:var(--ombra-pannello)}
+.spenta{background:var(--spento)}
+.prot{grid-column:span 2;padding:13px 16px 14px;border-radius:18px;box-shadow:var(--ombra-pannello)}
+.alto{display:flex;align-items:center;gap:6px;flex:none}
+.pil{font-family:var(--font-mono);font-weight:700;font-size:10.5px;letter-spacing:.07em;border-radius:999px;padding:5px 10px;text-transform:uppercase}
+.qty{font-family:var(--font-mono);font-weight:500;font-size:10px;letter-spacing:.04em;text-transform:uppercase}
+.nome{font-size:17px;font-weight:700;letter-spacing:-.032em;line-height:1.1;margin-top:10px}
+.nome-g{font-size:25px}
+.barrato{text-decoration:line-through;text-decoration-thickness:1.6px;color:rgba(20,22,58,.34)}
+.sub{font-family:var(--font-mono);font-size:8.5px;letter-spacing:.02em;margin-top:5px;text-transform:uppercase}
+.controllo{margin:0 12px 12px;border-radius:18px;padding:14px 15px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.controllo-nome{font-size:16px;font-weight:700;letter-spacing:-.024em}
+.controllo-sub{font-family:var(--font-mono);font-size:8.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--testo-2);margin-top:4px}
+.sino{display:flex;gap:7px}
+.sino button{height:44px;min-width:52px;border-radius:999px;background:#fff;border:1px solid rgba(20,22,58,.09);font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink)}
+.coda{height:118px}
+
+.nav-pill{position:absolute;left:16px;right:16px;bottom:22px;height:66px;border-radius:999px;display:flex;align-items:center;gap:2px;padding:6px;background:#fff;box-shadow:var(--ombra-nav)}
+.nav-pill .voce{flex:1;height:54px;border:0;background:none;border-radius:999px;display:flex;align-items:center;justify-content:center;padding:0}
+.nav-pill .voce.on{background:rgba(20,22,58,.07)}
+.marchio{display:grid;grid-template-columns:repeat(3,9px);grid-auto-rows:9px;gap:4px}
+.cas{border-radius:2.52px;border:2px solid transparent}
+
+.note{width:393px;background:#fff;border:1px solid var(--bordo);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.note p{margin:0;font-size:12.5px;line-height:1.45;color:var(--testo-2)}
+.note strong{color:var(--ink)}
+.comp{font-family:var(--font-mono);font-size:9px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;color:var(--sec);line-height:1.7}
+.rompe{font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:#9A5C00;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="intesta">
+  <div class="sigla">Variante E · pillola col marchio</div>
+  <p>La parte alta si schiarisce: il gradiente parte da #EDECEA invece di #E7E6E3, quindi resta carta e non grigio, senza arrivare al bianco. Il contenuto scorre dietro la pillola e svanisce con una maschera, così non c'è il taglio netto. Scorri dentro la cornice.</p>
+</div>
+
+<div class="tel" data-screen-label="Lista">
+  <div class="scroll">
+    <div class="testata">
+      <div class="testata-alto">
+        <h1 class="titolo-sch">Lista</h1>
+        <button type="button" class="ingr" aria-label="Impostazioni"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="8" stroke="#14163A" stroke-width="1.8"/><circle cx="12" cy="12" r="3" stroke="#14163A" stroke-width="1.8"/></svg></button>
+      </div>
+      <span class="pill-sett">Settimana del 21 settembre</span>
+    </div>
+
+    <p class="stato-riga">Sei offline: la lista è quella dell'ultima apertura.</p>
+
+    <div class="sez"><div class="sez-sx"><span class="quad" style="background:var(--area-ortofrutta)"></span><span class="sez-lb">Ortofrutta</span></div><span class="sez-cont">4 voci</span></div>
+    <div class="griglia">
+      <button type="button" class="tessera prot" style="background:var(--area-ortofrutta)" aria-pressed="true" aria-label="Pomodori ramati, da prendere, tocca per segnare presa">
+        <span class="alto"><span class="pil" style="background:#fff;color:var(--ink)">2 conf</span><span class="qty" style="color:rgba(20,22,58,.55)">1250 g</span></span>
+        <span class="nome nome-g">Pomodori ramati</span>
+        <span class="sub" style="color:rgba(20,22,58,.55)">serve 1100 g · in casa 0 g</span>
+      </button>
+      <button type="button" class="tessera accesa" style="border-color:rgba(168,217,106,.45)" aria-pressed="true" aria-label="Zucchine, da prendere, tocca per segnare presa">
+        <span class="alto"><span class="pil" style="background:rgba(168,217,106,.32);color:var(--ink)">1 conf</span><span class="qty" style="color:var(--sec)">600 g</span></span>
+        <span class="nome">Zucchine</span>
+        <span class="sub" style="color:var(--ter)">serve 540 g · in casa 0 g</span>
+      </button>
+      <button type="button" class="tessera spenta" aria-pressed="false" aria-label="Limoni, presa, tocca per rimetterla da prendere">
+        <span class="alto"><span class="pil" style="background:rgba(20,22,58,.06);color:rgba(20,22,58,.34)">4 pz</span><span class="qty" style="color:rgba(20,22,58,.24)">4 pz</span></span>
+        <span class="nome barrato">Limoni</span>
+      </button>
+      <button type="button" class="tessera accesa" style="border-color:rgba(168,217,106,.45)" aria-pressed="true" aria-label="Spinaci, da prendere, tocca per segnare presa">
+        <span class="alto"><span class="pil" style="background:rgba(168,217,106,.32);color:var(--ink)">2 conf</span><span class="qty" style="color:var(--sec)">500 g</span></span>
+        <span class="nome">Spinaci</span>
+        <span class="sub" style="color:var(--ter)">serve 460 g · in casa 0 g</span>
+      </button>
+    </div>
+
+    <div class="controllo" style="background:rgba(242,164,101,.26)">
+      <div><div class="controllo-nome">Olio: ne hai ancora?</div><div class="controllo-sub">controllo ogni 4 settimane</div></div>
+      <div class="sino"><button type="button">Sì</button><button type="button">No</button></div>
+    </div>
+
+    <div class="sez"><div class="sez-sx"><span class="quad" style="background:var(--area-latticini)"></span><span class="sez-lb">Latticini, uova e salumi</span></div><span class="sez-cont">3 voci</span></div>
+    <div class="griglia">
+      <button type="button" class="tessera prot" style="background:var(--area-latticini)" aria-pressed="true" aria-label="Uova medie, da prendere, tocca per segnare presa">
+        <span class="alto"><span class="pil" style="background:#fff;color:var(--ink)">1 conf</span><span class="qty" style="color:rgba(20,22,58,.55)">6 pz</span></span>
+        <span class="nome nome-g">Uova medie</span>
+        <span class="sub" style="color:rgba(20,22,58,.55)">serve 5 pz · in casa 0 pz</span>
+      </button>
+      <button type="button" class="tessera accesa" style="border-color:rgba(156,199,242,.45)" aria-pressed="true" aria-label="Ricotta, da prendere, tocca per segnare presa">
+        <span class="alto"><span class="pil" style="background:rgba(156,199,242,.32);color:var(--ink)">1 conf</span><span class="qty" style="color:var(--sec)">250 g</span></span>
+        <span class="nome">Ricotta</span>
+        <span class="sub" style="color:var(--ter)">serve 220 g · in casa 0 g</span>
+      </button>
+      <button type="button" class="tessera spenta" aria-pressed="false" aria-label="Parmigiano, presa, tocca per rimetterla da prendere">
+        <span class="alto"><span class="pil" style="background:rgba(20,22,58,.06);color:rgba(20,22,58,.34)">1 conf</span><span class="qty" style="color:rgba(20,22,58,.24)">200 g</span></span>
+        <span class="nome barrato">Parmigiano</span>
+      </button>
+    </div>
+
+    <div class="sez"><div class="sez-sx"><span class="quad" style="background:var(--area-cereali)"></span><span class="sez-lb">Pasta, riso e cereali</span></div><span class="sez-cont">2 voci</span></div>
+    <div class="griglia">
+      <button type="button" class="tessera prot" style="background:var(--area-cereali)" aria-pressed="true" aria-label="Spaghetti n. 5, da prendere, tocca per segnare presa">
+        <span class="alto"><span class="pil" style="background:#fff;color:var(--ink)">2 conf</span><span class="qty" style="color:rgba(20,22,58,.55)">1000 g</span></span>
+        <span class="nome nome-g">Spaghetti n. 5</span>
+        <span class="sub" style="color:rgba(20,22,58,.55)">serve 840 g · in casa 120 g</span>
+      </button>
+      <button type="button" class="tessera accesa" style="border-color:rgba(245,206,91,.45)" aria-pressed="true" aria-label="Riso carnaroli, da prendere, tocca per segnare presa">
+        <span class="alto"><span class="pil" style="background:rgba(245,206,91,.32);color:var(--ink)">1 conf</span><span class="qty" style="color:var(--sec)">1000 g</span></span>
+        <span class="nome">Riso carnaroli</span>
+        <span class="sub" style="color:var(--ter)">serve 640 g · in casa 0 g</span>
+      </button>
+    </div>
+
+    <div class="sez"><div class="sez-sx"><span class="quad" style="background:var(--area-macelleria)"></span><span class="sez-lb">Macelleria e pescheria</span></div><span class="sez-cont">2 voci</span></div>
+    <div class="griglia">
+      <button type="button" class="tessera prot" style="background:var(--area-macelleria)" aria-pressed="true" aria-label="Petto di pollo, da prendere, tocca per segnare presa">
+        <span class="alto"><span class="pil" style="background:#fff;color:var(--ink)">1 conf</span><span class="qty" style="color:rgba(20,22,58,.55)">600 g</span></span>
+        <span class="nome nome-g">Petto di pollo</span>
+        <span class="sub" style="color:rgba(20,22,58,.55)">serve 560 g · in casa 0 g</span>
+      </button>
+      <button type="button" class="tessera accesa" style="border-color:rgba(242,155,155,.45)" aria-pressed="true" aria-label="Guanciale, da prendere, tocca per segnare presa">
+        <span class="alto"><span class="pil" style="background:rgba(242,155,155,.32);color:var(--ink)">1 conf</span><span class="qty" style="color:var(--sec)">150 g</span></span>
+        <span class="nome">Guanciale</span>
+        <span class="sub" style="color:var(--ter)">serve 120 g · in casa 0 g</span>
+      </button>
+    </div>
+
+    <div class="coda"></div>
+  </div>
+
+  <nav class="nav-pill" aria-label="Sezioni">
+    <button type="button" class="voce on" aria-pressed="true" aria-label="Lista">
+      <span class="marchio" aria-hidden="true">
+        <span class="cas" style="border-color:var(--area-dispensa);background:var(--area-dispensa)"></span>
+        <span class="cas" style="border-color:var(--area-latticini);background:var(--area-latticini)"></span>
+        <span class="cas" style="border-color:var(--area-ortofrutta);background:transparent"></span>
+        <span class="cas" style="border-color:var(--area-surgelati);background:var(--area-surgelati)"></span>
+        <span class="cas" style="border-color:var(--area-cereali);background:var(--area-cereali)"></span>
+        <span class="cas" style="border-color:var(--area-macelleria);background:transparent"></span>
+      </span>
+    </button>
+    <button type="button" class="voce" aria-pressed="false" aria-label="Settimana">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15.5" rx="4.4" fill="#9A9AA6"/><rect x="6.2" y="8.4" width="11.6" height="2.1" rx="1.05" fill="#fff" opacity=".92"/><circle cx="8.2" cy="14.6" r="1.7" fill="#fff" opacity=".92"/><circle cx="12" cy="14.6" r="1.7" fill="#fff" opacity=".92"/><circle cx="15.8" cy="14.6" r="1.7" fill="#fff" opacity=".92"/></svg>
+    </button>
+    <button type="button" class="voce" aria-pressed="false" aria-label="Piatti">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="#9A9AA6"/><circle cx="12" cy="12" r="4.1" fill="#fff" opacity=".92"/></svg>
+    </button>
+    <button type="button" class="voce" aria-pressed="false" aria-label="Dispensa">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="3.4" width="14" height="3.6" rx="1.8" fill="#9A9AA6"/><path d="M6 9.4h12a1 1 0 0 1 1 1v6.4a3.2 3.2 0 0 1-3.2 3.2H8.2A3.2 3.2 0 0 1 5 16.8v-6.4a1 1 0 0 1 1-1Z" fill="#9A9AA6"/><rect x="8.4" y="12.4" width="7.2" height="2.1" rx="1.05" fill="#fff" opacity=".92"/></svg>
+    </button>
+  </nav>
+</div>
+
+<div class="note">
+  <div class="sigla">Componenti usati</div>
+  <div class="comp">Testata (senza marchio, modalità titolo + ingranaggio) · Pillola settimana 34 px · Riga di stato · Etichetta di sezione con quadratino 10 px · Tessera della Lista (protagonista span 2 + accesa + spenta) · Riga di controllo · Tab bar in pillola 66 px con Marchio 3×2 a 9 px</div>
+  <div class="sigla" style="margin-top:4px">Misure</div>
+  <p>Pillola: 16 px dai lati, 22 px dal fondo, altezza 66, padding 6, raggio 999, quattro voci <strong>flex 1</strong> alte 54 (bersaglio reale 54). Icone piene 26 px; marchio lato 9, gap 4, raggio 2,52 (lato × 0,28), bordo 2. Tessere: griglia 2 colonne, gap 8, lati 12, minimo 104. Coda di scorrimento 118 px sotto l'ultima tessera.</p>
+  <div class="sigla" style="margin-top:4px">Sfondo e dissolvenza</div>
+  <p>Gradiente verticale su quattro fermate, <strong>#EDECEA → #F2F1EF → #F8F8F7 → #FCFCFB</strong>: la parte alta resta carta, la parte bassa si schiarisce sotto la pillola. La dissolvenza è una <strong>maschera sul contenitore che scorre</strong>, non un velo sopra il contenuto: opaca fino a 108 px dal fondo, 55% a 68 px, nulla a 30 px. Sta ferma mentre il contenuto passa, quindi le tessere svaniscono entrando sotto la barra e la barra non ha bisogno di sfocature.</p>
+  <div class="sigla" style="margin-top:4px">Regole di DESIGN.md che tocca</div>
+  <div class="rompe">§12 gradiente di sfondo · §5 quarta ombra, sui pannelli e sulla pillola · §8 tab bar flottante raggio 999 senza etichette · §8 marchio come icona di navigazione · §6 icone piene</div>
+</div>
+</body>
+</html>

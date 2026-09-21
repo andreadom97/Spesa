@@ -12,6 +12,47 @@
   --bordo: rgba(20, 22, 58, 0.07);
   --spento: rgba(20, 22, 58, 0.035);
 
+  /* Testi che portano informazione (deciso 17/09): note, sottotitoli, errori, avvisi. */
+  --testo-2: #5C5F7A;
+  --avviso: #9A5C00;
+  --errore: #C4423E;
+  --freddo: #2F6FBF;
+  --icona-spenta: #C4C4CE;
+
+  /* Le sei ombre: tre storiche come token, tre del ridisegno (19/09). */
+  --ombra-tessera: 0 1px 2px rgba(20, 22, 58, 0.05);
+  --ombra-casetta: 0 1px 3px rgba(20, 22, 58, 0.28);
+  --ombra-tasto: 0 3px 10px rgba(20, 22, 58, 0.24);
+  --ombra-pannello: 0 1px 2px rgba(20, 22, 58, .05), 0 6px 16px rgba(20, 22, 58, .06);
+  --ombra-nav: 0 2px 6px rgba(20, 22, 58, .08), 0 12px 30px rgba(20, 22, 58, .16);
+  --ombra-alta: 0 8px 24px rgba(20, 22, 58, .28), 0 26px 64px rgba(20, 22, 58, .26);
+
+  /* Il fondo della schermata: in alto grigio tenue, in basso quasi bianco, mai bianco puro. */
+  --sfondo-schermata: linear-gradient(180deg, #EDECEA 0%, #F2F1EF 34%, #F8F8F7 70%, #FCFCFB 100%);
+
+  /* La tab bar flottante (versione B) e il suo movimento. */
+  --barra-lato: 16px;
+  --barra-lato-giu: 46px;
+  --barra-fondo: 22px;
+  --barra-alta: 84px;
+  --barra-bassa: 66px;
+  --barra-voce: 72px;
+  --barra-voce-giu: 54px;
+  --barra-padding: 6px;
+  --barra-gap: 2px;
+  --barra-icona: 26px;
+  --barra-segno: 26px;
+  --barra-attiva: rgba(20, 22, 58, 0.07);
+  --moto-barra: 200ms;
+  --curva-barra: cubic-bezier(.2, .8, .25, 1);
+
+  /* La maschera di scorrimento: fino a --fine il contenuto è opaco, poi sfuma dietro la barra. */
+  --fine-barra-grande: 128px;
+  --fine-barra-piccola: 110px;
+  --fine: var(--fine-barra-grande);
+  /* Coda in fondo agli scroller: 84 di barra + 22 dal fondo + 34 di respiro. Con il Dock (fase 2) diventa 194. */
+  --coda: 140px;
+
   --area-ortofrutta: #A8D96A;
   --area-macelleria: #F29B9B;
   --area-latticini: #9CC7F2;
@@ -56,3 +97,51 @@
   @keyframes anim-sali { from { transform: translateY(14px); opacity: 0.6; } to { transform: none; opacity: 1; } }
   @keyframes anim-fade { from { opacity: 0; } to { opacity: 1; } }
 }
+
+/* ---------- guscio comune (spec 20/09 §B) ---------- */
+.guscio { position: relative; display: flex; flex-direction: column; flex: 1; min-height: 0; background: var(--sfondo-schermata); }
+.guscio-main { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
+.guscio[data-barra="grande"] { --fine: var(--fine-barra-grande); }
+.guscio[data-barra="ridotta"] { --fine: var(--fine-barra-piccola); }
+
+/* Lo scroller di ogni pagina: passa dietro la barra e sfuma; la coda tiene l'ultima voce raggiungibile.
+   `!important` perché i padding delle pagine sono inline: si cambia un valore solo, non 18 file. */
+.scroll-app {
+  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - var(--fine)), rgba(0,0,0,.55) calc(100% - 74px), rgba(0,0,0,0) calc(100% - 30px));
+  mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - var(--fine)), rgba(0,0,0,.55) calc(100% - 74px), rgba(0,0,0,0) calc(100% - 30px));
+  padding-bottom: var(--coda) !important;
+}
+
+/* Riga d'azione fuori dallo scroller (tasti primari in fondo alla pagina): resta sopra la
+   barra flottante. Il Dock della fase 2 sostituirà queste righe; finché ci sono, il
+   respiro è quello del dock: barra + distacco + 8. */
+.coda-barra { padding-bottom: calc(var(--barra-fondo) + var(--barra-alta) + 8px) !important; }
+.guscio[data-barra="ridotta"] .coda-barra { padding-bottom: calc(var(--barra-fondo) + var(--barra-bassa) + 8px) !important; }
+/* Lo scroller di una pagina con la riga d'azione fuori: il contenuto non passa dietro la barra
+   (fra i due c'è il piede), quindi la sfumatura è solo un bordo morbido di pochi pixel e la
+   coda serve appena a respirare sopra il piede. */
+.scroll-app.con-piede {
+  --coda: 16px;
+  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - 28px), rgba(0,0,0,0) 100%);
+  mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - 28px), rgba(0,0,0,0) 100%);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .coda-barra { transition: padding-bottom var(--moto-barra) var(--curva-barra); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .anim-barra { transition: height var(--moto-barra) var(--curva-barra), left var(--moto-barra) var(--curva-barra), right var(--moto-barra) var(--curva-barra); }
+  .anim-barra-voce { transition: height var(--moto-barra) var(--curva-barra), gap var(--moto-barra) var(--curva-barra); }
+  .anim-barra-etichetta { transition: max-height var(--moto-barra) var(--curva-barra), opacity 150ms linear; }
+}
+
+/* ---------- tab bar versione B (spec 20/09 §C) ---------- */
+.barra { position: absolute; left: var(--barra-lato); right: var(--barra-lato); bottom: var(--barra-fondo); height: var(--barra-alta); border-radius: 999px; display: flex; align-items: center; gap: var(--barra-gap); padding: var(--barra-padding); background: var(--superficie); box-shadow: var(--ombra-nav); z-index: 20; }
+.barra-voce { flex: 1; height: var(--barra-voce); border-radius: 999px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; overflow: hidden; text-decoration: none; }
+.barra-voce.attiva { background: var(--barra-attiva); }
+.barra-segno { display: flex; align-items: center; justify-content: center; flex: none; height: var(--barra-segno); }
+.barra-etichetta { font-family: var(--font-mono); font-size: 8.5px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--off); white-space: nowrap; max-height: 12px; opacity: 1; line-height: 1; }
+.barra-voce.attiva .barra-etichetta { color: var(--ink); font-weight: 700; }
+.guscio[data-barra="ridotta"] .barra { height: var(--barra-bassa); left: var(--barra-lato-giu); right: var(--barra-lato-giu); }
+.guscio[data-barra="ridotta"] .barra-voce { height: var(--barra-voce-giu); gap: 0; }
+.guscio[data-barra="ridotta"] .barra-etichetta { max-height: 0; opacity: 0; }

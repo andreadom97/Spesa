@@ -341,7 +341,7 @@ function SchermataAcquisizione({ tab, onTab, foto, onFoto, pdf, onPdf, onEstrai 
         />
       </div>
 
-      <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 16px 16px' }}>
+      <div className="sc scroll-app con-piede" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 16px 16px' }}>
         {tab === 'foto' ? (
           // `iniziali={foto}`: Camera si smonta e rimonta a ogni uscita/rientro
           // in questa vista (es. dopo un errore di estrazione, RIPROVA torna
@@ -370,7 +370,7 @@ function SchermataAcquisizione({ tab, onTab, foto, onFoto, pdf, onPdf, onEstrai 
         )}
       </div>
 
-      <div style={{ padding: '4px 16px 0' }}>
+      <div className="coda-barra" style={{ padding: '4px 16px 0' }}>
         <button
           type="button"
           disabled={!abilitato}
@@ -601,7 +601,7 @@ function Riepilogo({
     setErroreEsecuzione(null);
     try {
       await eseguiScritture(scritture);
-      router.push('/settimana');
+      router.push('/piano');
     } catch (e) {
       console.error('importa: esecuzione dell’import fallita.', e);
       setErroreEsecuzione('Qualcosa si è fermato: riprova, l’import riprende da dove era.');
@@ -654,7 +654,10 @@ function Riepilogo({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-      <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 16px 16px' }}>
+      {/* La coda ridotta si applica solo senza il dialogo di conferma sotto: con il
+          dialogo aperto il tasto SOSTITUISCI IL PIANO non è renderizzato e lo scroller
+          resta l'ultimo elemento, quindi gli serve la coda intera. */}
+      <div className={`sc scroll-app${confermaSostituzione ? '' : ' con-piede'}`} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 16px 16px' }}>
         {pronto && (
           <div style={{ padding: '16px 15px', borderRadius: 18, background: 'var(--superficie)', border: '1px solid var(--bordo)', fontSize: 14.5, lineHeight: 1.5, color: 'var(--ink)' }}>
             {nPiatti} piatti su {mSettimane} settimane · {kIngredienti} ingredienti nuovi · {xDisattivati} piatti del piano attuale verranno disattivati
@@ -698,7 +701,7 @@ function Riepilogo({
       </div>
 
       {!confermaSostituzione && (
-        <div style={{ padding: '4px 16px 22px' }}>
+        <div className="coda-barra" style={{ padding: '4px 16px 22px' }}>
           <button
             type="button"
             disabled={!pronto}

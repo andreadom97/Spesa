@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="design_doc_mode" content="canvas">
+<title>Fotografa il piano — 5 versioni</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+--fondo:#F1F0EE;--superficie:#FFFFFF;--ink:#14163A;--ink-2:#3D4166;--testo-2:#5C5F7A;--sec:#8A8A96;--ter:#A6A6B2;--off:#9A9AA6;
+--bordo:rgba(20,22,58,0.07);--spento:rgba(20,22,58,0.035);--icona-spenta:#C4C4CE;--bordo-tratteggio:rgba(20,22,58,0.20);
+--avviso:#9A5C00;--errore:#C4423E;--freddo:#2F6FBF;
+--font-testo:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;--font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+--ombra-pannello:0 1px 2px rgba(20,22,58,.05),0 6px 16px rgba(20,22,58,.06);
+--ombra-nav:0 2px 6px rgba(20,22,58,.08),0 12px 30px rgba(20,22,58,.16);
+--ombra-alta:0 8px 24px rgba(20,22,58,.28),0 26px 64px rgba(20,22,58,.26);
+--moto-barra:200ms;--curva-barra:cubic-bezier(.2,.8,.25,1);
+}
+*{box-sizing:border-box}
+body{margin:0;background:#D8D7D4;font-family:var(--font-testo);color:var(--ink);-webkit-font-smoothing:antialiased}
+a{color:var(--ink)}a:hover{color:var(--ink-2)}
+.frame{position:absolute;width:393px}
+.sigla{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.intesta{display:flex;flex-direction:column;gap:6px;padding:0 2px 12px}
+.intesta p{margin:0;font-size:12.5px;line-height:1.4;color:#3D4166}
+
+.tel{width:393px;height:852px;border-radius:26px;overflow:hidden;position:relative;box-shadow:0 2px 4px rgba(20,22,58,.10),0 18px 40px rgba(20,22,58,.18);background:linear-gradient(180deg,#EDECEA 0%,#F2F1EF 34%,#F8F8F7 70%,#FCFCFB 100%)}
+
+/* il mirino: contenuto del dispositivo, non una superficie di design */
+.mirino{position:relative;background:#1B1D33;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.05) 0 10px,rgba(255,255,255,0) 10px 20px);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.mirino-lb{font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.72);text-align:center;line-height:1.8;padding:0 24px}
+.pieno{position:absolute;inset:0}
+
+/* chrome chiaro sopra il mirino */
+.chrome-alto{position:absolute;top:22px;left:16px;right:16px;display:flex;align-items:center;gap:8px;z-index:2}
+.tondo-44{width:44px;height:44px;flex:none;border:0;border-radius:999px;background:#fff;box-shadow:var(--ombra-nav);display:flex;align-items:center;justify-content:center;padding:0}
+.pill-tit{height:44px;display:flex;align-items:center;padding:0 16px;border-radius:999px;background:#fff;box-shadow:var(--ombra-nav);font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.suggerimento{position:absolute;left:16px;right:16px;bottom:186px;display:flex;justify-content:center;z-index:2}
+.suggerimento span{background:#fff;box-shadow:var(--ombra-nav);border-radius:999px;padding:10px 16px;font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;text-align:center}
+
+/* cornice guida */
+.guida{position:absolute;inset:88px 40px 256px;pointer-events:none;z-index:1}
+.ang{position:absolute;width:30px;height:30px;border:3px solid rgba(255,255,255,.92)}
+.ang.tl{top:0;left:0;border-right:0;border-bottom:0;border-radius:14px 0 0 0}
+.ang.tr{top:0;right:0;border-left:0;border-bottom:0;border-radius:0 14px 0 0}
+.ang.bl{bottom:0;left:0;border-right:0;border-top:0;border-radius:0 0 0 14px}
+.ang.br{bottom:0;right:0;border-left:0;border-top:0;border-radius:0 0 14px 0}
+
+/* dock dei comandi */
+.dock{position:absolute;left:16px;right:16px;bottom:22px;z-index:2;display:flex;align-items:center;gap:10px}
+.dock-pill{flex:1;min-width:0;background:#fff;border:1.5px solid var(--ink);border-radius:22px;box-shadow:var(--ombra-alta);padding:12px 14px;display:flex;align-items:center;gap:12px}
+.scatta{width:72px;height:72px;flex:none;border:2px solid var(--ink);border-radius:999px;background:#fff;box-shadow:var(--ombra-alta);padding:0;display:flex;align-items:center;justify-content:center}
+.scatta i{width:52px;height:52px;border-radius:999px;background:var(--ink)}
+.dock-testo{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.dock-nome{font-size:15px;font-weight:700;letter-spacing:-.024em}
+.dock-nota{font-size:12.5px;line-height:1.35;color:var(--testo-2)}
+.cont-mono{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--testo-2)}
+.tasto{height:54px;border-radius:18px;font-family:var(--font-mono);font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;border:1px solid var(--bordo);background:#fff;color:var(--ink);padding:0 18px}
+.tasto.primario{background:var(--ink);border-color:var(--ink);color:#fff;box-shadow:0 3px 10px rgba(20,22,58,.24)}
+
+/* striscia dei fogli presi */
+.striscia{position:absolute;left:16px;right:16px;bottom:114px;z-index:2;display:flex;gap:8px;align-items:center}
+.foglio-preso{width:62px;height:80px;border-radius:14px;background:#fff;border:1px solid rgba(20,22,58,.09);box-shadow:var(--ombra-nav);position:relative;display:flex;align-items:flex-end;justify-content:center;padding:6px}
+.foglio-preso b{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.08em}
+.foglio-preso .righe{position:absolute;inset:8px 8px 22px;background-image:repeating-linear-gradient(180deg,rgba(20,22,58,.14) 0 2px,rgba(20,22,58,0) 2px 7px)}
+.togli{position:absolute;top:-8px;right:-8px;width:44px;height:44px;border:0;background:none;display:flex;align-items:center;justify-content:center;padding:0}
+.togli span{width:20px;height:20px;border-radius:999px;background:rgba(20,22,58,.08);display:flex;align-items:center;justify-content:center}
+
+/* versione chiara: mirino in scheda */
+.testata{padding:20px 18px 12px;display:flex;flex-direction:column;gap:10px}
+.testata-alto{display:flex;align-items:center;gap:10px}
+.tit-det{font-size:32px;font-weight:800;letter-spacing:-.045em;line-height:1.05;margin:0}
+.nota-testata{font-size:14px;line-height:1.5;color:var(--testo-2);margin:0;padding:0 18px 12px;max-width:30ch}
+.scheda{margin:0 16px 12px;background:#fff;border:1.5px solid var(--ink);border-radius:22px;box-shadow:var(--ombra-pannello);padding:10px;display:flex;flex-direction:column;gap:10px}
+.scheda .mirino{height:360px;border-radius:14px}
+.riga-tasti{display:flex;gap:8px;padding:0 16px}
+.riga-tasti .tasto{flex:1;padding:0}
+
+/* foglio dal basso */
+.foglio-basso{position:absolute;left:0;right:0;bottom:0;background:var(--fondo);border-top:1.5px solid var(--ink);border-radius:22px 22px 0 0;box-shadow:var(--ombra-alta);padding:16px 16px 26px;display:flex;flex-direction:column;gap:12px;z-index:2}
+.foglio-basso h2{margin:0;font-size:21px;font-weight:800;letter-spacing:-.035em;line-height:1.2}
+.foglio-basso p{margin:0;font-size:14px;line-height:1.5;color:var(--testo-2)}
+.bl{background:#fff;border:1px solid var(--bordo);border-radius:18px;padding:12px;display:flex;align-items:center;gap:12px}
+.alt{display:flex;flex-direction:column;gap:6px}
+.alt button{min-height:50px;border-radius:14px;background:rgba(20,22,58,.04);border:0;font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink)}
+
+.note{width:393px;margin-top:12px;background:#fff;border:1px solid var(--bordo);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.note p{margin:0;font-size:12.5px;line-height:1.45;color:var(--testo-2)}
+.note strong{color:var(--ink)}
+.comp{font-family:var(--font-mono);font-size:9px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;color:var(--testo-2);line-height:1.7}
+.rompe{font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--avviso);line-height:1.6}
+</style>
+</head>
+<body>
+<div id="canvas"></div>
+<script>
+const INDIETRO=`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 5l-7 7 7 7" stroke="#14163A" stroke-width="1.8" stroke-linecap="round"/></svg>`;
+const XPIC=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="#14163A" stroke-width="2.6" stroke-linecap="round"/></svg>`;
+const MIRINO=t=>`<div class="mirino pieno"><span class="mirino-lb">${t}</span></div>`;
+const SCATTA=`<button type="button" class="scatta" aria-label="Scatta la foto del foglio"><i></i></button>`;
+const GUIDA=`<div class="guida" aria-hidden="true"><span class="ang tl"></span><span class="ang tr"></span><span class="ang bl"></span><span class="ang br"></span></div>`;
+const presi=n=>Array.from({length:n},(_,i)=>`<span class="foglio-preso"><span class="righe"></span><b>${i+1}</b><button type="button" class="togli" aria-label="Togli il foglio ${i+1}"><span>${XPIC}</span></button></span>`).join('');
+
+const V=[
+ {id:'1',nome:'Anteprima piena, comandi in pillola',
+  p:'L\'anteprima occupa tutto e i comandi galleggiano sopra, nella stessa pillola bianca con bordo inchiostro del pannello delle impostazioni. In alto la freccia e il titolo in mono; in basso il tasto di scatto accanto a una riga che dice quanti fogli hai già preso.',
+  corpo:()=>`${MIRINO('anteprima della fotocamera')}
+  <div class="chrome-alto"><button type="button" class="tondo-44" aria-label="Indietro">${INDIETRO}</button><span class="pill-tit">Fotografa il piano</span></div>
+  <div class="dock" style="flex-direction:column;align-items:stretch">
+    <div class="dock-pill"><span class="dock-testo"><span class="dock-nome">1 foglio preso</span><span class="dock-nota">Inquadra la pagina intera, anche i bordi.</span></span></div>
+    <div style="display:flex;align-items:center;gap:10px"><button type="button" class="tasto primario" style="flex:1">Ho finito</button>${SCATTA}</div>
+  </div>`,
+  m:'Anteprima a tutta schermata. Chrome alto: tondo 44 bianco con la freccia 20 px a tratto 1,8, più una pillola alta 44 col titolo in mono 11 / 700 / 0,08em. Dock in colonna, gap 10: sopra la pillola di stato raggio 22 con bordo 1,5 px --ink e padding 12 / 14, sotto il primario HO FINITO da 54 <code>flex: 1</code> accanto al tasto di scatto tondo da 72.',
+  r:'nessuna guida sullo schermo: l\'inquadratura è lasciata all\'utente'},
+
+ {id:'2',nome:'Anteprima in scheda, chrome chiaro',
+  p:'L\'unica che non è una schermata di fotocamera: sfondo, testata e scheda sono quelli del sistema, e l\'anteprima è un riquadro dentro una scheda col bordo inchiostro. Si capisce subito di essere ancora dentro Spesa; in cambio si vede meno foglio, e inquadrare un A4 in 360 px di altezza è più difficile.',
+  corpo:()=>`<div class="testata">
+    <div class="testata-alto"><button type="button" class="tondo-44" style="box-shadow:none;background:rgba(20,22,58,.07);margin-left:-10px" aria-label="Indietro">${INDIETRO}</button></div>
+    <h1 class="tit-det">Fotografa il piano</h1>
+  </div>
+  <p class="nota-testata">Una pagina per foto. Se il piano è su più fogli, scatta e poi vai avanti.</p>
+  <div class="scheda">${MIRINO('anteprima della fotocamera').replace(' pieno','')}
+    <div style="display:flex;align-items:center;gap:12px;padding:0 4px 4px"><span class="dock-testo"><span class="dock-nome">1 foglio preso</span><span class="dock-nota">Inquadra la pagina intera, anche i bordi.</span></span>${SCATTA}</div>
+  </div>
+  <div class="riga-tasti"><button type="button" class="tasto">Usa una foto</button><button type="button" class="tasto primario">Ho finito</button></div>`,
+  m:'Testata in modalità indietro: tondo 44 su rgba(20,22,58,0.07), titolo di dettaglio 32 / 800, nota 14 larga al massimo 30ch. Scheda: raggio 22, bordo 1,5 px --ink, padding 10; anteprima alta 360, raggio 14. Sotto, due tasti da 54 flex 1.',
+  r:'il tasto primario torna in fondo, perché qui non c\'è tab bar'},
+
+ {id:'3',nome:'Anteprima piena con cornice guida',
+  p:'Come la 1, più quattro angoli bianchi che dicono dove mettere il foglio, e una pillola col perché: “Metti il foglio dentro la cornice”. È la più didattica delle cinque, e la sola che riduce il numero di foto venute male — che è il vero costo di questo flusso.',
+  corpo:()=>`${MIRINO('anteprima della fotocamera')}
+  ${GUIDA}
+  <div class="chrome-alto"><button type="button" class="tondo-44" aria-label="Indietro">${INDIETRO}</button><span class="pill-tit">Fotografa il piano</span></div>
+  <div class="suggerimento" style="bottom:212px"><span>Metti il foglio dentro la cornice</span></div>
+  <div class="dock" style="flex-direction:column;align-items:stretch">
+    <div class="dock-pill"><span class="dock-testo"><span class="dock-nome">1 foglio preso</span><span class="dock-nota">Inquadra la pagina intera, anche i bordi.</span></span></div>
+    <div style="display:flex;align-items:center;gap:10px"><button type="button" class="tasto primario" style="flex:1">Ho finito</button>${SCATTA}</div>
+  </div>`,
+  m:'Cornice guida: inset 88 in alto, 40 ai lati, <strong>256</strong> in basso — finisce sopra la pillola del suggerimento, che sta a 212, così i due angoli in basso restano leggibili; quattro angoli 30 × 30 con tratto 3 px in bianco al 92% e raggio 14 sull\'angolo esterno. Suggerimento: pillola bianca a <strong>212</strong> px dal fondo, mono 10 / 700 / 0,11em, padding 10 / 16. Dock come nella 1.',
+  r:'§6 la cornice non è un\'icona ma un tratto da 3 px sullo schermo: §5 lo riserva al giorno corrente'},
+ {id:'4',nome:'Anteprima piena con la striscia dei fogli',
+  p:'Un piano alimentare sta quasi sempre su più fogli, e questa è l\'unica che lo mostra: sopra il dock, una striscia dei fogli già presi, ognuno con il suo numero e una X per rifarlo. Il dock porta il primario HO FINITO accanto allo scatto, quindi si vede dove finisce il flusso.',
+  corpo:()=>`${MIRINO('anteprima della fotocamera')}
+  ${GUIDA}
+  <div class="chrome-alto"><button type="button" class="tondo-44" aria-label="Indietro">${INDIETRO}</button><span class="pill-tit">Fotografa il piano</span></div>
+  <div class="striscia" role="group" aria-label="Fogli già presi">${presi(3)}<span class="cont-mono" style="background:#fff;box-shadow:var(--ombra-nav);border-radius:999px;padding:8px 12px">3 fogli</span></div>
+  <div class="dock">
+    <button type="button" class="tasto primario" style="flex:1">Ho finito</button>
+    ${SCATTA}
+  </div>`,
+  m:'Striscia a 114 px dal fondo: tessere 62 × 80, raggio 14, bianche con bordo 1 px rgba(20,22,58,0.09) e ombra della barra; dentro, righe finte a 2 px ogni 7 per dire “foglio”, il numero in mono 10 e una X in alto a destra: disegno 20, <strong>bersaglio 44</strong> trasparente e sporgente di 8 px, come §8 fa con le pillole d\'azione da 38. Contatore in pillola bianca. Dock: primario 54 flex 1 più scatto 72.',
+  r:'la striscia cresce a ogni scatto: con più di quattro fogli va deciso se scorre o se si impila'},
+
+ {id:'5',nome:'Anteprima piena, foglio dal basso',
+  p:'L\'anteprima resta dietro, e davanti c\'è un foglio dal basso col fondo carta e il bordo inchiostro: titolo, una riga che spiega, lo scatto dentro un blocco bianco e sotto le due strade alternative — una foto che hai già, o un PDF. È la più chiara sul fatto che fotografare non è l\'unico modo.',
+  corpo:()=>`${MIRINO('anteprima della fotocamera')}
+  <div class="chrome-alto"><button type="button" class="tondo-44" aria-label="Indietro">${INDIETRO}</button><span class="pill-tit">Fotografa il piano</span></div>
+  <div class="foglio-basso">
+    <h2>Fotografa il piano</h2>
+    <p>Una pagina per foto, bordi compresi. Se il piano è su più fogli, scatta e vai avanti.</p>
+    <div class="bl"><span class="dock-testo"><span class="dock-nome">1 foglio preso</span><span class="dock-nota">Tocca lo scatto per prendere il prossimo.</span></span>${SCATTA}</div>
+    <div class="alt">
+      <button type="button">Usa una foto che hai già</button>
+      <button type="button">Carica un PDF</button>
+    </div>
+    <button type="button" class="tasto primario">Ho finito</button>
+  </div>`,
+  m:'Foglio dal basso: lati 0, fondo 0, raggio 22px 22px 0 0, bordo superiore 1,5 px --ink, fondo --fondo, padding 16 / 16 / 26, gap 12 — le misure di §8 col bordo del pannello. Dentro: titolo di scheda 21 / 800, testo 14, un blocco bianco raggio 18 con lo scatto, due voci alte almeno 50 su rgba(20,22,58,0.04) e in fondo il primario HO FINITO da 54 a larghezza piena.',
+  r:'il foglio dal basso di §8 è bianco e senza bordo: qui prende fondo carta e bordo 1,5 px come il pannello'}
+];
+
+const c=document.getElementById('canvas');
+V.forEach((v,i)=>{
+  const el=document.createElement('div');
+  el.className='frame';
+  el.style.left=(60+i*453)+'px';el.style.top='60px';
+  el.innerHTML=`<div class="intesta"><div class="sigla">Versione ${v.id} · ${v.nome}</div><p>${v.p}</p></div>
+  <div class="tel" data-screen-label="Fotocamera ${v.id}">${v.corpo()}</div>
+  <div class="note">
+    <div class="sigla">Misure</div>
+    <p>${v.m}</p>
+    <div class="sigla" style="margin-top:4px">Il tasto di scatto</div>
+    <p><strong>COMPONENTE NUOVO: Tasto di scatto.</strong> Tondo da <strong>72</strong>, raggio 999, fondo bianco, <strong>bordo 2 px --ink</strong> e dentro un disco da <strong>52</strong> in --ink, con l'ombra alta. Nessuna icona: §6 non ha una fotocamera tra le sue sei, e inventarla per un tasto che sta già dentro una schermata intitolata “Fotografa il piano” non aggiunge niente. Il nome accessibile è “Scatta la foto del foglio”. Anello più disco è la stessa grammatica pieno-dentro-contornato del Marchio, a una taglia sola.</p>
+    <div class="sigla" style="margin-top:4px">L'anteprima</div>
+    <p>Qui è un <strong>segnaposto</strong>, non un disegno: nel prodotto è il flusso della fotocamera, cioè contenuto del dispositivo e non una superficie di design — perciò il suo colore non è un token e non conta nelle scale. Il segnaposto porta una riga mono che dice cosa ci andrà. Su quel fondo scuro il chrome resta <strong>bianco pieno con l'ombra</strong>, così il contrasto non dipende da quanto è luminosa la stanza.</p>
+    <div class="sigla" style="margin-top:4px">Come si va avanti</div>
+    <p>Tutte e cinque hanno <strong>una via d'uscita dichiarata</strong>: il primario <strong>HO FINITO</strong> porta alla revisione dell'import, la freccia in alto abbandona. Erano due azioni diverse che prima si confondevano in una sola, perché con un foglio già preso la freccia da sola avrebbe voluto dire “butta via lo scatto”.</p>
+    <div class="sigla" style="margin-top:4px">Componenti usati</div>
+    <div class="comp">Testata in modalità indietro · Tasto di scatto (componente nuovo) · ${v.id==='4'?'Striscia dei fogli presi (componente nuovo) · ':''}${v.id==='5'?'Foglio dal basso · Blocco di gruppo · ':''}${v.id==='2'?'Scheda · Nota · Tasti primario e secondario · ':'Pillola di titolo · Pillola di stato · '}Tasti da 54</div>
+    <div class="sigla" style="margin-top:4px">Regole di DESIGN.md che tocca</div>
+    <div class="rompe">§12 nessuna foto né illustrazione: l'anteprima è contenuto del dispositivo, da dichiarare come eccezione · §5 sesta ombra sul chrome che sta sopra l'anteprima · §5 bordo 1,5 px --ink per delimitare una superficie · §8 componente nuovo: tasto di scatto · ${v.r}</div>
+  </div>`;
+  c.appendChild(el);
+});
+</script>
+</body>
+</html>

@@ -5,6 +5,8 @@ interface Props {
   /** Le aree in cui manca ancora qualcosa. Vuoto = marchio tutto pieno. */
   aree: AreaId[];
   lato?: number;
+  gap?: number;
+  raggio?: number;
 }
 
 /**
@@ -13,10 +15,11 @@ interface Props {
  * completata, o non era in questa spesa — contornata quando manca qualcosa.
  * Mai grigia.
  */
-export function Marchio({ aree, lato = 16 }: Props) {
+export function Marchio({ aree, lato = 16, gap = 4, raggio }: Props) {
   const manca = new Set(aree);
+  const r = raggio ?? lato * 0.28;
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: `repeat(3, ${lato}px)`, gap: 4, flex: 'none' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(3, ${lato}px)`, gap, flex: 'none' }}>
       {ORDINE_MARCHIO.map((area) => {
         const vuoto = manca.has(area);
         const colore = coloreArea(area);
@@ -26,7 +29,7 @@ export function Marchio({ aree, lato = 16 }: Props) {
             data-area={area}
             data-stato={vuoto ? 'vuoto' : 'pieno'}
             style={{
-              width: lato, height: lato, borderRadius: lato * 0.28, boxSizing: 'border-box',
+              width: lato, height: lato, borderRadius: r, boxSizing: 'border-box',
               border: `2px solid ${colore}`,
               background: vuoto ? 'transparent' : colore,
             }}

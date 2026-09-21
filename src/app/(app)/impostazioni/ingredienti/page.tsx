@@ -88,7 +88,7 @@ export default function ElencoIngredienti() {
 
   return (
     <Cornice>
-      <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 16px 20px' }}>
+      <div className="sc scroll-app" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 16px 20px' }}>
         {perArea.map(({ area, voci }) => (
           <div key={area} style={{ marginBottom: 18 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 4px 8px' }}>

@@ -1,0 +1,101 @@
+<!-- @dsCard group="Fondamenta" name="Movimento" subtitle="Quattro classi, tutte in globals.css, tutte dentro prefers-reduced-motion: no-preference…" viewport="720x600" -->
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Movimento</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --fondo:#F1F0EE; --superficie:#FFFFFF; --ink:#14163A; --testo-2:#5C5F7A; --sec:#8A8A96;
+  --bordo:rgba(20,22,58,0.07); --spento:rgba(20,22,58,0.035); --area-ortofrutta:#A8D96A;
+  --font-testo:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif; --font-mono:'JetBrains Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--ink);font-family:var(--font-testo);-webkit-font-smoothing:antialiased;padding:16px;width:720px}
+button{font-family:inherit;border:0;background:none;padding:0;cursor:pointer;text-align:left;color:inherit}
+.eyebrow{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ink);margin:0 0 8px}
+.dida{font-size:12.5px;line-height:1.4;color:var(--testo-2);margin:0 0 20px;max-width:560px}
+.griglia{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.scheda{background:var(--superficie);border:1px solid var(--bordo);border-radius:22px;padding:16px;min-height:180px;display:flex;flex-direction:column;gap:12px}
+.scheda h3{margin:0;font-size:17px;font-weight:700;letter-spacing:-.03em}
+.spec{font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:.10em;text-transform:uppercase;color:var(--sec)}
+.prova{font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;height:38px;padding:0 15px;border-radius:999px;background:var(--ink);color:#fff;align-self:flex-start;display:inline-flex;align-items:center}
+.palco{background:var(--fondo);border-radius:14px;padding:12px;flex:1;display:flex;align-items:center;justify-content:center;min-height:96px;overflow:hidden;position:relative}
+
+/* 1. Tessera che si spegne: .anim-stato, transizione 180 ms */
+.tessera{width:180px;border-radius:14px;padding:12px;background:var(--superficie);border:1px solid var(--area-ortofrutta);box-shadow:0 1px 2px rgba(20,22,58,.05)}
+.tessera .pill{font-family:var(--font-mono);font-size:8.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:3px 7px;border-radius:999px;background:var(--area-ortofrutta);display:inline-block;margin-bottom:8px}
+.tessera .nome{font-size:17px;font-weight:700;letter-spacing:-.03em}
+.tessera.presa{background:var(--spento);border-color:transparent;box-shadow:none}
+.tessera.presa .nome{text-decoration:line-through;color:rgba(20,22,58,.34)}
+.tessera.presa .pill{opacity:.35}
+
+/* 2. Casetta: stessa .anim-stato, piena a casa, contorno fuori */
+.casa{width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:var(--ink);box-shadow:0 1px 3px rgba(20,22,58,.28)}
+.casa svg path{stroke:#fff}
+.casa.fuori{background:var(--superficie);box-shadow:none}
+.casa.fuori svg path{stroke:#BFBFC9;stroke-width:1.3}
+
+/* 3. Foglio dal basso: .anim-foglio, 200 ms */
+.foglio{position:absolute;left:12px;right:12px;bottom:0;background:var(--superficie);border-radius:22px 22px 0 0;padding:12px 12px 14px;box-shadow:0 -1px 0 var(--bordo)}
+.foglio .voce{height:36px;border-radius:14px;background:rgba(20,22,58,.04);margin-top:6px}
+.foglio .sep{font-family:var(--font-mono);font-size:8.5px;font-weight:700;letter-spacing:.12em;color:var(--sec)}
+
+/* 4. Giorno che cambia: .anim-giorno, fade 160 ms */
+.giorno{font-size:21px;font-weight:800;letter-spacing:-.035em}
+
+/* Le quattro classi, copiate da src/app/globals.css: tutte e sole qui, tutte dentro il media */
+@media (prefers-reduced-motion: no-preference) {
+  .anim-stato { transition: background 180ms ease, color 180ms ease, opacity 180ms ease, border-color 180ms ease, box-shadow 180ms ease; }
+  .anim-foglio { animation: anim-sali 200ms ease; }
+  .anim-apparsa { animation: anim-fade 180ms ease; }
+  .anim-giorno { animation: anim-fade 160ms ease; }
+  @keyframes anim-sali { from { transform: translateY(14px); opacity: 0.6; } to { transform: none; opacity: 1; } }
+  @keyframes anim-fade { from { opacity: 0; } to { opacity: 1; } }
+}
+.regole{margin-top:20px;background:var(--superficie);border:1px solid var(--bordo);border-radius:22px;padding:16px;font-size:12.5px;line-height:1.5;color:var(--testo-2)}
+.regole strong{color:var(--ink)}
+</style>
+</head>
+<body>
+<p class="eyebrow">Fondamenta · Movimento</p>
+<p class="dida">Quattro classi, tutte in <code>globals.css</code>, tutte dentro <code>prefers-reduced-motion: no-preference</code>: chi chiede meno moto non ne riceve nessuno. Solo causa-effetto: il gesto dell'utente produce il cambiamento, l'animazione lo spiega. Tocca PROVA per vederle.</p>
+
+<div class="griglia">
+  <div class="scheda">
+    <h3>Tessera che si spegne</h3>
+    <span class="spec">.anim-stato · transition 180 ms ease · background, color, opacity, border</span>
+    <div class="palco"><div class="tessera anim-stato" id="t1"><span class="pill">2 conf · 1250 g</span><div class="nome">Pomodori pelati</div></div></div>
+    <button class="prova" type="button" onclick="document.getElementById('t1').classList.toggle('presa')">Prova</button>
+  </div>
+
+  <div class="scheda">
+    <h3>Casetta a casa / fuori</h3>
+    <span class="spec">.anim-stato · stesso 180 ms · piena ↔ contorno</span>
+    <div class="palco"><div class="casa anim-stato" id="c1"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 11.5 12 5l8 6.5V19a1 1 0 0 1-1 1h-4v-5h-6v5H5a1 1 0 0 1-1-1v-7.5Z" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/></svg></div></div>
+    <button class="prova" type="button" onclick="document.getElementById('c1').classList.toggle('fuori')">Prova</button>
+  </div>
+
+  <div class="scheda">
+    <h3>Foglio dal basso</h3>
+    <span class="spec">.anim-foglio · anim-sali 200 ms · translateY 14 px, opacità .6 → 1</span>
+    <div class="palco" id="p3"></div>
+    <button class="prova" type="button" onclick="var p=document.getElementById('p3');p.innerHTML='';var f=document.createElement('div');f.className='foglio anim-foglio';f.innerHTML='<span class=sep>PROSSIMAMENTE · CENA</span><div class=voce></div><div class=voce></div>';p.appendChild(f)">Prova</button>
+  </div>
+
+  <div class="scheda">
+    <h3>Cambio giorno e voce che appare</h3>
+    <span class="spec">.anim-giorno fade 160 ms · .anim-apparsa fade 180 ms</span>
+    <div class="palco" id="p4"><div class="giorno anim-giorno">Venerdì 18</div></div>
+    <button class="prova" type="button" onclick="var g=['Giovedì 17','Venerdì 18','Sabato 19'];var p=document.getElementById('p4');var i=(+p.dataset.i||1);i=(i+1)%3;p.dataset.i=i;p.innerHTML='<div class=&quot;giorno anim-giorno&quot;>'+g[i]+'</div>'">Prova</button>
+  </div>
+</div>
+
+<div class="regole">
+  <strong>Regole.</strong> Durate 150–250 ms, easing <code>ease</code>. Cinque momenti soli: la tessera che si spegne con il contatore BASE/TOP-UP in sincrono; la casetta in Settimana; apertura e chiusura del foglio e della scheda AI in Dispensa; il cambio giorno nella striscia; la comparsa della riga "+N porzioni" da un lotto Pronti.<br>
+  <strong>Vietato.</strong> Animazioni di ingresso pagina, parallax, ritardi a cascata, rimbalzi, qualunque animazione che ritardi un'azione o che parta da sola senza un gesto. Ogni animazione nuova va aggiunta a <code>globals.css</code> dentro il media e dichiarata in <code>DESIGN.md</code> §Movimento.
+</div>
+</body>
+</html>

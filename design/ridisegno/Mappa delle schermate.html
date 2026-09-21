@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="design_doc_mode" content="canvas">
+<title>Mappa delle schermate</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+--fondo:#F1F0EE;--superficie:#FFFFFF;--ink:#14163A;--ink-2:#3D4166;--testo-2:#5C5F7A;--sec:#8A8A96;--ter:#A6A6B2;--off:#9A9AA6;
+--bordo:rgba(20,22,58,0.07);--spento:rgba(20,22,58,0.035);--icona-spenta:#C4C4CE;--bordo-tratteggio:rgba(20,22,58,0.20);
+--avviso:#9A5C00;--errore:#C4423E;--freddo:#2F6FBF;
+--area-ortofrutta:#A8D96A;--area-macelleria:#F29B9B;--area-latticini:#9CC7F2;--area-cereali:#F5CE5B;--area-dispensa:#F2A465;--area-surgelati:#B9AEF5;
+--font-testo:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;--font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+--ombra-pannello:0 1px 2px rgba(20,22,58,.05),0 6px 16px rgba(20,22,58,.06);
+--ombra-nav:0 2px 6px rgba(20,22,58,.08),0 12px 30px rgba(20,22,58,.16);
+--ombra-tasto:0 3px 10px rgba(20,22,58,.24);
+}
+*{box-sizing:border-box}
+body{margin:0;background:#D8D7D4;font-family:var(--font-testo);color:var(--ink);-webkit-font-smoothing:antialiased}
+a{color:var(--ink)}a:hover{color:var(--ink-2)}
+.frame{position:absolute}
+.sigla{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.tit{font-size:32px;font-weight:800;letter-spacing:-.045em;line-height:1.05;margin:0}
+.board{width:980px;display:flex;flex-direction:column;gap:16px}
+.board-testa{display:flex;flex-direction:column;gap:8px;max-width:660px}
+.board-testa p{margin:0;font-size:14px;line-height:1.5;color:var(--ink-2)}
+.gruppo{display:flex;flex-direction:column;gap:10px}
+.gruppo-lb{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:0 2px}
+.gruppo-cont{font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:.10em;text-transform:uppercase;color:var(--sec)}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.card{background:#fff;border:1px solid var(--bordo);border-radius:22px;box-shadow:var(--ombra-pannello);padding:16px;display:flex;flex-direction:column;gap:9px}
+.card.fatta{background:rgba(20,22,58,.035);box-shadow:none}
+.card h3{margin:0;font-size:21px;font-weight:800;letter-spacing:-.035em;line-height:1.2}
+.meta{font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--testo-2);line-height:1.7}
+.card p{margin:0;font-size:12.5px;line-height:1.45;color:var(--testo-2)}
+.card p strong{color:var(--ink)}
+.aperto{font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--avviso);line-height:1.7}
+.pronta{font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--freddo);line-height:1.7}
+.voci-elenco{display:flex;flex-direction:column;gap:0;margin:0;padding:0;list-style:none}
+.voci-elenco li{display:flex;align-items:baseline;justify-content:space-between;gap:10px;font-size:12.5px;line-height:1.4;padding:8px 0;border-top:1px solid var(--bordo);color:var(--testo-2)}
+.voci-elenco li span:last-child{font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--sec);white-space:nowrap}
+.decisioni{background:#fff;border:1px solid var(--bordo);border-radius:22px;box-shadow:var(--ombra-pannello);padding:16px;display:flex;flex-direction:column;gap:10px}
+.decisioni ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:7px}
+.decisioni li{font-size:12.5px;line-height:1.45;color:var(--testo-2)}
+.decisioni li strong{color:var(--ink)}
+
+.tel{width:393px;height:852px;border-radius:26px;overflow:hidden;position:relative;box-shadow:0 2px 4px rgba(20,22,58,.10),0 18px 40px rgba(20,22,58,.18);background:linear-gradient(180deg,#EDECEA 0%,#F2F1EF 34%,#F8F8F7 70%,#FCFCFB 100%)}
+.scroll{position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain;
+-webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 128px),rgba(0,0,0,.55) calc(100% - 74px),rgba(0,0,0,0) calc(100% - 30px));
+mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 128px),rgba(0,0,0,.55) calc(100% - 74px),rgba(0,0,0,0) calc(100% - 30px))}
+.scroll::-webkit-scrollbar{width:0}
+.testata{padding:20px 18px 12px;display:flex;flex-direction:column;gap:12px}
+.indietro{width:44px;height:44px;border:0;background:none;display:flex;align-items:center;justify-content:center;padding:0;margin:0 0 0 -10px}
+.titolo-sch{font-size:52px;font-weight:800;letter-spacing:-.05em;line-height:1;margin:0}
+
+.w{margin:0 16px 12px;background:#fff;border:1px solid var(--bordo);border-radius:22px;box-shadow:var(--ombra-pannello);padding:14px 12px 12px;display:flex;flex-direction:column;gap:6px}
+.w-testa{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:0 4px 4px}
+.w-lb{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.w-nota{font-size:12.5px;line-height:1.4;color:var(--testo-2);padding:4px 4px 0;margin:0}
+.ri{display:flex;align-items:center;gap:10px;min-height:56px;border:0;background:none;padding:6px 4px;width:100%;text-align:left;font:inherit;color:inherit;border-radius:14px}
+.ri-corpo{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ri-nome{font-size:15px;font-weight:700;letter-spacing:-.024em}
+.ri-nota{font-size:12.5px;line-height:1.35;color:var(--testo-2)}
+.ri-val{font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--ink);white-space:nowrap}
+.ri-dx{width:22px;flex:none;display:flex;align-items:center;justify-content:flex-end}
+.sino{display:flex;gap:7px;flex:none}
+.sino button{height:44px;min-width:52px;border-radius:999px;background:#fff;border:1px solid rgba(20,22,58,.09);font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--sec)}
+.sino button.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.numero{height:44px;width:78px;flex:none;border-radius:14px;background:#fff;border:1px solid var(--bordo);display:flex;align-items:center;justify-content:flex-end;gap:5px;padding:0 12px;font-family:var(--font-mono);font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
+.numero em{font-style:normal;font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--ter)}
+.coda{height:140px}
+
+.nav{position:absolute;left:16px;right:16px;bottom:22px;height:84px;border-radius:999px;display:flex;align-items:center;gap:2px;padding:6px;background:#fff;box-shadow:var(--ombra-nav)}
+.nav .voce{flex:1;height:72px;border:0;background:none;border-radius:999px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0;overflow:hidden}
+.nav .segno{display:flex;align-items:center;justify-content:center;flex:none;height:26px}
+.nav .lb{font-family:var(--font-mono);font-size:8.5px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--off);white-space:nowrap;line-height:1}
+.marchio{display:grid;gap:4px}
+.cas{border-radius:2.52px;border:2px solid transparent}
+
+.velo{position:absolute;inset:0;background:rgba(20,22,58,.35);display:flex;align-items:flex-end}
+.foglio{width:100%;background:#fff;border-radius:22px 22px 0 0;padding:16px 16px 26px;display:flex;flex-direction:column;gap:12px}
+.foglio h2{margin:0;font-size:21px;font-weight:800;letter-spacing:-.035em;line-height:1.2}
+.foglio p{margin:0;font-size:14px;line-height:1.5;color:var(--testo-2)}
+.tasti{display:flex;gap:8px;margin-top:4px}
+.tasto{flex:1;height:54px;border-radius:18px;font-family:var(--font-mono);font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;border:1px solid var(--bordo);background:#fff;color:var(--ink)}
+.tasto.distruttivo{background:var(--errore);border-color:var(--errore);color:#fff;box-shadow:var(--ombra-tasto)}
+
+.note{width:393px;margin-top:12px;background:#fff;border:1px solid var(--bordo);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.note p{margin:0;font-size:12.5px;line-height:1.45;color:var(--testo-2)}
+.note strong{color:var(--ink)}
+.rompe{font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--avviso);line-height:1.6}
+.intesta{display:flex;flex-direction:column;gap:6px;padding:0 2px 12px;width:393px}
+.intesta p{margin:0;font-size:12.5px;line-height:1.4;color:#3D4166}
+</style>
+</head>
+<body>
+
+<div class="frame" style="left:60px;top:60px">
+<div class="board">
+  <div class="board-testa">
+    <div class="sigla">Spesa · mappa delle schermate · 18/09/2026</div>
+    <h1 class="tit">Tre schermate montate, la Lista da assemblare, sette da fare</h1>
+    <p>Le quattro sezioni principali hanno una direzione approvata, ma solo tre esistono come schermata intera: la Lista approvata è la somma di scelte fatte su due file diversi e va ancora messa insieme. Oltre a quelle restano sette schermate — i dettagli, i due flussi e le Impostazioni — più quattro stati che valgono su tutte. Le Impostazioni oggi non esistono da nessuna parte: <code>DESIGN.md</code> le nomina in §3 come titolo di schermata e in §8 come destinazione dell'ingranaggio, e finisce lì. Accanto a questa lavagna c'è una proposta di come organizzarle, più il dialogo di conferma reso per intero.</p>
+  </div>
+
+  <div class="gruppo">
+    <div class="gruppo-lb"><span class="sigla">Direzione approvata</span><span class="gruppo-cont">4 sezioni · 3 montate · 1 da assemblare</span></div>
+    <div class="cards">
+      <div class="card"><h3>Lista</h3><div class="meta">Tab bar · da assemblare</div><p>Le scelte ci sono tutte ma stanno su due file: la variante E col marchio in barra e il menù utente in <strong>Lista — variante E v2.html</strong>, le sezioni a widget bianco con tessere nude in <strong>Lista — sezioni widget 5 versioni.html</strong> (versione 1).</p><p><strong>Da fare:</strong> montarle in un file solo e aggiungere la barra a due stati con le etichette, che la Lista non ha ancora e le altre tre sì.</p><div class="aperto">Nessun file contiene oggi la Lista approvata</div></div>
+      <div class="card fatta"><h3>Piano</h3><div class="meta">Tab bar · Piano — oggi e domani.html</div><p>Striscia dei giorni e righe pasto senza scatole. Oggi è un anello, selezionato è un pieno; l'etichetta sotto la striscia dice “Venerdì 18 · Domani”.</p></div>
+      <div class="card fatta"><h3>Piatti</h3><div class="meta">Tab bar · Piatti — versione 5.html</div><p>Elenco unico di 19 piatti, nessuna divisione per pasto, ricerca che entra negli ingredienti, “+ nuovo piatto” a tutta larghezza.</p></div>
+      <div class="card fatta"><h3>Dispensa</h3><div class="meta">Tab bar · Dispensa — tinta d'area e dock.html</div><p>Tessere con fondo in tinta d'area al 26%, finite col contorno tratteggiato. Dock in basso: FAI UNA MODIFICA e microfono con lo stato “Registro”.</p></div>
+    </div>
+  </div>
+
+  <div class="gruppo">
+    <div class="gruppo-lb"><span class="sigla">Da disegnare · dettagli</span><span class="gruppo-cont">4 schermate</span></div>
+    <div class="cards">
+      <div class="card"><h3>Piatto</h3><div class="meta">Da Piatti, da una riga pasto, dal foglio</div><p><strong>Il sistema dà già:</strong> titolo di dettaglio 32/800, campo di testo, campo numerico, foglio dal basso, dialogo di conferma per l'eliminazione.</p><p><strong>Da decidere:</strong> come si mostrano gli ingredienti con le loro quantità, se le porzioni si cambiano qui o solo nel Piano, dove vive “elimina il piatto”.</p><div class="pronta">Il vocabolario basta: nessun componente nuovo previsto</div></div>
+      <div class="card"><h3>Ingrediente</h3><div class="meta">Da Piatto, da una tessera della Lista, da Dispensa</div><p><strong>Il sistema dà già:</strong> titolo di dettaglio, campo numerico con unità, quadratino d'area, riga di controllo con la sua cadenza.</p><p><strong>Da decidere:</strong> è una schermata o un foglio dal basso? Un ingrediente ha poco da dire — nome, area, unità, confezione, cadenza del controllo — e un foglio costa un tocco in meno.</p><div class="aperto">Decidere prima: schermata o foglio</div></div>
+      <div class="card"><h3>Scegli un piatto</h3><div class="meta">Dal chevron di una riga pasto vuota</div><p><strong>Il sistema dà già:</strong> il chevron della riga pasto “va a Scegli”. Il resto non c'è.</p><p><strong>Da decidere:</strong> è la schermata Piatti in modalità scelta, o una schermata sua? Se è Piatti, cambia solo cosa fa il tap e serve la testata in modalità indietro — una schermata in meno da mantenere.</p><div class="aperto">Decidere prima: riuso di Piatti o schermata nuova</div></div>
+      <div class="card"><h3>Ordine delle aree</h3><div class="meta">Da Impostazioni</div><p>L'unica personalizzazione che §2.3 ammette: “l'utente personalizza solo l'ordine di apparizione in Lista”.</p><p><strong>Da decidere:</strong> come si riordina senza swipe e senza long-press, che §9 vieta. Servono due frecce su ogni riga, oppure uno “sposta” che apre un elenco di posizioni.</p><div class="aperto">Componente nuovo inevitabile: riga riordinabile</div></div>
+    </div>
+  </div>
+
+  <div class="gruppo">
+    <div class="gruppo-lb"><span class="sigla">Da disegnare · flussi</span><span class="gruppo-cont">2 schermate</span></div>
+    <div class="cards">
+      <div class="card"><h3>Importa</h3><div class="meta">Da Impostazioni · nessuna voce attiva in barra</div><p><strong>Il sistema dà già:</strong> la schermata è nominata in §8; il copy “il PDF non si apre: prova con le foto” in §10; SCANSIONA ed ESTRAI LA DIETA tra i tasti di §10.</p><p><strong>Da decidere:</strong> cosa si importa e da dove. Il copy esistente parla di PDF e di foto di un piano alimentare.</p><div class="aperto">Serve sapere da quali fonti si importa</div></div>
+      <div class="card"><h3>Revisione dell'import</h3><div class="meta">Dopo Importa</div><p><strong>Il sistema dà già:</strong> la “riga di revisione” con bordo 1,5 px, l'avviso in linea in --avviso per una riga non risolta o inferita, con <code>aria-live="polite"</code>.</p><p><strong>Da decidere:</strong> come si corregge una riga inferita, e cosa succede a quelle che restano non risolte quando confermi.</p><div class="pronta">I componenti esistono: riga di revisione e avviso in linea</div></div>
+    </div>
+  </div>
+
+  <div class="gruppo">
+    <div class="gruppo-lb"><span class="sigla">Da disegnare · stati trasversali</span><span class="gruppo-cont">4 stati · valgono su più schermate</span></div>
+    <div class="cards">
+      <div class="card"><h3>Stati vuoti</h3><div class="meta">Lista, Piano, Piatti, Dispensa</div><p>§8 li specifica per intero: scheda da 22 centrata, quadrato 46 tratteggiato con un'icona spenta, titolo 21/800, testo 14 largo al massimo 30ch, un primario che porta alla prossima azione.</p><p><strong>Problema nuovo:</strong> §8 vuole il primario “in fondo”, ma il fondo è occupato dalla barra flottante e, in Dispensa, dal dock.</p><div class="aperto">Il tasto primario non ha più un posto</div></div>
+      <div class="card"><h3>Dialogo di conferma</h3><div class="meta">Elimina piatto, rigenera la lista, cancella la dispensa</div><p>§8 e §9 lo fissano: due tasti, distruttivo pieno in --errore accanto ad ANNULLA secondario, mai un solo tap.</p><p>Reso qui accanto per intero, copy compreso.</p><div class="pronta">Pronto per entrare in DESIGN.md</div></div>
+      <div class="card"><h3>Caricamento e offline</h3><div class="meta">Tutte le schermate</div><p>§8: una riga mono “CARICO…” in --sec al posto del contenuto, sotto la testata che è già disegnata. Nessuno spinner, nessuno scheletro. Offline: riga di stato 12,5 in --testo-2, già in uso nella Lista.</p><div class="pronta">Nessuna decisione aperta</div></div>
+      <div class="card"><h3>Fogli dal basso</h3><div class="meta">Kebab della riga pasto, menù utente</div><p>§8 dà misure e comportamento: overlay, raggio 22 in alto, voci alte almeno 50, separatori mono, il tap sull'overlay chiude.</p><p><strong>Da decidere:</strong> quali voci contiene ognuno. Il menù utente ne apre uno e oggi non sappiamo cosa ci sia dentro.</p><div class="aperto">Servono gli elenchi delle voci</div></div>
+    </div>
+  </div>
+
+  <div class="gruppo">
+    <div class="gruppo-lb"><span class="sigla">Impostazioni · proposta di organizzazione</span><span class="gruppo-cont">1 schermata · 10 voci · 4 gruppi</span></div>
+    <div class="cards">
+      <div class="card" style="grid-column:span 2">
+        <h3>Quattro gruppi, non un elenco</h3>
+        <p>Le voci vengono dai dati che l'app usa già per calcolare la lista: nessuna impostazione nuova, nessun interruttore che non cambi un numero visibile da qualche parte. I gruppi sono ordinati da “cambia il calcolo” a “cambia i tuoi dati”, perché il primo è quello che si apre quando la lista non torna.</p>
+        <ul class="voci-elenco">
+          <li><span><strong>Come calcolo la lista</strong> — porzioni di default, arrotonda alle confezioni, cadenza dei controlli</span><span>3 voci</span></li>
+          <li><span><strong>Come la vedi in corsia</strong> — ordine delle aree, unità di misura</span><span>2 voci</span></li>
+          <li><span><strong>I tuoi dati</strong> — importa un piano, esporta i tuoi dati, cancella la dispensa</span><span>3 voci</span></li>
+          <li><span><strong>Account</strong> — chi sei, esci</span><span>2 voci</span></li>
+        </ul>
+        <p><strong>Cosa non c'è, di proposito:</strong> tema e dark mode (§9 le mette fuori scope), notifiche (l'app non ne manda), lingua (tutto in italiano per regola), e qualunque voce su salute, calorie o budget. Nessuna cifra in euro da nessuna parte.</p>
+        <div class="aperto">Componente nuovo: riga di impostazione · da approvare il gruppo Account, che presuppone un login mai nominato</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="decisioni">
+    <div class="sigla">Decisioni aperte, accumulate finora</div>
+    <ol>
+      <li><strong>Sfondo a gradiente</strong> — §1.5 e §12 vietano i gradienti. In uso su tutte e quattro le schermate.</li>
+      <li><strong>Quarta e quinta ombra</strong> — §5 ne ammette tre e nessuna su schede. In uso sui pannelli, sulla barra e sul dock.</li>
+      <li><strong>Tab bar in pillola flottante</strong> — §8 la vuole a tutta larghezza con voce attiva raggio 14. Ora è raggio 999, ha due stati e reagisce allo scorrimento: un <strong>sesto momento</strong> di movimento non previsto da §7.</li>
+      <li><strong>Menù utente in testata</strong> — §8 prevede solo l'ingranaggio 24 px. Componente nuovo.</li>
+      <li><strong>La sezione si chiama Piano</strong>, non Settimana — §3 e §8 elencano i nomi delle schermate e vanno aggiornati.</li>
+      <li><strong>Tinta d'area al 26% sulla tessera</strong> — §2.3 la assegna alla riga di controllo. Conseguenza già emersa: su quella tinta i token semantici vanno su pillola bianca, o scendono sotto 4,5:1.</li>
+      <li><strong>Animazione senza fine prevista</strong> — il metro della registrazione dura finché dura il vocale; §7 ammette solo durate 150–250 ms.</li>
+      <li><strong>Icone piene e matita</strong> — §6 vuole solo tratto e ne elenca sei. Le icone della barra sono piene e la matita non è tra le sei.</li>
+      <li><strong>Otto componenti nuovi da scrivere</strong> — Menù utente, Riga piatto, Riga di dispensa, Tessera di dispensa, Dock di inserimento, Stato “Registro”, Riga di impostazione, Riga riordinabile.</li>
+      <li><strong>Il tasto primario non ha più un posto</strong> — §8 lo vuole in fondo; il fondo è occupato. Vale per ogni stato vuoto e per Importa.</li>
+      <li><strong>La Lista va assemblata</strong> — variante E più widget versione 1 più barra a due stati con etichette: le tre scelte non convivono in nessun file.</li>
+    </ol>
+  </div>
+</div>
+</div>
+
+<div class="frame" style="left:1100px;top:60px">
+<div class="intesta"><div class="sigla">Proposta · Impostazioni</div><p>Quattro gruppi come widget, la stessa scatola delle altre schermate. Ogni voce mostra il valore attuale a destra: si legge cosa fa l'app senza aprire nulla. Tocca “Cancella la dispensa” per far arrivare il dialogo qui accanto.</p></div>
+<div class="tel" data-screen-label="Impostazioni">
+  <div class="scroll">
+    <div class="testata">
+      <button type="button" class="indietro" aria-label="Indietro"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 5l-7 7 7 7" stroke="#14163A" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      <h1 class="titolo-sch">Impostazioni</h1>
+    </div>
+
+    <section class="w">
+      <div class="w-testa"><span class="w-lb">Come calcolo la lista</span></div>
+      <div class="ri"><span class="ri-corpo"><span class="ri-nome">Porzioni di default</span><span class="ri-nota">Quante ne conto quando metti un piatto nel piano.</span></span><span class="numero">2<em>porz</em></span></div>
+      <div class="ri"><span class="ri-corpo"><span class="ri-nome">Arrotonda alle confezioni</span><span class="ri-nota">Con 540 g di zucchine la lista chiede 1 confezione da 600 g.</span></span><span class="sino"><button type="button" class="on" aria-pressed="true">Sì</button><button type="button" aria-pressed="false">No</button></span></div>
+      <button type="button" class="ri"><span class="ri-corpo"><span class="ri-nome">Cadenza dei controlli</span><span class="ri-nota">Ogni quanto ti chiedo se hai ancora olio, sale, farina.</span></span><span class="ri-val">4 settimane</span><span class="ri-dx"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 5l7 7-7 7" stroke="#C4C4CE" stroke-width="2.1" stroke-linecap="round"/></svg></span></button>
+    </section>
+
+    <section class="w">
+      <div class="w-testa"><span class="w-lb">Come la vedi in corsia</span></div>
+      <button type="button" class="ri"><span class="ri-corpo"><span class="ri-nome">Ordine delle aree</span><span class="ri-nota">L'ordine in cui compaiono in Lista: mettilo come gira il tuo supermercato.</span></span><span class="ri-val">Personalizzato</span><span class="ri-dx"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 5l7 7-7 7" stroke="#C4C4CE" stroke-width="2.1" stroke-linecap="round"/></svg></span></button>
+      <button type="button" class="ri"><span class="ri-corpo"><span class="ri-nome">Unità di misura</span><span class="ri-nota">Grammi e millilitri, oppure pezzi e confezioni dove ha senso.</span></span><span class="ri-val">Grammi e ml</span><span class="ri-dx"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 5l7 7-7 7" stroke="#C4C4CE" stroke-width="2.1" stroke-linecap="round"/></svg></span></button>
+    </section>
+
+    <section class="w">
+      <div class="w-testa"><span class="w-lb">I tuoi dati</span></div>
+      <button type="button" class="ri"><span class="ri-corpo"><span class="ri-nome">Importa un piano</span><span class="ri-nota">Da un PDF o dalle foto di un piano che hai già.</span></span><span class="ri-dx"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 5l7 7-7 7" stroke="#C4C4CE" stroke-width="2.1" stroke-linecap="round"/></svg></span></button>
+      <button type="button" class="ri"><span class="ri-corpo"><span class="ri-nome">Esporta i tuoi dati</span><span class="ri-nota">Piatti, piano e dispensa in un file che puoi tenere.</span></span><span class="ri-dx"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 5l7 7-7 7" stroke="#C4C4CE" stroke-width="2.1" stroke-linecap="round"/></svg></span></button>
+      <button type="button" class="ri" data-dialogo><span class="ri-corpo"><span class="ri-nome">Cancella la dispensa</span><span class="ri-nota">Svuota quello che hai in casa. I piatti e il piano restano.</span></span><span class="ri-dx"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 5l7 7-7 7" stroke="#C4C4CE" stroke-width="2.1" stroke-linecap="round"/></svg></span></button>
+    </section>
+
+    <section class="w">
+      <div class="w-testa"><span class="w-lb">Account</span></div>
+      <button type="button" class="ri"><span class="ri-corpo"><span class="ri-nome">Andrea</span><span class="ri-nota">andrea@esempio.it</span></span><span class="ri-dx"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 5l7 7-7 7" stroke="#C4C4CE" stroke-width="2.1" stroke-linecap="round"/></svg></span></button>
+      <button type="button" class="ri"><span class="ri-corpo"><span class="ri-nome">Esci</span></span><span class="ri-dx"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 5l7 7-7 7" stroke="#C4C4CE" stroke-width="2.1" stroke-linecap="round"/></svg></span></button>
+      <p class="w-nota">Versione 2.0.4 · ultimo salvataggio il 18/09/2026 alle 9:12</p>
+    </section>
+
+    <div class="coda"></div>
+  </div>
+  <nav class="nav" aria-label="Sezioni">
+    <button type="button" class="voce" aria-pressed="false" aria-label="Lista"><span class="segno"><span class="marchio" style="grid-template-columns:repeat(3,9px);grid-auto-rows:9px" aria-hidden="true"><span class="cas" style="border-color:var(--area-dispensa);background:var(--area-dispensa)"></span><span class="cas" style="border-color:var(--area-latticini);background:var(--area-latticini)"></span><span class="cas" style="border-color:var(--area-ortofrutta)"></span><span class="cas" style="border-color:var(--area-surgelati);background:var(--area-surgelati)"></span><span class="cas" style="border-color:var(--area-cereali);background:var(--area-cereali)"></span><span class="cas" style="border-color:var(--area-macelleria)"></span></span></span><span class="lb">Lista</span></button>
+    <button type="button" class="voce" aria-pressed="false" aria-label="Piano"><span class="segno"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15.5" rx="4.4" fill="#9A9AA6"/><rect x="6.2" y="8.4" width="11.6" height="2.1" rx="1.05" fill="#fff" opacity=".92"/><circle cx="8.2" cy="14.6" r="1.7" fill="#fff" opacity=".92"/><circle cx="12" cy="14.6" r="1.7" fill="#fff" opacity=".92"/><circle cx="15.8" cy="14.6" r="1.7" fill="#fff" opacity=".92"/></svg></span><span class="lb">Piano</span></button>
+    <button type="button" class="voce" aria-pressed="false" aria-label="Piatti"><span class="segno"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="#9A9AA6"/><circle cx="12" cy="12" r="4.1" fill="#fff" opacity=".92"/></svg></span><span class="lb">Piatti</span></button>
+    <button type="button" class="voce" aria-pressed="false" aria-label="Dispensa"><span class="segno"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="3.4" width="14" height="3.6" rx="1.8" fill="#9A9AA6"/><path d="M6 9.4h12a1 1 0 0 1 1 1v6.4a3.2 3.2 0 0 1-3.2 3.2H8.2A3.2 3.2 0 0 1 5 16.8v-6.4a1 1 0 0 1 1-1Z" fill="#9A9AA6"/><rect x="8.4" y="12.4" width="7.2" height="2.1" rx="1.05" fill="#fff" opacity=".92"/></svg></span><span class="lb">Dispensa</span></button>
+  </nav>
+</div>
+<div class="note">
+  <div class="sigla">Componente nuovo</div>
+  <p><strong>COMPONENTE NUOVO: Riga di impostazione.</strong> Minimo <strong>56</strong>, raggio 14, dentro un widget e senza fondo proprio. A sinistra il corpo: nome <strong>15 / 700 / -0,024em</strong> e sotto una nota <strong>12,5</strong> in --testo-2 che dice <em>cosa cambia</em>, non cosa è. A destra uno di tre finali: il <strong>valore</strong> in mono 11 / 700 maiuscolo più chevron quando la voce apre qualcosa; una coppia <strong>SÌ/NO</strong> da 44 quando la scelta è binaria; un <strong>campo numerico</strong> 78 × 44 con l'unità in mono 10 quando è un numero. Niente switch: §12 li vieta, e la coppia SÌ/NO è già nel sistema dentro la riga di controllo.</p>
+  <div class="sigla" style="margin-top:4px">Perché queste voci</div>
+  <p>Ogni voce cambia un numero che si vede altrove: le porzioni di default cambiano le quantità in Lista, l'arrotondamento cambia le confezioni, la cadenza cambia quando compare la riga di controllo, l'ordine delle aree cambia la sequenza delle sezioni in Lista. Le note lo dicono con un esempio vero — “Con 540 g di zucchine la lista chiede 1 confezione da 600 g” — come chiede §10: il copy spiega la causa.</p>
+  <div class="sigla" style="margin-top:4px">Regole di DESIGN.md che tocca</div>
+  <div class="rompe">§8 testata in modalità indietro: la freccia 20 px sostituiva il marchio, ma il marchio ora vive in barra, quindi la freccia sta sopra il titolo · §8 su Impostazioni nessuna voce della barra è attiva, di proposito · COMPONENTE NUOVO: Riga di impostazione · il gruppo Account presuppone un login che il sistema non ha mai nominato</div>
+</div>
+</div>
+
+<div class="frame" style="left:1553px;top:60px">
+<div class="intesta"><div class="sigla">Proposta · dialogo di conferma</div><p>Arriva toccando “Cancella la dispensa” nella schermata accanto. È l'unico posto dove vive il tasto distruttivo.</p></div>
+<div class="tel" data-screen-label="Dialogo di conferma">
+  <div class="scroll" style="-webkit-mask-image:none;mask-image:none">
+    <div class="testata">
+      <button type="button" class="indietro" aria-label="Indietro"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 5l-7 7 7 7" stroke="#14163A" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      <h1 class="titolo-sch">Impostazioni</h1>
+    </div>
+    <section class="w">
+      <div class="w-testa"><span class="w-lb">I tuoi dati</span></div>
+      <div class="ri"><span class="ri-corpo"><span class="ri-nome">Cancella la dispensa</span><span class="ri-nota">Svuota quello che hai in casa. I piatti e il piano restano.</span></span><span class="ri-dx"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 5l7 7-7 7" stroke="#C4C4CE" stroke-width="2.1" stroke-linecap="round"/></svg></span></div>
+    </section>
+  </div>
+  <div class="velo">
+    <div class="foglio" role="dialog" aria-label="Conferma: cancella la dispensa">
+      <h2>Cancello le 13 voci in dispensa?</h2>
+      <p>Al prossimo ricalcolo la Lista le chiederà tutte. I piatti e il piano del 14–20 settembre non cambiano. Non si torna indietro.</p>
+      <div class="tasti">
+        <button type="button" class="tasto">Annulla</button>
+        <button type="button" class="tasto distruttivo">Cancella</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="note">
+  <div class="sigla">Misure</div>
+  <p>Overlay <strong>rgba(20,22,58,0.35)</strong>, foglio bianco ancorato in basso, raggio <strong>22px 22px 0 0</strong>, padding 16 / 16 / 26, gap 12. Titolo 21 / 800 / -0,035em, testo 14 / lh 1,5 in --testo-2. Due tasti <code>flex: 1</code> alti <strong>54</strong>, raggio 18, mono 12 / 700 / 0,09em: <strong>ANNULLA</strong> secondario bianco con bordo 1 px --bordo, <strong>CANCELLA</strong> primario pieno in --errore #C4423E con l'ombra del primario. <code>role="dialog"</code> con nome accessibile. Il tap sull'overlay chiude, come §8.</p>
+  <div class="sigla" style="margin-top:4px">Il copy</div>
+  <p>Il titolo porta il numero vero — “le 13 voci in dispensa” — il testo dice <strong>la conseguenza</strong>, cioè che la Lista le richiederà tutte, e cosa <strong>non</strong> cambia, perché è la domanda che uno si fa prima di premere. Nessun punto esclamativo, nessun “sei sicuro?”. Il tasto dice il verbo, non “OK”.</p>
+  <div class="sigla" style="margin-top:4px">Regole di DESIGN.md che tocca</div>
+  <div class="rompe">nessuna: §8 e §9 fissano già foglio, overlay, coppia di tasti e distruttivo pieno in --errore. Questa resa può entrare in DESIGN.md così com'è.</div>
+</div>
+</div>
+
+<script>
+const tel=document.querySelectorAll('.tel');
+const velo=tel[1].querySelector('.velo');
+document.querySelectorAll('[data-dialogo]').forEach(b=>b.addEventListener('click',()=>{velo.style.display='flex'}));
+velo.addEventListener('click',e=>{if(e.target===velo)velo.style.display='none'});
+velo.querySelectorAll('.tasto').forEach(t=>t.addEventListener('click',()=>{velo.style.display='none'}));
+</script>
+</body>
+</html>

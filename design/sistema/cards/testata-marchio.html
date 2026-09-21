@@ -1,0 +1,128 @@
+<!-- @dsCard group="Componenti" name="Testata e marchio" subtitle="Marchio 3×2 che porta alla Lista, titolo 52/800, ingranaggio in un'area 44×44. Sotto…" viewport="393x852" -->
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Testata e marchio</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --fondo:#F1F0EE; --superficie:#FFFFFF; --ink:#14163A; --testo-2:#5C5F7A; --sec:#8A8A96;
+  --bordo:rgba(20,22,58,0.07);
+  --area-ortofrutta:#A8D96A; --area-macelleria:#F29B9B; --area-latticini:#9CC7F2;
+  --area-cereali:#F5CE5B; --area-dispensa:#F2A465; --area-surgelati:#B9AEF5;
+  --font-testo:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:var(--fondo);color:var(--ink);font-family:var(--font-testo);-webkit-font-smoothing:antialiased}
+.card{width:393px;max-width:100%;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.titolo{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.dida{font-size:12.5px;line-height:1.4;color:var(--testo-2)}
+.telefono{width:100%;background:var(--fondo);border:1px solid var(--bordo);border-radius:22px;overflow:hidden}
+.et{font-family:var(--font-mono);font-size:8.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--sec)}
+
+.testata{padding:20px 18px 12px;display:flex;flex-direction:column;gap:15px}
+.testata-riga{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.testata-sx{display:flex;align-items:flex-start;gap:13px;min-width:0}
+.marchio{display:grid;grid-template-columns:repeat(3,16px);gap:4px;flex:none}
+.mc{width:16px;height:16px;border-radius:4.48px;box-sizing:border-box;border-width:2px;border-style:solid}
+.slot44{width:44px;height:44px;margin:-4px -10px 0 0;flex:none;display:flex;align-items:center;justify-content:center}
+.schermata{font-size:52px;font-weight:800;letter-spacing:-.05em;line-height:1}
+.pillola-settimana{display:inline-flex;align-items:center;align-self:flex-start;height:34px;padding:0 14px;border-radius:999px;background:var(--ink)}
+.pillola-settimana span{font-family:var(--font-mono);font-size:10.5px;font-weight:700;letter-spacing:.13em;color:#FFFFFF}
+.marchio-prova{display:flex;gap:18px;align-items:flex-start;background:var(--superficie);border:1px solid var(--bordo);border-radius:18px;padding:14px}
+.marchio-caso{display:flex;flex-direction:column;gap:8px}
+.marchio-grande{grid-template-columns:repeat(3,20px)}
+.marchio-grande .mc{width:20px;height:20px;border-radius:5.6px}
+.misure{background:var(--superficie);border:1px solid var(--bordo);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:7px}
+.misure p{margin:0;font-size:12.5px;line-height:1.45}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="titolo">Componenti · Testata e marchio</div>
+  <div class="dida">Marchio 3×2 che porta alla Lista, titolo 52/800, ingranaggio in un'area 44×44. Sotto, facoltativa, la pillola settimana: testo informativo, non un selettore.</div>
+
+  <div class="telefono">
+    <div class="testata">
+      <div class="testata-riga">
+        <div class="testata-sx">
+          <div style="margin-top:8px">
+            <div class="marchio" aria-hidden="true">
+              <div class="mc" style="border-color:var(--area-dispensa);background:var(--area-dispensa)"></div>
+              <div class="mc" style="border-color:var(--area-latticini);background:transparent"></div>
+              <div class="mc" style="border-color:var(--area-ortofrutta);background:transparent"></div>
+              <div class="mc" style="border-color:var(--area-surgelati);background:var(--area-surgelati)"></div>
+              <div class="mc" style="border-color:var(--area-cereali);background:var(--area-cereali)"></div>
+              <div class="mc" style="border-color:var(--area-macelleria);background:transparent"></div>
+            </div>
+          </div>
+          <span class="schermata">LISTA</span>
+        </div>
+        <div class="slot44">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="3.1" stroke="#14163A" stroke-width="1.8"/>
+            <path d="M12 2.8v2.4M12 18.8v2.4M21.2 12h-2.4M5.2 12H2.8M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2 5.5 5.5" stroke="#14163A" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+        </div>
+      </div>
+      <div class="pillola-settimana"><span>14 SET — 20 SET</span></div>
+    </div>
+  </div>
+
+  <div class="et">Modalità indietro: freccia al posto del marchio, niente ingranaggio</div>
+  <div class="telefono">
+    <div class="testata" style="padding-bottom:20px">
+      <div class="testata-riga">
+        <div class="testata-sx">
+          <div style="margin-top:8px">
+            <div class="slot44" style="margin:-4px 0 0 -10px">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="m12 4-8 6 8 6" stroke="#14163A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+          </div>
+          <span class="schermata">IMPORTA</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="et">Marchio: i due stati di una casella</div>
+  <div class="marchio-prova">
+    <div class="marchio-caso">
+      <div class="marchio marchio-grande" aria-hidden="true">
+        <div class="mc" style="border-color:var(--area-dispensa);background:var(--area-dispensa)"></div>
+        <div class="mc" style="border-color:var(--area-latticini);background:var(--area-latticini)"></div>
+        <div class="mc" style="border-color:var(--area-ortofrutta);background:var(--area-ortofrutta)"></div>
+        <div class="mc" style="border-color:var(--area-surgelati);background:var(--area-surgelati)"></div>
+        <div class="mc" style="border-color:var(--area-cereali);background:var(--area-cereali)"></div>
+        <div class="mc" style="border-color:var(--area-macelleria);background:var(--area-macelleria)"></div>
+      </div>
+      <div class="dida">Tutto pieno: non manca niente, in nessuna area.</div>
+    </div>
+    <div class="marchio-caso">
+      <div class="marchio marchio-grande" aria-hidden="true">
+        <div class="mc" style="border-color:var(--area-dispensa);background:transparent"></div>
+        <div class="mc" style="border-color:var(--area-latticini);background:var(--area-latticini)"></div>
+        <div class="mc" style="border-color:var(--area-ortofrutta);background:transparent"></div>
+        <div class="mc" style="border-color:var(--area-surgelati);background:var(--area-surgelati)"></div>
+        <div class="mc" style="border-color:var(--area-cereali);background:transparent"></div>
+        <div class="mc" style="border-color:var(--area-macelleria);background:var(--area-macelleria)"></div>
+      </div>
+      <div class="dida">Tre contornate: in ortofrutta, dispensa e cereali manca ancora qualcosa.</div>
+    </div>
+  </div>
+
+  <div class="misure">
+    <div class="titolo">Misure</div>
+    <p>Testata: padding 20 alto / 18 lati / 12 basso, gap interno 15. Titolo 52/800/-0.05em/lh 1, una parola sola.</p>
+    <p>Marchio: griglia 3×2, lato 16 (20 nelle rese grandi), gap 4, raggio lato × 0,28, bordo 2 px nel colore dell'area. Ordine fisso: arancio, azzurro, verde / lilla, giallo, corallo. Mai grigia.</p>
+    <p>Ingranaggio 24 px, tratto 1.8, in un'area 44×44 con aria-label "Impostazioni". Solo la Lista calcola le aree mancanti: altrove il marchio è pieno.</p>
+    <p>Pillola settimana: alta 34, raggio 999, fondo ink, mono 10.5/700/0.13em in bianco. Nessuna freccetta: non è un selettore.</p>
+  </div>
+</div>
+</body>
+</html>

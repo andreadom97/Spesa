@@ -1,0 +1,81 @@
+<!-- @dsCard group="Componenti" name="Riga di controllo" subtitle="La domanda su uno staple, dentro la sua area, sotto le tessere. Indipendente dal piano…" viewport="393x852" -->
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Riga di controllo</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --fondo:#F1F0EE; --superficie:#FFFFFF; --ink:#14163A; --testo-2:#5C5F7A; --sec:#8A8A96;
+  --bordo:rgba(20,22,58,0.07);
+  --area-dispensa:#F2A465; --area-ortofrutta:#A8D96A; --area-cereali:#F5CE5B;
+  --font-testo:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:var(--fondo);color:var(--ink);font-family:var(--font-testo);-webkit-font-smoothing:antialiased}
+.card{width:393px;max-width:100%;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.titolo{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.dida{font-size:12.5px;line-height:1.4;color:var(--testo-2)}
+.telefono{width:100%;background:var(--fondo);border:1px solid var(--bordo);border-radius:22px;overflow:hidden}
+.interno{padding:12px}
+.et{font-family:var(--font-mono);font-size:8.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--sec)}
+.riga{display:flex;align-items:center;gap:12px;padding:14px 15px;border-radius:18px}
+.riga-t{flex:1;min-width:0}
+.riga-t .nome{font-size:16px;font-weight:700;letter-spacing:-.024em}
+.riga-t .meta{font-family:var(--font-mono);font-size:8.5px;letter-spacing:.11em;color:rgba(20,22,58,.5);margin-top:4px}
+.si-no{display:flex;gap:7px;flex:none}
+.p44{display:inline-flex;align-items:center;justify-content:center;height:44px;min-width:52px;padding:0 14px;border-radius:999px;background:var(--superficie);color:var(--ink);border:1px solid transparent;font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.08em}
+.involo{opacity:.5}
+.misure{background:var(--superficie);border:1px solid var(--bordo);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:7px}
+.misure p{margin:0;font-size:12.5px;line-height:1.45}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="titolo">Componenti · Riga di controllo</div>
+  <div class="dida">La domanda su uno staple, dentro la sua area, sotto le tessere. Indipendente dal piano: la vedi anche se l'olio non è in nessun piatto di questa settimana.</div>
+
+  <div class="telefono">
+    <div class="interno" style="display:flex;flex-direction:column;gap:12px">
+      <div class="riga" style="background:rgba(242,164,101,.26)">
+        <div class="riga-t">
+          <div class="nome">Olio: ne hai ancora?</div>
+          <div class="meta">CONTROLLO OGNI 90 GIORNI · SCADUTO</div>
+        </div>
+        <div class="si-no"><span class="p44">SÌ</span><span class="p44">NO</span></div>
+      </div>
+
+      <div class="riga" style="background:rgba(245,206,91,.26)">
+        <div class="riga-t">
+          <div class="nome">Sale: ne hai ancora?</div>
+          <div class="meta">CONTROLLO OGNI 180 GIORNI · SCADUTO</div>
+        </div>
+        <div class="si-no"><span class="p44">SÌ</span><span class="p44">NO</span></div>
+      </div>
+
+      <div class="et">Mentre la risposta è in volo</div>
+      <div class="riga" style="background:rgba(168,217,106,.26)">
+        <div class="riga-t">
+          <div class="nome">Aceto: ne hai ancora?</div>
+          <div class="meta">CONTROLLO OGNI 120 GIORNI · SCADUTO</div>
+        </div>
+        <div class="si-no"><span class="p44 involo">SÌ</span><span class="p44 involo">NO</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="misure">
+    <div class="titolo">Misure e comportamento</div>
+    <p>Fondo: il colore dell'area al 26%. Raggio 18, padding 14/15, margine 0 12px 12px dentro la Lista.</p>
+    <p>Nome 16/700/-0.024em; sotto, una riga mono 8.5/0.11em in rgba(20,22,58,0.5) che dice la cadenza del controllo e se è scaduto.</p>
+    <p>Due pillole bianche SÌ/NO, alte 44, min-width 52, padding 0 14px, raggio 999, mono 11/700/0.08em, gap 7. Bordo trasparente: il contesto è già una tinta.</p>
+    <p>Ogni pillola ha un aria-label che dice cosa fa ("Sì, hai ancora Olio" / "No, comprane una confezione di Olio"): "SÌ" da solo non basta a un lettore di schermo.</p>
+    <p>Mentre la risposta è in volo: opacità 0,5 e disabled su entrambe. "SÌ" fa sparire la riga; "NO" la trasforma in una voce d'acquisto.</p>
+    <p>Una riga di controllo non ha ombra, non ha bordo e non è una scheda: è una tinta piatta dentro la sua area.</p>
+  </div>
+</div>
+</body>
+</html>

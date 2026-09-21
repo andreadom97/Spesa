@@ -1,0 +1,84 @@
+<!-- @dsCard group="Componenti" name="Tasti" subtitle="Quattro tasti, una misura sola: 54 di altezza, raggio 18, mono 12/700/0.09em maiuscolo…" viewport="393x852" -->
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tasti</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --fondo:#F1F0EE; --superficie:#FFFFFF; --ink:#14163A; --testo-2:#5C5F7A; --sec:#8A8A96; --ter:#A6A6B2;
+  --bordo:rgba(20,22,58,0.07); --errore:#C4423E;
+  --font-testo:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:var(--fondo);color:var(--ink);font-family:var(--font-testo);-webkit-font-smoothing:antialiased}
+.card{width:393px;max-width:100%;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.titolo{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.dida{font-size:12.5px;line-height:1.4;color:var(--testo-2)}
+.telefono{width:100%;background:var(--fondo);border:1px solid var(--bordo);border-radius:22px;overflow:hidden}
+.interno{padding:16px;display:flex;flex-direction:column;gap:10px}
+.et{font-family:var(--font-mono);font-size:8.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--sec)}
+.tasto{height:54px;border-radius:18px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase}
+.primario{background:var(--ink);color:#FFFFFF;border:1px solid var(--ink);box-shadow:0 3px 10px rgba(20,22,58,.24)}
+.secondario{background:var(--superficie);color:var(--ink);border:1px solid var(--bordo)}
+.spento{background:rgba(20,22,58,.10);color:var(--ter);border:1px solid transparent}
+.distruttivo{background:var(--errore);color:#FFFFFF;border:1px solid var(--errore);box-shadow:0 3px 10px rgba(20,22,58,.24)}
+.coppia{display:flex;gap:10px}
+.coppia .tasto{flex:1}
+.dialogo-scena{background:rgba(20,22,58,.35);padding:28px 16px;display:flex;align-items:center;justify-content:center}
+.dialogo{width:100%;background:var(--superficie);border-radius:22px;padding:20px 16px 16px;display:flex;flex-direction:column;gap:12px}
+.dialogo .tit{font-size:21px;font-weight:800;letter-spacing:-.035em;line-height:1.2}
+.dialogo .txt{font-size:14px;line-height:1.5;color:var(--testo-2)}
+.misure{background:var(--superficie);border:1px solid var(--bordo);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:7px}
+.misure p{margin:0;font-size:12.5px;line-height:1.45}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="titolo">Componenti · Tasti</div>
+  <div class="dida">Quattro tasti, una misura sola: 54 di altezza, raggio 18, mono 12/700/0.09em maiuscolo. Il distruttivo vive solo dentro un dialogo di conferma.</div>
+
+  <div class="telefono">
+    <div class="interno">
+      <div class="et">Primario &middot; uno per schermata, in fondo</div>
+      <div class="tasto primario">Conferma e crea la lista</div>
+      <div class="et">Secondario &middot; deve sembrare un tasto</div>
+      <div class="tasto secondario">Ho finito</div>
+      <div class="et">Spento &middot; disabled nativo</div>
+      <div class="tasto spento">Salva</div>
+      <div class="et">In coppia: flex 1 ciascuno</div>
+      <div class="coppia">
+        <div class="tasto secondario">Annulla</div>
+        <div class="tasto primario">Salva</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="et">Distruttivo: pieno in --errore, solo dentro il dialogo</div>
+  <div class="telefono">
+    <div class="dialogo-scena">
+      <div class="dialogo" role="dialog" aria-label="Eliminare il piatto?">
+        <div class="tit">Eliminare il piatto?</div>
+        <div class="txt">"Pollo al limone" sparisce dal repertorio e dai pasti futuri. I pasti già passati restano come sono.</div>
+        <div class="coppia">
+          <div class="tasto secondario">Annulla</div>
+          <div class="tasto distruttivo">Elimina</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="misure">
+    <div class="titolo">Misure e stati</div>
+    <p><strong>Primario</strong> &mdash; fondo --ink, testo bianco, bordo 1 px --ink, ombra 0 3px 10px rgba(20,22,58,0.24). Uno per schermata.</p>
+    <p><strong>Secondario</strong> &mdash; fondo bianco, testo --ink, bordo 1 px --bordo, nessuna ombra. Un secondario grigio su grigio viene letto come disabilitato: non farlo.</p>
+    <p><strong>Spento</strong> &mdash; fondo rgba(20,22,58,0.10), testo --ter, bordo trasparente, disabled nativo.</p>
+    <p><strong>Distruttivo</strong> &mdash; primario pieno in --errore #C4423E, testo bianco, stesse misure e stessa ombra del primario. Solo dentro un dialogo a due tasti, accanto ad ANNULLA secondario. <strong>Mai</strong> come tasto libero in pagina.</p>
+    <p>Mentre un tasto scrive: opacità 0,5 e disabled. La conferma è il cambio di stato del dato, non un messaggio.</p>
+  </div>
+</div>
+</body>
+</html>

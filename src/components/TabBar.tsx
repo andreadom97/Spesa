@@ -2,58 +2,52 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { Marchio } from './Marchio';
+import { useAreeMancantiCorrenti } from './marchio-context';
+
+/** Icone piene a 26 (DESIGN.md v3 §6): copiate da design/sistema/schermate/lista.html. */
+const ICONE: Record<'piano' | 'piatti' | 'dispensa', (c: string) => React.ReactNode> = {
+  piano: (c) => (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="3" y="4.5" width="18" height="15.5" rx="4.4" fill={c} />
+      <rect x="6.2" y="8.4" width="11.6" height="2.2" rx="1.1" fill="#fff" opacity=".9" />
+      <rect x="6.2" y="12.6" width="7" height="2.2" rx="1.1" fill="#fff" opacity=".9" />
+    </svg>
+  ),
+  piatti: (c) => (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" fill={c} />
+      <circle cx="12" cy="12" r="4.1" fill="#fff" opacity=".9" />
+    </svg>
+  ),
+  dispensa: (c) => (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="5" y="3.4" width="14" height="3.6" rx="1.8" fill={c} />
+      <path d="M6 9.4h12a1 1 0 0 1 1 1V19a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-8.6a1 1 0 0 1 1-1Z" fill={c} />
+      <rect x="8.6" y="12.6" width="6.8" height="2.2" rx="1.1" fill="#fff" opacity=".9" />
+    </svg>
+  ),
+};
 
 const VOCI = [
-  {
-    href: '/lista',
-    etichetta: 'LISTA',
-    icona: (colore: string) => (
-      <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
-        <path d="M4 6.5h16M4 12h16M4 17.5h11" stroke={colore} strokeWidth="1.9" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
-    href: '/settimana',
-    etichetta: 'SETTIMANA',
-    icona: (colore: string) => (
-      <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
-        <rect x="3.6" y="5" width="16.8" height="15" rx="3" stroke={colore} strokeWidth="1.8" />
-        <path d="M3.6 10h16.8M9 3.4v3.2M15 3.4v3.2" stroke={colore} strokeWidth="1.8" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
-    href: '/piatti',
-    etichetta: 'PIATTI',
-    icona: (colore: string) => (
-      <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
-        <path d="M7.6 3.4v4.2M10 3.4v4.2M12.4 3.4v4.2" stroke={colore} strokeWidth="1.7" strokeLinecap="round" />
-        <path d="M7.6 7.4a2.4 2.4 0 0 0 4.8 0" stroke={colore} strokeWidth="1.7" strokeLinecap="round" />
-        <path d="M10 10v10.4" stroke={colore} strokeWidth="1.7" strokeLinecap="round" />
-        <path d="M16.6 3.4c2.1 2.3 2.5 6.2 1 8.8h-1v8.2" stroke={colore} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-  },
-  {
-    href: '/dispensa',
-    etichetta: 'DISPENSA',
-    icona: (colore: string) => (
-      <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
-        <path d="M8 4.5h8M9.5 4.5v-1h5v1" stroke={colore} strokeWidth="1.7" strokeLinecap="round" />
-        <rect x="6.5" y="6.5" width="11" height="14" rx="2.5" stroke={colore} strokeWidth="1.8" />
-        <path d="M6.5 12h11" stroke={colore} strokeWidth="1.7" strokeLinecap="round" />
-      </svg>
-    ),
-  },
+  { href: '/lista', etichetta: 'Lista' },
+  { href: '/piano', etichetta: 'Piano', icona: 'piano' as const },
+  { href: '/piatti', etichetta: 'Piatti', icona: 'piatti' as const },
+  { href: '/dispensa', etichetta: 'Dispensa', icona: 'dispensa' as const },
 ];
 
-/** Tab bar fissa in fondo: LISTA / SETTIMANA / PIATTI / DISPENSA. */
+/**
+ * Tab bar flottante (versione B): pillola bianca 84 che scende a 66 quando il
+ * Guscio segna data-barra="ridotta"; le etichette si nascondono ma la voce resta
+ * alta 54 e cliccabile. La voce Lista porta il Marchio, che riflette le aree in
+ * cui manca ancora qualcosa. Misure e movimento in globals.css.
+ */
 export function TabBar() {
   const pathname = usePathname();
+  const aree = useAreeMancantiCorrenti();
 
   return (
-    <div style={{ display: 'flex', padding: '10px 16px 20px', gap: 4 }}>
+    <nav className="barra anim-barra" aria-label="Sezioni">
       {VOCI.map((voce) => {
         const attiva = pathname?.startsWith(voce.href) ?? false;
         const colore = attiva ? 'var(--ink)' : 'var(--off)';
@@ -61,24 +55,16 @@ export function TabBar() {
           <Link
             key={voce.href}
             href={voce.href}
-            style={{
-              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
-              padding: '8px 0', borderRadius: 14,
-              background: attiva ? 'rgba(20,22,58,0.06)' : 'transparent',
-            }}
+            aria-current={attiva ? 'page' : undefined}
+            className={`barra-voce anim-barra-voce${attiva ? ' attiva' : ''}`}
           >
-            {voce.icona(colore)}
-            <span
-              style={{
-                fontFamily: 'var(--font-mono)', fontSize: 8.5,
-                fontWeight: attiva ? 700 : 500, letterSpacing: '0.12em', color: colore,
-              }}
-            >
-              {voce.etichetta}
+            <span className="barra-segno">
+              {voce.icona ? ICONE[voce.icona](colore) : <Marchio aree={aree} lato={9} gap={4} />}
             </span>
+            <span className="barra-etichetta anim-barra-etichetta">{voce.etichetta}</span>
           </Link>
         );
       })}
-    </div>
+    </nav>
   );
 }

@@ -120,7 +120,7 @@ export default function ListaFatta() {
         // Spesa già chiusa (un link vecchio, il tasto indietro): il traguardo
         // è passato e CHIUDI sarebbe un no-op che sembra fare qualcosa.
         if (settimana.stato === 'chiusa') {
-          router.replace('/settimana');
+          router.replace('/piano');
           return;
         }
         const lista = await leggiListe(settimana.id);
@@ -155,7 +155,7 @@ export default function ListaFatta() {
     setErroreChiusura(null);
     try {
       await chiudiSpesa(stato.weekId);
-      router.push('/settimana');
+      router.push('/piano');
     } catch (errore) {
       console.error('lista/fatta: chiusura della spesa fallita.', errore);
       setErroreChiusura('Non siamo riusciti a chiudere la spesa. Riprova.');
@@ -181,7 +181,7 @@ export default function ListaFatta() {
   return (
     <Cornice settimana={stato.settimanaLabel}>
       <div
-        className="sc"
+        className="sc scroll-app con-piede"
         style={{
           flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 16px',
           display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 12,
@@ -235,7 +235,7 @@ export default function ListaFatta() {
       {erroreChiusura && (
         <p style={{ margin: '0 16px 4px', fontSize: 12.5, color: 'var(--sec)' }}>{erroreChiusura}</p>
       )}
-      <div style={{ padding: '6px 16px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div className="coda-barra" style={{ padding: '6px 16px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
         {/* Prima di chiudere: le confezioni vere (spec scan-confezione §1).
             Dopo la chiusura il residuo è già accreditato e la correzione non
             avrebbe più effetto, per questo il link sta qui e non altrove. */}
@@ -281,7 +281,7 @@ export default function ListaFatta() {
 function Cornice({ settimana, children }: { settimana?: string; children?: ReactNode }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <Testata titolo="Spesa" settimana={settimana} aree={[]} />
+      <Testata titolo="Lista" settimana={settimana} />
       {children}
     </div>
   );

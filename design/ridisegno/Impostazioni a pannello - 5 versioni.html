@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="design_doc_mode" content="canvas">
+<title>Impostazioni a pannello — 5 versioni</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+--fondo:#F1F0EE;--superficie:#FFFFFF;--ink:#14163A;--ink-2:#3D4166;--testo-2:#5C5F7A;--sec:#8A8A96;--ter:#A6A6B2;--off:#9A9AA6;
+--bordo:rgba(20,22,58,0.07);--spento:rgba(20,22,58,0.035);--icona-spenta:#C4C4CE;--bordo-tratteggio:rgba(20,22,58,0.20);
+--avviso:#9A5C00;--errore:#C4423E;--freddo:#2F6FBF;
+--area-ortofrutta:#A8D96A;--area-macelleria:#F29B9B;--area-latticini:#9CC7F2;--area-cereali:#F5CE5B;--area-dispensa:#F2A465;--area-surgelati:#B9AEF5;
+--font-testo:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;--font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+--ombra-pannello:0 1px 2px rgba(20,22,58,.05),0 6px 16px rgba(20,22,58,.06);
+--ombra-nav:0 2px 6px rgba(20,22,58,.08),0 12px 30px rgba(20,22,58,.16);
+--ombra-scuro:0 4px 12px rgba(20,22,58,.22),0 20px 48px rgba(20,22,58,.30);
+--su-scuro:#FFFFFF;--su-scuro-2:rgba(255,255,255,.74);--su-scuro-3:rgba(255,255,255,.16);
+--moto-barra:200ms;--curva-barra:cubic-bezier(.2,.8,.25,1);
+}
+*{box-sizing:border-box}
+body{margin:0;background:#D8D7D4;font-family:var(--font-testo);color:var(--ink);-webkit-font-smoothing:antialiased}
+a{color:var(--ink)}a:hover{color:var(--ink-2)}
+.frame{position:absolute;width:393px}
+.sigla{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.intesta{display:flex;flex-direction:column;gap:6px;padding:0 2px 12px}
+.intesta p{margin:0;font-size:12.5px;line-height:1.4;color:#3D4166}
+
+.tel{width:393px;height:852px;border-radius:26px;overflow:hidden;position:relative;box-shadow:0 2px 4px rgba(20,22,58,.10),0 18px 40px rgba(20,22,58,.18);background:linear-gradient(180deg,#EDECEA 0%,#F2F1EF 34%,#F8F8F7 70%,#FCFCFB 100%)}
+
+/* l'app dietro, chiara */
+.app{position:absolute;inset:0;overflow:hidden}
+.testata{padding:20px 18px 12px;display:flex;flex-direction:column;gap:15px}
+.testata-alto{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.titolo-sch{font-size:52px;font-weight:800;letter-spacing:-.05em;line-height:1;margin:0}
+.pill-sett{height:34px;border-radius:999px;background:var(--ink);color:#fff;font-family:var(--font-mono);font-size:10.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;display:inline-flex;align-items:center;padding:0 14px;align-self:flex-start}
+.utente{height:50px;display:flex;align-items:center;gap:5px;margin:0 -2px -3px 0;background:rgba(20,22,58,.07);border:0;border-radius:999px;padding:0 12px 0 6px;position:relative;z-index:3}
+.utente .tondo{width:38px;height:38px;border-radius:999px;background:var(--ink);display:flex;align-items:center;justify-content:center;flex:none}
+.iniziale{font-family:var(--font-mono);font-size:16px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;line-height:1;color:#fff}
+.w{margin:0 16px 12px;background:#fff;border:1px solid var(--bordo);border-radius:22px;box-shadow:var(--ombra-pannello);padding:14px 12px 12px;display:flex;flex-direction:column;gap:10px}
+.w-testa{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:0 4px}
+.w-lb{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;display:flex;align-items:center;gap:8px}
+.quad{width:10px;height:10px;border-radius:4px;flex:none}
+.w-cont{font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:.10em;text-transform:uppercase;color:var(--sec)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.td{min-height:104px;border-radius:14px;padding:12px 14px 13px;display:flex;flex-direction:column;border:1px solid transparent}
+.td-pil{font-family:var(--font-mono);font-weight:700;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;border-radius:999px;padding:5px 10px;background:#fff;color:var(--ink);align-self:flex-start}
+.td-nome{font-size:17px;font-weight:700;letter-spacing:-.032em;line-height:1.1;margin-top:auto}
+.nav{position:absolute;left:16px;right:16px;bottom:22px;height:84px;border-radius:999px;display:flex;align-items:center;gap:2px;padding:6px;background:#fff;box-shadow:var(--ombra-nav)}
+.nav .voce{flex:1;height:72px;border:0;background:none;border-radius:999px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0}
+.nav .voce.on{background:rgba(20,22,58,.07)}
+.nav .segno{display:flex;align-items:center;justify-content:center;flex:none;height:26px}
+.nav .lb{font-family:var(--font-mono);font-size:8.5px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--off);line-height:1}
+.nav .voce.on .lb{color:var(--ink);font-weight:700}
+.marchio{display:grid;gap:4px}
+.cas{border-radius:2.52px;border:2px solid transparent}
+
+/* il pannello scuro */
+.pan{position:absolute;background:rgba(20,22,58,.88);box-shadow:var(--ombra-scuro);display:flex;flex-direction:column;overflow:hidden;z-index:2}
+.pan-testa{flex:none;padding:18px 18px 12px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.pan-tit{font-size:32px;font-weight:800;letter-spacing:-.045em;line-height:1.05;margin:0;color:var(--su-scuro)}
+.chiudi{width:44px;height:44px;flex:none;border:0;border-radius:999px;background:var(--su-scuro-3);display:flex;align-items:center;justify-content:center;padding:0;margin:-4px -6px 0 0}
+.pan-corpo{flex:1;overflow-y:auto;padding:0 18px 22px;display:flex;flex-direction:column;gap:18px}
+.pan-corpo::-webkit-scrollbar{width:0}
+.gr{display:flex;flex-direction:column;gap:2px}
+.gr-lb{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--su-scuro-2);padding:0 2px 8px}
+.ri{display:flex;align-items:center;gap:10px;min-height:56px;border:0;background:none;padding:8px 2px;width:100%;text-align:left;font:inherit;color:var(--su-scuro);border-top:1px solid var(--su-scuro-3)}
+.ri:first-of-type{border-top:0}
+.ri-corpo{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.ri-nome{font-size:15px;font-weight:700;letter-spacing:-.024em}
+.ri-nota{font-size:12.5px;line-height:1.35;color:var(--su-scuro-2)}
+.ri-val{font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap}
+.ri-dx{width:20px;flex:none;display:flex;align-items:center;justify-content:flex-end}
+.sino{display:flex;gap:7px;flex:none}
+.sino button{height:44px;min-width:52px;border-radius:999px;background:none;border:1.5px solid var(--su-scuro-3);font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--su-scuro-2)}
+.sino button.on{background:var(--su-scuro);border-color:var(--su-scuro);color:var(--ink)}
+.numero{height:44px;width:80px;flex:none;border-radius:14px;background:none;border:1.5px solid var(--su-scuro-3);display:flex;align-items:center;justify-content:flex-end;gap:5px;padding:0 12px;font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--su-scuro);font-variant-numeric:tabular-nums}
+.numero em{font-style:normal;font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--su-scuro-2)}
+
+/* matrice del default settimanale */
+.mat{display:flex;flex-direction:column;gap:6px;padding:10px 2px 4px}
+.mat-int{display:flex;gap:7px;padding-left:52px}
+.mat-int span{flex:1;font-family:var(--font-mono);font-size:8.5px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--su-scuro-2);text-align:center}
+.mat-riga{display:flex;align-items:center;gap:7px}
+.mat-g{width:45px;flex:none;font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--su-scuro-2)}
+.cella{flex:1;height:44px;border-radius:14px;border:1.5px solid var(--su-scuro-3);background:none;display:flex;align-items:center;justify-content:center;padding:0}
+.cella.casa{background:var(--su-scuro);border-color:var(--su-scuro)}
+.cella i{width:10px;height:10px;border-radius:999px;background:var(--su-scuro-3)}
+.cella.casa i{background:var(--ink)}
+.mat-nota{font-size:12.5px;line-height:1.4;color:var(--su-scuro-2);margin:6px 2px 0}
+
+.distr{color:#F2A9A7}
+.pan-fondo{flex:none;padding:12px 18px 18px;border-top:1px solid var(--su-scuro-3);font-family:var(--font-mono);font-size:9px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;color:var(--su-scuro-2)}
+
+/* geometrie dei cinque */
+.pan.v1{top:76px;right:16px;left:16px;bottom:22px;border-radius:22px}
+.pan.v2{left:0;right:0;bottom:0;top:96px;border-radius:22px 22px 0 0}
+.pan.v3{inset:16px;border-radius:22px}
+.pan.v4{top:0;bottom:0;right:0;width:330px;border-radius:22px 0 0 22px}
+.pan.v5{top:76px;right:16px;width:345px;max-height:640px;border-radius:22px}
+.tel.chiuso .pan{display:none}
+
+.note{width:393px;margin-top:12px;background:#fff;border:1px solid var(--bordo);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.note p{margin:0;font-size:12.5px;line-height:1.45;color:var(--testo-2)}
+.note strong{color:var(--ink)}
+.comp{font-family:var(--font-mono);font-size:9px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;color:var(--testo-2);line-height:1.7}
+.rompe{font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--avviso);line-height:1.6}
+</style>
+</head>
+<body>
+<div id="canvas"></div>
+<script>
+const A={orto:'#A8D96A',mac:'#F29B9B',lat:'#9CC7F2',cer:'#F5CE5B',dis:'#F2A465',sur:'#B9AEF5'};
+const ORD=[[A.dis,1],[A.lat,1],[A.orto,0],[A.sur,1],[A.cer,1],[A.mac,0]];
+const CHEV=c=>`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 5l7 7-7 7" stroke="${c}" stroke-width="2.1" stroke-linecap="round"/></svg>`;
+const X=`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="#FFFFFF" stroke-width="2.1" stroke-linecap="round"/></svg>`;
+const KEBAB=`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="5.2" r="2.1" fill="#14163A"/><circle cx="12" cy="12" r="2.1" fill="#14163A"/><circle cx="12" cy="18.8" r="2.1" fill="#14163A"/></svg>`;
+
+/* default settimanale: acceso = a casa, spento = fuori */
+const DEF=[
+ {g:'Lun',v:[1,0,1]},{g:'Mar',v:[1,0,1]},{g:'Mer',v:[1,0,1]},{g:'Gio',v:[1,0,1]},
+ {g:'Ven',v:[1,0,1]},{g:'Sab',v:[1,1,0]},{g:'Dom',v:[1,1,1]}];
+const PASTI=['Colazione','Pranzo','Cena'];
+const fuori=DEF.reduce((n,d)=>n+d.v.filter(x=>!x).length,0);
+
+function matrice(){return `<div class="mat" role="group" aria-label="Pasti che di base fai a casa">
+  <div class="mat-int" aria-hidden="true">${PASTI.map(p=>`<span>${p}</span>`).join('')}</div>
+  ${DEF.map(d=>`<div class="mat-riga"><span class="mat-g">${d.g}</span>${d.v.map((x,i)=>`<button type="button" class="cella ${x?'casa':''}" aria-pressed="${!!x}" aria-label="${d.g} ${PASTI[i].toLowerCase()}: ${x?'di base a casa, tocca per mettere fuori casa':'di base fuori casa, tocca per mettere a casa'}"><i></i></button>`).join('')}</div>`).join('')}
+</div>
+<p class="mat-nota">Acceso vuole dire a casa. Ogni settimana nuova nasce così, e nel Piano puoi correggere il singolo giorno senza cambiare il default.</p>`}
+
+function contenuto(){return `<div class="gr">
+  <div class="gr-lb">La settimana di base</div>
+  <div class="ri" style="border-top:0;align-items:stretch;flex-direction:column;gap:0;padding-top:0">
+    <span class="ri-corpo"><span class="ri-nome">I pasti che fai a casa</span><span class="ri-nota">Oggi ${fuori} pasti su 21 sono fuori casa: i pranzi dal lunedì al venerdì e la cena del sabato.</span></span>
+    ${matrice()}
+  </div>
+</div>
+<div class="gr">
+  <div class="gr-lb">Come calcolo la lista</div>
+  <div class="ri"><span class="ri-corpo"><span class="ri-nome">Porzioni di default</span><span class="ri-nota">Quante ne conto quando metti un piatto nel piano.</span></span><span class="numero">2<em>porz</em></span></div>
+  <div class="ri"><span class="ri-corpo"><span class="ri-nome">Arrotonda alle confezioni</span><span class="ri-nota">Con 540 g di zucchine la lista chiede 1 confezione da 600 g.</span></span><span class="sino"><button type="button" class="on" aria-pressed="true">Sì</button><button type="button" aria-pressed="false">No</button></span></div>
+  <button type="button" class="ri"><span class="ri-corpo"><span class="ri-nome">Cadenza dei controlli</span><span class="ri-nota">Ogni quanto ti chiedo se hai ancora olio, sale, farina.</span></span><span class="ri-val">4 settimane</span><span class="ri-dx">${CHEV('rgba(255,255,255,.74)')}</span></button>
+</div>
+<div class="gr">
+  <div class="gr-lb">Come la vedi in corsia</div>
+  <button type="button" class="ri"><span class="ri-corpo"><span class="ri-nome">Ordine delle aree</span><span class="ri-nota">L'ordine in cui compaiono in Lista: mettilo come gira il tuo supermercato.</span></span><span class="ri-val">Personalizzato</span><span class="ri-dx">${CHEV('rgba(255,255,255,.74)')}</span></button>
+  <button type="button" class="ri"><span class="ri-corpo"><span class="ri-nome">Unità di misura</span><span class="ri-nota">Grammi e millilitri, oppure pezzi e confezioni dove ha senso.</span></span><span class="ri-val">Grammi e ml</span><span class="ri-dx">${CHEV('rgba(255,255,255,.74)')}</span></button>
+</div>
+<div class="gr">
+  <div class="gr-lb">I tuoi dati</div>
+  <button type="button" class="ri"><span class="ri-corpo"><span class="ri-nome">Importa un piano</span><span class="ri-nota">Da un PDF o dalle foto di un piano che hai già.</span></span><span class="ri-dx">${CHEV('rgba(255,255,255,.74)')}</span></button>
+  <button type="button" class="ri"><span class="ri-corpo"><span class="ri-nome">Esporta i tuoi dati</span><span class="ri-nota">Piatti, piano e dispensa in un file che puoi tenere.</span></span><span class="ri-dx">${CHEV('rgba(255,255,255,.74)')}</span></button>
+  <button type="button" class="ri"><span class="ri-corpo"><span class="ri-nome">Cancella la dispensa</span><span class="ri-nota">Svuota quello che hai in casa. I piatti e il piano restano.</span></span><span class="ri-dx">${CHEV('rgba(255,255,255,.74)')}</span></button>
+</div>
+<div class="gr">
+  <div class="gr-lb">Account</div>
+  <button type="button" class="ri"><span class="ri-corpo"><span class="ri-nome">Andrea</span><span class="ri-nota">andrea@esempio.it</span></span><span class="ri-dx">${CHEV('rgba(255,255,255,.74)')}</span></button>
+  <button type="button" class="ri"><span class="ri-corpo"><span class="ri-nome">Esci</span></span><span class="ri-dx">${CHEV('rgba(255,255,255,.74)')}</span></button>
+</div>`}
+
+function marchio(l){return `<span class="marchio" style="grid-template-columns:repeat(3,${l}px);grid-auto-rows:${l}px" aria-hidden="true">${ORD.map(([c,p])=>`<span class="cas" style="border-color:${c};background:${p?c:'transparent'}"></span>`).join('')}</span>`}
+const IC={
+ piano:s=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15.5" rx="4.4" fill="#9A9AA6"/><rect x="6.2" y="8.4" width="11.6" height="2.1" rx="1.05" fill="#fff" opacity=".92"/><circle cx="8.2" cy="14.6" r="1.7" fill="#fff" opacity=".92"/><circle cx="12" cy="14.6" r="1.7" fill="#fff" opacity=".92"/><circle cx="15.8" cy="14.6" r="1.7" fill="#fff" opacity=".92"/></svg>`,
+ piatti:s=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="#9A9AA6"/><circle cx="12" cy="12" r="4.1" fill="#fff" opacity=".92"/></svg>`,
+ dispensa:s=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="3.4" width="14" height="3.6" rx="1.8" fill="#9A9AA6"/><path d="M6 9.4h12a1 1 0 0 1 1 1v6.4a3.2 3.2 0 0 1-3.2 3.2H8.2A3.2 3.2 0 0 1 5 16.8v-6.4a1 1 0 0 1 1-1Z" fill="#9A9AA6"/><rect x="8.4" y="12.4" width="7.2" height="2.1" rx="1.05" fill="#fff" opacity=".92"/></svg>`};
+
+function app(){return `<div class="app">
+  <div class="testata">
+    <div class="testata-alto">
+      <h1 class="titolo-sch">Lista</h1>
+      <button type="button" class="utente" data-apri aria-label="Andrea: profilo e impostazioni" aria-expanded="true"><span class="tondo"><span class="iniziale" aria-hidden="true">A</span></span>${KEBAB}</button>
+    </div>
+    <span class="pill-sett">Settimana del 21 settembre</span>
+  </div>
+  <section class="w">
+    <div class="w-testa"><span class="w-lb"><span class="quad" style="background:${A.orto}"></span>Ortofrutta</span><span class="w-cont">4 voci</span></div>
+    <div class="grid">
+      <div class="td" style="background:rgba(168,217,106,.26)"><span class="td-pil">1250 g</span><span class="td-nome">Pomodori ramati</span></div>
+      <div class="td" style="background:rgba(168,217,106,.26)"><span class="td-pil">600 g</span><span class="td-nome">Zucchine</span></div>
+    </div>
+  </section>
+  <section class="w">
+    <div class="w-testa"><span class="w-lb"><span class="quad" style="background:${A.lat}"></span>Latticini, uova e salumi</span><span class="w-cont">3 voci</span></div>
+    <div class="grid">
+      <div class="td" style="background:rgba(156,199,242,.26)"><span class="td-pil">6 pz</span><span class="td-nome">Uova medie</span></div>
+      <div class="td" style="background:rgba(156,199,242,.26)"><span class="td-pil">250 g</span><span class="td-nome">Ricotta</span></div>
+    </div>
+  </section>
+  <nav class="nav" aria-label="Sezioni">
+    <button type="button" class="voce on" aria-pressed="true" aria-label="Lista"><span class="segno">${marchio(9)}</span><span class="lb">Lista</span></button>
+    <button type="button" class="voce" aria-pressed="false" aria-label="Piano"><span class="segno">${IC.piano(26)}</span><span class="lb">Piano</span></button>
+    <button type="button" class="voce" aria-pressed="false" aria-label="Piatti"><span class="segno">${IC.piatti(26)}</span><span class="lb">Piatti</span></button>
+    <button type="button" class="voce" aria-pressed="false" aria-label="Dispensa"><span class="segno">${IC.dispensa(26)}</span><span class="lb">Dispensa</span></button>
+  </nav>
+</div>`}
+
+const V=[
+ {k:'v1',id:'1',nome:'Scende dal tasto',alpha:'.88',
+  p:'Il pannello parte da sotto il menù utente e scende fino al fondo, lasciando 16 px per lato. Sopra resta visibile la testata con il tasto da cui è uscito, così è chiaro da dove viene e dove tornare. In basso copre la barra: mentre le impostazioni sono aperte non si cambia sezione.',
+  m:'Pannello: top 76 (sotto il tasto), lati 16, fondo 22, raggio 22 su tutti gli angoli. Fondo rgba(20,22,58,0.88), ombra 0 4px 12px / 0 20px 48px. Testata del pannello: titolo di dettaglio 32 / 800 e X da 44 su fondo bianco al 16%.',
+  r:'copre la tab bar: la navigazione è sospesa mentre il pannello è aperto'},
+
+ {k:'v2',id:'2',nome:'Foglio dal basso',alpha:'.88',
+  p:'Usa il componente che il sistema ha già: foglio dal basso, raggio 22 solo in alto, ancorato al fondo, che lascia vedere 96 px di app in cima. Geometria già approvata in §8, colore nuovo. Il tasto da cui è uscito resta visibile, e il pollice arriva prima alle voci in basso.',
+  m:'Foglio: lati 0, fondo 0, top 96, raggio 22px 22px 0 0 — le stesse misure del foglio dal basso di §8, con padding 18 / 18 / 22 invece di 16 / 16 / 26 per la testata più alta. Fondo rgba(20,22,58,0.88).',
+  r:'il foglio dal basso di §8 è bianco: qui cambia il colore, non la geometria'},
+
+ {k:'v3',id:'3',nome:'Pannello a cornice',alpha:'.88',
+  p:'Inset di 16 px su tutti i lati: l\'app resta visibile come una cornice sottile intorno. È il più spazioso dei cinque e il più simmetrico, ma perde il legame col tasto — non si vede da dove è uscito, e il tasto stesso resta coperto.',
+  m:'Pannello: inset 16 su tutti i lati, raggio 22. Fondo rgba(20,22,58,0.88), ombra 0 4px 12px / 0 20px 48px. Corpo scorrevole con padding 0 18 22 e gap 18 tra i gruppi.',
+  r:'copre il tasto d\'origine e la tab bar'},
+
+ {k:'v4',id:'4',nome:'Colonna dal fianco',alpha:'.88',
+  p:'Una colonna alta quanto lo schermo che entra da destra, larga 330, con raggio 22 solo sul lato sinistro. Lascia scoperti 63 px di app a sinistra — abbastanza per ricordare dove sei, non abbastanza per leggere. È l\'unica che tocca i bordi in alto e in basso.',
+  m:'Colonna: destra 0, alto 0, basso 0, larghezza 330, raggio 22px 0 0 22px. Fondo rgba(20,22,58,0.88). Come negli altri quattro, titolo e X restano fissi in cima e la riga della versione in fondo: scorre solo il corpo in mezzo.',
+  r:'copre il tasto d\'origine e metà della tab bar'},
+
+ {k:'v5',id:'5',nome:'Widget ancorato, più trasparente',alpha:'.80',
+  p:'Il più piccolo: 345 di larghezza, ancorato sotto il tasto, alto al massimo 640 — si ferma prima del fondo e lascia vedere la barra, che resta toccabile. Qui il fondo è all\'<strong>80%</strong> invece dell\'88: serve a decidere quanta app si deve intravedere dietro.',
+  m:'Widget: top 76, destra 16, larghezza 345, altezza massima 640, raggio 22. Fondo rgba(20,22,58,0.80) — l\'unico dei cinque a 80%. La barra resta scoperta e attiva.',
+  r:'la trasparenza all\'80% lascia leggere le tessere dietro il testo: da verificare sul contrasto reale'}
+];
+
+const c=document.getElementById('canvas');
+V.forEach((v,i)=>{
+  const el=document.createElement('div');
+  el.className='frame';
+  el.style.left=(60+i*453)+'px';el.style.top='60px';
+  el.innerHTML=`<div class="intesta"><div class="sigla">Versione ${v.id} · ${v.nome}</div><p>${v.p}</p></div>
+  <div class="tel" data-screen-label="Impostazioni ${v.id}">
+    ${app()}
+    <div class="pan ${v.k}" style="background:rgba(20,22,58,${v.alpha})" role="dialog" aria-label="Impostazioni">
+      <div class="pan-testa">
+        <h2 class="pan-tit">Impostazioni</h2>
+        <button type="button" class="chiudi" data-chiudi aria-label="Chiudi le impostazioni">${X}</button>
+      </div>
+      <div class="pan-corpo">${contenuto()}</div>
+      <div class="pan-fondo">Versione 2.0.4 · ultimo salvataggio il 18/09/2026 alle 9:12</div>
+    </div>
+  </div>
+  <div class="note">
+    <div class="sigla">Geometria del pannello</div>
+    <p>${v.m}</p>
+    <div class="sigla" style="margin-top:4px">Il fondo scuro</div>
+    <p>Un solo colore, l'inchiostro <strong>#14163A</strong>, reso trasparente: <strong>rgba(20,22,58,${v.alpha})</strong>. Nessuna sfocatura — §12 vieta il glassmorphism — quindi dietro si intravede l'app senza che nulla venga sfumato. Sopra il pannello il testo è bianco pieno per i nomi e <strong>bianco al 74%</strong> per le note, che su quel fondo rende circa 7:1. I controlli ribaltano la loro grammatica: <strong>pieno bianco</strong> quando è attivo, <strong>contornato 1,5 px</strong> in bianco al 16% quando non lo è — lo stesso pieno-contro-contornato del Marchio, invertito.</p>
+    <div class="sigla" style="margin-top:4px">Il default della settimana</div>
+    <p><strong>COMPONENTE NUOVO: Matrice del default settimanale.</strong> Sette righe (una per giorno) per tre colonne (Colazione, Pranzo, Cena). Sigla del giorno in mono 10 larga <strong>45</strong>, gap <strong>7</strong>, celle alte <strong>44</strong> e <code>flex: 1</code>, quindi la larghezza deriva da quella del pannello: in queste cinque versioni va da <strong>73,3</strong> (colonna da 330) a <strong>94,3</strong> (foglio a tutta larghezza), sempre sopra i 44 richiesti da §11 su entrambi gli assi. Raggio 14. <strong>Accesa</strong> = di base a casa: fondo bianco pieno col pallino da 10 in --ink. <strong>Spenta</strong> = di base fuori casa: contorno 1,5 px e pallino in bianco al 16%. Ogni cella ha <code>aria-pressed</code> e un nome che dice giorno, pasto e cosa fa il tap. Sotto, una nota dice la regola: il default vale per le settimane nuove, e nel Piano si corregge il singolo giorno senza toccarlo.</p>
+    <div class="sigla" style="margin-top:4px">Componenti usati</div>
+    <div class="comp">Pannello delle impostazioni (componente nuovo) · Matrice del default settimanale (componente nuovo) · Riga di impostazione su fondo scuro (componente nuovo) · Titolo di dettaglio 32 · Campo numerico · Pillole SÌ/NO · Etichetta di sezione · Menù utente come origine</div>
+    <div class="sigla" style="margin-top:4px">Regole di DESIGN.md che tocca</div>
+    <div class="rompe">§9 “dark mode fuori scope: non disegnare varianti scure” — qui una superficie scura esiste, per una schermata sola · §5 sesta ombra, più profonda delle tre ammesse, perché il pannello sta sopra l'app · §8 componenti nuovi: pannello, matrice, riga su fondo scuro · §2 due token nuovi per il testo su fondo scuro: bianco pieno e bianco al 74% · §8 la riga “Cancella la dispensa” resta in bianco come le altre: §8 confina il rosso al tasto distruttivo dentro il dialogo, che questa riga soltanto apre · ${v.r}</div>
+  </div>`;
+  c.appendChild(el);
+
+  const tel=el.querySelector('.tel');
+  tel.addEventListener('click',e=>{
+    if(e.target.closest('[data-chiudi]')){tel.classList.add('chiuso');const b=tel.querySelector('[data-apri]');if(b)b.setAttribute('aria-expanded','false');return}
+    if(e.target.closest('[data-apri]')){const ap=tel.classList.toggle('chiuso');e.target.closest('[data-apri]').setAttribute('aria-expanded',String(!ap));return}
+    const cella=e.target.closest('.cella');
+    if(cella){const on=cella.getAttribute('aria-pressed')==='true';cella.setAttribute('aria-pressed',String(!on));cella.classList.toggle('casa',!on)}
+  });
+});
+</script>
+</body>
+</html>

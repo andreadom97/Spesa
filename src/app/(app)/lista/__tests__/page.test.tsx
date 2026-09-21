@@ -47,7 +47,17 @@ import { accodaSpunta, leggiCoda } from '@/offline/coda';
 // su localStorage/jsdom: qui si prova l'integrazione fra la pagina e la copia
 // locale, non una controfigura.
 import { leggiIstantaneaLista, salvaIstantaneaLista } from '@/offline/lista-cache';
+import { MarchioProvider, useAreeMancantiCorrenti } from '@/components/marchio-context';
 import Lista from '../page';
+
+// Il marchio non vive più nella Testata (redesign 19/09): la Lista lo
+// pubblica nel contesto condiviso e la tab bar lo legge altrove. Qui si
+// verifica solo la pubblicazione, con un lettore di scena dentro lo stesso
+// MarchioProvider.
+function LeggiAreeMancanti() {
+  const aree = useAreeMancantiCorrenti();
+  return <output data-testid="aree-mancanti">{aree.join(',')}</output>;
+}
 
 const SETTIMANA = { id: 'week-1', dataInizio: '2026-08-24', stato: 'confermata' as const, slots: [] };
 
@@ -116,16 +126,20 @@ describe('Lista', () => {
   // anche per il marchio, non solo per il pulsante finale.
   it('il marchio segna mancante sia l\'area con voci non spuntate sia quella con un controllo ancora in sospeso', async () => {
     vi.mocked(leggiListe).mockResolvedValue(buildLista());
-    const { container } = render(<Lista />);
+    render(
+      <MarchioProvider>
+        <Lista />
+        <LeggiAreeMancanti />
+      </MarchioProvider>,
+    );
     await screen.findByText('Riso Carnaroli');
 
-    const cereali = container.querySelector('[data-area="cereali"]');
-    const dispensa = container.querySelector('[data-area="dispensa"]');
-    // cereali ha due voci non spuntate: contornata (manca qualcosa).
-    expect(cereali).toHaveAttribute('data-stato', 'vuoto');
+    const aree = screen.getByTestId('aree-mancanti').textContent!.split(',').filter(Boolean);
+    // cereali ha due voci non spuntate: manca qualcosa.
+    expect(aree).toContain('cereali');
     // dispensa ha zero voci ma un controllo ancora in sospeso: manca
     // qualcosa anche lì, quindi il marchio non deve segnarla piena.
-    expect(dispensa).toHaveAttribute('data-stato', 'vuoto');
+    expect(aree).toContain('dispensa');
   });
 
   it('il tap spunta subito in locale, accoda offline, e sincronizza se il server risponde', async () => {
@@ -316,7 +330,7 @@ describe('Lista', () => {
     render(<Lista />);
 
     expect(await screen.findByText('La lista non c’è ancora')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'VAI ALLA SETTIMANA' })).toHaveAttribute('href', '/settimana');
+    expect(screen.getByRole('link', { name: 'VAI ALLA SETTIMANA' })).toHaveAttribute('href', '/piano');
   });
 
   it('senza settimana corrente mostra lo stato vuoto senza pillola', async () => {
@@ -359,7 +373,7 @@ describe('Lista', () => {
     render(<Lista />);
 
     expect(await screen.findByText('La lista non c’è ancora')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'VAI ALLA SETTIMANA' })).toHaveAttribute('href', '/settimana');
+    expect(screen.getByRole('link', { name: 'VAI ALLA SETTIMANA' })).toHaveAttribute('href', '/piano');
     expect(screen.queryByText('Prima servono i piatti')).not.toBeInTheDocument();
   });
 
@@ -370,7 +384,7 @@ describe('Lista', () => {
     render(<Lista />);
 
     expect(await screen.findByText('La lista non c’è ancora')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'VAI ALLA SETTIMANA' })).toHaveAttribute('href', '/settimana');
+    expect(screen.getByRole('link', { name: 'VAI ALLA SETTIMANA' })).toHaveAttribute('href', '/piano');
     expect(screen.queryByText('Non riusciamo a caricare la lista. Riprova più tardi.')).not.toBeInTheDocument();
     expect(errore).toHaveBeenCalledWith('lista: lettura del repertorio fallita.', expect.any(Error));
     errore.mockRestore();

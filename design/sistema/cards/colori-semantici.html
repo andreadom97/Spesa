@@ -1,0 +1,138 @@
+<!-- @dsCard group="Fondamenta" name="Colori semantici" subtitle="Quattro token, decisi il 17/09. I tre che portano informazione sono le versioni scurite…" viewport="720x600" -->
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Colori semantici</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --fondo:#F1F0EE; --superficie:#FFFFFF; --ink:#14163A; --testo-2:#5C5F7A; --sec:#8A8A96;
+  --bordo:rgba(20,22,58,0.07);
+  --avviso:#9A5C00; --errore:#C4423E; --freddo:#2F6FBF; --icona-spenta:#C4C4CE;
+  --font-testo:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:var(--fondo);color:var(--ink);font-family:var(--font-testo);-webkit-font-smoothing:antialiased}
+.card{width:720px;max-width:100%;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.titolo{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.dida{font-size:12.5px;line-height:1.4;color:var(--testo-2);max-width:68ch}
+.tok{background:var(--superficie);border:1px solid var(--bordo);border-radius:14px;padding:13px 14px;display:flex;flex-direction:column;gap:11px}
+.tok-testata{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.barra{width:88px;height:26px;border-radius:4px;flex:none}
+.tok-nome{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.1em}
+.tok-rap{font-family:var(--font-mono);font-size:9px;letter-spacing:.06em;font-variant-numeric:tabular-nums;color:var(--ink)}
+.tok-uso{font-size:12.5px;line-height:1.4;color:var(--testo-2)}
+.esempio{border-top:1px solid var(--bordo);padding-top:10px;display:flex;flex-direction:column;gap:5px}
+.esempio .et{font-family:var(--font-mono);font-size:8.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--sec)}
+.prima-dopo{display:flex;align-items:center;gap:8px;flex:none}
+.pd{display:flex;flex-direction:column;gap:4px;align-items:center}
+.pd .v{font-family:var(--font-mono);font-size:8.5px;font-weight:700;letter-spacing:.08em;font-variant-numeric:tabular-nums}
+.frec{font-family:var(--font-mono);font-size:10px;font-weight:700}
+.griglia{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.nota-fin{background:var(--superficie);border:1px solid var(--bordo);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.nota-fin p{margin:0;font-size:12.5px;line-height:1.45}
+@media(max-width:640px){.griglia{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="titolo">Fondamenta · Colori semantici</div>
+  <div class="dida">Quattro token, decisi il 17/09. I tre che portano informazione sono le versioni scurite dei colori nati nel codice, portate sopra 4,5:1 su bianco. Il grigio decorativo resta com'è: non porta informazione e non deve competere con l'inchiostro.</div>
+
+  <div class="griglia">
+    <div class="tok">
+      <div class="tok-testata">
+        <div class="barra" style="background:var(--avviso)"></div>
+        <div>
+          <div class="tok-nome">--avviso &middot; #9A5C00</div>
+          <div class="tok-rap">5,4:1 su bianco</div>
+        </div>
+      </div>
+      <div class="tok-uso">Avviso in linea: riga non risolta o inferita nella revisione dell'import. Sempre con aria-live="polite".</div>
+      <div class="esempio">
+        <div class="et">Reso a 11,5 px</div>
+        <div style="font-size:11.5px;line-height:1.4;color:var(--avviso)">Riga non risolta: scegli l'ingrediente a mano.</div>
+      </div>
+      <div class="prima-dopo">
+        <div class="pd"><div class="barra" style="background:#C77700"></div><div class="v">#C77700 · 3,5:1</div></div>
+        <span class="frec">--&gt;</span>
+        <div class="pd"><div class="barra" style="background:#9A5C00"></div><div class="v">#9A5C00 · 5,4:1</div></div>
+      </div>
+    </div>
+
+    <div class="tok">
+      <div class="tok-testata">
+        <div class="barra" style="background:var(--errore)"></div>
+        <div>
+          <div class="tok-nome">--errore &middot; #C4423E</div>
+          <div class="tok-rap">5,0:1 su bianco</div>
+        </div>
+      </div>
+      <div class="tok-uso">Errori di validazione, di caricamento e di scrittura. È anche il fondo del tasto distruttivo dentro il dialogo di conferma.</div>
+      <div class="esempio">
+        <div class="et">Reso a 12,5 px</div>
+        <div style="font-size:12.5px;line-height:1.4;color:var(--errore)">Hai superato il limite: riprova tra qualche minuto.</div>
+      </div>
+      <div class="prima-dopo">
+        <div class="pd"><div class="barra" style="background:#D9534F"></div><div class="v">#D9534F · 4,0:1</div></div>
+        <span class="frec">--&gt;</span>
+        <div class="pd"><div class="barra" style="background:#C4423E"></div><div class="v">#C4423E · 5,0:1</div></div>
+      </div>
+    </div>
+
+    <div class="tok">
+      <div class="tok-testata">
+        <div class="barra" style="background:var(--freddo)"></div>
+        <div>
+          <div class="tok-nome">--freddo &middot; #2F6FBF</div>
+          <div class="tok-rap">5,1:1 su bianco</div>
+        </div>
+      </div>
+      <div class="tok-uso">Marca il congelato: lotti in freezer in Dispensa, porzioni pronte nel meal prep.</div>
+      <div class="esempio">
+        <div class="et">Reso a 12,5 px</div>
+        <div style="font-size:12.5px;line-height:1.4;color:var(--freddo)">2 porzioni pronte in freezer.</div>
+      </div>
+      <div class="prima-dopo">
+        <div class="pd"><div class="barra" style="background:#4A90D9"></div><div class="v">#4A90D9 · 3,3:1</div></div>
+        <span class="frec">--&gt;</span>
+        <div class="pd"><div class="barra" style="background:#2F6FBF"></div><div class="v">#2F6FBF · 5,1:1</div></div>
+      </div>
+    </div>
+
+    <div class="tok">
+      <div class="tok-testata">
+        <div class="barra" style="background:var(--icona-spenta)"></div>
+        <div>
+          <div class="tok-nome">--icona-spenta &middot; #C4C4CE</div>
+          <div class="tok-rap">1,7:1 su bianco &middot; di proposito</div>
+        </div>
+      </div>
+      <div class="tok-uso">Kebab, chevron, X, icone spente, testo del pasto fuori casa. Sostituisce i tre grigi letterali #C4C4CE, #BFBFC9 e #B6B6C0.</div>
+      <div class="esempio">
+        <div class="et">Reso a 15 px</div>
+        <div style="display:flex;align-items:center;gap:14px">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <circle cx="8" cy="3" r="1.5" fill="#C4C4CE"/><circle cx="8" cy="8" r="1.5" fill="#C4C4CE"/><circle cx="8" cy="13" r="1.5" fill="#C4C4CE"/>
+          </svg>
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M6 3.2 10.4 8 6 12.8" stroke="#C4C4CE" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+      </div>
+      <div class="tok-uso">Non ci va mai un testo che l'utente deve leggere per decidere.</div>
+    </div>
+  </div>
+
+  <div class="nota-fin">
+    <div class="titolo">Regole di impiego</div>
+    <p>Un colore semantico veste il testo, non il fondo: nessun banner colorato, nessuna snackbar, nessun toast. L'unica eccezione è il tasto distruttivo, pieno in --errore dentro il dialogo di conferma.</p>
+    <p>Nessuno stato si affida al solo colore: l'avviso ha la sua riga di testo, l'errore dice cosa fare, il congelato ha la parola "freezer".</p>
+    <p>Non esiste un verde di successo: la conferma di un'azione è il cambio di stato del dato, non un colore.</p>
+  </div>
+</div>
+</body>
+</html>

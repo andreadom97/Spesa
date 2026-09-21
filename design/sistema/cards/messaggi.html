@@ -1,0 +1,81 @@
+<!-- @dsCard group="Componenti" name="Messaggi" subtitle="Cinque registri, cinque colori diversi, nessun contenitore colorato. Lo stato si legge…" viewport="393x852" -->
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Messaggi</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --fondo:#F1F0EE; --superficie:#FFFFFF; --ink:#14163A; --testo-2:#5C5F7A; --sec:#8A8A96;
+  --bordo:rgba(20,22,58,0.07); --avviso:#9A5C00; --errore:#C4423E;
+  --font-testo:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:var(--fondo);color:var(--ink);font-family:var(--font-testo);-webkit-font-smoothing:antialiased}
+.card{width:393px;max-width:100%;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.titolo{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.dida{font-size:12.5px;line-height:1.4;color:var(--testo-2)}
+.telefono{width:100%;background:var(--fondo);border:1px solid var(--bordo);border-radius:22px;overflow:hidden}
+.interno{padding:16px;display:flex;flex-direction:column;gap:16px}
+.blocco{display:flex;flex-direction:column;gap:6px}
+.et{font-family:var(--font-mono);font-size:8.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--sec)}
+.msg-nota{font-size:12.5px;line-height:1.4;color:var(--testo-2);margin:0}
+.msg-avviso{font-size:11.5px;line-height:1.4;color:var(--avviso);margin:0}
+.msg-errore{font-size:12.5px;line-height:1.4;color:var(--errore);margin:0 4px}
+.msg-stato{font-size:12.5px;line-height:1.4;color:var(--testo-2);margin:0}
+.carico{font-family:var(--font-mono);font-size:12px;font-weight:700;letter-spacing:.09em;color:var(--sec);margin:0}
+.riprova{display:inline-flex;align-items:center;justify-content:center;height:38px;padding:0 15px;border-radius:999px;background:var(--superficie);color:var(--ink);border:1px solid rgba(20,22,58,.09);font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.08em;margin-top:8px}
+.no{background:var(--superficie);border:1px solid var(--bordo);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:7px}
+.no p{margin:0;font-size:12.5px;line-height:1.45}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="titolo">Componenti · Messaggi</div>
+  <div class="dida">Cinque registri, cinque colori diversi, nessun contenitore colorato. Lo stato si legge dove sta il dato: niente toast, niente snackbar, niente banner.</div>
+
+  <div class="telefono">
+    <div class="interno">
+      <div class="blocco">
+        <div class="et">Nota &middot; 12,5 in --testo-2</div>
+        <p class="msg-nota">Calcolato da spesa e piano: correggi solo se non torna con la realtà.</p>
+      </div>
+
+      <div class="blocco">
+        <div class="et">Avviso in linea &middot; 11,5 in --avviso, con aria-live="polite"</div>
+        <p class="msg-avviso">Riga non risolta: scegli l'ingrediente a mano.</p>
+      </div>
+
+      <div class="blocco">
+        <div class="et">Errore &middot; 12,5 in --errore, margine 0 4px</div>
+        <p class="msg-errore">Hai superato il limite: riprova tra qualche minuto.</p>
+        <p class="msg-errore">Il PDF non si apre: prova con le foto.</p>
+        <div class="riprova">Riprova</div>
+      </div>
+
+      <div class="blocco">
+        <div class="et">Riga di stato &middot; 12,5 in --testo-2, sopra la lista</div>
+        <p class="msg-stato">Sei offline: la lista è quella dell'ultima apertura.</p>
+      </div>
+
+      <div class="blocco">
+        <div class="et">Caricamento &middot; una riga mono in --sec, al posto del contenuto</div>
+        <p class="carico">CARICO…</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="no">
+    <div class="titolo">Regole</div>
+    <p>Un errore si distingue da una nota per il colore: prima del 17/09 erano entrambi in --sec e non si distinguevano.</p>
+    <p>Il testo del server si mostra così com'è quando è scritto per l'utente (il 429 dell'import, il 400 del PDF); altrimenti si riscrive in italiano.</p>
+    <p>Il caricamento non ha spinner né scheletro: la testata è già disegnata, sotto compare "CARICO…" e basta. Mai un'attesa che sembri un'animazione.</p>
+    <p>Nessun verde di successo: la conferma di un'azione è il cambio di stato del dato.</p>
+    <p>Nessun messaggio si muove, si sovrappone o scompare da solo: l'utente in corsia non deve rincorrere niente.</p>
+  </div>
+</div>
+</body>
+</html>

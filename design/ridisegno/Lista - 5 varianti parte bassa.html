@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="design_doc_mode" content="canvas">
+<title>Lista — 5 varianti della parte bassa</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+--fondo:#F1F0EE;--superficie:#FFFFFF;--ink:#14163A;--ink-2:#3D4166;--testo-2:#5C5F7A;--sec:#8A8A96;--ter:#A6A6B2;--off:#9A9AA6;
+--bordo:rgba(20,22,58,0.07);--spento:rgba(20,22,58,0.035);--icona-spenta:#C4C4CE;
+--area-ortofrutta:#A8D96A;--area-macelleria:#F29B9B;--area-latticini:#9CC7F2;--area-cereali:#F5CE5B;--area-dispensa:#F2A465;--area-surgelati:#B9AEF5;
+--font-testo:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;--font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+--ombra-pannello:0 1px 2px rgba(20,22,58,.05),0 6px 16px rgba(20,22,58,.06);
+--ombra-nav:0 2px 6px rgba(20,22,58,.08),0 12px 30px rgba(20,22,58,.16);
+}
+*{box-sizing:border-box}
+body{margin:0;background:#D8D7D4;font-family:var(--font-testo);color:var(--ink);-webkit-font-smoothing:antialiased}
+a{color:var(--ink)}a:hover{color:var(--ink-2)}
+.frame{position:absolute;width:393px}
+.intesta{display:flex;flex-direction:column;gap:6px;padding:0 2px 12px}
+.sigla{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.riassunto{font-size:12.5px;line-height:1.4;color:#3D4166}
+.tel{width:393px;height:852px;border-radius:26px;overflow:hidden;position:relative;box-shadow:0 2px 4px rgba(20,22,58,.10),0 18px 40px rgba(20,22,58,.18)}
+.sfondo-piatto{background:var(--fondo)}
+.sfondo-grad{background:linear-gradient(180deg,#E7E6E3 0%,#EFEEEC 30%,#F7F6F5 66%,#FCFCFB 100%)}
+.sfondo-grad-inv{background:linear-gradient(180deg,#FBFBFA 0%,#F3F2F0 46%,#E6E5E2 100%)}
+.scroll{position:absolute;inset:0;overflow:hidden;display:flex;flex-direction:column}
+
+/* testata */
+.testata{padding:20px 18px 12px;display:flex;flex-direction:column;gap:15px;flex:none}
+.testata-alto{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.marchio{display:grid;grid-template-columns:repeat(3,16px);grid-auto-rows:16px;gap:4px}
+.cas{border-radius:4.48px;border:2px solid transparent}
+.titolo-sch{font-size:52px;font-weight:800;letter-spacing:-.05em;line-height:1;margin:8px 0 0}
+.ingr{width:44px;height:44px;display:flex;align-items:center;justify-content:center;margin:-8px -10px 0 0}
+.pill-sett{height:34px;border-radius:999px;background:var(--ink);color:#fff;font-family:var(--font-mono);font-size:10.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;display:inline-flex;align-items:center;padding:0 14px;align-self:flex-start}
+
+/* corpo */
+.corpo{flex:1;overflow:hidden;padding:0 0 4px}
+.sez{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 12px 10px}
+.sez-sx{display:flex;align-items:center;gap:8px}
+.quad{width:10px;height:10px;border-radius:4px;flex:none}
+.sez-lb{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.sez-cont{font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:.10em;text-transform:uppercase;color:var(--sec)}
+.griglia{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 12px}
+.tessera{min-height:104px;display:flex;flex-direction:column;padding:12px 14px 13px;border-radius:14px;text-align:left}
+.accesa{background:var(--superficie)}
+.spenta{background:var(--spento);border:1px solid transparent}
+.prot{grid-column:span 2;padding:13px 16px 14px;border-radius:18px}
+.alto{display:flex;align-items:center;gap:6px;flex:none}
+.pil{font-family:var(--font-mono);font-weight:700;font-size:10.5px;letter-spacing:.07em;border-radius:999px;padding:5px 10px;text-transform:uppercase}
+.qty{font-family:var(--font-mono);font-weight:500;font-size:10px;letter-spacing:.04em;text-transform:uppercase}
+.nome{font-size:17px;font-weight:700;letter-spacing:-.032em;line-height:1.1;margin-top:10px}
+.nome-g{font-size:25px}
+.barrato{text-decoration:line-through;text-decoration-thickness:1.6px;color:rgba(20,22,58,.34)}
+.sub{font-family:var(--font-mono);font-size:8.5px;letter-spacing:.02em;margin-top:5px;text-transform:uppercase}
+.controllo{margin:0 12px 12px;border-radius:18px;padding:14px 15px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.controllo-nome{font-size:16px;font-weight:700;letter-spacing:-.024em}
+.controllo-sub{font-family:var(--font-mono);font-size:8.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--testo-2);margin-top:4px}
+.sino{display:flex;gap:7px}
+.sino button{height:44px;min-width:52px;border-radius:999px;background:#fff;border:1px solid rgba(20,22,58,.09);font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink)}
+.stato-riga{font-size:12.5px;line-height:1.4;color:var(--testo-2);padding:0 16px 10px}
+
+/* tab bar — base di sistema (variante D) */
+.nav-larga{flex:none;display:flex;gap:4px;padding:10px 16px 20px}
+.nav-larga .voce{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:7px 0 6px;border-radius:14px;background:none;border:0}
+.nav-larga .voce.on{background:rgba(20,22,58,.06)}
+.lb{font-family:var(--font-mono);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:500;color:var(--off)}
+.voce.on .lb{color:var(--ink);font-weight:700}
+
+/* pillola flottante */
+.nav-pill{position:absolute;left:16px;right:16px;bottom:22px;height:66px;border-radius:999px;display:flex;align-items:center;gap:2px;padding:6px;box-shadow:var(--ombra-nav)}
+.nav-pill .voce{flex:1;height:54px;border:0;background:none;border-radius:999px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+.nav-pill.con-lb .voce{gap:4px}
+.velo{position:absolute;left:0;right:0;bottom:0;height:120px;pointer-events:none}
+.zoccolo{position:absolute;left:0;right:0;bottom:0;padding:12px 16px 20px;border-radius:22px 22px 0 0;display:flex;gap:4px;box-shadow:0 -2px 6px rgba(20,22,58,.05),0 -12px 30px rgba(20,22,58,.10)}
+.zoccolo .voce{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 0 4px;border-radius:14px;background:none;border:0}
+
+.note{width:393px;margin-top:12px;background:#fff;border:1px solid var(--bordo);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.note p{margin:0;font-size:12.5px;line-height:1.45;color:var(--testo-2)}
+.note strong{color:var(--ink)}
+.note .rompe{font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:#9A5C00;line-height:1.6}
+.note .comp{font-family:var(--font-mono);font-size:9px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;color:var(--sec);line-height:1.7}
+</style>
+</head>
+<body>
+<div id="canvas"></div>
+<script>
+const AREE={orto:'#A8D96A',mac:'#F29B9B',lat:'#9CC7F2',cer:'#F5CE5B',dis:'#F2A465',sur:'#B9AEF5'};
+
+/* icone: due famiglie. 'tratto' = tratto 2.6 (bulky di tratto), 'piena' = forme piene */
+function icona(nome,fam,col,d){
+  const s=d||26,t=2.6;
+  const o=(c)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" aria-hidden="true">${c}</svg>`;
+  if(fam==='piena'){
+    if(nome==='lista')return o(`<rect x="3" y="5" width="18" height="3.2" rx="1.6" fill="${col}"/><rect x="3" y="10.4" width="18" height="3.2" rx="1.6" fill="${col}"/><rect x="3" y="15.8" width="12" height="3.2" rx="1.6" fill="${col}"/>`);
+    if(nome==='settimana')return o(`<rect x="3" y="4.5" width="18" height="15.5" rx="4.4" fill="${col}"/><rect x="6.2" y="8.4" width="11.6" height="2.1" rx="1.05" fill="#fff" opacity=".92"/><circle cx="8.2" cy="14.6" r="1.7" fill="#fff" opacity=".92"/><circle cx="12" cy="14.6" r="1.7" fill="#fff" opacity=".92"/><circle cx="15.8" cy="14.6" r="1.7" fill="#fff" opacity=".92"/>`);
+    if(nome==='piatti')return o(`<circle cx="12" cy="12" r="9" fill="${col}"/><circle cx="12" cy="12" r="4.1" fill="#fff" opacity=".92"/>`);
+    if(nome==='dispensa')return o(`<rect x="5" y="3.4" width="14" height="3.6" rx="1.8" fill="${col}"/><path d="M6 9.4h12a1 1 0 0 1 1 1v6.4a3.2 3.2 0 0 1-3.2 3.2H8.2A3.2 3.2 0 0 1 5 16.8v-6.4a1 1 0 0 1 1-1Z" fill="${col}"/><rect x="8.4" y="12.4" width="7.2" height="2.1" rx="1.05" fill="#fff" opacity=".92"/>`);
+    if(nome==='ingranaggio')return o(`<circle cx="12" cy="12" r="8" stroke="${col}" stroke-width="1.8"/><circle cx="12" cy="12" r="3" stroke="${col}" stroke-width="1.8"/>`);
+  }
+  if(nome==='lista')return o(`<path d="M4 6.5h16M4 12h16M4 17.5h10" stroke="${col}" stroke-width="${t}" stroke-linecap="round"/>`);
+  if(nome==='settimana')return o(`<rect x="3.7" y="5.2" width="16.6" height="14.6" rx="4" stroke="${col}" stroke-width="${t}"/><path d="M3.7 10.2h16.6M8.4 3.6v3.2M15.6 3.6v3.2" stroke="${col}" stroke-width="${t}" stroke-linecap="round"/>`);
+  if(nome==='piatti')return o(`<circle cx="12" cy="12" r="8.4" stroke="${col}" stroke-width="${t}"/><circle cx="12" cy="12" r="3.4" stroke="${col}" stroke-width="${t}"/>`);
+  if(nome==='dispensa')return o(`<path d="M6.2 4.8h11.6M7 9.4h10v7.6a3 3 0 0 1-3 3h-4a3 3 0 0 1-3-3V9.4Z" stroke="${col}" stroke-width="${t}" stroke-linecap="round"/><path d="M9.6 13.6h4.8" stroke="${col}" stroke-width="${t}" stroke-linecap="round"/>`);
+  if(nome==='ingranaggio')return o(`<circle cx="12" cy="12" r="8" stroke="${col}" stroke-width="1.8"/><circle cx="12" cy="12" r="3" stroke="${col}" stroke-width="1.8"/>`);
+  return '';
+}
+
+function marchio(lato,mancanti){
+  const ord=[AREE.dis,AREE.lat,AREE.orto,AREE.sur,AREE.cer,AREE.mac];
+  return `<div class="marchio" style="grid-template-columns:repeat(3,${lato}px);grid-auto-rows:${lato}px" aria-label="Spesa">`+
+    ord.map((c,i)=>`<span class="cas" style="border-color:${c};background:${mancanti.includes(i)?'transparent':c};border-radius:${(lato*0.28).toFixed(2)}px"></span>`).join('')+`</div>`;
+}
+
+function testata(){return `<div class="testata">
+  <div class="testata-alto">
+    ${marchio(16,[2,5])}
+    <div class="ingr" role="img" aria-label="Impostazioni">${icona('ingranaggio','tratto','var(--ink)',24)}</div>
+  </div>
+  <div>
+    <h1 class="titolo-sch">Lista</h1>
+  </div>
+  <span class="pill-sett">Settimana del 21 settembre</span>
+</div>`;}
+
+function corpo(){return `<div class="corpo">
+  <p class="stato-riga">Sei offline: la lista è quella dell'ultima apertura.</p>
+  <div class="sez"><div class="sez-sx"><span class="quad" style="background:${AREE.orto}"></span><span class="sez-lb">Ortofrutta</span></div><span class="sez-cont">4 voci</span></div>
+  <div class="griglia">
+    <div class="tessera prot" style="background:${AREE.orto}">
+      <div class="alto"><span class="pil" style="background:#fff;color:var(--ink)">2 conf</span><span class="qty" style="color:rgba(20,22,58,.55)">1250 g</span></div>
+      <div class="nome nome-g">Pomodori ramati</div>
+      <div class="sub" style="color:rgba(20,22,58,.55)">serve 1100 g · in casa 0 g</div>
+    </div>
+    <div class="tessera accesa" style="border:1px solid rgba(168,217,106,.45);box-shadow:var(--omb-tes)">
+      <div class="alto"><span class="pil" style="background:rgba(168,217,106,.32);color:var(--ink)">1 conf</span><span class="qty" style="color:var(--sec)">600 g</span></div>
+      <div class="nome">Zucchine</div>
+      <div class="sub" style="color:var(--ter)">serve 540 g · in casa 0 g</div>
+    </div>
+    <div class="tessera spenta">
+      <div class="alto"><span class="pil" style="background:rgba(20,22,58,.06);color:rgba(20,22,58,.34)">4 pz</span><span class="qty" style="color:rgba(20,22,58,.24)">4 pz</span></div>
+      <div class="nome barrato">Limoni</div>
+    </div>
+  </div>
+  <div class="controllo" style="background:rgba(242,164,101,.26);margin-top:12px">
+    <div><div class="controllo-nome">Olio: ne hai ancora?</div><div class="controllo-sub">controllo ogni 4 settimane</div></div>
+    <div class="sino"><button type="button">Sì</button><button type="button">No</button></div>
+  </div>
+  <div class="sez"><div class="sez-sx"><span class="quad" style="background:${AREE.lat}"></span><span class="sez-lb">Latticini, uova e salumi</span></div><span class="sez-cont">2 voci</span></div>
+  <div class="griglia">
+    <div class="tessera prot" style="background:${AREE.lat}">
+      <div class="alto"><span class="pil" style="background:#fff;color:var(--ink)">1 conf</span><span class="qty" style="color:rgba(20,22,58,.55)">6 pz</span></div>
+      <div class="nome nome-g">Uova medie</div>
+      <div class="sub" style="color:rgba(20,22,58,.55)">serve 5 pz · in casa 0 pz</div>
+    </div>
+    <div class="tessera accesa" style="border:1px solid rgba(156,199,242,.45);box-shadow:var(--omb-tes)">
+      <div class="alto"><span class="pil" style="background:rgba(156,199,242,.32);color:var(--ink)">1 conf</span><span class="qty" style="color:var(--sec)">250 g</span></div>
+      <div class="nome">Ricotta</div>
+      <div class="sub" style="color:var(--ter)">serve 220 g · in casa 0 g</div>
+    </div>
+  </div>
+</div>`;}
+
+const VOCI=[['lista','Lista'],['settimana','Settimana'],['piatti','Piatti'],['dispensa','Dispensa']];
+
+function navPill({fondo,fam,attivoFondo,attivoInk,inattivoInk,etichette,bordo,marchioAttivo}){
+  return `<nav class="nav-pill ${etichette?'con-lb':''}" style="background:${fondo};${bordo?'border:1px solid '+bordo+';':''}" aria-label="Sezioni">`+
+  VOCI.map(([k,l],i)=>{const on=i===0;
+    const ic=(marchioAttivo&&on)?marchio(9,[]):icona(k,fam,on?attivoInk:inattivoInk,etichette?24:26);
+    return `<button type="button" class="voce" aria-pressed="${on}" aria-label="${l}" style="${on?'background:'+attivoFondo+';':''}">${ic}${etichette?`<span class="lb" style="color:${on?attivoInk:inattivoInk};font-weight:${on?700:500}">${l}</span>`:''}</button>`;
+  }).join('')+`</nav>`;
+}
+
+const VARIANTI=[
+ {id:'A',nome:'Pillola chiara, etichette tenute',
+  sfondo:'sfondo-grad',ombraTes:'var(--ombra-pannello)',
+  riassunto:'Lo sfondo Airbnb: grigio in alto, quasi bianco sul fondo, così la pillola bianca stacca da sola. Icone bulky di tratto (2.6), etichette mono tenute, voce attiva = pastiglia inchiostro.',
+  nav:()=>navPill({fondo:'rgba(255,255,255,0.94)',fam:'tratto',attivoFondo:'var(--ink)',attivoInk:'#FFFFFF',inattivoInk:'#9A9AA6',etichette:true}),
+  velo:'linear-gradient(180deg,rgba(252,252,251,0) 0%,rgba(252,252,251,.9) 58%,#FCFCFB 100%)',
+  rompe:['§12 gradiente di sfondo','§5 ombra nuova sui pannelli','§8 tab bar flottante raggio 999','§6 tratto 2.6'],
+  comp:'Testata · Marchio 3×2 · Pillola settimana · Etichetta di sezione · Tessera (protagonista + accesa + spenta) · Riga di controllo · Riga di stato · Tab bar in pillola 66 px'},
+
+ {id:'B',nome:'Pillola chiara, sole icone piene',
+  sfondo:'sfondo-grad',ombraTes:'var(--ombra-pannello)',
+  riassunto:'La più vicina a Revolut: nessuna etichetta, icone piene da 26 px, attiva marcata da un cerchio grigio chiaro invece che dall\'inchiostro. Guadagna 18 px di lista; perde i nomi delle sezioni.',
+  nav:()=>navPill({fondo:'rgba(255,255,255,0.94)',fam:'piena',attivoFondo:'rgba(20,22,58,.07)',attivoInk:'#14163A',inattivoInk:'#9A9AA6',etichette:false}),
+  velo:'linear-gradient(180deg,rgba(252,252,251,0) 0%,rgba(252,252,251,.9) 58%,#FCFCFB 100%)',
+  rompe:['§12 gradiente di sfondo','§5 ombra nuova sui pannelli','§8 tab bar flottante senza etichette','§6 icone piene'],
+  comp:'Testata · Marchio 3×2 · Pillola settimana · Etichetta di sezione · Tessera · Riga di controllo · Riga di stato · Tab bar in pillola 66 px, icone 26 px senza etichetta'},
+
+ {id:'C',nome:'Pillola inchiostro',
+  sfondo:'sfondo-grad',ombraTes:'var(--ombra-pannello)',
+  riassunto:'La pillola diventa inchiostro pieno: la parte bassa è un oggetto solo, la lista sopra resta tutta chiara. Il contrasto è massimo in corsia, ma la barra pesa e ruba attenzione alla tessera protagonista.',
+  nav:()=>navPill({fondo:'var(--ink)',fam:'piena',attivoFondo:'rgba(255,255,255,.16)',attivoInk:'#FFFFFF',inattivoInk:'rgba(255,255,255,.52)',etichette:false}),
+  velo:'linear-gradient(180deg,rgba(252,252,251,0) 0%,rgba(252,252,251,.9) 58%,#FCFCFB 100%)',
+  rompe:['§12 gradiente di sfondo','§5 ombra nuova sui pannelli','§8 tab bar flottante inchiostro','§6 icone piene'],
+  comp:'Testata · Marchio 3×2 · Pillola settimana · Etichetta di sezione · Tessera · Riga di controllo · Riga di stato · Tab bar in pillola 66 px su fondo --ink'},
+
+ {id:'D',nome:'Zoccolo a tutta larghezza',
+  sfondo:'sfondo-grad-inv',ombraTes:'var(--ombra-pannello)',
+  riassunto:'Tiene la tab bar di sistema (larghezza piena, voce attiva raggio 14) e la solleva come pannello: raggio 22 in alto e ombra verso l\'alto. Sfondo invertito, chiaro in alto e più grigio sul fondo, perché sia lo zoccolo bianco a fare la luce.',
+  nav:()=>`<nav class="zoccolo" style="background:#fff" aria-label="Sezioni">`+VOCI.map(([k,l],i)=>{const on=i===0;
+    return `<button type="button" class="voce" aria-pressed="${on}" aria-label="${l}" style="${on?'background:rgba(20,22,58,.06);':''}">${icona(k,'piena',on?'#14163A':'#9A9AA6',24)}<span class="lb" style="color:${on?'#14163A':'#9A9AA6'};font-weight:${on?700:500}">${l}</span></button>`;}).join('')+`</nav>`,
+  velo:null,
+  rompe:['§12 gradiente di sfondo','§5 ombra nuova sui pannelli e ombra verso l\'alto sullo zoccolo','§6 icone piene'],
+  comp:'Testata · Marchio 3×2 · Pillola settimana · Etichetta di sezione · Tessera · Riga di controllo · Riga di stato · Tab bar di sistema, sollevata a zoccolo raggio 22 in alto'},
+
+ {id:'E',nome:'Pillola col marchio',
+  sfondo:'sfondo-grad',ombraTes:'var(--ombra-pannello)',
+  riassunto:'Come B, ma la voce Lista è il Marchio 3×2 da 9 px: la barra porta il segno dell\'app dove Revolut mette la sua R, e le caselle continuano a dire cosa manca. In cambio la testata perde il suo marchio, che diventerebbe un doppione.',
+  nav:()=>navPill({fondo:'rgba(255,255,255,0.94)',fam:'piena',attivoFondo:'rgba(20,22,58,.07)',attivoInk:'#14163A',inattivoInk:'#9A9AA6',etichette:false,marchioAttivo:true}),
+  velo:'linear-gradient(180deg,rgba(252,252,251,0) 0%,rgba(252,252,251,.9) 58%,#FCFCFB 100%)',
+  rompe:['§12 gradiente di sfondo','§5 ombra nuova sui pannelli','§8 tab bar flottante, marchio usato come icona di navigazione','§6 icone piene'],
+  comp:'Testata (senza marchio) · Marchio 3×2 a 9 px dentro la tab bar · Pillola settimana · Etichetta di sezione · Tessera · Riga di controllo · Riga di stato · Tab bar in pillola 66 px'}
+];
+
+const canvas=document.getElementById('canvas');
+VARIANTI.forEach((v,i)=>{
+  const el=document.createElement('div');
+  el.className='frame';
+  el.style.left=(60+i*453)+'px';el.style.top='60px';
+  el.innerHTML=`<div class="intesta"><div class="sigla">Variante ${v.id} · ${v.nome}</div><div class="riassunto">${v.riassunto}</div></div>
+  <div class="tel ${v.sfondo}" style="--omb-tes:${v.ombraTes}" data-screen-label="Lista ${v.id}">
+    <div class="scroll">${testata()}${corpo()}${v.id==='D'?'<div style="height:104px"></div>':'<div style="height:96px"></div>'}</div>
+    ${v.velo?`<div class="velo" style="background:${v.velo}"></div>`:''}
+    ${v.nav()}
+  </div>
+  <div class="note">
+    <div class="sigla">Componenti usati</div>
+    <div class="comp">${v.comp}</div>
+    <div class="sigla" style="margin-top:4px">Misure della parte bassa</div>
+    <p>${v.id==='D'
+      ?'Zoccolo: padding 12 / 16 / 20, raggio 22 22 0 0, gap 4, ogni voce flex 1, icona 24 px piena, etichetta mono 8,5 / 0,12em. Bersaglio reale 56 px.'
+      :'Pillola: 16 px dai lati, 22 px dal fondo, altezza 66, padding 6, raggio 999, quattro voci flex 1 alte 54, icona '+(v.id==='A'?'24':'26')+' px. Bersaglio reale 54 px.'}
+      Tessere: griglia 2 colonne, gap 8, lati 12, minimo 104. Sfondo: gradiente verticale su quattro fermate.</p>
+    <div class="sigla" style="margin-top:4px">Regole di DESIGN.md che tocca</div>
+    <div class="rompe">${v.rompe.join(' · ')}</div>
+  </div>`;
+  canvas.appendChild(el);
+});
+</script>
+</body>
+</html>

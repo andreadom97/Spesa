@@ -346,7 +346,7 @@ describe('Scegli il piatto', () => {
     await waitFor(() =>
       expect(aggiornaSlot).toHaveBeenCalledWith('slot-cena', { dishId: 'd-2' }, 'correzione'),
     );
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/settimana'));
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/piano'));
   });
 
   // Fix round 2 (Important): il flusso "Ho mangiato un altro piatto" dal
@@ -365,7 +365,7 @@ describe('Scegli il piatto', () => {
     await waitFor(() =>
       expect(aggiornaSlot).toHaveBeenCalledWith('slot-cena', { dishId: 'd-2', stato: 'casa' }, 'correzione'),
     );
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/settimana'));
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/piano'));
   });
 
   it('slot già "sostituito": la conferma riporta lo stato a casa con fonte correzione', async () => {
@@ -380,7 +380,7 @@ describe('Scegli il piatto', () => {
     await waitFor(() =>
       expect(aggiornaSlot).toHaveBeenCalledWith('slot-cena', { dishId: 'd-2', stato: 'casa' }, 'correzione'),
     );
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/settimana'));
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/piano'));
   });
 
   it('errore di salvataggio: mostra un messaggio inline e la schermata resta in piedi', async () => {
@@ -393,7 +393,7 @@ describe('Scegli il piatto', () => {
     fireEvent.click(screen.getByText('SOSTITUISCI'));
 
     expect(await screen.findByText('Non siamo riusciti a salvare la scelta. Riprova.')).toBeInTheDocument();
-    expect(push).not.toHaveBeenCalledWith('/settimana');
+    expect(push).not.toHaveBeenCalledWith('/piano');
     // La schermata resta in piedi: il piatto è ancora lì, non è stato sostituito da un gate d'errore.
     expect(screen.getByText('Merluzzo e piselli')).toBeInTheDocument();
   });
@@ -406,13 +406,13 @@ describe('Scegli il piatto', () => {
     expect(await screen.findByText('Non troviamo questo pasto.')).toBeInTheDocument();
   });
 
-  it('il link "torna" e il bottone "annulla" puntano a /settimana senza chiamare aggiornaSlot', async () => {
+  it('il link "torna" e il bottone "annulla" puntano a /piano senza chiamare aggiornaSlot', async () => {
     mockCarico();
     render(<ScegliPiatto />);
     await screen.findByText('Pollo e riso');
 
-    expect(screen.getByLabelText('Torna alla Settimana')).toHaveAttribute('href', '/settimana');
-    expect(screen.getByText('ANNULLA')).toHaveAttribute('href', '/settimana');
+    expect(screen.getByLabelText('Torna al Piano')).toHaveAttribute('href', '/piano');
+    expect(screen.getByText('ANNULLA')).toHaveAttribute('href', '/piano');
     expect(aggiornaSlot).not.toHaveBeenCalled();
   });
 
@@ -466,7 +466,7 @@ describe('Scegli il piatto', () => {
         'correzione',
       ),
     );
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/settimana'));
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/piano'));
   });
 
   it('un ciclo andata-e-ritorno su un componente non lo manda come scelta manuale, un cambio vero su un altro sì', async () => {

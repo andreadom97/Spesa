@@ -392,7 +392,7 @@ export default function Impostazioni() {
 
   return (
     <Cornice router={router}>
-      <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 18px' }}>
+      <div className="sc scroll-app" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 18px' }}>
         <div style={{ fontSize: 32, fontWeight: 800, letterSpacing: '-0.045em', lineHeight: 1, color: 'var(--ink)', padding: '0 2px 14px' }}>
           Impostazioni
         </div>

@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="design_doc_mode" content="canvas">
+<title>Dispensa — tessere e inserimento, 5 versioni</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+--fondo:#F1F0EE;--superficie:#FFFFFF;--ink:#14163A;--ink-2:#3D4166;--testo-2:#5C5F7A;--sec:#8A8A96;--ter:#A6A6B2;--off:#9A9AA6;
+--bordo:rgba(20,22,58,0.07);--spento:rgba(20,22,58,0.035);--icona-spenta:#C4C4CE;--bordo-tratteggio:rgba(20,22,58,0.20);
+--avviso:#9A5C00;--errore:#C4423E;--freddo:#2F6FBF;
+--area-ortofrutta:#A8D96A;--area-macelleria:#F29B9B;--area-latticini:#9CC7F2;--area-cereali:#F5CE5B;--area-dispensa:#F2A465;--area-surgelati:#B9AEF5;
+--font-testo:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;--font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+--ombra-pannello:0 1px 2px rgba(20,22,58,.05),0 6px 16px rgba(20,22,58,.06);
+--ombra-nav:0 2px 6px rgba(20,22,58,.08),0 12px 30px rgba(20,22,58,.16);
+--moto-barra:200ms;--curva-barra:cubic-bezier(.2,.8,.25,1);
+}
+*{box-sizing:border-box}
+body{margin:0;background:#D8D7D4;font-family:var(--font-testo);color:var(--ink);-webkit-font-smoothing:antialiased}
+a{color:var(--ink)}a:hover{color:var(--ink-2)}
+.frame{position:absolute;width:393px}
+.sigla{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.intesta{display:flex;flex-direction:column;gap:6px;padding:0 2px 12px}
+.intesta p{margin:0;font-size:12.5px;line-height:1.4;color:#3D4166}
+
+.tel{width:393px;height:852px;border-radius:26px;overflow:hidden;position:relative;box-shadow:0 2px 4px rgba(20,22,58,.10),0 18px 40px rgba(20,22,58,.18);background:linear-gradient(180deg,#EDECEA 0%,#F2F1EF 34%,#F8F8F7 70%,#FCFCFB 100%)}
+.scroll{position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain;
+-webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 196px),rgba(0,0,0,.55) calc(100% - 140px),rgba(0,0,0,0) calc(100% - 100px));
+mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 196px),rgba(0,0,0,.55) calc(100% - 140px),rgba(0,0,0,0) calc(100% - 100px))}
+.scroll::-webkit-scrollbar{width:0}
+
+.testata{padding:20px 18px 12px;display:flex;flex-direction:column;gap:15px}
+.testata-alto{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.titolo-sch{font-size:52px;font-weight:800;letter-spacing:-.05em;line-height:1;margin:0}
+.utente{height:50px;display:flex;align-items:center;gap:5px;margin:0 -2px -3px 0;background:rgba(20,22,58,.07);border:0;border-radius:999px;padding:0 12px 0 6px}
+.utente .tondo{width:38px;height:38px;border-radius:999px;background:var(--ink);display:flex;align-items:center;justify-content:center;flex:none}
+.iniziale{font-family:var(--font-mono);font-size:16px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;line-height:1;color:#fff}
+
+.w{margin:0 16px 12px;background:#fff;border:1px solid var(--bordo);border-radius:22px;box-shadow:var(--ombra-pannello);padding:14px 12px 12px;display:flex;flex-direction:column;gap:10px}
+.w-testa{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:0 4px}
+.w-lb{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;display:flex;align-items:center;gap:8px}
+.quad{width:10px;height:10px;border-radius:4px;flex:none}
+.w-cont{font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:.10em;text-transform:uppercase;color:var(--sec)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+.td{min-height:104px;border-radius:14px;background:#fff;box-shadow:var(--ombra-pannello);padding:12px 14px 13px;display:flex;flex-direction:column;text-align:left;font:inherit;color:inherit;border:1px solid transparent;position:relative;overflow:hidden}
+.td-alto{display:flex;align-items:center;gap:6px;flex:none}
+.td-pil{font-family:var(--font-mono);font-weight:700;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;border-radius:999px;padding:5px 10px;background:rgba(20,22,58,.06);color:var(--ink)}
+.td-nome{font-size:17px;font-weight:700;letter-spacing:-.032em;line-height:1.1;margin-top:auto}
+.td-nome.barrato{text-decoration:line-through;text-decoration-thickness:1.6px;color:rgba(20,22,58,.34)}
+.td-sub{font-family:var(--font-mono);font-size:8.5px;letter-spacing:.02em;text-transform:uppercase;margin-top:5px;color:var(--testo-2);font-weight:700}
+.td-sub.gelo{color:var(--freddo)}
+.td-sub.scadenza{color:var(--avviso)}
+.td-quad{width:10px;height:10px;border-radius:4px;flex:none;border:2px solid transparent}
+.td-filetto{position:absolute;left:0;top:0;bottom:0;width:5px}
+.td.finita{background:var(--spento);box-shadow:none}
+.td.finita .td-pil{background:rgba(20,22,58,.06);color:var(--testo-2);font-weight:700}
+
+/* dock di inserimento */
+.dock{position:absolute;left:16px;right:16px;bottom:114px;display:flex;align-items:center;gap:8px}
+.dock-campo{flex:1;min-width:0;height:56px;border-radius:999px;background:#fff;border:1px solid var(--bordo);box-shadow:var(--ombra-nav);display:flex;align-items:center;padding:0 6px 0 18px;gap:8px}
+.dock-campo input{flex:1;min-width:0;border:0;outline:0;background:none;font-family:var(--font-testo);font-size:14px;color:var(--ink)}
+.dock-campo input::placeholder{color:var(--testo-2)}
+.mic{width:44px;height:44px;flex:none;border:0;border-radius:999px;background:var(--ink);display:flex;align-items:center;justify-content:center;padding:0}
+.mic.solo{width:56px;height:56px;box-shadow:var(--ombra-nav)}
+.dock-scheda{flex:1;background:#fff;border:1px solid var(--bordo);border-radius:22px;box-shadow:var(--ombra-nav);padding:8px 8px 8px 16px;display:flex;align-items:center;gap:8px;min-height:64px}
+.dock-scheda input{flex:1;min-width:0;border:0;outline:0;background:none;font-family:var(--font-testo);font-size:14px;color:var(--ink)}
+.dock-scheda input::placeholder{color:var(--testo-2)}
+.dock-due{display:flex;gap:8px;margin-left:auto}
+.tondone{width:56px;height:56px;border:0;border-radius:999px;background:#fff;border:1px solid var(--bordo);box-shadow:var(--ombra-nav);display:flex;align-items:center;justify-content:center;padding:0}
+.tondone.pieno{background:var(--ink);border-color:var(--ink)}
+.dock-chiusa{margin-left:auto;height:56px;border:0;border-radius:999px;background:#fff;box-shadow:var(--ombra-nav);display:flex;align-items:center;gap:9px;padding:0 20px;font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink)}
+
+/* stato: registro */
+.reg{flex:1;height:56px;border-radius:999px;background:var(--ink);box-shadow:var(--ombra-nav);display:flex;align-items:center;gap:12px;padding:0 6px 0 18px}
+.reg-lb{font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#fff}
+.reg-tempo{font-family:var(--font-mono);font-size:11px;font-weight:500;letter-spacing:.06em;color:rgba(255,255,255,.62);font-variant-numeric:tabular-nums;margin-left:auto}
+.metro{display:flex;align-items:center;gap:3px;height:22px}
+.metro i{width:3px;border-radius:999px;background:#fff;height:13px}
+.stop{width:44px;height:44px;flex:none;border:0;border-radius:999px;background:#fff;display:flex;align-items:center;justify-content:center;padding:0}
+.stop span{width:14px;height:14px;border-radius:4px;background:var(--ink)}
+@media (prefers-reduced-motion: no-preference){
+  .metro i{animation:livello 220ms ease-in-out infinite alternate}
+  .metro i:nth-child(2){animation-delay:70ms}
+  .metro i:nth-child(3){animation-delay:140ms}
+  .metro i:nth-child(4){animation-delay:40ms}
+  .dock,.dock-campo,.reg{transition:bottom var(--moto-barra) var(--curva-barra)}
+}
+@keyframes livello{from{height:7px}to{height:22px}}
+
+.nav{position:absolute;left:16px;right:16px;bottom:22px;height:84px;border-radius:999px;display:flex;align-items:center;gap:2px;padding:6px;background:#fff;box-shadow:var(--ombra-nav)}
+.nav .voce{flex:1;height:72px;border:0;background:none;border-radius:999px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0;overflow:hidden}
+.nav .voce.on{background:rgba(20,22,58,.07)}
+.nav .segno{display:flex;align-items:center;justify-content:center;flex:none;height:26px}
+.nav .lb{font-family:var(--font-mono);font-size:8.5px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--off);white-space:nowrap;max-height:12px;opacity:1;line-height:1}
+.nav .voce.on .lb{color:var(--ink);font-weight:700}
+.marchio{display:grid;gap:4px}
+.cas{border-radius:2.52px;border:2px solid transparent}
+.tel.giu .nav{height:66px;left:46px;right:46px}
+.tel.giu .nav .voce{height:54px;gap:0}
+.tel.giu .nav .lb{max-height:0;opacity:0}
+.tel.giu .dock{bottom:96px}
+@media (prefers-reduced-motion: no-preference){
+  .nav,.nav .voce,.nav .lb{transition:height var(--moto-barra) var(--curva-barra),max-height var(--moto-barra) var(--curva-barra),opacity 150ms linear,gap var(--moto-barra) var(--curva-barra),left var(--moto-barra) var(--curva-barra),right var(--moto-barra) var(--curva-barra)}
+}
+/* v3: il dock dentro la barra */
+.nav.conDock{height:150px;flex-direction:column;gap:6px;align-items:stretch;border-radius:34px;padding:8px}
+.nav.conDock .dock-campo{flex:none}
+.nav.conDock .voci{display:flex;gap:2px}
+.nav.conDock .voce{flex:1}
+.tel.v3.giu .nav.conDock{height:132px;left:16px;right:16px}
+
+.note{width:393px;margin-top:12px;background:#fff;border:1px solid var(--bordo);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.note p{margin:0;font-size:12.5px;line-height:1.45;color:var(--testo-2)}
+.note strong{color:var(--ink)}
+.comp{font-family:var(--font-mono);font-size:9px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;color:var(--sec);line-height:1.7}
+.rompe{font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:#9A5C00;line-height:1.6}
+</style>
+</head>
+<body>
+<div id="canvas"></div>
+<script>
+const A={orto:'#A8D96A',mac:'#F29B9B',lat:'#9CC7F2',cer:'#F5CE5B',dis:'#F2A465',sur:'#B9AEF5'};
+const RGB={'#A8D96A':'168,217,106','#F29B9B':'242,155,155','#9CC7F2':'156,199,242','#F5CE5B':'245,206,91','#F2A465':'242,164,101','#B9AEF5':'185,174,245'};
+const ORD=[[A.dis,1],[A.lat,1],[A.orto,0],[A.sur,1],[A.cer,1],[A.mac,0]];
+const AREE=[
+ {k:'orto',lb:'Ortofrutta',c:A.orto},{k:'mac',lb:'Macelleria e pescheria',c:A.mac},
+ {k:'lat',lb:'Latticini, uova e salumi',c:A.lat},{k:'cer',lb:'Pasta, riso e cereali',c:A.cer},
+ {k:'dis',lb:'Dispensa e conserve',c:A.dis},{k:'sur',lb:'Surgelati',c:A.sur}];
+
+const D=[
+ {nome:'Zucchine',area:'orto',q:600,un:'g',casa:true},
+ {nome:'Limoni',area:'orto',q:2,un:'pz',casa:true},
+ {nome:'Spinaci',area:'orto',q:0,un:'g',casa:false},
+ {nome:'Petto di pollo',area:'mac',q:600,un:'g',casa:true,gelo:true},
+ {nome:'Guanciale',area:'mac',q:0,un:'g',casa:false},
+ {nome:'Parmigiano',area:'lat',q:220,un:'g',casa:true,scad:'22/09/2026'},
+ {nome:'Ricotta',area:'lat',q:250,un:'g',casa:true,scad:'19/09/2026'},
+ {nome:'Uova medie',area:'lat',q:4,un:'pz',casa:true},
+ {nome:'Spaghetti n. 5',area:'cer',q:1200,un:'g',casa:true},
+ {nome:'Riso carnaroli',area:'cer',q:400,un:'g',casa:true},
+ {nome:'Farro perlato',area:'cer',q:0,un:'g',casa:false},
+ {nome:'Passata di pomodoro',area:'dis',q:1500,un:'g',casa:true},
+ {nome:'Olio extravergine',area:'dis',q:750,un:'ml',casa:true},
+ {nome:'Fagioli cannellini',area:'dis',q:2,un:'conf',casa:true},
+ {nome:'Tonno sott\'olio',area:'dis',q:0,un:'conf',casa:false},
+ {nome:'Piselli',area:'sur',q:1000,un:'g',casa:true,gelo:true},
+ {nome:'Minestrone pronto',area:'sur',q:2,un:'conf',casa:true,gelo:true}
+];
+const plur=(n,s,p)=>`${n} ${n===1?s:p}`;
+const perArea=k=>D.filter(d=>d.area===k);
+const qta=d=>`${d.q} ${d.un}`;
+const sub=d=>d.casa?(d.scad?`Scade il ${d.scad}`:(d.gelo?'Congelato':'')):'';
+const subCls=d=>d.casa?(d.scad?'scadenza':(d.gelo?'gelo':'')):'';
+
+const MIC=(c,s)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="${c}"/><path d="M6 11.4a6 6 0 0 0 12 0" stroke="${c}" stroke-width="2.1" stroke-linecap="round"/><path d="M12 17.6V21" stroke="${c}" stroke-width="2.1" stroke-linecap="round"/></svg>`;
+const PIU=c=>`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="${c}" stroke-width="2.1" stroke-linecap="round"/></svg>`;
+const METRO=`<span class="metro" aria-hidden="true"><i></i><i></i><i></i><i></i></span>`;
+
+/* le cinque tessere: cambia solo dove vive il colore d'area */
+const TESSERE={
+ quad:(d,c)=>`<button type="button" class="td ${d.casa?'':'finita'}" aria-pressed="${d.casa}" aria-label="${d.nome}: ${d.casa?qta(d)+' in casa, tocca per segnare finito':'finito, tocca per segnare in casa'}">
+   <span class="td-alto"><span class="td-quad" style="border-color:${c};background:${d.casa?c:'transparent'}"></span><span class="td-pil">${d.casa?qta(d):'Finito'}</span></span>
+   <span class="td-nome ${d.casa?'':'barrato'}">${d.nome}</span>
+   ${sub(d)?`<span class="td-sub ${subCls(d)}">${sub(d)}</span>`:''}</button>`,
+ bordo:(d,c)=>`<button type="button" class="td ${d.casa?'':'finita'}" style="${d.casa?`border:1.5px solid ${c}`:'border:2px dashed var(--bordo-tratteggio);background:none;box-shadow:none'}" aria-pressed="${d.casa}" aria-label="${d.nome}: ${d.casa?qta(d)+' in casa, tocca per segnare finito':'finito, tocca per segnare in casa'}">
+   <span class="td-alto"><span class="td-pil" style="${d.casa?`background:rgba(${RGB[c]},.32)`:''}">${d.casa?qta(d):'Finito'}</span></span>
+   <span class="td-nome ${d.casa?'':'barrato'}">${d.nome}</span>
+   ${sub(d)?`<span class="td-sub ${subCls(d)}">${sub(d)}</span>`:''}</button>`,
+ fondo:(d,c)=>`<button type="button" class="td ${d.casa?'':'finita'}" style="${d.casa?`background:rgba(${RGB[c]},.26);box-shadow:none`:'background:none;border:2px dashed var(--bordo-tratteggio);box-shadow:none'}" aria-pressed="${d.casa}" aria-label="${d.nome}: ${d.casa?qta(d)+' in casa, tocca per segnare finito':'finito, tocca per segnare in casa'}">
+   <span class="td-alto"><span class="td-pil" style="${d.casa?'background:#fff':''}">${d.casa?qta(d):'Finito'}</span></span>
+   <span class="td-nome ${d.casa?'':'barrato'}">${d.nome}</span>
+   ${sub(d)?`<span class="td-sub ${subCls(d)}">${sub(d)}</span>`:''}</button>`,
+ filetto:(d,c)=>`<button type="button" class="td ${d.casa?'':'finita'}" style="padding-left:19px" aria-pressed="${d.casa}" aria-label="${d.nome}: ${d.casa?qta(d)+' in casa, tocca per segnare finito':'finito, tocca per segnare in casa'}">
+   <span class="td-filetto" style="background:${d.casa?c:'rgba(20,22,58,.10)'}"></span>
+   <span class="td-alto"><span class="td-pil">${d.casa?qta(d):'Finito'}</span></span>
+   <span class="td-nome ${d.casa?'':'barrato'}">${d.nome}</span>
+   ${sub(d)?`<span class="td-sub ${subCls(d)}">${sub(d)}</span>`:''}</button>`,
+ pillola:(d,c)=>`<button type="button" class="td ${d.casa?'':'finita'}" aria-pressed="${d.casa}" aria-label="${d.nome}: ${d.casa?qta(d)+' in casa, tocca per segnare finito':'finito, tocca per segnare in casa'}">
+   <span class="td-alto"><span class="td-pil" style="${d.casa?`background:rgba(${RGB[c]},.26);box-shadow:inset 0 0 0 1.5px ${c}`:''}">${d.casa?qta(d):'Finito'}</span></span>
+   <span class="td-nome ${d.casa?'':'barrato'}">${d.nome}</span>
+   ${sub(d)?`<span class="td-sub ${subCls(d)}">${sub(d)}</span>`:''}</button>`
+};
+
+function corpo(tipo){return `<div class="scroll">
+  <div class="testata">
+    <div class="testata-alto">
+      <h1 class="titolo-sch">Dispensa</h1>
+      <button type="button" class="utente" aria-label="Andrea: profilo e impostazioni"><span class="tondo"><span class="iniziale" aria-hidden="true">A</span></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="5.2" r="2.1" fill="#14163A"/><circle cx="12" cy="12" r="2.1" fill="#14163A"/><circle cx="12" cy="18.8" r="2.1" fill="#14163A"/></svg></button>
+    </div>
+  </div>
+  ${AREE.map(a=>{const v=perArea(a.k);return `<section class="w"><div class="w-testa"><span class="w-lb"><span class="quad" style="background:${a.c}"></span>${a.lb}</span><span class="w-cont">${plur(v.filter(d=>d.casa).length,'voce','voci')} in casa</span></div><div class="grid">${v.map(d=>TESSERE[tipo](d,a.c)).join('')}</div></section>`}).join('')}
+  <div style="height:200px"></div>
+</div>`}
+
+function marchio(l){return `<span class="marchio" style="grid-template-columns:repeat(3,${l}px);grid-auto-rows:${l}px" aria-hidden="true">${ORD.map(([c,p])=>`<span class="cas" style="border-color:${c};background:${p?c:'transparent'}"></span>`).join('')}</span>`}
+const IC={
+ piano:s=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15.5" rx="4.4" fill="#9A9AA6"/><rect x="6.2" y="8.4" width="11.6" height="2.1" rx="1.05" fill="#fff" opacity=".92"/><circle cx="8.2" cy="14.6" r="1.7" fill="#fff" opacity=".92"/><circle cx="12" cy="14.6" r="1.7" fill="#fff" opacity=".92"/><circle cx="15.8" cy="14.6" r="1.7" fill="#fff" opacity=".92"/></svg>`,
+ piatti:s=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="#9A9AA6"/><circle cx="12" cy="12" r="4.1" fill="#fff" opacity=".92"/></svg>`,
+ dispensa:(s,c)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="3.4" width="14" height="3.6" rx="1.8" fill="${c}"/><path d="M6 9.4h12a1 1 0 0 1 1 1v6.4a3.2 3.2 0 0 1-3.2 3.2H8.2A3.2 3.2 0 0 1 5 16.8v-6.4a1 1 0 0 1 1-1Z" fill="${c}"/><rect x="8.4" y="12.4" width="7.2" height="2.1" rx="1.05" fill="#fff" opacity=".92"/></svg>`};
+const VOCI=`<button type="button" class="voce" aria-pressed="false" aria-label="Lista"><span class="segno">${marchio(9)}</span><span class="lb">Lista</span></button>
+  <button type="button" class="voce" aria-pressed="false" aria-label="Piano"><span class="segno">${IC.piano(26)}</span><span class="lb">Piano</span></button>
+  <button type="button" class="voce" aria-pressed="false" aria-label="Piatti"><span class="segno">${IC.piatti(26)}</span><span class="lb">Piatti</span></button>
+  <button type="button" class="voce on" aria-pressed="true" aria-label="Dispensa"><span class="segno">${IC.dispensa(26,'#14163A')}</span><span class="lb">Dispensa</span></button>`;
+
+const REG=`<div class="reg" role="status">${METRO}<span class="reg-lb">Registro…</span><span class="reg-tempo">0:07</span><button type="button" class="stop" data-fine aria-label="Ferma la registrazione"><span></span></button></div>`;
+
+const DOCK={
+ pillola:`<div class="dock"><div data-swap style="flex:1;min-width:0;display:flex"><div class="dock-campo"><input type="text" aria-label="Scrivi cosa hai messo in dispensa" placeholder="Scrivi cosa hai messo via"><button type="button" class="mic" data-reg aria-label="Registra un vocale">${MIC('#FFFFFF',20)}</button></div></div></div>`,
+ scheda:`<div class="dock"><div data-swap style="flex:1;min-width:0;display:flex"><div class="dock-scheda"><input type="text" aria-label="Scrivi cosa hai messo in dispensa" placeholder="Scrivi cosa hai messo via"><button type="button" class="mic" data-reg aria-label="Registra un vocale">${MIC('#FFFFFF',20)}</button></div></div></div>`,
+ due:`<div class="dock"><div data-swap style="flex:1;min-width:0;display:flex;justify-content:flex-end"><div class="dock-due"><button type="button" class="tondone" aria-label="Scrivi cosa hai messo in dispensa">${PIU('#14163A')}</button><button type="button" class="tondone pieno" data-reg aria-label="Registra un vocale">${MIC('#FFFFFF',22)}</button></div></div></div>`,
+ chiusa:`<div class="dock"><div data-swap style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;justify-content:flex-end"><button type="button" class="dock-chiusa" aria-label="Aggiungi in dispensa">${PIU('#14163A')}Aggiungi</button><button type="button" class="mic solo" data-reg aria-label="Registra un vocale">${MIC('#FFFFFF',22)}</button></div></div>`
+};
+
+const V=[
+ {id:'1',tipo:'quad',dock:'pillola',nome:'Quadratino d\'area, dock a pillola',
+  p:'Il colore sta nel quadratino da 10 in cima alla tessera: <strong>pieno</strong> se la voce è in casa, <strong>contornato</strong> se è finita. È la grammatica del Marchio applicata alla singola voce, quindi la Dispensa si legge come le sei caselle in testata. Il dock è una pillola alta 56 col microfono dentro.',
+  col:'Il quadratino 10 × 10 raggio 4 è il <strong>secondo uso</strong> già ammesso da §2.3 (quadratino di sezione), qui portato dentro la tessera: nessun uso nuovo del colore.',
+  m:'Tessera: minimo 104, raggio 14, bianca con ombra dei pannelli; quadratino 10 raggio 4 con bordo 2 px nel colore dell\'area. Finita: fondo --spento, quadratino contornato, nome barrato, pillola “Finito”.',
+  dn:'Una <strong>pillola alta 56</strong>, raggio 999, bianca con l\'ombra della barra: dentro il campo di testo con nome accessibile “Scrivi cosa hai messo in dispensa” e, a destra, il microfono da <strong>44</strong> su fondo --ink.'},
+
+ {id:'2',tipo:'bordo',dock:'scheda',nome:'Bordo pieno o tratteggiato, dock a scheda',
+  p:'Il colore è il bordo: <strong>1,5 px continuo</strong> nel colore dell\'area quando c\'è, <strong>2 px tratteggiato grigio</strong> quando è finita — la stessa distinzione degli “aggiungi” di §5. Una tessera vuota si legge come un posto da riempire, che è esattamente cosa è. Dock a scheda raggio 22.',
+  col:'Il bordo della tessera nel colore dell\'area è il <strong>primo uso</strong> di §2.3, già in atto nella Lista. Cambia lo spessore: 1,5 invece di 1 px al 45%.',
+  m:'Tessera in casa: bordo 1,5 px pieno nel colore dell\'area, pillola della quantità in tinta al 32%. Finita: nessun fondo, bordo 2 px tratteggiato in rgba(20,22,58,0.20), nessuna ombra.',
+  dn:'Una <strong>scheda raggio 22</strong>, minimo 64, padding 8 / 8 / 8 / 16: dentro il campo di testo con nome accessibile “Scrivi cosa hai messo in dispensa” e il microfono da <strong>44</strong> su fondo --ink.'},
+
+ {id:'3',tipo:'fondo',dock:'nav',nome:'Fondo in tinta, dock nella barra',
+  p:'La tinta d\'area al 26% riempie la tessera quando la voce è in casa; quando è finita la tessera resta vuota col contorno tratteggiato. È la lettura più veloce di tutte: l\'area si riconosce senza leggere l\'etichetta, e i buchi nella dispensa si vedono come buchi. Qui il dock vive <strong>dentro la barra</strong>, che diventa a due piani.',
+  col:'Il fondo in tinta al 26% è il <strong>terzo uso</strong> di §2.3, che però lo assegna alla riga di controllo: applicarlo alla tessera è un\'estensione da approvare.',
+  m:'Tessera in casa: fondo colore d\'area al 26%, nessuna ombra, pillola bianca. Finita: fondo trasparente, bordo 2 px tratteggiato. Barra con dock: altezza 150, raggio 34, campo sopra le quattro voci.',
+  dn:'Il dock è <strong>dentro la barra</strong>: un solo oggetto a due piani, altezza 150, raggio 34, padding 8, gap 6. Sopra il campo di testo alto <strong>56</strong> con nome accessibile “Scrivi cosa hai messo in dispensa” e il microfono da <strong>44</strong>; sotto le quattro voci da 72.'},
+
+ {id:'4',tipo:'filetto',dock:'due',nome:'Filetto sul fianco, due tondi',
+  p:'Un filetto da 5 px sul fianco sinistro della tessera, nel colore dell\'area quando la voce è in casa e in grigio al 10% quando è finita. Il colore resta un accento e non invade la tessera, quindi il nome e la quantità restano i protagonisti. Dock ridotto a due tondi da 56: scrivi o registra.',
+  col:'Il filetto sul fianco è un <strong>uso nuovo</strong> del colore d\'area, il quinto: §2.3 ne ammette quattro.',
+  m:'Tessera: padding sinistro 19 per lasciare spazio al filetto 5 × altezza piena, senza raggio proprio (la tessera ha overflow nascosto). Finita: filetto in rgba(20,22,58,0.10), fondo --spento, nome barrato.',
+  dn:'<strong>Nessun campo in vista</strong>: due tondi da <strong>56</strong> allineati a destra — uno col più, bianco, che apre il campo; uno col microfono, pieno in --ink, che registra. È il dock che occupa meno schermo e l\'unico in cui scrivere richiede un tocco in più.'},
+
+ {id:'5',tipo:'pillola',dock:'chiusa',nome:'Pillola della quantità colorata, dock compatto',
+  p:'Il colore sta solo nella pillola della quantità: tinta al 26% con un filo 1,5 px dello stesso colore. È la versione più sobria — la tessera resta bianca, il colore marca il numero, che è il dato che cambia. Dock: un tasto AGGIUNGI e un tondo microfono, allineati a destra.',
+  col:'La pillola in tinta al 26% con filo dello stesso colore è un <strong>uso nuovo</strong>, il quinto: §2.3 non prevede il colore d\'area dentro una pillola.',
+  m:'Tessera bianca con ombra dei pannelli. Pillola in casa: fondo colore d\'area al 26% più inset 1,5 px dello stesso colore, mono 10,5 / 700. Finita: pillola “Finito” su rgba(20,22,58,0.06), nome barrato, fondo --spento.',
+  dn:'<strong>Nessun campo in vista</strong>: un tasto <strong>AGGIUNGI</strong> alto 56, raggio 999, bianco, col più e l\'etichetta mono — apre il campo — e accanto il tondo microfono da <strong>56</strong> pieno in --ink. Dice cosa fa a parole, quindi non chiede di indovinare un\'icona.'}
+];
+
+const c=document.getElementById('canvas');
+V.forEach((v,i)=>{
+  const el=document.createElement('div');
+  el.className='frame';
+  el.style.left=(60+i*453)+'px';el.style.top='60px';
+  const navHtml=v.dock==='nav'
+    ? `<nav class="nav conDock" aria-label="Sezioni e inserimento"><div data-swap style="display:flex;flex:none"><div class="dock-campo" style="box-shadow:none;border-color:rgba(20,22,58,.09)"><input type="text" aria-label="Scrivi cosa hai messo in dispensa" placeholder="Scrivi cosa hai messo via"><button type="button" class="mic" data-reg aria-label="Registra un vocale">${MIC('#FFFFFF',20)}</button></div></div><div class="voci">${VOCI}</div></nav>`
+    : `<nav class="nav" aria-label="Sezioni">${VOCI}</nav>`;
+  el.innerHTML=`<div class="intesta"><div class="sigla">Versione ${v.id} · ${v.nome}</div><p>${v.p}</p></div>
+  <div class="tel ${v.dock==='nav'?'v3':''}" data-screen-label="Dispensa ${v.id}">${corpo(v.tipo)}${v.dock==='nav'?'':DOCK[v.dock]}${navHtml}</div>
+  <div class="note">
+    <div class="sigla">Come è usato il colore d'area</div>
+    <p>${v.col} Lo stato non dipende mai dal solo colore: la voce finita ha anche il <strong>nome barrato</strong> e la pillola che dice “Finito” in --testo-2 (4,9:1 sul fondo della pillola), come vuole §11. Il nome barrato resta a rgba(20,22,58,0.34) — la stessa resa della tessera spenta in §8 — perché lì la forma, non il testo, porta lo stato.</p>
+    <div class="sigla" style="margin-top:4px">Misure della tessera</div>
+    <p>${v.m} Griglia 2 colonne, gap 8, widget d'area raggio 22 con padding 14 / 12 / 12. Tutta la tessera è l'interruttore, con <code>aria-pressed</code> — la stessa eccezione dichiarata della Lista.</p>
+    <div class="sigla" style="margin-top:4px">Il dock di inserimento</div>
+    <p>Sta <strong>sopra la barra</strong>, a 114 px dal fondo: a portata di pollice e sempre visibile, perché mettere via la spesa è l'azione che si fa in questa schermata. Quando la barra si riduce, il dock scende a 96 px e resta sopra di essa. ${v.dn}</p>
+    <div class="sigla" style="margin-top:4px">La registrazione</div>
+    <p>Tocca il microfono: il dock diventa una pillola inchiostro con un <strong>metro a quattro barre</strong> che si muove, la riga mono “REGISTRO…”, il tempo trascorso in mono tabular-nums e un tasto <strong>stop</strong> quadrato da 44. Tocca lo stop per tornare. Le barre salgono e scendono in <strong>220 ms</strong> con sfasature di 40, 70 e 140 ms — dentro i 150-250 ms di §7 — e non sono decorazione: dicono che il microfono sta prendendo suono. Con <code>prefers-reduced-motion: reduce</code> le barre restano ferme a 13 px e lo stato si legge dal testo e dal tempo che avanza. Il contenitore è <code>role="status"</code>, quindi lo screen reader annuncia l'inizio.</p>
+    <div class="sigla" style="margin-top:4px">Componenti usati</div>
+    <div class="comp">Testata (titolo + menù utente) · Menù utente · Etichetta di sezione con quadratino d'area e contatore · Tessera di dispensa (componente nuovo) · Dock di inserimento (componente nuovo) · Stato “Registro” (componente nuovo) · Tab bar in pillola a due stati</div>
+    <div class="sigla" style="margin-top:4px">Regole di DESIGN.md che tocca</div>
+    <div class="rompe">§12 gradiente di sfondo · §5 ombra nuova sui pannelli, sulla barra e sul dock · §8 menù utente e tab bar in pillola · §7 lo scorrimento come gesto · COMPONENTE NUOVO: Tessera di dispensa · COMPONENTE NUOVO: Dock di inserimento · COMPONENTE NUOVO: Stato “Registro” con animazione in loop · §7 un\'animazione che dura finché dura la registrazione, non 180 ms · ${v.id==='4'||v.id==='5'?'§2.3 quinto uso del colore d\'area':(v.id==='3'?'§2.3 la tinta al 26% estesa dalla riga di controllo alla tessera':'§2.3 nessun uso nuovo del colore')}</div>
+  </div>`;
+  c.appendChild(el);
+
+  const tel=el.querySelector('.tel'), sc=el.querySelector('.scroll');
+  let ultimo=0;
+  sc.addEventListener('scroll',()=>{const y=sc.scrollTop;if(y<=4){tel.classList.remove('giu');ultimo=y;return}if(Math.abs(y-ultimo)<8)return;tel.classList.toggle('giu',y>ultimo);ultimo=y},{passive:true});
+
+  /* microfono → stato registro, stop → torna */
+  let prima=null;
+  tel.addEventListener('click',e=>{
+    const m=e.target.closest('[data-reg]');
+    if(m){const w=m.closest('[data-swap]');if(!w)return;prima=w.innerHTML;w.innerHTML=REG;return}
+    const s=e.target.closest('[data-fine]');
+    if(s&&prima){const w=s.closest('[data-swap]');if(w){w.innerHTML=prima;prima=null}}
+  });
+});
+</script>
+</body>
+</html>

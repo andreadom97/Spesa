@@ -1,0 +1,91 @@
+<!-- @dsCard group="Fondamenta" name="Raggi" subtitle="" viewport="720x600" -->
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Raggi</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --fondo:#F1F0EE; --superficie:#FFFFFF; --ink:#14163A; --testo-2:#5C5F7A;
+  --bordo:rgba(20,22,58,0.07);
+  --font-testo:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:var(--fondo);color:var(--ink);font-family:var(--font-testo);-webkit-font-smoothing:antialiased}
+.card{width:720px;max-width:100%;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.titolo{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.dida{font-size:12.5px;line-height:1.4;color:var(--testo-2);max-width:68ch}
+.scheda{background:var(--superficie);border:1px solid var(--bordo);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:18px}
+.raggi{display:flex;flex-wrap:wrap;gap:14px}
+.raggio{display:flex;flex-direction:column;gap:8px;align-items:flex-start;width:122px}
+.forma{width:100px;height:100px;background:var(--fondo);border:1.5px solid var(--ink)}
+.et{font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.08em;font-variant-numeric:tabular-nums}
+.uso{font-size:12.5px;line-height:1.35;color:var(--testo-2)}
+.fuori{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.vchip{display:inline-flex;align-items:center;justify-content:center;height:24px;min-width:38px;padding:0 8px;border-radius:999px;font-family:var(--font-mono);font-size:9.5px;font-weight:700;letter-spacing:.04em;font-variant-numeric:tabular-nums;background:rgba(20,22,58,.06);border:1px solid transparent}
+.vchip-si{background:var(--ink);color:#FFFFFF;border-color:var(--ink)}
+.blocco{display:flex;flex-direction:column;gap:10px}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="titolo">Fondamenta · Raggi</div>
+  <div class="dida">Cinque raggi, e nessun altro. La forma dice a che livello sta un elemento: più grande il contenitore, più grande il raggio.</div>
+
+  <div class="scheda">
+    <div class="raggi">
+      <div class="raggio">
+        <div class="forma" style="border-radius:999px"></div>
+        <div class="et">999 &middot; --raggio-pillola</div>
+        <div class="uso">Pillole d'azione, tasti SÌ/NO, pillola settimana, pillola delle confezioni</div>
+      </div>
+      <div class="raggio">
+        <div class="forma" style="border-radius:22px"></div>
+        <div class="et">22 &middot; --raggio-grande</div>
+        <div class="uso">Schede grandi, stato vuoto, foglio dal basso (22 22 0 0)</div>
+      </div>
+      <div class="raggio">
+        <div class="forma" style="border-radius:18px"></div>
+        <div class="et">18 &middot; --raggio-medio</div>
+        <div class="uso">Tasti da 54 px, schede medie, riga di controllo, riga pasto, tessera protagonista</div>
+      </div>
+      <div class="raggio">
+        <div class="forma" style="border-radius:14px"></div>
+        <div class="et">14 &middot; --raggio-piccolo</div>
+        <div class="uso">Tessere, campi di testo, segmenti a blocco, tab attiva, voci del foglio</div>
+      </div>
+      <div class="raggio">
+        <div class="forma" style="border-radius:4px"></div>
+        <div class="et">4 &middot; --raggio-micro</div>
+        <div class="uso">Quadratino d'area da 10 px, caselle del marchio (lato × 0,28)</div>
+      </div>
+    </div>
+
+    <div class="blocco">
+      <div class="titolo">Valori dentro e fuori scala</div>
+      <div class="fuori">
+        <span class="vchip">2</span>
+        <span class="vchip">3</span>
+        <span class="vchip vchip-si">4</span>
+        <span class="vchip">8</span>
+        <span class="vchip">10</span>
+        <span class="vchip">11</span>
+        <span class="vchip">12</span>
+        <span class="vchip">13</span>
+        <span class="vchip vchip-si">14</span>
+        <span class="vchip">15</span>
+        <span class="vchip">16</span>
+        <span class="vchip vchip-si">18</span>
+        <span class="vchip">20</span>
+        <span class="vchip vchip-si">22</span>
+        <span class="vchip vchip-si">999</span>
+      </div>
+      <div class="dida">Piene le cinque della scala. Gli altri valori si riportano al più vicino: 8, 10, 11, 12, 13, 15 e 16 vanno a 14; 20 va a 18 o a 22 secondo la taglia del contenitore.</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,120 @@
+<!-- @dsCard group="Componenti" name="Tab bar" subtitle="Quattro voci fisse, sempre le stesse, sempre in questo ordine. La voce attiva cambia…" viewport="393x852" -->
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tab bar</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --fondo:#F1F0EE; --superficie:#FFFFFF; --ink:#14163A; --testo-2:#5C5F7A; --sec:#8A8A96; --off:#9A9AA6;
+  --bordo:rgba(20,22,58,0.07);
+  --font-testo:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:var(--fondo);color:var(--ink);font-family:var(--font-testo);-webkit-font-smoothing:antialiased}
+.card{width:393px;max-width:100%;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.titolo{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.dida{font-size:12.5px;line-height:1.4;color:var(--testo-2)}
+.telefono{width:100%;background:var(--fondo);border:1px solid var(--bordo);border-radius:22px;overflow:hidden}
+.et{font-family:var(--font-mono);font-size:8.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--sec)}
+.tabbar{display:flex;padding:10px 16px 20px;gap:4px}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 0;border-radius:14px}
+.tab-attiva{background:rgba(20,22,58,.06);color:var(--ink)}
+.tab-inattiva{color:var(--off)}
+.tab span{font-family:var(--font-mono);font-size:8.5px;letter-spacing:.12em}
+.tab-attiva span{font-weight:700}
+.tab-inattiva span{font-weight:500}
+.misure{background:var(--superficie);border:1px solid var(--bordo);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:7px}
+.misure p{margin:0;font-size:12.5px;line-height:1.45}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="titolo">Componenti · Tab bar</div>
+  <div class="dida">Quattro voci fisse, sempre le stesse, sempre in questo ordine. La voce attiva cambia colore, peso e fondo insieme: non solo colore.</div>
+
+  <div class="et">LISTA attiva</div>
+  <div class="telefono">
+    <div class="tabbar">
+      <div class="tab tab-attiva">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M4 6.5h16M4 12h16M4 17.5h11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        <span>LISTA</span>
+      </div>
+      <div class="tab tab-inattiva">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="3.6" y="5" width="16.8" height="15" rx="3" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M3.6 10h16.8M9 3.4v3.2M15 3.4v3.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        <span>SETTIMANA</span>
+      </div>
+      <div class="tab tab-inattiva">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M7.6 3.4v4.2M10 3.4v4.2M12.4 3.4v4.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          <path d="M7.6 7.4a2.4 2.4 0 0 0 4.8 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          <path d="M10 10v10.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          <path d="M16.6 3.4c2.1 2.3 2.5 6.2 1 8.8h-1v8.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>PIATTI</span>
+      </div>
+      <div class="tab tab-inattiva">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M8 4.5h8M9.5 4.5v-1h5v1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          <rect x="6.5" y="6.5" width="11" height="14" rx="2.5" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M6.5 12h11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        <span>DISPENSA</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="et">Nessuna voce attiva: Impostazioni e Importa, di proposito</div>
+  <div class="telefono">
+    <div class="tabbar">
+      <div class="tab tab-inattiva">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M4 6.5h16M4 12h16M4 17.5h11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        <span>LISTA</span>
+      </div>
+      <div class="tab tab-inattiva">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="3.6" y="5" width="16.8" height="15" rx="3" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M3.6 10h16.8M9 3.4v3.2M15 3.4v3.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        <span>SETTIMANA</span>
+      </div>
+      <div class="tab tab-inattiva">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M7.6 3.4v4.2M10 3.4v4.2M12.4 3.4v4.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          <path d="M7.6 7.4a2.4 2.4 0 0 0 4.8 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          <path d="M10 10v10.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          <path d="M16.6 3.4c2.1 2.3 2.5 6.2 1 8.8h-1v8.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>PIATTI</span>
+      </div>
+      <div class="tab tab-inattiva">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M8 4.5h8M9.5 4.5v-1h5v1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          <rect x="6.5" y="6.5" width="11" height="14" rx="2.5" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M6.5 12h11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        <span>DISPENSA</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="misure">
+    <div class="titolo">Misure e stati</div>
+    <p>Padding 10 alto / 16 lati / 20 basso, gap 4, ogni voce flex: 1 con raggio 14.</p>
+    <p>Icona 21 px a tratto 1.8, etichetta micro mono 8.5/0.12em maiuscolo, gap 5.</p>
+    <p>Attiva: colore --ink, peso 700, fondo rgba(20,22,58,0.06). Inattiva: colore --off, peso 500, fondo trasparente.</p>
+    <p>Mai una quinta voce, mai un badge, mai un contatore sopra un'icona.</p>
+  </div>
+</div>
+</body>
+</html>

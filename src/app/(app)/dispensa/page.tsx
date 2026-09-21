@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
-import Link from 'next/link';
 import type { AreaId, Ingredient, LottoPronto, PantryState } from '@/domain/types';
 import { leggiIngredienti, leggiRepertorio } from '@/data/repertorio';
 import { leggiDispensa, correggiResiduo, impostaCongelato } from '@/data/dispensa';
@@ -17,6 +16,7 @@ import { porzioniUtilizzabili } from '@/domain/pronti';
 import { avvisiScadenza, scadenzaResiduo, type AvvisoScadenza } from '@/domain/scadenza';
 import { lunediDi, sommaGiorni } from '@/domain/date';
 import { NotaDispensa } from '@/components/NotaDispensa';
+import { Testata } from '@/components/Testata';
 
 interface Riga {
   ingrediente: Ingredient;
@@ -315,7 +315,7 @@ export default function Dispensa() {
 
   return (
     <Cornice>
-      <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 16px 20px' }}>
+      <div className="sc scroll-app" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 16px 20px' }}>
         {/* Il residuo derivato, sommato sulle settimane chiuse: una riga e
             basta, e solo quando c'è qualcosa da dire. */}
         {totaleNonRicomprato && (
@@ -822,25 +822,11 @@ function RigaDispensa({
   );
 }
 
-/** Stesso header delle altre sottopagine di /impostazioni. */
+/** La Dispensa è una voce della tab bar: Testata come le altre radici. */
 function Cornice({ children }: { children?: ReactNode }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <div style={{ padding: '18px 16px 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Link
-          href="/impostazioni"
-          aria-label="Torna alle impostazioni"
-          style={{ width: 44, height: 44, margin: '0 0 0 -10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <svg width="23" height="23" viewBox="0 0 24 24" fill="none">
-            <path d="M14.5 5 7.8 12l6.7 7" stroke="var(--ink)" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </Link>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--sec)' }}>
-          DISPENSA
-        </span>
-        <div style={{ width: 44, height: 44 }} />
-      </div>
+      <Testata titolo="Dispensa" />
       {children}
     </div>
   );

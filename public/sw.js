@@ -1,5 +1,5 @@
-const CACHE = 'spesa-v1';
-const GUSCIO = ['/lista', '/settimana', '/piatti', '/manifest.json'];
+const CACHE = 'spesa-v2';
+const GUSCIO = ['/lista', '/piano', '/piatti', '/manifest.json'];
 
 // Ultima rete di sicurezza: se offline e nemmeno '/lista' è in cache (mai
 // visitata prima), una risposta che risolve `undefined` sarebbe trattata

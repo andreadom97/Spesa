@@ -138,7 +138,7 @@ function necessarieCon(voce: VoceComprata, formato: number): number {
  * Raggiungibile solo a lista tutta spuntata, come "Hai preso tutto": prima
  * non si sa cosa si è comprato, dopo la chiusura il residuo è già
  * accreditato e la correzione non cambierebbe niente (si rimanda a
- * /settimana). Lo scanner non parla con la rete: è questa pagina che chiama
+ * /piano). Lo scanner non parla con la rete: è questa pagina che chiama
  * `/api/prodotto/[ean]` e decide cosa proporre.
  */
 export default function Confezioni() {
@@ -176,7 +176,7 @@ export default function Confezioni() {
         // A spesa chiusa il residuo è già accreditato: correggere qui non
         // cambierebbe niente (spec §1), e il data layer rifiuterebbe comunque.
         if (settimana.stato === 'chiusa') {
-          router.replace('/settimana');
+          router.replace('/piano');
           return;
         }
         const lista = await leggiListe(settimana.id);
@@ -272,7 +272,7 @@ export default function Confezioni() {
       }
     } catch (errore) {
       if (errore instanceof Error && errore.message === 'spesa già chiusa') {
-        router.replace('/settimana');
+        router.replace('/piano');
         return;
       }
       console.error('lista/confezioni: aggiornamento del formato fallito.', errore);
@@ -348,7 +348,7 @@ export default function Confezioni() {
 
   return (
     <Cornice>
-      <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="sc scroll-app con-piede" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div>
           <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-0.035em', lineHeight: 1.2, color: 'var(--ink)', marginBottom: 6 }}>
             Le confezioni vere
@@ -525,7 +525,7 @@ export default function Confezioni() {
         })}
       </div>
 
-      <div style={{ padding: '6px 16px 0' }}>
+      <div className="coda-barra" style={{ padding: '6px 16px 0' }}>
         <Link
           href="/lista/fatta"
           style={{

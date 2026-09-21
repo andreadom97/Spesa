@@ -617,7 +617,7 @@ export default function Piatto() {
 
   return (
     <Cornice onCestino={tapCestino}>
-      <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 14px' }}>
+      <div className="sc scroll-app con-piede" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 14px' }}>
         <textarea
           ref={nomeRef}
           rows={1}
@@ -1025,7 +1025,7 @@ export default function Piatto() {
         {errore && <p style={{ margin: '14px 6px 0', color: 'var(--sec)', fontSize: 13 }}>{errore}</p>}
       </div>
 
-      <div style={{ padding: '8px 16px 22px', display: 'flex', gap: 9 }}>
+      <div className="coda-barra" style={{ padding: '8px 16px 22px', display: 'flex', gap: 9 }}>
         <button
           type="button"
           onClick={annulla}

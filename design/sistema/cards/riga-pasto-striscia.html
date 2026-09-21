@@ -1,0 +1,147 @@
+<!-- @dsCard group="Componenti" name="Riga pasto e striscia dei giorni" subtitle="Tre zone, tre comportamenti: la casetta accende e spegne, il corpo apre il piatto, la…" viewport="393x852" -->
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Riga pasto e striscia dei giorni</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --fondo:#F1F0EE; --superficie:#FFFFFF; --ink:#14163A; --ink-2:#3D4166; --testo-2:#5C5F7A;
+  --sec:#8A8A96; --ter:#A6A6B2; --bordo:rgba(20,22,58,0.07); --icona-spenta:#C4C4CE;
+  --area-ortofrutta:#A8D96A; --area-macelleria:#F29B9B; --area-dispensa:#F2A465; --area-cereali:#F5CE5B;
+  --font-testo:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:var(--fondo);color:var(--ink);font-family:var(--font-testo);-webkit-font-smoothing:antialiased}
+.card{width:393px;max-width:100%;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.titolo{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.dida{font-size:12.5px;line-height:1.4;color:var(--testo-2)}
+.telefono{width:100%;background:var(--fondo);border:1px solid var(--bordo);border-radius:22px;overflow:hidden}
+.interno{padding:16px;display:flex;flex-direction:column;gap:12px}
+.et{font-family:var(--font-mono);font-size:8.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--sec)}
+
+.striscia{display:flex;gap:3px}
+.giorno{flex:1;display:flex;flex-direction:column;align-items:center;padding:9px 0 10px;border-radius:14px;border:1px solid var(--bordo);background:var(--superficie)}
+.g-oggi{border:3px solid var(--ink)}
+.g-sel{background:var(--ink);box-shadow:0 2px 6px rgba(20,22,58,.20)}
+.giorno .d{font-family:var(--font-mono);font-size:8.5px;font-weight:700;letter-spacing:.08em;color:var(--ter)}
+.giorno .n{font-size:15px;font-weight:800;letter-spacing:-.02em;line-height:1.25}
+.g-sel .d{color:rgba(255,255,255,.62)}
+.g-sel .n{color:#FFFFFF}
+.punti{display:flex;gap:2px;margin-top:5px}
+.punto{width:5px;height:5px;border-radius:999px;display:inline-block;background:rgba(20,22,58,.18)}
+.punto-p{background:var(--ink)}
+.g-sel .punto{background:rgba(255,255,255,.32)}
+.g-sel .punto-p{background:#FFFFFF}
+
+.pasto{display:flex;align-items:stretch;border-radius:18px;background:var(--superficie);border:1px solid rgba(20,22,58,.09)}
+.pasto-fuori{background:rgba(20,22,58,.04);border:1px solid transparent}
+.zona-casa{width:60px;flex:none;display:flex;align-items:center;justify-content:center}
+.zona-casa .ombra{filter:drop-shadow(0 1px 3px rgba(20,22,58,.28))}
+.corpo{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:5px;padding:13px 0}
+.corpo .p{font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.13em;color:var(--sec)}
+.corpo .t{font-size:17.5px;font-weight:700;letter-spacing:-.03em;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.corpo .s{font-family:var(--font-mono);font-size:9px;letter-spacing:.02em;color:var(--sec)}
+.corpo .avv{font-size:12px;font-weight:600;line-height:1.35;color:var(--ink-2)}
+.pasto-fuori .p,.pasto-fuori .s{color:var(--icona-spenta)}
+.pasto-fuori .t{color:#B6B6C0;text-decoration:line-through;text-decoration-thickness:1.5px}
+.aree{display:flex;gap:4px}
+.pa{width:8px;height:8px;border-radius:2.6px;display:inline-block}
+.zona-dx{width:44px;flex:none;display:flex;align-items:center;justify-content:center}
+.misure{background:var(--superficie);border:1px solid var(--bordo);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:7px}
+.misure p{margin:0;font-size:12.5px;line-height:1.45}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="titolo">Componenti · Riga pasto e striscia dei giorni</div>
+  <div class="dida">Tre zone, tre comportamenti: la casetta accende e spegne, il corpo apre il piatto, la freccia o il kebab aprono la scelta. Ordine e larghezze non sono negoziabili.</div>
+
+  <div class="telefono">
+    <div class="interno">
+      <div class="striscia">
+        <div class="giorno"><span class="d">LUN</span><span class="n">14</span><div class="punti"><span class="punto punto-p"></span><span class="punto punto-p"></span><span class="punto"></span></div></div>
+        <div class="giorno g-oggi g-sel"><span class="d">MAR</span><span class="n">15</span><div class="punti"><span class="punto punto-p"></span><span class="punto punto-p"></span><span class="punto punto-p"></span></div></div>
+        <div class="giorno"><span class="d">MER</span><span class="n">16</span><div class="punti"><span class="punto punto-p"></span><span class="punto"></span><span class="punto"></span></div></div>
+        <div class="giorno"><span class="d">GIO</span><span class="n">17</span><div class="punti"><span class="punto punto-p"></span><span class="punto punto-p"></span><span class="punto"></span></div></div>
+        <div class="giorno"><span class="d">VEN</span><span class="n">18</span><div class="punti"><span class="punto"></span><span class="punto"></span><span class="punto"></span></div></div>
+        <div class="giorno"><span class="d">SAB</span><span class="n">19</span><div class="punti"><span class="punto punto-p"></span><span class="punto"></span><span class="punto"></span></div></div>
+        <div class="giorno"><span class="d">DOM</span><span class="n">20</span><div class="punti"><span class="punto punto-p"></span><span class="punto punto-p"></span><span class="punto"></span></div></div>
+      </div>
+
+      <div class="pasto">
+        <div class="zona-casa">
+          <svg class="ombra" width="23" height="23" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M10 2.8 17.4 9.1v7.5a1 1 0 0 1-1 1h-3.6v-4.2H7.2v4.2H3.6a1 1 0 0 1-1-1V9.1Z" fill="#14163A"/>
+          </svg>
+        </div>
+        <div class="corpo">
+          <span class="p">CENA</span>
+          <span class="t">Pollo al limone</span>
+          <span class="s">3 porzioni a casa · 1 pronta in freezer</span>
+          <span class="avv">Pollo in casa: scade martedì, prima di questo pasto</span>
+          <div class="aree">
+            <span class="pa" style="background:var(--area-macelleria)"></span>
+            <span class="pa" style="background:var(--area-ortofrutta)"></span>
+            <span class="pa" style="background:var(--area-dispensa)"></span>
+          </div>
+        </div>
+        <div class="zona-dx">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <circle cx="8" cy="3" r="1.5" fill="#C4C4CE"/><circle cx="8" cy="8" r="1.5" fill="#C4C4CE"/><circle cx="8" cy="13" r="1.5" fill="#C4C4CE"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="pasto">
+        <div class="zona-casa">
+          <svg class="ombra" width="23" height="23" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M10 2.8 17.4 9.1v7.5a1 1 0 0 1-1 1h-3.6v-4.2H7.2v4.2H3.6a1 1 0 0 1-1-1V9.1Z" fill="#14163A"/>
+          </svg>
+        </div>
+        <div class="corpo">
+          <span class="p">PRANZO</span>
+          <span class="t">Nessun piatto assegnato</span>
+          <div class="aree"></div>
+        </div>
+        <div class="zona-dx">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M6 3.2 10.4 8 6 12.8" stroke="#C4C4CE" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="pasto pasto-fuori">
+        <div class="zona-casa">
+          <svg width="23" height="23" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M10 2.8 17.4 9.1v7.5a1 1 0 0 1-1 1h-3.6v-4.2H7.2v4.2H3.6a1 1 0 0 1-1-1V9.1Z" fill="#FFFFFF" stroke="#C4C4CE" stroke-width="1.8" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="corpo">
+          <span class="p">COLAZIONE</span>
+          <span class="t">Fuori casa</span>
+        </div>
+        <div class="zona-dx">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <circle cx="8" cy="3" r="1.5" fill="#C4C4CE"/><circle cx="8" cy="8" r="1.5" fill="#C4C4CE"/><circle cx="8" cy="13" r="1.5" fill="#C4C4CE"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="misure">
+    <div class="titolo">Misure e stati</div>
+    <p><strong>Striscia</strong> &mdash; sette riquadri flex: 1, gap 3, raggio 14, padding 9/0/10. Sigla mono 8.5/700/0.08em in --ter, numero 15/800, un pallino da 5 px per pasto (pieno se quel pasto è a casa e ha un piatto).</p>
+    <p>Selezionato: fondo --ink, testi in bianco, ombra 0 2px 6px rgba(20,22,58,0.20). <strong>Oggi</strong>: bordo 3 px --ink dentro il riquadro, e vale sempre &mdash; anche quando oggi non è il giorno selezionato. Due stati indipendenti, mai uno sostituto dell'altro.</p>
+    <p><strong>Riga pasto</strong> &mdash; raggio 18. A casa: bianco con bordo 1 px rgba(20,22,58,0.09). Fuori: fondo rgba(20,22,58,0.04), bordo trasparente, nome barrato in grigio e l'etichetta che dice il motivo (Fuori casa, Saltato, Ho mangiato fuori piano).</p>
+    <p>Zona sinistra <strong>60 px</strong>: casetta 23 px, piena in --ink con ombra 0 1px 3px a casa, bianca con contorno grigio 1.8 fuori. Senza contorno l'icona sparisce sul fondo chiaro. aria-pressed.</p>
+    <p>Corpo: nome del pasto mono 9/700/0.13em maiuscolo, piatto 17.5/700 troncato con ellissi, sottotitolo mono 9, avvisi di scadenza 12/600 in --ink-2 (a capo, non troncati), pallini delle aree 8×8 raggio 2.6.</p>
+    <p>Zona destra <strong>44 px</strong>: kebab (apre il foglio) o chevron (va a Scegli), in --icona-spenta.</p>
+  </div>
+</div>
+</body>
+</html>
