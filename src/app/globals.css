@@ -60,8 +60,16 @@
   --dock-padding: 8px;
   --dock-respiro: 8px;
   --dock-primario: 54px;
-  --coda-dock: 194px;       /* 70 di dock + 114 dal fondo + 10 */
-  --coda-dock-giu: 176px;   /* 70 + 96 + 10 */
+  /* Una coda sola, tarata sulla barra grande (70 di dock + 114 dal fondo + 10), e non
+     una coppia grande/ridotta: una coda che cambia con `data-barra` cambia anche
+     l'altezza scorribile, e allora ridurre la barra a fondo lista fa ritagliare
+     `scrollTop` dal browser — un evento `scroll` con delta negativo che
+     `calcolaStatoBarra` legge come "sta salendo" e che riporta la barra a grande. Lo
+     scroller restava così 18 px sopra il proprio fondo, con l'ultima voce dietro il
+     Dock e irraggiungibile (misurato nel browser: −7,75 px nel Piano, +4 px per caso
+     nella Lista). A barra ridotta restano 18 px d'aria in più sotto l'ultima voce: è
+     uno stato transitorio, e il prezzo è quello giusto. */
+  --coda-dock: 194px;
 
   --area-ortofrutta: #A8D96A;
   --area-macelleria: #F29B9B;
@@ -166,9 +174,9 @@
 .dock-primario:disabled { background: rgba(20, 22, 58, 0.10); color: var(--ter); box-shadow: none; }
 
 /* Lo scroller di una pagina che ha il Dock: il contenuto gli passa dietro, la coda
-   tiene l'ultima voce sopra di lui. */
+   tiene l'ultima voce sopra di lui. Una riga sola, senza variante per `data-barra`:
+   il perché sta nel commento su --coda-dock. */
 .scroll-app.con-dock { --coda: var(--coda-dock); }
-.guscio[data-barra="ridotta"] .scroll-app.con-dock { --coda: var(--coda-dock-giu); }
 
 @media (prefers-reduced-motion: no-preference) {
   .anim-dock { transition: bottom var(--moto-barra) var(--curva-barra); }

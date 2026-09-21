@@ -26,6 +26,15 @@ interface Props {
  * di ingombro qualunque sia la combinazione di stati.
  */
 export function StrisciaGiorni({ giorni, slotDefs, slots, oggi, selezionato, onSeleziona }: Props) {
+  // Oltre i quattro pasti i pallini si stringono. A sei, con gap 3, la fila misura
+  // 6 × 5 + 5 × 3 = 45 px dentro una cella che a 375 di schermo è larga 46,43:
+  // 0,71 px per lato, cioè dentro per caso — a 360 px la fila sbordava di 0,36 px
+  // per lato e a 320 di 3,22 (misurato nel browser). Con gap 2 la fila scende a
+  // 40 px: +3,21 px per lato a 375 e +2,14 a 360. A 320 sborda ancora, ma di
+  // 0,71 px invece di 3,22, e 320 non è una larghezza che il progetto dichiari di
+  // supportare. Da tre a quattro pasti resta il 3 del file di disegno: il caso
+  // reso e approvato non cambia.
+  const gapPallini = slotDefs.length > 4 ? 2 : 3;
   return (
     <div style={{ display: 'flex', gap: 3 }}>
       {giorni.map((data, indice) => {
@@ -103,7 +112,7 @@ export function StrisciaGiorni({ giorni, slotDefs, slots, oggi, selezionato, onS
             >
               {numero}
             </span>
-            <div style={{ display: 'flex', gap: 3 }}>
+            <div style={{ display: 'flex', gap: gapPallini }}>
               {slotDefs.map((def) => {
                 const slot = slots.find((s) => s.data === data && s.slotDefId === def.id);
                 const pieno = !!slot && slot.stato === 'casa' && slot.dishId !== null;
