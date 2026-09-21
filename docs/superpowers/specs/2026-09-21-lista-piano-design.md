@@ -242,9 +242,9 @@ Le frecce se ne vanno perché la striscia sopra fa già la stessa cosa con sette
 due, e perché il nome del giorno non è più un titolo grande al centro ma l'etichetta di questa
 sezione. Nessuna via di navigazione si perde: tutti e sette i giorni restano un tap.
 
-Il contatore settimanale `{n} PASTI A CASA IN SETTIMANA`, che oggi sta sopra il primario, **non
-ha più un posto**: il Dock è a una riga sola e porta solo il tasto. È la prima delle due domande
-di §L.
+Il contatore settimanale `{n} PASTI A CASA IN SETTIMANA`, che oggi sta sopra il primario, **si
+cancella**: il Dock è a una riga sola e porta solo il tasto. Deciso il 21/09, con la conseguenza
+scritta in §L.1.
 
 ## G. Piano: il Dock, la pillola, gli errori
 
@@ -359,22 +359,19 @@ striscia. Misure riportate nel rapporto, non dedotte.
 **Gate finale (Andrea):** una spesa vera dal telefono — spuntare in corsia, arrivare a
 `HAI PRESO TUTTO`, chiudere da `/lista/fatta` — e una conferma di settimana dal Piano.
 
-## L. Da decidere prima del piano
+## L. Le due decisioni di Andrea (21/09)
 
-1. **Il contatore settimanale del Piano.** Oggi sopra il primario si legge `{n} PASTI A CASA IN
-   SETTIMANA`: è il riassunto di quello che stai confermando. Il ridisegno lo sostituisce col
-   conteggio del giorno scelto e il totale della settimana sparisce. Tre vie: tenere solo il
-   giorno come nel ridisegno; tenere il giorno nell'etichetta e mettere il totale nella pillola
-   della settimana (`SETTIMANA DEL 14 SETTEMBRE · 14 A CASA`); tenere una riga col totale dentro
-   lo scroller, sopra le righe pasto.
-2. **La vista «settimana scorsa».** Il link `‹ SETTIMANA SCORSA` non esiste in nessuno dei sei
-   file del ridisegno, e con esso sparirebbe l'intera vista del passato (due rami di stato in
-   `piano/page.tsx`). Tre vie: toglierla; tenerla ma spostare l'ingresso in una sotto-schermata
-   delle Impostazioni (fase 5, e fino a lì resta il link di oggi); lasciarla dov'è e decidere
-   dopo.
-
-Queste due non le decido io: la prima cambia cosa vedi quando confermi la settimana, la seconda
-toglie o tiene una funzione.
+1. **Il contatore settimanale non sopravvive.** Vale solo il conteggio del giorno scelto,
+   nell'etichetta di sezione, come nel ridisegno. `{n} PASTI A CASA IN SETTIMANA` si cancella con
+   la riga che lo conteneva, e `nCasaSettimana` con lui. Conseguenza accettata, dichiarata qui:
+   al momento di confermare non si legge più su quanti pasti si sta chiudendo la settimana. La
+   striscia dei giorni resta l'unico riassunto — sette celle coi pallini pieni.
+2. **La vista «settimana scorsa» resta dov'è.** Il link `‹ SETTIMANA SCORSA` non si tocca:
+   centrato sopra la striscia, mono 10/700/0,11em in `--ter`, come oggi. È l'unico elemento di
+   queste due schermate che resta fuori dal disegno nuovo, e lo si sa: la domanda torna quando le
+   Impostazioni avranno le sotto-schermate (fase 5) e ci sarà un posto dove metterlo. I due rami
+   di stato del passato in `piano/page.tsx` non cambiano, e nella vista precedente il Dock non
+   c'è — quindi `con-dock` vale solo nella vista corrente.
 
 ## M. Esecuzione
 
