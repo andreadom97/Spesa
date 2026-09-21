@@ -35,8 +35,11 @@ componenti esistenti e due pagine.
   come `[ipotesi]`.
 - **Stile inline** come nel resto del progetto, tranne le classi condivise in `globals.css`
   (precedente della fase 1: `.guscio`, `.barra`, `.scroll-app`).
-- **Chi implementa non committa.** Il commit lo fa il coordinatore dopo la review del task; il
-  messaggio pronto è l'ultimo step di ogni task.
+- **Chi implementa committa**, con il messaggio già scritto in coda al suo task, e non tocca la
+  storia oltre il proprio commit. Corretto il 21/09 prima dell'esecuzione: il primo giro di
+  questo piano diceva che committava il coordinatore, ma la review di ogni task legge un
+  intervallo `BASE..HEAD` di git — senza il commit dell'implementatore il diff da rivedere è
+  vuoto e il cancello non c'è. Il coordinatore resta proprietario del messaggio, che è qui.
 - Commenti, test e messaggi di commit in italiano.
 
 ## Struttura dei file
