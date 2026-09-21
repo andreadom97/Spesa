@@ -77,12 +77,7 @@ mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - var(--fine)),rgba(0,0,
 /* bottom 114 = 84 (barra) + 22 (distacco dal fondo) + 8 (respiro); scende a 96 con la barra ridotta.
    Pillola bianca raggio 999 come il dock della Dispensa, padding 8: altezza 70 = 8 + 54 (primario) + 8.
    Compare SOLO a lista tutta spuntata: qui è resa visibile per mostrarla; nello stato normale non c'è. */
-.dock{position:absolute;left:16px;right:16px;bottom:114px;background:#fff;border-radius:999px;box-shadow:var(--ombra-nav);padding:8px;display:flex;flex-direction:column;gap:8px}
-.dock-riga{display:flex;gap:7px}
-.blocco{flex:1;height:46px;border-radius:14px;border:1px solid rgba(20,22,58,.09);background:#fff;color:var(--sec);font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:7px;font-variant-numeric:tabular-nums}
-.blocco.on{background:var(--ink);border-color:var(--ink);color:#fff}
-.blocco .n{opacity:.62}
-.blocco.on .n{opacity:.72}
+.dock{position:absolute;left:16px;right:16px;bottom:114px;background:#fff;border-radius:999px;box-shadow:var(--ombra-nav);padding:8px;display:flex;gap:8px}
 .primario{height:54px;width:100%;border-radius:18px;background:var(--ink);border:1px solid var(--ink);color:#fff;box-shadow:var(--ombra-tasto);font-family:var(--font-mono);font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase}
 
 /* ---------- tab bar versione B: 84 a riposo, i nomi sotto le icone ---------- */
@@ -246,7 +241,7 @@ mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - var(--fine)),rgba(0,0,
   <div class="comp">Testata (titolo + menù utente, senza marchio) · Menù utente · Pillola settimana 34 · Tessera widget di sezione (variante 1) · Etichetta di sezione con quadratino 10 e contatore · Tessera della Lista (protagonista span 2 · accesa nuda · spenta barrata) · Riga di controllo con pillole d'azione Sì / No · Dock a una riga · Tasto primario (solo a lista finita) · Tab bar versione B a due stati · Marchio 3 × 2 come icona della Lista · Maschera di scorrimento</div>
 
   <div class="sigla" style="margin-top:4px">Regole di DESIGN.md che tocca</div>
-  <div class="rompe">§2.4 fondo a gradiente · §2.5 alfa 0,07 sul menù utente e sulla voce attiva, 0,45 sul filo d'area, 0,26 sulla riga di controllo · §3 titolo in sentence case · §3 mono 16 sull'iniziale, unica eccezione ammessa · §5 raggio 26 sulla cornice e 2,52 sulle caselle in barra, eccezioni dichiarate · §5 ombra dei pannelli e della barra · §6 icone di navigazione piene a 26 · §7 .anim-barra e maschera di scorrimento · §8 tab bar flottante con i nomi e Marchio come icona · §8 Menù utente · §8 Dock a due righe: il primario non è più in coda al contenuto · §8 Tessera widget di sezione: la tessera accesa perde il fondo bianco · §4 coda 248 al posto di 140, perché il dock è a due righe</div>
+  <div class="rompe">§2.4 fondo a gradiente · §2.5 alfa 0,07 sul menù utente e sulla voce attiva, 0,45 sul filo d'area, 0,26 sulla riga di controllo · §3 titolo in sentence case · §3 mono 16 sull'iniziale, unica eccezione ammessa · §5 raggio 26 sulla cornice e 2,52 sulle caselle in barra, eccezioni dichiarate · §5 ombra dei pannelli e della barra · §6 icone di navigazione piene a 26 · §7 .anim-barra e maschera di scorrimento · §8 tab bar flottante con i nomi e Marchio come icona · §8 Menù utente · §8 Dock a una riga: il primario non è più in coda al contenuto · §8 Tessera widget di sezione: la tessera accesa perde il fondo bianco · §4 coda 194 al posto di 140, perché sopra la barra c'è il dock</div>
 
   <div class="sigla" style="margin-top:4px">Cosa non rende, dell'inventario §1</div>
   <div class="comp">Tolti: marchio in testata e con esso il link Vai alla lista · ingranaggio, sostituito dal menù utente (marcato data-elemento="Ingranaggio") · le due righe di spiegazione della vista attiva · il selettore BASE / TOP-UP e le due liste separate (decisione del 20/09: una lista sola). Non mostrati: caricamento CARICO… · errore di caricamento · Vuoto A e Vuoto B · Niente da comprare qui. · riga di stato offline · riga d'errore d'azione · pillole disabilitate mentre la risposta è in volo · barra ridotta (la scheda è statica: le misure sono nel CSS, nessuno script).</div>

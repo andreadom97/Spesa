@@ -209,7 +209,7 @@ Scala a base 4: **4 · 8 · 12 · 16 · 20 · 26**, più 22 per il distacco dal 
 | Dock | 16 dai lati, 8 sopra la tab bar, padding 8, gap 8 |
 | Ultimo elemento dal fondo | 22 |
 | Foglio dal basso | 16 / 16 / 26 |
-| Coda di scorrimento sotto l'ultimo contenuto | 118 senza dock · 140 col dock a una riga · 248 col dock a due righe (124 + 114 + 10) |
+| Coda di scorrimento sotto l'ultimo contenuto | **140** senza Dock (84 di barra + 22 dal fondo + 34 di respiro) · **194** col Dock (70 di dock + 114 dal fondo + 10) |
 
 Nessun valore intermedio: 13, 14 e 15 diventano 12 o 16, tranne dentro l'anatomia di un
 componente dove il valore è dichiarato (padding `12 14 13` della tessera, `13 16 14` della
@@ -397,20 +397,21 @@ flottante: il tasto primario non ha più il suo posto in coda al contenuto. Il D
 - **Posizione:** `left/right 16`; `bottom` **114** a barra grande (84 + 22 di distacco + 8 di
   respiro) e **96** a barra ridotta (66 + 22 + 8). La transizione è `bottom 200ms
   cubic-bezier(.2,.8,.25,1)`, la stessa `.anim-barra`.
-- **Due forme, una regola:**
-  - **A una riga** (Dispensa): nessun contenitore, i controlli sono pillole alte **56** che
-    galleggiano direttamente sul fondo, raggio 999, `--ombra-nav`, gap 8.
-  - **A due righe** (Lista, Piano, Importa: dove c'è un primario e un selettore): contenitore
-    bianco raggio **22**, padding 8, gap 8, `--ombra-nav`; sopra il selettore (segmento a
-    blocco, 46), sotto il **tasto primario** a larghezza piena (54, raggio 18). Altezza
-    risultante **124**.
+- **Una riga sola** (deciso il 20/09: la forma a due righe è decaduta con Base / Top-up).
+  Contenitore bianco raggio **999**, padding 8, `--ombra-nav`; dentro, una riga di controlli con
+  gap 8. **Altezza 70** = 8 + 54 + 8. Due riempimenti dello stesso contenitore:
+  - **Un primario a larghezza piena** (Lista, Piano, stati vuoti): tasto alto **54**, raggio
+    999, mono 12/700/0,09em, `--ombra-tasto`.
+  - **Due controlli affiancati** (Dispensa): pillole alte **56**, raggio 999, gap 8 — il testo
+    `Fai una modifica` e il vocale.
 - **Cosa ci vive:** `HAI PRESO TUTTO` (Lista), `CONFERMA E CREA LA LISTA` (Piano), `HO FINITO`
   (Importa, sopra l'anteprima è la Banda dei comandi a farlo), il primario di ogni stato vuoto,
   `Fai una modifica` e il vocale (Dispensa).
 - **Accesso:** il Dock non è una barra di navigazione, non prende `role` propri; i suoi
   controlli sono tasti normali con nome accessibile. Bersagli ≥ 44 sempre.
-- **Quando il primario non deve esistere** (in Lista compare solo a lista davvero finita) il
-  Dock resta con la sola riga del selettore: non si mostra un primario spento.
+- **Quando il primario non deve esistere, il Dock non c'è.** In Lista compare solo a lista
+  davvero finita: prima non esiste affatto, e la coda di scorrimento torna a 140. Non si mostra
+  un primario spento, e non resta un contenitore vuoto.
 
 ### Tasti
 Altezza **54**, raggio **18**, mono 12/700/0.09em maiuscolo, larghezza piena o `flex: 1` in
@@ -434,8 +435,8 @@ Disegno 38 px (44 nei SÌ/NO), raggio 999, mono 11/700/0.08em maiuscolo, `paddin
 
 ### Segmento a blocco
 Rettangoli `flex: 1`, alti 46, raggio 14, gap 7, mono 11/700/0.08em maiuscolo; stessi colori
-delle pillole. Un attivo alla volta, `aria-pressed`. Nel Dock della Lista porta `BASE` e
-`TOP-UP` col loro contatore.
+delle pillole. Un attivo alla volta, `aria-pressed`. Non sta nel Dock: il selettore
+`BASE` / `TOP-UP` della Lista è decaduto il 20/09, e il Dock è a una riga sola.
 
 ### Tessera widget di sezione
 **Nuova il 19/09 (variante 1 delle cinque).** Ogni sezione merceologica della Lista è una

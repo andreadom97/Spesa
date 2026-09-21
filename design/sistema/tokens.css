@@ -135,9 +135,10 @@
   --dock-fondo: 114px;                /* bottom del dock a barra grande: 84 + 22 + 8 di respiro */
   --dock-fondo-giu: 96px;             /* bottom del dock a barra ridotta: 66 + 22 + 8 */
   --dock-respiro: 8px;                /* aria tra dock e tab bar, e gap interno del dock */
-  --dock-pillola: 56px;               /* altezza dei controlli del dock a una riga (Dispensa) */
-  --dock-padding: 8px;                /* padding del contenitore del dock a due righe */
-  --dock-altezza-2: 124px;            /* altezza risultante del dock a due righe: 8 + 46 + 8 + 54 + 8 */
+  --dock-pillola: 56px;               /* altezza delle due pillole affiancate (Dispensa) */
+  --dock-primario: 54px;              /* altezza del primario a larghezza piena (Lista, Piano, stati vuoti) */
+  --dock-padding: 8px;                /* padding del contenitore del dock */
+  --dock-altezza: 70px;               /* altezza del dock a una riga: 8 + 54 + 8 (decisione del 20/09) */
 
   /* ---------- Ridisegno 19-20/09: componenti nuovi ---------- */
   --utente-alto: 50px;                /* menù utente: altezza della pillola (bersaglio 81 x 50) */
@@ -153,5 +154,6 @@
   --cella-pasto: 44px;                /* matrice dei pasti: lato minimo della cella, mai sotto */
   --riga-piatto: 68px;                /* riga piatto: altezza minima */
   --riga-impostazione: 56px;          /* riga di impostazione: altezza minima */
-  --coda-scroll: 140px;               /* coda di scorrimento sotto l'ultimo contenuto (118 dove non c'è dock) */
+  --coda-scroll: 140px;               /* coda di scorrimento senza dock: 84 + 22 + 34 */
+  --coda-scroll-dock: 194px;          /* coda di scorrimento col dock: 70 + 114 + 10 */
 }
