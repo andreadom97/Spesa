@@ -277,6 +277,20 @@ function eControlloInSospeso(r: RigaVoceGrezza): boolean {
 }
 
 /**
+ * I due criteri di ordinamento condivisi fra `raggruppaInSezioni` e
+ * `fondiSezioni`: quest'ultima esiste per riprodurre lo stesso ordine
+ * sull'unione delle due liste, quindi il criterio vive qui una volta sola —
+ * due copie sarebbe il punto in cui un cambio futuro le fa divergere in
+ * silenzio.
+ */
+function ordinaVoci(a: VoceSalvata, b: VoceSalvata): number {
+  return b.confezioni - a.confezioni || a.nome.localeCompare(b.nome, 'it');
+}
+function ordinaControlli(a: VoceSalvata, b: VoceSalvata): number {
+  return a.nome.localeCompare(b.nome, 'it');
+}
+
+/**
  * Stesse due regole di ordinamento della funzione sezioni() del Task 4: ordine
  * aree dell'utente, poi confezioni decrescenti e nome per le voci, solo nome
  * per i controlli. Niente sezioni vuote.
@@ -292,10 +306,10 @@ export function raggruppaInSezioni(righe: RigaVoceGrezza[], ordine: AreaId[]): S
   for (const area of ordine) {
     const v = voci
       .filter((x) => x.area === area)
-      .sort((a, b) => b.confezioni - a.confezioni || a.nome.localeCompare(b.nome, 'it'));
+      .sort(ordinaVoci);
     const c = controlli
       .filter((x) => x.area === area)
-      .sort((a, b) => a.nome.localeCompare(b.nome, 'it'));
+      .sort(ordinaControlli);
     if (v.length === 0 && c.length === 0) continue;
     out.push({ area, voci: v, controlli: c });
   }
@@ -352,8 +366,8 @@ export function fondiSezioni(lista: ListaSalvata): SezioneFusa[] {
       for (const c of s.controlli) controlli.push({ ...c, listaId: s.listaId });
     }
     if (voci.length === 0 && controlli.length === 0) continue;
-    voci.sort((a, b) => b.confezioni - a.confezioni || a.nome.localeCompare(b.nome, 'it'));
-    controlli.sort((a, b) => a.nome.localeCompare(b.nome, 'it'));
+    voci.sort(ordinaVoci);
+    controlli.sort(ordinaControlli);
     out.push({ area, voci, controlli });
   }
   return out;
