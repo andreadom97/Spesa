@@ -59,6 +59,16 @@ export function StrisciaGiorni({ giorni, slotDefs, slots, oggi, selezionato, onS
         // I quattro stati stanno tutti nel box-shadow, mai nel bordo: "oggi" come
         // bordo 3 px rimpiccioliva la cella dentro e i due stati insieme non
         // avevano forma. Con gli inset le sette celle restano identiche.
+        //
+        // Limite noto dell'inset da 4,5 px, misurato nel browser a 375 px di
+        // schermo con sei pasti: i pallini cominciano a 3,21 px dal bordo della
+        // cella, quindi sulla cella "oggi E selezionata" l'anello copre i due
+        // pallini esterni per 1,29 px — e col bianco dell'anello sotto un pallino
+        // pieno, che è bianco anch'esso, là i sei pallini non si contano. Sulla
+        // cella "oggi" non selezionata l'anello è 3 px e non li tocca (3,21 > 3).
+        // Non è un difetto da riparare qui: 4,5 è il valore del file di disegno, e
+        // il caso a sei pasti non è reso in nessuno di quei file. Chi cambia questo
+        // numero sappia che sotto ci passano i pallini.
         const ombra = sel
           ? (isOggi
             ? '0 2px 6px rgba(20,22,58,0.20), inset 0 0 0 3px #FFFFFF, inset 0 0 0 4.5px #14163A'
