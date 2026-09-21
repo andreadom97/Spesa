@@ -475,3 +475,11 @@ tasto di scatto è **76 / 62 bianco** (non 72 / 52 in `--ink`).
 **[chiuso, fase 2]** sopra sono in `src/`. Il resto — comprese le parti non annotate degli
 stessi item 8 e 9 — restano derive *future*, con la fase che le chiude segnata accanto; §6 non
 le conta finché non sono misurabili nel codice consegnato.
+
+**Token cancellato in esecuzione (fase 2).** `--coda-dock-giu` — nominato dalla spec §A e dal
+piano del 21/09 come coda ridotta (176 px) degli scroller col Dock — **non esiste**: in `src/`
+c'è una coda sola, `--coda-dock: 194px`, e la ragione misurata sta nel commento accanto in
+`src/app/globals.css` (una coda che cambia con `data-barra` fa ritagliare `scrollTop` dal
+browser e riporta la barra a grande, lasciando l'ultima voce dietro il Dock). `tokens.css` non
+l'ha mai avuto, quindi il design system non lo reintroduce; chi monta il Dock nelle fasi
+successive parta da una coda unica.

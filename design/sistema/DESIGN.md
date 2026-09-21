@@ -215,6 +215,18 @@ Nessun valore intermedio: 13, 14 e 15 diventano 12 o 16, tranne dentro l'anatomi
 componente dove il valore è dichiarato (padding `12 14 13` della tessera, `13 16 14` della
 protagonista, `14 15` della riga di controllo).
 
+**La cornice: 375 × 812, riferimento e minimo supportato.** Ogni misura di questo documento si
+verifica in una cornice da **375 × 812**, che è anche la **larghezza minima che Dispesa
+dichiara di supportare**: sotto i 375 px una schermata può sbordare e non è un difetto da
+riparare. La cornice del dispositivo dei mockup resta **393 × 852** (§5, raggio 26): è il telaio
+in cui i file di disegno sono resi, non la larghezza su cui si giudica se una schermata regge.
+Limite noto che questa dichiarazione mette fuori mandato: **a 360 px la striscia dei giorni con
+sei pasti sborda** col gap 3 dei pallini che il file di disegno prescrive — di 0,36 px per lato,
+e a 320 px di 3,22 (misurato il 21/09, sonda nel browser). A 375 il 3 ci sta, ma per 0,71 px per
+lato: per questo il codice scende a gap 2 **solo** a sei pasti (`StrisciaGiorni.tsx`), e da tre a
+cinque tiene il 3. È l'unica deroga a un valore dei file di disegno decisa da una misura e non
+da un file, e vale perché il caso a sei pasti non è reso in nessuno di quei file.
+
 ---
 
 ## 5. Raggi, bordi, ombre
