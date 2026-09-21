@@ -335,8 +335,10 @@ describe('Scegli il piatto', () => {
 
     fireEvent.click(screen.getByText('Merluzzo e piselli'));
 
+    // «nella lista», non «nel top-up»: la parola è uscita dall'interfaccia con
+    // la fase 2 (spec §I, riga corretta il 22/09).
     expect(
-      screen.getByText('Cambia solo Cena di giovedì. Gli altri giorni restano come sono. Se la lista è già fatta, quello che manca entra nel top-up quando la riapri.'),
+      screen.getByText('Cambia solo Cena di giovedì. Gli altri giorni restano come sono. Se la lista è già fatta, quello che manca entra nella lista quando la riapri.'),
     ).toBeInTheDocument();
     const bottone = screen.getByText('SOSTITUISCI');
     expect(bottone).not.toBeDisabled();

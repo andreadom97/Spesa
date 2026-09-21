@@ -149,17 +149,21 @@ describe('Ingrediente (editor)', () => {
     ).toBeInTheDocument();
   });
 
-  it('l\'etichetta sotto l\'interruttore deperibile segue lo stato: il residuo non arriva alla settimana dopo di default (come Ingrediente.dc.html), resta in dispensa quando disattivato', async () => {
+  // Le due stringhe sono quelle della spec §I dopo la correzione del 22/09: la
+  // sottoriga dice dove la scelta ha effetto, non quanto dura il residuo.
+  // "Non arriva alla settimana dopo" era falso per i surgelati (soglia null),
+  // per il congelato (90 giorni) e al settimo giorno esatto (confronto stretto).
+  it('l\'etichetta sotto l\'interruttore deperibile segue lo stato: quanto dura dipende dal reparto di default (deperibile), il residuo non scade quando disattivato', async () => {
     render(<IngredienteEditor />);
     await screen.findByPlaceholderText("Dai un nome all'ingrediente");
 
     // Default deper: true come in Ingrediente.dc.html riga 86.
-    expect(screen.getByText('IL RESIDUO NON ARRIVA ALLA SETTIMANA DOPO')).toBeInTheDocument();
+    expect(screen.getByText('QUANTO DURA IL RESIDUO DIPENDE DAL REPARTO')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Sì, va comprato fresco/ }));
 
-    expect(screen.getByText('IL RESIDUO RESTA IN DISPENSA')).toBeInTheDocument();
-    expect(screen.queryByText('IL RESIDUO NON ARRIVA ALLA SETTIMANA DOPO')).not.toBeInTheDocument();
+    expect(screen.getByText('IL RESIDUO NON SCADE')).toBeInTheDocument();
+    expect(screen.queryByText('QUANTO DURA IL RESIDUO DIPENDE DAL REPARTO')).not.toBeInTheDocument();
   });
 
   it('salva chiama salvaIngrediente con i valori scelti (deperibile true di default) e torna al piatto', async () => {
@@ -194,7 +198,7 @@ describe('Ingrediente (editor)', () => {
     expect(await screen.findByDisplayValue('Yogurt greco')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'LATTICINI, UOVA E SALUMI' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: 'A STIMA' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByText('IL RESIDUO NON ARRIVA ALLA SETTIMANA DOPO')).toBeInTheDocument();
+    expect(screen.getByText('QUANTO DURA IL RESIDUO DIPENDE DAL REPARTO')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'SALVA INGREDIENTE' })).toBeEnabled();
   });
 

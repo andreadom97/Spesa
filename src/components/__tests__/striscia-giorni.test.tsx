@@ -71,5 +71,23 @@ describe('StrisciaGiorni', () => {
       render(<StrisciaGiorni {...props} slotDefs={sei as typeof props.slotDefs} />);
       expect(screen.getAllByRole('button')[0].querySelectorAll('[data-pallino]')).toHaveLength(6);
     });
+
+    // Il gap dei pallini è il solo numero della fase 2 non preso dai file di
+    // disegno: la riduzione a 2 esiste per una misura (a sei pasti il 3 sta
+    // dentro per 0,71 px per lato a 375), quindi la soglia va fissata da un
+    // test, non dalla memoria di chi l'ha scritta.
+    it('a cinque pasti il gap dei pallini resta il 3 del file di disegno', () => {
+      const cinque = Array.from({ length: 5 }, (_, i) => ({ id: `def-${i}`, nome: `Pasto ${i}`, posizione: i }));
+      render(<StrisciaGiorni {...props} slotDefs={cinque as typeof props.slotDefs} />);
+      const fila = screen.getAllByRole('button')[0].querySelector('[data-pallino]')!.parentElement!;
+      expect(fila.style.gap).toBe('3px');
+    });
+
+    it('a sei pasti il gap dei pallini scende a 2: è il caso misurato che sbordava', () => {
+      const sei = Array.from({ length: 6 }, (_, i) => ({ id: `def-${i}`, nome: `Pasto ${i}`, posizione: i }));
+      render(<StrisciaGiorni {...props} slotDefs={sei as typeof props.slotDefs} />);
+      const fila = screen.getAllByRole('button')[0].querySelector('[data-pallino]')!.parentElement!;
+      expect(fila.style.gap).toBe('2px');
+    });
   });
 });
