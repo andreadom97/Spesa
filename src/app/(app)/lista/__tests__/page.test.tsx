@@ -341,6 +341,25 @@ describe('Lista', () => {
     await waitFor(() => expect(rispondiControllo).toHaveBeenCalledWith('ing-olio', 'lista-topup-1', true));
   });
 
+  it('se la risposta al controllo non si salva lo dice in linea, in --errore', async () => {
+    const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(leggiListe).mockResolvedValue(buildLista());
+    vi.mocked(rispondiControllo).mockRejectedValue(new Error('rete'));
+    rendi();
+    await screen.findByText('Olio: ne hai ancora?');
+
+    fireEvent.click(screen.getByRole('button', { name: /Sì, hai ancora Olio/ }));
+
+    const riga = await screen.findByText('Non siamo riusciti a salvare la risposta. Riprova.');
+    // Un errore a schermo va in `--errore`, non in un grigio: è la regola di
+    // DESIGN.md §8 Messaggi. jsdom non risolve le custom property, quindi lo
+    // stile calcolato restituisce la stringa letterale.
+    expect(getComputedStyle(riga).color).toBe('var(--errore)');
+    // Il controllo resta: la risposta non è passata.
+    expect(screen.getByText('Olio: ne hai ancora?')).toBeInTheDocument();
+    errore.mockRestore();
+  });
+
   it('"NO" su un controllo lo converte e ricarica la lista dal server', async () => {
     const primaVolta = buildLista();
     const dopoLaRisposta: ListaSalvata = {
@@ -792,7 +811,9 @@ describe('Lista', () => {
   // dal server si mostra l'ultima lista vista con rete, con la coda sopra e
   // una riga che dice che è una copia; al ritorno della rete si rilegge.
   describe('offline', () => {
-    const RIGA_OFFLINE = 'Sei offline: questa è la lista di Settimana del 24 agosto salvata l\'ultima volta che l\'hai aperta. Le spunte si sincronizzano appena torna la rete.';
+    // L'etichetta della settimana sta in apposizione dopo l'em-dash: dentro
+    // la frase ("la lista di Settimana del 24 agosto") non era italiano.
+    const RIGA_OFFLINE = 'Sei offline: questa è la lista salvata l\'ultima volta che l\'hai aperta — Settimana del 24 agosto. Le spunte si sincronizzano appena torna la rete.';
     const VOCE_UOVA = {
       id: 'item-uova', ingredientId: 'ing-uova', nome: 'Uova', area: 'latticini' as const,
       unita: 'pz' as const, fabbisogno: 6, residuo: 0, confezioni: 1, quantitaTotale: 6,
@@ -830,6 +851,11 @@ describe('Lista', () => {
       expect(screen.getByText('Pasta integrale')).toBeInTheDocument();
       expect(screen.getByText('Settimana del 24 agosto')).toBeInTheDocument();
       expect(screen.getByText(RIGA_OFFLINE)).toBeInTheDocument();
+      // Testo che porta informazione, e su cui una persona agisce in corsia:
+      // `--testo-2` (5,5:1), non il grigio decorativo sotto soglia AA.
+      // jsdom non risolve le custom property, quindi lo stile calcolato
+      // restituisce la stringa letterale.
+      expect(getComputedStyle(screen.getByText(RIGA_OFFLINE)).color).toBe('var(--testo-2)');
       expect(screen.queryByText('Non riusciamo a caricare la lista. Riprova più tardi.')).not.toBeInTheDocument();
       expect(errore).toHaveBeenCalledWith('lista: caricamento fallito.', expect.any(Error));
       expect(leggiListe).not.toHaveBeenCalled();

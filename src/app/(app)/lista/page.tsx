@@ -459,18 +459,21 @@ export default function Lista() {
     void sincronizzaCoda();
   }
 
-  // Il `listaId` arriva dalla voce, non dalla vista: con la lista unica la
-  // tab attiva non c'è più, e rispondere a un controllo del fresco deve
-  // scrivere sulla riga `shopping_list` del fresco. `fondiSezioni` scarta le
-  // voci di una lista senza id, quindi qui l'id c'è sempre: la vecchia
-  // guardia `if (!listaId)` non ha più un caso da coprire.
-  async function rispondi(controllo: VoceFusa, listaId: string, ancora: boolean) {
+  // L'id della lista si legge dalla voce, e non si passa come parametro: con
+  // la lista unica la tab attiva non c'è più, e rispondere a un controllo del
+  // fresco deve scrivere sulla riga `shopping_list` del fresco. Tenerlo fuori
+  // dalla firma darebbe due sorgenti per lo stesso dato e lascerebbe il
+  // chiamante libero di dissociarle — cioè di rappresentare ancora il bug che
+  // la lista unica chiude. `fondiSezioni` scarta le voci di una lista senza
+  // id, quindi qui l'id c'è sempre: la vecchia guardia `if (!listaId)` non ha
+  // più un caso da coprire.
+  async function rispondi(controllo: VoceFusa, ancora: boolean) {
     if (rigaInVolo) return;
     versioneTocchi.current += 1;
     setErroreAzione(null);
     setRigaInVolo(controllo.id);
     try {
-      await rispondiControllo(controllo.ingredientId, listaId, ancora);
+      await rispondiControllo(controllo.ingredientId, controllo.listaId, ancora);
       if (ancora) {
         setStato((prev) => (prev ? { ...prev, lista: conControlloRimosso(prev.lista, controllo.id) } : prev));
       } else if (stato) {
@@ -571,7 +574,10 @@ export default function Lista() {
       >
         {stato.offline && (
           <p style={{ margin: '0 12px 12px', fontSize: 12.5, lineHeight: 1.4, color: 'var(--testo-2)' }}>
-            {`Sei offline: questa è la lista di ${stato.settimanaLabel} salvata l'ultima volta che l'hai aperta. Le spunte si sincronizzano appena torna la rete.`}
+            {/* L'etichetta sta in apposizione, non dentro la frase: "la lista di
+                Settimana del 24 agosto" non è italiano, e la forma della
+                pillola è l'unica che l'istantanea offline salva. */}
+            {`Sei offline: questa è la lista salvata l'ultima volta che l'hai aperta — ${stato.settimanaLabel}. Le spunte si sincronizzano appena torna la rete.`}
           </p>
         )}
         {erroreAzione && (
@@ -588,8 +594,8 @@ export default function Lista() {
             sezione={sezione}
             rigaInVolo={rigaInVolo}
             onToggleVoce={toggleVoce}
-            onSi={(c) => rispondi(c, c.listaId, true)}
-            onNo={(c) => rispondi(c, c.listaId, false)}
+            onSi={(c) => rispondi(c, true)}
+            onNo={(c) => rispondi(c, false)}
           />
         ))}
       </div>
