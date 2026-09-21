@@ -9,17 +9,8 @@ import { leggiListe, chiudiSpesa, type ListaSalvata, type SezioneSalvata } from 
 import { leggiRisparmioSettimana } from '@/data/risparmio';
 import type { VoceEvitata } from '@/domain/list-builder';
 import { riassumiEvitato, formattaQuantita, formattaEuro } from '@/domain/risparmio';
+import { etichettaSettimana } from '@/domain/settimana-label';
 import { Testata } from '@/components/Testata';
-
-const MESI = ['GEN', 'FEB', 'MAR', 'APR', 'MAG', 'GIU', 'LUG', 'AGO', 'SET', 'OTT', 'NOV', 'DIC'];
-
-/** "31 AGO — 6 SET": stessa formattazione di /lista. */
-function formattaPillola(dataInizio: string): string {
-  const inizio = new Date(`${dataInizio}T00:00:00Z`);
-  const fine = new Date(inizio.getTime() + 6 * 86_400_000);
-  const g = (d: Date) => `${d.getUTCDate()} ${MESI[d.getUTCMonth()]}`;
-  return `${g(inizio)} — ${g(fine)}`;
-}
 
 /**
  * Solo la classe "voci" conta come in /lista: i controlli non si spuntano,
@@ -133,7 +124,7 @@ export default function ListaFatta() {
         if (!vivo) return;
         setStato({
           weekId: settimana.id,
-          settimanaLabel: formattaPillola(settimana.dataInizio),
+          settimanaLabel: etichettaSettimana(settimana.dataInizio),
           totaleVoci: esito.totale,
           evitato,
         });

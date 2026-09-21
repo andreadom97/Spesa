@@ -149,17 +149,17 @@ describe('Ingrediente (editor)', () => {
     ).toBeInTheDocument();
   });
 
-  it('l\'etichetta sotto l\'interruttore deperibile segue lo stato: top-up di default (come Ingrediente.dc.html), base quando disattivato', async () => {
+  it('l\'etichetta sotto l\'interruttore deperibile segue lo stato: il residuo non arriva alla settimana dopo di default (come Ingrediente.dc.html), resta in dispensa quando disattivato', async () => {
     render(<IngredienteEditor />);
     await screen.findByPlaceholderText("Dai un nome all'ingrediente");
 
     // Default deper: true come in Ingrediente.dc.html riga 86.
-    expect(screen.getByText('FINISCE NELLA LISTA TOP-UP')).toBeInTheDocument();
+    expect(screen.getByText('IL RESIDUO NON ARRIVA ALLA SETTIMANA DOPO')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Sì, va comprato fresco/ }));
 
-    expect(screen.getByText('FINISCE NELLA LISTA BASE')).toBeInTheDocument();
-    expect(screen.queryByText('FINISCE NELLA LISTA TOP-UP')).not.toBeInTheDocument();
+    expect(screen.getByText('IL RESIDUO RESTA IN DISPENSA')).toBeInTheDocument();
+    expect(screen.queryByText('IL RESIDUO NON ARRIVA ALLA SETTIMANA DOPO')).not.toBeInTheDocument();
   });
 
   it('salva chiama salvaIngrediente con i valori scelti (deperibile true di default) e torna al piatto', async () => {
@@ -194,7 +194,7 @@ describe('Ingrediente (editor)', () => {
     expect(await screen.findByDisplayValue('Yogurt greco')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'LATTICINI, UOVA E SALUMI' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: 'A STIMA' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByText('FINISCE NELLA LISTA TOP-UP')).toBeInTheDocument();
+    expect(screen.getByText('IL RESIDUO NON ARRIVA ALLA SETTIMANA DOPO')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'SALVA INGREDIENTE' })).toBeEnabled();
   });
 

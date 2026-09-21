@@ -393,7 +393,9 @@ export default function IngredienteEditor() {
                 marginTop: 5,
               }}
             >
-              {deperibile ? 'FINISCE NELLA LISTA TOP-UP' : 'FINISCE NELLA LISTA BASE'}
+              {/* Con una lista sola il flag non decide più in quale lista finisce (decisione
+                  del 20/09): decide se il residuo sopravvive alla settimana (pantry.ts). */}
+              {deperibile ? 'IL RESIDUO NON ARRIVA ALLA SETTIMANA DOPO' : 'IL RESIDUO RESTA IN DISPENSA'}
             </div>
           </div>
           <span

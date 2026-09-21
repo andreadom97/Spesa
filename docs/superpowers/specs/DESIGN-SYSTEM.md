@@ -453,10 +453,10 @@ Le dieci regole cambiate, in una riga ciascuna:
 3. **Tab bar** — pillola **flottante** `left/right 16` `bottom 22` alta **84**, raggio 999, icone **26 piene**, voce attiva a 0,07, e un **secondo stato** a 66 con i lati a 46 e le etichette nascoste ma cliccabili: cadono i 21 px, il raggio 14 e il `padding 10 16 20` nel flusso di §3.
 4. **Nomi della barra** — `SETTIMANA` diventa **Piano**, l'ordine è **Lista · Piano · Piatti · Dispensa**, e l'**icona della Lista è il Marchio** (3 × 2, lato 9, raggio 2,52): il Marchio esce dalla Testata e con lui il link `Vai alla lista`.
 5. **Menù utente** — l'ingranaggio 24 px di §3 Testata è sostituito da una pillola 81 × 50 col tondo 38 e l'iniziale in mono 16, che apre il pannello delle impostazioni.
-6. **Piano** — la schermata Settimana si chiama Piano, guadagna la pillola settimana e l'etichetta del giorno scelto, e la cella della striscia ha un **quarto stato** («oggi e selezionato»).
+6. **Piano** — la schermata Settimana si chiama Piano, guadagna la pillola settimana e l'etichetta del giorno scelto, e la cella della striscia ha un **quarto stato** («oggi e selezionato»). **[chiuso, fase 2]**
 7. **Sentence case** — i titoli di schermata sono `Lista`, `Piano`, `Piatti`, `Dispensa`, `Impostazioni`: chiude la divergenza n. 1 di «Non determinato dal codice» contro il maiuscolo di §2.4 (il codice oggi passa `Spesa`).
-8. **Dock** — il tasto primario non sta più in coda al contenuto ma in un componente condiviso sopra la tab bar (`bottom` 114 → 96), che si restringe con lei: `HAI PRESO TUTTO`, `CONFERMA E CREA LA LISTA`, `HO FINITO`, i primari degli stati vuoti.
-9. **Componenti nuovi** — Menù utente, Dock, Tessera widget di sezione, Riga piatto, Tessera di dispensa (tinta d'area al 26%: **quinto** uso del colore, contro i quattro di §2.2), Pannello impostazioni, Riga di impostazione, Matrice dei pasti, Tasto di scatto, Banda dei comandi, Striscia dei fogli presi, stato «Registro».
+8. **Dock** — il tasto primario non sta più in coda al contenuto ma in un componente condiviso sopra la tab bar (`bottom` 114 → 96), che si restringe con lei: `HAI PRESO TUTTO`, `CONFERMA E CREA LA LISTA` e i primari degli stati vuoti di Lista e Piano **[chiuso, fase 2]**; `HO FINITO` (Piatti) e i primari degli stati vuoti delle altre schermate restano aperti, ciascuno nella fase della sua schermata (fase 3 Piatti, fase 4 Dispensa, fase 5 Impostazioni).
+9. **Componenti nuovi** — Menù utente, Dock **[chiuso, fase 2]**, Tessera widget di sezione **[chiuso, fase 2]**, Riga piatto (fase 3), Tessera di dispensa (tinta d'area al 26%: **quinto** uso del colore, contro i quattro di §2.2) (fase 4), Pannello impostazioni (fase 5), Riga di impostazione (fase 5), Matrice dei pasti (fase 5), Tasto di scatto (fase 3), Banda dei comandi (fase 3), Striscia dei fogli presi (fase 3), stato «Registro» (fase 4).
 10. **Scale ed eccezioni** — due raggi fuori dai cinque, **dichiarati** (26 sulla cornice, 2,52 sulle caselle del Marchio in barra, che rispetta `lato × 0,28`); la tabella degli alfa ammessi è aperta a 0,26 · 0,55 · 0,62 · 0,72; la maschera di scorrimento (`--fine` 128 / 110) e `.anim-barra` a 200 ms sono il quinto momento di movimento.
 
 Le cinque risposte di Andrea del **20/09**, che chiudono le domande di `ANALISI.md` §6:
@@ -471,8 +471,7 @@ E le tre incoerenze fra scheda di decisione e file HTML, risolte **a favore dei 
 Marchio in barra è **3 × 2** (non 3 × 3); `--fine` vale **128** a barra grande (non 140); il
 tasto di scatto è **76 / 62 bianco** (non 72 / 52 in `--ink`).
 
-**Cosa vuol dire per il codice.** Nessuna di queste regole è ancora in `src/`: sono tutte
-derive *future*, non misurate qui, e §6 non le conta. La prima schermata assemblata e pronta da
-ricollegare è `design/sistema/schermate/lista.html` (inventario §1, `/lista`), dove ogni
-controllo porta `data-elemento` col nome della colonna Elemento di
-`docs/2026-09-19-inventario-schermate.md`.
+**Cosa vuol dire per il codice.** Alla chiusura della fase 2 (Lista e Piano), le parti annotate
+**[chiuso, fase 2]** sopra sono in `src/`. Il resto — comprese le parti non annotate degli
+stessi item 8 e 9 — restano derive *future*, con la fase che le chiude segnata accanto; §6 non
+le conta finché non sono misurabili nel codice consegnato.
