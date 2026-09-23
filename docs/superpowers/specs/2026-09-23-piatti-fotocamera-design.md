@@ -273,7 +273,7 @@ Che la radice occupi davvero tutto il guscio va misurato nel browser, non dedott
      `min-width: 0` e lo scatto al centro.
      - *Lato sinistro*, solo con almeno un foglio:
        - la **miniatura** è un `<button>` 44 × 44, raggio 14, bianco, `--ombra-nav`, con le
-         righe finte (`repeating-linear-gradient(180deg, rgba(20,22,58,.16) 0 2px, transparent
+         righe finte (`repeating-linear-gradient(180deg, rgba(20,22,58,.14) 0 2px, transparent
          2px 7px)`, `inset: 7px`);
        - `aria-label`: `Rivedi il foglio preso` con un foglio, `Rivedi i {n} fogli presi` con
          più fogli;
