@@ -67,6 +67,10 @@ beforeEach(() => {
   vi.spyOn(window.history, 'back').mockImplementation(() => {
     window.dispatchEvent(new PopStateEvent('popstate'));
   });
+  // L'orologio della pagina: quello vero più uno scarto che `passaUnAttimo` sposta avanti.
+  avanti = 0;
+  const vero = performance.now.bind(performance);
+  vi.spyOn(performance, 'now').mockImplementation(() => vero() + avanti);
   vi.mocked(leggiBozzaImport).mockResolvedValue(null);
   vi.mocked(leggiSlotDefs).mockResolvedValue(SLOTS);
   vi.mocked(leggiIngredienti).mockResolvedValue([]);
@@ -74,10 +78,23 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.mocked(performance.now).mockRestore();
   vi.mocked(window.history.back).mockRestore();
   vi.mocked(window.history.pushState).mockRestore();
   slotDock.remove();
 });
+
+let avanti = 0;
+
+/**
+ * Chiusa la fotocamera, la pagina scarta i click per qualche centinaio di ms: è la difesa
+ * dal doppio tocco sul tondo indietro. Qui i click arrivano a pochi ms l'uno dall'altro,
+ * quindi un test che simula un tocco nuovo, non il secondo di un doppio tocco, prima
+ * sposta avanti di un secondo l'orologio della pagina.
+ */
+function passaUnAttimo() {
+  avanti += 1000;
+}
 
 /** Apre la fotocamera dalle porte e prende un foglio dalla galleria. */
 async function apriEPrendiUnFoglio(nome = 'p1.jpg') {
@@ -126,6 +143,7 @@ describe('Importa: la scelta', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Indietro' }));
     expect(window.history.back).toHaveBeenCalledTimes(1);
     expect(await screen.findByRole('button', { name: 'APRI LA FOTOCAMERA' })).toBeInTheDocument();
+    passaUnAttimo();
     fireEvent.click(screen.getByRole('button', { name: 'APRI LA FOTOCAMERA' }));
     expect(await screen.findByRole('button', { name: 'Rivedi il foglio preso' })).toBeInTheDocument();
   });
@@ -148,6 +166,20 @@ describe('Importa: la scelta', () => {
     fireEvent.click(indietro);
     fireEvent.click(indietro);
     expect(window.history.back).toHaveBeenCalledTimes(1);
+  });
+
+  it('il secondo tocco di un doppio tocco sul tondo non esce dalla freccia della testata', async () => {
+    rendi();
+    await apriEPrendiUnFoglio();
+    // `back` emette il `popstate` dentro la chiamata: la fotocamera si chiude e le
+    // porte, con la testata, sono già a schermo al tocco successivo.
+    fireEvent.click(screen.getByRole('button', { name: 'Indietro' }));
+    const freccia = screen.getByRole('link', { name: 'Indietro' });
+    // `fireEvent.click` restituisce false quando il click è stato annullato.
+    expect(fireEvent.click(freccia)).toBe(false);
+    // Passata la finestra, lo stesso click non è più annullato.
+    passaUnAttimo();
+    expect(fireEvent.click(freccia)).toBe(true);
   });
 
   it('i fogli presi con la fotocamera non accendono il Dock, senza un PDF', async () => {
@@ -218,6 +250,7 @@ describe('Importa: l\'invio', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Indietro' }));
     await screen.findByText('Carica il PDF');
     sceglieUnPdf();
+    passaUnAttimo();
     fireEvent.click(await screen.findByRole('button', { name: 'ESTRAI LA DIETA' }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     const body = fetchMock.mock.calls[0][1]?.body as FormData;
@@ -246,7 +279,10 @@ describe('Importa: l\'invio', () => {
     rendi();
     await inviaUnaFoto();
 
-    fireEvent.click(await screen.findByRole('button', { name: /riprova/i }));
+    // Anche `Ho finito` chiude la fotocamera: nel telefono l'estrazione dura secondi.
+    const riprova = await screen.findByRole('button', { name: /riprova/i });
+    passaUnAttimo();
+    fireEvent.click(riprova);
 
     // RIPROVA torna alle porte, con la fotocamera chiusa. Riaprendola, Camera
     // si rimonta da capo: senza `iniziali` la galleria sarebbe vuota e il

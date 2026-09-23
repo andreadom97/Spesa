@@ -36,6 +36,15 @@ const MESSAGGIO_422 = 'Non ho capito la dieta: riprova, magari con foto più nit
 const MESSAGGIO_SENZA_SESSIONE = 'Serve l’accesso: riapri l’app ed entra di nuovo.';
 
 /**
+ * Per quanto tempo, dopo che la fotocamera si è chiusa, i tocchi sulla pagina si ignorano.
+ * Il tondo indietro della fotocamera sta sopra la freccia indietro della testata (un link
+ * a /impostazioni): il `popstate` arriva 16–33 ms dopo `history.back()` (misurato nel
+ * browser il 23/09), e un doppio tocco umano dura circa 100–250 ms [ipotesi, non misurato],
+ * quindi il secondo tocco cadrebbe sul link e uscirebbe da /importa perdendo i fogli presi.
+ */
+const TOCCHI_IGNORATI_DOPO_CHIUSURA_MS = 400;
+
+/**
  * La data di oggi in locale, come yyyy-mm-dd: `toISOString` converte a UTC, quindi vicino
  * alla mezzanotte (in un fuso più avanti di UTC, come l'Italia) darebbe il giorno sbagliato.
  * Costruita dai campi locali di `Date`, mai da una stringa UTC.
@@ -130,6 +139,9 @@ export default function Importa() {
   // doppio tocco sul tondo chiamerebbe `back()` due volte, e il secondo
   // uscirebbe da /importa perdendo i fogli presi (misurato nel browser il 23/09).
   const inChiusura = useRef(false);
+  // Quando la fotocamera si è chiusa l'ultima volta (`performance.now()`). Parte da
+  // -Infinity, non da 0: così nessun tocco dei primi istanti dopo il caricamento si perde.
+  const chiusaAlle = useRef(-Infinity);
 
   /**
    * Il gesto indietro del telefono dentro la fotocamera (spec fase 3 §G). A
@@ -138,14 +150,29 @@ export default function Importa() {
    * fotocamera aggiunge una voce sullo stesso URL (Next 16 integra `pushState`
    * nativo col router); ogni uscita la consuma con `history.back()`, e chi
    * chiude davvero è sempre questo ascoltatore.
+   *
+   * Chiusa la fotocamera, per `TOCCHI_IGNORATI_DOPO_CHIUSURA_MS` un ascoltatore in
+   * cattura su `window` scarta ogni click prima che arrivi a React o al link: il
+   * secondo tocco di un doppio tocco sul tondo non esce da /importa.
    */
   useEffect(() => {
     const chiudi = () => {
       inChiusura.current = false;
+      chiusaAlle.current = performance.now();
       setFotocameraAperta(false);
     };
+    const scartaTroppoPresto = (e: MouseEvent) => {
+      if (performance.now() - chiusaAlle.current < TOCCHI_IGNORATI_DOPO_CHIUSURA_MS) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
     window.addEventListener('popstate', chiudi);
-    return () => window.removeEventListener('popstate', chiudi);
+    window.addEventListener('click', scartaTroppoPresto, true);
+    return () => {
+      window.removeEventListener('popstate', chiudi);
+      window.removeEventListener('click', scartaTroppoPresto, true);
+    };
   }, []);
 
   function apriFotocamera() {
