@@ -47,8 +47,8 @@ Le due inversioni della prima colonna — aree e semantici — sono la trappola 
 ## 3. Ogni componente, e dove vive
 
 L'anatomia, le misure e gli stati di ogni voce stanno in `DESIGN.md` §8, sotto lo stesso nome.
-Qui c'è solo il ponte verso il codice: 29 voci in `DESIGN.md` §8, 15 componenti in
-`src/components/`.
+Qui c'è solo il ponte verso il codice: 29 voci in `DESIGN.md` §8, 18 file in `src/components/`
+[contati il 23/09].
 
 | Componente (`DESIGN.md` §8) | Dove vive nel codice | Stato |
 |---|---|---|
@@ -56,22 +56,22 @@ Qui c'è solo il ponte verso il codice: 29 voci in `DESIGN.md` §8, 15 component
 | Menù utente | dentro `Testata.tsx` | fatto nella fase 1 |
 | Tab bar | `src/components/TabBar.tsx`, dentro `Guscio.tsx` | fatta nella fase 1: due stati, nomi, Marchio come icona della Lista |
 | Marchio | `src/components/Marchio.tsx` (+ `marchio-context.tsx`) | 3 × 2, sei aree |
-| Dock | — | **da fare**: task 2 del piano 21/09, `src/components/Dock.tsx` con lo slot nel `Guscio` |
+| Dock | `src/components/Dock.tsx`, montato con `createPortal` nello slot di `dock-slot.tsx`, reso da `Guscio.tsx` | fatto nella fase 2: in Lista `HAI PRESO TUTTO` e i primari dei due stati vuoti; nel Piano la sola conferma — lo stato vuoto del Piano resta una scheda con un link in linea, di proposito. **Da decidere prima della fase 3:** il primario sta fuori da ogni landmark, e chi naviga per regioni con lo screen reader non lo incontra |
 | Tasti | nessun file: le tre basi sono copiate in otto punti | deriva dichiarata e accettata (§6) |
 | Pillole d'azione | `RigaControllo.tsx`, `Segmento.tsx` (variante pillola) | |
 | Segmento a blocco | `Segmento.tsx` (variante blocco) | |
-| Tessera widget di sezione | — | **da fare**: task 3 del piano 21/09 |
-| Tessera della Lista | `src/components/Tessera.tsx` | da rifare nella fase 2 (task 3) |
-| Riga di controllo | `src/components/RigaControllo.tsx` | da rifare nella fase 2 (task 3) |
+| Tessera widget di sezione | `CartaSezione`, dentro `src/app/(app)/lista/page.tsx` | fatta nella fase 2 |
+| Tessera della Lista | `src/components/Tessera.tsx` | allineata nella fase 2: l'accesa non protagonista perde fondo e ombra dentro il widget |
+| Riga di controllo | `src/components/RigaControllo.tsx` | allineata nella fase 2: la cadenza viene da `GIORNI_CONTROLLO_STAPLE`, la sottoriga è in `--testo-2` |
 | Riga pasto | `src/components/RigaPasto.tsx` | |
-| Riga piatto | — | **da fare**: fase 2, schermata Piatti |
-| Striscia dei giorni | `src/components/StrisciaGiorni.tsx` | da rifare nella fase 2 (task 3) |
-| Pannello impostazioni · Riga di impostazione | — | **da fare**: oggi le Impostazioni sono una schermata, non un pannello |
-| Matrice dei pasti | — | **da fare**: sotto-schermata delle Impostazioni |
-| Tessera di dispensa | `src/app/(app)/dispensa/page.tsx` | la schermata c'è, la tinta d'area al 26% no |
-| Foglio del Dock della Dispensa | le tre vie esistono separate: `NotaDispensa.tsx` (nota e voce), `Scanner.tsx` (scansione), campi residuo nella pagina | **da fare**: il foglio che le raccoglie |
-| Stato "Registro" | dentro `NotaDispensa.tsx` (dettatura) | l'animazione di livello non c'è |
-| Tasto di scatto · Banda dei comandi · Striscia dei fogli presi | — | **da fare**: schermata «Fotografa il piano» |
+| Riga piatto | — | **da fare**: fase 3, schermata Piatti |
+| Striscia dei giorni | `src/components/StrisciaGiorni.tsx` | allineata nella fase 2: quattro stati negli `inset`, sette celle dello stesso ingombro, regge da 3 a 6 pasti fino a 360 px |
+| Pannello impostazioni · Riga di impostazione | — | **da fare**, fase 5: oggi le Impostazioni sono una schermata, non un pannello |
+| Matrice dei pasti | — | **da fare**, fase 5: sotto-schermata delle Impostazioni |
+| Tessera di dispensa | `src/app/(app)/dispensa/page.tsx` | la schermata c'è, la tinta d'area al 26% no: fase 4 |
+| Foglio del Dock della Dispensa | le tre vie esistono separate: `NotaDispensa.tsx` (nota e voce), `Scanner.tsx` (scansione), campi residuo nella pagina | **da fare**, fase 4: il foglio che le raccoglie |
+| Stato "Registro" | dentro `NotaDispensa.tsx` (dettatura) | l'animazione di livello non c'è: fase 4 |
+| Tasto di scatto · Banda dei comandi · Striscia dei fogli presi | — | **da fare**, fase 3: schermata «Fotografa il piano» |
 | Stato vuoto · Campo di testo · Scheda · Etichetta di sezione · Messaggi | sparsi nelle pagine, in stile inline | scelta del progetto, non una deriva (§6, prima riga) |
 | Foglio dal basso | `src/components/FoglioAzioniPasto.tsx` | |
 
@@ -128,20 +128,28 @@ nuovo nasce già sulla scala.
 8. Un valore nuovo che vale per tutto il sistema è un token: prima `DESIGN.md`, poi
    `tokens.css`, poi `globals.css`. Il test `npm run design:token` tiene gli ultimi due
    d'accordo.
+9. Chi monta un Dock (fasi 3, 4 e 5) usa `<Dock>`, che lo mette nello slot del `Guscio`, e dà
+   al proprio scroller la classe `con-dock`. **La coda è una sola, `--coda-scroll-dock`, e non
+   deve cambiare con `data-barra`**: una coda che cambia con la barra fa ritagliare `scrollTop`
+   dal browser e lascia l'ultima voce dietro il Dock — il perché, misurato, sta nel commento in
+   `globals.css`. La spec e il piano del 21/09 nominano ancora `--coda-dock-giu`: non esiste.
 
 ---
 
 ## 9. Cosa il codice non ha ancora
 
-Il conto aperto verso `DESIGN.md` v3, al 21/09/2026.
+Il conto aperto verso `DESIGN.md` v3, al 23/09/2026.
 
-- **La fase 2 (Lista e Piano)**, sette task nel piano `docs/superpowers/plans/2026-09-21-lista-piano.md`.
+- **La fase 2 (Lista e Piano) è chiusa** il 22/09 (PR #4). Le decisioni prese durante
+  l'esecuzione, con il costo di ognuna, stanno in `docs/2026-09-22-fase2-decisioni-esecuzione.md`.
 - **Le schermate non ancora ridisegnate**: Piatti, Dispensa, Impostazioni a pannello,
   «Fotografa il piano».
-- **70 token dichiarati nel design e assenti dal codice** [misurato il 21/09: `tokens.css` ne
-  dichiara 115, `src/app/globals.css` ne ha 48, 45 in comune]. Sono le spaziature
-  (`--spazio-1..6`), i raggi (`--raggio-*`), la scala tipografica (`--testo-*`), il dock e il
-  moto: il codice li ha scritti a mano dentro i componenti. Finché è così, cambiare un raggio
+- **63 token dichiarati nel design e assenti dal codice** [misurato il 23/09 col guardiano:
+  `tokens.css` ne dichiara 115, `src/app/globals.css` ne ha 54, 52 in comune, 0 divergenti; il
+  21/09 erano 48 nel codice e 45 in comune]. Sono soprattutto la scala tipografica
+  (`--testo-*`), le spaziature (`--spazio-*`), i raggi (`--raggio-*`) e il moto. Del Dock ne
+  restano solo due, `--dock-altezza` e `--dock-pillola`: gli altri sono entrati con la fase 2.
+  I 63 il codice li ha scritti a mano dentro i componenti, e finché è così cambiare un raggio
   nel design vuol dire cercarlo nei file. Si portano dentro **una famiglia per volta, sulle
   schermate che si stanno già toccando**, non in un refactor a sé.
 - **Due token che il codice ha e il design non nomina**: `--coda` e `--fine` (il design li
@@ -150,5 +158,5 @@ Il conto aperto verso `DESIGN.md` v3, al 21/09/2026.
 
 Che `tokens.css` e `globals.css` non divergano in silenzio non è più affidato alla memoria:
 `npm test` fallisce se lo stesso token vale due cose diverse
-(`scripts/__tests__/token-check.test.ts`, da solo con `npm run design:token`). I 70 e i 2 qui
+(`scripts/__tests__/token-check.test.ts`, da solo con `npm run design:token`). I 63 e i 2 qui
 sopra il test li riporta come lavoro aperto, non come errore.
