@@ -1,6 +1,6 @@
 # Dispesa — design system
 
-**Versione 3, aggiornata il 20/09/2026.** La v2 è stata approvata da Andrea il 17/09/2026; la
+**Versione 3, aggiornata il 23/09/2026.** La v2 è stata approvata da Andrea il 17/09/2026; la
 v3 incorpora il ridisegno fatto in Claude Design il 19/09 e le cinque risposte di Andrea del
 20/09. Questo documento è la fonte di verità per chi disegna una schermata nuova di Dispesa —
 designer o modello. Contiene i valori, non le intenzioni: ogni token, taglia, misura e stato è
@@ -132,11 +132,13 @@ scritto:
 
 | Alfa | Dove |
 |---|---|
+| `0,04` su `--ink` | fondo delle voci del Foglio dal basso e dei tasti di «Rivedi i fogli presi» |
 | `0,045` su `--ink` | fondo della riga pasto fuori casa |
 | `0,06` su `--ink` | pillola delle confezioni sulla tessera spenta |
 | `0,07` su `--ink` | voce attiva della tab bar, fondo del Menù utente, tondo della X nel pannello |
-| `0,09` su `--ink` | bordo delle pillole d'azione, della Riga piatto, della Riga pasto |
+| `0,09` su `--ink` | bordo delle pillole d'azione, della Riga piatto, della Riga pasto, della foto in «Rivedi i fogli presi» |
 | `0,12` su `--ink` | Menù utente premuto |
+| `0,14` su `--ink` | righe finte della miniatura nella Striscia dei fogli presi |
 | `0,26` su un colore d'area | tinta della riga di controllo e della Tessera di dispensa |
 | `0,32` su un colore d'area | pillola delle confezioni dentro una tessera accesa |
 | `0,34` su `--ink` | nome barrato di una tessera spenta |
@@ -146,6 +148,7 @@ scritto:
 | `0,72` su `--ink` | Banda dei comandi sopra l'anteprima fotocamera |
 | `0,62` su bianco | bordo del tasto secondario sopra l'anteprima fotocamera |
 | `0,62` su bianco | tempo di registrazione nello stato "Registro" |
+| `0,92` su bianco | angoli della cornice guida sopra l'anteprima fotocamera |
 
 Un'alfa che non è in questa tabella non si usa: si aggiunge prima qui.
 
@@ -310,7 +313,7 @@ esistono:
   `cubic-bezier(.2,.8,.25,1)`, opacità delle etichette in 150 ms lineari. Il gesto è lo
   **scorrimento**: soglia 8 px per cambiare stato, ritorno a barra grande sotto i 4 px di
   scroll. **[aggiunto 19/09]**
-- **`.anim-scatto`** — anello `scale(.96)` e disco `scale(.88)` sul tasto di scatto, 180 ms
+- **`.scatto` e `.scatto-disco`** — anello `scale(.96)` e disco `scale(.88)` sul tasto di scatto, 180 ms
 - **`.anim-registro`** — le quattro barre del metro nello stato "Registro": da 7 a 22 px in
   220 ms `ease-in-out` `infinite alternate`, sfasature 40 / 70 / 140 ms. È l'**unica animazione
   in loop del sistema**, ammessa perché dice che il microfono sta ascoltando: dura quanto la
@@ -416,11 +419,16 @@ flottante: il tasto primario non ha più il suo posto in coda al contenuto. Il D
     999, mono 12/700/0,09em, `--ombra-tasto`.
   - **Due controlli affiancati** (Dispensa): pillole alte **56**, raggio 999, gap 8 — il testo
     `Fai una modifica` e il vocale.
-- **Cosa ci vive:** `HAI PRESO TUTTO` (Lista), `CONFERMA E CREA LA LISTA` (Piano), `HO FINITO`
-  (Importa, sopra l'anteprima è la Banda dei comandi a farlo), il primario di ogni stato vuoto,
-  `Fai una modifica` e il vocale (Dispensa).
-- **Accesso:** il Dock non è una barra di navigazione, non prende `role` propri; i suoi
-  controlli sono tasti normali con nome accessibile. Bersagli ≥ 44 sempre.
+- **Cosa ci vive:** `HAI PRESO TUTTO` (Lista), `CONFERMA E CREA LA LISTA` (Piano), `ESTRAI LA
+  DIETA` (Importa, solo con un PDF scelto), il primario di ogni stato vuoto, `Fai una modifica`
+  e il vocale (Dispensa). `HO FINITO` della fotocamera non sta qui: sopra l'anteprima lo porta
+  la Banda dei comandi.
+- **Accesso:** il contenitore è una regione, `role="region"` con `aria-label="Azione
+  principale"`, lo stesso nome per ogni Dock: chi naviga per regioni con lo screen reader trova
+  l'azione principale senza scorrere la pagina. Il nome dice il posto, non l'azione, che ha già
+  il suo nome sul tasto. Non è una barra di navigazione: i controlli dentro sono tasti normali
+  con nome accessibile. Bersagli ≥ 44 sempre. (Deciso il 23/09; prima il Dock non prendeva
+  `role` propri.)
 - **Quando il primario non deve esistere, il Dock non c'è.** In Lista compare solo a lista
   davvero finita: prima non esiste affatto, e la coda di scorrimento torna a 140. Non si mostra
   un primario spento, e non resta un contenitore vuoto.
@@ -507,12 +515,14 @@ Raggio 18, fondo bianco con bordo 1 px `rgba(20,22,58,0.09)` a casa, fondo
 
 - **Anatomia:** minimo **68**, raggio 14, fondo bianco, bordo 1 px `rgba(20,22,58,0.09)`,
   `--ombra-pannello`. Corpo `flex: 1`, padding `12 8 12 14`, gap 3: nome 17/700/-0.03em con
-  ellissi su riga singola, sottoriga mono 9/500/0.08em in `--ter` (`2 porzioni · 7
-  ingredienti`), pallini d'area 8 px raggio 2,6. Zona destra **44** col chevron in
-  `--icona-spenta`.
+  ellissi su riga singola, sottoriga mono 9/500/0.08em in `--ter` (`7 ingredienti · dalla
+  dieta`), pallini d'area 8 px raggio 2,6. Zona destra **44** col chevron in `--icona-spenta`.
+  Il numero conta gli ingredienti distinti che possono entrare nel piatto: i fissi e quelli di
+  ogni alternativa. Le porzioni non ci sono: il piatto non ha quel dato.
 - **Un solo bersaglio:** tutta la riga apre il piatto, `aria-label="Apri {piatto}"`. Il chevron
   è decorativo.
-- **Non porta** la fonte del piatto né il pasto: un piatto non appartiene a un pasto.
+- **Non porta il pasto**: un piatto non appartiene a un pasto. Della fonte dice solo `dalla
+  dieta`, sui piatti che vengono dall'import; sui piatti propri non dice niente.
 
 ### Striscia dei giorni
 Sette riquadri `flex: 1`, gap 3, raggio 14, padding `9px 0 10px`, `--ombra-pannello`. Dentro:
@@ -636,16 +646,40 @@ a sinistra la Striscia dei fogli presi, a destra `Ho finito` come **pillola bian
 dell'ultimo scatto su riga propria, poi `Seleziona dalla galleria`, alto almeno 50, raggio 18,
 bordo 1,5 px bianco al 62%. Tutti i testi in bianco pieno.
 
+- **Sopra, in alto** a `top 22`, `left/right 16`, gap 8: il tondo indietro 44 e la pillola di
+  titolo alta 44 (mono 11/700/0.08em, padding `0 16px`), entrambi bianchi con `--ombra-nav`. La
+  pillola è l'`h1` della schermata.
+- **La cornice guida** sull'anteprima: quattro angoli 30 × 30 a tratto 3 px bianco al 92%,
+  raggio 14 sul lato esterno, a `inset 88 / 40 / 268`. Aiuta a inquadrare, non ritaglia lo
+  scatto.
+- **A zero fogli** la Striscia dei fogli presi, `Ho finito` e la riga dell'ultimo scatto non ci
+  sono: la riga porta solo lo scatto. È la regola del Dock — un primario che non deve esistere
+  non si mostra spento — e su questo fondo lo stato spento del sistema non si vedrebbe.
+- **L'avviso in linea** (il tetto dei fogli, le foto scartate) sta sulla banda in **bianco**
+  12,5, sopra la riga dell'ultimo scatto, con `role="status"`: `--avviso` su 0,72 non regge il
+  contrasto.
+
 Ogni flusso che passa da qui ha **una via d'uscita dichiarata**: il primario va avanti, la
 freccia abbandona.
 
 ### Striscia dei fogli presi
 **Nuova il 19/09.** Dice quanti fogli sono già stati fotografati, dentro la Banda dei comandi.
 Miniatura **44** raggio 14 bianca con le righe finte (`repeating-linear-gradient`, 2 px ogni 7,
-`rgba(20,22,58,.14)`) e il contatore `2 fogli` in mono 10/700/0.11em. Tocco = apre la vista
-**Rivedi i fogli presi**, dove ogni foglio è una tessera **62 × 80** raggio 14 bianca, bordo 1
-px `rgba(20,22,58,0.09)`, `--ombra-nav`, numero in mono 10, X con disegno 20 e **bersaglio 44**
-sporgente. Oltre quattro fogli la fila **scorre in orizzontale**, non si impila.
+`rgba(20,22,58,.14)`) e il contatore `2 fogli` in mono 10/700/0.11em. Tocco = apre **Rivedi i
+fogli presi**, un **Foglio dal basso** (`aria-label="Rivedi i fogli presi"`) con le pagine **in
+colonna**, nell'ordine in cui l'estrazione le legge:
+
+- intestazione in mono 10/700/0.13em in `--testo-2`: `3 fogli · l'app li legge in
+  quest'ordine`, oppure `1 foglio`;
+- una riga per foglio, gap 12: la **foto vera** 62 × 80 raggio 14, `object-fit: cover`, bordo
+  1 px `rgba(20,22,58,0.09)`; `Foglio 2` in 15.5/700; tre tasti tondi **44** su
+  `rgba(20,22,58,0.04)` con icona 20 in `--ink`: sposta su, sposta giù, togli. Spenti (su sul
+  primo, giù sull'ultimo) l'icona va in `--icona-spenta`;
+- l'elenco scorre dentro il foglio, che è alto al massimo lo schermo meno 88; in fondo la voce
+  `Chiudi`. Togliere l'ultimo foglio chiude il foglio.
+
+(Cambiato il 23/09: prima era una fila orizzontale di tessere con la sola X. Il riordino c'è
+perché l'ordine dei fogli è l'ordine di lettura.)
 
 ### Stato vuoto
 Scheda da 22 centrata verticalmente; dentro, in colonna e centrati: quadrato 46 px raggio 14
@@ -702,7 +736,9 @@ fondo schermo è della barra.
 
 **Conferme.** Ogni azione distruttiva o non reversibile passa da un dialogo a due tasti: il
 distruttivo pieno in `--errore`, ANNULLA secondario accanto. Le azioni reversibili non chiedono
-niente e si annullano rifacendo il gesto.
+niente e si annullano rifacendo il gesto. Eccezione dichiarata (23/09): togliere un foglio in
+«Rivedi i fogli presi» non chiede conferma. Il foglio si rifà con uno scatto, niente di salvato
+va perso, e un dialogo per ogni foglio renderebbe il riordino un lavoro.
 
 **Feedback di scrittura.** Lo stato si mostra sul controllo (opacità 0,5 e `disabled` mentre è
 in volo) e la conferma è il cambio di stato del dato, non un messaggio. In caso di errore, un
@@ -768,6 +804,10 @@ azioni distruttive, swipe nascosti, long-press, spinner, scheletri, dark mode, c
 Restano vietati i gradienti **sugli oggetti** — nessuna superficie, nessun tasto, nessuna
 tessera ha un gradiente.
 
+**Le foto dell'utente sono un'eccezione dichiarata** (23/09): l'anteprima della fotocamera e le
+miniature di «Rivedi i fogli presi» mostrano il contenuto del dispositivo, non un'illustrazione.
+Altrove le foto restano fuori.
+
 ---
 
 ## 13. Le decisioni
@@ -825,3 +865,15 @@ Prese in Claude Design sulle schermate rese (19/09) e sulle sette domande aperte
   a lista tutta spuntata** e senza controlli in sospeso; porta al traguardo (`/lista/fatta`: non
   ricomprato, `CONFEZIONI DIVERSE? SCANSIONA`, `CHIUDI LA SPESA` irreversibile). Due passi, come
   oggi. A lista non finita il Dock della Lista non esiste: la coda di scorrimento è 140.
+
+### Decisioni del 23/09/2026 (fase 3: Piatti e fotocamera)
+
+- **Il PDF si sceglie prima della fotocamera.** L'acquisizione della dieta si apre con due
+  porte, `Fotografa i fogli` e `Carica il PDF`; la fotocamera non porta il ramo PDF.
+- **«Rivedi i fogli presi» è un foglio dal basso** con le pagine in colonna e il riordino (§8
+  Striscia dei fogli presi), costruito dalle regole del sistema senza un giro in Claude Design.
+- **La Riga piatto dice `N ingredienti`**, più `dalla dieta` sui piatti dell'import (§8 Riga
+  piatto).
+- **Il Dock è una regione** di nome `Azione principale` (§8 Dock).
+- **Le foto dell'utente** sono un'eccezione dichiarata a §12.
+- **«Togli il foglio» non chiede conferma** (§9 Conferme).

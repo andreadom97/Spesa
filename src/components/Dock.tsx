@@ -22,5 +22,11 @@ import { useSlotDock } from './dock-slot';
 export function Dock({ children }: { children: ReactNode }) {
   const slot = useSlotDock();
   if (slot === null) return null;
-  return createPortal(<div className="dock anim-dock">{children}</div>, slot);
+  // Una regione con nome (spec fase 3 §H, DESIGN.md §8 Dock): chi naviga per
+  // regioni con lo screen reader trova l'azione principale senza scorrere. Il
+  // nome dice il posto, uguale per ogni Dock; l'azione ha il suo sul tasto.
+  return createPortal(
+    <div className="dock anim-dock" role="region" aria-label="Azione principale">{children}</div>,
+    slot,
+  );
 }

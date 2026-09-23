@@ -104,7 +104,7 @@
   --moto-easing: ease;                /* easing standard, nessuna curva d'autore */
   --moto-barra: 200ms;                /* .anim-barra: la tab bar che si restringe e il dock che la segue */
   --curva-barra: cubic-bezier(.2, .8, .25, 1);  /* la curva del ridisegno: parte pronta e decelera, usata da barra, dock e scatto */
-  --moto-scatto: 180ms;               /* .anim-scatto: anello 0,96 e disco 0,88 sul tasto di scatto */
+  --moto-scatto: 180ms;               /* .scatto e .scatto-disco: anello 0,96 e disco 0,88 sul tasto di scatto */
   --moto-registro: 220ms;             /* .anim-registro: un ciclo del metro a quattro barre, infinite alternate */
 
   /* ---------- Ridisegno 19-20/09: fondo, cornice, maschera ---------- */
