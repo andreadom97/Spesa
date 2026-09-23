@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Ingredient, MealSlotDef } from '@/domain/types';
@@ -126,6 +126,11 @@ export default function Importa() {
     };
   }, []);
 
+  // Fra `history.back()` e il suo `popstate` la fotocamera resta montata: un
+  // doppio tocco sul tondo chiamerebbe `back()` due volte, e il secondo
+  // uscirebbe da /importa perdendo i fogli presi (misurato nel browser il 23/09).
+  const inChiusura = useRef(false);
+
   /**
    * Il gesto indietro del telefono dentro la fotocamera (spec fase 3 §G). A
    * tutto schermo e senza tab bar è il modo naturale di uscirne: senza una voce
@@ -135,18 +140,24 @@ export default function Importa() {
    * chiude davvero è sempre questo ascoltatore.
    */
   useEffect(() => {
-    const chiudi = () => setFotocameraAperta(false);
+    const chiudi = () => {
+      inChiusura.current = false;
+      setFotocameraAperta(false);
+    };
     window.addEventListener('popstate', chiudi);
     return () => window.removeEventListener('popstate', chiudi);
   }, []);
 
   function apriFotocamera() {
+    inChiusura.current = false;
     window.history.pushState(null, '');
     setFotocameraAperta(true);
   }
 
-  /** Il tondo indietro: consuma la voce, e il `popstate` chiude. */
+  /** Il tondo indietro: consuma la voce, e il `popstate` chiude. Una volta sola. */
   function chiudiFotocamera() {
+    if (inChiusura.current) return;
+    inChiusura.current = true;
     window.history.back();
   }
 

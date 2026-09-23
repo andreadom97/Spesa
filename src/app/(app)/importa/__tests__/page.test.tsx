@@ -138,6 +138,18 @@ describe('Importa: la scelta', () => {
     expect(screen.queryByRole('heading', { name: 'Fotografa il piano' })).not.toBeInTheDocument();
   });
 
+  it('un doppio tocco sul tondo indietro consuma una voce sola', async () => {
+    // Nel browser il `popstate` arriva dopo `back()`, non dentro: qui `back` non lo
+    // emette, così fra i due tocchi la fotocamera resta montata come sul telefono.
+    vi.mocked(window.history.back).mockImplementation(() => {});
+    rendi();
+    await apriEPrendiUnFoglio();
+    const indietro = screen.getByRole('button', { name: 'Indietro' });
+    fireEvent.click(indietro);
+    fireEvent.click(indietro);
+    expect(window.history.back).toHaveBeenCalledTimes(1);
+  });
+
   it('scelto un PDF: il nome del file, Cambia file, e ESTRAI LA DIETA nel Dock', async () => {
     rendi();
     await screen.findByText('Carica il PDF');
