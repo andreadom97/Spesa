@@ -182,6 +182,21 @@ describe('Importa: l\'invio', () => {
     expect(bozza.statoRevisione.mappaturaPasti.condimenti).toBeUndefined();
   });
 
+  it('un doppio tocco su Ho finito parte una volta sola: un invio, una voce consumata', async () => {
+    // Come per il tondo indietro, il `popstate` qui non arriva dentro `back()`: la sola
+    // cosa che può togliere di mezzo `Ho finito` fra i due tocchi è il cambio di vista.
+    vi.mocked(window.history.back).mockImplementation(() => {});
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => FIXTURE_MENU_SETTIMANALE });
+    rendi();
+    await apriEPrendiUnFoglio();
+    const hoFinito = screen.getByRole('button', { name: 'Ho finito' });
+    fireEvent.click(hoFinito);
+    fireEvent.click(hoFinito);
+    await waitFor(() => expect(salvaBozzaImport).toHaveBeenCalled());
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(window.history.back).toHaveBeenCalledTimes(1);
+  });
+
   it('Ho finito manda solo le immagini, anche con un PDF già scelto', async () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => FIXTURE_MENU_SETTIMANALE });
     global.fetch = fetchMock;
