@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // I worktree di Claude Code stanno dentro il repo: sono copie intere del progetto, con il
+    // loro .next/ compilato, e senza questa riga il lint del checkout principale li scansiona
+    // come codice (8261 problemi misurati il 23/09, tutti in un worktree, zero in src/).
+    ".claude/**",
   ]),
 ]);
 
