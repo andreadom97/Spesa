@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import type { ListaSalvata } from '@/data/lista';
 import type { Dish } from '@/domain/types';
 
@@ -10,7 +11,11 @@ import type { Dish } from '@/domain/types';
 vi.mock('@/data/settimana', () => ({
   leggiSettimanaCorrente: vi.fn(),
 }));
-vi.mock('@/data/lista', () => ({
+// `fondiSezioni` NON si mocka: è la funzione pura che legge le due liste come
+// una sola, e questi test devono provare la fusione vera, non una
+// controfigura. Diventano spie solo le tre funzioni che parlano col server.
+vi.mock('@/data/lista', async (originale) => ({
+  ...(await originale<typeof import('@/data/lista')>()),
   leggiListe: vi.fn(),
   spunta: vi.fn(),
   allineaTopUp: vi.fn(),
@@ -48,6 +53,7 @@ import { accodaSpunta, leggiCoda } from '@/offline/coda';
 // locale, non una controfigura.
 import { leggiIstantaneaLista, salvaIstantaneaLista } from '@/offline/lista-cache';
 import { MarchioProvider, useAreeMancantiCorrenti } from '@/components/marchio-context';
+import { SlotDockProvider } from '@/components/dock-slot';
 import Lista from '../page';
 
 // Il marchio non vive più nella Testata (redesign 19/09): la Lista lo
@@ -76,6 +82,13 @@ const VOCE_PASTA = {
   unita: 'g' as const, fabbisogno: 500, residuo: 100, confezioni: 2, quantitaTotale: 1000,
   spuntato: false, origine: 'piano' as const, mostraDettaglio: false,
 };
+// Una voce di cereali che sta nel top-up: serve a provare che la fusione
+// mette base e top-up della stessa area nella stessa sezione.
+const VOCE_COUSCOUS = {
+  id: 'item-couscous', ingredientId: 'ing-couscous', nome: 'Couscous', area: 'cereali' as const,
+  unita: 'g' as const, fabbisogno: 300, residuo: 0, confezioni: 1, quantitaTotale: 500,
+  spuntato: false, origine: 'piano' as const, mostraDettaglio: false,
+};
 const CONTROLLO_OLIO = {
   id: 'item-olio', ingredientId: 'ing-olio', nome: 'Olio', area: 'dispensa' as const,
   unita: 'ml' as const, fabbisogno: 0, residuo: 0, confezioni: 0, quantitaTotale: 0,
@@ -94,7 +107,20 @@ function buildLista(): ListaSalvata {
   };
 }
 
+// Il Dock si monta con un portale nello slot che il `Guscio` renderizza
+// accanto alla tab bar: senza slot non renderizza niente (Dock.tsx). Questi
+// test montano la pagina da sola, quindi lo slot glielo dà `rendi()` — un
+// nodo dentro `document.body`, dove `screen` interroga già. Senza di lui ogni
+// asserzione "il Dock non c'è" passerebbe senza provare niente.
+let slotDock: HTMLElement;
+
+function rendi(ui: ReactNode = <Lista />) {
+  return render(<SlotDockProvider slot={slotDock}>{ui}</SlotDockProvider>);
+}
+
 beforeEach(() => {
+  slotDock = document.createElement('div');
+  document.body.appendChild(slotDock);
   localStorage.clear();
   vi.mocked(leggiSettimanaCorrente).mockReset().mockResolvedValue(SETTIMANA);
   vi.mocked(leggiListe).mockReset();
@@ -106,14 +132,18 @@ beforeEach(() => {
   getSessionMock.mockReset().mockResolvedValue({ data: { session: { user: { id: 'user-1' } } } });
 });
 
+afterEach(() => {
+  slotDock.remove();
+});
+
 describe('Lista', () => {
   it('mostra le sezioni con le tessere e il periodo della settimana', async () => {
     vi.mocked(leggiListe).mockResolvedValue(buildLista());
-    render(<Lista />);
+    rendi();
 
     expect(await screen.findByText('Riso Carnaroli')).toBeInTheDocument();
     expect(screen.getByText('Pasta integrale')).toBeInTheDocument();
-    expect(screen.getByText('24 AGO — 30 AGO')).toBeInTheDocument();
+    expect(screen.getByText('Settimana del 24 agosto')).toBeInTheDocument();
     // Solo la voce porzionabile (riso) mostra il sottotitolo.
     expect(screen.getByText('serve 820 g · in casa 0 g')).toBeInTheDocument();
   });
@@ -126,7 +156,7 @@ describe('Lista', () => {
   // anche per il marchio, non solo per il pulsante finale.
   it('il marchio segna mancante sia l\'area con voci non spuntate sia quella con un controllo ancora in sospeso', async () => {
     vi.mocked(leggiListe).mockResolvedValue(buildLista());
-    render(
+    rendi(
       <MarchioProvider>
         <Lista />
         <LeggiAreeMancanti />
@@ -144,7 +174,7 @@ describe('Lista', () => {
 
   it('il tap spunta subito in locale, accoda offline, e sincronizza se il server risponde', async () => {
     vi.mocked(leggiListe).mockResolvedValue(buildLista());
-    render(<Lista />);
+    rendi();
     const tessera = await screen.findByText('Riso Carnaroli');
 
     fireEvent.click(tessera.closest('button')!);
@@ -161,7 +191,7 @@ describe('Lista', () => {
   it('se la scrittura fallisce la voce resta in coda invece di sparire', async () => {
     vi.mocked(leggiListe).mockResolvedValue(buildLista());
     vi.mocked(spunta).mockRejectedValue(new Error('offline'));
-    render(<Lista />);
+    rendi();
     const tessera = await screen.findByText('Riso Carnaroli');
 
     fireEvent.click(tessera.closest('button')!);
@@ -191,7 +221,7 @@ describe('Lista', () => {
       return new Promise<void>((_resolve, reject) => { rifiutaPasta = reject; });
     });
 
-    render(<Lista />);
+    rendi();
     const risoBottone = (await screen.findByText('Riso Carnaroli')).closest('button')!;
     const pastaBottone = screen.getByText('Pasta integrale').closest('button')!;
 
@@ -220,15 +250,23 @@ describe('Lista', () => {
     await waitFor(() => expect(leggiCoda()).toEqual([{ itemId: 'item-pasta', spuntato: true, ts: expect.any(Number) }]));
   });
 
-  it('il tab TOP-UP mostra le sue sezioni, non quelle di BASE', async () => {
-    vi.mocked(leggiListe).mockResolvedValue(buildLista());
-    render(<Lista />);
+  // Prima del 20/09 questo caso provava che il tab TOP-UP mostrava le sue
+  // sezioni e non quelle di BASE. I tab non ci sono più: quello che va
+  // provato ora è il loro contrario, cioè che le due liste si leggono come
+  // una sola sezione per reparto.
+  it('le voci base e top-up della stessa area stanno nella stessa sezione', async () => {
+    const lista = buildLista();
+    lista.topup = [{ area: 'cereali', voci: [VOCE_COUSCOUS], controlli: [] }];
+    vi.mocked(leggiListe).mockResolvedValue(lista);
+    rendi();
+
     await screen.findByText('Riso Carnaroli');
-
-    fireEvent.click(screen.getByText('TOP-UP'));
-
-    expect(screen.queryByText('Riso Carnaroli')).not.toBeInTheDocument();
-    expect(screen.getByText('Niente da comprare qui.')).toBeInTheDocument();
+    // Una sola etichetta di reparto per i cereali, e il suo contatore dice
+    // tre: due voci della base più quella del top-up, nella stessa tessera.
+    expect(screen.getAllByText('PASTA, RISO E CEREALI')).toHaveLength(1);
+    expect(screen.getByText('3 VOCI')).toBeInTheDocument();
+    expect(screen.getByText('Couscous')).toBeInTheDocument();
+    expect(screen.getByText('Pasta integrale')).toBeInTheDocument();
   });
 
   it('il conteggio delle voci è singolare con una sola voce, plurale altrimenti', async () => {
@@ -236,25 +274,27 @@ describe('Lista', () => {
     lista.base[0].voci = [VOCE_RISO]; // cereali: una sola voce
     // dispensa (buildLista) ha zero voci: resta plurale, "0 VOCI".
     vi.mocked(leggiListe).mockResolvedValue(lista);
-    render(<Lista />);
+    rendi();
     await screen.findByText('Riso Carnaroli');
 
     expect(screen.getByText('1 VOCE')).toBeInTheDocument();
     expect(screen.getByText('0 VOCI')).toBeInTheDocument();
   });
 
-  it('i pulsanti BASE e TOP-UP hanno un nome accessibile col conteggio da prendere', async () => {
+  it('non mostra più il selettore né le righe di spiegazione della vista', async () => {
     vi.mocked(leggiListe).mockResolvedValue(buildLista());
-    render(<Lista />);
+    rendi();
     await screen.findByText('Riso Carnaroli');
 
-    expect(screen.getByRole('button', { name: 'Base, 2 da prendere' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Top-up, 0 da prendere' })).toBeInTheDocument();
+    expect(screen.queryByText('TOP-UP')).not.toBeInTheDocument();
+    expect(screen.queryByText('BASE')).not.toBeInTheDocument();
+    expect(screen.queryByText(/La spesa grossa/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Il fresco, e quello/)).not.toBeInTheDocument();
   });
 
   it('i pulsanti SÌ/NO del controllo hanno un\'area di tap di almeno 44px', async () => {
     vi.mocked(leggiListe).mockResolvedValue(buildLista());
-    render(<Lista />);
+    rendi();
     await screen.findByText('Olio: ne hai ancora?');
 
     const si = screen.getByRole('button', { name: /Sì, hai ancora Olio/ });
@@ -274,13 +314,50 @@ describe('Lista', () => {
 
   it('"SÌ" su un controllo lo fa sparire senza toccare il server per il resto della lista', async () => {
     vi.mocked(leggiListe).mockResolvedValue(buildLista());
-    render(<Lista />);
+    rendi();
     expect(await screen.findByText('Olio: ne hai ancora?')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Sì, hai ancora Olio/ }));
 
     await waitFor(() => expect(rispondiControllo).toHaveBeenCalledWith('ing-olio', 'lista-base-1', true));
     await waitFor(() => expect(screen.queryByText('Olio: ne hai ancora?')).not.toBeInTheDocument());
+  });
+
+  // La cosa che, sbagliata, produce un bug silenzioso sui dati veri: con la
+  // lista unica l'id non arriva più dalla tab attiva ma dalla voce, e
+  // `rispondiControllo` fa upsert su (shopping_list_id, ingredient_id).
+  // Scrivere sull'id della base un controllo del fresco lascerebbe la riga
+  // giusta intatta e ne creerebbe una sbagliata, senza nessun errore.
+  it('un controllo che vive nella lista top-up si risponde sull\'id di quella lista', async () => {
+    const lista = buildLista();
+    lista.base = [{ area: 'cereali', voci: [VOCE_RISO], controlli: [] }];
+    lista.topup = [{ area: 'dispensa', voci: [], controlli: [CONTROLLO_OLIO] }];
+    vi.mocked(leggiListe).mockResolvedValue(lista);
+    rendi();
+    await screen.findByText('Olio: ne hai ancora?');
+
+    fireEvent.click(screen.getByRole('button', { name: /Sì, hai ancora Olio/ }));
+
+    await waitFor(() => expect(rispondiControllo).toHaveBeenCalledWith('ing-olio', 'lista-topup-1', true));
+  });
+
+  it('se la risposta al controllo non si salva lo dice in linea, in --errore', async () => {
+    const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(leggiListe).mockResolvedValue(buildLista());
+    vi.mocked(rispondiControllo).mockRejectedValue(new Error('rete'));
+    rendi();
+    await screen.findByText('Olio: ne hai ancora?');
+
+    fireEvent.click(screen.getByRole('button', { name: /Sì, hai ancora Olio/ }));
+
+    const riga = await screen.findByText('Non siamo riusciti a salvare la risposta. Riprova.');
+    // Un errore a schermo va in `--errore`, non in un grigio: è la regola di
+    // DESIGN.md §8 Messaggi. jsdom non risolve le custom property, quindi lo
+    // stile calcolato restituisce la stringa letterale.
+    expect(getComputedStyle(riga).color).toBe('var(--errore)');
+    // Il controllo resta: la risposta non è passata.
+    expect(screen.getByText('Olio: ne hai ancora?')).toBeInTheDocument();
+    errore.mockRestore();
   });
 
   it('"NO" su un controllo lo converte e ricarica la lista dal server', async () => {
@@ -293,7 +370,7 @@ describe('Lista', () => {
       ],
     };
     vi.mocked(leggiListe).mockResolvedValueOnce(primaVolta).mockResolvedValueOnce(dopoLaRisposta);
-    render(<Lista />);
+    rendi();
     await screen.findByText('Olio: ne hai ancora?');
 
     fireEvent.click(screen.getByRole('button', { name: /No, comprane una confezione di Olio/ }));
@@ -308,39 +385,60 @@ describe('Lista', () => {
     const lista = buildLista();
     lista.base[0].voci = lista.base[0].voci.map((v) => ({ ...v, spuntato: true }));
     vi.mocked(leggiListe).mockResolvedValue(lista);
-    render(<Lista />);
+    rendi();
     await screen.findByText('Olio: ne hai ancora?');
 
     expect(screen.queryByRole('link', { name: 'HAI PRESO TUTTO' })).not.toBeInTheDocument();
   });
 
-  it('quando ogni voce è spuntata e non resta nessun controllo in sospeso, mostra il link per chiudere la spesa', async () => {
+  it('a lista non finita il Dock non c\'è, e lo scroller non tiene la coda del dock', async () => {
+    vi.mocked(leggiListe).mockResolvedValue(buildLista());
+    rendi();
+    await screen.findByText('Riso Carnaroli');
+
+    expect(screen.queryByRole('link', { name: 'HAI PRESO TUTTO' })).not.toBeInTheDocument();
+    // Un solo booleano decide i due: se il Dock non c'è, lo spazio in coda
+    // allo scroller non va lasciato, altrimenti la lista finisce a metà.
+    expect(document.querySelector('.scroll-app.con-dock')).toBeNull();
+  });
+
+  it('quando ogni voce è spuntata e non resta nessun controllo in sospeso, il Dock porta a chiudere la spesa', async () => {
     const lista = buildLista();
     lista.base[0].voci = lista.base[0].voci.map((v) => ({ ...v, spuntato: true }));
     lista.base[1].controlli = []; // il controllo sull'olio è stato risposto
     vi.mocked(leggiListe).mockResolvedValue(lista);
-    render(<Lista />);
+    rendi();
     await screen.findByText('Riso Carnaroli');
 
-    expect(screen.getByRole('link', { name: 'HAI PRESO TUTTO' })).toHaveAttribute('href', '/lista/fatta');
+    const tasto = screen.getByRole('link', { name: 'HAI PRESO TUTTO' });
+    expect(tasto).toHaveAttribute('href', '/lista/fatta');
+    // Nel Dock, non in coda al contenuto: il fondo schermo è della barra.
+    expect(tasto.closest('.dock')).not.toBeNull();
+    expect(document.querySelector('.scroll-app.con-dock')).not.toBeNull();
   });
 
-  it('senza lista per la settimana mostra lo stato vuoto con il link alla Settimana', async () => {
+  it('senza lista per la settimana mostra lo stato vuoto con il link al Piano nel Dock', async () => {
     vi.mocked(leggiListe).mockResolvedValue(null);
-    render(<Lista />);
+    rendi();
 
     expect(await screen.findByText('La lista non c’è ancora')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'VAI ALLA SETTIMANA' })).toHaveAttribute('href', '/piano');
+    const tasto = screen.getByRole('link', { name: 'VAI AL PIANO' });
+    expect(tasto).toHaveAttribute('href', '/piano');
+    // Il primario dello stato vuoto sta nel Dock come ogni altro primario
+    // (DESIGN.md §8 Stato vuoto), non dentro la scheda.
+    expect(tasto.closest('.dock')).not.toBeNull();
   });
 
   it('senza settimana corrente mostra lo stato vuoto senza pillola', async () => {
     vi.mocked(leggiSettimanaCorrente).mockResolvedValue(null);
-    render(<Lista />);
+    rendi();
 
     expect(await screen.findByText('La lista non c’è ancora')).toBeInTheDocument();
-    // La pillola della settimana è nel formato "24 AGO — 30 AGO": senza
-    // settimana non c'è nulla da formattare, quindi niente em-dash in pagina.
-    expect(screen.queryByText(/—/)).not.toBeInTheDocument();
+    // La pillola dice "Settimana del 24 agosto": senza settimana non c'è
+    // nulla da formattare, quindi nessuna pillola in pagina. Si cerca il
+    // formato nuovo, non più l'em-dash di quello vecchio: quello non
+    // comparirebbe comunque e l'asserzione non proverebbe niente.
+    expect(screen.queryByText(/^Settimana del/)).not.toBeInTheDocument();
   });
 
   // Stati vuoti collegati alle porte (spec due-porte §2.4): senza piatti
@@ -349,31 +447,31 @@ describe('Lista', () => {
   it('senza settimana e con repertorio vuoto manda ai piatti, non alla settimana', async () => {
     vi.mocked(leggiSettimanaCorrente).mockResolvedValue(null);
     vi.mocked(leggiRepertorio).mockResolvedValue([]);
-    render(<Lista />);
+    rendi();
 
     expect(await screen.findByText('Prima servono i piatti')).toBeInTheDocument();
     expect(screen.getByText('La lista nasce dai piatti che mangi: dicci quali sono e da lì la settimana e la spesa si costruiscono da sole.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'COMINCIA DAI PIATTI' })).toHaveAttribute('href', '/piatti');
     expect(screen.queryByText('La lista non c’è ancora')).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'VAI ALLA SETTIMANA' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'VAI AL PIANO' })).not.toBeInTheDocument();
   });
 
   it('con settimana ma senza lista, a repertorio vuoto, manda comunque ai piatti', async () => {
     vi.mocked(leggiListe).mockResolvedValue(null);
     vi.mocked(leggiRepertorio).mockResolvedValue([]);
-    render(<Lista />);
+    rendi();
 
     expect(await screen.findByText('Prima servono i piatti')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'COMINCIA DAI PIATTI' })).toHaveAttribute('href', '/piatti');
   });
 
-  it('senza settimana ma con almeno un piatto resta la scheda di sempre, verso la settimana', async () => {
+  it('senza settimana ma con almeno un piatto resta la scheda di sempre, verso il piano', async () => {
     vi.mocked(leggiSettimanaCorrente).mockResolvedValue(null);
     vi.mocked(leggiRepertorio).mockResolvedValue([PIATTO]);
-    render(<Lista />);
+    rendi();
 
     expect(await screen.findByText('La lista non c’è ancora')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'VAI ALLA SETTIMANA' })).toHaveAttribute('href', '/piano');
+    expect(screen.getByRole('link', { name: 'VAI AL PIANO' })).toHaveAttribute('href', '/piano');
     expect(screen.queryByText('Prima servono i piatti')).not.toBeInTheDocument();
   });
 
@@ -381,10 +479,10 @@ describe('Lista', () => {
     const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.mocked(leggiSettimanaCorrente).mockResolvedValue(null);
     vi.mocked(leggiRepertorio).mockRejectedValue(new Error('rete assente'));
-    render(<Lista />);
+    rendi();
 
     expect(await screen.findByText('La lista non c’è ancora')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'VAI ALLA SETTIMANA' })).toHaveAttribute('href', '/piano');
+    expect(screen.getByRole('link', { name: 'VAI AL PIANO' })).toHaveAttribute('href', '/piano');
     expect(screen.queryByText('Non riusciamo a caricare la lista. Riprova più tardi.')).not.toBeInTheDocument();
     expect(errore).toHaveBeenCalledWith('lista: lettura del repertorio fallita.', expect.any(Error));
     errore.mockRestore();
@@ -410,7 +508,7 @@ describe('Lista', () => {
       topupListaId: 'l-topup',
     });
 
-    render(<Lista />);
+    rendi();
 
     await screen.findByText('Pasta integrale');
     const etichette = screen
@@ -452,7 +550,7 @@ describe('Lista', () => {
         ],
       };
       vi.mocked(leggiListe).mockResolvedValueOnce(prima).mockResolvedValueOnce(dopo);
-      render(<Lista />);
+      rendi();
       await screen.findByText('Riso Carnaroli');
       expect(screen.queryByText('Uova')).not.toBeInTheDocument();
       expect(allineaTopUp).toHaveBeenCalledTimes(1);
@@ -470,7 +568,7 @@ describe('Lista', () => {
     it('una spunta locale ancora in coda vince sulla rilettura', async () => {
       vi.mocked(leggiListe).mockResolvedValue(buildLista());
       vi.mocked(spunta).mockRejectedValue(new Error('offline'));
-      render(<Lista />);
+      rendi();
       const tessera = await screen.findByText('Riso Carnaroli');
       fireEvent.click(tessera.closest('button')!);
       await waitFor(() => expect(spunta).toHaveBeenCalled());
@@ -485,7 +583,7 @@ describe('Lista', () => {
 
     it('se il documento va in secondo piano non rilegge nulla', async () => {
       vi.mocked(leggiListe).mockResolvedValue(buildLista());
-      render(<Lista />);
+      rendi();
       await screen.findByText('Riso Carnaroli');
 
       simulaVisibilita('hidden');
@@ -497,7 +595,7 @@ describe('Lista', () => {
     it('se la rilettura fallisce la lista resta com\'è e l\'errore va in console', async () => {
       const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
       vi.mocked(leggiListe).mockResolvedValueOnce(buildLista()).mockRejectedValueOnce(new Error('rete'));
-      render(<Lista />);
+      rendi();
       await screen.findByText('Riso Carnaroli');
 
       simulaVisibilita('visible');
@@ -512,7 +610,7 @@ describe('Lista', () => {
 
     it('allo smontaggio il listener se ne va: nessuna rilettura dopo', async () => {
       vi.mocked(leggiListe).mockResolvedValue(buildLista());
-      const { unmount } = render(<Lista />);
+      const { unmount } = rendi();
       await screen.findByText('Riso Carnaroli');
       unmount();
 
@@ -532,7 +630,7 @@ describe('Lista', () => {
       vi.mocked(leggiListe)
         .mockResolvedValueOnce(buildLista())
         .mockImplementationOnce(() => new Promise<ListaSalvata | null>((resolve) => { risolviRilettura = resolve; }));
-      render(<Lista />);
+      rendi();
       const riso = (await screen.findByText('Riso Carnaroli')).closest('button')!;
 
       simulaVisibilita('visible');
@@ -564,7 +662,7 @@ describe('Lista', () => {
         ],
       };
       vi.mocked(leggiListe).mockResolvedValueOnce(prima).mockResolvedValueOnce(dopo);
-      render(<Lista />);
+      rendi();
       await screen.findByText('Riso Carnaroli');
 
       simulaVisibilita('visible');
@@ -576,7 +674,7 @@ describe('Lista', () => {
       // Una spunta fallita in secondo piano (rete andata via a metà) non
       // deve aspettare il prossimo evento online per essere ritentata.
       vi.mocked(leggiListe).mockResolvedValue(buildLista());
-      render(<Lista />);
+      rendi();
       await screen.findByText('Riso Carnaroli');
       accodaSpunta('item-pasta', true);
       expect(spunta).not.toHaveBeenCalled();
@@ -596,7 +694,7 @@ describe('Lista', () => {
       vi.mocked(leggiListe)
         .mockResolvedValueOnce(buildLista())
         .mockImplementationOnce(() => new Promise<ListaSalvata | null>((resolve) => { risolviRilettura = resolve; }));
-      render(<Lista />);
+      rendi();
       await screen.findByText('Olio: ne hai ancora?');
 
       simulaVisibilita('visible');
@@ -622,14 +720,14 @@ describe('Lista', () => {
         ],
       };
       vi.mocked(leggiListe).mockResolvedValueOnce(prima).mockResolvedValueOnce(dopo);
-      render(<Lista />);
+      rendi();
       await screen.findByText('Riso Carnaroli');
       expect(leggiIstantaneaLista()?.lista).toEqual(prima);
 
       simulaVisibilita('visible');
 
       await waitFor(() => expect(leggiIstantaneaLista()?.lista).toEqual(dopo));
-      expect(leggiIstantaneaLista()).toMatchObject({ casaId: 'casa-1', userId: 'user-1', weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO' });
+      expect(leggiIstantaneaLista()).toMatchObject({ casaId: 'casa-1', userId: 'user-1', weekId: 'week-1', settimanaLabel: 'Settimana del 24 agosto' });
     });
 
     // F2 della review: chi chiama `sincronizzaCoda()` mentre un giro è in
@@ -645,7 +743,7 @@ describe('Lista', () => {
       vi.mocked(leggiListe)
         .mockResolvedValueOnce(buildLista())
         .mockImplementationOnce(() => new Promise<ListaSalvata | null>((resolve) => { risolviRilettura = resolve; }));
-      render(<Lista />);
+      rendi();
       const riso = (await screen.findByText('Riso Carnaroli')).closest('button')!;
       const pasta = screen.getByText('Pasta integrale').closest('button')!;
 
@@ -688,7 +786,7 @@ describe('Lista', () => {
       vi.mocked(leggiListe)
         .mockResolvedValueOnce(buildLista())
         .mockImplementationOnce(() => new Promise<ListaSalvata | null>((resolve) => { risolviRilettura = resolve; }));
-      render(<Lista />);
+      rendi();
       await screen.findByText('Olio: ne hai ancora?');
 
       // Risposta in volo, poi la rilettura parte (dopo l'incremento pre-RPC).
@@ -713,7 +811,9 @@ describe('Lista', () => {
   // dal server si mostra l'ultima lista vista con rete, con la coda sopra e
   // una riga che dice che è una copia; al ritorno della rete si rilegge.
   describe('offline', () => {
-    const RIGA_OFFLINE = 'Sei offline: questa è la lista di 24 AGO — 30 AGO salvata l\'ultima volta che l\'hai aperta. Le spunte si sincronizzano appena torna la rete.';
+    // L'etichetta della settimana sta in apposizione dopo l'em-dash: dentro
+    // la frase ("la lista di Settimana del 24 agosto") non era italiano.
+    const RIGA_OFFLINE = 'Sei offline: questa è la lista salvata l\'ultima volta che l\'hai aperta — Settimana del 24 agosto. Le spunte si sincronizzano appena torna la rete.';
     const VOCE_UOVA = {
       id: 'item-uova', ingredientId: 'ing-uova', nome: 'Uova', area: 'latticini' as const,
       unita: 'pz' as const, fabbisogno: 6, residuo: 0, confezioni: 1, quantitaTotale: 6,
@@ -739,18 +839,23 @@ describe('Lista', () => {
     });
 
     function salvaIstantaneaDiProva(lista: ListaSalvata = buildLista(), casaId = 'casa-1', userId = 'user-1') {
-      salvaIstantaneaLista({ casaId, userId, weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO', lista });
+      salvaIstantaneaLista({ casaId, userId, weekId: 'week-1', settimanaLabel: 'Settimana del 24 agosto', lista });
     }
 
     it('se la lettura fallisce e c\'è un\'istantanea, mostra quella con la riga "Sei offline"', async () => {
       salvaIstantaneaDiProva();
       vi.mocked(leggiSettimanaCorrente).mockRejectedValue(new Error('rete assente'));
-      render(<Lista />);
+      rendi();
 
       expect(await screen.findByText('Riso Carnaroli')).toBeInTheDocument();
       expect(screen.getByText('Pasta integrale')).toBeInTheDocument();
-      expect(screen.getByText('24 AGO — 30 AGO')).toBeInTheDocument();
+      expect(screen.getByText('Settimana del 24 agosto')).toBeInTheDocument();
       expect(screen.getByText(RIGA_OFFLINE)).toBeInTheDocument();
+      // Testo che porta informazione, e su cui una persona agisce in corsia:
+      // `--testo-2` (5,5:1), non il grigio decorativo sotto soglia AA.
+      // jsdom non risolve le custom property, quindi lo stile calcolato
+      // restituisce la stringa letterale.
+      expect(getComputedStyle(screen.getByText(RIGA_OFFLINE)).color).toBe('var(--testo-2)');
       expect(screen.queryByText('Non riusciamo a caricare la lista. Riprova più tardi.')).not.toBeInTheDocument();
       expect(errore).toHaveBeenCalledWith('lista: caricamento fallito.', expect.any(Error));
       expect(leggiListe).not.toHaveBeenCalled();
@@ -763,7 +868,7 @@ describe('Lista', () => {
       // Senza rete anche la scrittura della coda fallisce: `carica()` la
       // tenta prima di leggere, e la spunta deve restare in coda.
       vi.mocked(spunta).mockRejectedValue(new Error('rete assente'));
-      render(<Lista />);
+      rendi();
 
       const riso = await screen.findByText('Riso Carnaroli');
       expect(riso.closest('button')).toHaveAttribute('aria-pressed', 'true');
@@ -774,7 +879,7 @@ describe('Lista', () => {
       salvaIstantaneaDiProva();
       vi.mocked(leggiSettimanaCorrente).mockRejectedValue(new Error('rete assente'));
       vi.mocked(spunta).mockRejectedValue(new Error('rete assente'));
-      render(<Lista />);
+      rendi();
       const pasta = await screen.findByText('Pasta integrale');
 
       fireEvent.click(pasta.closest('button')!);
@@ -788,7 +893,7 @@ describe('Lista', () => {
 
     it('se la lettura fallisce e non c\'è un\'istantanea, mostra l\'errore di sempre', async () => {
       vi.mocked(leggiSettimanaCorrente).mockRejectedValue(new Error('rete assente'));
-      render(<Lista />);
+      rendi();
 
       expect(await screen.findByText('Non riusciamo a caricare la lista. Riprova più tardi.')).toBeInTheDocument();
       expect(screen.queryByText(/Sei offline/)).not.toBeInTheDocument();
@@ -797,7 +902,7 @@ describe('Lista', () => {
     it('con un\'istantanea malformata si comporta come senza istantanea', async () => {
       localStorage.setItem('spesa:lista', '{"weekId": 1}');
       vi.mocked(leggiSettimanaCorrente).mockRejectedValue(new Error('rete assente'));
-      render(<Lista />);
+      rendi();
 
       expect(await screen.findByText('Non riusciamo a caricare la lista. Riprova più tardi.')).toBeInTheDocument();
     });
@@ -808,7 +913,7 @@ describe('Lista', () => {
     it('se l\'istantanea è della propria casa si mostra', async () => {
       salvaIstantaneaDiProva(buildLista(), 'casa-1');
       vi.mocked(leggiSettimanaCorrente).mockRejectedValue(new Error('rete assente'));
-      render(<Lista />);
+      rendi();
 
       expect(await screen.findByText(RIGA_OFFLINE)).toBeInTheDocument();
       expect(screen.getByText('Riso Carnaroli')).toBeInTheDocument();
@@ -818,7 +923,7 @@ describe('Lista', () => {
     it('se l\'istantanea è di un\'altra casa (membro tolto) non si mostra e si cancella', async () => {
       salvaIstantaneaDiProva(buildLista(), 'casa-2');
       vi.mocked(leggiSettimanaCorrente).mockRejectedValue(new Error('rete assente'));
-      render(<Lista />);
+      rendi();
 
       expect(await screen.findByText('Non riusciamo a caricare la lista. Riprova più tardi.')).toBeInTheDocument();
       expect(screen.queryByText(/Sei offline/)).not.toBeInTheDocument();
@@ -832,7 +937,7 @@ describe('Lista', () => {
       salvaIstantaneaDiProva(buildLista(), 'casa-2');
       vi.mocked(idCasa).mockRejectedValue(new Error('rete assente'));
       vi.mocked(leggiSettimanaCorrente).mockRejectedValue(new Error('rete assente'));
-      render(<Lista />);
+      rendi();
 
       expect(await screen.findByText(RIGA_OFFLINE)).toBeInTheDocument();
       expect(screen.getByText('Riso Carnaroli')).toBeInTheDocument();
@@ -847,7 +952,7 @@ describe('Lista', () => {
     it('se l\'istantanea è di un altro account (stesso browser) non si mostra e si cancella', async () => {
       salvaIstantaneaDiProva(buildLista(), 'casa-1', 'user-2');
       vi.mocked(leggiSettimanaCorrente).mockRejectedValue(new Error('rete assente'));
-      render(<Lista />);
+      rendi();
 
       expect(await screen.findByText('Non riusciamo a caricare la lista. Riprova più tardi.')).toBeInTheDocument();
       expect(screen.queryByText(/Sei offline/)).not.toBeInTheDocument();
@@ -859,7 +964,7 @@ describe('Lista', () => {
       salvaIstantaneaDiProva(buildLista(), 'casa-1', 'user-2');
       getSessionMock.mockResolvedValue({ data: { session: null } });
       vi.mocked(leggiSettimanaCorrente).mockRejectedValue(new Error('rete assente'));
-      render(<Lista />);
+      rendi();
 
       expect(await screen.findByText(RIGA_OFFLINE)).toBeInTheDocument();
       expect(localStorage.getItem('spesa:lista')).not.toBeNull();
@@ -869,7 +974,7 @@ describe('Lista', () => {
       salvaIstantaneaDiProva(buildLista(), 'casa-1', 'user-2');
       getSessionMock.mockRejectedValue(new Error('storage bloccato'));
       vi.mocked(leggiSettimanaCorrente).mockRejectedValue(new Error('rete assente'));
-      render(<Lista />);
+      rendi();
 
       expect(await screen.findByText(RIGA_OFFLINE)).toBeInTheDocument();
       expect(errore).toHaveBeenCalledWith('lista: lettura della sessione fallita.', expect.any(Error));
@@ -878,7 +983,7 @@ describe('Lista', () => {
     it('una lettura riuscita senza sessione leggibile salva l\'istantanea con userId vuoto', async () => {
       getSessionMock.mockResolvedValue({ data: { session: null } });
       vi.mocked(leggiListe).mockResolvedValue(buildLista());
-      render(<Lista />);
+      rendi();
       await screen.findByText('Riso Carnaroli');
 
       expect(leggiIstantaneaLista()).toMatchObject({ casaId: 'casa-1', userId: '' });
@@ -886,7 +991,7 @@ describe('Lista', () => {
 
     it('con la rete la riga non c\'è', async () => {
       vi.mocked(leggiListe).mockResolvedValue(buildLista());
-      render(<Lista />);
+      rendi();
       await screen.findByText('Riso Carnaroli');
 
       expect(screen.queryByText(/Sei offline/)).not.toBeInTheDocument();
@@ -899,13 +1004,13 @@ describe('Lista', () => {
       accodaSpunta('item-riso', true);
       vi.mocked(spunta).mockRejectedValue(new Error('rete'));
       vi.mocked(leggiListe).mockResolvedValue(buildLista());
-      render(<Lista />);
+      rendi();
 
       const riso = await screen.findByText('Riso Carnaroli');
       expect(riso.closest('button')).toHaveAttribute('aria-pressed', 'true');
 
       const istantanea = leggiIstantaneaLista();
-      expect(istantanea).toMatchObject({ casaId: 'casa-1', userId: 'user-1', weekId: 'week-1', settimanaLabel: '24 AGO — 30 AGO', salvataIl: expect.any(Number) });
+      expect(istantanea).toMatchObject({ casaId: 'casa-1', userId: 'user-1', weekId: 'week-1', settimanaLabel: 'Settimana del 24 agosto', salvataIl: expect.any(Number) });
       expect(istantanea?.lista).toEqual(buildLista());
       expect(istantanea?.lista.base[0].voci[0].spuntato).toBe(false);
     });
@@ -913,7 +1018,7 @@ describe('Lista', () => {
     it('con settimana ma senza lista (nonTrovata) cancella l\'istantanea', async () => {
       salvaIstantaneaDiProva();
       vi.mocked(leggiListe).mockResolvedValue(null);
-      render(<Lista />);
+      rendi();
 
       expect(await screen.findByText('La lista non c’è ancora')).toBeInTheDocument();
       expect(leggiIstantaneaLista()).toBeNull();
@@ -922,7 +1027,7 @@ describe('Lista', () => {
     it('senza settimana corrente (nonTrovata) cancella l\'istantanea', async () => {
       salvaIstantaneaDiProva();
       vi.mocked(leggiSettimanaCorrente).mockResolvedValue(null);
-      render(<Lista />);
+      rendi();
 
       expect(await screen.findByText('La lista non c’è ancora')).toBeInTheDocument();
       expect(leggiIstantaneaLista()).toBeNull();
@@ -944,7 +1049,7 @@ describe('Lista', () => {
         ],
       };
       vi.mocked(leggiListe).mockResolvedValue(fresca);
-      render(<Lista />);
+      rendi();
       await screen.findByText(RIGA_OFFLINE);
       expect(screen.queryByText('Uova')).not.toBeInTheDocument();
       expect(allineaTopUp).not.toHaveBeenCalled();
@@ -975,7 +1080,7 @@ describe('Lista', () => {
         base: [{ area: 'latticini', voci: [VOCE_UOVA], controlli: [] }],
       };
       vi.mocked(leggiListe).mockResolvedValue(nuova);
-      render(<Lista />);
+      rendi();
       await screen.findByText(RIGA_OFFLINE);
 
       window.dispatchEvent(new Event('online'));
@@ -983,12 +1088,12 @@ describe('Lista', () => {
       expect(await screen.findByText('Uova', {}, { timeout: 3000 })).toBeInTheDocument();
       expect(screen.queryByText('Riso Carnaroli')).not.toBeInTheDocument();
       expect(screen.queryByText(/Sei offline/)).not.toBeInTheDocument();
-      expect(screen.getByText('31 AGO — 6 SET')).toBeInTheDocument();
+      expect(screen.getByText('Settimana del 31 agosto')).toBeInTheDocument();
       // La settimana letta è quella corrente, non quella dell'istantanea.
       expect(allineaTopUp).toHaveBeenCalledWith('week-2');
       expect(leggiListe).toHaveBeenCalledWith('week-2');
       expect(leggiListe).not.toHaveBeenCalledWith('week-1');
-      expect(leggiIstantaneaLista()).toMatchObject({ weekId: 'week-2', settimanaLabel: '31 AGO — 6 SET', lista: nuova });
+      expect(leggiIstantaneaLista()).toMatchObject({ weekId: 'week-2', settimanaLabel: 'Settimana del 31 agosto', lista: nuova });
     });
 
     it('al ritorno della rete, se la settimana corrente è un\'altra senza lista, mostra "non trovata" e cancella l\'istantanea', async () => {
@@ -997,7 +1102,7 @@ describe('Lista', () => {
         .mockRejectedValueOnce(new Error('rete assente'))
         .mockResolvedValue({ ...SETTIMANA, id: 'week-2', dataInizio: '2026-08-31' });
       vi.mocked(leggiListe).mockResolvedValue(null);
-      render(<Lista />);
+      rendi();
       await screen.findByText(RIGA_OFFLINE);
 
       window.dispatchEvent(new Event('online'));
@@ -1014,7 +1119,7 @@ describe('Lista', () => {
       vi.mocked(leggiSettimanaCorrente)
         .mockRejectedValueOnce(new Error('rete assente'))
         .mockResolvedValue(null);
-      render(<Lista />);
+      rendi();
       await screen.findByText(RIGA_OFFLINE);
 
       window.dispatchEvent(new Event('online'));
@@ -1027,7 +1132,7 @@ describe('Lista', () => {
     it('al ritorno della rete, se il caricamento fallisce di nuovo, la copia resta e l\'errore va in console', async () => {
       salvaIstantaneaDiProva();
       vi.mocked(leggiSettimanaCorrente).mockRejectedValue(new Error('ancora niente rete'));
-      render(<Lista />);
+      rendi();
       await screen.findByText(RIGA_OFFLINE);
       expect(errore).toHaveBeenCalledTimes(1);
 
@@ -1046,7 +1151,7 @@ describe('Lista', () => {
         .mockRejectedValueOnce(new Error('rete assente'))
         .mockResolvedValue({ ...SETTIMANA, id: 'week-2', dataInizio: '2026-08-31' });
       vi.mocked(leggiListe).mockResolvedValue(null);
-      render(<Lista />);
+      rendi();
       await screen.findByText(RIGA_OFFLINE);
 
       simulaVisibilita('visible');
@@ -1065,7 +1170,7 @@ describe('Lista', () => {
       vi.mocked(leggiSettimanaCorrente).mockRejectedValueOnce(new Error('rete assente'));
       let risolviLettura: (l: ListaSalvata) => void = () => {};
       vi.mocked(leggiListe).mockImplementationOnce(() => new Promise<ListaSalvata | null>((resolve) => { risolviLettura = resolve; }));
-      render(<Lista />);
+      rendi();
       const riso = (await screen.findByText('Riso Carnaroli')).closest('button')!;
 
       window.dispatchEvent(new Event('online'));
@@ -1097,7 +1202,7 @@ describe('Lista', () => {
         .mockImplementationOnce(() => new Promise((_, reject) => { rifiutaSettimana = reject; }));
       // Offline il tap fallisce e resta in coda; alla seconda scrittura la rete c'è.
       vi.mocked(spunta).mockRejectedValueOnce(new Error('rete assente'));
-      render(<Lista />);
+      rendi();
       const riso = (await screen.findByText('Riso Carnaroli')).closest('button')!;
 
       fireEvent.click(riso);
@@ -1155,7 +1260,7 @@ describe('Lista', () => {
           });
         });
       });
-      render(<Lista />);
+      rendi();
       const riso = (await screen.findByText('Riso Carnaroli')).closest('button')!;
 
       fireEvent.click(riso);
@@ -1190,7 +1295,7 @@ describe('Lista', () => {
       salvaIstantaneaDiProva();
       vi.mocked(leggiSettimanaCorrente).mockRejectedValueOnce(new Error('rete assente'));
       vi.mocked(leggiListe).mockResolvedValue(buildLista());
-      render(<Lista />);
+      rendi();
       await screen.findByText(RIGA_OFFLINE);
 
       // Nessuna attesa fra la comparsa e l'evento.
@@ -1202,7 +1307,7 @@ describe('Lista', () => {
 
     it('un ritorno in primo piano emesso subito dopo che la lista compare è sempre ricevuto', async () => {
       vi.mocked(leggiListe).mockResolvedValue(buildLista());
-      render(<Lista />);
+      rendi();
       await screen.findByText('Riso Carnaroli');
 
       simulaVisibilita('visible');
@@ -1222,7 +1327,7 @@ describe('Lista', () => {
         .mockRejectedValueOnce(new Error('rete assente'))
         .mockImplementationOnce(() => new Promise((resolve) => { risolviSettimana = resolve; }));
       vi.mocked(leggiListe).mockResolvedValue(buildLista());
-      render(<Lista />);
+      rendi();
       const riso = (await screen.findByText('Riso Carnaroli')).closest('button')!;
 
       window.dispatchEvent(new Event('online'));
@@ -1243,7 +1348,7 @@ describe('Lista', () => {
 
     it('con la rete, l\'evento online sincronizza la coda ma non rilegge', async () => {
       vi.mocked(leggiListe).mockResolvedValue(buildLista());
-      render(<Lista />);
+      rendi();
       await screen.findByText('Riso Carnaroli');
 
       window.dispatchEvent(new Event('online'));

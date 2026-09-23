@@ -100,10 +100,16 @@ function etichettaGiorno(dataIso: string): { maiuscolo: string; minuscolo: strin
  * conseguenza pratica vera per l'utente. Il buco che `allineaTopUp` lascia —
  * un fabbisogno che cresce su un ingrediente GIÀ in lista — lo racconta la
  * riga di conflitto (`testoConflitto`), non la nota.
+ *
+ * La nota dice «entra nella lista», non «entra nel top-up»: la fase 2 ha tolto
+ * quella parola dall'interfaccia (la lista è una sola), e questo era l'ultimo
+ * posto dove l'utente la leggeva — il Task 6 dichiarava di averlo già corretto
+ * e si sbagliava. La divisione base/top-up resta nel dominio e nel database,
+ * `allineaTopUp` compresa: è un fatto tecnico, non una parola da mostrare.
  */
 function testoNota(cambiato: boolean, nomePasto: string, giorno: string): string {
   if (cambiato) {
-    return `Cambia solo ${nomePasto} di ${giorno}. Gli altri giorni restano come sono. Se la lista è già fatta, quello che manca entra nel top-up quando la riapri.`;
+    return `Cambia solo ${nomePasto} di ${giorno}. Gli altri giorni restano come sono. Se la lista è già fatta, quello che manca entra nella lista quando la riapri.`;
   }
   return `Tocca un piatto per sostituire ${nomePasto} di ${giorno}. Vale solo per quel giorno, non cambia il piatto nel repertorio.`;
 }

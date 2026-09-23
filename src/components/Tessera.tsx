@@ -78,9 +78,12 @@ export function Tessera({
     nameColor = INK; qtyColor = rgba(INK, 0.55);
     pillBg = '#FFFFFF'; pillTxt = INK;
   } else {
-    background = '#FFFFFF';
+    // Dentro la Tessera widget di sezione la tessera accesa non ha bisogno di un
+    // secondo fondo bianco sul bianco: la tiene il filo nel colore d'area
+    // (variante 1 del foglio a cinque versioni, decisa il 19/09).
+    background = 'none';
     border = `1px solid ${rgba(colore, 0.45)}`;
-    boxShadow = '0 1px 2px rgba(20,22,58,0.05)';
+    boxShadow = undefined;
     nameColor = INK; qtyColor = MUT;
     pillBg = rgba(colore, 0.32); pillTxt = INK;
   }
@@ -103,7 +106,7 @@ export function Tessera({
         flexDirection: 'column',
         minHeight: 104,
         padding: protagonista ? '13px 16px 14px' : '12px 14px 13px',
-        borderRadius: protagonista ? 18 : 15,
+        borderRadius: protagonista ? 18 : 14,
         background,
         border,
         boxShadow,

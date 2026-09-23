@@ -393,7 +393,16 @@ export default function IngredienteEditor() {
                 marginTop: 5,
               }}
             >
-              {deperibile ? 'FINISCE NELLA LISTA TOP-UP' : 'FINISCE NELLA LISTA BASE'}
+              {/* Con una lista sola il flag non decide più in quale lista finisce (decisione
+                  del 20/09): decide se il residuo può decadere (pantry.ts).
+                  La sottoriga dice DOVE la scelta ha effetto, non quanto dura: "non arriva
+                  alla settimana dopo" era falso in tre casi su `residuoUtilizzabile` —
+                  `GIORNI_FRESCO.surgelati` è null e il residuo non decade mai, con
+                  `congelato` la soglia è `GIORNI_CONGELATO` = 90 giorni, e il confronto è
+                  `>` stretto, quindi a esattamente sette giorni il residuo sopravvive.
+                  Il ramo non deperibile è l'unico che si può promettere: `residuoUtilizzabile`
+                  esce subito col residuo intero e `scadenzaResiduo` ritorna null. */}
+              {deperibile ? 'QUANTO DURA IL RESIDUO DIPENDE DAL REPARTO' : 'IL RESIDUO NON SCADE'}
             </div>
           </div>
           <span

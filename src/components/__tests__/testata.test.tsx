@@ -27,6 +27,13 @@ describe('Testata (spec §D)', () => {
     expect(pillola.querySelector('svg')).toBeNull();
   });
 
+  it('la pillola rende maiuscola l\'etichetta, che arriva in sentence case', () => {
+    // Chi la passa scrive "Settimana del 21 settembre" (etichettaSettimana):
+    // la maiuscola è della pillola, non della stringa (DESIGN.md §3).
+    render(<Testata titolo="Piano" settimana="Settimana del 21 settembre" />);
+    expect(screen.getByText('Settimana del 21 settembre').style.textTransform).toBe('uppercase');
+  });
+
   it('con indietro c\'è il link Indietro e non c\'è Impostazioni', () => {
     render(<Testata titolo="Importa la dieta" indietro />);
     expect(screen.getByRole('link', { name: 'Indietro' })).toHaveAttribute('href', '/impostazioni');

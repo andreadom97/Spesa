@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
-import { StrictMode } from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { StrictMode, type ReactNode } from 'react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import type { Dish, Ingredient, MealSlot, MealSlotDef } from '@/domain/types';
 import type { SettimanaCorrente } from '@/data/settimana';
@@ -52,6 +52,8 @@ import { leggiPronti } from '@/data/pronti';
 import { leggiDispensa } from '@/data/dispensa';
 import { sommaGiorni } from '@/domain/date';
 import { etichettaScadenza } from '@/domain/scadenza';
+import { etichettaSettimana } from '@/domain/settimana-label';
+import { SlotDockProvider } from '@/components/dock-slot';
 import Settimana from '../page';
 
 // "Oggi" reale: evita di mockare l'orologio di sistema, che confligge con i
@@ -61,17 +63,40 @@ const OGGI = new Date().toISOString().slice(0, 10);
 const LUNEDI = lunediDi(OGGI);
 const GIORNI = giorniDellaSettimana(LUNEDI);
 const INDICE_OGGI = GIORNI.indexOf(OGGI);
+// I nomi lunghi del giorno nell'ordine di giorniDellaSettimana (lunedì primo):
+// gli stessi che l'etichetta di sezione scrive accanto al numero.
+const NOMI_LUNGHI = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
+// Un giorno lontano da oggi: la settimana ne ha sempre uno a tre giorni o più,
+// quindi senza parola temporale (solo ieri, oggi e domani ne hanno una).
+const INDICE_LONTANO = INDICE_OGGI >= 3 ? 0 : 6;
 
 // La dispensa è una lettura tollerante della Settimana (spec scadenza-fresco
 // §3.1): di default vuota, così i test che montano i mock a mano — senza
 // mockCarico — non cambiano. vi.clearAllMocks nei beforeEach interni azzera
 // solo la storia delle chiamate, non questa implementazione.
+// Il Dock si monta con un portale nello slot che il `Guscio` renderizza accanto
+// alla tab bar: senza slot non renderizza niente (Dock.tsx). Questi test montano
+// la pagina da sola, quindi lo slot glielo dà `rendi()` — un nodo dentro
+// `document.body`, dove `screen` interroga già. Chi asserisce sul primario deve
+// passare da `rendi()`: con `render` nudo il tasto non esisterebbe affatto.
+let slotDock: HTMLElement;
+
+function rendi(ui: ReactNode = <Settimana />) {
+  return render(<SlotDockProvider slot={slotDock}>{ui}</SlotDockProvider>);
+}
+
 beforeEach(() => {
+  slotDock = document.createElement('div');
+  document.body.appendChild(slotDock);
   vi.mocked(leggiDispensa).mockResolvedValue([]);
   // Il completamento delle assegnazioni (B1) è tollerante e di default non
   // compila nulla: la settimana base ha i pranzi a casa senza piatto, quindi
   // scatterebbe in quasi tutti i test — con 0 non c'è una seconda lettura.
   vi.mocked(completaAssegnazioni).mockResolvedValue(0);
+});
+
+afterEach(() => {
+  slotDock.remove();
 });
 
 const ASSENZE = [false, false, false, false, false, false, false];
@@ -230,15 +255,18 @@ describe('Settimana (piano alimentare)', () => {
     expect(leggiSettimanaCorrente).toHaveBeenCalledTimes(2);
   });
 
-  it('la striscia mostra sette giorni con tre pallini ciascuno, e il bordo di oggi resta anche selezionando un altro giorno', async () => {
+  it('la striscia mostra sette giorni con tre pallini ciascuno, e l\'inset di oggi resta anche selezionando un altro giorno', async () => {
     mockCarico();
     const { container } = render(<Settimana />);
     await screen.findByText('Yogurt e frutta');
 
     const cellaOggi = container.querySelector(`[data-giorno="${OGGI}"]`) as HTMLElement;
     expect(cellaOggi).toBeTruthy();
-    // jsdom normalizza i colori esadecimali in rgb(): la forma nota già dal Task 8.
-    expect(cellaOggi.style.border).toBe('3px solid rgb(20, 22, 58)');
+    // Task 3: i quattro stati della cella stanno nel box-shadow, mai nel
+    // bordo (sempre 0) — un bordo di 3px rimpiccioliva l'ingombro interno
+    // solo della cella di oggi rispetto alle altre sei.
+    expect(cellaOggi.style.border).toBe('0px');
+    expect(cellaOggi.style.boxShadow).toContain('inset 0 0 0 3px');
     expect(cellaOggi.querySelectorAll('span[style*="border-radius: 999px"]')).toHaveLength(3); // 3 pallini, non 4
 
     // Seleziono un altro giorno (quello successivo a oggi nella striscia).
@@ -247,8 +275,8 @@ describe('Settimana (piano alimentare)', () => {
     fireEvent.click(cellaAltra);
 
     await waitFor(() => expect(cellaAltra.getAttribute('aria-pressed')).toBe('true'));
-    // Il bordo di oggi non dipende dalla selezione.
-    expect(cellaOggi.style.border).toBe('3px solid rgb(20, 22, 58)');
+    // L'inset di oggi non dipende dalla selezione.
+    expect(cellaOggi.style.boxShadow).toContain('inset 0 0 0 3px');
     expect(cellaOggi.getAttribute('aria-pressed')).toBe('false');
   });
 
@@ -270,18 +298,21 @@ describe('Settimana (piano alimentare)', () => {
   it('check-in fallito: mostra un errore inline senza rimpiazzare la schermata (striscia, righe, pulsante restano)', async () => {
     mockCarico();
     vi.mocked(aggiornaSlot).mockRejectedValue(new Error('rete assente'));
-    render(<Settimana />);
+    rendi();
     await screen.findByText('Yogurt e frutta');
 
     fireEvent.click(screen.getByLabelText('Colazione: a casa, tocca per segnare fuori'));
 
-    expect(await screen.findByText('Non siamo riusciti a salvare il cambiamento. Riprova.')).toBeInTheDocument();
+    const errore = await screen.findByText('Non siamo riusciti a salvare il cambiamento. Riprova.');
+    // Un errore a schermo si legge in --errore, non nel grigio dei testi informativi.
+    expect(errore.style.color).toBe('var(--errore)');
     // L'errore di check-in non è il gate di caricamento: il resto della
     // schermata deve restare in piedi, non sparire dietro un paragrafo solo.
     expect(screen.getByLabelText('Colazione: a casa, tocca per segnare fuori')).toBeInTheDocument(); // stato ripristinato
     expect(screen.getByText('Pollo e riso')).toBeInTheDocument();
     expect(screen.getByText('CONFERMA E CREA LA LISTA')).toBeInTheDocument();
-    expect(screen.getByLabelText('Giorno precedente')).toBeInTheDocument();
+    // La striscia sta al posto delle due frecce: sette bersagli, tutti in piedi.
+    expect(document.querySelectorAll('[data-giorno]')).toHaveLength(7);
   });
 
   it('un secondo check-in riuscito pulisce il messaggio d\'errore del precedente', async () => {
@@ -364,21 +395,81 @@ describe('Settimana (piano alimentare)', () => {
     expect(freccia).toHaveAttribute('href', `/piano/${OGGI}/sd-1/scegli`);
   });
 
-  it('il contatore conta solo i pasti a casa con un piatto assegnato', async () => {
+  it('il conteggio nell\'etichetta è quello del giorno scelto, non della settimana', async () => {
+    // La cena di un altro giorno è fuori casa: quel giorno conta un pasto solo,
+    // oggi due. Se il conteggio fosse ancora settimanale, direbbe 13 in entrambi.
+    const altro = GIORNI[(INDICE_OGGI + 1) % 7];
+    const slots = buildSlots().map((s) =>
+      s.data === altro && s.slotDefId === 'sd-3' ? { ...s, stato: 'fuori' as const } : s,
+    );
+    mockCarico({ ...SETTIMANA_BASE, slots });
+    const { container } = render(<Settimana />);
+    await screen.findByText('Yogurt e frutta');
+
+    // Oggi: colazione e cena a casa con piatto. Il pranzo non ha mai un piatto
+    // assegnato in questa fixture, quindi non conta mai.
+    expect(screen.getByText('2 PASTI A CASA')).toBeInTheDocument();
+    // Il totale settimanale non si legge più da nessuna parte (decisione del 21/09).
+    expect(screen.queryByText(/IN SETTIMANA/)).not.toBeInTheDocument();
+
+    fireEvent.click(container.querySelector(`[data-giorno="${altro}"]`) as HTMLElement);
+
+    // Un pasto solo: singolare, non "1 PASTI".
+    expect(await screen.findByText('1 PASTO A CASA')).toBeInTheDocument();
+  });
+
+  it('la pillola della settimana c\'è, e la Testata la rende maiuscola', async () => {
     mockCarico();
     render(<Settimana />);
     await screen.findByText('Yogurt e frutta');
 
-    // 7 giorni × 2 pasti con piatto (colazione, cena) sempre a casa = 14.
-    // Il pranzo non ha mai un piatto assegnato in questa fixture: non conta mai.
-    expect(screen.getByText('14 PASTI A CASA IN SETTIMANA')).toBeInTheDocument();
+    // La stringa si scrive in sentence case: maiuscola la fa la pillola, quindi
+    // nel DOM il testo resta quello di etichettaSettimana.
+    const pillola = screen.getByText(etichettaSettimana(LUNEDI));
+    expect(pillola).toBeInTheDocument();
+    expect(pillola.style.textTransform).toBe('uppercase');
+  });
+
+  it('l\'etichetta titola il giorno scelto col nome, il numero e la parola temporale', async () => {
+    mockCarico();
+    const { container } = render(<Settimana />);
+    await screen.findByText('Yogurt e frutta');
+
+    // La pagina apre sul giorno di oggi. Nome e parola temporale sono due nodi
+    // distinti — l'etichetta è "Lunedì 21" più il " · Oggi" grigio accanto.
+    const numeroOggi = Number(OGGI.slice(8, 10));
+    const etichetta = screen.getByText(`${NOMI_LUNGHI[INDICE_OGGI]} ${numeroOggi}`);
+    expect(etichetta).toBeInTheDocument();
+    // A schermo si legge VENERDÌ 18 · DOMANI: la maiuscola è del text-transform,
+    // così il DOM resta in sentence case come l'etichetta accessibile della striscia.
+    expect(etichetta.style.textTransform).toBe('uppercase');
+    // La parola temporale è un testo che porta informazione: --testo-2.
+    expect(screen.getByText('· Oggi').style.color).toBe('var(--testo-2)');
+
+    // Un giorno lontano non ha parola temporale: solo ieri, oggi e domani ne hanno una.
+    const lontano = GIORNI[INDICE_LONTANO];
+    fireEvent.click(container.querySelector(`[data-giorno="${lontano}"]`) as HTMLElement);
+
+    expect(await screen.findByText(
+      `${NOMI_LUNGHI[INDICE_LONTANO]} ${Number(lontano.slice(8, 10))}`,
+    )).toBeInTheDocument();
+    expect(screen.queryByText(/· (Ieri|Oggi|Domani)/)).not.toBeInTheDocument();
+  });
+
+  it('le frecce del giorno non esistono più', async () => {
+    mockCarico();
+    render(<Settimana />);
+    await screen.findByText('Yogurt e frutta');
+
+    expect(screen.queryByLabelText('Giorno precedente')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Giorno successivo')).not.toBeInTheDocument();
   });
 
   it('il pulsante finale conferma la settimana, genera la lista e naviga a /lista', async () => {
     mockCarico();
     vi.mocked(confermaSettimana).mockResolvedValue(undefined);
     vi.mocked(generaListe).mockResolvedValue(undefined);
-    render(<Settimana />);
+    rendi();
     await screen.findByText('Yogurt e frutta');
 
     fireEvent.click(screen.getByText('CONFERMA E CREA LA LISTA'));
@@ -392,7 +483,7 @@ describe('Settimana (piano alimentare)', () => {
     mockCarico();
     vi.mocked(confermaSettimana).mockResolvedValue(undefined);
     vi.mocked(generaListe).mockRejectedValue(new Error('non ancora implementato'));
-    render(<Settimana />);
+    rendi();
     await screen.findByText('Yogurt e frutta');
 
     fireEvent.click(screen.getByText('CONFERMA E CREA LA LISTA'));
@@ -401,17 +492,62 @@ describe('Settimana (piano alimentare)', () => {
     expect(push).not.toHaveBeenCalledWith('/lista');
   });
 
+  it('il primario sta nel Dock, e lo scroller tiene la coda del dock', async () => {
+    mockCarico();
+    rendi();
+
+    const tasto = await screen.findByRole('button', { name: 'CONFERMA E CREA LA LISTA' });
+    expect(tasto.closest('.dock')).not.toBeNull();
+    expect(tasto).toHaveClass('dock-primario');
+    expect(document.querySelector('.scroll-app.con-dock')).not.toBeNull();
+  });
+
+  it('mentre conferma il primario è disabilitato, senza opacità inline', async () => {
+    mockCarico();
+    // Una conferma che non si risolve mai: la pagina resta nello stato "confermando".
+    vi.mocked(confermaSettimana).mockReturnValue(new Promise<void>(() => {}));
+    rendi();
+    const tasto = await screen.findByRole('button', { name: 'CONFERMA E CREA LA LISTA' });
+
+    fireEvent.click(tasto);
+
+    await waitFor(() => expect(tasto).toBeDisabled());
+    // Lo stato spento lo dà .dock-primario:disabled: niente opacità inline, che
+    // abbasserebbe anche il contrasto del testo bianco.
+    expect(tasto.style.opacity).toBe('');
+  });
+
+  it('l\'errore di conferma compare nello scroller, non accanto al tasto', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockCarico();
+    vi.mocked(confermaSettimana).mockResolvedValue(undefined);
+    vi.mocked(generaListe).mockRejectedValue(new Error('rete assente'));
+    rendi();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'CONFERMA E CREA LA LISTA' }));
+
+    const errore = await screen.findByText('Non siamo riusciti a confermare la settimana. Riprova.');
+    expect(errore.closest('.scroll-app')).not.toBeNull();
+    expect(errore.closest('.dock')).toBeNull();
+    expect(errore.style.color).toBe('var(--errore)');
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+
   // Regressione su C4: riconfermare una settimana già confermata (o chiusa)
   // cancellava e reinseriva la lista, perdendo ogni spunta e risposta ai
   // controlli, e su una settimana chiusa riportava lo stato a 'confermata',
   // disarmando il guard di idempotenza di chiudiSpesa.
   it('su una settimana già confermata il pulsante diventa "VAI ALLA LISTA" e naviga soltanto, senza toccare il server', async () => {
     mockCarico({ ...SETTIMANA_BASE, stato: 'confermata' });
-    render(<Settimana />);
+    rendi();
     await screen.findByText('Yogurt e frutta');
 
     expect(screen.queryByText('CONFERMA E CREA LA LISTA')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByText('VAI ALLA LISTA'));
+    const tasto = screen.getByText('VAI ALLA LISTA');
+    // Anche il testo da settimana già confermata vive nel Dock.
+    expect(tasto.closest('.dock')).not.toBeNull();
+    fireEvent.click(tasto);
 
     await waitFor(() => expect(push).toHaveBeenCalledWith('/lista'));
     expect(confermaSettimana).not.toHaveBeenCalled();
@@ -420,7 +556,7 @@ describe('Settimana (piano alimentare)', () => {
 
   it('su una settimana già chiusa il pulsante diventa "VAI ALLA LISTA" e naviga soltanto, senza toccare il server', async () => {
     mockCarico({ ...SETTIMANA_BASE, stato: 'chiusa' });
-    render(<Settimana />);
+    rendi();
     await screen.findByText('Yogurt e frutta');
 
     fireEvent.click(screen.getByText('VAI ALLA LISTA'));
@@ -509,13 +645,13 @@ describe('spunta pasti', () => {
     const settimana: SettimanaCorrente = { id: 'w-1', dataInizio: LUNEDI, stato: 'confermata', slots: buildSlots() };
     mockCarico(settimana);
 
-    render(<Settimana />);
+    const { container } = render(<Settimana />);
     await screen.findByText('Yogurt e frutta');
 
-    // GIORNI è una settimana consecutiva e INDICE_OGGI < 6 (altrimenti il
-    // test è saltato): un solo "Giorno successivo" basta per finire su un
-    // giorno futuro.
-    fireEvent.click(screen.getByLabelText('Giorno successivo'));
+    // GIORNI è una settimana consecutiva e INDICE_OGGI < 6 (altrimenti il test
+    // è saltato): la cella dopo oggi nella striscia è un giorno futuro. Le
+    // frecce non ci sono più, il giorno si sceglie dalla striscia.
+    fireEvent.click(container.querySelector(`[data-giorno="${GIORNI[INDICE_OGGI + 1]}"]`) as HTMLElement);
 
     fireEvent.click(await screen.findByRole('button', { name: 'Azioni per Cena' }));
 
@@ -679,7 +815,7 @@ describe('settimana precedente', () => {
     });
     vi.mocked(leggiPronti).mockResolvedValue([]);
 
-    render(<StrictMode><Settimana /></StrictMode>);
+    rendi(<StrictMode><Settimana /></StrictMode>);
     await screen.findByText('Yogurt e frutta');
 
     fireEvent.click(screen.getByRole('button', { name: '‹ SETTIMANA SCORSA' }));
@@ -742,6 +878,48 @@ describe('settimana precedente', () => {
     fireEvent.click(bottoneRitorno);
 
     expect(await screen.findByText('Yogurt e frutta')).toBeInTheDocument();
+  });
+
+  it('l\'errore di conferma non segue il cambio vista: cambiare settimana lo pulisce', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const corrente: SettimanaCorrente = { id: 'w-1', dataInizio: LUNEDI, stato: 'bozza', slots: buildSlots() };
+    const precedente: SettimanaCorrente = { id: 'w-0', dataInizio: LUNEDI_PREC, stato: 'chiusa', slots: slotsPrecedenti() };
+    mockCarico(corrente);
+    vi.mocked(leggiSettimana).mockResolvedValue(precedente);
+    vi.mocked(confermaSettimana).mockRejectedValue(new Error('rete assente'));
+    rendi();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'CONFERMA E CREA LA LISTA' }));
+    const errore = await screen.findByText('Non siamo riusciti a confermare la settimana. Riprova.');
+    expect(errore).toBeInTheDocument();
+
+    // L'errore vive nello scroller, che è reso in entrambe le viste: senza
+    // azzerarlo resterebbe sopra il piano della settimana scorsa, dove il
+    // tasto che lo ha generato non esiste nemmeno.
+    fireEvent.click(screen.getByRole('button', { name: '‹ SETTIMANA SCORSA' }));
+    await screen.findByRole('button', { name: 'SETTIMANA CORRENTE ›' });
+
+    expect(screen.queryByText('Non siamo riusciti a confermare la settimana. Riprova.')).not.toBeInTheDocument();
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+
+  it('nella vista precedente il Dock non c\'è, e lo scroller non tiene la coda del dock', async () => {
+    const corrente: SettimanaCorrente = { id: 'w-1', dataInizio: LUNEDI, stato: 'bozza', slots: buildSlots() };
+    const precedente: SettimanaCorrente = { id: 'w-0', dataInizio: LUNEDI_PREC, stato: 'chiusa', slots: slotsPrecedenti() };
+    mockCarico(corrente);
+    vi.mocked(leggiSettimana).mockResolvedValue(precedente);
+
+    // Con lo slot del Dock montato per davvero: senza, le due asserzioni qui
+    // sotto passerebbero anche se il Dock fosse renderizzato nel passato.
+    rendi();
+    await screen.findByRole('button', { name: 'CONFERMA E CREA LA LISTA' });
+
+    fireEvent.click(screen.getByRole('button', { name: '‹ SETTIMANA SCORSA' }));
+    await screen.findByRole('button', { name: 'SETTIMANA CORRENTE ›' });
+
+    expect(document.querySelector('.dock')).toBeNull();
+    expect(document.querySelector('.scroll-app.con-dock')).toBeNull();
   });
 });
 
@@ -877,7 +1055,7 @@ describe('completamento delle assegnazioni (settimana bozza con righe vuote)', (
 
   it('settimana confermata con slot vuoti: non chiama completaAssegnazioni', async () => {
     mockCarico({ ...SETTIMANA_BASE, stato: 'confermata', slots: slotsVuoti() });
-    render(<Settimana />);
+    rendi();
 
     await screen.findByText('VAI ALLA LISTA');
     expect(completaAssegnazioni).not.toHaveBeenCalled();
@@ -886,7 +1064,7 @@ describe('completamento delle assegnazioni (settimana bozza con righe vuote)', (
   it('completaAssegnazioni che non compila nulla (0): nessuna seconda lettura', async () => {
     mockCarico({ ...SETTIMANA_BASE, slots: slotsVuoti() });
     vi.mocked(completaAssegnazioni).mockResolvedValue(0);
-    render(<Settimana />);
+    rendi();
 
     await screen.findByText('CONFERMA E CREA LA LISTA');
     expect(completaAssegnazioni).toHaveBeenCalledTimes(1);
@@ -897,7 +1075,7 @@ describe('completamento delle assegnazioni (settimana bozza con righe vuote)', (
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     mockCarico({ ...SETTIMANA_BASE, slots: slotsVuoti() });
     vi.mocked(completaAssegnazioni).mockRejectedValue(new Error('rete'));
-    render(<Settimana />);
+    rendi();
 
     expect(await screen.findByText('CONFERMA E CREA LA LISTA')).toBeInTheDocument();
     expect(screen.queryByText('Non riusciamo a caricare la settimana. Riprova più tardi.')).not.toBeInTheDocument();

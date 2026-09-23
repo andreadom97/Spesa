@@ -44,6 +44,13 @@ describe('Guscio', () => {
     expect(container.querySelector('nav[aria-label="Sezioni"]')).toBeInTheDocument();
   });
 
+  it('renderizza lo slot del dock accanto alla tab bar', () => {
+    const { container } = render(<Guscio><div /></Guscio>);
+    const slot = container.querySelector('.dock-slot');
+    expect(slot).not.toBeNull();
+    expect(slot?.nextElementSibling?.tagName).toBe('NAV');
+  });
+
   it('il cambio di route riporta la barra a grande', () => {
     percorso.valore = '/lista';
     const { container, rerender } = render(

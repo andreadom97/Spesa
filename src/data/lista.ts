@@ -1,4 +1,5 @@
 import type { AreaId, UnitaBase } from '@/domain/types';
+import { ORDINE_AREE_DEFAULT } from '@/domain/aree';
 import { costruisciLista } from '@/domain/list-builder';
 import { calcolaChiusura, type VoceChiusura } from '@/domain/chiusura';
 import { client } from './supabase';
@@ -42,6 +43,13 @@ export interface ListaSalvata {
    */
   baseListaId: string | null;
   topupListaId: string | null;
+  /**
+   * L'ordine dei reparti scelto dall'utente, come lo legge `leggiListe` dalle
+   * impostazioni: serve a `fondiSezioni` per ordinare le aree della lista
+   * unica. **Facoltativo di proposito**: un'istantanea offline salvata prima
+   * della fase 2 non lo ha, e il tipo deve dire la verità su quel dato.
+   */
+  ordineAree?: AreaId[];
 }
 
 /**
@@ -269,6 +277,20 @@ function eControlloInSospeso(r: RigaVoceGrezza): boolean {
 }
 
 /**
+ * I due criteri di ordinamento condivisi fra `raggruppaInSezioni` e
+ * `fondiSezioni`: quest'ultima esiste per riprodurre lo stesso ordine
+ * sull'unione delle due liste, quindi il criterio vive qui una volta sola —
+ * due copie sarebbe il punto in cui un cambio futuro le fa divergere in
+ * silenzio.
+ */
+function ordinaVoci(a: VoceSalvata, b: VoceSalvata): number {
+  return b.confezioni - a.confezioni || a.nome.localeCompare(b.nome, 'it');
+}
+function ordinaControlli(a: VoceSalvata, b: VoceSalvata): number {
+  return a.nome.localeCompare(b.nome, 'it');
+}
+
+/**
  * Stesse due regole di ordinamento della funzione sezioni() del Task 4: ordine
  * aree dell'utente, poi confezioni decrescenti e nome per le voci, solo nome
  * per i controlli. Niente sezioni vuote.
@@ -284,12 +306,69 @@ export function raggruppaInSezioni(righe: RigaVoceGrezza[], ordine: AreaId[]): S
   for (const area of ordine) {
     const v = voci
       .filter((x) => x.area === area)
-      .sort((a, b) => b.confezioni - a.confezioni || a.nome.localeCompare(b.nome, 'it'));
+      .sort(ordinaVoci);
     const c = controlli
       .filter((x) => x.area === area)
-      .sort((a, b) => a.nome.localeCompare(b.nome, 'it'));
+      .sort(ordinaControlli);
     if (v.length === 0 && c.length === 0) continue;
     out.push({ area, voci: v, controlli: c });
+  }
+  return out;
+}
+
+/** Una voce con l'id della lista da cui viene: `rispondiControllo` scrive su quella. */
+export type VoceFusa = VoceSalvata & { listaId: string };
+
+export interface SezioneFusa {
+  area: AreaId;
+  voci: VoceFusa[];
+  controlli: VoceFusa[];
+}
+
+/**
+ * Le due liste (base e top-up) lette come una sola, per reparto: è la
+ * decisione del 20/09 (la lista è una, la distinzione secco/fresco resta nel
+ * dominio per scadenze e decadimento, non in corsia).
+ *
+ * Fusione **solo in lettura**: `shopping_list` resta con le sue due righe per
+ * settimana e nessuna scrittura cambia. Ogni voce porta il `listaId` della
+ * lista da cui viene, perché `rispondiControllo` fa upsert su
+ * (shopping_list_id, ingredient_id) e deve colpire quella giusta.
+ *
+ * Non si concatenano due elenchi già ordinati: si riordina l'unione, con lo
+ * stesso criterio di `raggruppaInSezioni`. Concatenare darebbe, con ordine
+ * [A, B, C] e base [A, C], topup [B], la sequenza A C B.
+ */
+export function fondiSezioni(lista: ListaSalvata): SezioneFusa[] {
+  const ordine = lista.ordineAree ?? ORDINE_AREE_DEFAULT;
+
+  // Una lista senza id non può ricevere risposte ai controlli: le sue voci si
+  // scartano invece di mostrarle destinate al nulla. Non dovrebbe capitare
+  // (generaListe crea sempre le due righe insieme), quindi si logga.
+  const lati: Array<SezioneSalvata & { listaId: string }> = [];
+  const aggiungi = (sezioni: SezioneSalvata[], listaId: string | null, tipo: string) => {
+    if (listaId === null) {
+      if (sezioni.length > 0) console.error(`lista: sezioni ${tipo} senza id di lista, scartate.`);
+      return;
+    }
+    for (const s of sezioni) lati.push({ ...s, listaId });
+  };
+  aggiungi(lista.base, lista.baseListaId, 'base');
+  aggiungi(lista.topup, lista.topupListaId, 'top-up');
+
+  const out: SezioneFusa[] = [];
+  for (const area of ordine) {
+    const voci: VoceFusa[] = [];
+    const controlli: VoceFusa[] = [];
+    for (const s of lati) {
+      if (s.area !== area) continue;
+      for (const v of s.voci) voci.push({ ...v, listaId: s.listaId });
+      for (const c of s.controlli) controlli.push({ ...c, listaId: s.listaId });
+    }
+    if (voci.length === 0 && controlli.length === 0) continue;
+    voci.sort(ordinaVoci);
+    controlli.sort(ordinaControlli);
+    out.push({ area, voci, controlli });
   }
   return out;
 }
@@ -326,6 +405,7 @@ export async function leggiListe(weekId: string): Promise<ListaSalvata | null> {
   return {
     base: perTipo('base'), topup: perTipo('topup'),
     baseListaId: idPerTipo('base'), topupListaId: idPerTipo('topup'),
+    ordineAree: impostazioni.ordineAree,
   };
 }
 

@@ -53,6 +53,24 @@
   /* Coda in fondo agli scroller: 84 di barra + 22 dal fondo + 34 di respiro. Con il Dock (fase 2) diventa 194. */
   --coda: 140px;
 
+  /* Il Dock (spec fase 2 §A): una riga sola, 8 + 54 + 8 = 70 di altezza. */
+  --dock-lato: 16px;
+  --dock-fondo: 114px;      /* 84 di barra + 22 dal fondo + 8 di respiro */
+  --dock-fondo-giu: 96px;   /* 66 + 22 + 8 */
+  --dock-padding: 8px;
+  --dock-respiro: 8px;
+  --dock-primario: 54px;
+  /* Una coda sola, tarata sulla barra grande (70 di dock + 114 dal fondo + 10), e non
+     una coppia grande/ridotta: una coda che cambia con `data-barra` cambia anche
+     l'altezza scorribile, e allora ridurre la barra a fondo lista fa ritagliare
+     `scrollTop` dal browser — un evento `scroll` con delta negativo che
+     `calcolaStatoBarra` legge come "sta salendo" e che riporta la barra a grande. Lo
+     scroller restava così 18 px sopra il proprio fondo, con l'ultima voce dietro il
+     Dock e irraggiungibile (misurato nel browser: −7,75 px nel Piano, +4 px per caso
+     nella Lista). A barra ridotta restano 18 px d'aria in più sotto l'ultima voce: è
+     uno stato transitorio, e il prezzo è quello giusto. */
+  --coda-dock: 194px;
+
   --area-ortofrutta: #A8D96A;
   --area-macelleria: #F29B9B;
   --area-latticini: #9CC7F2;
@@ -127,6 +145,41 @@
 }
 @media (prefers-reduced-motion: no-preference) {
   .coda-barra { transition: padding-bottom var(--moto-barra) var(--curva-barra); }
+}
+
+/* ---------- Dock (spec fase 2 §A) ---------- */
+/* Il contenitore dello slot copre la cornice per dare al Dock il suo sistema di
+   coordinate, ma è trasparente ai tocchi: solo il Dock che ci sta dentro li prende. */
+.dock-slot { position: absolute; inset: 0; pointer-events: none; z-index: 19; }
+.dock-slot > * { pointer-events: auto; }
+
+.dock {
+  position: absolute; left: var(--dock-lato); right: var(--dock-lato); bottom: var(--dock-fondo);
+  background: var(--superficie); border-radius: 999px; box-shadow: var(--ombra-nav);
+  padding: var(--dock-padding); display: flex; gap: var(--dock-respiro);
+}
+.guscio[data-barra="ridotta"] .dock { bottom: var(--dock-fondo-giu); }
+
+/* Il primario del Dock: una classe e non quattro copie di stile inline, perché i
+   chiamanti sono un <Link> in Lista e un <button> in Piano e devono essere identici. */
+.dock-primario {
+  flex: 1; height: var(--dock-primario); border-radius: 999px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.09em;
+  background: var(--ink); color: var(--superficie); box-shadow: var(--ombra-tasto);
+  text-decoration: none;
+}
+/* Stato spento del sistema (DESIGN.md §8 Tasti), non un'opacità: con opacity il
+   testo bianco scende sotto soglia di contrasto. */
+.dock-primario:disabled { background: rgba(20, 22, 58, 0.10); color: var(--ter); box-shadow: none; }
+
+/* Lo scroller di una pagina che ha il Dock: il contenuto gli passa dietro, la coda
+   tiene l'ultima voce sopra di lui. Una riga sola, senza variante per `data-barra`:
+   il perché sta nel commento su --coda-dock. */
+.scroll-app.con-dock { --coda: var(--coda-dock); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .anim-dock { transition: bottom var(--moto-barra) var(--curva-barra); }
 }
 
 @media (prefers-reduced-motion: no-preference) {

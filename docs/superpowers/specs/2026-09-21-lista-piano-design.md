@@ -288,6 +288,19 @@ non può divergere fra le due schermate.
 | Contatore (Piano) | `{n} PASTI A CASA IN SETTIMANA` | `{n} PASTI A CASA` del giorno scelto |
 | Spiegazione della vista (Lista) | due testi `SPIEGA_TAB` | via |
 | Selettore (Lista) | `BASE` / `TOP-UP` · `N DA PRENDERE` | via |
+| Sottoriga di «va comprato fresco?», deperibile (Ingrediente) | `FINISCE NELLA LISTA TOP-UP` | `QUANTO DURA IL RESIDUO DIPENDE DAL REPARTO` |
+| Sottoriga di «va comprato fresco?», non deperibile (Ingrediente) | `FINISCE NELLA LISTA BASE` | `IL RESIDUO NON SCADE` |
+| Nota della schermata «cambia un pasto» (Piano) | `… quello che manca entra nel top-up quando la riapri.` | `… quello che manca entra nella lista quando la riapri.` |
+
+**[aggiunto il 22/09, correzioni della review finale]** Le ultime tre righe non erano in questa
+tabella durante l'esecuzione: il piano aveva deciso da sé un copy che il suo vincolo globale
+(«ogni stringa nuova è quella della spec §I») gli vietava di decidere, e nessuno dei sette
+cancelli di task l'ha visto perché ognuno guardava il proprio task. Le due sottorighe
+dell'Ingrediente sono passate in esecuzione per `IL RESIDUO NON ARRIVA ALLA SETTIMANA DOPO` /
+`IL RESIDUO RESTA IN DISPENSA`; la prima delle due affermava il falso — `residuoUtilizzabile`
+non azzera nulla per i surgelati (`GIORNI_FRESCO.surgelati` è `null`), usa 90 giorni quando il
+residuo è dichiarato congelato, e confronta con `>` stretto, quindi il settimo giorno il residuo
+sopravvive. La riga del Piano è l'ultimo posto dell'interfaccia dove compariva «top-up».
 
 `HAI PRESO TUTTO`, `CONFERMA E CREA LA LISTA`, `VAI ALLA LISTA`, `COMINCIA DAI PIATTI`,
 `Niente da comprare qui.`, i testi delle due schede vuote, `SÌ` / `NO` e `N VOCI`: **invariati**.

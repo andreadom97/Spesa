@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import { TabBar } from './TabBar';
 import { MarchioProvider } from './marchio-context';
+import { SlotDockProvider } from './dock-slot';
 
 export type StatoBarra = 'grande' | 'ridotta';
 
@@ -27,6 +28,11 @@ export function Guscio({ children }: { children: ReactNode }) {
   // Inizializzazione pigra: una WeakMap allocata una volta sola, non a ogni render.
   const ultimo = useRef<WeakMap<Element, number> | null>(null);
   if (ultimo.current == null) { ultimo.current = new WeakMap(); }
+
+  // Il nodo dello slot va in stato, non in un ref: il contesto deve
+  // ri-renderizzare i figli quando il nodo si attacca, e un ref non lo fa.
+  // Il callback del ref è il setter: React lo chiama col nodo al mount.
+  const [slotDock, setSlotDock] = useState<HTMLDivElement | null>(null);
 
   // Cambio di route: la barra torna grande. Aggiustamento dello stato durante il
   // render (pattern React per "stato derivato da una prop"), non in un effetto.
@@ -54,7 +60,13 @@ export function Guscio({ children }: { children: ReactNode }) {
   return (
     <MarchioProvider>
       <div className="guscio" data-barra={barra}>
-        <main className="guscio-main">{children}</main>
+        <SlotDockProvider slot={slotDock}>
+          <main className="guscio-main">{children}</main>
+        </SlotDockProvider>
+        {/* Lo slot copre la cornice ma non intercetta niente: `pointer-events: none`
+            sul contenitore, `auto` su quello che il Dock ci mette dentro. Senza,
+            un velo invisibile mangerebbe lo scorrimento di tutta l'app. */}
+        <div className="dock-slot" ref={setSlotDock} />
         <TabBar />
       </div>
     </MarchioProvider>
