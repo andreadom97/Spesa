@@ -150,6 +150,14 @@ describe('Importa: la scelta', () => {
     expect(window.history.back).toHaveBeenCalledTimes(1);
   });
 
+  it('i fogli presi con la fotocamera non accendono il Dock, senza un PDF', async () => {
+    rendi();
+    await apriEPrendiUnFoglio();
+    fireEvent.click(screen.getByRole('button', { name: 'Indietro' }));
+    expect(await screen.findByRole('button', { name: 'APRI LA FOTOCAMERA' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Azione principale' })).toBeNull();
+  });
+
   it('scelto un PDF: il nome del file, Cambia file, e ESTRAI LA DIETA nel Dock', async () => {
     rendi();
     await screen.findByText('Carica il PDF');
