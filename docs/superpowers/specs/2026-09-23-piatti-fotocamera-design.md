@@ -420,6 +420,20 @@ e perderebbe i fogli presi. In `Importa`:
 facendo perdere i fogli. La documentazione dice di no [fonte: sopra], ma nessuno l'ha visto
 succedere su questa app. Il piano lo verifica nel browser prima di costruirci sopra (§L). Se
 rimonta, si ripiega su un parametro di ricerca `?fotocamera` e si torna qui a decidere.
+[verificato il 23/09, Task 5: niente ricaricamento né rimontaggio, sia con `history.back()` sia
+con l'indietro del browser]
+
+**Il doppio tocco sul tondo indietro** [aggiunto il 23/09, dopo l'esecuzione]. Il `popstate`
+arriva 16–33 ms dopo `history.back()` [misurato], e intanto il tondo resta a schermo. Un
+doppio tocco ha quindi due modi di uscire da `/importa`, e tutti e due perdono i fogli:
+- il secondo tocco chiama `back()` una seconda volta, e si esce;
+- se la fotocamera si è già chiusa, il secondo tocco cade sulla freccia della Testata, che sta
+  sotto il tondo per 42 × 42 px e porta a `/impostazioni`.
+
+In `importa/page.tsx` ci sono due guardie, una per ciascun modo:
+- un ref «in chiusura» fa passare un solo `back()`;
+- per 400 ms dopo ogni chiusura, un ascoltatore `click` in cattura su `window` scarta i tocchi.
+  Vale anche dopo `Ho finito`, quando a schermo c'è solo «Sto leggendo la dieta…».
 
 ## H. Il Dock diventa un landmark
 
