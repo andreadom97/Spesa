@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useNascondiBarra } from '@/components/barra-context';
+import { FogliPresi } from './FogliPresi';
 
 interface Props {
   onFoto: (foto: Blob[]) => void;
@@ -12,11 +14,20 @@ interface Props {
    * sono lo stato di partenza che il chiamante conosce già.
    */
   iniziali?: Blob[];
+  /** Il tondo indietro: torna alla scelta fra foto e PDF. */
+  onIndietro: () => void;
+  /** `Ho finito`: avvia l'estrazione dei fogli presi. */
+  onFinito: () => void;
 }
 
 interface Pagina {
   blob: Blob;
   url: string;
+  /**
+   * Quando è entrata, per «Ultimo foglio alle HH:MM». `null` per le pagine
+   * seminate da `iniziali`: di quelle l'ora non si sa, e non si inventa.
+   */
+  alle: Date | null;
 }
 
 /**
@@ -40,6 +51,13 @@ const LATO_MAX = 1568;
  * entrate invece di un 413 dopo l'upload. Le eccedenti si scartano.
  */
 const MAX_PAGINE = 12;
+
+/** `18:04`: ora locale a due cifre, come la legge chi ha appena scattato. */
+function oraMinuti(d: Date): string {
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+const ANGOLI = ['alto-sx', 'alto-dx', 'basso-sx', 'basso-dx'] as const;
 
 /** Sorgente disegnabile su canvas con dimensioni note in pixel. */
 interface Sorgente {
@@ -116,16 +134,16 @@ async function ricomprimiFile(file: File): Promise<Blob | null> {
 }
 
 /**
- * Camera in-app multi-scatto per l'import dieta: componente isolato, nessuna
- * dipendenza dal resto del piano. Prova ad aprire lo stream della fotocamera
- * posteriore; se `getUserMedia` non esiste o viene rifiutato, ripiega su un
- * `<input type="file">` con la stessa striscia di miniature. In entrambi i
- * rami c'è il tasto DALLA GALLERIA: le foto si possono anche scegliere dalla
- * galleria del telefono, senza scattarle — l'input non ha `capture`, che sul
- * telefono riaprirebbe la fotocamera di sistema. Scatti e foto scelte passano
- * dallo stesso percorso (`ricomprimi`: lato lungo 1568px, jpeg 0.75) e dallo
- * stesso tetto di 12 pagine (`MAX_PAGINE`); un file che non si decodifica è
- * scartato con un avviso.
+ * La fotocamera dell'import, a tutto schermo (spec fase 3 §E): anteprima
+ * piena, cornice guida, in alto il tondo indietro e il titolo, in basso la
+ * Banda dei comandi con lo scatto, i fogli presi, `Ho finito` e la galleria.
+ * Chiede al Guscio di togliere la tab bar finché è montata. Se
+ * `getUserMedia` non esiste o viene rifiutato, ripiega: niente anteprima né
+ * scatto, un testo al centro e la galleria nella banda. Scatti e foto scelte
+ * passano dallo stesso percorso (`ricomprimi`: lato lungo 1568px, jpeg 0.75)
+ * e dallo stesso tetto di 12 pagine (`MAX_PAGINE`); un file che non si
+ * decodifica è scartato con un avviso. L'input della galleria non ha
+ * `capture`: sul telefono riaprirebbe la fotocamera di sistema.
  *
  * `onFoto` è chiamato dagli event handler DOPO il setState, mai dentro
  * l'updater di `setPagine` (sarebbe un setState del genitore durante il
@@ -135,18 +153,25 @@ async function ricomprimiFile(file: File): Promise<Blob | null> {
  * lista: un effect scatterebbe anche al mount, un `onFoto([])` che il
  * chiamante non si aspetta finché l'utente non ha davvero cambiato qualcosa.
  */
-export function Camera({ onFoto, iniziali = [] }: Props) {
+export function Camera({ onFoto, iniziali = [], onIndietro, onFinito }: Props) {
+  // A tutto schermo: la tab bar esce dal DOM finché la fotocamera è montata (spec §G).
+  useNascondiBarra(true);
+
   // Lazy initializer: gira una sola volta, al mount — nessun accesso a
   // `navigator` qui (i blob arrivano già pronti da prop), quindi resta
   // identico fra server e client. Semina lo stato ma non chiama `onFoto`:
   // il chiamante conosce già questi blob, non è una modifica sua.
   const [pagine, setPagine] = useState<Pagina[]>(() =>
-    iniziali.map((blob) => ({ blob, url: URL.createObjectURL(blob) })),
+    iniziali.map((blob) => ({ blob, url: URL.createObjectURL(blob), alle: null })),
   );
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [modo, setModo] = useState<Modo>('rilevamento');
   const [avviso, setAvviso] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [rivedi, setRivedi] = useState(false);
+  const miniaturaRef = useRef<HTMLButtonElement | null>(null);
+  const scattoRef = useRef<HTMLButtonElement | null>(null);
+  const galleriaRef = useRef<HTMLInputElement | null>(null);
   // Rif. sempre allineato a `pagine`: base di calcolo delle mutazioni (così
   // gli handler compongono la lista nuova FUORI dall'updater e possono
   // chiamare `onFoto` senza setState-during-render) e fonte per revocare gli
@@ -221,7 +246,7 @@ export function Camera({ onFoto, iniziali = [] }: Props) {
   }
 
   function aggiungiBlob(blob: Blob) {
-    applicaPagine([...pagineRef.current, { blob, url: URL.createObjectURL(blob) }]);
+    applicaPagine([...pagineRef.current, { blob, url: URL.createObjectURL(blob), alle: new Date() }]);
   }
 
   async function scatta() {
@@ -264,9 +289,10 @@ export function Camera({ onFoto, iniziali = [] }: Props) {
     if (illeggibili > 0) messaggi.push(`${illeggibili} foto non leggibil${illeggibili === 1 ? 'e' : 'i'}, scartat${illeggibili === 1 ? 'a' : 'e'}`);
     setAvviso(messaggi.length > 0 ? messaggi.join(' · ') : null);
     if (blob.length === 0) return;
+    const alle = new Date();
     applicaPagine([
       ...pagineRef.current,
-      ...blob.map((b) => ({ blob: b, url: URL.createObjectURL(b) })),
+      ...blob.map((b) => ({ blob: b, url: URL.createObjectURL(b), alle })),
     ]);
   }
 
@@ -284,153 +310,206 @@ export function Camera({ onFoto, iniziali = [] }: Props) {
     applicaPagine(nuove);
   }
 
-  if (modo === 'rilevamento') {
-    // Render minimale e identico fra server e client: nessun accesso a
-    // `navigator` qui, la scelta fra camera e fallback arriva dall'effect.
-    return <div style={{ minHeight: 160 }} />;
+  /**
+   * «Togli» da «Rivedi»: se era l'ultimo foglio non resta niente da rivedere,
+   * il foglio si chiude e il fuoco va allo scatto (alla galleria, nel ripiego).
+   */
+  function togli(indice: number) {
+    elimina(indice);
+    if (pagineRef.current.length === 0) {
+      setRivedi(false);
+      (scattoRef.current ?? galleriaRef.current)?.focus();
+    }
   }
 
-  // L'input reale resta accessibile (aria-label) ma visivamente nascosto: il
-  // tap va sul finto bottone testuale, vestito come gli altri bottoni
-  // dell'app. Nessun `capture`: sul telefono riaprirebbe la fotocamera di
-  // sistema invece della galleria.
-  const tastoGalleria = (
-    <label
-      style={{
-        position: 'relative',
-        alignSelf: modo === 'camera' ? 'center' : 'flex-start',
-        height: 40, padding: '0 18px', borderRadius: 999,
-        display: 'inline-flex', alignItems: 'center',
-        border: modo === 'camera' ? '1px solid var(--bordo)' : 'none',
-        background: modo === 'camera' ? 'var(--superficie)' : 'var(--ink)',
-        color: modo === 'camera' ? 'var(--ink)' : '#FFFFFF',
-        fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.1em',
-        cursor: 'pointer',
-      }}
-    >
-      DALLA GALLERIA
-      <input
-        type="file"
-        accept="image/*"
-        multiple
-        aria-label="scegli le foto dalla galleria"
-        onChange={scegliFile}
-        style={{ position: 'absolute', width: 1, height: 1, opacity: 0, overflow: 'hidden', clipPath: 'inset(50%)' }}
-      />
-    </label>
-  );
+  function chiudiRivedi() {
+    setRivedi(false);
+    miniaturaRef.current?.focus();
+  }
+
+  // Il guscio della fotocamera è identico fra server e client in ogni modo:
+  // in 'rilevamento' mancano solo anteprima, cornice e scatto, e nessun ramo
+  // legge `navigator` durante il render — la scelta fra camera e fallback
+  // arriva dall'effect.
+  const n = pagine.length;
+  const ultima = n > 0 ? pagine[n - 1] : null;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {modo === 'fallback' ? (
+    <div style={{ position: 'relative', flex: 1, minHeight: 0, overflow: 'hidden', background: '#000' }}>
+      {modo === 'camera' && (
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+        />
+      )}
+
+      {modo === 'fallback' && (
         <div
           style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 6,
-            padding: 16,
-            borderRadius: 14,
-            border: '1px solid var(--bordo)',
-            background: 'var(--superficie)',
-            color: 'var(--sec)',
-            fontSize: 13,
+            position: 'absolute', inset: '88px 24px 268px', display: 'flex',
+            alignItems: 'center', justifyContent: 'center', textAlign: 'center',
           }}
         >
-          La fotocamera non è disponibile: scegli le foto dei fogli dalla galleria
-          {tastoGalleria}
+          <p style={{ margin: 0, maxWidth: '30ch', fontSize: 14, lineHeight: 1.5, color: '#FFFFFF' }}>
+            La fotocamera non è disponibile: scegli le foto dei fogli dalla galleria
+          </p>
         </div>
-      ) : (
-        <>
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            style={{ width: '100%', borderRadius: 14, background: '#000' }}
-          />
-          <button
-            type="button"
-            onClick={scatta}
-            disabled={!stream}
+      )}
+
+      {/* La cornice guida aiuta a inquadrare, non ritaglia: lo scatto prende il
+          fotogramma intero del video (spec §E). */}
+      {modo === 'camera' && (
+        <div aria-hidden="true" style={{ position: 'absolute', inset: '88px 40px 268px', pointerEvents: 'none', zIndex: 1 }}>
+          {ANGOLI.map((a) => <span key={a} className={`guida-angolo ${a}`} />)}
+        </div>
+      )}
+
+      <div style={{ position: 'absolute', top: 22, left: 16, right: 16, display: 'flex', alignItems: 'center', gap: 8, zIndex: 3 }}>
+        <button
+          type="button"
+          aria-label="Indietro"
+          onClick={onIndietro}
+          style={{
+            width: 44, height: 44, flex: 'none', border: 0, borderRadius: 999, padding: 0,
+            background: '#FFFFFF', boxShadow: 'var(--ombra-nav)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M15 5l-7 7 7 7" stroke="var(--ink)" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+        </button>
+        <h1
+          style={{
+            margin: 0, height: 44, display: 'flex', alignItems: 'center', padding: '0 16px',
+            borderRadius: 999, background: '#FFFFFF', boxShadow: 'var(--ombra-nav)',
+            fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
+            textTransform: 'uppercase', color: 'var(--ink)', whiteSpace: 'nowrap',
+          }}
+        >
+          Fotografa il piano
+        </h1>
+      </div>
+
+      <div
+        style={{
+          position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 2,
+          background: 'var(--banda-fondo)', borderRadius: '22px 22px 0 0',
+          padding: '20px 16px 26px', display: 'flex', flexDirection: 'column', gap: 12,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center' }}>
+            {n > 0 && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button
+                  ref={miniaturaRef}
+                  type="button"
+                  aria-label={n === 1 ? 'Rivedi il foglio preso' : `Rivedi i ${n} fogli presi`}
+                  onClick={() => setRivedi(true)}
+                  style={{
+                    position: 'relative', width: 44, height: 44, flex: 'none', border: 0, padding: 0,
+                    borderRadius: 14, background: '#FFFFFF', boxShadow: 'var(--ombra-nav)', overflow: 'hidden',
+                  }}
+                >
+                  <span
+                    style={{
+                      position: 'absolute', inset: 7,
+                      backgroundImage: 'repeating-linear-gradient(180deg, rgba(20,22,58,0.14) 0 2px, rgba(20,22,58,0) 2px 7px)',
+                    }}
+                  />
+                </button>
+                <span
+                  aria-hidden="true"
+                  style={{
+                    fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.11em',
+                    textTransform: 'uppercase', color: '#FFFFFF', whiteSpace: 'nowrap',
+                  }}
+                >
+                  {n === 1 ? '1 foglio' : `${n} fogli`}
+                </span>
+              </span>
+            )}
+          </span>
+
+          {modo === 'camera' && (
+            <button
+              ref={scattoRef}
+              type="button"
+              className="scatto"
+              aria-label="Scatta la foto del foglio"
+              onClick={scatta}
+              disabled={!stream}
+            >
+              <span className="scatto-disco" />
+            </button>
+          )}
+
+          <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+            {n > 0 && (
+              <button
+                type="button"
+                onClick={onFinito}
+                style={{
+                  height: 44, border: 0, borderRadius: 999, padding: '0 16px',
+                  background: '#FFFFFF', color: 'var(--ink)', boxShadow: 'var(--ombra-nav)',
+                  fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
+                  textTransform: 'uppercase', whiteSpace: 'nowrap',
+                }}
+              >
+                Ho finito
+              </button>
+            )}
+          </span>
+        </div>
+
+        {avviso && (
+          <p role="status" style={{ margin: 0, fontSize: 12.5, lineHeight: 1.4, color: '#FFFFFF' }}>
+            {avviso}
+          </p>
+        )}
+
+        {ultima?.alle && (
+          <span
             style={{
-              alignSelf: 'center',
-              height: 48,
-              padding: '0 24px',
-              borderRadius: 999,
-              border: 'none',
-              background: 'var(--ink)',
-              color: '#FFFFFF',
-              fontFamily: 'var(--font-mono)',
-              fontSize: 13,
-              fontWeight: 700,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
+              fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 500, letterSpacing: '0.1em',
+              textTransform: 'uppercase', color: '#FFFFFF', padding: '0 2px',
             }}
           >
-            Scatta
-          </button>
-          {tastoGalleria}
-        </>
-      )}
+            {`Ultimo foglio alle ${oraMinuti(ultima.alle)}`}
+          </span>
+        )}
 
-      {avviso && (
-        <p role="status" style={{ margin: 0, fontSize: 13, color: 'var(--sec)' }}>
-          {avviso}
-        </p>
-      )}
+        {/* L'input reale resta accessibile (aria-label) ma visivamente nascosto:
+            il tap va sul tasto. Nessun `capture`: sul telefono riaprirebbe la
+            fotocamera di sistema invece della galleria. */}
+        <label
+          style={{
+            position: 'relative', minHeight: 50, width: '100%', boxSizing: 'border-box',
+            border: '1.5px solid var(--banda-bordo)', borderRadius: 18, background: 'none',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+            fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
+            textTransform: 'uppercase', color: '#FFFFFF',
+          }}
+        >
+          Seleziona dalla galleria
+          <input
+            ref={galleriaRef}
+            type="file"
+            accept="image/*"
+            multiple
+            aria-label="scegli le foto dalla galleria"
+            onChange={scegliFile}
+            style={{ position: 'absolute', width: 1, height: 1, opacity: 0, overflow: 'hidden', clipPath: 'inset(50%)' }}
+          />
+        </label>
+      </div>
 
-      {pagine.length > 0 && (
-        <div style={{ display: 'flex', gap: 8, overflowX: 'auto' }}>
-          {pagine.map((p, i) => (
-            <div
-              key={p.url}
-              style={{
-                position: 'relative',
-                flex: 'none',
-                width: 84,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 4,
-              }}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element -- miniatura da object URL locale, non da fonte remota ottimizzabile */}
-              <img
-                src={p.url}
-                alt={`pag. ${i + 1}`}
-                style={{ width: 84, height: 84, objectFit: 'cover', borderRadius: 10, border: '1px solid var(--bordo)' }}
-              />
-              <span style={{ fontSize: 11, color: 'var(--sec)', textAlign: 'center' }}>{`pag. ${i + 1}`}</span>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <button
-                  type="button"
-                  aria-label={`sposta pag. ${i + 1} a sinistra`}
-                  onClick={() => sposta(i, -1)}
-                  disabled={i === 0}
-                  style={{ background: 'transparent', border: 'none', color: 'var(--ink)', fontSize: 14 }}
-                >
-                  ◀
-                </button>
-                <button
-                  type="button"
-                  aria-label={`elimina pag. ${i + 1}`}
-                  onClick={() => elimina(i)}
-                  style={{ background: 'transparent', border: 'none', color: 'var(--ink)', fontSize: 14 }}
-                >
-                  ✕
-                </button>
-                <button
-                  type="button"
-                  aria-label={`sposta pag. ${i + 1} a destra`}
-                  onClick={() => sposta(i, 1)}
-                  disabled={i === pagine.length - 1}
-                  style={{ background: 'transparent', border: 'none', color: 'var(--ink)', fontSize: 14 }}
-                >
-                  ▶
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+      {rivedi && n > 0 && (
+        <FogliPresi pagine={pagine} onSposta={sposta} onTogli={togli} onChiudi={chiudiRivedi} />
       )}
     </div>
   );

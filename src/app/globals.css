@@ -195,6 +195,29 @@
   text-decoration: none; cursor: pointer;
 }
 
+/* ---------- fotocamera (spec fase 3 §E, DESIGN.md §8 Tasto di scatto) ---------- */
+.scatto {
+  width: var(--scatto-anello); height: var(--scatto-anello); flex: none;
+  border: 2px solid #FFFFFF; border-radius: 999px; background: none; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.scatto-disco { width: var(--scatto-disco); height: var(--scatto-disco); border-radius: 999px; background: #FFFFFF; }
+.scatto:focus-visible { outline: 2px solid #FFFFFF; outline-offset: 4px; }
+/* La pressione esiste solo con il movimento permesso: con reduced-motion lo
+   scatto resta fermo, niente transizione e niente scala (DESIGN.md §8). */
+@media (prefers-reduced-motion: no-preference) {
+  .scatto, .scatto-disco { transition: transform var(--moto-scatto) var(--curva-barra); }
+  .scatto:active { transform: scale(.96); }
+  .scatto:active .scatto-disco { transform: scale(.88); }
+}
+
+/* La cornice guida: quattro angoli a tratto 3 bianco al 92% (DESIGN.md §2.5, §8 Banda). */
+.guida-angolo { position: absolute; width: 30px; height: 30px; border: 3px solid rgba(255, 255, 255, 0.92); }
+.guida-angolo.alto-sx { top: 0; left: 0; border-right: 0; border-bottom: 0; border-radius: 14px 0 0 0; }
+.guida-angolo.alto-dx { top: 0; right: 0; border-left: 0; border-bottom: 0; border-radius: 0 14px 0 0; }
+.guida-angolo.basso-sx { bottom: 0; left: 0; border-right: 0; border-top: 0; border-radius: 0 0 0 14px; }
+.guida-angolo.basso-dx { bottom: 0; right: 0; border-left: 0; border-top: 0; border-radius: 0 0 14px 0; }
+
 /* Lo scroller di una pagina che ha il Dock: il contenuto gli passa dietro, la coda
    tiene l'ultima voce sopra di lui. Una riga sola, senza variante per `data-barra`:
    il perché sta nel commento su --coda-scroll-dock. */
