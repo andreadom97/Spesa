@@ -136,7 +136,7 @@ scritto:
 | `0,045` su `--ink` | fondo della riga pasto fuori casa |
 | `0,06` su `--ink` | pillola delle confezioni sulla tessera spenta |
 | `0,07` su `--ink` | voce attiva della tab bar, fondo del Menù utente, tondo della X nel pannello |
-| `0,09` su `--ink` | bordo delle pillole d'azione, della Riga piatto, della Riga pasto |
+| `0,09` su `--ink` | bordo delle pillole d'azione, della Riga piatto, della Riga pasto, della foto in «Rivedi i fogli presi» |
 | `0,14` su `--ink` | righe finte della miniatura nella Striscia dei fogli presi |
 | `0,12` su `--ink` | Menù utente premuto |
 | `0,26` su un colore d'area | tinta della riga di controllo e della Tessera di dispensa |
@@ -313,7 +313,7 @@ esistono:
   `cubic-bezier(.2,.8,.25,1)`, opacità delle etichette in 150 ms lineari. Il gesto è lo
   **scorrimento**: soglia 8 px per cambiare stato, ritorno a barra grande sotto i 4 px di
   scroll. **[aggiunto 19/09]**
-- **`.anim-scatto`** — anello `scale(.96)` e disco `scale(.88)` sul tasto di scatto, 180 ms
+- **`.scatto` e `.scatto-disco`** — anello `scale(.96)` e disco `scale(.88)` sul tasto di scatto, 180 ms
 - **`.anim-registro`** — le quattro barre del metro nello stato "Registro": da 7 a 22 px in
   220 ms `ease-in-out` `infinite alternate`, sfasature 40 / 70 / 140 ms. È l'**unica animazione
   in loop del sistema**, ammessa perché dice che il microfono sta ascoltando: dura quanto la
