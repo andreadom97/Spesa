@@ -310,6 +310,8 @@ describe('Camera: «Rivedi i fogli presi»', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Togli il foglio 1' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(screen.queryByRole('button', { name: /Rivedi/ })).not.toBeInTheDocument();
+    // Senza fotocamera non c'è un otturatore: il fuoco va alla galleria.
+    expect(screen.getByLabelText(/scegli le foto/i)).toHaveFocus();
   });
 
   it('Chiudi riporta il fuoco sulla miniatura', async () => {
