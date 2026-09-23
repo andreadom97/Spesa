@@ -24,8 +24,10 @@ interface Pagina {
   blob: Blob;
   url: string;
   /**
-   * Quando è entrata, per «Ultimo foglio alle HH:MM». `null` per le pagine
-   * seminate da `iniziali`: di quelle l'ora non si sa, e non si inventa.
+   * Quando è entrata, per «Ultimo foglio alle HH:MM»: la banda mostra la più
+   * recente fra tutte (l'ultima aggiunta, non l'ultima in lista). `null` per
+   * le pagine seminate da `iniziali`: di quelle l'ora non si sa, e non si
+   * inventa.
    */
   alle: Date | null;
 }
@@ -332,7 +334,9 @@ export function Camera({ onFoto, iniziali = [], onIndietro, onFinito }: Props) {
   // legge `navigator` durante il render — la scelta fra camera e fallback
   // arriva dall'effect.
   const n = pagine.length;
-  const ultima = n > 0 ? pagine[n - 1] : null;
+  // L'ora dell'ultima aggiunta, non dell'ultima in lista: un riordino in
+  // «Rivedi» non cambia quando è entrato l'ultimo foglio (spec §E).
+  const ultimoAlle = pagine.reduce<Date | null>((m, p) => (p.alle && (!m || p.alle > m) ? p.alle : m), null);
 
   return (
     <div style={{ position: 'relative', flex: 1, minHeight: 0, overflow: 'hidden', background: '#000' }}>
@@ -472,14 +476,14 @@ export function Camera({ onFoto, iniziali = [], onIndietro, onFinito }: Props) {
           </p>
         )}
 
-        {ultima?.alle && (
+        {ultimoAlle && (
           <span
             style={{
               fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 500, letterSpacing: '0.1em',
               textTransform: 'uppercase', color: '#FFFFFF', padding: '0 2px',
             }}
           >
-            {`Ultimo foglio alle ${oraMinuti(ultima.alle)}`}
+            {`Ultimo foglio alle ${oraMinuti(ultimoAlle)}`}
           </span>
         )}
 

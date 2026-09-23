@@ -243,6 +243,26 @@ describe('Camera: la banda', () => {
     expect(screen.getByText('Ultimo foglio alle 18:04')).toBeInTheDocument();
   });
 
+  it('«Ultimo foglio alle» dice l\'ora dell\'ultimo foglio aggiunto, anche dopo un riordino', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 8, 23, 18, 0));
+    abilitaFotocamera();
+    const onFoto = vi.fn();
+    render(<Camera onFoto={onFoto} {...NIENTE} />);
+    const scatto = await screen.findByRole('button', { name: 'Scatta la foto del foglio' });
+    fireEvent.click(scatto);
+    await waitFor(() => expect(onFoto).toHaveBeenCalledTimes(1));
+    vi.setSystemTime(new Date(2026, 8, 23, 18, 4));
+    fireEvent.click(scatto);
+    await waitFor(() => expect(onFoto).toHaveBeenCalledTimes(2));
+    expect(screen.getByText('Ultimo foglio alle 18:04')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Rivedi i 2 fogli presi' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sposta il foglio 2 più su' }));
+    await waitFor(() => expect(onFoto).toHaveBeenCalledTimes(3));
+    fireEvent.click(screen.getByRole('button', { name: 'Chiudi' }));
+    expect(screen.getByText('Ultimo foglio alle 18:04')).toBeInTheDocument();
+  });
+
   it('anche con la fotocamera aperta c\'è la galleria, senza capture, sullo stesso percorso', async () => {
     abilitaFotocamera();
     const onFoto = vi.fn();
