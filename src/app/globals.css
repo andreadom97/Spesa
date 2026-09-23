@@ -183,6 +183,18 @@
    testo bianco scende sotto soglia di contrasto. */
 .dock-primario:disabled { background: rgba(20, 22, 58, 0.10); color: var(--ter); box-shadow: none; }
 
+/* Il tasto dentro una Porta (spec fase 3 §C): una classe perché i chiamanti sono
+   un <Link> in Piatti, un <button> e un <label> col suo input nascosto in Importa.
+   Valori identici allo stile inline che aveva in Piatti; `position: relative`
+   tiene dentro il tasto l'input file assoluto e nascosto. */
+.porta-azione {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  width: 100%; height: 54px; border-radius: 18px; border: none; box-sizing: border-box;
+  font-family: var(--font-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.09em;
+  background: var(--ink); color: var(--superficie); box-shadow: var(--ombra-tasto);
+  text-decoration: none; cursor: pointer;
+}
+
 /* Lo scroller di una pagina che ha il Dock: il contenuto gli passa dietro, la coda
    tiene l'ultima voce sopra di lui. Una riga sola, senza variante per `data-barra`:
    il perché sta nel commento su --coda-scroll-dock. */

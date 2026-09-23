@@ -29,4 +29,18 @@ describe('Dock', () => {
     expect(slot.querySelector('.dock')).not.toBeNull();
     slot.remove();
   });
+
+  it('il contenitore è una regione di nome «Azione principale» (spec fase 3 §H)', () => {
+    const slot = document.createElement('div');
+    document.body.appendChild(slot);
+    render(
+      <SlotDockProvider slot={slot}>
+        <Dock><button type="button">HAI PRESO TUTTO</button></Dock>
+      </SlotDockProvider>,
+    );
+    const regione = screen.getByRole('region', { name: 'Azione principale' });
+    expect(regione).toHaveClass('dock');
+    expect(regione).toContainElement(screen.getByRole('button', { name: 'HAI PRESO TUTTO' }));
+    slot.remove();
+  });
 });

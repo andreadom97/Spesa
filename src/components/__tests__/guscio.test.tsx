@@ -7,6 +7,7 @@ vi.mock('next/navigation', () => ({ usePathname: () => percorso.valore }));
 vi.mock('../TabBar', () => ({ TabBar: () => <nav aria-label="Sezioni" /> }));
 
 import { Guscio, calcolaStatoBarra } from '../Guscio';
+import { useNascondiBarra } from '../barra-context';
 
 describe('calcolaStatoBarra (spec §B)', () => {
   it('si riduce scorrendo giù di almeno 6 oltre i 24 di scrollTop', () => {
@@ -78,5 +79,16 @@ describe('Guscio', () => {
     Object.defineProperty(altro, 'scrollTop', { value: 80, configurable: true, writable: true });
     fireEvent.scroll(altro);
     expect(guscio.dataset.barra).toBe('grande');
+  });
+
+  it('una schermata che chiede di nascondere la barra la toglie dal DOM, e smontandosi la rimette', () => {
+    function Nasconde() {
+      useNascondiBarra(true);
+      return <p>fotocamera</p>;
+    }
+    const { container, rerender } = render(<Guscio><Nasconde /></Guscio>);
+    expect(container.querySelector('nav[aria-label="Sezioni"]')).not.toBeInTheDocument();
+    rerender(<Guscio><p>porte</p></Guscio>);
+    expect(container.querySelector('nav[aria-label="Sezioni"]')).toBeInTheDocument();
   });
 });

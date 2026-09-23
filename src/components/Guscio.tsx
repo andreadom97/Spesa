@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import { TabBar } from './TabBar';
 import { MarchioProvider } from './marchio-context';
+import { BarraProvider, useBarraNascosta } from './barra-context';
 import { SlotDockProvider } from './dock-slot';
 
 export type StatoBarra = 'grande' | 'ridotta';
@@ -59,16 +60,28 @@ export function Guscio({ children }: { children: ReactNode }) {
 
   return (
     <MarchioProvider>
-      <div className="guscio" data-barra={barra}>
-        <SlotDockProvider slot={slotDock}>
-          <main className="guscio-main">{children}</main>
-        </SlotDockProvider>
-        {/* Lo slot copre la cornice ma non intercetta niente: `pointer-events: none`
-            sul contenitore, `auto` su quello che il Dock ci mette dentro. Senza,
-            un velo invisibile mangerebbe lo scorrimento di tutta l'app. */}
-        <div className="dock-slot" ref={setSlotDock} />
-        <TabBar />
-      </div>
+      <BarraProvider>
+        <div className="guscio" data-barra={barra}>
+          <SlotDockProvider slot={slotDock}>
+            <main className="guscio-main">{children}</main>
+          </SlotDockProvider>
+          {/* Lo slot copre la cornice ma non intercetta niente: `pointer-events: none`
+              sul contenitore, `auto` su quello che il Dock ci mette dentro. Senza,
+              un velo invisibile mangerebbe lo scorrimento di tutta l'app. */}
+          <div className="dock-slot" ref={setSlotDock} />
+          <TabBarSeVisibile />
+        </div>
+      </BarraProvider>
     </MarchioProvider>
   );
+}
+
+/**
+ * La tab bar, a meno che una schermata a tutto schermo non l'abbia chiesta via
+ * (`useNascondiBarra`, spec fase 3 §G). Tolta dal DOM, non nascosta col CSS:
+ * una barra invisibile resterebbe raggiungibile da tastiera e da screen reader.
+ * Un componente a sé perché il Guscio rende il provider e non può leggerlo.
+ */
+function TabBarSeVisibile() {
+  return useBarraNascosta() ? null : <TabBar />;
 }

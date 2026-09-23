@@ -8,6 +8,7 @@ import { leggiImpostazioni, leggiSlotDefs } from '@/data/impostazioni';
 import { coloreArea } from '@/domain/aree';
 import { Testata } from '@/components/Testata';
 import { Segmento } from '@/components/Segmento';
+import { Porta } from '@/components/Porta';
 
 const TUTTI = 'TUTTI';
 
@@ -270,15 +271,15 @@ function VuotoPiatti() {
           <Porta
             titolo="Ho una dieta"
             testo="Fotografa le pagine del piano che ti hanno dato: piatti e grammature li legge l'app, tu controlli e confermi."
-            azione="IMPORTA LA DIETA"
-            href="/importa"
-          />
+          >
+            <Link href="/importa" className="porta-azione">IMPORTA LA DIETA</Link>
+          </Porta>
           <Porta
             titolo="Cucino sempre le stesse cose"
             testo="Scrivi otto o dieci piatti che fai davvero, con gli ingredienti e quanto ne usi. Da lì la settimana gira da sola."
-            azione="SCRIVI I MIEI PIATTI"
-            href="/piatti/veloce"
-          />
+          >
+            <Link href="/piatti/veloce" className="porta-azione">SCRIVI I MIEI PIATTI</Link>
+          </Porta>
         </div>
 
         <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', margin: '16px 6px 0' }}>
@@ -289,41 +290,5 @@ function VuotoPiatti() {
         </div>
       </div>
     </Cornice>
-  );
-}
-
-interface PropsPorta {
-  titolo: string;
-  testo: string;
-  azione: string;
-  href: string;
-}
-
-/** Una delle due porte: scheda bianca con titolo, spiegazione e il proprio bottone pieno. */
-function Porta({ titolo, testo, azione, href }: PropsPorta) {
-  return (
-    <div
-      style={{
-        padding: '20px 18px 18px', borderRadius: 22,
-        background: 'var(--superficie)', border: '1px solid var(--bordo)',
-      }}
-    >
-      <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.2, color: 'var(--ink)' }}>
-        {titolo}
-      </div>
-      <div style={{ fontSize: 13.5, lineHeight: 1.45, color: 'var(--sec)', margin: '6px 0 16px' }}>{testo}</div>
-      <Link
-        href={href}
-        style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          width: '100%', height: 54, borderRadius: 18,
-          fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700, letterSpacing: '0.09em',
-          background: 'var(--ink)', color: '#FFFFFF',
-          boxShadow: '0 3px 10px rgba(20,22,58,0.24)',
-        }}
-      >
-        {azione}
-      </Link>
-    </div>
   );
 }
