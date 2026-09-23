@@ -137,8 +137,8 @@ scritto:
 | `0,06` su `--ink` | pillola delle confezioni sulla tessera spenta |
 | `0,07` su `--ink` | voce attiva della tab bar, fondo del Menù utente, tondo della X nel pannello |
 | `0,09` su `--ink` | bordo delle pillole d'azione, della Riga piatto, della Riga pasto, della foto in «Rivedi i fogli presi» |
-| `0,14` su `--ink` | righe finte della miniatura nella Striscia dei fogli presi |
 | `0,12` su `--ink` | Menù utente premuto |
+| `0,14` su `--ink` | righe finte della miniatura nella Striscia dei fogli presi |
 | `0,26` su un colore d'area | tinta della riga di controllo e della Tessera di dispensa |
 | `0,32` su un colore d'area | pillola delle confezioni dentro una tessera accesa |
 | `0,34` su `--ink` | nome barrato di una tessera spenta |

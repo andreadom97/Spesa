@@ -462,6 +462,7 @@ Le righe segnate **nuovo** sono testo scritto per questa fase: vanno approvate c
 | Miniatura | — | `aria-label` `Rivedi il foglio preso` / `Rivedi i {n} fogli presi` (mockup) |
 | Chiusura | — | `Ho finito` (mockup, reso maiuscolo) |
 | Ultimo scatto | — | `Ultimo foglio alle {HH:MM}` (mockup) |
+| Rivedi, nome del dialogo | — | `aria-label` `Rivedi i fogli presi` (§F) |
 | Rivedi, intestazione | — | **nuovo** `{n} fogli · l'app li legge in quest'ordine` / `1 foglio` |
 | Rivedi, pagina | `pag. N` | `Foglio {i}` |
 | Rivedi, tasti | `sposta pag. N a sinistra` / `a destra`, `elimina pag. N`, segni ◀ ✕ ▶ | `Sposta il foglio {i} più su`, `Sposta il foglio {i} più giù`, `Togli il foglio {i}` |

@@ -143,7 +143,7 @@ Il conto aperto verso `DESIGN.md` v3, al 23/09/2026.
 
 - **La fase 2 (Lista e Piano) è chiusa** il 22/09 (PR #4). Le decisioni prese durante
   l'esecuzione, con il costo di ognuna, stanno in `docs/2026-09-22-fase2-decisioni-esecuzione.md`.
-- **La fase 3 (Piatti e fotocamera) è chiusa il `<data>`**.
+- **La fase 3 (Piatti e fotocamera) è chiusa con la PR del ramo `redesign/piatti-fotocamera`**.
 - **Le schermate non ancora ridisegnate**: Dispensa, Impostazioni a pannello.
 - **55 token dichiarati nel design e assenti dal codice** [misurato il 23/09 col guardiano, a
   fase 3 finita: `tokens.css` ne dichiara 115, `src/app/globals.css` ne ha 62, 60 in comune, 0
