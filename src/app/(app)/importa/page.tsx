@@ -13,8 +13,8 @@ import { proponiSlot, normalizza } from '@/domain/import/mapping';
 import { traduciBozza, BozzaIncompletaError, type ScrittureImport } from '@/domain/import/commit';
 import { client } from '@/data/supabase';
 import { Testata } from '@/components/Testata';
-import { Segmento } from '@/components/Segmento';
 import { Camera } from './Camera';
+import { Acquisizione } from './Acquisizione';
 import { Revisione } from './Revisione';
 import { Formati } from './Formati';
 
@@ -94,8 +94,9 @@ export default function Importa() {
   const [ingredientiEsistenti, setIngredientiEsistenti] = useState<Ingredient[]>([]);
 
   // Acquisizione: stato indipendente dalla vista corrente, così un errore o
-  // un giro di estrazione non fanno perdere le foto già scelte.
-  const [tab, setTab] = useState<'foto' | 'pdf'>('foto');
+  // un giro di estrazione non fanno perdere le foto già scelte. Foto e PDF
+  // convivono: ognuno parte dal proprio tasto (spec fase 3 §D).
+  const [fotocameraAperta, setFotocameraAperta] = useState(false);
   const [foto, setFoto] = useState<Blob[]>([]);
   const [pdf, setPdf] = useState<File | null>(null);
 
@@ -126,6 +127,40 @@ export default function Importa() {
   }, []);
 
   /**
+   * Il gesto indietro del telefono dentro la fotocamera (spec fase 3 §G). A
+   * tutto schermo e senza tab bar è il modo naturale di uscirne: senza una voce
+   * nella cronologia uscirebbe da /importa e perderebbe i fogli presi. Aprire la
+   * fotocamera aggiunge una voce sullo stesso URL (Next 16 integra `pushState`
+   * nativo col router); ogni uscita la consuma con `history.back()`, e chi
+   * chiude davvero è sempre questo ascoltatore.
+   */
+  useEffect(() => {
+    const chiudi = () => setFotocameraAperta(false);
+    window.addEventListener('popstate', chiudi);
+    return () => window.removeEventListener('popstate', chiudi);
+  }, []);
+
+  function apriFotocamera() {
+    window.history.pushState(null, '');
+    setFotocameraAperta(true);
+  }
+
+  /** Il tondo indietro: consuma la voce, e il `popstate` chiude. */
+  function chiudiFotocamera() {
+    window.history.back();
+  }
+
+  /**
+   * `Ho finito`: l'estrazione porta subito la vista a `estrazione` (il primo
+   * setState di `estrai` è sincrono); poi la voce si consuma, e quando il
+   * `popstate` arriva chiude una fotocamera che la vista non mostra già più.
+   */
+  function finito() {
+    void estrai('foto');
+    window.history.back();
+  }
+
+  /**
    * `onStato` di `<Revisione>`: ogni modifica che deve sopravvivere (conferma
    * pasto, cambio mappatura, cambio giorno — mai a ogni tasto, vedi Revisione.tsx)
    * aggiorna subito lo stato della pagina e persiste con `salvaBozzaImport`.
@@ -152,7 +187,7 @@ export default function Importa() {
     setVista('acquisizione');
   }
 
-  async function estrai() {
+  async function estrai(sorgente: 'foto' | 'pdf') {
     setMessaggioErrore(null);
     setVista('estrazione');
     try {
@@ -163,13 +198,12 @@ export default function Importa() {
         setVista('errore');
         return;
       }
-      // Solo la tab attiva finisce nel FormData: le due modalità non si
-      // mescolano mai (un PDF scelto e poi abbandonato per tornare alle foto
-      // non deve rispuntare in un invio successivo, e viceversa). Lo stato
-      // dell'altra tab resta comunque in memoria — tornare indietro non lo
-      // perde — semplicemente non parte con questa richiesta.
+      // Solo la sorgente scelta finisce nel FormData: le due modalità non si
+      // mescolano mai. Lo decide il tasto premuto — `Ho finito` nella fotocamera,
+      // `ESTRAI LA DIETA` nel Dock col PDF — e non più una tab (spec fase 3 §D).
+      // L'altra resta in memoria, semplicemente non parte con questa richiesta.
       const body = new FormData();
-      if (tab === 'foto') {
+      if (sorgente === 'foto') {
         foto.forEach((f) => body.append('immagini', f));
       } else if (pdf) {
         body.append('documento', pdf);
@@ -289,104 +323,23 @@ export default function Importa() {
     );
   }
 
-  // vista === 'acquisizione': la Camera si monta solo qui (e solo con la tab
-  // FOTO attiva) — in un browser vero `getUserMedia` parte al mount, quindi
-  // deve accendersi solo quando serve davvero, mai in sottofondo mentre si
-  // mostra il banner di ripresa o il caricamento. Il cleanup di Camera ferma
-  // le tracce ogni volta che si esce da questa vista.
+  // vista === 'acquisizione'. La Camera si monta solo a fotocamera aperta: in un
+  // browser vero `getUserMedia` parte al mount, quindi deve accendersi solo quando
+  // serve, mai in sottofondo mentre si mostrano le porte o il banner di ripresa. Il
+  // cleanup di Camera ferma le tracce a ogni uscita. A tutto schermo, senza Cornice:
+  // niente testata, e la tab bar la toglie Camera stessa (spec §E, §G).
+  if (fotocameraAperta) {
+    // `iniziali={foto}`: Camera si smonta e rimonta a ogni chiusura e riapertura
+    // (per esempio dopo un errore di estrazione, RIPROVA torna alle porte) —
+    // senza seminare lo stato, la galleria ripartirebbe vuota e il primo foglio
+    // successivo sovrascriverebbe in silenzio, via onFoto, quelli già presi.
+    return <Camera onFoto={setFoto} iniziali={foto} onIndietro={chiudiFotocamera} onFinito={finito} />;
+  }
+
   return (
     <Cornice>
-      <SchermataAcquisizione
-        tab={tab}
-        onTab={setTab}
-        foto={foto}
-        onFoto={setFoto}
-        pdf={pdf}
-        onPdf={setPdf}
-        onEstrai={estrai}
-      />
+      <Acquisizione pdf={pdf} onPdf={setPdf} onApriFotocamera={apriFotocamera} onEstraiPdf={() => void estrai('pdf')} />
     </Cornice>
-  );
-}
-
-interface PropsAcquisizione {
-  tab: 'foto' | 'pdf';
-  onTab: (tab: 'foto' | 'pdf') => void;
-  foto: Blob[];
-  onFoto: (foto: Blob[]) => void;
-  pdf: File | null;
-  onPdf: (pdf: File | null) => void;
-  onEstrai: () => void;
-}
-
-function SchermataAcquisizione({ tab, onTab, foto, onFoto, pdf, onPdf, onEstrai }: PropsAcquisizione) {
-  // Solo la tab attiva conta: uno stato residuo nell'altra tab (una foto
-  // scattata prima di passare al PDF, o viceversa) non deve abilitare
-  // l'estrazione finché non è quella la modalità scelta — `estrai()` invia
-  // comunque solo il payload della tab attiva, quindi il bottone deve
-  // riflettere esattamente quello.
-  const abilitato = tab === 'foto' ? foto.length >= 1 : pdf !== null;
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-      <div style={{ padding: '0 16px 10px' }}>
-        <Segmento
-          opzioni={[
-            { id: 'foto', label: 'FOTO' },
-            { id: 'pdf', label: 'PDF' },
-          ]}
-          valore={tab}
-          onCambia={(id) => onTab(id as 'foto' | 'pdf')}
-          variante="blocco"
-        />
-      </div>
-
-      <div className="sc scroll-app con-piede" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 16px 16px' }}>
-        {tab === 'foto' ? (
-          // `iniziali={foto}`: Camera si smonta e rimonta a ogni uscita/rientro
-          // in questa vista (es. dopo un errore di estrazione, RIPROVA torna
-          // qui da capo) — senza seminare lo stato, la galleria ripartirebbe
-          // vuota e il primo scatto successivo sovrascriverebbe in silenzio,
-          // via onFoto, gli scatti già presenti nel genitore.
-          <Camera onFoto={onFoto} iniziali={foto} />
-        ) : (
-          <label
-            style={{
-              display: 'flex', flexDirection: 'column', gap: 6,
-              padding: 16, borderRadius: 14,
-              border: '1px solid var(--bordo)', background: 'var(--superficie)',
-              color: 'var(--sec)', fontSize: 13,
-            }}
-          >
-            {pdf ? pdf.name : 'Scegli il PDF della dieta'}
-            <input
-              type="file"
-              accept="application/pdf"
-              aria-label="scegli il PDF della dieta"
-              onChange={(e) => onPdf(e.target.files?.[0] ?? null)}
-              style={{ fontSize: 13 }}
-            />
-          </label>
-        )}
-      </div>
-
-      <div className="coda-barra" style={{ padding: '4px 16px 0' }}>
-        <button
-          type="button"
-          disabled={!abilitato}
-          onClick={onEstrai}
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            width: '100%', height: 54, borderRadius: 18, border: 'none',
-            fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700, letterSpacing: '0.09em',
-            background: abilitato ? 'var(--ink)' : 'var(--bordo)',
-            color: abilitato ? '#FFFFFF' : 'var(--sec)',
-          }}
-        >
-          ESTRAI LA DIETA
-        </button>
-      </div>
-    </div>
   );
 }
 
