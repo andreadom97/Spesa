@@ -69,7 +69,7 @@
      Dock e irraggiungibile (misurato nel browser: −7,75 px nel Piano, +4 px per caso
      nella Lista). A barra ridotta restano 18 px d'aria in più sotto l'ultima voce: è
      uno stato transitorio, e il prezzo è quello giusto. */
-  --coda-dock: 194px;
+  --coda-scroll-dock: 194px;
 
   --area-ortofrutta: #A8D96A;
   --area-macelleria: #F29B9B;
@@ -175,8 +175,8 @@
 
 /* Lo scroller di una pagina che ha il Dock: il contenuto gli passa dietro, la coda
    tiene l'ultima voce sopra di lui. Una riga sola, senza variante per `data-barra`:
-   il perché sta nel commento su --coda-dock. */
-.scroll-app.con-dock { --coda: var(--coda-dock); }
+   il perché sta nel commento su --coda-scroll-dock. */
+.scroll-app.con-dock { --coda: var(--coda-scroll-dock); }
 
 @media (prefers-reduced-motion: no-preference) {
   .anim-dock { transition: bottom var(--moto-barra) var(--curva-barra); }
