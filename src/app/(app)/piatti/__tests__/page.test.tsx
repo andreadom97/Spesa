@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import type { Dish, Ingredient, MealSlotDef } from '@/domain/types';
+import { render, screen } from '@testing-library/react';
+import type { Dish, Ingredient } from '@/domain/types';
 
 vi.mock('@/data/repertorio', () => ({
   leggiRepertorio: vi.fn(),
@@ -15,10 +15,6 @@ vi.mock('@/data/impostazioni', () => ({
 import { leggiRepertorio, leggiIngredienti } from '@/data/repertorio';
 import { leggiSlotDefs, leggiImpostazioni } from '@/data/impostazioni';
 import Piatti from '../page';
-
-const ASSENZE = [false, false, false, false, false, false, false];
-const SLOT_COLAZIONE: MealSlotDef = { id: 'sd-1', nome: 'Colazione', posizione: 0, assenzeAbituali: ASSENZE };
-const SLOT_PRANZO: MealSlotDef = { id: 'sd-2', nome: 'Pranzo', posizione: 1, assenzeAbituali: ASSENZE };
 
 const ING_LATTE: Ingredient = {
   id: 'i-1', nome: 'Latte', unitaBase: 'ml', area: 'latticini',
@@ -42,25 +38,24 @@ const PIATTO_PRANZO: Dish = {
   ingredienti: [{ ingredientId: 'i-2', quantita: 80, unita: 'g' }],
   componenti: [],
 };
+/** Solo alternative, nessun ingrediente fisso: prima mostrava "0 INGR." e nessun pallino. */
+const PIATTO_ALTERNATIVE: Dish = {
+  id: 'd-3', nome: 'Merenda', slotDefId: 'sd-1', fonte: 'nutrizionista', attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
+  ingredienti: [],
+  componenti: [{
+    id: 'c-1', nome: 'a scelta',
+    opzioni: [
+      { id: 'o-1', righe: [{ ingredientId: 'i-2', quantita: 30, unita: 'g' }] },
+      { id: 'o-2', righe: [{ ingredientId: 'i-1', quantita: 150, unita: 'ml' }] },
+    ],
+  }],
+};
 
 const ORDINE_AREE_TEST = ['ortofrutta', 'macelleria', 'latticini', 'cereali', 'dispensa', 'surgelati'] as const;
 
-function mockRepertorioPieno() {
-  vi.mocked(leggiRepertorio).mockResolvedValue([PIATTO_COLAZIONE, PIATTO_PRANZO]);
+function mockRepertorio(piatti: Dish[]) {
+  vi.mocked(leggiRepertorio).mockResolvedValue(piatti);
   vi.mocked(leggiIngredienti).mockResolvedValue([ING_LATTE, ING_PANE]);
-  vi.mocked(leggiSlotDefs).mockResolvedValue([SLOT_COLAZIONE, SLOT_PRANZO]);
-  vi.mocked(leggiImpostazioni).mockResolvedValue({
-    moltiplicatorePorzioni: 1,
-    ordineAree: [...ORDINE_AREE_TEST],
-    settimaneCiclo: 1,
-    cicloOrigine: null,
-  });
-}
-
-function mockRepertorioVuoto() {
-  vi.mocked(leggiRepertorio).mockResolvedValue([]);
-  vi.mocked(leggiIngredienti).mockResolvedValue([]);
-  vi.mocked(leggiSlotDefs).mockResolvedValue([SLOT_COLAZIONE, SLOT_PRANZO]);
   vi.mocked(leggiImpostazioni).mockResolvedValue({
     moltiplicatorePorzioni: 1,
     ordineAree: [...ORDINE_AREE_TEST],
@@ -75,59 +70,63 @@ describe('Piatti (repertorio)', () => {
   });
 
   it("mostra l'onboarding (le due porte) quando leggiRepertorio torna vuoto", async () => {
-    mockRepertorioVuoto();
-
+    mockRepertorio([]);
     render(<Piatti />);
-
     expect(await screen.findByText('Da dove partiamo?')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'IMPORTA LA DIETA' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'SCRIVI I MIEI PIATTI' })).toBeInTheDocument();
   });
 
-  it('i filtri sono TUTTI più un\'opzione per ogni meal_slot_def reale, non i quattro cablati nel mock', async () => {
-    mockRepertorioPieno();
+  it('non c\'è più il filtro dei pasti, né la pillola del pasto, e i pasti non si leggono', async () => {
+    mockRepertorio([PIATTO_COLAZIONE, PIATTO_PRANZO]);
     render(<Piatti />);
-
-    expect(await screen.findByText('Latte e pane')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'TUTTI' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Colazione' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Pranzo' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Cena' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Spuntino' })).not.toBeInTheDocument();
+    await screen.findByRole('link', { name: 'Apri Latte e pane' });
+    expect(screen.queryByRole('button', { name: 'TUTTI' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Colazione')).not.toBeInTheDocument();
+    expect(screen.queryByText('Pranzo')).not.toBeInTheDocument();
+    expect(leggiSlotDefs).not.toHaveBeenCalled();
   });
 
-  it('filtra i piatti sul pasto scelto', async () => {
-    mockRepertorioPieno();
+  it('l\'aggiungi tratteggiato porta all\'editor completo e sta prima della prima riga', async () => {
+    mockRepertorio([PIATTO_COLAZIONE, PIATTO_PRANZO]);
     render(<Piatti />);
-    await screen.findByText('Latte e pane');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Pranzo' }));
-
-    expect(screen.queryByText('Latte e pane')).not.toBeInTheDocument();
-    expect(screen.getByText('Pasta al pomodoro')).toBeInTheDocument();
+    const prima = await screen.findByRole('link', { name: 'Apri Latte e pane' });
+    const aggiungi = screen.getByRole('link', { name: 'Nuovo piatto' });
+    expect(aggiungi).toHaveAttribute('href', '/piatti/nuovo');
+    expect(aggiungi.compareDocumentPosition(prima) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByText('+ NUOVO PIATTO')).not.toBeInTheDocument();
   });
 
-  it('un pallino per area distinta negli ingredienti, non uno per ingrediente, nell\'ordine dell\'utente', async () => {
-    mockRepertorioPieno();
+  it('ogni riga è un solo link che apre il piatto', async () => {
+    mockRepertorio([PIATTO_COLAZIONE, PIATTO_PRANZO]);
     render(<Piatti />);
-
-    const nomeConDuePallini = await screen.findByText('Latte e pane');
-    const schedaConDuePallini = nomeConDuePallini.closest('a')!;
-    const pallini = schedaConDuePallini.querySelectorAll('[data-area]');
-    expect(Array.from(pallini).map((el) => el.getAttribute('data-area'))).toEqual(['latticini', 'cereali']);
-
-    const nomeConUnPallino = screen.getByText('Pasta al pomodoro');
-    const schedaConUnPallino = nomeConUnPallino.closest('a')!;
-    // Pane compare due volte nel piatto? No: un solo ingrediente (pane) -> un solo pallino, non uno a riga.
-    const pallino = schedaConUnPallino.querySelectorAll('[data-area]');
-    expect(Array.from(pallino).map((el) => el.getAttribute('data-area'))).toEqual(['cereali']);
+    expect(await screen.findByRole('link', { name: 'Apri Latte e pane' })).toHaveAttribute('href', '/piatti/d-1');
+    expect(screen.getByRole('link', { name: 'Apri Pasta al pomodoro' })).toHaveAttribute('href', '/piatti/d-2');
   });
 
-  it('la meta mostra numero ingredienti e fonte', async () => {
-    mockRepertorioPieno();
+  it('la sottoriga conta gli ingredienti e dice «dalla dieta» solo sui piatti dell\'import', async () => {
+    mockRepertorio([PIATTO_COLAZIONE, PIATTO_PRANZO]);
     render(<Piatti />);
-    expect(await screen.findByText('2 INGR. · PROPRIO')).toBeInTheDocument();
-    expect(screen.getByText('1 INGR. · NUTRIZIONISTA')).toBeInTheDocument();
+    expect(await screen.findByText('2 INGREDIENTI')).toBeInTheDocument();
+    expect(screen.getByText('1 INGREDIENTE · DALLA DIETA')).toBeInTheDocument();
+    expect(screen.queryByText(/NUTRIZIONISTA|PROPRIO|INGR\./)).not.toBeInTheDocument();
+  });
+
+  it('un pallino per area distinta, nell\'ordine dell\'utente', async () => {
+    mockRepertorio([PIATTO_COLAZIONE, PIATTO_PRANZO]);
+    render(<Piatti />);
+    const riga = await screen.findByRole('link', { name: 'Apri Latte e pane' });
+    expect(Array.from(riga.querySelectorAll('[data-area]')).map((el) => el.getAttribute('data-area'))).toEqual(['latticini', 'cereali']);
+    const altra = screen.getByRole('link', { name: 'Apri Pasta al pomodoro' });
+    expect(Array.from(altra.querySelectorAll('[data-area]')).map((el) => el.getAttribute('data-area'))).toEqual(['cereali']);
+  });
+
+  it('un piatto di sole alternative conta e colora gli ingredienti delle opzioni', async () => {
+    mockRepertorio([PIATTO_ALTERNATIVE]);
+    render(<Piatti />);
+    const riga = await screen.findByRole('link', { name: 'Apri Merenda' });
+    expect(screen.getByText('2 INGREDIENTI · DALLA DIETA')).toBeInTheDocument();
+    expect(Array.from(riga.querySelectorAll('[data-area]')).map((el) => el.getAttribute('data-area'))).toEqual(['latticini', 'cereali']);
   });
 });
 
@@ -137,9 +136,8 @@ describe('Le due porte', () => {
   });
 
   it('titolo e sottotitolo della schermata', async () => {
-    mockRepertorioVuoto();
+    mockRepertorio([]);
     render(<Piatti />);
-
     expect(await screen.findByText('Da dove partiamo?')).toBeInTheDocument();
     expect(
       screen.getByText('Dispesa costruisce la lista dai piatti che mangi. Ce li dici una volta sola, in uno di questi due modi.'),
@@ -147,47 +145,39 @@ describe('Le due porte', () => {
   });
 
   it('la porta della dieta porta a /importa', async () => {
-    mockRepertorioVuoto();
+    mockRepertorio([]);
     render(<Piatti />);
     await screen.findByText('Da dove partiamo?');
-
     expect(screen.getByText('Ho una dieta')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'IMPORTA LA DIETA' })).toHaveAttribute('href', '/importa');
   });
 
   it('la porta di chi cucina sempre le stesse cose porta a /piatti/veloce', async () => {
-    mockRepertorioVuoto();
+    mockRepertorio([]);
     render(<Piatti />);
     await screen.findByText('Da dove partiamo?');
-
     expect(screen.getByText('Cucino sempre le stesse cose')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'SCRIVI I MIEI PIATTI' })).toHaveAttribute('href', '/piatti/veloce');
   });
 
   it("il link all'editor completo porta a /piatti/nuovo", async () => {
-    mockRepertorioVuoto();
+    mockRepertorio([]);
     render(<Piatti />);
     await screen.findByText('Da dove partiamo?');
-
-    expect(screen.getByRole('link', { name: "Crea un piatto dall'editor completo" })).toHaveAttribute(
-      'href',
-      '/piatti/nuovo',
-    );
+    expect(screen.getByRole('link', { name: "Crea un piatto dall'editor completo" })).toHaveAttribute('href', '/piatti/nuovo');
   });
 
   it('il vecchio bottone unico non c\'è più', async () => {
-    mockRepertorioVuoto();
+    mockRepertorio([]);
     render(<Piatti />);
     await screen.findByText('Da dove partiamo?');
-
     expect(screen.queryByText('CREA IL PRIMO PIATTO')).not.toBeInTheDocument();
   });
 
   it('con il repertorio pieno le porte non compaiono', async () => {
-    mockRepertorioPieno();
+    mockRepertorio([PIATTO_COLAZIONE, PIATTO_PRANZO]);
     render(<Piatti />);
-    await screen.findByText('Latte e pane');
-
+    await screen.findByRole('link', { name: 'Apri Latte e pane' });
     expect(screen.queryByText('Da dove partiamo?')).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'IMPORTA LA DIETA' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'SCRIVI I MIEI PIATTI' })).not.toBeInTheDocument();
