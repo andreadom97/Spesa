@@ -71,6 +71,16 @@
      uno stato transitorio, e il prezzo è quello giusto. */
   --coda-scroll-dock: 194px;
 
+  /* Fase 3 (spec 23/09 §J): copiati da design/sistema/tokens.css, stessi valori. */
+  --bordo-tratteggio: rgba(20, 22, 58, 0.20);
+  --overlay-foglio: rgba(20, 22, 58, 0.35);
+  --riga-piatto: 68px;
+  --scatto-anello: 76px;
+  --scatto-disco: 62px;
+  --moto-scatto: 180ms;
+  --banda-fondo: rgba(20, 22, 58, 0.72);
+  --banda-bordo: rgba(255, 255, 255, 0.62);
+
   --area-ortofrutta: #A8D96A;
   --area-macelleria: #F29B9B;
   --area-latticini: #9CC7F2;
