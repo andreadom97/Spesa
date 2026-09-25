@@ -26,7 +26,7 @@ export function DettaglioLotto({ lotto, nome, impegnate, onPorzioni, onCongelato
       <TestataFoglio onChiudi={onChiudi}>
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--ink)' }}>PRONTI</span>
       </TestataFoglio>
-      <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 16px 26px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className="sc corpo-foglio" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 16px 26px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div>
           <h2 style={{ margin: 0, fontSize: 32, fontWeight: 800, letterSpacing: '-0.045em', lineHeight: 1.05, color: 'var(--ink)' }}>{nome}</h2>
           <p style={{ margin: '8px 0 0', fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.13em', color: 'var(--testo-2)' }}>{dati}</p>

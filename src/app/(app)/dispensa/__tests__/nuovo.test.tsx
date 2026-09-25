@@ -213,4 +213,16 @@ describe('NuovoIngrediente', () => {
     fireEvent.click(screen.getByLabelText('Chiudi senza creare'));
     expect(props.onChiudi).toHaveBeenCalledTimes(1);
   });
+
+  // Difetto fase 4: il corpo che scorre schiacciava CREA L'INGREDIENTE e
+  // SCANSIONA LA CONFEZIONE sotto ~761px di finestra. jsdom non calcola il
+  // layout: qui si controlla solo che .corpo-foglio (globals.css) sia sul
+  // corpo che scorre, sia nel modulo sia nella vista di scansione.
+  it('il corpo che scorre ha .corpo-foglio nel modulo e nella vista di scansione', () => {
+    const { container } = render(<NuovoIngrediente {...propsBase()} />);
+    expect(container.querySelector('.sc.corpo-foglio')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /SCANSIONA LA CONFEZIONE/ }));
+    expect(container.querySelector('.sc.corpo-foglio')).toBeInTheDocument();
+  });
 });

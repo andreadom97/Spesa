@@ -45,7 +45,7 @@ export function DettaglioIngrediente({
         </span>
       </TestataFoglio>
 
-      <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 16px 26px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className="sc corpo-foglio" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 16px 26px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div>
           <h2 style={{ margin: 0, fontSize: 32, fontWeight: 800, letterSpacing: '-0.045em', lineHeight: 1.05, color: 'var(--ink)' }}>{ing.nome}</h2>
           {avviso && (

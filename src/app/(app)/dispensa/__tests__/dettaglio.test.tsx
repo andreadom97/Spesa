@@ -210,4 +210,13 @@ describe('DettaglioIngrediente', () => {
     fireEvent.click(screen.getByLabelText('Chiudi il foglio'));
     expect(props.onChiudi).toHaveBeenCalledTimes(1);
   });
+
+  // Difetto fase 4: sotto ~766px il corpo che scorre schiacciava SCANSIONA UNA
+  // CONFEZIONE (STILE_TASTO, height 54, senza flexShrink: 0). jsdom non calcola
+  // il layout, quindi qui si controlla solo che la classe che ferma lo schiacciamento
+  // (.corpo-foglio, globals.css) sia sul corpo che scorre.
+  it('il corpo che scorre ha .corpo-foglio, per non schiacciare SCANSIONA UNA CONFEZIONE', () => {
+    const { container } = render(<DettaglioIngrediente {...propsBase()} />);
+    expect(container.querySelector('.sc.corpo-foglio')).toBeInTheDocument();
+  });
 });

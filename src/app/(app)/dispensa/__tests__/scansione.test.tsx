@@ -216,4 +216,14 @@ describe('ScansioneConfezione', () => {
     fireEvent.click(screen.getByLabelText('Torna a Petto di pollo'));
     expect(props.onIndietro).toHaveBeenCalledTimes(1);
   });
+
+  // Difetto fase 4: il corpo che scorre schiacciava i tasti fissi sotto finestre
+  // piccole. jsdom non calcola il layout: qui si controlla solo che .corpo-foglio
+  // (globals.css, flex-shrink: 0 sui figli diretti) sia sul corpo che scorre.
+  // L'anteprima di LettoreCodice (flex: 1, minHeight: 220) resta un figlio diretto:
+  // la regola non le toglie la crescita, la protegge solo dallo schiacciamento.
+  it('il corpo che scorre ha .corpo-foglio', () => {
+    const { container } = render(<ScansioneConfezione {...propsBase()} />);
+    expect(container.querySelector('.sc.corpo-foglio')).toBeInTheDocument();
+  });
 });

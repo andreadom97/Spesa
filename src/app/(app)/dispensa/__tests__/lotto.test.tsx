@@ -25,6 +25,15 @@ function propsLotto(p: { lotto?: LottoPronto; nome?: string; impegnate?: number 
 }
 
 describe('DettaglioLotto', () => {
+  // Difetto fase 4: il corpo che scorre schiacciava ELIMINA IL LOTTO sotto ~766px
+  // di finestra. jsdom non calcola il layout: qui si controlla solo che la classe
+  // .corpo-foglio (globals.css, flex-shrink: 0 sui figli diretti) sia applicata.
+  it('il corpo che scorre ha .corpo-foglio, per non schiacciare ELIMINA IL LOTTO', () => {
+    const { container } = render(<DettaglioLotto {...propsLotto()} />);
+    expect(container.querySelector('.sc.corpo-foglio')).toBeInTheDocument();
+  });
+
+
   it('dati: PREPARATO IL 12 SET · IN CONGELATORE', () => {
     render(<DettaglioLotto {...propsLotto()} />);
     expect(screen.getByText('PREPARATO IL 12 SET · IN CONGELATORE')).toBeInTheDocument();

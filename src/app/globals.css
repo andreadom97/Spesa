@@ -115,6 +115,9 @@
 .sc { scrollbar-width: none; }
 .sc::-webkit-scrollbar { width: 0; height: 0; }
 
+/* Corpo che scorre di un foglio: nei fogli il contenuto scorre, non si schiaccia. */
+.corpo-foglio > * { flex-shrink: 0; }
+
 /* Animazioni causa-effetto (spec review UI §F). Tutte e sole qui, e tutte
    dentro il media: chi chiede meno moto non ne riceve nessuno. */
 @media (prefers-reduced-motion: no-preference) {

@@ -129,7 +129,7 @@ export function NuovoIngrediente({ nomeIniziale, ingredienti, onCrea, onApri, on
     return (
       <>
         <TestataFoglio onChiudi={onChiudi} etichettaChiudi="Chiudi senza creare" indietro={{ etichetta: 'Torna al nuovo ingrediente', onClick: () => { setAltro(null); setVista('modulo'); } }} />
-        <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 16px 26px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="sc corpo-foglio" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 16px 26px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           {altro ? (
             <>
               <p style={{ margin: 0, fontSize: 15.5, fontWeight: 700, color: 'var(--ink)' }}>{`Questo codice è di ${altro.nome}.`}</p>
@@ -151,7 +151,7 @@ export function NuovoIngrediente({ nomeIniziale, ingredienti, onCrea, onApri, on
       <TestataFoglio onChiudi={onChiudi} etichettaChiudi="Chiudi senza creare">
         <Etichetta>Nuovo ingrediente</Etichetta>
       </TestataFoglio>
-      <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 16px 26px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className="sc corpo-foglio" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 16px 26px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <input
             type="text"

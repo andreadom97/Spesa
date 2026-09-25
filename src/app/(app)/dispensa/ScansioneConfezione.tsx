@@ -77,7 +77,7 @@ export function ScansioneConfezione({ ingrediente, congelato, ingredienti, oggi,
       <TestataFoglio onChiudi={onChiudi} indietro={{ etichetta: `Torna a ${ingrediente.nome}`, onClick: onIndietro }}>
         <span style={{ fontSize: 15.5, fontWeight: 700, color: 'var(--ink)' }}>{ingrediente.nome}</span>
       </TestataFoglio>
-      <div className="sc" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 16px 26px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="sc corpo-foglio" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 16px 26px', display: 'flex', flexDirection: 'column', gap: 12 }}>
         {fase.tipo === 'leggo' && <LettoreCodice onCodice={(ean) => void letto(ean)} />}
         {fase.tipo !== 'leggo' && (
           <div style={{ background: 'rgba(20,22,58,0.04)', borderRadius: 14, padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
