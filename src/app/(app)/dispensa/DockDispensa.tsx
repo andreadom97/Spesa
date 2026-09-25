@@ -1,6 +1,6 @@
 'use client';
 
-import type { MouseEvent } from 'react';
+import { useRef, type MouseEvent, type PointerEvent } from 'react';
 import { Dock } from '@/components/Dock';
 import { IconaAI, IconaMicrofono } from './icone';
 
@@ -14,7 +14,7 @@ interface Props {
    * rilascio di quel dito e non di un altro.
    */
   onPremiMicrofono: (pointerId: number) => void;
-  /** Attivazione da tastiera (click senza puntatore): avvia a tocchi. */
+  /** Click senza pointerdown prima (tastiera, screen reader): avvia a tocchi. */
   onToccaMicrofono: () => void;
 }
 
@@ -22,12 +22,21 @@ interface Props {
  * Il Dock della Dispensa (spec §A): `Modifica con l'AI` e il tondo del
  * microfono, sciolti e allineati a destra. Il tocco sul tondo col dito passa
  * da `pointerdown` (serve per il tenuto premuto); il `click` che il browser
- * manda dopo il rilascio si ignora, tranne quando viene dalla tastiera
- * (`detail === 0`), che non ha pointerdown.
+ * manda dopo il rilascio si ignora. Stessa regola del tondo in `WidgetAI`: un
+ * click senza pointerdown prima (tastiera, `detail` 0, o uno screen reader che
+ * sintetizza il click con `detail` 1) è un tocco breve; `detail` 0 vale sempre
+ * come tastiera, anche se un pointerdown è rimasto senza click.
  */
 export function DockDispensa({ dettatura, onModifica, onPremiMicrofono, onToccaMicrofono }: Props) {
+  const premutoRef = useRef(false);
+  function premi(e: PointerEvent<HTMLButtonElement>) {
+    premutoRef.current = true;
+    onPremiMicrofono(e.pointerId);
+  }
   function click(e: MouseEvent<HTMLButtonElement>) {
-    if (e.detail === 0) onToccaMicrofono();
+    const dalDito = premutoRef.current && e.detail !== 0;
+    premutoRef.current = false;
+    if (!dalDito) onToccaMicrofono();
   }
   return (
     <Dock sciolto>
@@ -48,7 +57,7 @@ export function DockDispensa({ dettatura, onModifica, onPremiMicrofono, onToccaM
         <button
           type="button"
           aria-label="Registra un vocale"
-          onPointerDown={(e) => onPremiMicrofono(e.pointerId)}
+          onPointerDown={premi}
           onClick={click}
           style={{
             width: 56, height: 56, flex: 'none', borderRadius: 999, background: 'var(--ink)', boxShadow: 'var(--ombra-nav)',

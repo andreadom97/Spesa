@@ -385,6 +385,31 @@ describe('Dispensa: il dettaglio', () => {
     expect(tessera('Pane')).toHaveTextContent('250 g');
   });
 
+  it('SALVA del residuo che fallisce: il campo tiene il numero tentato, RIPROVA è premibile e lo rimanda', async () => {
+    mockBase();
+    vi.mocked(correggiResiduo).mockRejectedValueOnce(new Error('rete')).mockResolvedValueOnce(undefined);
+    await montaCaricata();
+
+    fireEvent.click(tessera('Petto di pollo'));
+    const foglio = screen.getByRole('dialog', { name: 'Petto di pollo' });
+    const campo = within(foglio).getByRole('textbox', { name: 'Residuo di Petto di pollo' });
+    fireEvent.change(campo, { target: { value: '250' } });
+    fireEvent.click(within(foglio).getByRole('button', { name: 'SALVA' }));
+
+    // La pagina ha già fatto l'ottimistico (250) e il ritorno a prima (600).
+    const riprova = await within(foglio).findByRole('button', { name: 'RIPROVA' });
+    expect(tessera('Petto di pollo')).toHaveTextContent('600 g');
+    expect(campo).toHaveValue('250');
+    expect(riprova).not.toBeDisabled();
+
+    fireEvent.click(riprova);
+    await waitFor(() => expect(correggiResiduo).toHaveBeenLastCalledWith('pollo', 250, 600));
+    expect(correggiResiduo).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(within(foglio).getByRole('button', { name: 'SALVA' })).toBeDisabled());
+    expect(campo).toHaveValue('250');
+    expect(tessera('Petto di pollo')).toHaveTextContent('250 g');
+  });
+
   it('la scadenza: MODIFICA, una data, SALVA; la tessera mostra la data nuova', async () => {
     mockBase();
     vi.mocked(impostaScadenza).mockResolvedValue(undefined);
@@ -562,6 +587,30 @@ describe('Dispensa: il lotto', () => {
     await waitFor(() => expect(correggiLotto).toHaveBeenCalledWith('lp-1', 0));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(screen.queryByRole('button', { name: 'Apri il lotto di Ragù di lenticchie' })).not.toBeInTheDocument();
+  });
+
+  it('SALVA delle porzioni che fallisce: il campo tiene il numero tentato, RIPROVA è premibile e lo rimanda', async () => {
+    mockBase();
+    vi.mocked(correggiLotto).mockRejectedValueOnce(new Error('rete')).mockResolvedValueOnce(undefined);
+    await montaCaricata();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Apri il lotto di Ragù di lenticchie' }));
+    const foglio = screen.getByRole('dialog', { name: 'Lotto di Ragù di lenticchie' });
+    const campo = within(foglio).getByRole('textbox', { name: 'Porzioni di Ragù di lenticchie' });
+    fireEvent.change(campo, { target: { value: '2' } });
+    fireEvent.click(within(foglio).getByRole('button', { name: 'SALVA' }));
+
+    const riprova = await within(foglio).findByRole('button', { name: 'RIPROVA' });
+    expect(screen.getByRole('button', { name: 'Apri il lotto di Ragù di lenticchie' })).toHaveTextContent('4 porz.');
+    expect(campo).toHaveValue('2');
+    expect(riprova).not.toBeDisabled();
+
+    fireEvent.click(riprova);
+    await waitFor(() => expect(correggiLotto).toHaveBeenLastCalledWith('lp-1', 2));
+    expect(correggiLotto).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(within(foglio).getByRole('button', { name: 'SALVA' })).toBeDisabled());
+    expect(campo).toHaveValue('2');
+    expect(screen.getByRole('button', { name: 'Apri il lotto di Ragù di lenticchie' })).toHaveTextContent('2 porz.');
   });
 
   it('SALVA a 3 porzioni: il foglio resta e la tessera dice 3 porz.; il congelatore del lotto scrive', async () => {

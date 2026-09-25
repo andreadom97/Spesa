@@ -7,6 +7,7 @@ import { NuovoIngrediente } from '../NuovoIngrediente';
 
 const EAN_TONNO = '8000000000017';
 const EAN_ZENZERO = '8000000000062';
+const EAN_ALTRO = '8000000000079';
 
 const PARMIGIANO: Ingredient = {
   id: 'i-parm', nome: 'Parmigiano', unitaBase: 'g', area: 'latticini', classeResiduo: 'porzionabile',
@@ -191,6 +192,33 @@ describe('NuovoIngrediente', () => {
         nome: 'Zenzero', unitaBase: 'ml', area: 'ortofrutta', deperibile: true,
         classeResiduo: 'porzionabile', formatoConfezione: 500,
         ean: EAN_ZENZERO,
+      },
+      quantita: 500,
+    }));
+  });
+
+  it('una seconda scansione senza quantità azzera il formato letto dalla prima: vale il default del reparto', async () => {
+    fetchMock
+      .mockResolvedValueOnce(rispostaJson({ trovato: true, nome: 'Acqua minerale', marca: '', quantita: { valore: 500, unita: 'ml' } }))
+      .mockResolvedValueOnce(rispostaJson({ trovato: false }));
+    const props = propsBase();
+    render(<NuovoIngrediente {...props} />);
+    fireEvent.click(screen.getByRole('button', { name: 'ORTOFRUTTA' }));
+
+    await scansiona(EAN_ZENZERO);
+    expect(await screen.findByLabelText('Residuo di Zenzero')).toHaveValue('500');
+    onCodiceCapturato = null;
+    await scansiona(EAN_ALTRO);
+    await waitFor(() => expect(screen.getByLabelText('Residuo di Zenzero')).toBeInTheDocument());
+
+    // Unità e campo restano quelli della prima lettura; il formato 500 no: era di un altro prodotto.
+    expect(screen.getByRole('button', { name: 'ml' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: "CREA L'INGREDIENTE" }));
+    await waitFor(() => expect(props.onCrea).toHaveBeenCalledWith({
+      ingrediente: {
+        nome: 'Zenzero', unitaBase: 'ml', area: 'ortofrutta', deperibile: true,
+        classeResiduo: 'porzionabile', formatoConfezione: predefinitiIngrediente('ortofrutta', 'ml').formatoConfezione,
+        ean: EAN_ALTRO,
       },
       quantita: 500,
     }));

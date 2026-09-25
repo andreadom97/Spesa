@@ -79,11 +79,13 @@ export function NuovoIngrediente({ nomeIniziale, ingredienti, onCrea, onApri, on
     if (esito.tipo !== 'letto') return;
     setEan(esito.ean);
     setMessaggioScan(esito.messaggio);
+    // Una lettura senza quantità azzera il formato di una lettura precedente:
+    // era di un altro prodotto.
+    setFormatoLetto(esito.quantita?.valore ?? null);
+    setUnitaLetta(esito.quantita?.unita ?? null);
     if (esito.quantita) {
       setQuantita(String(esito.quantita.valore));
       setUnita(esito.quantita.unita);
-      setFormatoLetto(esito.quantita.valore);
-      setUnitaLetta(esito.quantita.unita);
     }
     setVista('modulo');
   }

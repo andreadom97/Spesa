@@ -142,7 +142,11 @@ function numeroDa(testo: string, intero: boolean): number | null {
  * bordo 1,5, SALVA diventa RIPROVA pieno, e sotto compare `messaggioErrore`.
  * Un valore non valido riporta il campo al valore salvato. Se `valore` cambia
  * da fuori (SÌ di In casa, la nota AI), il campo lo segue: aggiustamento dello
- * stato durante il render, come in `Guscio`, non un effetto.
+ * stato durante il render, come in `Guscio`, non un effetto. Mentre la
+ * scrittura è in volo o in errore il campo NON segue `valore`: la pagina fa
+ * l'aggiornamento ottimistico e poi il ritorno a prima, e riallinearsi lì
+ * cancellerebbe il numero tentato e spegnerebbe RIPROVA. RIPROVA rimanda il
+ * numero nel campo; dopo un successo il campo torna a seguire `valore`.
  */
 export function CampoConSalva({ aria, valore, unita, intero = false, messaggioErrore, onSalva }: {
   aria: string; valore: number; unita: string; intero?: boolean; messaggioErrore: string; onSalva: (n: number) => Promise<void>;
@@ -150,15 +154,18 @@ export function CampoConSalva({ aria, valore, unita, intero = false, messaggioEr
   const [testo, setTesto] = useState(String(valore));
   const [visto, setVisto] = useState(valore);
   const [stato, setStato] = useState<'fermo' | 'volo' | 'errore'>('fermo');
-  if (visto !== valore) {
+  if (stato === 'fermo' && visto !== valore) {
     setVisto(valore);
     setTesto(String(valore));
   }
   const cambiato = testo !== String(valore);
+  const errore = stato === 'errore';
+  const volo = stato === 'volo';
 
   async function salva() {
-    if (!cambiato || stato === 'volo') return;
-    const n = numeroDa(testo, intero);
+    if ((!cambiato && !errore) || volo) return;
+    const tentato = testo;
+    const n = numeroDa(tentato, intero);
     if (n === null) {
       setTesto(String(valore));
       return;
@@ -168,6 +175,7 @@ export function CampoConSalva({ aria, valore, unita, intero = false, messaggioEr
       await onSalva(n);
       setStato('fermo');
     } catch {
+      setTesto(tentato);
       setStato('errore');
     }
   }
@@ -179,7 +187,6 @@ export function CampoConSalva({ aria, valore, unita, intero = false, messaggioEr
     }
   }
 
-  const errore = stato === 'errore';
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
@@ -200,13 +207,13 @@ export function CampoConSalva({ aria, valore, unita, intero = false, messaggioEr
         <button
           type="button"
           onClick={() => void salva()}
-          disabled={!cambiato || stato === 'volo'}
+          disabled={(!cambiato && !errore) || volo}
           style={{
             ...STILE_PILLOLA,
             background: errore ? 'var(--ink)' : cambiato ? 'var(--superficie)' : 'rgba(20,22,58,0.10)',
             color: errore ? 'var(--superficie)' : cambiato ? 'var(--ink)' : 'var(--ter)',
             border: cambiato && !errore ? '1px solid rgba(20,22,58,0.09)' : '1px solid transparent',
-            opacity: stato === 'volo' ? 0.5 : 1,
+            opacity: volo ? 0.5 : 1,
           }}
         >
           {errore ? 'RIPROVA' : 'SALVA'}

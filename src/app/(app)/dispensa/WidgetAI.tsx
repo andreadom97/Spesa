@@ -201,12 +201,16 @@ export function WidgetAI({ contesto, dettatura, bozza, onBozza, onDatiCambiati, 
   // `prima` = `p.valoreAttuale` (non `p.valoreNuovo`): l'annulla ripristina
   // il residuo di prima e non deve toccare le date come se fosse una nuova
   // correzione. Un "finito" annullato (400 → 0 → 400) conserva l'acquisto
-  // originale; annullare un'entrata (0 → 500 → 0) resta un'uscita, corretto.
+  // originale.
   //
-  // Limite noto: la data scritta a mano, cancellata dal primo gesto (quello
-  // annullato), resta persa — annullare non la ripristina. È il prezzo di
-  // non rileggere lo stato dal server; il dato che conta, il residuo, torna
-  // giusto.
+  // Limiti noti, entrambi prezzo di non rileggere lo stato dal server (il
+  // dato che conta, il residuo, torna giusto):
+  // - annullare un'entrata (0 → 500 → 0) non ripristina `ultimo_acquisto`:
+  //   l'entrata l'ha messo a oggi e l'annulla è un'uscita, che non lo tocca.
+  //   Un mai comprato torna a 0 ma con un acquisto, e in pagina compare come
+  //   «Finito» invece di sparire tra i mai comprati.
+  // - la data scritta a mano, cancellata dal primo gesto (quello annullato),
+  //   resta persa: annullare non la ripristina.
   async function annulla(indice: number, p: ModificaProposta) {
     if (righeInCorso.has(indice)) return;
     setRigheInCorso((prev) => new Set(prev).add(indice));

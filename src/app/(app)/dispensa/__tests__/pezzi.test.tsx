@@ -125,13 +125,26 @@ describe('DockDispensa', () => {
     slot.remove();
   });
 
-  it('un click con detail 0 chiama onToccaMicrofono, uno con detail 1 no', () => {
-    const { onToccaMicrofono, slot } = renderDockDispensa({ dettatura: true });
+  it('il click del tondo come in WidgetAI: il dito (pointerdown + click) no; tastiera e screen reader sì', () => {
+    const { onPremiMicrofono, onToccaMicrofono, slot } = renderDockDispensa({ dettatura: true });
     const tondo = screen.getByRole('button', { name: 'Registra un vocale' });
+
+    // Il dito: pointerdown e poi il click del browser. Lo gestisce `premi`.
+    fireEvent.pointerDown(tondo, { pointerId: 3 });
     fireEvent.click(tondo, { detail: 1 });
+    expect(onPremiMicrofono).toHaveBeenCalledTimes(1);
     expect(onToccaMicrofono).not.toHaveBeenCalled();
-    fireEvent.click(tondo, { detail: 0 });
+
+    // Uno screen reader: click sintetizzato con detail 1, senza pointerdown prima.
+    fireEvent.click(tondo, { detail: 1 });
     expect(onToccaMicrofono).toHaveBeenCalledTimes(1);
+
+    // La tastiera: detail 0, sempre, anche con un pointerdown rimasto senza click.
+    fireEvent.click(tondo, { detail: 0 });
+    expect(onToccaMicrofono).toHaveBeenCalledTimes(2);
+    fireEvent.pointerDown(tondo, { pointerId: 4 });
+    fireEvent.click(tondo, { detail: 0 });
+    expect(onToccaMicrofono).toHaveBeenCalledTimes(3);
     slot.remove();
   });
 
