@@ -113,6 +113,56 @@ describe('WidgetAI', () => {
       expect(screen.getByRole('button', { name: 'FAI LE MODIFICHE' })).toBeEnabled();
     });
 
+    it('il fuoco va al campo alla prima apertura, ma non quando la textarea torna dopo la dettatura', () => {
+      const { rerender } = render(
+        <WidgetAI contesto={CONTESTO} dettatura={dettaturaFinta()} bozza="" onBozza={vi.fn()} onDatiCambiati={onDatiCambiati} onChiudi={onChiudi} />,
+      );
+      expect(screen.getByRole('textbox')).toHaveFocus();
+      rerender(
+        <WidgetAI contesto={CONTESTO} dettatura={dettaturaFinta({ attiva: true, modo: 'tocco' })} bozza="ho finito il riso" onBozza={vi.fn()} onDatiCambiati={onDatiCambiati} onChiudi={onChiudi} />,
+      );
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+      rerender(
+        <WidgetAI contesto={CONTESTO} dettatura={dettaturaFinta()} bozza="ho finito il riso" onBozza={vi.fn()} onDatiCambiati={onDatiCambiati} onChiudi={onChiudi} />,
+      );
+      expect(screen.getByRole('textbox')).toHaveValue('ho finito il riso');
+      expect(screen.getByRole('textbox')).not.toHaveFocus();
+    });
+
+    it('aperto già in dettatura, allo stop il campo non prende il fuoco', () => {
+      const { rerender } = render(
+        <WidgetAI contesto={CONTESTO} dettatura={dettaturaFinta({ attiva: true, modo: 'tenuto' })} bozza="" onBozza={vi.fn()} onDatiCambiati={onDatiCambiati} onChiudi={onChiudi} />,
+      );
+      rerender(
+        <WidgetAI contesto={CONTESTO} dettatura={dettaturaFinta()} bozza="ho finito il riso" onBozza={vi.fn()} onDatiCambiati={onDatiCambiati} onChiudi={onChiudi} />,
+      );
+      expect(screen.getByRole('textbox')).not.toHaveFocus();
+    });
+
+    it('si apre con la tastiera già su: poggia sopra dal primo frame', async () => {
+      const vv = Object.assign(new EventTarget(), { height: window.innerHeight - 300, offsetTop: 0 });
+      Object.defineProperty(window, 'visualViewport', { value: vv, configurable: true });
+      try {
+        render(<Banco />);
+        await waitFor(() => expect(screen.getByRole('dialog').style.bottom).toBe('312px'));
+      } finally {
+        Reflect.deleteProperty(window, 'visualViewport');
+      }
+    });
+
+    it('mentre detta sta a bottom 114 anche con la tastiera su', async () => {
+      const vv = Object.assign(new EventTarget(), { height: window.innerHeight - 300, offsetTop: 0 });
+      Object.defineProperty(window, 'visualViewport', { value: vv, configurable: true });
+      try {
+        const { rerender } = render(<Banco />);
+        await waitFor(() => expect(screen.getByRole('dialog').style.bottom).toBe('312px'));
+        rerender(<Banco dettatura={dettaturaFinta({ attiva: true, modo: 'tocco' })} />);
+        expect(screen.getByRole('dialog').style.bottom).toBe('114px');
+      } finally {
+        Reflect.deleteProperty(window, 'visualViewport');
+      }
+    });
+
     it('senza tastiera sta a bottom 114; con la tastiera poggia sopra di 12', () => {
       const vv = Object.assign(new EventTarget(), { height: window.innerHeight, offsetTop: 0 });
       Object.defineProperty(window, 'visualViewport', { value: vv, configurable: true });
@@ -137,16 +187,37 @@ describe('WidgetAI', () => {
       expect(screen.queryByRole('button', { name: 'Registra un vocale' })).not.toBeInTheDocument();
     });
 
-    it('pointerDown sul tondo chiama premi; il click da tastiera (detail 0) chiama tocca, quello del dito no', () => {
+    it('pointerDown sul tondo chiama premi col pointerId; il click che lo segue non chiama tocca', () => {
       const dettatura = dettaturaFinta();
       render(<Banco dettatura={dettatura} />);
       const tondo = screen.getByRole('button', { name: 'Registra un vocale' });
-      fireEvent.pointerDown(tondo);
+      fireEvent.pointerDown(tondo, { pointerId: 7 });
       expect(dettatura.premi).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(dettatura.premi).mock.calls[0]![0]).toBe(7);
       fireEvent.click(tondo, { detail: 1 });
       expect(dettatura.tocca).not.toHaveBeenCalled();
+    });
+
+    it('un click senza pointerdown (tastiera, detail 0, o screen reader, detail 1) chiama tocca', () => {
+      const dettatura = dettaturaFinta();
+      render(<Banco dettatura={dettatura} />);
+      const tondo = screen.getByRole('button', { name: 'Registra un vocale' });
       fireEvent.click(tondo, { detail: 0 });
       expect(dettatura.tocca).toHaveBeenCalledTimes(1);
+      fireEvent.click(tondo, { detail: 1 });
+      expect(dettatura.tocca).toHaveBeenCalledTimes(2);
+      // Un pointerdown rimasto senza click non si mangia il tasto da tastiera.
+      fireEvent.pointerDown(tondo, { pointerId: 1 });
+      fireEvent.click(tondo, { detail: 0 });
+      expect(dettatura.tocca).toHaveBeenCalledTimes(3);
+      expect(dettatura.premi).toHaveBeenCalledTimes(1);
+    });
+
+    it('il tenuto lungo non apre il menu contestuale', () => {
+      render(<Banco />);
+      const tondo = screen.getByRole('button', { name: 'Registra un vocale' });
+      expect(fireEvent.contextMenu(tondo)).toBe(false);
+      expect(tondo).toHaveStyle({ userSelect: 'none' });
     });
 
     it('mentre detta tenendo premuto: niente textarea, onda di 22 barre, tempo, provvisorio in --ter, RILASCIA PER FERMARE', () => {
@@ -159,7 +230,10 @@ describe('WidgetAI', () => {
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'FAI LE MODIFICHE' })).not.toBeInTheDocument();
       expect(container.querySelectorAll('.onda-barra')).toHaveLength(22);
-      expect(screen.getByRole('status')).toHaveTextContent('0:07');
+      const stato = screen.getByRole('status');
+      expect(stato).toHaveTextContent('0:07');
+      // Il tempo si vede ma non si rilegge ogni secondo.
+      expect(screen.getByText('0:07')).toHaveAttribute('aria-hidden', 'true');
       expect(screen.getByText('RILASCIA PER FERMARE')).toBeInTheDocument();
       const provvisorio = screen.getByText('il parmigiano è');
       expect(provvisorio).toHaveStyle({ color: 'var(--ter)' });
@@ -307,6 +381,29 @@ describe('WidgetAI', () => {
       expect(screen.getByText('«il pane nero»')).toBeInTheDocument();
       expect(screen.getByText('Cercali in dispensa.')).toBeInTheDocument();
       expect(container.querySelector('.anim-luce-testo')).toBeNull();
+    });
+
+    it('all\'esito il fuoco va al contenitore del recap', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(rispostaOk({ proposte: [FINITO_RISO], nonRiconosciuti: [] })));
+      invia('ho finito il riso');
+      await screen.findByText('APPLICATE 1 DI 1');
+      const esito = screen.getByTestId('esito-widget');
+      expect(esito).toHaveAttribute('tabindex', '-1');
+      expect(esito).toHaveFocus();
+    });
+
+    it('un ingrediente fuori dal contesto: nome accessibile con l\'id, come il testo, senza doppio spazio', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(rispostaOk({
+        proposte: [
+          { ingredientId: 'ignoto', campo: 'residuo', valoreNuovo: 0, valoreAttuale: 2, confidence: 0.95, motivazione: 'x' },
+          { ingredientId: 'sconosciuto', campo: 'congelato', valoreNuovo: false, valoreAttuale: true, confidence: 0.5, motivazione: 'y' },
+        ],
+        nonRiconosciuti: [],
+      })));
+      invia('boh');
+      expect(await screen.findByRole('button', { name: 'Annulla: ignoto 2 → 0' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Conferma: sconosciuto freezer → frigo' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Annulla: ignoto 2 → 0' }).getAttribute('aria-label')).not.toMatch(/ {2}/);
     });
 
     it('sotto soglia non si applica finché non la confermi; confermata passa fra le applicate', async () => {

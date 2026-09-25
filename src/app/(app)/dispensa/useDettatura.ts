@@ -40,8 +40,12 @@ export interface Dettatura {
   /** Le parole ancora incerte, da mostrare in `--ter` dopo il testo. */
   provvisorio: string;
   errore: string | null;
-  /** pointerdown sul microfono: avvia (o ferma, se sta dettando a tocchi). Il rilascio si ascolta su window. */
-  premi: () => void;
+  /**
+   * pointerdown sul microfono: avvia (o ferma, se sta dettando a tocchi). Il
+   * rilascio si ascolta su window; con `pointerId` conta solo quello del dito
+   * che ha premuto, senza vale il primo rilascio di qualunque puntatore.
+   */
+  premi: (pointerId?: number) => void;
   /** Tocco breve o tastiera: avvia, o ferma. */
   tocca: () => void;
   ferma: () => void;
@@ -115,8 +119,10 @@ export function useDettatura(onDefinitivo: (testo: string) => void): Dettatura {
       if (definitivo.trim()) onDefinitivoRef.current(definitivo.trim());
       setProvvisorio(incerto.trim());
     };
+    // `no-speech` e `aborted` non sono guasti (silenzio, stop voluto): il
+    // resto vuol dire che il microfono o il servizio non ci sono.
     r.onerror = (e) => {
-      if (e.error === 'not-allowed' || e.error === 'service-not-allowed' || e.error === 'audio-capture') setErrore(MSG_MICROFONO);
+      if (['not-allowed', 'service-not-allowed', 'audio-capture', 'network'].includes(e.error)) setErrore(MSG_MICROFONO);
     };
     // Il browser chiude da sé dopo un silenzio: vale come stop, e il testo resta.
     r.onend = () => {
@@ -136,14 +142,16 @@ export function useDettatura(onDefinitivo: (testo: string) => void): Dettatura {
     }
   }, [spento]);
 
-  const premi = useCallback(() => {
+  const premi = useCallback((pointerId?: number) => {
     if (attivaRef.current) {
       ferma();
       return;
     }
     const inizio = Date.now();
     avvia('tenuto');
-    const rilascio = () => {
+    // Un secondo dito che si alza non è il rilascio del tenuto premuto.
+    const rilascio = (e: Event) => {
+      if (pointerId !== undefined && (e as PointerEvent).pointerId !== pointerId) return;
       window.removeEventListener('pointerup', rilascio);
       window.removeEventListener('pointercancel', rilascio);
       if (Date.now() - inizio >= SOGLIA_TENUTO_MS) ferma();

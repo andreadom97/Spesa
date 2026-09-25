@@ -26,6 +26,11 @@ function risultato(transcript: string, isFinal: boolean) {
   return Object.assign([{ transcript }], { isFinal });
 }
 
+/** Un evento di puntatore col suo `pointerId` (jsdom può non avere PointerEvent). */
+function puntatore(tipo: string, pointerId: number): Event {
+  return Object.assign(new Event(tipo), { pointerId });
+}
+
 function istanza(): Finto {
   if (!ultima) throw new Error('nessun riconoscitore creato');
   return ultima;
@@ -167,6 +172,41 @@ describe('useDettatura', () => {
     act(() => istanza().onerror!({ error: 'not-allowed' }));
     expect(result.current.errore).toBe(MSG_MICROFONO);
     expect(MSG_MICROFONO).toBe('Il microfono non è disponibile: scrivi la nota.');
+  });
+
+  it('network → MSG_MICROFONO; no-speech e aborted non sono errori', () => {
+    window.SpeechRecognition = Finto;
+    const { result } = renderHook(() => useDettatura(vi.fn()));
+    act(() => result.current.tocca());
+    act(() => istanza().onerror!({ error: 'no-speech' }));
+    expect(result.current.errore).toBeNull();
+    act(() => istanza().onerror!({ error: 'aborted' }));
+    expect(result.current.errore).toBeNull();
+    act(() => istanza().onerror!({ error: 'network' }));
+    expect(result.current.errore).toBe(MSG_MICROFONO);
+  });
+
+  it('premi(pointerId): il rilascio di un secondo dito non ferma, quello del dito che ha premuto sì', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-25T10:00:00.000Z'));
+    window.SpeechRecognition = Finto;
+    const { result } = renderHook(() => useDettatura(vi.fn()));
+
+    act(() => result.current.premi(1));
+    vi.setSystemTime(new Date('2026-09-25T10:00:00.400Z'));
+    act(() => {
+      window.dispatchEvent(puntatore('pointerup', 2));
+      window.dispatchEvent(puntatore('pointercancel', 2));
+    });
+    expect(istanza().stop).not.toHaveBeenCalled();
+    expect(result.current.attiva).toBe(true);
+    expect(result.current.modo).toBe('tenuto');
+
+    act(() => {
+      window.dispatchEvent(puntatore('pointerup', 1));
+    });
+    expect(istanza().stop).toHaveBeenCalledTimes(1);
+    expect(result.current.attiva).toBe(false);
   });
 
   it('start() che lancia → spenta, con MSG_MICROFONO', () => {

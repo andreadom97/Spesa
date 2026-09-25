@@ -14,9 +14,14 @@ export function useAltezzaTastiera(): number {
     const vv = window.visualViewport;
     if (!vv) return;
     const misura = () => setAltezza(Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)));
+    // La prima misura: se il widget si apre con la tastiera già su (per
+    // esempio col fuoco rimasto nella ricerca), nessun `resize` arriverebbe. Al frame dopo,
+    // non dentro l'effetto, così il render iniziale resta quello del server.
+    const primo = requestAnimationFrame(misura);
     vv.addEventListener('resize', misura);
     vv.addEventListener('scroll', misura);
     return () => {
+      cancelAnimationFrame(primo);
       vv.removeEventListener('resize', misura);
       vv.removeEventListener('scroll', misura);
     };

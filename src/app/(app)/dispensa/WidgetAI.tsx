@@ -1,6 +1,6 @@
 'use client';
 
-import { useLayoutEffect, useRef, useState, type MouseEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
 import type { EsitoCorrezione, ModificaProposta, VoceContesto } from '@/domain/dispensa-ai';
 import { CONFIDENCE_SOGLIA } from '@/domain/dispensa-ai';
 import { correggiResiduo, impostaCongelato } from '@/data/dispensa';
@@ -58,6 +58,9 @@ function cambio(p: ModificaProposta, voce: VoceContesto | undefined): string {
 export function WidgetAI({ contesto, dettatura, bozza, onBozza, onDatiCambiati, onChiudi }: Props) {
   const tastiera = useAltezzaTastiera();
   const campoRef = useRef<HTMLTextAreaElement>(null);
+  const esitoRef = useRef<HTMLDivElement>(null);
+  // Il click che segue un pointerdown sul tondo è già stato gestito da `premi`.
+  const premutoRef = useRef(false);
   const [inviando, setInviando] = useState(false);
   const [errore, setErrore] = useState<string | null>(null);
   const [nonDisponibile, setNonDisponibile] = useState(false);
@@ -78,6 +81,20 @@ export function WidgetAI({ contesto, dettatura, bozza, onBozza, onDatiCambiati, 
     c.style.height = 'auto';
     c.style.height = `${Math.min(Math.max(c.scrollHeight, 96), 137)}px`;
   }, [bozza, dettatura.attiva, inviando]);
+
+  // Il fuoco al campo solo alla prima apertura, non con `autoFocus`: la
+  // textarea torna dopo ogni dettatura, e sul telefono riaprirebbe la
+  // tastiera che la dettatura aveva chiuso. Se il widget nasce già in
+  // dettatura (dal Dock), il campo non c'è e il fuoco resta dov'è.
+  useEffect(() => {
+    campoRef.current?.focus();
+  }, []);
+
+  // All'esito il campo sparisce: il fuoco va al contenitore del recap, così
+  // lo screen reader non resta su `body`.
+  useEffect(() => {
+    if (esito) esitoRef.current?.focus();
+  }, [esito]);
 
   async function invia() {
     setInviando(true);
@@ -226,14 +243,25 @@ export function WidgetAI({ contesto, dettatura, bozza, onBozza, onDatiCambiati, 
   const attive = applicate.filter(([i]) => stati.get(i) === 'applicata').length;
   const daConfermare = indici.filter(([i]) => stati.get(i) === 'daConfermare');
 
+  function premiMicrofono(e: PointerEvent<HTMLButtonElement>) {
+    premutoRef.current = true;
+    dettatura.premi(e.pointerId);
+  }
+
+  // Il click dopo un pointerdown è il dito: l'ha già gestito `premi`. Senza
+  // pointerdown (tastiera, `detail` 0, o uno screen reader che sintetizza il
+  // click con `detail` 1) è un tocco breve. `detail` 0 vale sempre come
+  // tastiera, anche se un pointerdown è rimasto senza click.
   function clickMicrofono(e: MouseEvent<HTMLButtonElement>) {
-    if (e.detail === 0) dettatura.tocca();
+    const dalDito = premutoRef.current && e.detail !== 0;
+    premutoRef.current = false;
+    if (!dalDito) dettatura.tocca();
   }
 
   const conEsito = esito !== null;
   const posizione = conEsito
     ? { top: 88, bottom: 114 }
-    : { bottom: tastiera > TASTIERA_APERTA ? tastiera + 12 : 114 };
+    : { bottom: !dettatura.attiva && tastiera > TASTIERA_APERTA ? tastiera + 12 : 114 };
 
   const scatola = {
     minHeight: 96, boxSizing: 'border-box' as const, borderRadius: 14, padding: '12px 14px',
@@ -277,7 +305,6 @@ export function WidgetAI({ contesto, dettatura, bozza, onBozza, onDatiCambiati, 
                 value={bozza}
                 onChange={(e) => onBozza(e.target.value)}
                 placeholder="Es. ho finito il riso, l'olio è a metà…"
-                autoFocus
                 rows={3}
                 style={{ ...scatola, resize: 'none', outline: 'none', background: 'var(--superficie)', width: '100%' }}
               />
@@ -291,11 +318,15 @@ export function WidgetAI({ contesto, dettatura, bozza, onBozza, onDatiCambiati, 
                 <button
                   type="button"
                   aria-label="Registra un vocale"
-                  onPointerDown={inviando ? undefined : dettatura.premi}
+                  onPointerDown={inviando ? undefined : premiMicrofono}
                   onClick={clickMicrofono}
+                  // Su Android il tenuto lungo aprirebbe il menu o la
+                  // selezione, e il browser manderebbe pointercancel.
+                  onContextMenu={(e) => e.preventDefault()}
                   disabled={inviando}
                   style={{
                     width: 56, height: 56, flex: 'none', borderRadius: 999, background: 'var(--ink)', touchAction: 'none',
+                    userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: inviando ? 0.5 : 1,
                     transform: dettatura.attiva ? 'scale(1.06)' : 'none',
                     boxShadow: dettatura.attiva ? '0 0 0 6px rgba(20,22,58,0.10)' : 'none',
@@ -311,7 +342,8 @@ export function WidgetAI({ contesto, dettatura, bozza, onBozza, onDatiCambiati, 
                       <span key={i} className="onda-barra" style={{ animationDelay: `${(i * 37) % 220}ms` }} />
                     ))}
                   </span>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 500, fontVariantNumeric: 'tabular-nums', color: 'rgba(255,255,255,.62)' }}>
+                  {/* Il tempo non si rilegge ogni secondo: lo `status` annuncia la dettatura, non il conteggio. */}
+                  <span aria-hidden="true" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 500, fontVariantNumeric: 'tabular-nums', color: 'rgba(255,255,255,.62)' }}>
                     {tempo(dettatura.secondi)}
                   </span>
                 </div>
@@ -340,21 +372,22 @@ export function WidgetAI({ contesto, dettatura, bozza, onBozza, onDatiCambiati, 
         )}
 
         {conEsito && esito && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div ref={esitoRef} tabIndex={-1} data-testid="esito-widget" style={{ display: 'flex', flexDirection: 'column', gap: 16, outline: 'none' }}>
             {errore && <MessaggioErrore ruolo="alert">{errore}</MessaggioErrore>}
             {applicate.length > 0 && (
               <Gruppo titolo={`APPLICATE ${attive} DI ${applicate.length}`}>
                 {applicate.map(([i, p]) => {
                   const voce = perId.get(p.ingredientId);
+                  const nome = voce?.nome ?? p.ingredientId;
                   const annullata = stati.get(i) === 'annullata';
                   return (
                     <RigaProposta
                       key={i}
-                      nome={voce?.nome ?? p.ingredientId}
+                      nome={nome}
                       cambio={cambio(p, voce)}
                       motivazione={p.motivazione}
                       annullata={annullata}
-                      azione={annullata ? undefined : { testo: 'Annulla', aria: `Annulla: ${voce?.nome ?? ''} ${cambio(p, voce)}`, scuro: false, onClick: () => void annulla(i, p), spento: righeInCorso.has(i) }}
+                      azione={annullata ? undefined : { testo: 'Annulla', aria: `Annulla: ${nome} ${cambio(p, voce)}`, scuro: false, onClick: () => void annulla(i, p), spento: righeInCorso.has(i) }}
                     />
                   );
                 })}
@@ -364,13 +397,14 @@ export function WidgetAI({ contesto, dettatura, bozza, onBozza, onDatiCambiati, 
               <Gruppo titolo={`DA CONFERMARE ${daConfermare.length}`}>
                 {daConfermare.map(([i, p]) => {
                   const voce = perId.get(p.ingredientId);
+                  const nome = voce?.nome ?? p.ingredientId;
                   return (
                     <RigaProposta
                       key={i}
-                      nome={voce?.nome ?? p.ingredientId}
+                      nome={nome}
                       cambio={cambio(p, voce)}
                       motivazione={p.motivazione}
-                      azione={{ testo: 'Conferma', aria: `Conferma: ${voce?.nome ?? ''} ${cambio(p, voce)}`, scuro: true, onClick: () => void conferma(i, p), spento: righeInCorso.has(i) }}
+                      azione={{ testo: 'Conferma', aria: `Conferma: ${nome} ${cambio(p, voce)}`, scuro: true, onClick: () => void conferma(i, p), spento: righeInCorso.has(i) }}
                     />
                   );
                 })}
