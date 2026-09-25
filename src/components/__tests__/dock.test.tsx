@@ -43,4 +43,18 @@ describe('Dock', () => {
     expect(regione).toContainElement(screen.getByRole('button', { name: 'HAI PRESO TUTTO' }));
     slot.remove();
   });
+
+  it('con sciolto il contenitore ha le classi dock e dock-sciolto ed è ancora la regione «Azione principale» (spec fase 4 §A)', () => {
+    const slot = document.createElement('div');
+    document.body.appendChild(slot);
+    render(
+      <SlotDockProvider slot={slot}>
+        <Dock sciolto><button type="button">HAI PRESO TUTTO</button></Dock>
+      </SlotDockProvider>,
+    );
+    const regione = screen.getByRole('region', { name: 'Azione principale' });
+    expect(regione).toHaveClass('dock');
+    expect(regione).toHaveClass('dock-sciolto');
+    slot.remove();
+  });
 });

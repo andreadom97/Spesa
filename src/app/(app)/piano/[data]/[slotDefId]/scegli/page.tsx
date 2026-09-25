@@ -243,6 +243,7 @@ function opzioneInCasa(
       area: ing.area,
       ultimoAcquisto: statoDispensa?.ultimoAcquisto ?? null,
       congelato: statoDispensa?.congelato ?? false,
+      scadenzaManuale: statoDispensa?.scadenzaManuale ?? null,
       oggi,
     });
     const { confezioni } = confezioniNecessarie({

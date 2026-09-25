@@ -121,6 +121,12 @@ export interface PantryState {
   giorniStimati: number;
   /** Il residuo sta nel congelatore: decade in mesi invece che in giorni. */
   congelato: boolean;
+  /**
+   * ISO yyyy-mm-dd scritta a mano dalla Dispensa (spec fase 4 §E); null o
+   * assente = vale la stima. Facoltativo perché le fixture e i dati letti
+   * prima della migrazione 0014 non ce l'hanno: chi la legge usa `?? null`.
+   */
+  scadenzaManuale?: string | null;
   /** ISO yyyy-mm-dd dell'ultima risposta "sì" a un controllo. */
   ultimoCheck: string | null;
 }

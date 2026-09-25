@@ -1,5 +1,5 @@
 import type { AreaId } from './types';
-import { giorniTra } from './date';
+import { giorniTra, sommaGiorni } from './date';
 
 /**
  * Intervallo fisso del controllo staple. In Fase 1 non si apprende nulla:
@@ -76,8 +76,45 @@ export interface ResiduoUtilizzabileInput {
   ultimoAcquisto: string | null;
   /** L'utente ha dichiarato dalla Dispensa che questo residuo sta nel congelatore. */
   congelato: boolean;
+  /**
+   * ISO yyyy-mm-dd scritta a mano dalla Dispensa; null = vale la stima.
+   * Obbligatorio e non facoltativo: un chiamante che lo dimentica
+   * calcolerebbe la lista ignorando una correzione dell'utente, e `tsc` deve
+   * dirlo (spec fase 4 §E.1).
+   */
+  scadenzaManuale: string | null;
   /** ISO yyyy-mm-dd */
   oggi: string;
+}
+
+export type StimaInput = Pick<ResiduoUtilizzabileInput, 'residuo' | 'deperibile' | 'area' | 'ultimoAcquisto' | 'congelato'>;
+
+/**
+ * Il giorno in cui l'app smette di contare il residuo secondo il suo modello:
+ * `ultimoAcquisto + soglia`, con la soglia del congelatore o dell'area. Non è
+ * la data sulla confezione. Null quando non c'è niente che decada: residuo a
+ * zero, non deperibile, mai comprato, area senza soglia (surgelati).
+ */
+export function scadenzaStimata(i: StimaInput): string | null {
+  if (i.residuo <= 0) return null;
+  if (!i.deperibile) return null;
+  if (!i.ultimoAcquisto) return null;
+  const soglia = i.congelato ? GIORNI_CONGELATO : GIORNI_FRESCO[i.area];
+  if (soglia === null) return null;
+  return sommaGiorni(i.ultimoAcquisto, soglia);
+}
+
+/**
+ * La scadenza effettiva: la data scritta a mano se c'è, altrimenti la stima.
+ * La data a mano vale solo dove una stima esiste: su un non deperibile o un
+ * surgelato non c'è niente che decada, e una data lì non deve inventarlo.
+ * Contratto: residuoUtilizzabile(oggi) > 0 ⇔ oggi ≤ scadenzaResiduo, quando
+ * questa non è null.
+ */
+export function scadenzaResiduo(i: Omit<ResiduoUtilizzabileInput, 'oggi'>): string | null {
+  const stima = scadenzaStimata(i);
+  if (stima === null) return null;
+  return i.scadenzaManuale ?? stima;
 }
 
 /**
@@ -95,14 +132,32 @@ export interface ResiduoUtilizzabileInput {
  * Nessun azzeramento senza `ultimoAcquisto`: un residuo dichiarato a mano
  * dalla Dispensa su un ingrediente mai comprato è una cosa che l'utente ha
  * appena affermato, e sarebbe assurdo cancellarla al primo ricalcolo.
+ *
+ * Dalla fase 4 legge la scadenza effettiva: una data scritta a mano dalla
+ * Dispensa sposta il giorno in cui il residuo smette di contare. Senza data a
+ * mano il risultato è identico a prima: `oggi > acquisto + soglia` equivale a
+ * `giorniTra(acquisto, oggi) > soglia`.
  */
 export function residuoUtilizzabile(i: ResiduoUtilizzabileInput): number {
   if (i.residuo <= 0) return 0;
-  if (!i.deperibile) return i.residuo;
-  if (!i.ultimoAcquisto) return i.residuo;
+  const scadenza = scadenzaResiduo(i);
+  if (scadenza === null) return i.residuo;
+  return i.oggi > scadenza ? 0 : i.residuo;
+}
 
-  const soglia = i.congelato ? GIORNI_CONGELATO : GIORNI_FRESCO[i.area];
-  if (soglia === null) return i.residuo;
-
-  return giorniTra(i.ultimoAcquisto, i.oggi) > soglia ? 0 : i.residuo;
+/**
+ * Cosa succede alle date quando l'utente cambia il residuo a mano (spec fase 4
+ * §E.2, §E.3). Da 0 a più di 0 è roba nuova che entra in casa: l'acquisto va a
+ * oggi e la data a mano, che parlava di un'altra confezione, si cancella. A 0
+ * la data a mano non ha più niente di cui parlare. Da più di 0 a più di 0 è
+ * una correzione della quantità, e le date restano.
+ */
+export function effettoCorrezione(
+  prima: number,
+  dopo: number,
+  oggi: string,
+): { ultimoAcquisto: string | null; cancellaScadenza: boolean } {
+  if (dopo <= 0) return { ultimoAcquisto: null, cancellaScadenza: true };
+  if (prima <= 0) return { ultimoAcquisto: oggi, cancellaScadenza: true };
+  return { ultimoAcquisto: null, cancellaScadenza: false };
 }

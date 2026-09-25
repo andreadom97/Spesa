@@ -1,7 +1,15 @@
 import type { PantryState } from '@/domain/types';
+import { effettoCorrezione } from '@/domain/pantry';
+import { eanValido } from '@/domain/ean';
 import { client } from './supabase';
 import { idCasa } from './casa';
 import { aPantryState } from './mappers';
+import { FORMATO_MAX, FORMATO_MIN } from './confezioni';
+
+/** Oggi come lo scrive il resto dei dati (UTC, yyyy-mm-dd): lo stesso di rispondiControllo. */
+function oggiIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
 
 export async function leggiDispensa(): Promise<PantryState[]> {
   const { data, error } = await client().from('pantry_state').select('*');
@@ -102,19 +110,23 @@ export async function rispondiControllo(
  * `upsert` e non `update`: un ingrediente mai comprato non ha ancora una riga
  * in `pantry_state`, e dichiarare che se ne ha già in casa deve funzionare
  * anche lì — è il primo caso d'uso di chi apre l'app con la dispensa piena.
+ *
+ * Dalla fase 4 applica le regole delle date (spec §E.2, §E.3) con
+ * `effettoCorrezione`: da 0 a più di 0 è un'entrata (acquisto a oggi, data a
+ * mano cancellata), a 0 la data a mano si cancella. `prima` lo dà chi chiama,
+ * che ha in mano il valore mostrato: niente lettura in più.
  */
-export async function correggiResiduo(ingredientId: string, residuo: number): Promise<void> {
+export async function correggiResiduo(ingredientId: string, residuo: number, prima: number): Promise<void> {
   if (!Number.isFinite(residuo) || residuo < 0) {
     throw new Error(`Residuo non valido: ${residuo}. Lo schema ha check (residuo >= 0).`);
   }
   const sb = client();
   const userId = await idCasa();
-  const { error } = await sb
-    .from('pantry_state')
-    .upsert(
-      { ingredient_id: ingredientId, user_id: userId, residuo },
-      { onConflict: 'ingredient_id' },
-    );
+  const effetto = effettoCorrezione(prima, residuo, oggiIso());
+  const riga: Record<string, unknown> = { ingredient_id: ingredientId, user_id: userId, residuo };
+  if (effetto.ultimoAcquisto !== null) riga.ultimo_acquisto = effetto.ultimoAcquisto;
+  if (effetto.cancellaScadenza) riga.scadenza_manuale = null;
+  const { error } = await sb.from('pantry_state').upsert(riga, { onConflict: 'ingredient_id' });
   if (error) throw error;
 }
 
@@ -129,6 +141,9 @@ export async function correggiResiduo(ingredientId: string, residuo: number): Pr
  * Sta su `pantry_state` e non su `ingredient` perché è una proprietà di
  * quello che hai in casa adesso: lo stesso petto di pollo è in frigo questa
  * settimana e nel congelatore la prossima.
+ *
+ * Cancella anche la data scritta a mano: la stima passa da giorni a mesi, e
+ * la data valeva per l'altro stato (spec fase 4 §E.3).
  */
 export async function impostaCongelato(ingredientId: string, congelato: boolean): Promise<void> {
   const sb = client();
@@ -136,8 +151,73 @@ export async function impostaCongelato(ingredientId: string, congelato: boolean)
   const { error } = await sb
     .from('pantry_state')
     .upsert(
-      { ingredient_id: ingredientId, user_id: userId, congelato },
+      { ingredient_id: ingredientId, user_id: userId, congelato, scadenza_manuale: null },
       { onConflict: 'ingredient_id' },
     );
+  if (error) throw error;
+}
+
+/**
+ * La scadenza scritta a mano dal dettaglio della Dispensa (spec fase 4 §D.4).
+ * null = `USA LA STIMA`. L'intervallo ammesso (oggi … oggi + 2 anni) lo
+ * controlla la schermata con `dataScadenzaValida`: qui si ferma solo una
+ * stringa che non è una data, prima che la rifiuti Postgres (e prima che una
+ * stringa vuota, che il dominio confonderebbe con `null` tramite `??`,
+ * arrivi al database).
+ */
+export async function impostaScadenza(ingredientId: string, data: string | null): Promise<void> {
+  if (data !== null && !/^\d{4}-\d{2}-\d{2}$/.test(data)) throw new Error(`Data non valida: ${data}`);
+  const sb = client();
+  const userId = await idCasa();
+  const { error } = await sb
+    .from('pantry_state')
+    .upsert({ ingredient_id: ingredientId, user_id: userId, scadenza_manuale: data }, { onConflict: 'ingredient_id' });
+  if (error) throw error;
+}
+
+/**
+ * `AGGIUNGI` dello scanner nel dettaglio (spec fase 4 §F.2): una confezione in
+ * più. È un acquisto: residuo + formato, acquisto a oggi, data a mano
+ * cancellata. Sull'ingrediente restano il codice letto e il suo formato, come
+ * fa già `aggiornaFormatoDaScansione`: l'ultima confezione comprata è la
+ * miglior previsione della prossima.
+ *
+ * Prima l'ingrediente e poi la dispensa: se l'ingrediente non si trova (altra
+ * casa, cancellato) la update torna zero righe senza errore, e senza questo
+ * controllo il residuo salirebbe su un ingrediente che nessuno vede.
+ */
+export async function aggiungiConfezione(i: {
+  ingredientId: string;
+  formato: number;
+  ean: string;
+  residuoPrima: number;
+}): Promise<void> {
+  if (!Number.isFinite(i.formato) || i.formato < FORMATO_MIN || i.formato > FORMATO_MAX) {
+    throw new Error('formato non valido');
+  }
+  if (!eanValido(i.ean)) throw new Error('codice non valido');
+  if (!Number.isFinite(i.residuoPrima)) throw new Error('residuo non valido');
+  const sb = client();
+  const userId = await idCasa();
+
+  const { data: toccati, error: eIng } = await sb
+    .from('ingredient')
+    .update({ formato_confezione: i.formato, ean: i.ean.trim() })
+    .eq('id', i.ingredientId)
+    .eq('user_id', userId)
+    .select('id');
+  if (eIng) throw eIng;
+  if (!toccati || toccati.length === 0) throw new Error('ingrediente non trovato');
+
+  const { error } = await sb.from('pantry_state').upsert(
+    {
+      ingredient_id: i.ingredientId,
+      user_id: userId,
+      residuo: Math.max(0, i.residuoPrima) + i.formato,
+      ultimo_acquisto: oggiIso(),
+      scadenza_manuale: null,
+    },
+    { onConflict: 'ingredient_id' },
+  );
   if (error) throw error;
 }

@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/spesa-9a979e63-24f5-473a-b4d3-586aab67b530/tokens.css">
+<script src="_ds/spesa-9a979e63-24f5-473a-b4d3-586aab67b530/_ds_bundle.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+@keyframes lucev{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+@media (prefers-reduced-motion: reduce){[data-luce]{animation:none !important;opacity:0}}
+</style>
+</helmet>
+<div style="position:absolute;inset:0;font-family:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;color:#14163A;-webkit-font-smoothing:antialiased">
+  <div style="position:absolute;inset:0;overflow:hidden;-webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 196px),rgba(0,0,0,.55) calc(100% - 140px),rgba(0,0,0,0) calc(100% - 100px));mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 196px),rgba(0,0,0,.55) calc(100% - 140px),rgba(0,0,0,0) calc(100% - 100px))">
+    <div style="padding:20px 18px 12px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px">
+      <h1 style="font-size:52px;font-weight:800;letter-spacing:-.05em;line-height:1;margin:0">Dispensa</h1>
+      <div aria-label="Andrea: profilo e impostazioni" style="height:50px;display:flex;align-items:center;gap:5px;margin:0 -2px -3px 0;background:rgba(20,22,58,.07);border-radius:999px;padding:0 12px 0 6px;flex:none">
+        <span style="width:38px;height:38px;border-radius:999px;background:#14163A;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:16px;font-weight:700;letter-spacing:.06em;color:#fff">A</span>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="5.2" r="2.1" fill="#14163A"></circle><circle cx="12" cy="12" r="2.1" fill="#14163A"></circle><circle cx="12" cy="18.8" r="2.1" fill="#14163A"></circle></svg>
+      </div>
+    </div>
+    <sc-if value="{{ conRicerca }}" hint-placeholder-val="{{ true }}">
+      <div style="margin:4px 16px 14px;display:flex;flex-direction:column;gap:8px">
+        <sc-if value="{{ ricercaVuota }}" hint-placeholder-val="{{ true }}">
+          <div role="search" style="height:44px;box-sizing:border-box;border-radius:14px;background:#fff;border:1px solid rgba(20,22,58,0.07);box-shadow:0 1px 2px rgba(20,22,58,.05),0 6px 16px rgba(20,22,58,.06);display:flex;align-items:center;gap:10px;padding:0 14px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="6.5" stroke="#8A8A96" stroke-width="2.1"></circle><path d="m16 16 4 4" stroke="#8A8A96" stroke-width="2.1" stroke-linecap="round"></path></svg><span style="font-size:14px;color:#A6A6B2">Cerca in dispensa</span></div>
+        </sc-if>
+        <sc-if value="{{ ricercaPiena }}" hint-placeholder-val="{{ false }}">
+          <div role="search" style="height:44px;box-sizing:border-box;border-radius:14px;background:#fff;border:1.5px solid #14163A;box-shadow:0 1px 2px rgba(20,22,58,.05),0 6px 16px rgba(20,22,58,.06);display:flex;align-items:center;gap:10px;padding:0 4px 0 14px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="6.5" stroke="#8A8A96" stroke-width="2.1"></circle><path d="m16 16 4 4" stroke="#8A8A96" stroke-width="2.1" stroke-linecap="round"></path></svg><span style="flex:1;font-size:14px;color:#14163A">{{ query }}</span><span aria-label="Svuota la ricerca" style="width:40px;height:40px;display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="#8A8A96" stroke-width="2.1" stroke-linecap="round"></path></svg></span></div>
+          <div aria-live="polite" style="padding:0 4px;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:500;letter-spacing:.10em;text-transform:uppercase;color:#8A8A96">{{ conteggio }}</div>
+        </sc-if>
+      </div>
+    </sc-if>
+    <sc-if value="{{ carico }}" hint-placeholder-val="{{ false }}">
+      <div role="status" aria-label="Carico la dispensa" style="display:flex;flex-direction:column;gap:12px">
+        <sc-for list="{{ scheletri }}" as="sk" hint-placeholder-count="3">
+          <div style="margin:0 16px;background:#fff;border:1px solid rgba(20,22,58,0.07);border-radius:22px;box-shadow:0 1px 2px rgba(20,22,58,.05),0 6px 16px rgba(20,22,58,.06);padding:14px 12px 12px;display:flex;flex-direction:column;gap:10px">
+            <div style="position:relative;overflow:hidden;width:{{ sk.w }};height:10px;margin:2px 4px;border-radius:999px;background:rgba(20,22,58,.06)"><span data-luce style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,0) 0%,rgba(255,255,255,.85) 50%,rgba(255,255,255,0) 100%);animation:lucev 1400ms cubic-bezier(.4,0,.2,1) infinite"></span></div>
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px">
+              <sc-for list="{{ sk.t }}" as="x" hint-placeholder-count="2">
+                <div style="position:relative;overflow:hidden;height:104px;border-radius:14px;background:rgba(20,22,58,.06)"><span data-luce style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,0) 0%,rgba(255,255,255,.85) 50%,rgba(255,255,255,0) 100%);animation:lucev 1400ms cubic-bezier(.4,0,.2,1) infinite"></span></div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+    <sc-if value="{{ errore }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:4px 20px;display:flex;flex-direction:column;align-items:flex-start;gap:12px">
+        <p style="margin:0;font-size:12.5px;line-height:1.4;color:#C4423E">Non riusciamo a caricare la dispensa. Riprova più tardi.</p>
+        <button type="button" style="height:44px;padding:0 15px;border-radius:999px;background:#fff;border:1px solid rgba(20,22,58,0.09);font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:700;letter-spacing:.08em;color:#14163A">RIPROVA</button>
+      </div>
+    </sc-if>
+    <sc-if value="{{ nessuno }}" hint-placeholder-val="{{ false }}">
+      <div style="margin:0 16px;background:#fff;border:1px solid rgba(20,22,58,0.07);border-radius:22px;box-shadow:0 1px 2px rgba(20,22,58,.05),0 6px 16px rgba(20,22,58,.06);padding:20px;display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="font-size:17px;font-weight:700;letter-spacing:-.032em;line-height:1.2">Nessun ingrediente si chiama «{{ query }}»</div>
+          <div style="font-size:14px;line-height:1.5;color:#5C5F7A;text-wrap:pretty">Crealo ora: entra fra gli ingredienti e da qui lo segni in casa.</div>
+        </div>
+        <button type="button" style="height:54px;border-radius:18px;border:1px solid #14163A;background:#14163A;color:#fff;box-shadow:0 3px 10px rgba(20,22,58,0.24);font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase">Crea «{{ query }}»</button>
+      </div>
+    </sc-if>
+    <sc-if value="{{ vuoto }}" hint-placeholder-val="{{ false }}">
+      <div style="margin:96px 16px 0;background:#fff;border:1px solid rgba(20,22,58,0.07);border-radius:22px;padding:26px 20px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center">
+        <div style="font-size:21px;font-weight:800;letter-spacing:-.035em;line-height:1.2">Ancora niente in dispensa</div>
+        <div style="font-size:14px;line-height:1.5;color:#5C5F7A;max-width:30ch;text-wrap:pretty">Si riempie da sé: appena chiudi la prima spesa, qui trovi quello che è rimasto.</div>
+      </div>
+    </sc-if>
+    <sc-for list="{{ aree }}" as="a" hint-placeholder-count="3">
+      <section style="margin:0 16px 12px;background:#fff;border:1px solid rgba(20,22,58,0.07);border-radius:22px;box-shadow:0 1px 2px rgba(20,22,58,.05),0 6px 16px rgba(20,22,58,.06);padding:14px 12px 12px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:0 4px">
+          <span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:4px;flex:none;background:{{ a.c }}"></span>{{ a.lb }}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px">
+          <sc-for list="{{ a.voci }}" as="d" hint-placeholder-count="2">
+            <sc-if value="{{ d.casa }}" hint-placeholder-val="{{ true }}">
+              <button type="button" aria-label="{{ d.aria }}" style="min-height:104px;box-sizing:border-box;border-radius:14px;padding:12px 14px 13px;display:flex;flex-direction:column;align-items:flex-start;text-align:left;font:inherit;color:inherit;border:0;background:{{ a.tinta }}">
+                <span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:700;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;border-radius:999px;padding:5px 10px;background:#fff">{{ d.q }}</span>
+                <span style="font-size:17px;font-weight:700;letter-spacing:-.032em;line-height:1.1;margin-top:auto;padding-top:12px">{{ d.nome }}</span>
+                <sc-if value="{{ d.sub }}" hint-placeholder-val="{{ false }}">
+                  <span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:8.5px;letter-spacing:.02em;text-transform:uppercase;margin-top:5px;font-weight:700;background:#fff;border-radius:999px;padding:4px 9px;white-space:nowrap;color:{{ d.subc }}">{{ d.sub }}</span>
+                </sc-if>
+              </button>
+            </sc-if>
+            <sc-if value="{{ d.fin }}" hint-placeholder-val="{{ false }}">
+              <button type="button" aria-label="{{ d.aria }}" style="min-height:104px;box-sizing:border-box;border-radius:14px;padding:12px 14px 13px;display:flex;flex-direction:column;align-items:flex-start;text-align:left;font:inherit;color:inherit;border:2px dashed rgba(20,22,58,0.20);background:none">
+                <span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:700;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;border-radius:999px;padding:5px 10px;background:rgba(20,22,58,.06);color:#5C5F7A">Finito</span>
+                <span style="font-size:17px;font-weight:700;letter-spacing:-.032em;line-height:1.1;margin-top:auto;padding-top:12px;text-decoration:line-through;text-decoration-thickness:1.6px;color:rgba(20,22,58,.34)">{{ d.nome }}</span>
+              </button>
+            </sc-if>
+            <sc-if value="{{ d.mai }}" hint-placeholder-val="{{ false }}">
+              <button type="button" aria-label="{{ d.aria }}" style="min-height:104px;box-sizing:border-box;border-radius:14px;padding:12px 14px 13px;display:flex;flex-direction:column;align-items:flex-start;text-align:left;font:inherit;color:inherit;border:2px dashed rgba(20,22,58,0.20);background:none">
+                <span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:700;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;border-radius:999px;padding:5px 10px;background:rgba(20,22,58,.06);color:#5C5F7A">Mai comprato</span>
+                <span style="font-size:17px;font-weight:700;letter-spacing:-.032em;line-height:1.1;margin-top:auto;padding-top:12px;color:#5C5F7A">{{ d.nome }}</span>
+              </button>
+            </sc-if>
+          </sc-for>
+        </div>
+      </section>
+    </sc-for>
+    <sc-if value="{{ conPronti }}" hint-placeholder-val="{{ false }}">
+      <section style="margin:0 16px 12px;background:#fff;border:1px solid rgba(20,22,58,0.07);border-radius:22px;box-shadow:0 1px 2px rgba(20,22,58,.05),0 6px 16px rgba(20,22,58,.06);padding:14px 12px 12px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:0 4px">
+          <span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase">Pronti</span>
+        </div>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px">
+          <button type="button" aria-label="Apri il lotto di Ragù di lenticchie" style="min-height:104px;box-sizing:border-box;border-radius:14px;padding:12px 14px 13px;display:flex;flex-direction:column;align-items:flex-start;text-align:left;font:inherit;color:inherit;border:0;background:rgba(20,22,58,.04)">
+            <span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:700;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;border-radius:999px;padding:5px 10px;background:#fff">4 porz.</span>
+            <span style="font-size:17px;font-weight:700;letter-spacing:-.032em;line-height:1.1;margin-top:auto;padding-top:12px">Ragù di lenticchie</span>
+            <span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:8.5px;letter-spacing:.02em;text-transform:uppercase;margin-top:5px;font-weight:700;background:#fff;border-radius:999px;padding:4px 9px;color:#2F6FBF">Congelato</span>
+          </button>
+          <button type="button" aria-label="Apri il lotto di Piatto eliminato" style="min-height:104px;box-sizing:border-box;border-radius:14px;padding:12px 14px 13px;display:flex;flex-direction:column;align-items:flex-start;text-align:left;font:inherit;color:inherit;border:0;background:rgba(20,22,58,.04)">
+            <span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:700;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;border-radius:999px;padding:5px 10px;background:#fff">1 porz.</span>
+            <span style="font-size:17px;font-weight:700;letter-spacing:-.032em;line-height:1.1;margin-top:auto;padding-top:12px">Piatto eliminato</span>
+          </button>
+        </div>
+      </section>
+    </sc-if>
+  </div>
+  <sc-if value="{{ conDock }}" hint-placeholder-val="{{ true }}">
+    <div role="region" aria-label="Azione principale" style="position:absolute;left:16px;right:16px;bottom:114px;display:flex;align-items:center;justify-content:flex-end;gap:8px">
+      <button type="button" style="height:56px;border:0;border-radius:999px;background:#fff;box-shadow:0 2px 6px rgba(20,22,58,.08),0 12px 30px rgba(20,22,58,.16);display:flex;align-items:center;gap:9px;padding:0 20px;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#14163A"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M11 3.5c.5 4.1 2.4 6 6.5 6.5-4.1.5-6 2.4-6.5 6.5-.5-4.1-2.4-6-6.5-6.5 4.1-.5 6-2.4 6.5-6.5Z" fill="#14163A"></path><path d="M18.5 14.5c.25 2 1.1 2.85 3 3.1-1.9.25-2.75 1.1-3 3.1-.25-2-1.1-2.85-3-3.1 1.9-.25 2.75-1.1 3-3.1Z" fill="#14163A"></path></svg>Modifica con l'AI</button>
+      <sc-if value="{{ conMic }}" hint-placeholder-val="{{ true }}">
+        <button type="button" aria-label="Registra un vocale" style="width:56px;height:56px;flex:none;border:0;border-radius:999px;background:#14163A;box-shadow:0 2px 6px rgba(20,22,58,.08),0 12px 30px rgba(20,22,58,.16);display:flex;align-items:center;justify-content:center;padding:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="#fff"></rect><path d="M6 11.4a6 6 0 0 0 12 0" stroke="#fff" stroke-width="2.1" stroke-linecap="round"></path><path d="M12 17.6V21" stroke="#fff" stroke-width="2.1" stroke-linecap="round"></path></svg></button>
+      </sc-if>
+    </div>
+  </sc-if>
+  <nav aria-label="Sezioni" style="position:absolute;left:16px;right:16px;bottom:22px;height:84px;box-sizing:border-box;border-radius:999px;display:flex;align-items:center;gap:2px;padding:6px;background:#fff;box-shadow:0 2px 6px rgba(20,22,58,.08),0 12px 30px rgba(20,22,58,.16)">
+    <span style="flex:1;height:72px;border-radius:999px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
+      <span style="height:26px;display:flex;align-items:center"><span aria-hidden="true" style="display:grid;grid-template-columns:repeat(3,9px);grid-auto-rows:9px;gap:4px">
+        <span style="box-sizing:border-box;border-radius:2.52px;border:2px solid #F2A465;background:#F2A465"></span><span style="box-sizing:border-box;border-radius:2.52px;border:2px solid #9CC7F2;background:#9CC7F2"></span><span style="box-sizing:border-box;border-radius:2.52px;border:2px solid #A8D96A"></span><span style="box-sizing:border-box;border-radius:2.52px;border:2px solid #B9AEF5;background:#B9AEF5"></span><span style="box-sizing:border-box;border-radius:2.52px;border:2px solid #F5CE5B;background:#F5CE5B"></span><span style="box-sizing:border-box;border-radius:2.52px;border:2px solid #F29B9B"></span>
+      </span></span>
+      <span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:8.5px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:#9A9AA6;line-height:1">Lista</span>
+    </span>
+    <span style="flex:1;height:72px;border-radius:999px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
+      <span style="height:26px;display:flex;align-items:center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15.5" rx="4.4" fill="#9A9AA6"></rect><rect x="6.2" y="8.4" width="11.6" height="2.1" rx="1.05" fill="#fff" opacity=".92"></rect><circle cx="8.2" cy="14.6" r="1.7" fill="#fff" opacity=".92"></circle><circle cx="12" cy="14.6" r="1.7" fill="#fff" opacity=".92"></circle><circle cx="15.8" cy="14.6" r="1.7" fill="#fff" opacity=".92"></circle></svg></span>
+      <span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:8.5px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:#9A9AA6;line-height:1">Piano</span>
+    </span>
+    <span style="flex:1;height:72px;border-radius:999px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
+      <span style="height:26px;display:flex;align-items:center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="#9A9AA6"></circle><circle cx="12" cy="12" r="4.1" fill="#fff" opacity=".92"></circle></svg></span>
+      <span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:8.5px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:#9A9AA6;line-height:1">Piatti</span>
+    </span>
+    <span style="flex:1;height:72px;border-radius:999px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:rgba(20,22,58,.07)">
+      <span style="height:26px;display:flex;align-items:center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="3.4" width="14" height="3.6" rx="1.8" fill="#14163A"></rect><path d="M6 9.4h12a1 1 0 0 1 1 1v6.4a3.2 3.2 0 0 1-3.2 3.2H8.2A3.2 3.2 0 0 1 5 16.8v-6.4a1 1 0 0 1 1-1Z" fill="#14163A"></path><rect x="8.4" y="12.4" width="7.2" height="2.1" rx="1.05" fill="#fff" opacity=".92"></rect></svg></span>
+      <span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:8.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#14163A;line-height:1">Dispensa</span>
+    </span>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:393,&quot;height&quot;:852},&quot;stato&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;tessere&quot;,&quot;ricerca&quot;,&quot;nessuno&quot;,&quot;caricamento&quot;,&quot;errore&quot;,&quot;vuoto&quot;],&quot;default&quot;:&quot;tessere&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;query&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;dock&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;completo&quot;,&quot;senza-mic&quot;,&quot;nessuno&quot;],&quot;default&quot;:&quot;completo&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const stato = this.props.stato ?? 'tessere';
+    const dock = this.props.dock ?? 'completo';
+    const query = this.props.query ?? '';
+    const AV = '#9A5C00', FR = '#2F6FBF';
+    const rgb = { '#A8D96A': '168,217,106', '#F29B9B': '242,155,155', '#9CC7F2': '156,199,242', '#F5CE5B': '245,206,91', '#F2A465': '242,164,101' };
+    const area = (lb, c, voci) => {
+      const n = voci.filter(v => v.q).length;
+      return {
+        lb, c, tinta: `rgba(${rgb[c]},.26)`,
+        cont: `${n} ${n === 1 ? 'voce' : 'voci'} in casa`,
+        voci: voci.map(v => ({ ...v, casa: !!v.q, fin: !v.q && !v.mai, mai: !!v.mai, aria: `Apri ${v.nome}` }))
+      };
+    };
+    const base = [
+      area('Ortofrutta', '#A8D96A', [{ nome: 'Zucchine', q: '600 g' }, { nome: 'Limoni', q: '2 pz' }, { nome: 'Spinaci' }]),
+      area('Macelleria e pescheria', '#F29B9B', [{ nome: 'Petto di pollo', q: '600 g', sub: 'Congelato', subc: FR }, { nome: 'Guanciale' }]),
+      area('Latticini, uova e salumi', '#9CC7F2', [{ nome: 'Parmigiano', q: '220 g', sub: 'Scade il 22/09', subc: AV }, { nome: 'Ricotta', q: '250 g' }, { nome: 'Uova medie', q: '4 pz' }]),
+      area('Pasta, riso e cereali', '#F5CE5B', [{ nome: 'Spaghetti n. 5', q: '1200 g' }, { nome: 'Riso carnaroli', q: '400 g' }])
+    ];
+    const trovati = [
+      area('Latticini, uova e salumi', '#9CC7F2', [{ nome: 'Parmigiano', q: '220 g', sub: 'Scade il 22/09', subc: AV }]),
+      area('Dispensa e conserve', '#F2A465', [{ nome: 'Passata di pomodoro', q: '1500 g' }, { nome: 'Paprika dolce', mai: true }, { nome: 'Pasta di acciughe', mai: true }])
+    ];
+    return {
+      query,
+      conRicerca: ['tessere', 'ricerca', 'nessuno', 'caricamento'].includes(stato),
+      ricercaVuota: !query,
+      ricercaPiena: !!query,
+      conteggio: stato === 'nessuno' ? '0 risultati' : '4 risultati',
+      carico: stato === 'caricamento',
+      scheletri: [{ w: '46%', t: [1, 2, 3, 4] }, { w: '58%', t: [1, 2] }, { w: '40%', t: [1, 2] }],
+      errore: stato === 'errore',
+      vuoto: stato === 'vuoto',
+      nessuno: stato === 'nessuno',
+      aree: stato === 'tessere' ? base : stato === 'ricerca' ? trovati : [],
+      conPronti: stato === 'tessere',
+      conDock: dock !== 'nessuno' && !['caricamento', 'errore'].includes(stato),
+      conMic: dock === 'completo'
+    };
+  }
+}
+</script>
+</body>
+</html>

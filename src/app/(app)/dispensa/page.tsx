@@ -1,824 +1,546 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
-import type { AreaId, Ingredient, LottoPronto, PantryState } from '@/domain/types';
-import { leggiIngredienti, leggiRepertorio } from '@/data/repertorio';
-import { leggiDispensa, correggiResiduo, impostaCongelato } from '@/data/dispensa';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import type { AreaId, Ingredient, LottoPronto } from '@/domain/types';
+import type { VoceContesto } from '@/domain/dispensa-ai';
+import { leggiIngredienti, leggiRepertorio, salvaIngrediente } from '@/data/repertorio';
+import { aggiungiConfezione, correggiResiduo, impostaCongelato, impostaScadenza, leggiDispensa } from '@/data/dispensa';
 import { leggiImpostazioni } from '@/data/impostazioni';
-import { leggiPronti, correggiLotto, impostaCongelatoLotto, eliminaLotto } from '@/data/pronti';
+import { correggiLotto, eliminaLotto, impostaCongelatoLotto, leggiPronti } from '@/data/pronti';
 import { leggiSettimanaCorrente } from '@/data/settimana';
-import { leggiRisparmioTotale } from '@/data/risparmio';
-import type { VoceEvitata } from '@/domain/list-builder';
-import { riassumiEvitato, formattaQuantita, formattaEuro } from '@/domain/risparmio';
-import { coloreArea, nomeArea } from '@/domain/aree';
-import { residuoUtilizzabile } from '@/domain/pantry';
+import { avvisiScadenza, type AvvisoScadenza } from '@/domain/scadenza';
+import { effettoCorrezione } from '@/domain/pantry';
 import { porzioniUtilizzabili } from '@/domain/pronti';
-import { avvisiScadenza, scadenzaResiduo, type AvvisoScadenza } from '@/domain/scadenza';
 import { lunediDi, sommaGiorni } from '@/domain/date';
-import { NotaDispensa } from '@/components/NotaDispensa';
+import { coloreArea, nomeArea } from '@/domain/aree';
+import { avvisoVoce, eDimenticato, impegnateLotto, pillolaStato, scadenzaVoce, type VoceDispensa } from '@/domain/dispensa-vista';
+import { cercaInDispensa, etichettaRisultati, raggruppaPerArea, vociInPagina } from '@/domain/ricerca-dispensa';
 import { Testata } from '@/components/Testata';
+import { FoglioDalBasso } from '@/components/FoglioDalBasso';
+import { CampoRicerca } from './CampoRicerca';
+import { TesseraDispensa } from './TesseraDispensa';
+import { TesseraLotto } from './TesseraLotto';
+import { WidgetArea } from './WidgetArea';
+import { WidgetVuoti } from './WidgetVuoti';
+import { DockDispensa } from './DockDispensa';
+import { DettaglioIngrediente } from './DettaglioIngrediente';
+import { DettaglioLotto } from './DettaglioLotto';
+import { DialogoElimina } from './DialogoElimina';
+import { ScansioneConfezione } from './ScansioneConfezione';
+import { NuovoIngrediente, type DatiNuovoIngrediente } from './NuovoIngrediente';
+import { WidgetAI } from './WidgetAI';
+import { useDettatura } from './useDettatura';
+import { IconaBarattolo } from './icone';
+import { MessaggioErrore, STILE_PILLOLA, TastoPrimario } from './controlli';
 
-interface Riga {
-  ingrediente: Ingredient;
-  residuo: number;
-  ultimoAcquisto: string | null;
-  congelato: boolean;
+/** Oltre questa attesa il caricamento diventa errore, e la risposta che arriva dopo si scarta (spec §A). */
+const ATTESA_MAX_MS = 8000;
+
+interface Dati {
+  voci: VoceDispensa[];
+  ordineAree: AreaId[];
+  lotti: LottoPronto[];
+  nomiPiatti: Map<string, string>;
+  /** Per piatto, le porzioni già promesse a un pasto di oggi o dopo. */
+  impegni: Map<string, number>;
+  /** Per ingrediente, cosa dice la settimana corrente del suo fresco. */
+  avvisi: Map<string, AvvisoScadenza>;
 }
 
-/** Una riga con quello che la schermata dice del suo fresco (spec 2026-09-06 §3.2). */
-interface RigaMostrata extends Riga {
-  /** L'ultimo giorno in cui il residuo conta ancora; null se non c'è niente che decada. */
-  scadenza: string | null;
-  /** Nessun pasto della settimana corrente lo usa prima che scada. */
-  dimenticato: boolean;
-}
-
-const MESI = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
-
-function dataBreve(iso: string): string {
-  const d = new Date(`${iso}T00:00:00Z`);
-  return `${d.getUTCDate()} ${MESI[d.getUTCMonth()]}`;
-}
+type Foglio =
+  | { tipo: 'ingrediente'; id: string; vista: 'dettaglio' | 'scansione' }
+  | { tipo: 'lotto'; id: string; elimina: boolean }
+  | { tipo: 'nuovo'; nome: string }
+  | null;
 
 /**
- * La scadenza si ricava dai valori correnti della riga e non da quelli
- * letti al caricamento: il congelatore si accende e spegne in modo
- * ottimistico, e sposta la soglia da giorni a mesi — una scadenza calcolata
- * una volta sola direbbe "scade il 9 set" su una cosa appena congelata.
- * L'avviso della settimana invece è di `carica`: vale solo se parla della
- * stessa scadenza, e solo se questa cade entro la domenica corrente — oltre,
- * il piano di questa settimana non può dire nulla.
+ * Il ritorno a prima di una scrittura ottimistica fallita: per ogni chiave
+ * della patch il valore di prima, ma solo dove c'è ancora il valore della
+ * patch. Con due scritture in volo sulla stessa voce (congelatore e scadenza
+ * toccano entrambe `scadenzaManuale`), se la prima fallisce dopo che la
+ * seconda è riuscita, quello che ha scritto la seconda resta.
  */
-function annotaScadenza(riga: Riga, avviso: AvvisoScadenza | undefined, domenica: string): RigaMostrata {
-  const scadenza = scadenzaResiduo({
-    residuo: riga.residuo,
-    deperibile: riga.ingrediente.deperibile,
-    area: riga.ingrediente.area,
-    ultimoAcquisto: riga.ultimoAcquisto,
-    congelato: riga.congelato,
-  });
-  const dimenticato =
-    scadenza !== null && scadenza <= domenica && avviso !== undefined && avviso.scadenza === scadenza && !avviso.usatoInTempo;
-  return { ...riga, scadenza, dimenticato };
-}
-
-/**
- * Il totale del non ricomprato sulle settimane chiuse è un di più: se la
- * lettura fallisce la dispensa resta usabile e la riga non compare.
- */
-async function leggiRisparmioSenzaBloccare(): Promise<VoceEvitata[]> {
-  try {
-    return await leggiRisparmioTotale();
-  } catch (e) {
-    console.error('dispensa: lettura del non ricomprato fallita.', e);
-    return [];
+function ripristina<T extends object>(ora: T, patch: Partial<T>, prima: T): T {
+  const indietro: Partial<T> = {};
+  for (const k of Object.keys(patch) as (keyof T)[]) {
+    if (ora[k] === patch[k]) indietro[k] = prima[k];
   }
+  return { ...ora, ...indietro };
+}
+
+function oggiIso(): string {
+  return new Date().toISOString().slice(0, 10);
 }
 
 /**
- * "Da quando usi Dispesa: 9 confezioni non ricomprate · 4,1 kg · circa 32 €"
- * (spec §5). Null con zero confezioni: la Dispensa non fa rumore. Quantità ed
- * euro compaiono solo se c'è qualcosa da dire.
+ * Tutte le letture della pagina, e le derivate che non cambiano con le
+ * correzioni ottimistiche: gli avvisi della settimana e le porzioni
+ * impegnate. La riga del non ricomprato non si legge più: va nelle
+ * Impostazioni con la fase 5 (spec §K).
  */
-function rigaTotaleNonRicomprato(voci: VoceEvitata[]): string | null {
-  const r = riassumiEvitato(voci);
-  if (r.confezioni === 0) return null;
-  const segmenti = [r.confezioni === 1 ? '1 confezione non ricomprata' : `${r.confezioni} confezioni non ricomprate`];
-  const quantita = formattaQuantita(r.quantita);
-  if (quantita) segmenti.push(quantita);
-  if (r.euro !== null) segmenti.push(formattaEuro(r.euro));
-  return `Da quando usi Dispesa: ${segmenti.join(' · ')}`;
+async function leggiTutto(): Promise<Dati> {
+  const [ingredienti, dispensa, impostazioni, pronti, repertorio, settimana] = await Promise.all([
+    leggiIngredienti(), leggiDispensa(), leggiImpostazioni(), leggiPronti(), leggiRepertorio(), leggiSettimanaCorrente(),
+  ]);
+  const oggi = oggiIso();
+  const perId = new Map(dispensa.map((p) => [p.ingredientId, p]));
+  // Un ingrediente senza riga di dispensa è un mai comprato a zero: deve
+  // esserci lo stesso, perché è proprio lì che serve dichiarare che ce l'hai.
+  const voci: VoceDispensa[] = ingredienti.map((ingrediente) => {
+    const s = perId.get(ingrediente.id);
+    return {
+      ingrediente,
+      residuo: s?.residuo ?? 0,
+      ultimoAcquisto: s?.ultimoAcquisto ?? null,
+      congelato: s?.congelato ?? false,
+      scadenzaManuale: s?.scadenzaManuale ?? null,
+    };
+  });
+  // Senza settimana corrente non c'è un piano con cui confrontare il fresco.
+  const avvisi = settimana
+    ? avvisiScadenza({ slots: settimana.slots, dishes: repertorio, ingredients: ingredienti, pantry: dispensa, oggi })
+    : [];
+  // Un lotto «disponibile» già promesso a dopodomani non è uno libero.
+  const impegni = new Map<string, number>();
+  for (const slot of settimana?.slots ?? []) {
+    if (!slot.daPronti || slot.dishId === null || slot.data < oggi) continue;
+    impegni.set(slot.dishId, (impegni.get(slot.dishId) ?? 0) + 1);
+  }
+  return {
+    voci,
+    ordineAree: impostazioni.ordineAree,
+    lotti: pronti,
+    nomiPiatti: new Map(repertorio.map((d) => [d.id, d.nome])),
+    impegni,
+    avvisi: new Map(avvisi.map((a) => [a.ingredientId, a])),
+  };
 }
 
 /**
- * Cosa risulta in casa, e come rimetterlo in pari quando non torna.
+ * La Dispensa (spec fase 4): quello che risulta in casa, per area, e il modo
+ * di rimetterlo in pari quando non torna.
  *
  * Il residuo resta derivato dal piano (`residuo precedente + comprato −
  * consumato`): questa schermata non è un inventario da tenere aggiornato a
  * mano, che è la cosa che la spec esclude esplicitamente. È lo specchio del
- * calcolo, più la correzione prevista dalla riga 53 per quando il calcolo si
- * discosta dalla realtà — un uovo rotto, un pasto saltato, qualcun altro che
- * ha usato la pasta.
+ * calcolo, più la correzione per quando il calcolo si discosta dalla realtà —
+ * un uovo rotto, un pasto saltato, qualcun altro che ha usato la pasta.
+ * Senza, uno scostamento non si recupera più: il residuo si allontana dal
+ * vero in silenzio e continua a produrre liste che sembrano giuste.
  *
- * Senza questa schermata uno scostamento non si recuperava più: il residuo
- * si allontanava dal vero in silenzio e continuava a produrre liste che
- * sembravano giuste.
+ * La correzione passa dal dettaglio (tocco sulla tessera) o da `Modifica con
+ * l'AI` nel Dock; le scritture sono ottimistiche, con ritorno a prima se
+ * falliscono.
  */
 export default function Dispensa() {
-  const [righe, setRighe] = useState<Riga[] | null>(null);
-  const [ordineAree, setOrdineAree] = useState<AreaId[]>([]);
-  const [errore, setErrore] = useState<string | null>(null);
-  const [erroreSalvataggio, setErroreSalvataggio] = useState<string | null>(null);
-  const [lotti, setLotti] = useState<LottoPronto[]>([]);
-  const [nomiPiatti, setNomiPiatti] = useState<Map<string, string>>(new Map());
-  const [impegniPerPiatto, setImpegniPerPiatto] = useState<Map<string, number>>(new Map());
-  const [totaleNonRicomprato, setTotaleNonRicomprato] = useState<string | null>(null);
-  // Per ingrediente, cosa dice la settimana corrente del suo fresco: vuota
-  // senza settimana, perché senza piano non c'è niente con cui confrontarlo.
-  const [avvisiPerIngrediente, setAvvisiPerIngrediente] = useState<Map<string, AvvisoScadenza>>(new Map());
-  // La nota AI e' un ripiego per quando il calcolo non torna, non la prima
-  // cosa da vedere: parte compressa in una card, si monta solo al tap.
-  const [notaAperta, setNotaAperta] = useState(false);
+  const [dati, setDati] = useState<Dati | null>(null);
+  const [errore, setErrore] = useState(false);
+  const [query, setQuery] = useState('');
+  const [foglio, setFoglio] = useState<Foglio>(null);
+  const [widgetAperto, setWidgetAperto] = useState(false);
+  // La bozza della nota vive qui, non nel widget: chiudere con del testo lo
+  // tiene fino alla prossima apertura (spec §H.1), e non in localStorage.
+  const [bozza, setBozza] = useState('');
+  // Ogni lettura ha il suo numero: una risposta che arriva quando ne è
+  // partita un'altra, o dopo il timeout, si scarta.
+  const generazione = useRef(0);
+  // L'ingrediente creato dal foglio Nuovo ingrediente quando la scrittura del
+  // residuo, subito dopo, è fallita: il RIPROVA lo riscrive invece di crearne
+  // un secondo con lo stesso nome.
+  const creato = useRef<string | null>(null);
+  // Il testo definitivo della dettatura si accoda alla bozza con uno spazio (spec §H.2).
+  const dettatura = useDettatura(useCallback((t: string) => setBozza((b) => (b ? `${b} ${t}` : t)), []));
 
-  /**
-   * Il corpo del caricamento, richiamabile: la nota alla dispensa (sotto)
-   * cambia residui e flag congelato scrivendo direttamente sul server, e
-   * dopo un'applicazione questa schermata deve rileggerli — non le basta
-   * aggiornare lo stato locale come fanno `salva`/`cambiaCongelato`, perché
-   * non sa quali proposte la nota ha applicato.
-   */
-  function carica(vivo: () => boolean) {
-    Promise.all([
-      leggiIngredienti(),
-      leggiDispensa(),
-      leggiImpostazioni(),
-      leggiPronti(),
-      leggiRepertorio(),
-      leggiSettimanaCorrente(),
-      leggiRisparmioSenzaBloccare(),
-    ])
-      .then(([ingredienti, dispensa, impostazioni, pronti, repertorio, settimana, risparmio]) => {
-        if (!vivo()) return;
-        const oggi = new Date().toISOString().slice(0, 10);
-        const perId = new Map<string, PantryState>(dispensa.map((p) => [p.ingredientId, p]));
-        setRighe(
-          ingredienti.map((ingrediente) => {
-            const stato = perId.get(ingrediente.id);
-            return {
-              ingrediente,
-              residuo: stato?.residuo ?? 0,
-              ultimoAcquisto: stato?.ultimoAcquisto ?? null,
-              congelato: stato?.congelato ?? false,
-            };
-          }),
-        );
-        setOrdineAree(impostazioni.ordineAree);
-        setLotti(pronti);
-        setNomiPiatti(new Map(repertorio.map((d) => [d.id, d.nome])));
-        setTotaleNonRicomprato(rigaTotaleNonRicomprato(risparmio));
-
-        // Il fresco che nessun pasto usa prima che scada: sui dati già in
-        // mano, nessuna lettura in più. Senza settimana corrente non c'è un
-        // piano con cui confrontarlo, e la riga anti-dimenticanza non compare.
-        const avvisi = settimana
-          ? avvisiScadenza({ slots: settimana.slots, dishes: repertorio, ingredients: ingredienti, pantry: dispensa, oggi })
-          : [];
-        setAvvisiPerIngrediente(new Map(avvisi.map((a) => [a.ingredientId, a])));
-
-        // Quante porzioni di quel piatto sono già promesse a uno slot
-        // futuro: un lotto "disponibile" che in realtà è già impegnato per
-        // dopodomani non è la stessa cosa di uno libero.
-        const impegni = new Map<string, number>();
-        for (const slot of settimana?.slots ?? []) {
-          if (!slot.daPronti || slot.dishId === null || slot.data < oggi) continue;
-          impegni.set(slot.dishId, (impegni.get(slot.dishId) ?? 0) + 1);
-        }
-        setImpegniPerPiatto(impegni);
-      })
+  /** Il caricamento con la sua attesa massima. Nessun setState sincrono: si chiama anche dall'effetto. */
+  const leggi = useCallback(() => {
+    const mia = ++generazione.current;
+    const timer = setTimeout(() => {
+      if (generazione.current !== mia) return;
+      generazione.current++; // la risposta che arriva dopo si scarta
+      setErrore(true);
+    }, ATTESA_MAX_MS);
+    leggiTutto()
+      .then((d) => { if (generazione.current === mia) setDati(d); })
       .catch((e) => {
         console.error('dispensa: caricamento fallito.', e);
-        if (vivo()) setErrore('Non riusciamo a caricare la dispensa. Riprova più tardi.');
-      });
-  }
-
-  useEffect(() => {
-    let vivo = true;
-    carica(() => vivo);
-    return () => {
-      vivo = false;
-    };
+        if (generazione.current === mia) setErrore(true);
+      })
+      .finally(() => clearTimeout(timer));
   }, []);
 
-  /** Richiamata dopo che la nota alla dispensa ha applicato le sue proposte: qui il componente è già montato, quindi nessun cleanup da rispettare. */
-  function ricarica() {
-    carica(() => true);
+  /** Ogni risposta ancora in volo si scarta: all'uscita dalla pagina. */
+  const scartaLetture = useCallback(() => { generazione.current++; }, []);
+
+  useEffect(() => {
+    leggi();
+    return scartaLetture;
+  }, [leggi, scartaLetture]);
+
+  function riprova() {
+    setErrore(false);
+    setDati(null);
+    leggi();
   }
 
   /**
-   * Salva e, se fallisce, riporta il valore di prima: una correzione persa in
-   * silenzio sarebbe peggio del residuo sbagliato che si stava correggendo,
-   * perché l'utente crede di aver rimesso le cose a posto.
+   * Rilettura silenziosa dopo la nota AI e la creazione: la nota scrive sul
+   * server senza dire alla pagina cosa ha applicato, quindi si rilegge tutto.
+   * I dati di prima restano in pagina finché arrivano i nuovi.
    */
-  async function salva(ingredientId: string, nuovo: number, precedente: number) {
-    if (nuovo === precedente) return;
-    setErroreSalvataggio(null);
-    setRighe((prev) => prev?.map((r) => (r.ingrediente.id === ingredientId ? { ...r, residuo: nuovo } : r)) ?? null);
+  function ricarica() {
+    const mia = ++generazione.current;
+    leggiTutto()
+      .then((d) => { if (generazione.current === mia) setDati(d); })
+      .catch((e) => console.error('dispensa: rilettura fallita.', e));
+  }
+
+  function cambiaVoce(id: string, patch: Partial<VoceDispensa>) {
+    setDati((d) => d && { ...d, voci: d.voci.map((v) => (v.ingrediente.id === id ? { ...v, ...patch } : v)) });
+  }
+
+  /**
+   * Ottimistico, con ritorno a prima se la scrittura fallisce, e l'errore
+   * rilanciato: lo mostra la riga del foglio che l'ha chiesto. Una correzione
+   * persa in silenzio sarebbe peggio del residuo sbagliato che si correggeva:
+   * l'utente crede di aver rimesso le cose a posto. Il ritorno tocca solo le
+   * chiavi della patch (con AGGIUNGI anche `ingrediente`), e solo dove
+   * nessun'altra scrittura le ha cambiate nel frattempo (`ripristina`).
+   */
+  async function scriviVoce(id: string, patch: Partial<VoceDispensa>, scrivi: () => Promise<void>) {
+    const prima = dati?.voci.find((v) => v.ingrediente.id === id);
+    if (!prima) return;
+    cambiaVoce(id, patch);
     try {
-      await correggiResiduo(ingredientId, nuovo);
+      await scrivi();
     } catch (e) {
-      console.error('dispensa: correzione del residuo fallita.', e);
-      setRighe((prev) => prev?.map((r) => (r.ingrediente.id === ingredientId ? { ...r, residuo: precedente } : r)) ?? null);
-      setErroreSalvataggio('Non siamo riusciti a salvare la correzione. Riprova.');
+      console.error('dispensa: scrittura fallita.', e);
+      setDati((d) => d && { ...d, voci: d.voci.map((v) => (v.ingrediente.id === id ? ripristina(v, patch, prima) : v)) });
+      throw e;
     }
   }
 
-  /** Come `salva`: ottimistico, con ritorno al valore di prima se fallisce. */
-  async function cambiaCongelato(ingredientId: string, congelato: boolean) {
-    setErroreSalvataggio(null);
-    setRighe((prev) => prev?.map((r) => (r.ingrediente.id === ingredientId ? { ...r, congelato } : r)) ?? null);
+  /** Il residuo a mano, con le regole delle date che applica anche il dato (spec §E.2, §E.3). */
+  function residuo(id: string, nuovo: number): Promise<void> {
+    const prima = dati?.voci.find((v) => v.ingrediente.id === id);
+    if (!prima) return Promise.resolve();
+    const effetto = effettoCorrezione(prima.residuo, nuovo, oggiIso());
+    const patch: Partial<VoceDispensa> = { residuo: nuovo };
+    if (effetto.ultimoAcquisto !== null) patch.ultimoAcquisto = effetto.ultimoAcquisto;
+    if (effetto.cancellaScadenza) patch.scadenzaManuale = null;
+    return scriviVoce(id, patch, () => correggiResiduo(id, nuovo, prima.residuo));
+  }
+
+  /** AGGIUNGI dello scanner (spec §F.2): una confezione in più, poi di nuovo il dettaglio. */
+  async function aggiungi(v: VoceDispensa, formato: number, ean: string) {
+    const ingrediente = { ...v.ingrediente, formatoConfezione: formato, ean };
+    await scriviVoce(
+      v.ingrediente.id,
+      { ingrediente, residuo: v.residuo + formato, ultimoAcquisto: oggiIso(), scadenzaManuale: null },
+      () => aggiungiConfezione({ ingredientId: v.ingrediente.id, formato, ean, residuoPrima: v.residuo }),
+    );
+    setFoglio({ tipo: 'ingrediente', id: v.ingrediente.id, vista: 'dettaglio' });
+  }
+
+  function cambiaLotto(id: string, patch: Partial<LottoPronto>) {
+    setDati((d) => d && { ...d, lotti: d.lotti.map((l) => (l.id === id ? { ...l, ...patch } : l)) });
+  }
+
+  function togliLotto(id: string) {
+    setDati((d) => d && { ...d, lotti: d.lotti.filter((l) => l.id !== id) });
+  }
+
+  /** Come `scriviVoce`, sul lotto. */
+  async function scriviLotto(id: string, patch: Partial<LottoPronto>, scrivi: () => Promise<void>) {
+    const prima = dati?.lotti.find((l) => l.id === id);
+    if (!prima) return;
+    cambiaLotto(id, patch);
     try {
-      await impostaCongelato(ingredientId, congelato);
+      await scrivi();
     } catch (e) {
-      console.error('dispensa: cambio congelatore fallito.', e);
-      setRighe((prev) => prev?.map((r) => (r.ingrediente.id === ingredientId ? { ...r, congelato: !congelato } : r)) ?? null);
-      setErroreSalvataggio('Non siamo riusciti a salvare. Riprova.');
+      console.error('dispensa: scrittura del lotto fallita.', e);
+      setDati((d) => d && { ...d, lotti: d.lotti.map((l) => (l.id === id ? ripristina(l, patch, prima) : l)) });
+      throw e;
     }
   }
 
-  /** Come `salva`, sul lotto: ottimistico, con ritorno al valore di prima se fallisce. */
-  async function correggiLottoOttimistico(id: string, nuovo: number) {
-    const precedenti = lotti;
-    setErroreSalvataggio(null);
-    setLotti((prev) => prev.map((l) => (l.id === id ? { ...l, porzioni: nuovo } : l)));
-    try {
-      await correggiLotto(id, nuovo);
-    } catch (e) {
-      console.error('dispensa: correzione del lotto fallita.', e);
-      setLotti(precedenti);
-      setErroreSalvataggio('Non siamo riusciti a salvare la correzione. Riprova.');
+  /**
+   * `correggiLotto` a 0 cancella il lotto sul server (è la regola del dato:
+   * un lotto a zero non esiste). Dopo la scrittura riuscita il lotto esce
+   * anche da qui e il foglio si chiude: resterebbe aperto su una riga che
+   * non c'è più.
+   */
+  async function porzioni(id: string, n: number) {
+    await scriviLotto(id, { porzioni: n }, () => correggiLotto(id, n));
+    if (n <= 0) {
+      togliLotto(id);
+      setFoglio(null);
     }
   }
 
-  /** Come `cambiaCongelato`, sul lotto. */
-  async function congelaLottoOttimistico(id: string, congelato: boolean) {
-    const precedenti = lotti;
-    setErroreSalvataggio(null);
-    setLotti((prev) => prev.map((l) => (l.id === id ? { ...l, congelato } : l)));
-    try {
-      await impostaCongelatoLotto(id, congelato);
-    } catch (e) {
-      console.error('dispensa: cambio congelatore del lotto fallito.', e);
-      setLotti(precedenti);
-      setErroreSalvataggio('Non siamo riusciti a salvare. Riprova.');
-    }
+  /** Non ottimistico: l'errore resta nel dialogo, e il lotto non sparisce finché il server non l'ha tolto. */
+  async function elimina(id: string) {
+    await eliminaLotto(id);
+    togliLotto(id);
+    setFoglio(null);
   }
 
-  /** Come le altre due, ma senza ripristino parziale: il lotto sparisce e torna se l'eliminazione fallisce. */
-  async function eliminaLottoOttimistico(id: string) {
-    const precedenti = lotti;
-    setErroreSalvataggio(null);
-    setLotti((prev) => prev.filter((l) => l.id !== id));
-    try {
-      await eliminaLotto(id);
-    } catch (e) {
-      console.error('dispensa: eliminazione del lotto fallita.', e);
-      setLotti(precedenti);
-      setErroreSalvataggio('Non siamo riusciti a salvare. Riprova.');
-    }
+  function apriNuovo(nome: string) {
+    creato.current = null;
+    setFoglio({ tipo: 'nuovo', nome });
   }
 
-  const contestoNota =
-    righe?.map((r) => ({
-      id: r.ingrediente.id,
-      nome: r.ingrediente.nome,
-      unitaBase: r.ingrediente.unitaBase,
-      formatoConfezione: r.ingrediente.formatoConfezione,
-      residuo: r.residuo,
-      congelato: r.congelato,
-    })) ?? [];
+  /**
+   * Si esce da Nuovo ingrediente senza aver finito. Un ingrediente creato a
+   * metà (residuo non scritto) esiste già: la pagina lo deve vedere, almeno
+   * fra i mai comprati.
+   */
+  function lasciaNuovo() {
+    if (creato.current !== null) ricarica();
+    creato.current = null;
+  }
+
+  function chiudiNuovo() {
+    lasciaNuovo();
+    setFoglio(null);
+  }
+
+  /** CREA L'INGREDIENTE (spec §C): l'ingrediente, poi la regola d'entrata se la quantità è > 0. */
+  async function crea(d: DatiNuovoIngrediente) {
+    const id = await salvaIngrediente({ ...d.ingrediente, prezzoConfezione: null, id: creato.current ?? undefined });
+    creato.current = id;
+    if (d.quantita > 0) await correggiResiduo(id, d.quantita, 0);
+    creato.current = null;
+    setFoglio(null);
+    setQuery('');
+    ricarica();
+  }
+
+  function apriWidget() {
+    setWidgetAperto(true);
+  }
+
+  /** La X o il velo: la dettatura si ferma, la bozza resta (spec §H.1, §H.2). */
+  function chiudiWidget() {
+    dettatura.ferma();
+    setWidgetAperto(false);
+  }
 
   if (errore) {
     return (
       <Cornice>
-        <p style={{ margin: '20px 18px', color: 'var(--sec)', fontSize: 13 }}>{errore}</p>
-      </Cornice>
-    );
-  }
-
-  if (!righe) return <Cornice />;
-
-  if (righe.length === 0) {
-    return (
-      <Cornice>
-        <div style={{ padding: '40px 20px', textAlign: 'center' }}>
-          <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--ink)', marginBottom: 6 }}>
-            Ancora niente in dispensa
-          </div>
-          <div style={{ fontSize: 13.5, lineHeight: 1.45, color: 'var(--sec)' }}>
-            Si riempie da sé: appena chiudi la prima spesa, qui trovi quello che è rimasto.
-          </div>
+        <div style={{ padding: '4px 16px', display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'flex-start' }}>
+          <MessaggioErrore>Non riusciamo a caricare la dispensa. Riprova.</MessaggioErrore>
+          <button type="button" onClick={riprova} style={{ ...STILE_PILLOLA, background: 'var(--superficie)', color: 'var(--ink)', border: '1px solid rgba(20,22,58,0.09)' }}>
+            RIPROVA
+          </button>
         </div>
       </Cornice>
     );
   }
 
-  const oggi = new Date().toISOString().slice(0, 10);
+  // Nel caricamento e nell'errore il Dock non c'è (spec §A): questi due
+  // return non lo rendono.
+  if (!dati) {
+    return (
+      <Cornice>
+        <CampoRicerca valore="" onCambia={() => {}} contatore={null} spento />
+        <WidgetVuoti />
+      </Cornice>
+    );
+  }
+
+  const oggi = oggiIso();
   const domenica = sommaGiorni(lunediDi(oggi), 6);
-  const mostrate = righe.map((r) => annotaScadenza(r, avvisiPerIngrediente.get(r.ingrediente.id), domenica));
-  const inCasa = mostrate.filter((r) => r.residuo > 0);
-  // "Finito" e "mai avuto" non sono la stessa cosa: il primo e' un
-  // ingrediente che usi e che si e' esaurito — informazione utile, sono
-  // pochi — il secondo e' catalogo, e dopo il seed sono decine. Tenerli
-  // insieme seppelliva i primi sotto i secondi.
-  const finiti = mostrate.filter((r) => r.residuo <= 0 && r.ultimoAcquisto !== null);
-  const maiComprati = mostrate.filter((r) => r.residuo <= 0 && r.ultimoAcquisto === null);
+  // La scadenza si ricava dai valori correnti della voce, non da quelli letti:
+  // congelatore e data a mano cambiano in modo ottimistico. L'avviso della
+  // settimana è del caricamento, e conta solo se parla della stessa scadenza.
+  const dimenticato = (v: VoceDispensa) => eDimenticato(scadenzaVoce(v), dati.avvisi.get(v.ingrediente.id), domenica);
+  const lottiVivi = dati.lotti.filter((l) => porzioniUtilizzabili(l, oggi) > 0);
+  const nomeLotto = (l: LottoPronto) => dati.nomiPiatti.get(l.dishId) ?? 'Piatto eliminato';
+  const risultati = cercaInDispensa(query, dati.voci, lottiVivi, nomeLotto);
+  const voci = risultati ? risultati.voci : vociInPagina(dati.voci);
+  const lotti = risultati ? risultati.lotti : lottiVivi;
+  const vuota = !risultati && voci.length === 0 && lotti.length === 0;
+
+  const contesto: VoceContesto[] = dati.voci.map((v) => ({
+    id: v.ingrediente.id, nome: v.ingrediente.nome, unitaBase: v.ingrediente.unitaBase,
+    formatoConfezione: v.ingrediente.formatoConfezione, residuo: v.residuo, congelato: v.congelato,
+  }));
+
+  let corpo: ReactNode;
+  if (risultati && risultati.totale === 0) {
+    corpo = <SchedaCrea query={query.trim()} onCrea={() => apriNuovo(query.trim())} />;
+  } else if (vuota) {
+    corpo = <StatoVuoto />;
+  } else {
+    corpo = (
+      <>
+        {raggruppaPerArea(voci, dati.ordineAree).map((g) => (
+          <WidgetArea key={g.area} etichetta={nomeArea(g.area)} colore={coloreArea(g.area)}>
+            {g.voci.map((v) => (
+              <TesseraDispensa
+                key={v.ingrediente.id}
+                voce={v}
+                pillola={pillolaStato(v, oggi, dimenticato(v))}
+                onApri={() => setFoglio({ tipo: 'ingrediente', id: v.ingrediente.id, vista: 'dettaglio' })}
+              />
+            ))}
+          </WidgetArea>
+        ))}
+        {lotti.length > 0 && (
+          <WidgetArea etichetta="Pronti" colore={null}>
+            {lotti.map((l) => (
+              <TesseraLotto
+                key={l.id}
+                nome={nomeLotto(l)}
+                porzioni={l.porzioni}
+                congelato={l.congelato}
+                onApri={() => setFoglio({ tipo: 'lotto', id: l.id, elimina: false })}
+              />
+            ))}
+          </WidgetArea>
+        )}
+      </>
+    );
+  }
+
+  const voceAperta = foglio?.tipo === 'ingrediente' ? dati.voci.find((v) => v.ingrediente.id === foglio.id) : undefined;
+  const lottoAperto = foglio?.tipo === 'lotto' ? dati.lotti.find((l) => l.id === foglio.id) : undefined;
+  // Gli impegni sono del piatto: il lotto porta solo quelli che gli altri suoi lotti vivi non coprono.
+  const impegnateAperto = lottoAperto ? impegnateLotto(lottoAperto, lottiVivi, dati.impegni.get(lottoAperto.dishId) ?? 0) : 0;
+  const ingredienti = dati.voci.map((v) => v.ingrediente);
+  // APRI {Y} dallo scanner o da Nuovo ingrediente: il dettaglio di Y al posto di quello aperto.
+  const apri = (altro: Ingredient) => {
+    lasciaNuovo();
+    setFoglio({ tipo: 'ingrediente', id: altro.id, vista: 'dettaglio' });
+  };
 
   return (
     <Cornice>
-      <div className="sc scroll-app" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 16px 20px' }}>
-        {/* Il residuo derivato, sommato sulle settimane chiuse: una riga e
-            basta, e solo quando c'è qualcosa da dire. */}
-        {totaleNonRicomprato && (
-          <p style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', margin: '0 4px 14px' }}>{totaleNonRicomprato}</p>
-        )}
-
-        {erroreSalvataggio && (
-          <p style={{ fontSize: 13, color: 'var(--sec)', margin: '0 6px 12px' }}>{erroreSalvataggio}</p>
-        )}
-
-        <Gruppo
-          titolo="IN CASA"
-          righe={inCasa}
-          ordineAree={ordineAree}
-          onSalva={salva}
-          onCongela={cambiaCongelato}
-          sottotitolo="Calcolato da spesa e piano: correggi solo se non torna con la realtà."
+      <div className="sc scroll-app con-dock" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+        <CampoRicerca
+          valore={query}
+          onCambia={setQuery}
+          contatore={risultati && risultati.totale > 0 ? etichettaRisultati(risultati.totale) : null}
         />
-        <Gruppo titolo="FINITI" righe={finiti} ordineAree={ordineAree} onSalva={salva} onCongela={cambiaCongelato} />
-
-        <SezionePronti
-          lotti={lotti.filter((l) => porzioniUtilizzabili(l, oggi) > 0)}
-          nomiPiatti={nomiPiatti}
-          impegniPerPiatto={impegniPerPiatto}
-          onCorreggi={correggiLottoOttimistico}
-          onCongela={congelaLottoOttimistico}
-          onElimina={eliminaLottoOttimistico}
-        />
-
-        {/* Chiuso di partenza: e' l'intero catalogo di quello che non hai mai
-            preso, serve solo quando cerchi qualcosa di preciso per dire che
-            ce l'hai gia' in casa. Aperto sarebbe la parte piu' lunga della
-            schermata e la meno utile. */}
-        <Gruppo
-          titolo="MAI COMPRATI"
-          righe={maiComprati}
-          ordineAree={ordineAree}
-          onSalva={salva}
-          onCongela={cambiaCongelato}
-          chiusoDaSubito
-        />
-
-        {/* La correzione via AI e' un ripiego per quando il calcolo non
-            torna, non la prima cosa da vedere: in cima distraeva da quello
-            che la schermata serve davvero a mostrare. Resta una card
-            compressa finche' non serve, e monta NotaDispensa solo al tap. */}
-        {notaAperta ? (
-          <div className="anim-foglio" style={{ position: 'relative' }}>
-            {/* Chiusura discreta senza toccare la firma di NotaDispensa: un
-                bottone sovrapposto, stesso disegno della X di rimozione
-                ingrediente (TesseraIngrediente), stessa area di tap 44px. */}
-            <button
-              type="button"
-              onClick={() => setNotaAperta(false)}
-              aria-label="Chiudi correzione con una nota"
-              style={{
-                position: 'absolute', top: 0, right: 0, width: 44, height: 44, zIndex: 1,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent',
-              }}
-            >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
-                <path d="M5 5l14 14M19 5 5 19" stroke="#C4C4CE" strokeWidth="2.2" strokeLinecap="round" />
-              </svg>
-            </button>
-            <NotaDispensa contesto={contestoNota} onDatiCambiati={ricarica} />
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setNotaAperta(true)}
-            style={{
-              width: '100%', padding: '15px 16px', borderRadius: 18, background: '#FFFFFF',
-              border: '1px solid rgba(20,22,58,0.07)', textAlign: 'left',
-              fontSize: 14.5, fontWeight: 600, color: 'var(--ink)',
-            }}
-          >
-            Il conto non torna? Correggi con una nota
-          </button>
-        )}
+        {corpo}
       </div>
+
+      {!widgetAperto && (
+        <DockDispensa
+          dettatura={dettatura.disponibile}
+          onModifica={apriWidget}
+          onPremiMicrofono={(pointerId) => { apriWidget(); dettatura.premi(pointerId); }}
+          onToccaMicrofono={() => { apriWidget(); dettatura.tocca(); }}
+        />
+      )}
+
+      {voceAperta && foglio?.tipo === 'ingrediente' && (
+        // La chiave per ingrediente: APRI {Y} rimonta il foglio da capo, senza
+        // portarsi dietro i campi e la riga di scadenza aperta di X.
+        <FoglioDalBasso
+          key={voceAperta.ingrediente.id}
+          etichetta={foglio.vista === 'scansione' ? 'Scansiona una confezione' : voceAperta.ingrediente.nome}
+          onChiudi={() => setFoglio(null)}
+        >
+          {foglio.vista === 'dettaglio' ? (
+            <DettaglioIngrediente
+              voce={voceAperta}
+              avviso={avvisoVoce(voceAperta, oggi, dimenticato(voceAperta))}
+              oggi={oggi}
+              onInCasa={() => residuo(voceAperta.ingrediente.id, voceAperta.ingrediente.formatoConfezione)}
+              onFinito={() => residuo(voceAperta.ingrediente.id, 0)}
+              onResiduo={(n) => residuo(voceAperta.ingrediente.id, n)}
+              onCongelato={(c) => scriviVoce(voceAperta.ingrediente.id, { congelato: c, scadenzaManuale: null }, () => impostaCongelato(voceAperta.ingrediente.id, c))}
+              onScadenza={(d) => scriviVoce(voceAperta.ingrediente.id, { scadenzaManuale: d }, () => impostaScadenza(voceAperta.ingrediente.id, d))}
+              onScansiona={() => setFoglio({ tipo: 'ingrediente', id: voceAperta.ingrediente.id, vista: 'scansione' })}
+              onChiudi={() => setFoglio(null)}
+            />
+          ) : (
+            <ScansioneConfezione
+              ingrediente={voceAperta.ingrediente}
+              congelato={voceAperta.congelato}
+              ingredienti={ingredienti}
+              oggi={oggi}
+              onIndietro={() => setFoglio({ tipo: 'ingrediente', id: voceAperta.ingrediente.id, vista: 'dettaglio' })}
+              onChiudi={() => setFoglio(null)}
+              onAggiungi={(formato, ean) => aggiungi(voceAperta, formato, ean)}
+              onApri={apri}
+            />
+          )}
+        </FoglioDalBasso>
+      )}
+
+      {lottoAperto && foglio?.tipo === 'lotto' && (
+        <>
+          <FoglioDalBasso etichetta={`Lotto di ${nomeLotto(lottoAperto)}`} onChiudi={() => setFoglio(null)}>
+            <DettaglioLotto
+              lotto={lottoAperto}
+              nome={nomeLotto(lottoAperto)}
+              impegnate={impegnateAperto}
+              onPorzioni={(n) => porzioni(lottoAperto.id, n)}
+              onCongelato={(c) => scriviLotto(lottoAperto.id, { congelato: c }, () => impostaCongelatoLotto(lottoAperto.id, c))}
+              onElimina={() => setFoglio({ tipo: 'lotto', id: lottoAperto.id, elimina: true })}
+              onChiudi={() => setFoglio(null)}
+            />
+          </FoglioDalBasso>
+          {foglio.elimina && (
+            <FoglioDalBasso
+              etichetta="Elimini il lotto?"
+              onChiudi={() => setFoglio({ tipo: 'lotto', id: lottoAperto.id, elimina: false })}
+              altezza="contenuto"
+              ruolo="alertdialog"
+              chiudiDalVelo={false}
+              livello={2}
+            >
+              <DialogoElimina
+                nome={nomeLotto(lottoAperto)}
+                porzioni={lottoAperto.porzioni}
+                impegnate={impegnateAperto}
+                onAnnulla={() => setFoglio({ tipo: 'lotto', id: lottoAperto.id, elimina: false })}
+                onElimina={() => elimina(lottoAperto.id)}
+              />
+            </FoglioDalBasso>
+          )}
+        </>
+      )}
+
+      {foglio?.tipo === 'nuovo' && (
+        <FoglioDalBasso etichetta="Nuovo ingrediente" onChiudi={chiudiNuovo}>
+          <NuovoIngrediente nomeIniziale={foglio.nome} ingredienti={ingredienti} onCrea={crea} onApri={apri} onChiudi={chiudiNuovo} />
+        </FoglioDalBasso>
+      )}
+
+      {widgetAperto && (
+        <WidgetAI contesto={contesto} dettatura={dettatura} bozza={bozza} onBozza={setBozza} onDatiCambiati={ricarica} onChiudi={chiudiWidget} />
+      )}
     </Cornice>
   );
 }
 
-interface PropsGruppo {
-  titolo: string;
-  righe: RigaMostrata[];
-  ordineAree: AreaId[];
-  onSalva: (ingredientId: string, nuovo: number, precedente: number) => void;
-  onCongela: (ingredientId: string, congelato: boolean) => void;
-  /** Parte richiuso, con il solo titolo cliccabile. */
-  chiusoDaSubito?: boolean;
-  /** Riga di spiegazione sotto l'intestazione — solo IN CASA la usa. */
-  sottotitolo?: string;
-}
-
-function Gruppo({ titolo, righe, ordineAree, onSalva, onCongela, chiusoDaSubito = false, sottotitolo }: PropsGruppo) {
-  const [aperto, setAperto] = useState(!chiusoDaSubito);
-  if (righe.length === 0) return null;
-
-  // Stesso ordine dei reparti della lista della spesa: cercare qui costa
-  // quanto cercare lì.
-  const ordinate = [...righe].sort((a, b) => {
-    const da = ordineAree.indexOf(a.ingrediente.area);
-    const db = ordineAree.indexOf(b.ingrediente.area);
-    if (da !== db) return da - db;
-    return a.ingrediente.nome.localeCompare(b.ingrediente.nome, 'it');
-  });
-
+/** Nessun risultato (spec §B, v2 03): la scheda che propone di crearlo. */
+function SchedaCrea({ query, onCrea }: { query: string; onCrea: () => void }) {
   return (
-    <div style={{ marginBottom: 22 }}>
-      <button
-        type="button"
-        onClick={chiusoDaSubito ? () => setAperto((v) => !v) : undefined}
-        aria-expanded={chiusoDaSubito ? aperto : undefined}
-        style={{
-          width: '100%', display: 'flex', alignItems: 'center', gap: 7,
-          margin: '0 0 9px', padding: '0 4px',
-          minHeight: chiusoDaSubito ? 44 : undefined,
-          cursor: chiusoDaSubito ? 'pointer' : 'default',
-        }}
-      >
-        <span
-          style={{
-            fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700,
-            letterSpacing: '0.16em', color: 'var(--ink)',
-          }}
-        >
-          {titolo}
-        </span>
-        {chiusoDaSubito && (
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ transform: aperto ? 'rotate(90deg)' : undefined }}>
-            <path d="M9 5l7 7-7 7" stroke="var(--ter)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        )}
-        <span style={{ flex: 1 }} />
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--ter)' }}>
-          {ordinate.length}
-        </span>
-      </button>
-
-      {sottotitolo && (
-        <p style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', margin: '0 4px 12px' }}>{sottotitolo}</p>
-      )}
-
-      <div style={{ display: aperto ? 'flex' : 'none', flexDirection: 'column', gap: 7 }}>
-        {ordinate.map((r) => (
-          // La key include il residuo: quando cambia sotto — salvataggio
-          // riuscito, o rollback di uno fallito — la riga si rimonta e il
-          // campo riparte dal valore vero. Il residuo cambia solo dopo il
-          // blur, quindi non interrompe mai chi sta scrivendo.
-          <RigaDispensa
-            key={`${r.ingrediente.id}:${r.residuo}:${r.congelato}`}
-            riga={r}
-            onSalva={onSalva}
-            onCongela={onCongela}
-          />
-        ))}
-      </div>
-    </div>
+    <section style={{ margin: '0 16px 12px', background: 'var(--superficie)', border: '1px solid var(--bordo)', borderRadius: 22, padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--ink)' }}>{`Nessun ingrediente si chiama «${query}»`}</h2>
+      <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: 'var(--testo-2)' }}>Crealo ora: entra fra gli ingredienti e da qui lo segni in casa.</p>
+      <TastoPrimario onClick={onCrea}>{`CREA «${query.toUpperCase()}»`}</TastoPrimario>
+    </section>
   );
 }
 
-interface PropsSezionePronti {
-  lotti: LottoPronto[];
-  nomiPiatti: Map<string, string>;
-  impegniPerPiatto: Map<string, number>;
-  onCorreggi: (id: string, nuovo: number) => void;
-  onCongela: (id: string, congelato: boolean) => void;
-  onElimina: (id: string) => void;
-}
-
-/**
- * I lotti del meal prepping: porzioni già cucinate, in frigo o freezer, in
- * attesa di uno slot che le usi. Assente finché non esiste nessun lotto
- * utilizzabile — un titolo di sezione sempre vuoto sarebbe solo rumore prima
- * ancora che il meal prepping venga usato.
- */
-function SezionePronti({ lotti, nomiPiatti, impegniPerPiatto, onCorreggi, onCongela, onElimina }: PropsSezionePronti) {
-  if (lotti.length === 0) return null;
-
+/** Nessun ingrediente in casa né finito e nessun lotto (spec §A, v1 18): Dock e ricerca restano. */
+function StatoVuoto() {
   return (
-    <div style={{ marginBottom: 22 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 7, margin: '0 0 9px', padding: '0 4px' }}>
-        <span
-          style={{
-            fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700,
-            letterSpacing: '0.16em', color: 'var(--ink)',
-          }}
-        >
-          PRONTI
-        </span>
-        <span style={{ flex: 1 }} />
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em', color: 'var(--ter)' }}>
-          {lotti.length}
-        </span>
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-        {(() => {
-          // La spec parla di una tessera per piatto; qui il layout resta per
-          // lotto (semplificazione accettata). Con più lotti dello stesso
-          // piatto mostrare "N impegnate" su ognuno raddoppierebbe il numero
-          // letto dall'utente: la riga compare solo sulla prima tessera di
-          // quel dishId nell'ordine di rendering.
-          const dishGiaMostrati = new Set<string>();
-          return lotti.map((lotto) => {
-            const primaVolta = !dishGiaMostrati.has(lotto.dishId);
-            dishGiaMostrati.add(lotto.dishId);
-            return (
-              <TesseraPronto
-                key={`${lotto.id}:${lotto.porzioni}:${lotto.congelato}`}
-                lotto={lotto}
-                nome={nomiPiatti.get(lotto.dishId) ?? 'Piatto eliminato'}
-                impegnate={primaVolta ? impegniPerPiatto.get(lotto.dishId) ?? 0 : 0}
-                onCorreggi={onCorreggi}
-                onCongela={onCongela}
-                onElimina={onElimina}
-              />
-            );
-          });
-        })()}
-      </div>
-    </div>
-  );
-}
-
-function TesseraPronto({
-  lotto,
-  nome,
-  impegnate,
-  onCorreggi,
-  onCongela,
-  onElimina,
-}: {
-  lotto: LottoPronto;
-  nome: string;
-  impegnate: number;
-  onCorreggi: PropsSezionePronti['onCorreggi'];
-  onCongela: PropsSezionePronti['onCongela'];
-  onElimina: PropsSezionePronti['onElimina'];
-}) {
-  const [testo, setTesto] = useState(String(lotto.porzioni));
-
-  function conferma() {
-    const n = Number(testo);
-    if (testo.trim() === '' || Number.isNaN(n) || n < 0) {
-      setTesto(String(lotto.porzioni));
-      return;
-    }
-    onCorreggi(lotto.id, n);
-  }
-
-  return (
-    <div
-      style={{
-        display: 'flex', alignItems: 'center', gap: 12, minHeight: 62,
-        padding: '11px 14px', borderRadius: 16,
-        background: 'var(--superficie)', border: '1px solid var(--bordo)',
-      }}
-    >
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-            fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)',
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}
-        >
-          {nome}
-        </div>
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 8.5, letterSpacing: '0.09em', color: 'var(--ter)', marginTop: 4 }}>
-          PREPARATO IL {dataBreve(lotto.preparataIl).toUpperCase()}
-          {lotto.congelato ? ' · IN CONGELATORE' : ''}
-        </div>
-        {impegnate > 0 && (
-          <div style={{ fontSize: 12, lineHeight: 1.35, color: 'var(--sec)', marginTop: 5 }}>
-            {impegnate === 1 ? '1 impegnata' : `${impegnate} impegnate`}
-          </div>
-        )}
-      </div>
-
-      <button
-        type="button"
-        onClick={() => onCongela(lotto.id, !lotto.congelato)}
-        aria-pressed={lotto.congelato}
-        aria-label={`${nome}: ${lotto.congelato ? 'togli dal congelatore' : 'metti in congelatore'}`}
-        style={{
-          width: 44, height: 44, flex: 'none', borderRadius: 13,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: lotto.congelato ? 'rgba(156,199,242,0.30)' : 'transparent',
-        }}
-      >
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M12 2v20M12 6.5 8.5 4M12 6.5 15.5 4M12 17.5 8.5 20M12 17.5l3.5 2.5M3.3 7l17.4 10M6.8 8.2 5.9 4.1M6.8 8.2 3 9.3M17.2 15.8l.9 4.1M17.2 15.8 21 14.7M20.7 7 3.3 17M17.2 8.2l.9-4.1M17.2 8.2 21 9.3M6.8 15.8l-.9 4.1M6.8 15.8 3 14.7"
-            stroke={lotto.congelato ? '#4A90D9' : 'var(--ter)'}
-            strokeWidth="1.7"
-            strokeLinecap="round"
-          />
-        </svg>
-      </button>
-
-      <label
-        style={{
-          display: 'flex', alignItems: 'center', gap: 5, flex: 'none',
-          minHeight: 44, cursor: 'text',
-        }}
-      >
-        <input
-          type="number"
-          inputMode="decimal"
-          min={0}
-          value={testo}
-          onChange={(e) => setTesto(e.target.value)}
-          onBlur={conferma}
-          aria-label={`Porzioni di ${nome}`}
-          className="residuo-input"
-          style={{
-            width: 46, height: 38, borderRadius: 11, textAlign: 'right',
-            border: '1px solid rgba(20,22,58,0.12)', background: '#FFFFFF',
-            padding: '0 8px', outline: 'none',
-            fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 700, color: 'var(--ink)',
-          }}
-        />
-      </label>
-
-      <button
-        type="button"
-        onClick={() => onElimina(lotto.id)}
-        aria-label={`Elimina il lotto di ${nome}`}
-        style={{
-          width: 44, height: 44, flex: 'none', borderRadius: 13,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"
-            stroke="var(--ter)"
-            strokeWidth="1.7"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </button>
-      <style jsx>{`
-        .residuo-input::-webkit-outer-spin-button,
-        .residuo-input::-webkit-inner-spin-button {
-          -webkit-appearance: none;
-          margin: 0;
-        }
-        .residuo-input {
-          -moz-appearance: textfield;
-          appearance: textfield;
-        }
-      `}</style>
-    </div>
-  );
-}
-
-function RigaDispensa({
-  riga,
-  onSalva,
-  onCongela,
-}: {
-  riga: RigaMostrata;
-  onSalva: PropsGruppo['onSalva'];
-  onCongela: PropsGruppo['onCongela'];
-}) {
-  const [testo, setTesto] = useState(String(riga.residuo));
-  const oggi = new Date().toISOString().slice(0, 10);
-
-  // Quello che il calcolo della lista userà davvero. Mostrarlo qui è
-  // necessario: senza, si legge "200 g" di pollo e non si capisce perché la
-  // lista lo chiede lo stesso — la schermata direbbe una cosa e l'app ne
-  // farebbe un'altra.
-  const utilizzabile = residuoUtilizzabile({
-    residuo: riga.residuo,
-    deperibile: riga.ingrediente.deperibile,
-    area: riga.ingrediente.area,
-    ultimoAcquisto: riga.ultimoAcquisto,
-    congelato: riga.congelato,
-    oggi,
-  });
-  const decaduto = riga.residuo > 0 && utilizzabile === 0;
-
-  function conferma() {
-    const n = Number(testo);
-    if (testo.trim() === '' || Number.isNaN(n) || n < 0) {
-      setTesto(String(riga.residuo));
-      return;
-    }
-    onSalva(riga.ingrediente.id, n, riga.residuo);
-  }
-
-  return (
-    <div
-      style={{
-        display: 'flex', alignItems: 'center', gap: 12, minHeight: 62,
-        padding: '11px 14px', borderRadius: 16,
-        background: 'var(--superficie)', border: '1px solid var(--bordo)',
-      }}
-    >
-      <span style={{ width: 9, height: 9, borderRadius: 3, flex: 'none', background: coloreArea(riga.ingrediente.area) }} />
-
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-            fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)',
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}
-        >
-          {riga.ingrediente.nome}
-        </div>
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 8.5, letterSpacing: '0.09em', color: 'var(--ter)', marginTop: 4 }}>
-          {nomeArea(riga.ingrediente.area)}
-          {riga.ultimoAcquisto ? ` · PRESO IL ${dataBreve(riga.ultimoAcquisto).toUpperCase()}` : ' · MAI COMPRATO'}
-          {riga.congelato ? ' · IN CONGELATORE' : ''}
-          {/* La scadenza per ultima, dopo il congelatore: è lui che spiega
-              perché è lontana. Su un residuo già decaduto direbbe una data
-              passata: lì parla solo la riga sotto. */}
-          {!decaduto && riga.scadenza !== null &&
-            (riga.scadenza === oggi ? ' · SCADE OGGI' : ` · SCADE IL ${dataBreve(riga.scadenza).toUpperCase()}`)}
-        </div>
-        {decaduto && (
-          <div style={{ fontSize: 12, lineHeight: 1.35, color: 'var(--sec)', marginTop: 5 }}>
-            Troppo tempo per essere ancora buono: la lista lo richiede.
-            {!riga.congelato && ' Se l’hai congelato, dillo qui accanto.'}
-          </div>
-        )}
-        {riga.dimenticato && (
-          <div style={{ fontSize: 12, lineHeight: 1.35, color: 'var(--sec)', marginTop: 5 }}>
-            Nessun pasto in programma lo usa prima che scada.
-          </div>
-        )}
-      </div>
-
-      {/* Solo sui deperibili: su pasta e scatolame il congelatore non vuol
-          dire niente, e un controllo che non fa nulla è peggio che assente. */}
-      {riga.ingrediente.deperibile && (
-        <button
-          type="button"
-          onClick={() => onCongela(riga.ingrediente.id, !riga.congelato)}
-          aria-pressed={riga.congelato}
-          aria-label={`${riga.ingrediente.nome}: ${riga.congelato ? 'togli dal congelatore' : 'metti in congelatore'}`}
-          style={{
-            width: 44, height: 44, flex: 'none', borderRadius: 13,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: riga.congelato ? 'rgba(156,199,242,0.30)' : 'transparent',
-          }}
-        >
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M12 2v20M12 6.5 8.5 4M12 6.5 15.5 4M12 17.5 8.5 20M12 17.5l3.5 2.5M3.3 7l17.4 10M6.8 8.2 5.9 4.1M6.8 8.2 3 9.3M17.2 15.8l.9 4.1M17.2 15.8 21 14.7M20.7 7 3.3 17M17.2 8.2l.9-4.1M17.2 8.2 21 9.3M6.8 15.8l-.9 4.1M6.8 15.8 3 14.7"
-              stroke={riga.congelato ? '#4A90D9' : 'var(--ter)'}
-              strokeWidth="1.7"
-              strokeLinecap="round"
-            />
-          </svg>
-        </button>
-      )}
-
-      {/* onBlur e non onChange: qui si riscrive un numero che l'app ha
-          calcolato, e salvare a ogni tasto premuto significherebbe scrivere
-          anche i valori intermedi di chi sta ancora digitando. */}
-      <label
-        style={{
-          display: 'flex', alignItems: 'center', gap: 5, flex: 'none',
-          minHeight: 44, cursor: 'text',
-        }}
-      >
-        <input
-          type="number"
-          inputMode="decimal"
-          min={0}
-          value={testo}
-          onChange={(e) => setTesto(e.target.value)}
-          onBlur={conferma}
-          aria-label={`Residuo di ${riga.ingrediente.nome}`}
-          className="residuo-input"
-          style={{
-            width: 62, height: 38, borderRadius: 11, textAlign: 'right',
-            border: '1px solid rgba(20,22,58,0.12)', background: '#FFFFFF',
-            padding: '0 8px', outline: 'none',
-            fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 700, color: 'var(--ink)',
-          }}
-        />
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--sec)', width: 18 }}>
-          {riga.ingrediente.unitaBase}
-        </span>
-      </label>
-      <style jsx>{`
-        .residuo-input::-webkit-outer-spin-button,
-        .residuo-input::-webkit-inner-spin-button {
-          -webkit-appearance: none;
-          margin: 0;
-        }
-        .residuo-input {
-          -moz-appearance: textfield;
-          appearance: textfield;
-        }
-      `}</style>
-    </div>
+    <section style={{ margin: '0 16px', background: 'var(--superficie)', border: '1px solid var(--bordo)', borderRadius: 22, padding: '26px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, textAlign: 'center' }}>
+      <span aria-hidden="true" style={{ width: 46, height: 46, borderRadius: 14, border: '2px dashed var(--bordo-tratteggio)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <IconaBarattolo />
+      </span>
+      <h2 style={{ margin: 0, fontSize: 21, fontWeight: 800, letterSpacing: '-0.035em', color: 'var(--ink)' }}>Ancora niente in dispensa</h2>
+      <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: 'var(--testo-2)', maxWidth: '30ch' }}>
+        Si riempie da sé: appena chiudi la prima spesa, qui trovi quello che è rimasto.
+      </p>
+    </section>
   );
 }
 

@@ -539,7 +539,12 @@ export async function chiudiSpesa(weekId: string): Promise<void> {
       if (a.residuo !== null) {
         patch.residuo = Math.max(0, a.residuo + (stornoPerIngrediente.get(a.ingredientId) ?? 0));
       }
-      if (a.ultimoAcquisto !== null) patch.ultimo_acquisto = a.ultimoAcquisto;
+      // Una voce comprata rinnova la stima: la data scritta a mano parlava della
+      // confezione di prima e si cancella (spec fase 4 §E.3).
+      if (a.ultimoAcquisto !== null) {
+        patch.ultimo_acquisto = a.ultimoAcquisto;
+        patch.scadenza_manuale = null;
+      }
       return sb.from('pantry_state').upsert(patch, { onConflict: 'ingredient_id' });
     });
 

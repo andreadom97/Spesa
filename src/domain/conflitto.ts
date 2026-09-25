@@ -157,6 +157,7 @@ export function conflittiSostituzione(i: ConflittiSostituzioneInput): ConflittoR
         area: ing.area,
         ultimoAcquisto: stato?.ultimoAcquisto ?? null,
         congelato: stato?.congelato ?? false,
+        scadenzaManuale: stato?.scadenzaManuale ?? null,
         oggi: i.oggi,
       });
       disponibile = residuoVivo + (consumoAttuale.get(ingredientId) ?? 0);

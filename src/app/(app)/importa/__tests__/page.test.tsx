@@ -10,7 +10,7 @@ vi.mock('@/data/importa', () => ({
 }));
 vi.mock('@/data/impostazioni', () => ({ leggiSlotDefs: vi.fn() }));
 vi.mock('@/data/repertorio', () => ({ leggiIngredienti: vi.fn(), leggiRepertorio: vi.fn() }));
-// `getSessionMock` reconfigurabile per test (pattern copiato da NotaDispensa.test.tsx):
+// `getSessionMock` reconfigurabile per test (lo stesso di widget-ai.test.tsx):
 // di default risolve una sessione con token 'tok' (vedi beforeEach sotto), e il solo test
 // "senza sessione" la sovrascrive per restituire `session: null`.
 const { getSessionMock } = vi.hoisted(() => ({ getSessionMock: vi.fn() }));

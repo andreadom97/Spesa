@@ -12,6 +12,7 @@ describe('scadenzaResiduo', () => {
     area: 'macelleria',
     ultimoAcquisto: '2026-09-06',
     congelato: false,
+    scadenzaManuale: null,
   };
 
   /**
@@ -194,6 +195,18 @@ describe('avvisiScadenza', () => {
   it('esclude il residuo già scaduto: la Dispensa lo dice già a modo suo', () => {
     // Sei giorni per il pollo: residuoUtilizzabile è zero, non c'è più niente che scada.
     expect(avvisi([slot('2026-09-10', 'cena-pollo')], [riga('pollo', '2026-09-01')])).toEqual([]);
+  });
+
+  it('una scadenza scritta a mano vince sulla stima anche nell\'avviso (spec fase 4 §E)', () => {
+    // Sei giorni per il pollo: la stima l'avrebbe già spento (vedi il test
+    // sopra). Con una data a mano al 15/09 il residuo conta ancora, e
+    // l'avviso riporta quella data, non la stima né null.
+    const polloConData = riga('pollo', '2026-09-01', { scadenzaManuale: '2026-09-15' });
+    expect(avvisi([slot('2026-09-20', 'cena-pollo')], [polloConData])).toEqual([{
+      ingredientId: 'pollo', nome: 'Pollo', scadenza: '2026-09-15',
+      pastiDopo: [{ data: '2026-09-20', slotDefId: 'cen' }],
+      usatoInTempo: false,
+    }]);
   });
 
   it('esclude i non deperibili, i surgelati e il mai comprato', () => {

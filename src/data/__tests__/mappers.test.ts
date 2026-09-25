@@ -78,7 +78,7 @@ describe('aPantryState', () => {
       giorni_stimati: 90, ultimo_check: null, congelato: false,
     })).toEqual({
       ingredientId: 'a', residuo: 300, ultimoAcquisto: '2026-01-10',
-      giorniStimati: 90, ultimoCheck: null, congelato: false,
+      giorniStimati: 90, ultimoCheck: null, congelato: false, scadenzaManuale: null,
     });
   });
 
@@ -95,6 +95,23 @@ describe('aPantryState', () => {
       ingredient_id: 'a', residuo: 10, ultimo_acquisto: null,
       giorni_stimati: 90, ultimo_check: null,
     }).congelato).toBe(false);
+  });
+
+  it('legge scadenza_manuale, e la tratta come null se la colonna non arriva (migrazione 0014)', () => {
+    // Come prezzo_confezione ed ean: null e colonna assente sono la stessa
+    // cosa per il dominio, "vale la stima".
+    expect(aPantryState({
+      ingredient_id: 'a', residuo: 10, ultimo_acquisto: '2026-09-20',
+      giorni_stimati: 90, ultimo_check: null, congelato: false, scadenza_manuale: '2026-10-02',
+    }).scadenzaManuale).toBe('2026-10-02');
+    expect(aPantryState({
+      ingredient_id: 'a', residuo: 10, ultimo_acquisto: '2026-09-20',
+      giorni_stimati: 90, ultimo_check: null, congelato: false, scadenza_manuale: null,
+    }).scadenzaManuale).toBeNull();
+    expect(aPantryState({
+      ingredient_id: 'a', residuo: 10, ultimo_acquisto: '2026-09-20',
+      giorni_stimati: 90, ultimo_check: null, congelato: false,
+    }).scadenzaManuale).toBeNull();
   });
 });
 

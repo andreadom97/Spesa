@@ -19,14 +19,16 @@ import { useSlotDock } from './dock-slot';
  * renderizza: nessuna delle schermate mostra il Dock prima che i dati
  * arrivino, quindi non si vede nessun salto.
  */
-export function Dock({ children }: { children: ReactNode }) {
+// `sciolto`: la Dispensa, dove due controlli stanno allineati a destra senza
+// il contenitore bianco, spec fase 4 §A.
+export function Dock({ children, sciolto = false }: { children: ReactNode; sciolto?: boolean }) {
   const slot = useSlotDock();
   if (slot === null) return null;
   // Una regione con nome (spec fase 3 §H, DESIGN.md §8 Dock): chi naviga per
   // regioni con lo screen reader trova l'azione principale senza scorrere. Il
   // nome dice il posto, uguale per ogni Dock; l'azione ha il suo sul tasto.
   return createPortal(
-    <div className="dock anim-dock" role="region" aria-label="Azione principale">{children}</div>,
+    <div className={`dock anim-dock${sciolto ? ' dock-sciolto' : ''}`} role="region" aria-label="Azione principale">{children}</div>,
     slot,
   );
 }
