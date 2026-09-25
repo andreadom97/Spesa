@@ -2,6 +2,7 @@ import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import type { Ingredient } from '@/domain/types';
+import { predefinitiIngrediente } from '@/domain/ingredienti-base';
 import { NuovoIngrediente } from '../NuovoIngrediente';
 
 const EAN_TONNO = '8000000000017';
@@ -141,6 +142,57 @@ describe('NuovoIngrediente', () => {
         classeResiduo: 'porzionabile', formatoConfezione: 80, ean: EAN_ZENZERO,
       },
       quantita: 80,
+    }));
+  });
+
+  it('cambiare unità dopo una scansione: g non è l\'unità letta, si usa il default del reparto (non il numero letto in ml)', async () => {
+    fetchMock.mockResolvedValueOnce(
+      rispostaJson({ trovato: true, nome: 'Acqua minerale', marca: '', quantita: { valore: 500, unita: 'ml' } }),
+    );
+    const props = propsBase();
+    render(<NuovoIngrediente {...props} />);
+    fireEvent.click(screen.getByRole('button', { name: 'ORTOFRUTTA' }));
+
+    await scansiona(EAN_ZENZERO);
+    expect(await screen.findByLabelText('Residuo di Zenzero')).toHaveValue('500');
+    expect(screen.getByRole('button', { name: 'ml' })).toHaveAttribute('aria-pressed', 'true');
+
+    // g non è l'unità letta: il numero letto (500 ml) non vale più, si usa il default del reparto per g.
+    fireEvent.click(screen.getByRole('button', { name: 'g' }));
+    fireEvent.click(screen.getByRole('button', { name: "CREA L'INGREDIENTE" }));
+    await waitFor(() => expect(props.onCrea).toHaveBeenCalledWith({
+      ingrediente: {
+        nome: 'Zenzero', unitaBase: 'g', area: 'ortofrutta', deperibile: true,
+        classeResiduo: 'porzionabile', formatoConfezione: predefinitiIngrediente('ortofrutta', 'g').formatoConfezione,
+        ean: EAN_ZENZERO,
+      },
+      quantita: 500,
+    }));
+  });
+
+  it('cambiare unità dopo una scansione e tornare su quella letta: il formato letto si riusa', async () => {
+    fetchMock.mockResolvedValueOnce(
+      rispostaJson({ trovato: true, nome: 'Acqua minerale', marca: '', quantita: { valore: 500, unita: 'ml' } }),
+    );
+    const props = propsBase();
+    render(<NuovoIngrediente {...props} />);
+    fireEvent.click(screen.getByRole('button', { name: 'ORTOFRUTTA' }));
+
+    await scansiona(EAN_ZENZERO);
+    expect(await screen.findByLabelText('Residuo di Zenzero')).toHaveValue('500');
+
+    fireEvent.click(screen.getByRole('button', { name: 'g' }));
+    // Torna su ml, l'unità con cui è stato letto: il formato letto (500) si riusa,
+    // non il default di ml (1000).
+    fireEvent.click(screen.getByRole('button', { name: 'ml' }));
+    fireEvent.click(screen.getByRole('button', { name: "CREA L'INGREDIENTE" }));
+    await waitFor(() => expect(props.onCrea).toHaveBeenCalledWith({
+      ingrediente: {
+        nome: 'Zenzero', unitaBase: 'ml', area: 'ortofrutta', deperibile: true,
+        classeResiduo: 'porzionabile', formatoConfezione: 500,
+        ean: EAN_ZENZERO,
+      },
+      quantita: 500,
     }));
   });
 

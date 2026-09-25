@@ -124,6 +124,26 @@ describe('ScansioneConfezione', () => {
     await waitFor(() => expect(props.onAggiungi).toHaveBeenCalledWith(450, EAN_IGNOTO_2));
   });
 
+  it('formato a mano fuori dai tetti (0 e 200000): AGGIUNGI resta spento, onAggiungi non chiamato', async () => {
+    fetchMock.mockResolvedValueOnce(rispostaJson({ trovato: false }));
+    const props = propsBase();
+    render(<ScansioneConfezione {...props} />);
+    await leggi(EAN_IGNOTO_2);
+
+    expect(await screen.findByText('Prodotto non trovato: puoi scrivere il formato a mano.')).toBeInTheDocument();
+    const aggiungi = screen.getByRole('button', { name: 'AGGIUNGI' });
+    const campo = screen.getByLabelText('Formato della confezione di Petto di pollo');
+
+    fireEvent.change(campo, { target: { value: '0' } });
+    expect(aggiungi).toBeDisabled();
+
+    fireEvent.change(campo, { target: { value: '200000' } });
+    expect(aggiungi).toBeDisabled();
+
+    fireEvent.click(aggiungi);
+    expect(props.onAggiungi).not.toHaveBeenCalled();
+  });
+
   it('unità diversa: "Unità diversa (ml contro g): scrivi il formato a mano."', async () => {
     fetchMock.mockResolvedValueOnce(
       rispostaJson({ trovato: true, nome: 'Brodo', marca: 'Star', quantita: { valore: 500, unita: 'ml' } }),

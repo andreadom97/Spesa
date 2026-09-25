@@ -50,6 +50,7 @@ export function NuovoIngrediente({ nomeIniziale, ingredienti, onCrea, onApri, on
   const [deperibileToccato, setDeperibileToccato] = useState(iniziali.deperibile !== null);
   const [quantita, setQuantita] = useState('');
   const [formatoLetto, setFormatoLetto] = useState<number | null>(null);
+  const [unitaLetta, setUnitaLetta] = useState<UnitaBase | null>(null);
   const [ean, setEan] = useState<string | null>(null);
   const [messaggioScan, setMessaggioScan] = useState<string | null>(null);
   const [altro, setAltro] = useState<Ingredient | null>(null);
@@ -82,6 +83,7 @@ export function NuovoIngrediente({ nomeIniziale, ingredienti, onCrea, onApri, on
       setQuantita(String(esito.quantita.valore));
       setUnita(esito.quantita.unita);
       setFormatoLetto(esito.quantita.valore);
+      setUnitaLetta(esito.quantita.unita);
     }
     setVista('modulo');
   }
@@ -106,8 +108,13 @@ export function NuovoIngrediente({ nomeIniziale, ingredienti, onCrea, onApri, on
         ingrediente: {
           nome: nome.trim(), unitaBase: unita, area, deperibile,
           classeResiduo: base.classeResiduo,
-          // Gli interi hanno formato 1 (list-builder): il formato letto vale per g e ml.
-          formatoConfezione: unita === 'pz' ? 1 : formatoLetto ?? base.formatoConfezione,
+          // Gli interi hanno formato 1 (list-builder). Il formato letto vale solo se
+          // l'unità scelta è ancora quella con cui è stato letto: se dopo la scansione
+          // si cambia unità (g letto, poi si sceglie ml), il numero letto non significa
+          // più niente in quell'unità — meglio il default del reparto che un dato
+          // silenziosamente sbagliato. Il codice `ean` resta comunque legato: è
+          // un'informazione sul prodotto, non sul formato.
+          formatoConfezione: unita === 'pz' ? 1 : unita === unitaLetta && formatoLetto !== null ? formatoLetto : base.formatoConfezione,
           ean,
         },
         quantita: q,
