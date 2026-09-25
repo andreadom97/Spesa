@@ -47,8 +47,10 @@ Le due inversioni della prima colonna — aree e semantici — sono la trappola 
 ## 3. Ogni componente, e dove vive
 
 L'anatomia, le misure e gli stati di ogni voce stanno in `DESIGN.md` §8, sotto lo stesso nome.
-Qui c'è solo il ponte verso il codice: 29 voci `###` in `DESIGN.md` §8, 20 file `.tsx` in
-`src/components/` [contati di nuovo il 23/09, a fase 3 finita].
+Qui c'è solo il ponte verso il codice: 34 voci `###` in `DESIGN.md` §8, 20 file `.tsx` in
+`src/components/` [contati di nuovo il 25/09, a fase 4 finita]. I componenti della Dispensa
+vivono accanto alla pagina, in `src/app/(app)/dispensa/`: dove la tabella scrive solo il nome
+del file, è lì.
 
 | Componente (`DESIGN.md` §8) | Dove vive nel codice | Stato |
 |---|---|---|
@@ -56,7 +58,7 @@ Qui c'è solo il ponte verso il codice: 29 voci `###` in `DESIGN.md` §8, 20 fil
 | Menù utente | dentro `Testata.tsx` | fatto nella fase 1 |
 | Tab bar | `src/components/TabBar.tsx`, dentro `Guscio.tsx` | fatta nella fase 1: due stati, nomi, Marchio come icona della Lista |
 | Marchio | `src/components/Marchio.tsx` (+ `marchio-context.tsx`) | 3 × 2, sei aree |
-| Dock | `src/components/Dock.tsx`, montato con `createPortal` nello slot di `dock-slot.tsx`, reso da `Guscio.tsx` | fatto nella fase 2; dalla fase 3 è una regione di nome «Azione principale» (tutti i Dock), e porta anche ESTRAI LA DIETA in Importa col PDF scelto. In Lista `HAI PRESO TUTTO` e i primari dei due stati vuoti; nel Piano la sola conferma — lo stato vuoto del Piano resta una scheda con un link in linea, di proposito |
+| Dock | `src/components/Dock.tsx`, montato con `createPortal` nello slot di `dock-slot.tsx`, reso da `Guscio.tsx` | fatto nella fase 2; dalla fase 3 è una regione di nome «Azione principale» (tutti i Dock), e porta anche ESTRAI LA DIETA in Importa col PDF scelto. In Lista `HAI PRESO TUTTO` e i primari dei due stati vuoti; nel Piano la sola conferma — lo stato vuoto del Piano resta una scheda con un link in linea, di proposito. Dalla fase 4 anche **sciolto** (`<Dock sciolto>`, classe `.dock-sciolto`): nella Dispensa `DockDispensa.tsx` mette `Modifica con l'AI` e il tondo del microfono, senza contenitore bianco |
 | Tasti | nessun file: le tre basi sono copiate in otto punti | deriva dichiarata e accettata (§6) |
 | Pillole d'azione | `RigaControllo.tsx`, `Segmento.tsx` (variante pillola) | |
 | Segmento a blocco | `Segmento.tsx` (variante blocco) | |
@@ -68,12 +70,20 @@ Qui c'è solo il ponte verso il codice: 29 voci `###` in `DESIGN.md` §8, 20 fil
 | Striscia dei giorni | `src/components/StrisciaGiorni.tsx` | allineata nella fase 2: quattro stati negli `inset`, sette celle dello stesso ingombro, regge da 3 a 6 pasti fino a 360 px |
 | Pannello impostazioni · Riga di impostazione | — | **da fare**, fase 5: oggi le Impostazioni sono una schermata, non un pannello |
 | Matrice dei pasti | — | **da fare**, fase 5: sotto-schermata delle Impostazioni |
-| Tessera di dispensa | `src/app/(app)/dispensa/page.tsx` | la schermata c'è, la tinta d'area al 26% no: fase 4 |
-| Foglio del Dock della Dispensa | le tre vie esistono separate: `NotaDispensa.tsx` (nota e voce), `Scanner.tsx` (scansione), campi residuo nella pagina | **da fare**, fase 4: il foglio che le raccoglie |
-| Stato "Registro" | dentro `NotaDispensa.tsx` (dettatura) | l'animazione di livello non c'è: fase 4 |
+| Tessera di dispensa | `TesseraDispensa.tsx` | fatta nella fase 4: in casa con la tinta d'area al 26%, finita e mai comprata tratteggiate, una pillola di stato sola |
+| Tessera del lotto (dentro Tessera di dispensa) | `TesseraLotto.tsx` | fatta nella fase 4, nel widget Pronti |
+| Widget d'area (la Tessera widget di sezione della Dispensa) | `WidgetArea.tsx` | fatto nella fase 4: un widget per area più Pronti |
+| Caricamento a widget vuoti (§9 Caricamento, eccezione del 25/09) | `WidgetVuoti.tsx` (+ `.anim-luce-widget` in `globals.css`) | fatto nella fase 4: tre widget, luci in fase, dopo 8 s l'errore (il timer sta in `page.tsx`) |
+| Widget AI (Dispensa) · Onda di dettatura | `WidgetAI.tsx` + `useDettatura.ts` (+ `useAltezzaTastiera.ts`; `.onda-barra` e `.anim-luce-testo` in `globals.css`) | fatto nella fase 4; sostituisce il Foglio del Dock della Dispensa e `NotaDispensa.tsx`, cancellato |
+| Stato "Registro" | nessun file: `NotaDispensa.tsx` è stato cancellato nella fase 4 | la voce resta in `DESIGN.md` §8 senza codice; la dettatura della Dispensa usa l'Onda di dettatura |
+| Dettaglio di ingrediente | `DettaglioIngrediente.tsx` + `controlli.tsx` (Sì/No, campo con `SALVA`, tasti, blocchi); il lotto in `DettaglioLotto.tsx` | fatto nella fase 4 |
+| Riga di scadenza | `RigaScadenza.tsx` | fatta nella fase 4 |
+| Dialogo di conferma | `DialogoElimina.tsx`, dentro un `FoglioDalBasso` con `ruolo="alertdialog"` e `livello={2}` | fatto nella fase 4 |
+| Anteprima di scansione | `LettoreCodice.tsx` + `src/components/useLettoreCodici.ts` (la lettura, condivisa con `Scanner.tsx`); l'esito in `ScansioneConfezione.tsx` | fatta nella fase 4 |
+| Nuovo ingrediente | `NuovoIngrediente.tsx` | fatto nella fase 4; non è una voce di `DESIGN.md` §8, lo descrive la spec della fase 4 §C |
 | Tasto di scatto · Banda dei comandi · Striscia dei fogli presi | `src/app/(app)/importa/Camera.tsx` (+ `.scatto`, `.guida-angolo` in `globals.css`), «Rivedi i fogli presi» in `src/app/(app)/importa/FogliPresi.tsx` | fatti nella fase 3 |
 | Stato vuoto · Campo di testo · Scheda · Etichetta di sezione · Messaggi | sparsi nelle pagine, in stile inline; la modalità ricerca del Campo di testo vive in `src/app/(app)/piatti/ElencoPiatti.tsx` | scelta del progetto, non una deriva (§6, prima riga) |
-| Foglio dal basso | `src/components/FoglioAzioniPasto.tsx`, `src/app/(app)/importa/FogliPresi.tsx` | |
+| Foglio dal basso | `src/components/FoglioDalBasso.tsx` (con `TestataFoglio` e `TondoFoglio`); prima di lui, scritti a mano, `src/components/FoglioAzioniPasto.tsx` e `src/app/(app)/importa/FogliPresi.tsx` | componente dalla fase 4: i quattro fogli della Dispensa; gli altri due non sono stati migrati |
 | Porta | `src/components/Porta.tsx` | nata nello stato vuoto di Piatti, condivisa dalla fase 3 con Importa. Non è una voce di `DESIGN.md` §8 |
 
 Fuori dal sistema, perché è infrastruttura e non disegno: `Guscio.tsx` (il guscio comune della
@@ -139,14 +149,16 @@ nuovo nasce già sulla scala.
 
 ## 9. Cosa il codice non ha ancora
 
-Il conto aperto verso `DESIGN.md` v3, al 23/09/2026.
+Il conto aperto verso `DESIGN.md` v3, al 25/09/2026.
 
 - **La fase 2 (Lista e Piano) è chiusa** il 22/09 (PR #4). Le decisioni prese durante
   l'esecuzione, con il costo di ognuna, stanno in `docs/2026-09-22-fase2-decisioni-esecuzione.md`.
 - **La fase 3 (Piatti e fotocamera) è chiusa con la PR del ramo `redesign/piatti-fotocamera`**.
-- **Le schermate non ancora ridisegnate**: Dispensa, Impostazioni a pannello.
-- **55 token dichiarati nel design e assenti dal codice** [misurato il 23/09 col guardiano, a
-  fase 3 finita: `tokens.css` ne dichiara 115, `src/app/globals.css` ne ha 62, 60 in comune, 0
+- **La fase 4 (Dispensa) è chiusa con la PR del ramo `redesign/dispensa`**. Le decisioni prese
+  durante l'esecuzione stanno in `docs/2026-09-25-fase4-decisioni-esecuzione.md`.
+- **La schermata non ancora ridisegnata**: Impostazioni a pannello (fase 5).
+- **55 token dichiarati nel design e assenti dal codice** [misurato il 25/09 con le funzioni del guardiano, a
+  fase 4 finita, e invariato dal 23/09: `tokens.css` ne dichiara 115, `src/app/globals.css` ne ha 62, 60 in comune, 0
   divergenti; prima della fase 3 erano 54 nel codice e 52 in comune, il 21/09 48 e 45]. Sono soprattutto la scala tipografica
   (`--testo-*`), le spaziature (`--spazio-*`), i raggi (`--raggio-*`) e il moto. Del Dock ne
   restano solo due, `--dock-altezza` e `--dock-pillola`: gli altri sono entrati con la fase 2.
