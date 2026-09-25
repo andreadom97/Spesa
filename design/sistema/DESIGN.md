@@ -302,9 +302,10 @@ righe e le tessere.
   `SCANSIONA UNA CONFEZIONE` / `SCANSIONA LA CONFEZIONE`.
 La **matita** del Dock della Dispensa esce di scena: il Dock ora porta l'icona AI.
 
-**Le forme piene ammesse:** la casetta della riga pasto, il kebab a tre punti, e **le quattro
-icone della tab bar**, che dal 19/09 sono piene: a 26 px, appoggiate su bianco e in mezzo a
-quattro nomi, il tratto si perdeva. La regola "solo tratto" vale ancora fuori dalla tab bar.
+**Le forme piene ammesse:** la casetta della riga pasto, il kebab a tre punti, **l'icona AI**
+(dal 25/09), e **le quattro icone della tab bar**, che dal 19/09 sono piene: a 26 px, appoggiate
+su bianco e in mezzo a quattro nomi, il tratto si perdeva. La regola "solo tratto" vale ancora
+fuori dalla tab bar.
 
 **Mai emoji**, in nessun punto dell'interfaccia. Nessuna illustrazione, nessuna foto, nessun
 avatar — l'iniziale del Menù utente è testo, non un avatar.
