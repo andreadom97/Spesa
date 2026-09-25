@@ -1,6 +1,7 @@
 # Fase 5 del redesign: le Impostazioni — design
 
-**Data:** 25/09/2026 · **Stato:** approvata da Andrea il 25/09 · **Base:** `main` `957674c`,
+**Data:** 25/09/2026 · **Stato:** approvata da Andrea il 25/09, aggiornata il 26/09 con le
+decisioni 17–20 e con quanto il piano ha misurato · **Base:** `main` `957674c`,
 `design/sistema/DESIGN.md` v3, i file in `design/ridisegno/impostazioni/` (scaricati il 25/09
 dal progetto Claude Design `5f1a24e3-…`):
 - `Impostazioni - pannello completo.dc.html`, frame 00–27. È la fonte principale. Il download si
@@ -56,6 +57,23 @@ Di Andrea, 25/09, dopo il disegno:
     Piano», «l'ordine delle aree», «Controlla la connessione e tocca RIPROVA.».
 15. Il «finito» della Dispensa resta a due tocchi. Il punto è chiuso.
 16. Nell'animazione d'avvio il Marchio atterra sull'icona della voce Lista nella tab bar (§J).
+
+Di Andrea, 26/09, sulle domande del piano:
+17. **D1.** Cancella la dispensa riporta a pasti normali quelli «dai pronti» di oggi e dei giorni
+    dopo (`data >= current_date`). I pasti passati restano come sono (§E.2).
+18. **D2.** Cancella la dispensa azzera anche `shopping_list_item.residuo` nelle liste delle
+    settimane non chiuse, così la chiusura della spesa non fa risorgere la dispensa (§E.2).
+19. **D3.** Esci esce da questo telefono e basta: `signOut({ scope: 'local' })`. `esci()` lancia
+    solo se dopo l'errore la sessione c'è ancora (§E.4). Confermato anche D4: se la condivisione
+    del file fallisce per un motivo diverso dall'annullo, il file si scarica (§E.3).
+20. **I testi del disegno sono accettati**: le note delle righe Pasti a casa, Cadenza, Ordine
+    delle aree e Cancella; il riepilogo della matrice con le sue varianti; `OGNI QUANTO TI
+    CHIEDO`; `CODICE DELLA CASA`; `Apri {nome}`; `Togli {email} dalla casa`; l'aria del campo
+    `PERS`. **I due testi di oggi che dicevano «90 giorni» dicono la cadenza scelta**: la nota
+    della classe «a stima» nell'editor dell'ingrediente e la frase di Lista fatta (§I).
+
+Le scelte del controller del piano (26/09) che cambiano questa spec sono segnate nei paragrafi
+che toccano: §A.3, §D, §F, §F.1, §H, §I, §N.
 
 Le etichette **[misurato]** e **[ipotesi]** valgono come sempre. «Misurato» qui vuol dire letto
 nel codice o nelle migrazioni il 25/09.
@@ -118,10 +136,18 @@ legge `impostazioni` da `window.location.search`. Non usa `useSearchParams`, cos
 `cima` e gli otto `SottoSchermata`. Un valore sconosciuto vale `cima`.
 
 **Cosa fa quando lo trova:**
-1. apre il pannello su quella sotto-schermata;
-2. toglie il parametro con `router.replace(pathname)`, senza scorrere;
+1. toglie il parametro con `window.history.replaceState(null, '', pathname)`, **prima** di
+   aprire;
+2. apre il pannello su quella sotto-schermata;
 3. ripristina lo scorrimento del corpo, se in `sessionStorage` c'è un'altezza salvata per quella
    sotto-schermata (`spesa:pannello-scroll:{sotto}`), e subito dopo la cancella.
+
+**Perché `replaceState` e non `router.replace`** (piano, 26/09). Aprendo, `useIndietroFogli`
+mette le sue voci di cronologia nello stesso giro di effetti. `router.replace` è una
+transizione: le voci nascerebbero sull'indirizzo col parametro, e un indietro lo ritroverebbe e
+riaprirebbe il pannello. Con `replaceState` le voci nascono sull'indirizzo pulito. Next 16
+accetta la History API nativa [misurato nella guida `04-linking-and-navigating.md`, «Native
+History API»]; il comportamento nel browser lo misura la sonda del Task 2 del piano (misura B).
 
 **Con il parametro, l'animazione non parte.** Il pannello compare aperto, senza la salita di
 §B.2. Il gesto di chi torna è la freccia della pagina che lascia, e la salita dal basso
@@ -529,9 +555,11 @@ Dopo Cancella la dispensa la nota non si azzera: legge solo `risparmio_settimana
 { titolo, testo, azione, tono: 'distruttivo' | 'primario', inVolo, errore, onAnnulla, onConferma }
 ```
 
-Vive dentro un `FoglioDalBasso` con `ruolo="alertdialog"`, `livello={2}`,
-`altezza="contenuto"` e `chiudiDalVelo={false}`, come oggi [misurato]. `DialogoElimina` della
-Dispensa diventa un suo uso.
+Vive dentro un `FoglioDalBasso` con `ruolo="alertdialog"`, `altezza="contenuto"` e
+`chiudiDalVelo={false}`, come oggi [misurato]; `livello={2}` sopra un foglio o una pagina,
+`livello={3}` (z 80) sopra il pannello, che sta a 70. Non si avvolge da sé: il foglio lo mette
+chi lo usa (il pannello, per i suoi dialoghi). `DialogoElimina` della Dispensa diventa un suo
+uso.
 
 **Com'è fatto:**
 - titolo 21/800, testo 14/1,5 in `--testo-2`;
@@ -576,43 +604,74 @@ alter table settings
 
 La RLS di `settings` è già quella della casa (`settings_casa`) e non cambia [misurato].
 
-Nel tipo `Impostazioni` (`src/domain/types.ts`) entra `giorniControllo: 30 | 60 | 90`.
+Nel tipo `Impostazioni` (`src/domain/types.ts`) entra `giorniControllo: GiorniControllo`, col
+tipo `GiorniControllo = 30 | 60 | 90` definito lì e riesportato da `pantry.ts`.
 `leggiImpostazioni` lo legge (default 90); `salvaImpostazioni` lo scrive e lo valida.
 
 **Il dominio.**
-- `GIORNI_CONTROLLO_STAPLE` resta come **default**: `GIORNI_CONTROLLO_DEFAULT = 90`.
+- `GIORNI_CONTROLLO_STAPLE` diventa il **default**, `GIORNI_CONTROLLO_DEFAULT = 90`, e il nome
+  vecchio sparisce (piano, Task 3: lo usano solo quattro file, che cambiano tutti).
 - `serveControllo` prende `giorniControllo` nell'input
   (`{ ultimoAcquisto, ultimoCheck, oggi, giorniControllo }`).
 - `costruisciLista` lo passa da `impostazioni.giorniControllo` (regola 7,
   `src/domain/list-builder.ts:180-192` [misurato]).
 - Nessun'altra regola cambia.
 
-**[ipotesi]** La lista si ricalcola a ogni lettura dal dominio, non si congela alla creazione.
-Se è vero, il cambio si vede alla prossima apertura della Lista; se no, alla prossima lista
-creata. Il piano lo verifica, e il testo di §C.6 («vale dalla prossima lista») regge in entrambi
-i casi.
+**La lista si congela alla conferma del Piano** [misurato il 25/09 dal piano, `src/data/lista.ts`
+e `piano/page.tsx`]: l'ipotesi del 25/09, «si ricalcola a ogni lettura», era falsa. I controlli
+nascono solo in `generaListe`, che gira una volta per settimana, a `CONFERMA E CREA LA LISTA`;
+`leggiListe` rilegge le righe congelate, e `allineaTopUp` non aggiunge controlli. Quindi:
+- **la cadenza vale dalla lista della prossima settimana confermata**; quella già creata non
+  cambia. Il testo di §C.6 («vale dalla prossima lista costruita») è vero alla lettera;
+- **l'etichetta segue subito l'impostazione**: `CONTROLLO OGNI …` arriva da `leggiListe` con la
+  cadenza di adesso, mentre le righe già congelate sono state scelte con quella di prima. La
+  differenza dura al più fino alla prossima conferma. Congelarla chiederebbe una colonna in
+  `shopping_list`, e non vale una migrazione.
 
 **La Riga di controllo.** Oggi `RigaControllo` mostra `CONTROLLO OGNI 90 GIORNI`, preso dalla
 costante [misurato]. Diventa `CONTROLLO OGNI MESE`, `CONTROLLO OGNI 2 MESI` o `CONTROLLO OGNI 3
 MESI`, da una prop `giorniControllo` che la Lista passa dalle impostazioni. La funzione pura
 `testoCadenza(giorni)` sta in `src/domain/pantry.ts` e serve anche al valore della riga nel
-pannello.
+pannello. Accanto a lei `ogniCadenza` e `fraCadenza` rendono la cadenza nei due testi che oggi
+dicono «90 giorni» (decisione 20, §I).
 
 ### E.2 Cancella la dispensa
 
 **Cosa vuol dire** [misurato sulle tabelle]: «cosa c'è in casa» sta in `pantry_state`, che tiene
 residuo, date, `congelato` e `scadenza_manuale`, e in `porzione_pronta`, che tiene i lotti dei
-Pronti. Nessun'altra tabella tiene la dispensa. `purchase` è lo storico, e resta.
+Pronti. **`shopping_list_item.residuo` ne tiene una copia congelata** alla creazione della lista
+[misurato dal piano il 25/09]: `chiudiSpesa` la riscrive in `pantry_state` alla chiusura della
+spesa. `purchase` è lo storico, e resta.
 
 **Una funzione SQL** nella stessa migrazione 0015:
 
 ```sql
-create function cancella_dispensa() returns void
+create function public.cancella_dispensa() returns void
 language plpgsql security invoker set search_path = public as $$
+declare
+  casa uuid := public.casa_id();
 begin
-  delete from porzione_pronta where user_id = casa_id();
-  delete from pantry_state   where user_id = casa_id();
+  if casa is null then
+    raise exception 'non autenticato';
+  end if;
+
+  -- (D1) i pasti di oggi e dei giorni dopo «dai pronti» tornano normali
+  update meal_slot set da_pronti = false
+   where user_id = casa and da_pronti and data >= current_date;
+
+  -- (D2) le liste non chiuse perdono il residuo congelato
+  update shopping_list_item set residuo = 0
+   where user_id = casa and residuo <> 0
+     and shopping_list_id in (
+       select sl.id from shopping_list sl join week w on w.id = sl.week_id
+        where sl.user_id = casa and w.stato <> 'chiusa');
+
+  delete from porzione_pronta where user_id = casa;
+  delete from pantry_state   where user_id = casa;
 end $$;
+
+revoke execute on function public.cancella_dispensa() from public, anon;
+grant execute on function public.cancella_dispensa() to authenticated;
 ```
 
 - È `security invoker`: valgono le policy di casa già in vigore, e un membro cancella la
@@ -623,15 +682,24 @@ end $$;
   vuoto.
 - Il wrapper è `cancellaDispensa()` in `src/data/dispensa.ts`.
 
-**[ipotesi, da chiudere nel piano con la review di correttezza]** Cosa succede ai `meal_slot`
-con `da_pronti = true` o `porzioni_preparate > 0` quando il lotto non c'è più. Vale questa
-invariante:
-- dopo la cancellazione, nessun pasto del piano dipende da un lotto che non esiste;
-- un pasto «dai pronti» torna un pasto normale;
-- i piatti e le scelte del piano restano.
+**Perché i due `update`** [misurato dal piano il 25/09, Task 4; decisioni 17 e 18]:
+- **D1.** `da_pronti = true` vuol dire «la porzione è già stata presa dal lotto», e il pasto non
+  ricorda da quale. Senza l'`update`, un pasto di oggi o dei giorni dopo resterebbe «dai pronti»
+  senza porzione: la lista non lo comprerebbe, e spegnerlo dal Piano creerebbe un lotto
+  fantasma. Il filtro è la data e non lo stato della settimana: una settimana `chiusa` (spesa
+  fatta) ha spesso giorni ancora davanti. I pasti passati sono porzioni già mangiate, e
+  toccarli falserebbe il ledger degli storni. Così regge l'invariante: dopo la cancellazione
+  nessun pasto del piano dipende da un lotto che non esiste, e i piatti e le scelte restano;
+- **D2.** `chiudiSpesa` riscrive il residuo di `pantry_state` da quello congelato in
+  `shopping_list_item`: senza l'azzeramento, la dispensa appena cancellata risorgerebbe alla
+  chiusura della spesa per gli ingredienti della lista aperta. Le settimane `chiusa` non si
+  toccano: la loro chiusura è già avvenuta;
+- `porzioni_preparate` non si tocca: è il piano («cucina N in più»), e il piano resta.
+- **[ipotesi]** `current_date` è il giorno UTC dell'app solo se il database gira in UTC, il
+  default di Supabase: si controlla con `show timezone;` quando si applica la migrazione.
 
-Se per reggerla serve aggiornare `meal_slot` nella stessa funzione, si aggiorna lì. Il piano
-deve leggere `src/data/settimana.ts:383-423` e il dominio dei Pronti prima di scrivere la SQL.
+I limiti che restano (una cottura pianificata che perde il suo lotto, la lista aperta calcolata
+sul residuo di prima) stanno nel registro dell'esecuzione e, a fine fase, in §L.
 
 **Dopo il successo**, la Dispensa aperta sotto il pannello si rilegge. Il pannello pubblica un
 evento `spesa:dispensa-cambiata` sul `window`, e la pagina Dispensa lo ascolta. Il risparmio non
@@ -660,9 +728,13 @@ Il file si chiama `dispesa-{gg-mm-aaaa}.json` e ha questa forma:
 **Da dove vengono i dati:**
 - `leggiImpostazioni`, `leggiSlotDefs`, `leggiIngredienti`, `leggiRepertorio`, `leggiDispensa`
   [misurato, tutte lato client];
-- una funzione nuova, `leggiTutteLeSettimane()` in `src/data/settimana.ts`, che legge `week` e
-  `meal_slot` della casa in due query, perché oggi si leggono solo per `weekId`;
-- una lettura dei pronti, se oggi non c'è una funzione che li restituisce grezzi.
+- una funzione nuova, `leggiTutteLeSettimane()` in `src/data/settimana.ts`, perché oggi si
+  leggono solo per `weekId`. Legge `week` in una query e `meal_slot` **a pagine** (`range()`),
+  finché una pagina torna vuota: PostgREST taglia ogni risposta a un massimo di righe (1000 di
+  default **[ipotesi: il valore di questo progetto non è misurato]**), e con sei pasti al giorno
+  1000 righe sono 24 settimane. Una query secca darebbe un file troncato in silenzio;
+- i Pronti con `leggiPronti()` di oggi, che restituisce tutti i lotti, decaduti compresi
+  [misurato dal piano il 25/09]: nessuna funzione nuova.
 
 **La composizione** è una funzione pura, `componiEsportazione(...)`, in
 `src/domain/esporta.ts`, e si testa senza rete.
@@ -673,7 +745,9 @@ Il file si chiama `dispesa-{gg-mm-aaaa}.json` e ha questa forma:
 - se no, fa un download: `URL.createObjectURL` e un `<a download>` cliccato da codice, poi
   `revokeObjectURL`;
 - se l'utente annulla la condivisione (`AbortError`), non è un errore e il tasto resta
-  `SALVA IL FILE`.
+  `SALVA IL FILE`;
+- se la condivisione fallisce per un altro motivo, il file si scarica (D4, confermato da Andrea
+  il 26/09).
 
 **Resta fuori:** l'import del file esportato. Non c'è in questa fase, e il testo non lo promette.
 
@@ -681,7 +755,13 @@ Il file si chiama `dispesa-{gg-mm-aaaa}.json` e ha questa forma:
 
 **Il logout, che oggi non esiste** (`signOut` non compare nel repo [misurato]). Alla conferma del
 dialogo:
-1. `client().auth.signOut()`. Se fallisce, il dialogo resta aperto con l'errore.
+1. `client().auth.signOut({ scope: 'local' })` (decisione 19): esce da questo telefono, non
+   dagli altri dispositivi dell'account (il default di auth-js è `global`). **`esci()` lancia
+   solo se dopo l'errore la sessione c'è ancora**: `signOut` di auth-js 2.112.4 cancella la
+   sessione locale anche quando la chiamata al server fallisce, e poi restituisce l'errore
+   [misurato dal piano il 25/09 in `GoTrueClient._signOut`]. Se la sessione c'è ancora, il
+   dialogo resta aperto con l'errore, senza pulizia; se non c'è più, l'uscita è avvenuta e si
+   va avanti come se fosse andata liscia.
 2. `cancellaIstantaneaLista()` e `svuotaCoda()`, come fanno già `entraInCasa` ed `esciDallaCasa`
    [misurato]: su questo telefono non resta la lista di un account che non c'è più.
    **[ipotesi]** Se ci sono spunte in coda non ancora mandate, si perdono. Oggi succede lo
@@ -719,7 +799,9 @@ valgono per entrambi gli ingressi.** Cambia solo il ritorno, che dipende da `tor
 - `Prezzo di una confezione`, facoltativo, dopo Fresco;
 - `ELIMINA`, in coda, col suo dialogo di oggi reso con `DialogoConferma`.
 
-**`SALVA` sta nel Dock.** Con la barra nascosta il Dock va a `bottom 22`.
+**`SALVA` sta nel Dock**, e il tasto dice `SALVA`, come nel frame 12 e nel log §4.5 [misurato
+sul disegno]; oggi dice `SALVA INGREDIENTE` (confermato dal controller il 26/09). Con la barra
+nascosta il Dock va a `bottom 22`.
 - È spento finché niente cambia; in volo mostra `SALVATAGGIO…` a 0,5.
 - L'errore compare sopra il Dock.
 - `ANNULLA` si toglie: la freccia fa quel lavoro.
@@ -736,9 +818,11 @@ come già fanno ANNULLA e SALVA.
 ### F.1 Scansione nell'editor
 
 **Il tasto** `SCANSIONA LA CONFEZIONE` è un secondario da 54, sempre visibile. Apre la vista di
-lettura della fase 4, `Scanner` (`src/components/Scanner.tsx`), col campo per digitare il codice
-[misurato], in un `FoglioDalBasso` sopra l'editor. Il foglio ha profondità 1 per
-`useIndietroFogli`.
+lettura della fase 4, **`LettoreCodice`** (`src/app/(app)/dispensa/LettoreCodice.tsx`), col campo
+per digitare il codice [misurato], in un `FoglioDalBasso` con `TestataFoglio` sopra l'editor. Il
+foglio ha profondità 1 per `useIndietroFogli`. Fino al 26/09 qui c'era `Scanner`
+(`src/components/Scanner.tsx`): è il componente di `/lista/confezioni` della fase 2, non la
+vista della fase 4, e ha un `ANNULLA` alto 40 (scelta del controller del 26/09).
 
 **Letto il codice:**
 1. chiede il formato a `/api/prodotto/[ean]`, come fa la fase 4 in Nuovo ingrediente;
@@ -848,8 +932,10 @@ L'`aria-label` del giorno resta col numero di pasti a casa.
 
 **[misurato sul disegno]** A 360 ogni giorno è largo 44,3 e la griglia occupa 21: 3 × 5 + 2 × 3.
 
-**Il giorno** mostra le sue Righe pasto (68, gap 8), fino a sei. I pasti fuori casa restano senza
-apertura né kebab, come oggi. La coda sotto il Dock è 194.
+**Il giorno** mostra le sue Righe pasto (68, gap 9 come nel codice di oggi [misurato:
+`piano/page.tsx:573`]; il disegno diceva 8, e resta 9 per scelta del controller del 26/09), fino
+a sei. I pasti fuori casa restano senza apertura né kebab, come oggi. La coda sotto il Dock è
+194.
 
 **DESIGN.md §4.** 360 entra nel mandato per le schermate coi pasti: matrice, striscia, giorno
 del Piano. Il paragrafo sul gap 2 si riscrive.
@@ -862,42 +948,48 @@ del Piano. Il paragrafo sul gap 2 si riscrive.
 
 | Dove | Oggi | Dopo |
 |---|---|---|
-| Menù utente, `aria-label` | `Impostazioni` | `{Nome}: profilo e impostazioni` |
+| Menù utente, `aria-label` | `Impostazioni` | `{Nome}: profilo e impostazioni`; prima che il nome sia letto, `Profilo e impostazioni` (scelta del controller del 26/09) |
 | Pannello, X | — | `Chiudi le impostazioni` |
 | Sotto-schermata, freccia | — | `Torna alle impostazioni` |
 | Tessere | — | §B.3 |
 | Separatore | — | `SI CAMBIANO DI RADO` |
 | Titoli dei blocchi | `I TUOI PASTI` · `ROTAZIONE DEL PIANO` · `REPERTORIO` · `CASA` · `SUPERMERCATO` · `DIETA DEL NUTRIZIONISTA` | `La settimana di base` · `Come calcolo la lista` · `Come la vedi in corsia` · `I tuoi dati` · `Account` |
-| Riga Pasti a casa | — | `Pasti a casa` · `{N} FUORI CASA` / `NESSUNO FUORI CASA` |
+| Riga Pasti a casa | — | `Pasti a casa` · `Il default con cui nasce ogni settimana nuova.` · `{N} FUORI CASA` / `NESSUNO FUORI CASA` (nota dal disegno, decisione 20) |
 | Riga Gestione | — | `Gestione dei pasti` · `Quanti pasti fai al giorno e come si chiamano.` · `{N} PASTI` |
 | Riga Rotazione | — | `Rotazione del piano` · `Se il tuo piano si ripete a blocchi di settimane.` · `NESSUNA` / `{N} SETT.` |
 | Riga Ingredienti | `Ingredienti` · `AREA, CONFEZIONE, COME SI CONSUMA` | `Ingredienti` · `Area, confezione e come si consuma.` |
-| Riga Ordine | `Ordine dei reparti` | `Ordine delle aree` · `PERSONALIZZATO` / `DI BASE` |
-| Riga Cadenza | — | `Cadenza dei controlli` · `OGNI MESE` / `OGNI 2 MESI` / `OGNI 3 MESI` |
+| Riga Ordine | `Ordine dei reparti` | `Ordine delle aree` · `L'ordine in cui compaiono in Lista: mettilo come gira il tuo supermercato.` · `PERSONALIZZATO` / `DI BASE` (nota dal disegno, decisione 20) |
+| Riga Cadenza | — | `Cadenza dei controlli` · `Ogni quanto ti chiedo se hai ancora olio, sale, farina.` · `OGNI MESE` / `OGNI 2 MESI` / `OGNI 3 MESI` (nota dal disegno, decisione 20) |
 | Riga Esci | — | `Esci` · `Per rientrare ti serve il link che ti mandiamo via email.` |
-| Riga Cancella | — | `Cancella la dispensa`; dopo: `Cancellata il {gg/mm} alle {hh:mm}.` |
+| Riga Cancella | — | `Cancella la dispensa` · `Svuota quello che hai in casa. I piatti e il piano restano.`; dopo: `Cancellata il {gg/mm} alle {hh:mm}.` fino alla chiusura del pannello (nota dal disegno, decisione 20) |
 | Piede | — | `Versione {x}` |
 | Matrice, nota | `Acceso vuole dire a casa. …` (DESIGN.md) | `La casetta vuol dire che quel pasto lo fai a casa. Ogni settimana nuova nasce così: nel Piano puoi correggere il singolo giorno senza cambiare questo default.` |
 | Matrice, cella fuori | — | `{Giorno} {pasto}: di base fuori casa, tocca per mettere a casa` |
+| Matrice, riepilogo | — | `Di base sei a casa per {a} pasti su {t}. La Lista conta solo quelli: i {f} fuori casa non entrano nella spesa.`; a zero fuori casa `Di base sei a casa per tutti i {t} pasti.`; a uno fuori casa la seconda frase è `La Lista conta solo quelli: l'unico fuori casa non entra nella spesa.`; a un pasto a casa la prima è `Di base sei a casa per 1 pasto su {t}.` (disegno e varianti del piano, decisione 20) |
 | Gestione, limiti | — | `Tre pasti sono il minimo.` · `Sei pasti sono il massimo.` |
 | Gestione, nota | `… nella Settimana correggi solo le eccezioni …` | `… nel Piano correggi solo le eccezioni …` |
 | Rotazione, contatore | `ORA SEI ALLA {k} DI {n}` | `SETTIMANA {k} DI {n}` |
 | Rotazione, riparti | `RIPARTI DALLA SETTIMANA 1` → `SICURO? RIPARTI DA LUNEDÌ` | `RIPARTI DALLA SETTIMANA 1` → dialogo `riparti` (§D) |
-| Porzioni | stepper, `Diminuisci porzioni` / `Aumenta porzioni` | campo `PERS`; errore `Scrivi un numero da 1 a 4.` |
+| Porzioni | stepper, `Diminuisci porzioni` / `Aumenta porzioni` | campo `PERS`, `aria-label="Per quante persone cucini, da 1 a 4"` (dal disegno, decisione 20); errore `Scrivi un numero da 1 a 4.` |
+| Cadenza, etichetta | — | `OGNI QUANTO TI CHIEDO` (dal disegno, decisione 20) |
 | Cadenza, nota | — | `Ogni quanto ti chiedo se hai ancora olio, sale, farina. La domanda compare in Lista, nell'area del prodotto.` |
 | Riga di controllo (Lista) | `CONTROLLO OGNI 90 GIORNI` | `CONTROLLO OGNI MESE` / `… OGNI 2 MESI` / `… OGNI 3 MESI` |
+| Lista fatta, `CHIUDENDO LA SPESA` | `… Serve solo a ricordarti fra 90 giorni che l’olio sta per finire: …` | `… fra un mese …` / `… fra 2 mesi …` / `… fra 3 mesi …`, con la cadenza scelta; il resto della frase non cambia (decisione 20) |
+| Editor ingrediente, spiegazione «a stima» | `Non vale la pena contarlo a grammi. Ogni 90 giorni dall’ultimo acquisto la lista ti chiede se ne hai ancora.` | `Non vale la pena contarlo a grammi. Ogni mese / Ogni 2 mesi / Ogni 3 mesi dall’ultimo acquisto la lista ti chiede se ne hai ancora.`, con la cadenza scelta (decisione 20) |
 | Ordine, errore di caricamento | `Non riusciamo a caricare l'ordine dei reparti. Riprova più tardi.` | `Non riusciamo a caricare l'ordine delle aree. Riprova più tardi.` |
 | Ordine, anteprima | `ANTEPRIMA DELLA LISTA` / `DALL'ALTO IN BASSO` | tolta |
 | Impostazioni, errore di caricamento | `Non riusciamo a caricare le impostazioni. Riprova più tardi.` | `Non riusciamo a caricare le impostazioni. Controlla la connessione e tocca RIPROVA.` + `RIPROVA` |
 | Casa, proprietario | `TOGLI` → `SICURO?` | `TOGLI` → dialogo `togli`; tu per primo con `TU` |
 | Casa, membro | `ESCI DALLA CASA` → `SICURO?` | `ESCI DALLA CASA` → dialogo `esci-casa` |
-| Casa, codice | `aria-label` `Codice della casa` | `Codice della casa: {lettere separate}`; `COPIA` / `COPIATO`; `Non siamo riusciti a copiarlo. Dettalo a voce.` |
+| Casa, codice | `aria-label` `Codice della casa` | etichetta `CODICE DELLA CASA` sopra il riquadro (dal disegno, decisione 20); `Codice della casa: {lettere separate}`; `COPIA` / `COPIATO`; `Non siamo riusciti a copiarlo. Dettalo a voce.` |
+| Casa, proprietario, `TOGLI` | `aria-label` assente | `Togli {email} dalla casa` (dal disegno, decisione 20) |
+| Ingredienti, riga | — | `aria-label="Apri {nome}"` (dal disegno, decisione 20) |
 | Esporta | — | `Un file con i tuoi piatti, il piano e la dispensa, da tenere: serve se cambi telefono o vuoi una copia.` · `PREPARA IL FILE` · `PREPARO IL FILE…` · `Il file è pronto: dispesa-{gg-mm-aaaa}.json.` · `SALVA IL FILE` · `Non siamo riusciti a preparare il file. Riprova.` · `RIPROVA` |
 | Dialoghi | — | §D |
 | Importa, tessera | `Importa la dieta` · `DA FOTO O PDF, SOSTITUISCE IL PIANO ATTUALE` | `Importa un piano` · `Da PDF o foto. Sostituisce il piano attuale.` |
 | Testata indietro | freccia, `aria-label` `Indietro` | pillola `IMPOSTAZIONI` / `LISTA` / `PIANO`, `Torna alle impostazioni` / `alla lista` / `al piano` |
 | Editor ingrediente, freccia | `Indietro` verso `/piatti/{id}` | `Torna agli ingredienti` / `Torna al piatto` |
-| Editor ingrediente | `Deperibile` · `ANNULLA` | `Fresco` · via `ANNULLA` · `SCANSIONA LA CONFEZIONE` · `Non conosciamo questo prodotto: scrivi tu la confezione.` |
+| Editor ingrediente | `Deperibile` · `ANNULLA` · `SALVA INGREDIENTE` | `Fresco` · via `ANNULLA` · `SALVA` · `SCANSIONA LA CONFEZIONE` · `Non conosciamo questo prodotto: scrivi tu la confezione.` |
 | Tab bar | `Piatti` | tolta |
 
 ---
@@ -1013,7 +1105,8 @@ impostazione, Matrice, Tab bar, Testata, Dialogo di conferma e Marchio (avvio) v
   - `leggiImpostazioni` e `salvaImpostazioni` con `giorniControllo`;
   - `cancellaDispensa` chiama la RPC;
   - `leggiTutteLeSettimane`;
-  - `esci` (ordine: signOut → pulizia → navigazione; se signOut fallisce, niente pulizia).
+  - `esci` (ordine: signOut → pulizia → navigazione; `scope: 'local'`; se signOut fallisce e la
+    sessione resta, niente pulizia; se la sessione non c'è più, pulizia e navigazione).
 - **`useIndietroFogli` spostato:** i test della PR #7 migrano senza cambiare, più
   `chiudiTuttoPoi`.
 
@@ -1087,6 +1180,10 @@ misura:
 | Riparti spento | non disegnato | spento se l'origine è già il lunedì corrente | è il comportamento di oggi |
 | `COPIA` | proposto, non disegnato | pillola 44 nel riquadro del codice | decisione 13 |
 | Matrice a 360 | celle 44,1 | 44,6 | calcolo sul corpo reale del pannello (§C.1) |
+| Riparti, `{data}` del dialogo | il lunedì successivo («28 settembre» il 25/09, frame 10) | il lunedì corrente | è quello che la conferma scrive oggi (`cicloOrigine = lunedì corrente`); scelta del controller del 26/09 |
+| Piede fisso del pannello | padding `12 12 26` [misurato sul disegno, frame 13] | `12 16 26` (§B.1) | i 16 dai lati del Dock (§G.1), che il piede sostituisce dentro il pannello |
+| Righe pasto del Piano | gap 8 (log §6) | gap 9, come il codice di oggi | nessun task tocca `piano/page.tsx` per un pixel; scelta del controller del 26/09 (§H) |
+| Scansione nell'editor | «come nella Dispensa v2» (frame 12) | `LettoreCodice`, non `Scanner` | è la vista della fase 4; `Scanner` è della fase 2 e ha un tasto sotto 44 (§F.1) |
 
 ---
 
