@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/spesa-9a979e63-24f5-473a-b4d3-586aab67b530/tokens.css">
+<script src="_ds/spesa-9a979e63-24f5-473a-b4d3-586aab67b530/_ds_bundle.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#D8D7D4;-webkit-font-smoothing:antialiased}
+a{color:#14163A}
+a:hover{color:#3D4166}
+@keyframes livello{from{height:6px}to{height:26px}}
+@keyframes lucet{from{background-position:100% 0}to{background-position:0% 0}}
+@media (prefers-reduced-motion: reduce){[data-lucet]{animation:none !important;background:none !important;-webkit-text-fill-color:#14163A !important}}
+</style>
+</helmet>
+<section data-screen-label="00 Note" style="padding:60px 60px 48px;font-family:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;color:#14163A;display:flex;flex-direction:column;gap:20px;max-width:1180px">
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase">Dispensa · modifiche · v2 del 25/09</div>
+    <div style="font-size:32px;font-weight:800;letter-spacing:-.045em;line-height:1.05">Si tocca la tessera per correggere, si parla all'AI per il resto</div>
+    <p style="margin:0;font-size:14px;line-height:1.5;color:#3D4166;max-width:760px;text-wrap:pretty">Rifà <em>Dispensa - foglio del dock</em> (v1, resta nel progetto) con le correzioni di Andrea del 25/09. Il foglio a tre voci non c'è più: la correzione a mano parte dalla tessera, la nota diventa il widget di Modifica con l'AI, la scansione si sposta nel dettaglio dell'ingrediente. Il Tweak «cornice» porta i frame a 375 × 812.</p>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;align-items:start">
+    <div style="background:#fff;border:1px solid rgba(20,22,58,0.07);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:8px;font-size:12.5px;line-height:1.45;color:#5C5F7A">
+      <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A">Cosa cambia dalla v1</div>
+      <p style="margin:0"><strong style="color:#14163A">1 ·</strong> Il tocco sulla tessera apre il dettaglio dell'ingrediente. Niente più voce A mano.</p>
+      <p style="margin:0"><strong style="color:#14163A">2 ·</strong> Il Dock dice <em>Modifica con l'AI</em> (era Fai una modifica), col microfono accanto.</p>
+      <p style="margin:0"><strong style="color:#14163A">3 ·</strong> La ricerca sta in pagina, sotto la testata, e filtra i widget. Niente elenco a righe.</p>
+      <p style="margin:0"><strong style="color:#14163A">4 ·</strong> Senza risultati la ricerca offre <em>Crea «…»</em>, scorciatoia per aggiungere l'ingrediente.</p>
+      <p style="margin:0"><strong style="color:#14163A">5 ·</strong> Nel dettaglio: la scorciatoia allo scanner per riconoscere la confezione, e la scadenza di ogni confezione correggibile a mano. La stima del sistema resta il default e si ripristina.</p>
+      <p style="margin:0"><strong style="color:#14163A">6 ·</strong> Nota e dettatura sono un widget che si apre sopra la pagina: tastiera → campo libero; microfono tenuto premuto → onda che si muove e testo dettato.</p>
+      <p style="margin:0"><strong style="color:#14163A">7 ·</strong> <em>Fai le modifiche</em> (era Correggi) manda la nota; mentre l'AI lavora una luce passa sul testo da sinistra a destra.</p>
+      <p style="margin:0"><strong style="color:#14163A">8 ·</strong> Il caricamento mostra i widget vuoti attraversati dalla stessa luce.</p>
+      <p style="margin:0"><strong style="color:#14163A">9 ·</strong> I Pronti diventano un widget in pagina; il dettaglio del lotto e il suo dialogo restano quelli di v1 06 / 06b.</p>
+    </div>
+    <div style="background:#fff;border:1px solid rgba(20,22,58,0.07);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:8px;font-size:12.5px;line-height:1.45;color:#5C5F7A">
+      <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A">Da confermare</div>
+      <p style="margin:0"><strong style="color:#14163A">L'interruttore in casa / finito.</strong> Col tocco che apre il dettaglio, la tessera non segna più «finito» in un gesto. L'interruttore è la prima riga del dettaglio (<a href="#g05">05</a>): due tocchi invece di uno. Se il gesto rapido serve, l'alternativa è tenerlo in una pillola della tessera, alta 44, e lasciare il resto della tessera al dettaglio.</p>
+      <p style="margin:0"><strong style="color:#14163A">Tenere premuto il microfono</strong> è un long-press, che §9 esclude. Lo tengo come eccezione chiesta, con un'alternativa: un tocco breve avvia, un secondo tocco ferma. Per chi usa lo screen reader l'aria-label dice «Registra un vocale», e il tocco breve è la via principale.</p>
+      <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">La scansione, cos'è</div>
+      <p style="margin:0">Legge il codice a barre di una confezione per dire quale confezione è: formato e stima della scadenza. Non riguarda la dieta. Ora parte dal dettaglio di un ingrediente, quindi l'ingrediente è già noto: un codice nuovo si lega a quello, senza scegliere da un elenco (sparisce v1 14).</p>
+    </div>
+    <div style="background:#fff;border:1px solid rgba(20,22,58,0.07);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:8px;font-size:12.5px;line-height:1.45;color:#5C5F7A">
+      <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A">Eccezioni dichiarate</div>
+      <p style="margin:0"><strong style="color:#14163A">La luce.</strong> Due animazioni nuove, fuori da §7: <code>lucev</code> sui widget vuoti (fascia bianca all'85% che attraversa, 1400 ms, in loop) e <code>lucet</code> sul testo della nota (sfumatura che passa da --ink a #B9AEF5 e #9CC7F2, due colori d'area usati come luce, 1600 ms, in loop). Il loop dura finché dura l'attesa. Con meno moto la luce non c'è: resta il testo fermo e la riga di stato.</p>
+      <p style="margin:0"><strong style="color:#14163A">Icona AI:</strong> due stelle a quattro punte piene, 18 px, in --ink. È un'icona nuova per il set di §6.</p>
+      <p style="margin:0"><strong style="color:#14163A">Widget AI:</strong> scheda bianca raggio 22 con --ombra-flottante, sopra la pagina e sotto il velo solo dove serve. È un contenitore nuovo, fra la scheda e il foglio dal basso.</p>
+      <p style="margin:0"><strong style="color:#14163A">Onda di dettatura:</strong> 22 barre, estensione del metro a quattro barre dello stato "Registro".</p>
+      <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Resta valido dalla v1</div>
+      <p style="margin:0">Salvataggio con SALVA · dialogo per eliminare il lotto · lotto Pronto (06, 06b) · errori della nota (11) · codice da digitare (13) · errore, vuoto, avvisi sulle tessere (17–19), col Dock rinominato.</p>
+    </div>
+  </div>
+</section>
+<section data-screen-label="Gruppo pagina" style="padding:0 60px 60px;font-family:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;color:#14163A;display:flex;flex-direction:column;gap:16px">
+  <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase">1 · La pagina: ricerca, Crea, caricamento</div>
+  <div style="display:flex;gap:40px;align-items:flex-start">
+
+    <div id="g01" style="display:flex;flex-direction:column;gap:12px;width:var(--tw,393px);flex:none">
+      <div style="display:flex;align-items:baseline;gap:8px"><span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.14em;color:#8A8A96">01</span><span style="font-size:15px;font-weight:700">La pagina, ricerca e Dock nuovi</span></div>
+      <div data-screen-label="01 Pagina" style="position:relative;width:var(--tw,393px);height:var(--th,852px);border-radius:26px;overflow:hidden;box-shadow:0 2px 4px rgba(20,22,58,.10),0 18px 40px rgba(20,22,58,.18);background:linear-gradient(180deg,#EDECEA 0%,#F2F1EF 34%,#F8F8F7 70%,#FCFCFB 100%)">
+        <dc-import name="Dispensa pagina v2" stato="tessere" dock="completo" hint-size="100%,100%" style="position:absolute;inset:0"></dc-import>
+      </div>
+      <div style="background:#fff;border:1px solid rgba(20,22,58,0.07);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:6px;font-size:12.5px;line-height:1.45;color:#5C5F7A">
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A">Misure</div>
+        <p style="margin:0">Campo di ricerca 44 sotto la testata, margine 4 / 16 / 14, raggio 14, --ombra-campo, lente 18. Segnaposto «Cerca in dispensa». Etichette dei widget senza contatore (tolto «N voci in casa»). Tessere come nel disegno approvato, ma ognuna è un tasto con aria-label «Apri {Nome}». Pronti in fondo: widget senza colore d'area, tessere su fondo 0,04. Dock: pillola 56 con l'icona AI e MODIFICA CON L'AI, tondo del microfono 56.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Componenti usati</div>
+        <p style="margin:0">Testata · Campo di testo in modalità ricerca · Tessera di dispensa · Tessera widget di sezione · Dock · Tab bar · COMPONENTE NUOVO icona AI.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Regole di DESIGN.md che tocca</div>
+        <p style="margin:0">§8 Tessera di dispensa (il tocco cambia significato) · §8 Dock · §6 icone.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Decisioni</div>
+        <p style="margin:0">Tocco = dettaglio. La ricerca scorre con la pagina, non resta fissa: la testata la tiene vicina.</p>
+      </div>
+    </div>
+
+    <div id="g02" style="display:flex;flex-direction:column;gap:12px;width:var(--tw,393px);flex:none">
+      <div style="display:flex;align-items:baseline;gap:8px"><span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.14em;color:#8A8A96">02</span><span style="font-size:15px;font-weight:700">Ricerca con risultati sui widget</span></div>
+      <div data-screen-label="02 Ricerca risultati" style="position:relative;width:var(--tw,393px);height:var(--th,852px);border-radius:26px;overflow:hidden;box-shadow:0 2px 4px rgba(20,22,58,.10),0 18px 40px rgba(20,22,58,.18);background:linear-gradient(180deg,#EDECEA 0%,#F2F1EF 34%,#F8F8F7 70%,#FCFCFB 100%)">
+        <dc-import name="Dispensa pagina v2" stato="ricerca" query="pa" dock="completo" hint-size="100%,100%" style="position:absolute;inset:0"></dc-import>
+      </div>
+      <div style="background:#fff;border:1px solid rgba(20,22,58,0.07);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:6px;font-size:12.5px;line-height:1.45;color:#5C5F7A">
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A">Misure</div>
+        <p style="margin:0">Campo col fuoco (bordo 1,5 --ink), X per svuotare in un bersaglio 40 dentro il campo 44. Sotto, il contatore mono 10 in --sec, <code>aria-live="polite"</code>. Restano solo i widget con risultati e, dentro, solo le tessere che corrispondono. I mai comprati compaiono solo qui: tessera tratteggiata come il finito, pillola MAI COMPRATO, nome in --testo-2 non barrato.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Componenti usati</div>
+        <p style="margin:0">Campo di ricerca · Tessera widget · Tessera di dispensa · COMPONENTE NUOVO variante «mai comprato» della tessera.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Regole di DESIGN.md che tocca</div>
+        <p style="margin:0">§11 lo stato lo dice la parola, non il solo tratteggio · §2.5 bordo tratteggiato 0,20.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Decisioni</div>
+        <p style="margin:0">Il filtro parte dal primo carattere. Il tocco su un mai comprato apre il suo dettaglio con residuo 0.</p>
+      </div>
+    </div>
+
+    <div id="g03" style="display:flex;flex-direction:column;gap:12px;width:var(--tw,393px);flex:none">
+      <div style="display:flex;align-items:baseline;gap:8px"><span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.14em;color:#8A8A96">03</span><span style="font-size:15px;font-weight:700">Nessun risultato: Crea l'ingrediente</span></div>
+      <div data-screen-label="03 Nessun risultato" style="position:relative;width:var(--tw,393px);height:var(--th,852px);border-radius:26px;overflow:hidden;box-shadow:0 2px 4px rgba(20,22,58,.10),0 18px 40px rgba(20,22,58,.18);background:linear-gradient(180deg,#EDECEA 0%,#F2F1EF 34%,#F8F8F7 70%,#FCFCFB 100%)">
+        <dc-import name="Dispensa pagina v2" stato="nessuno" query="zenzero" dock="completo" hint-size="100%,100%" style="position:absolute;inset:0"></dc-import>
+      </div>
+      <div style="background:#fff;border:1px solid rgba(20,22,58,0.07);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:6px;font-size:12.5px;line-height:1.45;color:#5C5F7A">
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A">Misure</div>
+        <p style="margin:0">Una scheda 22 al posto dei widget, padding 20, gap 14. Titolo 17 / 700 con la parola cercata fra caporali, testo 14 in --testo-2, poi CREA «ZENZERO» tasto primario 54 a tutta larghezza.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Componenti usati</div>
+        <p style="margin:0">Scheda · Tasto primario.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Regole di DESIGN.md che tocca</div>
+        <p style="margin:0">§9 un vuoto dice perché e cosa fare · §10 del tu.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Testi nuovi</div>
+        <p style="margin:0">Nessun ingrediente si chiama «{query}» · Crealo ora: entra fra gli ingredienti e da qui lo segni in casa. · CREA «{QUERY}».</p>
+      </div>
+    </div>
+
+    <div id="g04" style="display:flex;flex-direction:column;gap:12px;width:var(--tw,393px);flex:none">
+      <div style="display:flex;align-items:baseline;gap:8px"><span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.14em;color:#8A8A96">04</span><span style="font-size:15px;font-weight:700">Crea: il nuovo ingrediente</span></div>
+      <div data-screen-label="04 Nuovo ingrediente" style="position:relative;width:var(--tw,393px);height:var(--th,852px);border-radius:26px;overflow:hidden;box-shadow:0 2px 4px rgba(20,22,58,.10),0 18px 40px rgba(20,22,58,.18);background:linear-gradient(180deg,#EDECEA 0%,#F2F1EF 34%,#F8F8F7 70%,#FCFCFB 100%)">
+        <dc-import name="Dispensa pagina v2" stato="nessuno" query="zenzero" dock="completo" hint-size="100%,100%" style="position:absolute;inset:0"></dc-import>
+        <div aria-hidden="true" style="position:absolute;inset:0;background:rgba(20,22,58,0.35)"></div>
+        <div role="dialog" aria-label="Nuovo ingrediente" style="position:absolute;left:0;right:0;bottom:0;top:88px;background:#fff;border-radius:22px 22px 0 0;padding:16px 16px 26px;display:flex;flex-direction:column;gap:18px;overflow:hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;padding-left:4px">Nuovo ingrediente</span>
+            <button type="button" aria-label="Chiudi senza creare" style="width:44px;height:44px;flex:none;border:0;border-radius:999px;background:rgba(20,22,58,.04);display:flex;align-items:center;justify-content:center;padding:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="#14163A" stroke-width="2.1" stroke-linecap="round"></path></svg></button>
+          </div>
+          <h2 style="margin:0;padding:0 4px;font-size:32px;font-weight:800;letter-spacing:-.045em;line-height:1.05">Zenzero</h2>
+          <div style="display:flex;flex-direction:column;gap:8px;padding:0 4px">
+            <span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase">Reparto</span>
+            <div style="display:flex;flex-wrap:wrap;gap:7px">
+              <span style="height:44px;display:flex;align-items:center;gap:8px;padding:0 14px;border-radius:999px;background:#14163A;color:#fff;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:700;letter-spacing:.08em"><span style="width:10px;height:10px;border-radius:4px;background:#A8D96A"></span>ORTOFRUTTA</span>
+              <span style="height:44px;display:flex;align-items:center;gap:8px;padding:0 14px;border-radius:999px;background:#fff;border:1px solid rgba(20,22,58,0.09);box-sizing:border-box;color:#14163A;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:700;letter-spacing:.08em"><span style="width:10px;height:10px;border-radius:4px;background:#F2A465"></span>DISPENSA</span>
+              <span style="height:44px;display:flex;align-items:center;gap:8px;padding:0 14px;border-radius:999px;background:#fff;border:1px solid rgba(20,22,58,0.09);box-sizing:border-box;color:#14163A;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:700;letter-spacing:.08em"><span style="width:10px;height:10px;border-radius:4px;background:#B9AEF5"></span>SURGELATI</span>
+              <span style="height:44px;display:flex;align-items:center;padding:0 14px;border-radius:999px;background:#fff;border:1px solid rgba(20,22,58,0.09);box-sizing:border-box;color:#14163A;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:700;letter-spacing:.08em">ALTRI…</span>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;padding:0 4px">
+            <span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase">Quanto ne hai</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div aria-label="Residuo di Zenzero" style="width:96px;height:44px;box-sizing:border-box;border-radius:14px;background:#fff;border:1.5px solid #14163A;box-shadow:0 1px 2px rgba(20,22,58,.05),0 6px 16px rgba(20,22,58,.06);display:flex;align-items:center;justify-content:flex-end;padding:0 12px"><span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums">80</span></div>
+              <div style="display:flex;gap:4px;padding:3px;border-radius:999px;background:rgba(20,22,58,.07)">
+                <span style="height:38px;min-width:44px;display:flex;align-items:center;justify-content:center;border-radius:999px;background:#fff;box-shadow:0 1px 2px rgba(20,22,58,.08);font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:700;letter-spacing:.08em">G</span>
+                <span style="height:38px;min-width:44px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:700;letter-spacing:.08em;color:#5C5F7A">PZ</span>
+                <span style="height:38px;min-width:44px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:700;letter-spacing:.08em;color:#5C5F7A">ML</span>
+              </div>
+            </div>
+          </div>
+          <button type="button" style="height:54px;flex:none;border-radius:18px;background:#fff;border:1px solid rgba(20,22,58,0.07);color:#14163A;display:flex;align-items:center;justify-content:center;gap:10px;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px;font-weight:700;letter-spacing:.09em"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 8V5.5A2.5 2.5 0 0 1 5.5 3H8M16 3h2.5A2.5 2.5 0 0 1 21 5.5V8M21 16v2.5a2.5 2.5 0 0 1-2.5 2.5H16M8 21H5.5A2.5 2.5 0 0 1 3 18.5V16" stroke="#14163A" stroke-width="2.1" stroke-linecap="round"></path><path d="M7.5 8v8M10.5 8v8M13.5 8v8M16.5 8v8" stroke="#14163A" stroke-width="2.1" stroke-linecap="round"></path></svg>SCANSIONA LA CONFEZIONE</button>
+          <div style="display:flex;align-items:center;gap:12px;padding:16px 4px 0;border-top:1px solid rgba(20,22,58,0.07)">
+            <span style="flex:1;font-size:15px;font-weight:700;letter-spacing:-.024em">Deperibile</span>
+            <div style="display:flex;gap:7px">
+              <button type="button" aria-pressed="true" style="height:44px;min-width:52px;padding:0 15px;border-radius:999px;background:#14163A;border:1px solid #14163A;color:#fff;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:700;letter-spacing:.08em">SÌ</button>
+              <button type="button" aria-pressed="false" style="height:44px;min-width:52px;padding:0 15px;border-radius:999px;background:#fff;border:1px solid rgba(20,22,58,0.09);color:#8A8A96;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:700;letter-spacing:.08em">NO</button>
+            </div>
+          </div>
+          <button type="button" style="margin-top:auto;height:54px;border-radius:18px;border:1px solid #14163A;background:#14163A;color:#fff;box-shadow:0 3px 10px rgba(20,22,58,0.24);font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px;font-weight:700;letter-spacing:.09em">CREA L'INGREDIENTE</button>
+        </div>
+      </div>
+      <div style="background:#fff;border:1px solid rgba(20,22,58,0.07);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:6px;font-size:12.5px;line-height:1.45;color:#5C5F7A">
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A">Misure</div>
+        <p style="margin:0">Foglio dal basso da top 88. Nome preso dalla ricerca, 32 / 800, modificabile al tocco. Reparto: pillole 44 in fila che va a capo, la scelta in --ink; ALTRI… apre i reparti restanti. Quantità: campo 96 + segmenti di unità (38 dentro il binario 44). SCANSIONA LA CONFEZIONE tasto secondario 54 con l'icona di scansione: la lettura (come 08) riempie quantità e unità dal formato, e la prima confezione nasce con la sua scadenza stimata; il codice resta legato al nuovo ingrediente. Deperibile Sì / No: decide se ci saranno congelatore e scadenze. CREA L'INGREDIENTE primario 54 in fondo.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Componenti usati</div>
+        <p style="margin:0">Foglio dal basso · Pillole · Segmenti · Campo numerico · Riga di impostazione Sì / No · Tasto primario.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Regole di DESIGN.md che tocca</div>
+        <p style="margin:0">§8 Pillole e segmenti · §1 default sensato: reparto proposto dal nome, qui Ortofrutta.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Decisioni</div>
+        <p style="margin:0">Creato l'ingrediente, il foglio si chiude e la tessera compare nel suo widget, in casa se la quantità è sopra 0. La X chiude senza creare niente.</p>
+      </div>
+    </div>
+
+    <div id="g05c" style="display:flex;flex-direction:column;gap:12px;width:var(--tw,393px);flex:none">
+      <div style="display:flex;align-items:baseline;gap:8px"><span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.14em;color:#8A8A96">05</span><span style="font-size:15px;font-weight:700">Caricamento: i widget vuoti, con la luce</span></div>
+      <div data-screen-label="05 Caricamento" style="position:relative;width:var(--tw,393px);height:var(--th,852px);border-radius:26px;overflow:hidden;box-shadow:0 2px 4px rgba(20,22,58,.10),0 18px 40px rgba(20,22,58,.18);background:linear-gradient(180deg,#EDECEA 0%,#F2F1EF 34%,#F8F8F7 70%,#FCFCFB 100%)">
+        <dc-import name="Dispensa pagina v2" stato="caricamento" dock="completo" hint-size="100%,100%" style="position:absolute;inset:0"></dc-import>
+      </div>
+      <div style="background:#fff;border:1px solid rgba(20,22,58,0.07);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:6px;font-size:12.5px;line-height:1.45;color:#5C5F7A">
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A">Misure</div>
+        <p style="margin:0">Tre widget bianchi con la loro ombra; dentro, una barra 10 per l'etichetta e tessere 104 raggio 14 in 0,06. Su ognuna passa da sinistra a destra una fascia bianca all'85%: 1400 ms, curva (.4, 0, .2, 1), in loop, tutte in fase, così sembra una luce sola che attraversa la pagina. Ricerca visibile ma ferma; niente Dock finché i dati non ci sono. <code>role="status"</code>, «Carico la dispensa».</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Componenti usati</div>
+        <p style="margin:0">Tessera widget · COMPONENTE NUOVO widget vuoto con la luce.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Regole di DESIGN.md che tocca</div>
+        <p style="margin:0">§9 Caricamento: sostituisce «niente scheletro» per la Dispensa, eccezione chiesta · §7 movimento: animazione nuova, spenta con meno moto.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Decisioni</div>
+        <p style="margin:0">Con meno moto: widget vuoti fermi. Se il caricamento dura più di 8 s, lo stato passa all'errore di v1 17.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+<section data-screen-label="Gruppo dettaglio" style="padding:0 60px 60px;font-family:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;color:#14163A;display:flex;flex-direction:column;gap:16px">
+  <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase">2 · Il dettaglio, dal tocco sulla tessera</div>
+  <div style="display:flex;gap:40px;align-items:flex-start">
+
+    <div id="g05" style="display:flex;flex-direction:column;gap:12px;width:var(--tw,393px);flex:none">
+      <div style="display:flex;align-items:baseline;gap:8px"><span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.14em;color:#8A8A96">06</span><span style="font-size:15px;font-weight:700">Dettaglio, con confezioni e scanner</span></div>
+      <div data-screen-label="06 Dettaglio" style="position:relative;width:var(--tw,393px);height:var(--th,852px);border-radius:26px;overflow:hidden;box-shadow:0 2px 4px rgba(20,22,58,.10),0 18px 40px rgba(20,22,58,.18);background:linear-gradient(180deg,#EDECEA 0%,#F2F1EF 34%,#F8F8F7 70%,#FCFCFB 100%)">
+        <dc-import name="Dispensa pagina v2" stato="tessere" dock="completo" hint-size="100%,100%" style="position:absolute;inset:0"></dc-import>
+        <div aria-hidden="true" style="position:absolute;inset:0;background:rgba(20,22,58,0.35)"></div>
+        <div role="dialog" aria-label="Petto di pollo" style="position:absolute;left:0;right:0;bottom:0;top:88px;background:#fff;border-radius:22px 22px 0 0;padding:16px 16px 26px;display:flex;flex-direction:column;gap:16px;overflow:hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;display:flex;align-items:center;gap:8px;padding-left:4px"><span style="width:10px;height:10px;border-radius:4px;background:#F29B9B"></span>Macelleria e pescheria</span>
+            <button type="button" aria-label="Chiudi il foglio" style="width:44px;height:44px;flex:none;border:0;border-radius:999px;background:rgba(20,22,58,.04);display:flex;align-items:center;justify-content:center;padding:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="#14163A" stroke-width="2.1" stroke-linecap="round"></path></svg></button>
+          </div>
+          <h2 style="margin:-6px 0 0;padding:0 4px;font-size:32px;font-weight:800;letter-spacing:-.045em;line-height:1.05">Petto di pollo</h2>
+          <div style="display:flex;align-items:center;gap:12px;padding:0 4px">
+            <span style="flex:1;font-size:15px;font-weight:700;letter-spacing:-.024em">In casa</span>
+            <div style="display:flex;gap:7px">
+              <button type="button" aria-pressed="true" style="height:44px;min-width:52px;padding:0 15px;border-radius:999px;background:#14163A;border:1px solid #14163A;color:#fff;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:700;letter-spacing:.08em">SÌ</button>
+              <button type="button" aria-pressed="false" aria-label="Petto di pollo: segna finito" style="height:44px;min-width:52px;padding:0 15px;border-radius:999px;background:#fff;border:1px solid rgba(20,22,58,0.09);color:#8A8A96;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:700;letter-spacing:.08em">FINITO</button>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;padding:16px 4px 0;border-top:1px solid rgba(20,22,58,0.07)">
+            <span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase">Residuo</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div aria-label="Residuo di Petto di pollo" style="width:96px;height:44px;box-sizing:border-box;border-radius:14px;background:#fff;border:1px solid rgba(20,22,58,0.07);box-shadow:0 1px 2px rgba(20,22,58,.05),0 6px 16px rgba(20,22,58,.06);display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:0 12px"><span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums">600</span><span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;color:#A6A6B2">G</span></div>
+              <button type="button" disabled style="height:44px;padding:0 15px;border:0;border-radius:999px;background:rgba(20,22,58,0.10);color:#A6A6B2;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:700;letter-spacing:.08em">SALVA</button>
+            </div>
+            <p style="margin:0;font-size:12.5px;line-height:1.4;color:#5C5F7A">Calcolato da spesa e piano: correggi solo se non torna con la realtà.</p>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:16px 4px 0;border-top:1px solid rgba(20,22,58,0.07)">
+            <span style="flex:1;font-size:15px;font-weight:700;letter-spacing:-.024em">In congelatore</span>
+            <div style="display:flex;gap:7px">
+              <button type="button" aria-pressed="true" aria-label="Petto di pollo: metti in congelatore" style="height:44px;min-width:52px;padding:0 15px;border-radius:999px;background:#14163A;border:1px solid #14163A;color:#fff;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:700;letter-spacing:.08em">SÌ</button>
+              <button type="button" aria-pressed="false" aria-label="Petto di pollo: togli dal congelatore" style="height:44px;min-width:52px;padding:0 15px;border-radius:999px;background:#fff;border:1px solid rgba(20,22,58,0.09);color:#8A8A96;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:700;letter-spacing:.08em">NO</button>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;padding-top:16px;border-top:1px solid rgba(20,22,58,0.07)">
+            <div style="display:flex;justify-content:space-between;padding:0 4px 2px"><span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase">Confezioni</span><span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:500;letter-spacing:.10em;color:#8A8A96">2</span></div>
+            <div style="border-radius:14px;background:rgba(20,22,58,.04);display:flex;align-items:center;gap:12px;padding:8px 8px 8px 14px">
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;font-weight:700;letter-spacing:-.02em">300 g <span style="font-weight:600;color:#9A5C00">· scade il 24/09</span></span><span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:9px;font-weight:700;letter-spacing:.10em;color:#5C5F7A">STIMA</span></div>
+              <button type="button" aria-label="Modifica la scadenza della confezione da 300 g" style="height:44px;padding:0 15px;flex:none;border-radius:999px;background:#fff;border:1px solid rgba(20,22,58,0.09);color:#14163A;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:700;letter-spacing:.08em">MODIFICA</button>
+            </div>
+            <div style="border-radius:14px;background:rgba(20,22,58,.04);display:flex;align-items:center;gap:12px;padding:8px 8px 8px 14px">
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;font-weight:700;letter-spacing:-.02em">300 g <span style="font-weight:600;color:#5C5F7A">· scade il 02/10</span></span><span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:9px;font-weight:700;letter-spacing:.10em;color:#14163A">MODIFICATA DA TE</span></div>
+              <button type="button" aria-label="Modifica la scadenza della seconda confezione da 300 g" style="height:44px;padding:0 15px;flex:none;border-radius:999px;background:#fff;border:1px solid rgba(20,22,58,0.09);color:#14163A;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:700;letter-spacing:.08em">MODIFICA</button>
+            </div>
+            <button type="button" style="margin-top:4px;height:54px;border-radius:18px;background:#fff;border:1px solid rgba(20,22,58,0.07);color:#14163A;display:flex;align-items:center;justify-content:center;gap:10px;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px;font-weight:700;letter-spacing:.09em"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 8V5.5A2.5 2.5 0 0 1 5.5 3H8M16 3h2.5A2.5 2.5 0 0 1 21 5.5V8M21 16v2.5a2.5 2.5 0 0 1-2.5 2.5H16M8 21H5.5A2.5 2.5 0 0 1 3 18.5V16" stroke="#14163A" stroke-width="2.1" stroke-linecap="round"></path><path d="M7.5 8v8M10.5 8v8M13.5 8v8M16.5 8v8" stroke="#14163A" stroke-width="2.1" stroke-linecap="round"></path></svg>SCANSIONA UNA CONFEZIONE</button>
+          </div>
+        </div>
+      </div>
+      <div style="background:#fff;border:1px solid rgba(20,22,58,0.07);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:6px;font-size:12.5px;line-height:1.45;color:#5C5F7A">
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A">Misure</div>
+        <p style="margin:0">Foglio da top 88. Testata: reparto a sinistra, X 44 a destra (un livello solo: non serve la freccia). Nome 32 / 800. Quattro blocchi divisi da filetti 1 px con 16 di distacco: In casa (SÌ / FINITO), Residuo con SALVA, Congelatore, Confezioni. Riga di confezione su fondo 0,04 raggio 14: formato e scadenza 14 / 700, sotto l'origine in mono 9 (STIMA in --testo-2, MODIFICATA DA TE in --ink); a destra MODIFICA 44. SCANSIONA UNA CONFEZIONE tasto secondario 54 con l'icona di scansione 20.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Componenti usati</div>
+        <p style="margin:0">Foglio dal basso · Riga di impostazione Sì / No · Campo numerico · Pillola d'azione · Tasto secondario · COMPONENTE NUOVO Riga di confezione · COMPONENTE NUOVO icona di scansione.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Regole di DESIGN.md che tocca</div>
+        <p style="margin:0">§1 il sistema propone, l'utente corregge · §2.2 --avviso su bianco per la scadenza vicina · §9 feedback di scrittura.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Decisioni</div>
+        <p style="margin:0">La scadenza vive sulla confezione, non sull'ingrediente: la tessera mostra la più vicina. Il non deperibile non ha né congelatore né scadenze, ma tiene lo scanner. Gli avvisi interi stanno sotto il nome, come in v1.</p>
+      </div>
+    </div>
+
+    <div id="g06" style="display:flex;flex-direction:column;gap:12px;width:var(--tw,393px);flex:none">
+      <div style="display:flex;align-items:baseline;gap:8px"><span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.14em;color:#8A8A96">07</span><span style="font-size:15px;font-weight:700">Scadenza di una confezione, a mano</span></div>
+      <div data-screen-label="07 Modifica scadenza" style="position:relative;width:var(--tw,393px);height:var(--th,852px);border-radius:26px;overflow:hidden;box-shadow:0 2px 4px rgba(20,22,58,.10),0 18px 40px rgba(20,22,58,.18);background:linear-gradient(180deg,#EDECEA 0%,#F2F1EF 34%,#F8F8F7 70%,#FCFCFB 100%)">
+        <dc-import name="Dispensa pagina v2" stato="tessere" dock="completo" hint-size="100%,100%" style="position:absolute;inset:0"></dc-import>
+        <div aria-hidden="true" style="position:absolute;inset:0;background:rgba(20,22,58,0.35)"></div>
+        <div role="dialog" aria-label="Petto di pollo" style="position:absolute;left:0;right:0;bottom:0;top:88px;background:#fff;border-radius:22px 22px 0 0;padding:16px 16px 26px;display:flex;flex-direction:column;gap:16px;overflow:hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;display:flex;align-items:center;gap:8px;padding-left:4px"><span style="width:10px;height:10px;border-radius:4px;background:#F29B9B"></span>Macelleria e pescheria</span>
+            <button type="button" aria-label="Chiudi il foglio" style="width:44px;height:44px;flex:none;border:0;border-radius:999px;background:rgba(20,22,58,.04);display:flex;align-items:center;justify-content:center;padding:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="#14163A" stroke-width="2.1" stroke-linecap="round"></path></svg></button>
+          </div>
+          <h2 style="margin:-6px 0 0;padding:0 4px;font-size:32px;font-weight:800;letter-spacing:-.045em;line-height:1.05">Petto di pollo</h2>
+          <div style="display:flex;flex-direction:column;gap:6px;padding-top:16px;border-top:1px solid rgba(20,22,58,0.07)">
+            <div style="display:flex;justify-content:space-between;padding:0 4px 2px"><span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase">Confezioni</span><span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:500;letter-spacing:.10em;color:#8A8A96">2</span></div>
+            <div style="border-radius:14px;background:rgba(20,22,58,.04);display:flex;flex-direction:column;gap:10px;padding:12px 12px 12px 14px">
+              <span style="font-size:14px;font-weight:700;letter-spacing:-.02em">300 g</span>
+              <span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em">SCADENZA</span>
+              <div style="display:flex;align-items:center;gap:8px">
+                <div aria-label="Scadenza della confezione da 300 g" style="width:140px;height:44px;box-sizing:border-box;border-radius:14px;background:#fff;border:1.5px solid #14163A;box-shadow:0 1px 2px rgba(20,22,58,.05),0 6px 16px rgba(20,22,58,.06);display:flex;align-items:center;padding:0 12px;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums">27/09/2026</div>
+                <button type="button" style="height:44px;padding:0 15px;border:0;border-radius:999px;background:#14163A;color:#fff;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:700;letter-spacing:.08em">SALVA</button>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                <span style="font-size:12.5px;line-height:1.4;color:#5C5F7A">La stima di Dispesa è il 24/09.</span>
+                <button type="button" style="height:44px;padding:0 15px;flex:none;border-radius:999px;background:#fff;border:1px solid rgba(20,22,58,0.09);color:#14163A;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:700;letter-spacing:.08em">USA LA STIMA</button>
+              </div>
+            </div>
+            <div style="border-radius:14px;background:rgba(20,22,58,.04);display:flex;align-items:center;gap:12px;padding:8px 8px 8px 14px">
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;font-weight:700;letter-spacing:-.02em">300 g <span style="font-weight:600;color:#5C5F7A">· scade il 02/10</span></span><span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:9px;font-weight:700;letter-spacing:.10em;color:#14163A">MODIFICATA DA TE</span></div>
+              <button type="button" style="height:44px;padding:0 15px;flex:none;border-radius:999px;background:#fff;border:1px solid rgba(20,22,58,0.09);color:#14163A;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:700;letter-spacing:.08em">MODIFICA</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="background:#fff;border:1px solid rgba(20,22,58,0.07);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:6px;font-size:12.5px;line-height:1.45;color:#5C5F7A">
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A">Misure</div>
+        <p style="margin:0">Il dettaglio scorso fino alle confezioni. La riga toccata si apre sul posto: campo data 140 × 44 col fuoco (selettore di sistema al tocco, <code>type="date"</code>), SALVA; sotto, la stima in 12,5 --testo-2 e USA LA STIMA pillola bianca. Le altre righe restano chiuse.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Componenti usati</div>
+        <p style="margin:0">Riga di confezione, aperta · Campo di testo (data) · Pillola d'azione.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Regole di DESIGN.md che tocca</div>
+        <p style="margin:0">§1 la correzione non cancella il default · §4 date gg/mm.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Decisioni</div>
+        <p style="margin:0">La data a mano vince sulla stima solo per quella confezione; la stima resta salvata. USA LA STIMA torna al default e toglie MODIFICATA DA TE. Salva con SALVA, come il residuo.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Testi nuovi</div>
+        <p style="margin:0">CONFEZIONI · STIMA · MODIFICATA DA TE · SCADENZA · La stima di Dispesa è il {gg/mm}. · USA LA STIMA · SCANSIONA UNA CONFEZIONE.</p>
+      </div>
+    </div>
+
+    <div id="g07" style="display:flex;flex-direction:column;gap:12px;width:var(--tw,393px);flex:none">
+      <div style="display:flex;align-items:baseline;gap:8px"><span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.14em;color:#8A8A96">08</span><span style="font-size:15px;font-weight:700">Scansione dal dettaglio, confezione riconosciuta</span></div>
+      <div data-screen-label="08 Scansione" style="position:relative;width:var(--tw,393px);height:var(--th,852px);border-radius:26px;overflow:hidden;box-shadow:0 2px 4px rgba(20,22,58,.10),0 18px 40px rgba(20,22,58,.18);background:linear-gradient(180deg,#EDECEA 0%,#F2F1EF 34%,#F8F8F7 70%,#FCFCFB 100%)">
+        <dc-import name="Dispensa pagina v2" stato="tessere" dock="completo" hint-size="100%,100%" style="position:absolute;inset:0"></dc-import>
+        <div aria-hidden="true" style="position:absolute;inset:0;background:rgba(20,22,58,0.35)"></div>
+        <div role="dialog" aria-label="Scansiona una confezione" style="position:absolute;left:0;right:0;bottom:0;top:88px;background:#fff;border-radius:22px 22px 0 0;padding:16px 16px 26px;display:flex;flex-direction:column;gap:16px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:8px;flex:none">
+            <button type="button" aria-label="Torna a Petto di pollo" style="width:44px;height:44px;flex:none;border:0;border-radius:999px;background:rgba(20,22,58,.04);display:flex;align-items:center;justify-content:center;padding:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 5l-7 7 7 7" stroke="#14163A" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+            <div style="flex:1;min-width:0;font-size:21px;font-weight:800;letter-spacing:-.035em;line-height:1.2">Petto di pollo</div>
+            <button type="button" aria-label="Chiudi il foglio" style="width:44px;height:44px;flex:none;border:0;border-radius:999px;background:rgba(20,22,58,.04);display:flex;align-items:center;justify-content:center;padding:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="#14163A" stroke-width="2.1" stroke-linecap="round"></path></svg></button>
+          </div>
+          <div aria-label="Anteprima della fotocamera" style="flex:1;min-height:0;position:relative;border-radius:14px;background:#14163A;overflow:hidden">
+            <span style="position:absolute;top:30%;left:40px;width:30px;height:30px;box-sizing:border-box;border-top:3px solid rgba(255,255,255,.92);border-left:3px solid rgba(255,255,255,.92);border-top-left-radius:14px"></span>
+            <span style="position:absolute;top:30%;right:40px;width:30px;height:30px;box-sizing:border-box;border-top:3px solid rgba(255,255,255,.92);border-right:3px solid rgba(255,255,255,.92);border-top-right-radius:14px"></span>
+            <span style="position:absolute;bottom:30%;left:40px;width:30px;height:30px;box-sizing:border-box;border-bottom:3px solid rgba(255,255,255,.92);border-left:3px solid rgba(255,255,255,.92);border-bottom-left-radius:14px"></span>
+            <span style="position:absolute;bottom:30%;right:40px;width:30px;height:30px;box-sizing:border-box;border-bottom:3px solid rgba(255,255,255,.92);border-right:3px solid rgba(255,255,255,.92);border-bottom-right-radius:14px"></span>
+          </div>
+          <div role="status" style="border-radius:14px;background:rgba(20,22,58,.04);padding:12px 14px;display:flex;flex-direction:column;gap:4px">
+            <span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.13em;color:#5C5F7A;font-variant-numeric:tabular-nums">CODICE 8001234567890</span>
+            <span style="font-size:15.5px;font-weight:700;letter-spacing:-.02em">Confezione da 450 g</span>
+            <span style="font-size:12.5px;line-height:1.4;color:#5C5F7A">Scade il 27/09, stima. La correggi dopo, nella riga della confezione.</span>
+          </div>
+          <div style="display:flex;gap:8px;flex:none">
+            <button type="button" style="flex:1;height:54px;border-radius:18px;background:#fff;border:1px solid rgba(20,22,58,0.07);color:#14163A;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px;font-weight:700;letter-spacing:.09em">NON È QUESTA</button>
+            <button type="button" style="flex:1.4;height:54px;border-radius:18px;border:1px solid #14163A;background:#14163A;color:#fff;box-shadow:0 3px 10px rgba(20,22,58,0.24);font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px;font-weight:700;letter-spacing:.09em">AGGIUNGI</button>
+          </div>
+        </div>
+      </div>
+      <div style="background:#fff;border:1px solid rgba(20,22,58,0.07);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:6px;font-size:12.5px;line-height:1.45;color:#5C5F7A">
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A">Misure</div>
+        <p style="margin:0">La lettura di v1 12 dentro il dettaglio: la testata porta il nome dell'ingrediente e la freccia torna al dettaglio. Letto il codice, sotto l'anteprima compare l'esito su fondo 0,04: codice mono 10, formato 15,5 / 700, stima 12,5. Due tasti 54: NON È QUESTA secondario, AGGIUNGI primario.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Componenti usati</div>
+        <p style="margin:0">Anteprima di scansione (v1) · Riga di stato · Tasto primario e secondario.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Regole di DESIGN.md che tocca</div>
+        <p style="margin:0">§2.4 e §12 eccezione della fotocamera · §9 niente parte da solo: si aggiunge col tasto.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Decisioni</div>
+        <p style="margin:0">AGGIUNGI mette la confezione nella lista e alza il residuo del suo formato, poi torna al dettaglio. Codice mai visto: si lega a questo ingrediente e si chiede il formato. NON È QUESTA riprende la lettura. Senza fotocamera: il codice da digitare di v1 13.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+<section data-screen-label="Gruppo AI" style="padding:0 60px 80px;font-family:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;color:#14163A;display:flex;flex-direction:column;gap:16px">
+  <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase">3 · Modifica con l'AI: il widget</div>
+  <div style="display:flex;gap:40px;align-items:flex-start">
+
+    <div id="g09" style="display:flex;flex-direction:column;gap:12px;width:var(--tw,393px);flex:none">
+      <div style="display:flex;align-items:baseline;gap:8px"><span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.14em;color:#8A8A96">09</span><span style="font-size:15px;font-weight:700">Widget aperto, si scrive</span></div>
+      <div data-screen-label="09 AI scrivi" style="position:relative;width:var(--tw,393px);height:var(--th,852px);border-radius:26px;overflow:hidden;box-shadow:0 2px 4px rgba(20,22,58,.10),0 18px 40px rgba(20,22,58,.18);background:linear-gradient(180deg,#EDECEA 0%,#F2F1EF 34%,#F8F8F7 70%,#FCFCFB 100%)">
+        <dc-import name="Dispensa pagina v2" stato="tessere" dock="nessuno" hint-size="100%,100%" style="position:absolute;inset:0"></dc-import>
+        <div aria-hidden="true" style="position:absolute;inset:0;background:rgba(20,22,58,0.35)"></div>
+        <div role="dialog" aria-label="Modifica con l'AI" style="position:absolute;left:12px;right:12px;bottom:299px;background:#fff;border-radius:22px;box-shadow:0 2px 6px rgba(20,22,58,.08),0 12px 30px rgba(20,22,58,.16);padding:12px 12px 12px 16px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;display:flex;align-items:center;gap:7px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M11 3.5c.5 4.1 2.4 6 6.5 6.5-4.1.5-6 2.4-6.5 6.5-.5-4.1-2.4-6-6.5-6.5 4.1-.5 6-2.4 6.5-6.5Z" fill="#14163A"></path><path d="M18.5 14.5c.25 2 1.1 2.850 3 3.1-1.9.25-2.75 1.1-3 3.1-.25-2-1.1-2.85-3-3.1 1.9-.25 2.75-1.1 3-3.1Z" fill="#14163A"></path></svg>MODIFICA CON L'AI</span>
+            <button type="button" aria-label="Chiudi" style="width:44px;height:44px;flex:none;border:0;border-radius:999px;background:rgba(20,22,58,.04);display:flex;align-items:center;justify-content:center;padding:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="#14163A" stroke-width="2.1" stroke-linecap="round"></path></svg></button>
+          </div>
+          <div style="margin-right:4px;min-height:96px;box-sizing:border-box;border-radius:14px;background:#fff;border:1.5px solid #14163A;padding:12px 14px;font-size:15px;line-height:1.5;color:#14163A">ho finito il riso, il parmigiano è quasi finito<span style="display:inline-block;width:2px;height:18px;margin-left:1px;vertical-align:-3px;background:#14163A"></span></div>
+          <div style="display:flex;align-items:center;gap:8px;margin-right:4px">
+            <button type="button" aria-label="Registra un vocale" style="width:56px;height:56px;flex:none;border:0;border-radius:999px;background:#14163A;display:flex;align-items:center;justify-content:center;padding:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="#fff"></rect><path d="M6 11.4a6 6 0 0 0 12 0" stroke="#fff" stroke-width="2.1" stroke-linecap="round"></path><path d="M12 17.6V21" stroke="#fff" stroke-width="2.1" stroke-linecap="round"></path></svg></button>
+            <button type="button" style="flex:1;height:54px;border-radius:18px;border:1px solid #14163A;background:#14163A;color:#fff;box-shadow:0 3px 10px rgba(20,22,58,0.24);font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px;font-weight:700;letter-spacing:.09em">FAI LE MODIFICHE</button>
+          </div>
+        </div>
+        <div aria-label="Tastiera di sistema" style="position:absolute;left:0;right:0;bottom:0;height:291px;background:rgba(20,22,58,0.10);display:flex;align-items:center;justify-content:center"><span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;color:#5C5F7A">TASTIERA DI SISTEMA</span></div>
+      </div>
+      <div style="background:#fff;border:1px solid rgba(20,22,58,0.07);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:6px;font-size:12.5px;line-height:1.45;color:#5C5F7A">
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A">Misure</div>
+        <p style="margin:0">Dal tocco su MODIFICA CON L'AI. Velo 0,35 sulla pagina; il Dock sparisce e al suo posto nasce il widget: scheda bianca a 12 dai lati, raggio 22, --ombra-flottante, padding 12 / 12 / 12 / 16. Etichetta mono 10 con l'icona AI 14, X 44. Campo libero col fuoco, minimo 96, cresce col testo fino a 5 righe, 15 / 1,5. Sotto la fila del Dock: microfono 56 e FAI LE MODIFICHE primario 54, spento a campo vuoto. Il widget poggia sulla tastiera (qui 291 a 393 px).</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Componenti usati</div>
+        <p style="margin:0">COMPONENTE NUOVO Widget AI · Campo di testo (textarea) · Tasto primario · tondo del microfono.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Regole di DESIGN.md che tocca</div>
+        <p style="margin:0">§8 Dock · §9 via d'uscita: X e tocco sul velo · §2.4 ombra flottante.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Decisioni</div>
+        <p style="margin:0">Il Dock sparisce sotto il widget, così non ci sono due microfoni. Chiudere con testo scritto lo tiene come bozza fino alla prossima apertura. Segnaposto invariato: Es. ho finito il riso, l'olio è a metà…</p>
+      </div>
+    </div>
+
+    <div id="g10" style="display:flex;flex-direction:column;gap:12px;width:var(--tw,393px);flex:none">
+      <div style="display:flex;align-items:baseline;gap:8px"><span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.14em;color:#8A8A96">10</span><span style="font-size:15px;font-weight:700">Microfono tenuto premuto, si detta</span></div>
+      <div data-screen-label="10 AI detta" style="position:relative;width:var(--tw,393px);height:var(--th,852px);border-radius:26px;overflow:hidden;box-shadow:0 2px 4px rgba(20,22,58,.10),0 18px 40px rgba(20,22,58,.18);background:linear-gradient(180deg,#EDECEA 0%,#F2F1EF 34%,#F8F8F7 70%,#FCFCFB 100%)">
+        <dc-import name="Dispensa pagina v2" stato="tessere" dock="nessuno" hint-size="100%,100%" style="position:absolute;inset:0"></dc-import>
+        <div aria-hidden="true" style="position:absolute;inset:0;background:rgba(20,22,58,0.35)"></div>
+        <div role="dialog" aria-label="Modifica con l'AI" style="position:absolute;left:12px;right:12px;bottom:114px;background:#fff;border-radius:22px;box-shadow:0 2px 6px rgba(20,22,58,.08),0 12px 30px rgba(20,22,58,.16);padding:12px 12px 12px 16px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;display:flex;align-items:center;gap:7px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M11 3.5c.5 4.1 2.4 6 6.5 6.5-4.1.5-6 2.4-6.5 6.5-.5-4.1-2.4-6-6.5-6.5 4.1-.5 6-2.4 6.5-6.5Z" fill="#14163A"></path><path d="M18.5 14.5c.25 2 1.1 2.85 3 3.1-1.9.25-2.75 1.1-3 3.1-.25-2-1.1-2.85-3-3.1 1.9-.25 2.75-1.1 3-3.1Z" fill="#14163A"></path></svg>MODIFICA CON L'AI</span>
+            <button type="button" aria-label="Chiudi" style="width:44px;height:44px;flex:none;border:0;border-radius:999px;background:rgba(20,22,58,.04);display:flex;align-items:center;justify-content:center;padding:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="#14163A" stroke-width="2.1" stroke-linecap="round"></path></svg></button>
+          </div>
+          <div aria-live="polite" style="margin-right:4px;min-height:96px;box-sizing:border-box;border-radius:14px;background:#fff;border:1px solid rgba(20,22,58,0.07);padding:12px 14px;font-size:15px;line-height:1.5;color:#14163A">ho finito il riso, il pollo l'ho congelato, <span style="color:#A6A6B2">il parmigiano è</span></div>
+          <div role="status" style="margin-right:4px;display:flex;align-items:center;gap:8px">
+            <button type="button" aria-label="Registra un vocale" aria-pressed="true" style="width:56px;height:56px;flex:none;border:0;border-radius:999px;background:#14163A;box-shadow:0 0 0 6px rgba(20,22,58,0.10);display:flex;align-items:center;justify-content:center;padding:0;transform:scale(1.06)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="#fff"></rect><path d="M6 11.4a6 6 0 0 0 12 0" stroke="#fff" stroke-width="2.1" stroke-linecap="round"></path><path d="M12 17.6V21" stroke="#fff" stroke-width="2.1" stroke-linecap="round"></path></svg></button>
+            <div style="flex:1;min-width:0;height:54px;box-sizing:border-box;border-radius:18px;background:#14163A;display:flex;align-items:center;gap:10px;padding:0 14px;overflow:hidden">
+              {{ onda }}
+              <span style="margin-left:auto;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:500;letter-spacing:.06em;color:rgba(255,255,255,.62);font-variant-numeric:tabular-nums">0:07</span>
+            </div>
+          </div>
+          <span style="padding:0 4px;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.13em;color:#5C5F7A">RILASCIA PER FERMARE</span>
+        </div>
+      </div>
+      <div style="background:#fff;border:1px solid rgba(20,22,58,0.07);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:6px;font-size:12.5px;line-height:1.45;color:#5C5F7A">
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A">Misure</div>
+        <p style="margin:0">Dal microfono del Dock o da quello del widget. Il widget sta dove stava il Dock (bottom 114), niente tastiera. Mentre il dito resta sul microfono: tondo a scala 1,06 con alone 6 px in 0,10, e accanto la banda --ink 54 con l'onda (22 barre da 3 px, 6 → 26, 220 ms alternate, sfasate) e il tempo. Il testo dettato entra nel campo mentre parli: le parole ancora incerte in --ter, confermate in --ink. Sotto, RILASCIA PER FERMARE mono 10.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Componenti usati</div>
+        <p style="margin:0">Widget AI · Stato "Registro" · COMPONENTE NUOVO onda di dettatura.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Regole di DESIGN.md che tocca</div>
+        <p style="margin:0">§9 niente long-press: eccezione chiesta, con tocco breve come alternativa · §7 .anim-registro · §11 <code>role="status"</code>, <code>aria-live</code> sul campo.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Decisioni</div>
+        <p style="margin:0">Al rilascio l'onda torna la fila di 09 e il testo resta nel campo: niente parte da solo. Un tocco breve avvia e il testo sotto diventa TOCCA PER FERMARE. Un secondo vocale si aggiunge in coda.</p>
+      </div>
+    </div>
+
+    <div id="g11" style="display:flex;flex-direction:column;gap:12px;width:var(--tw,393px);flex:none">
+      <div style="display:flex;align-items:baseline;gap:8px"><span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.14em;color:#8A8A96">11</span><span style="font-size:15px;font-weight:700">Fai le modifiche: la luce sul testo</span></div>
+      <div data-screen-label="11 AI lavora" style="position:relative;width:var(--tw,393px);height:var(--th,852px);border-radius:26px;overflow:hidden;box-shadow:0 2px 4px rgba(20,22,58,.10),0 18px 40px rgba(20,22,58,.18);background:linear-gradient(180deg,#EDECEA 0%,#F2F1EF 34%,#F8F8F7 70%,#FCFCFB 100%)">
+        <dc-import name="Dispensa pagina v2" stato="tessere" dock="nessuno" hint-size="100%,100%" style="position:absolute;inset:0"></dc-import>
+        <div aria-hidden="true" style="position:absolute;inset:0;background:rgba(20,22,58,0.35)"></div>
+        <div role="dialog" aria-label="Modifica con l'AI" style="position:absolute;left:12px;right:12px;bottom:114px;background:#fff;border-radius:22px;box-shadow:0 2px 6px rgba(20,22,58,.08),0 12px 30px rgba(20,22,58,.16);padding:12px 12px 12px 16px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;display:flex;align-items:center;gap:7px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M11 3.5c.5 4.1 2.4 6 6.5 6.5-4.1.5-6 2.4-6.5 6.5-.5-4.1-2.4-6-6.5-6.5 4.1-.5 6-2.4 6.5-6.5Z" fill="#14163A"></path><path d="M18.5 14.5c.25 2 1.1 2.85 3 3.1-1.9.25-2.75 1.1-3 3.1-.25-2-1.1-2.85-3-3.1 1.9-.25 2.75-1.1 3-3.1Z" fill="#14163A"></path></svg>MODIFICA CON L'AI</span>
+            <button type="button" aria-label="Chiudi" style="width:44px;height:44px;flex:none;border:0;border-radius:999px;background:rgba(20,22,58,.04);display:flex;align-items:center;justify-content:center;padding:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="#14163A" stroke-width="2.1" stroke-linecap="round"></path></svg></button>
+          </div>
+          <div style="margin-right:4px;min-height:96px;box-sizing:border-box;border-radius:14px;background:#fff;border:1px solid rgba(20,22,58,0.07);padding:12px 14px;font-size:15px;line-height:1.5"><span data-lucet style="background:linear-gradient(90deg,#14163A 0%,#14163A 38%,#B9AEF5 46%,#9CC7F2 50%,#B9AEF5 54%,#14163A 62%,#14163A 100%);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:#14163A;animation:lucet 1600ms linear infinite">ho finito il riso, il pollo l'ho congelato, il parmigiano è quasi finito, ho scongelato i piselli e il pane nero</span></div>
+          <div style="display:flex;align-items:center;gap:8px;margin-right:4px">
+            <button type="button" disabled aria-label="Registra un vocale" style="width:56px;height:56px;flex:none;border:0;border-radius:999px;background:#14163A;opacity:.5;display:flex;align-items:center;justify-content:center;padding:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="#fff"></rect><path d="M6 11.4a6 6 0 0 0 12 0" stroke="#fff" stroke-width="2.1" stroke-linecap="round"></path><path d="M12 17.6V21" stroke="#fff" stroke-width="2.1" stroke-linecap="round"></path></svg></button>
+            <button type="button" disabled style="flex:1;height:54px;border-radius:18px;border:1px solid #14163A;background:#14163A;opacity:.5;color:#fff;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px;font-weight:700;letter-spacing:.09em">FAI LE MODIFICHE</button>
+          </div>
+          <span role="status" style="padding:0 4px;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.13em;color:#5C5F7A">PREPARO LE MODIFICHE…</span>
+        </div>
+      </div>
+      <div style="background:#fff;border:1px solid rgba(20,22,58,0.07);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:6px;font-size:12.5px;line-height:1.45;color:#5C5F7A">
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A">Misure</div>
+        <p style="margin:0">Il campo diventa di sola lettura e sul testo passa una luce da sinistra a destra: sfumatura --ink → #B9AEF5 → #9CC7F2 → #B9AEF5 → --ink ritagliata sulle lettere, larga il 300%, 1600 ms lineare, in loop finché arriva l'esito. Tondo e FAI LE MODIFICHE a opacità 0,5, <code>disabled</code>. Sotto, PREPARO LE MODIFICHE… in mono 10, <code>role="status"</code>.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Componenti usati</div>
+        <p style="margin:0">Widget AI · COMPONENTE NUOVO luce sul testo.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Regole di DESIGN.md che tocca</div>
+        <p style="margin:0">§7 movimento, eccezione dichiarata · §2.3 colori d'area usati come luce, fuori dai loro tre usi · §9 stato in volo.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Decisioni</div>
+        <p style="margin:0">La luce parte al tocco di FAI LE MODIFICHE e si ferma all'esito. Con meno moto il testo resta fermo in --ink: parla solo la riga di stato. Il testo nuovo PREPARO LE MODIFICHE… è da approvare.</p>
+      </div>
+    </div>
+
+    <div id="g12" style="display:flex;flex-direction:column;gap:12px;width:var(--tw,393px);flex:none">
+      <div style="display:flex;align-items:baseline;gap:8px"><span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.14em;color:#8A8A96">12</span><span style="font-size:15px;font-weight:700">L'esito, nel widget</span></div>
+      <div data-screen-label="12 AI esito" style="position:relative;width:var(--tw,393px);height:var(--th,852px);border-radius:26px;overflow:hidden;box-shadow:0 2px 4px rgba(20,22,58,.10),0 18px 40px rgba(20,22,58,.18);background:linear-gradient(180deg,#EDECEA 0%,#F2F1EF 34%,#F8F8F7 70%,#FCFCFB 100%)">
+        <dc-import name="Dispensa pagina v2" stato="tessere" dock="nessuno" hint-size="100%,100%" style="position:absolute;inset:0"></dc-import>
+        <div aria-hidden="true" style="position:absolute;inset:0;background:rgba(20,22,58,0.35)"></div>
+        <div role="dialog" aria-label="Modifica con l'AI" style="position:absolute;left:12px;right:12px;bottom:114px;top:88px;background:#fff;border-radius:22px;box-shadow:0 2px 6px rgba(20,22,58,.08),0 12px 30px rgba(20,22,58,.16);padding:12px 12px 14px 16px;display:flex;flex-direction:column;gap:14px;overflow:hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;display:flex;align-items:center;gap:7px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M11 3.5c.5 4.1 2.4 6 6.5 6.5-4.1.5-6 2.4-6.5 6.5-.5-4.1-2.4-6-6.5-6.5 4.1-.5 6-2.4 6.5-6.5Z" fill="#14163A"></path><path d="M18.5 14.5c.25 2 1.1 2.85 3 3.1-1.9.25-2.75 1.1-3 3.1-.25-2-1.1-2.85-3-3.1 1.9-.25 2.75-1.1 3-3.1Z" fill="#14163A"></path></svg>MODIFICA CON L'AI</span>
+            <button type="button" aria-label="Chiudi" style="width:44px;height:44px;flex:none;border:0;border-radius:999px;background:rgba(20,22,58,.04);display:flex;align-items:center;justify-content:center;padding:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="#14163A" stroke-width="2.1" stroke-linecap="round"></path></svg></button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;margin-right:4px">
+            <div style="display:flex;justify-content:space-between;padding:0 4px 4px"><span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em">APPLICATE</span><span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:500;letter-spacing:.10em;color:#8A8A96">1 DI 2</span></div>
+            <div style="border-radius:14px;background:rgba(20,22,58,.04);display:flex;align-items:center;gap:10px;padding:8px 8px 8px 12px">
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:14.5px;font-weight:700;letter-spacing:-.02em">Riso carnaroli <span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.06em">400 → 0 G</span></span><span style="font-size:12px;line-height:1.35;color:#5C5F7A">«ho finito il riso»</span></div>
+              <button type="button" style="height:44px;padding:0 13px;flex:none;border-radius:999px;background:#fff;border:1px solid rgba(20,22,58,0.09);color:#14163A;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:700;letter-spacing:.08em">ANNULLA</button>
+            </div>
+            <div style="border-radius:14px;background:rgba(20,22,58,.04);display:flex;flex-direction:column;gap:2px;padding:10px 12px">
+              <span style="font-size:14.5px;font-weight:700;letter-spacing:-.02em;color:rgba(20,22,58,.34);text-decoration:line-through;text-decoration-thickness:1.6px">Petto di pollo <span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.06em">FRIGO → FREEZER</span></span>
+              <span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.13em;color:#5C5F7A">ANNULLATA</span>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;margin-right:4px">
+            <div style="display:flex;justify-content:space-between;padding:0 4px 4px"><span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em">DA CONFERMARE</span><span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:500;letter-spacing:.10em;color:#8A8A96">2</span></div>
+            <div style="border-radius:14px;background:rgba(20,22,58,.04);display:flex;align-items:center;gap:10px;padding:8px 8px 8px 12px">
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:14.5px;font-weight:700;letter-spacing:-.02em">Parmigiano <span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.06em">220 → 100 G</span></span><span style="font-size:12px;line-height:1.35;color:#5C5F7A">«quasi finito» non dice quanto: 100 g è una stima.</span></div>
+              <button type="button" style="height:44px;padding:0 13px;flex:none;border-radius:999px;background:#14163A;border:1px solid #14163A;color:#fff;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:700;letter-spacing:.08em">CONFERMA</button>
+            </div>
+            <div style="border-radius:14px;background:rgba(20,22,58,.04);display:flex;align-items:center;gap:10px;padding:8px 8px 8px 12px">
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:14.5px;font-weight:700;letter-spacing:-.02em">Piselli <span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.06em">FREEZER → FRIGO</span></span><span style="font-size:12px;line-height:1.35;color:#5C5F7A">«ho scongelato i piselli»: in frigo scadono prima.</span></div>
+              <button type="button" style="height:44px;padding:0 13px;flex:none;border-radius:999px;background:#14163A;border:1px solid #14163A;color:#fff;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:700;letter-spacing:.08em">CONFERMA</button>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;margin-right:4px">
+            <div style="padding:0 4px 4px"><span style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em">NON RICONOSCIUTI</span></div>
+            <div style="border-radius:14px;background:rgba(20,22,58,.04);padding:12px;font-size:14px;line-height:1.4">«il pane nero»</div>
+            <p style="margin:0;padding:4px 4px 0;font-size:12.5px;line-height:1.4;color:#5C5F7A">Cercali in dispensa.</p>
+          </div>
+        </div>
+      </div>
+      <div style="background:#fff;border:1px solid rgba(20,22,58,0.07);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:6px;font-size:12.5px;line-height:1.45;color:#5C5F7A">
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A">Misure</div>
+        <p style="margin:0">Il widget cresce verso l'alto fino a top 88 e resta sopra la tab bar (bottom 114); dentro scorre. Gruppi e righe di proposta come v1 10, stretti di 4 per stare nel widget: nome 14,5, motivazione 12, pillole 44 con padding 13.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Componenti usati</div>
+        <p style="margin:0">Widget AI · Riga di proposta (v1) · Pillola d'azione.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Regole di DESIGN.md che tocca</div>
+        <p style="margin:0">§9 reversibile si annulla col gesto · §2.5 0,34 del barrato.</p>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#14163A;margin-top:6px">Decisioni</div>
+        <p style="margin:0">Le applicate si vedono già sulle tessere dietro il velo. La X chiude e il Dock torna. La proposta di v1 per NON RICONOSCIUTI diventa «Cercali in dispensa.», perché la ricerca ora sta in pagina.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;cornice&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;393 × 852&quot;,&quot;375 × 812&quot;],&quot;default&quot;:&quot;393 × 852&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Verifica&quot;}}">
+class Component extends DCLogic {
+  componentDidMount() { this.apply(); }
+  componentDidUpdate() { this.apply(); }
+  apply() {
+    const small = (this.props.cornice ?? '393 × 852') === '375 × 812';
+    document.documentElement.style.setProperty('--tw', small ? '375px' : '393px');
+    document.documentElement.style.setProperty('--th', small ? '812px' : '852px');
+  }
+  renderVals() {
+    const ridotto = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const d = [0, 90, 40, 160, 70, 200, 20, 130, 60, 180, 110, 30, 150, 80, 210, 50, 120, 10, 170, 100, 140, 60];
+    return {
+      onda: React.createElement('span', { 'aria-hidden': true, style: { display: 'flex', alignItems: 'center', gap: 3, height: 26 } },
+        d.map((x, i) => React.createElement('i', { key: i, style: { width: 3, height: 12, borderRadius: 999, background: '#fff', display: 'block', animation: ridotto ? 'none' : `livello 220ms ease-in-out ${x}ms infinite alternate` } })))
+    };
+  }
+}
+</script>
+</body>
+</html>
