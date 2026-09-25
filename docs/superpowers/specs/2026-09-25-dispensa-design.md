@@ -314,8 +314,9 @@ Frame: v2 08; v1 12, 13.
 
 **F.1 Dal dettaglio.** `SCANSIONA UNA CONFEZIONE` porta il foglio del dettaglio a una vista di
 lettura, `aria-label` `Scansiona una confezione`. In testata la freccia `Torna a {Nome}`, il
-nome e la X; la freccia torna al dettaglio. Dentro, `Scanner.tsx` così com'è (BarcodeDetector
-e ripiego digitato), reso come v1 12 e 13:
+nome e la X; la freccia torna al dettaglio. Dentro, la logica di lettura di `Scanner.tsx`
+(BarcodeDetector e fotocamera), estratta nell'hook `useLettoreCodici`; `Scanner.tsx` resta
+com'è per `/lista/confezioni`, reso come v1 12 e 13:
 - **lettura:** anteprima col raggio 14 e la cornice guida a quattro angoli, riga
   `Inquadra il codice a barre: si legge da solo.`, e `DIGITA IL CODICE` (secondario 54);
 - **codice da digitare:** campo mono 14 `Codice a barre`, `inputmode="numeric"`,
@@ -487,14 +488,14 @@ Le righe segnate **nuovo** sono testo scritto per questa fase: vanno approvate c
 | Avviso «decaduto», tessera | la frase intera + ` Se l'hai congelato, dillo qui accanto.` | `FORSE NON PIÙ BUONO` (v1); nel dettaglio la frase senza la coda, perché il congelatore sta subito sotto |
 | Scadenza, tessera | `SCADE OGGI` / `SCADE IL 12 SET` | `Scade oggi` / `Scade il {gg/mm}` (disegno approvato) |
 | Nessun risultato | — | **nuovo** `Nessun ingrediente si chiama «{query}»` · `Crealo ora: entra fra gli ingredienti e da qui lo segni in casa.` · `CREA «{QUERY}»` |
-| Nuovo ingrediente | — | **nuovo** `Nuovo ingrediente` · `Chiudi senza creare` · `Reparto` · `Quanto ne hai` · `SCANSIONA LA CONFEZIONE` · `Deperibile` · `CREA L'INGREDIENTE` · `C'è già un ingrediente che si chiama così.` |
+| Nuovo ingrediente | — | **nuovo** `Nuovo ingrediente` · `Chiudi senza creare` · `Reparto` · `Quanto ne hai` · `SCANSIONA LA CONFEZIONE` · `Deperibile` · `CREA L'INGREDIENTE` · `C'è già un ingrediente che si chiama così.` · `Nome` (nome accessibile del campo del nome) |
 | Dettaglio, In casa | tessera interruttore | **nuovo** `In casa` · `SÌ` / `FINITO` · `{Nome}: segna in casa` / `{Nome}: segna finito` |
 | Dettaglio, residuo | salva al blur | `Residuo` · `SALVA` / `RIPROVA` (v1) |
 | Dettaglio, scadenza | — | **nuovo** `Scadenza` · `Scade il {gg/mm}` · `STIMA` · `MODIFICATA DA TE` · `MODIFICA` · `Modifica la scadenza di {Nome}` · `SCADENZA` · `Scadenza di {Nome}` · `La stima di Dispesa è il {gg/mm}.` · `USA LA STIMA` · `Scegli una data fra oggi e i prossimi due anni.` |
 | Dettaglio, scanner | — | **nuovo** `SCANSIONA UNA CONFEZIONE` |
 | Scansione | — | v1: `Inquadra il codice a barre: si legge da solo.` · `DIGITA IL CODICE` · `La fotocamera non è disponibile: digita il codice sotto la confezione.` · `Codice a barre` · `CERCA IL CODICE` · `USA LA FOTOCAMERA` |
 | Scansione, testata | — | **nuovo** `Scansiona una confezione` · `Torna a {Nome}` · `Torna al nuovo ingrediente` |
-| Scansione, esito | — | **nuovo** `CODICE {ean}` · `Confezione da {formato}` · `Scade il {gg/mm}, stima: la correggi dopo, qui nel dettaglio.` · `NON È QUESTA` · `AGGIUNGI` · `Questo codice è di {Y}.` · `APRI {Y}` · `Unità diversa ({u} contro {u}): scrivi il formato a mano.` |
+| Scansione, esito | — | **nuovo** `CODICE {ean}` · `Confezione da {formato}` · `Scade il {gg/mm}, stima: la correggi dopo, qui nel dettaglio.` · `NON È QUESTA` · `AGGIUNGI` · `Questo codice è di {Y}.` · `APRI {Y}` · `Unità diversa ({u} contro {u}): scrivi il formato a mano.` · `Formato della confezione di {Nome}` (nome accessibile del campo del formato) |
 | Scansione, OFF | in `/lista/confezioni` | invariati: `Prodotto non trovato: puoi scrivere il formato a mano.` · `Non riusciamo a interrogare il catalogo. Riprova, o scrivi il formato a mano.` |
 | Lotto | icone | `PRONTI` · `Porzioni` · `ELIMINA IL LOTTO` (v1) |
 | Dialogo del lotto | nessuno | v1: `Elimini il lotto?` · `{Piatto}, {n} porzioni. {k} sono impegnate dai pasti in programma: dopo, quei pasti non le trovano più.` · `ANNULLA` · `ELIMINA` |
