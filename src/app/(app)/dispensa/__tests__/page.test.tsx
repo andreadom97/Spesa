@@ -1,11 +1,20 @@
 import '@testing-library/jest-dom/vitest';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import type { Dish, Ingredient, LottoPronto, MealSlot, PantryState } from '@/domain/types';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
+import type { Dish, Ingredient, LottoPronto, PantryState } from '@/domain/types';
 import { giorniTra, lunediDi, sommaGiorni } from '@/domain/date';
+import { dataCorta } from '@/domain/dispensa-vista';
+import { SlotDockProvider } from '@/components/dock-slot';
+import type { SpeechRecognitionLike } from '../useDettatura';
 
-vi.mock('@/data/repertorio', () => ({ leggiIngredienti: vi.fn(), leggiRepertorio: vi.fn() }));
-vi.mock('@/data/dispensa', () => ({ leggiDispensa: vi.fn(), correggiResiduo: vi.fn(), impostaCongelato: vi.fn() }));
+vi.mock('@/data/repertorio', () => ({ leggiIngredienti: vi.fn(), leggiRepertorio: vi.fn(), salvaIngrediente: vi.fn() }));
+vi.mock('@/data/dispensa', () => ({
+  leggiDispensa: vi.fn(),
+  correggiResiduo: vi.fn(),
+  impostaCongelato: vi.fn(),
+  impostaScadenza: vi.fn(),
+  aggiungiConfezione: vi.fn(),
+}));
 vi.mock('@/data/impostazioni', () => ({ leggiImpostazioni: vi.fn() }));
 vi.mock('@/data/pronti', () => ({
   leggiPronti: vi.fn(),
@@ -14,564 +23,613 @@ vi.mock('@/data/pronti', () => ({
   eliminaLotto: vi.fn(),
 }));
 vi.mock('@/data/settimana', () => ({ leggiSettimanaCorrente: vi.fn() }));
-vi.mock('@/data/risparmio', () => ({ leggiRisparmioTotale: vi.fn() }));
+// Il widget AI e la Testata leggono la sessione: qui non serve una rete.
+vi.mock('@/data/supabase', () => ({
+  client: () => ({ auth: { getSession: vi.fn(), getUser: vi.fn().mockResolvedValue({ data: { user: null } }) } }),
+}));
+// Lo scanner: come in scansione.test.tsx, il finto hook risponde 'fallback'
+// e tiene l'`onCodice`, così il test simula una lettura.
+let onCodiceCapturato: ((ean: string) => void) | null = null;
+vi.mock('@/components/useLettoreCodici', () => ({
+  useLettoreCodici: (onCodice: (ean: string) => void) => {
+    onCodiceCapturato = onCodice;
+    return { modo: 'fallback', videoRef: { current: null } };
+  },
+}));
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() }),
+}));
 
-import { leggiIngredienti, leggiRepertorio } from '@/data/repertorio';
-import { leggiDispensa, correggiResiduo, impostaCongelato } from '@/data/dispensa';
+import { leggiIngredienti, leggiRepertorio, salvaIngrediente } from '@/data/repertorio';
+import { aggiungiConfezione, correggiResiduo, impostaCongelato, impostaScadenza, leggiDispensa } from '@/data/dispensa';
 import { leggiImpostazioni } from '@/data/impostazioni';
-import { leggiPronti, correggiLotto, impostaCongelatoLotto, eliminaLotto } from '@/data/pronti';
+import { correggiLotto, eliminaLotto, impostaCongelatoLotto, leggiPronti } from '@/data/pronti';
 import { leggiSettimanaCorrente } from '@/data/settimana';
-import { leggiRisparmioTotale } from '@/data/risparmio';
-import type { VoceEvitata } from '@/domain/list-builder';
-import { nomeArea } from '@/domain/aree';
 import Dispensa from '../page';
 
-const ORDINE = ['ortofrutta', 'macelleria', 'latticini', 'cereali', 'dispensa', 'surgelati'] as const;
+const OGGI = new Date().toISOString().slice(0, 10);
+const EAN_POLLO = '8076800195057';
+// Non l'ordine di default: il test vede che i widget seguono le Impostazioni.
+const ORDINE = ['cereali', 'ortofrutta', 'macelleria', 'latticini', 'dispensa', 'surgelati'] as const;
 
-const RISO: Ingredient = {
-  id: 'i-riso', nome: 'Riso', unitaBase: 'g', area: 'cereali',
-  classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 1000, prezzoConfezione: null, ean: null,
-};
-const BANANE: Ingredient = {
-  id: 'i-banane', nome: 'Banane', unitaBase: 'pz', area: 'ortofrutta',
-  classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 3, prezzoConfezione: null, ean: null,
-};
-
-function statoDispensa(righe: Partial<PantryState>[]): PantryState[] {
-  return righe.map((r) => ({
-    ingredientId: r.ingredientId!, residuo: r.residuo ?? 0,
-    ultimoAcquisto: r.ultimoAcquisto ?? null, giorniStimati: 90, ultimoCheck: null,
-    congelato: r.congelato ?? false,
-  }));
+function ingrediente(p: Partial<Ingredient> & Pick<Ingredient, 'id' | 'nome' | 'area'>): Ingredient {
+  return {
+    unitaBase: 'g', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500, prezzoConfezione: null, ean: null,
+    ...p,
+  };
 }
 
-function mockBase(dispensa: PantryState[], ingredienti: Ingredient[] = [RISO, BANANE]) {
+const POLLO = ingrediente({ id: 'pollo', nome: 'Petto di pollo', area: 'macelleria', deperibile: true, formatoConfezione: 300, ean: EAN_POLLO });
+const PASTA = ingrediente({ id: 'pasta', nome: 'Pasta', area: 'cereali' });
+const BANANE = ingrediente({ id: 'banane', nome: 'Banane', area: 'ortofrutta', unitaBase: 'pz', deperibile: true, formatoConfezione: 3 });
+const PANE = ingrediente({ id: 'pane', nome: 'Pane', area: 'cereali' });
+
+function pantry(p: Partial<PantryState> & Pick<PantryState, 'ingredientId'>): PantryState {
+  return { residuo: 0, ultimoAcquisto: null, giorniStimati: 90, congelato: false, scadenzaManuale: null, ultimoCheck: null, ...p };
+}
+
+const RAGU: Dish = {
+  id: 'd-ragu', nome: 'Ragù di lenticchie', slotDefId: 'sd-cena', fonte: 'proprio',
+  attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null, ingredienti: [], componenti: [],
+};
+
+function lotto(p: Partial<LottoPronto> & Pick<LottoPronto, 'id'>): LottoPronto {
+  return { dishId: RAGU.id, porzioni: 4, congelato: false, preparataIl: OGGI, mealSlotId: null, ...p };
+}
+
+/**
+ * Il caso di sempre: pollo in casa (fresco, comprato oggi), pasta in casa,
+ * banane finite, pane mai comprato; un lotto di ragù, uno di un piatto
+ * cancellato e uno di ragù ormai decaduto.
+ */
+function mockBase({
+  ingredienti = [POLLO, PASTA, BANANE, PANE],
+  dispensa = [
+    pantry({ ingredientId: 'pollo', residuo: 600, ultimoAcquisto: OGGI }),
+    pantry({ ingredientId: 'pasta', residuo: 500, ultimoAcquisto: '2026-09-01' }),
+    pantry({ ingredientId: 'banane', residuo: 0, ultimoAcquisto: sommaGiorni(OGGI, -10) }),
+  ],
+  lotti = [
+    lotto({ id: 'lp-1' }),
+    lotto({ id: 'lp-2', dishId: 'd-sparito', porzioni: 2, congelato: true, preparataIl: sommaGiorni(OGGI, -5) }),
+    lotto({ id: 'lp-3', porzioni: 1, preparataIl: sommaGiorni(OGGI, -10) }),
+  ],
+}: { ingredienti?: Ingredient[]; dispensa?: PantryState[]; lotti?: LottoPronto[] } = {}) {
   vi.mocked(leggiIngredienti).mockResolvedValue(ingredienti);
   vi.mocked(leggiDispensa).mockResolvedValue(dispensa);
   vi.mocked(leggiImpostazioni).mockResolvedValue({ moltiplicatorePorzioni: 1, ordineAree: [...ORDINE], settimaneCiclo: 1, cicloOrigine: null });
-  vi.mocked(leggiPronti).mockResolvedValue([]);
-  vi.mocked(leggiRepertorio).mockResolvedValue([]);
+  vi.mocked(leggiPronti).mockResolvedValue(lotti);
+  vi.mocked(leggiRepertorio).mockResolvedValue([RAGU]);
   vi.mocked(leggiSettimanaCorrente).mockResolvedValue(null);
-  vi.mocked(leggiRisparmioTotale).mockResolvedValue([]);
 }
 
-function voceEvitata(overrides: Partial<VoceEvitata>): VoceEvitata {
-  return {
-    ingredientId: 'ing-x', nome: 'X', unita: 'g', fabbisogno: 500,
-    confezioniIngenue: 1, confezioniReali: 0, confezioniEvitate: 1, quantitaEvitata: 500,
-    prezzoConfezione: null,
-    ...overrides,
-  };
+let slot: HTMLElement;
+
+/** La pagina dentro il Guscio in piccolo: uno slot vero per il Dock, come in dock.test.tsx. */
+function monta() {
+  return render(
+    <SlotDockProvider slot={slot}>
+      <Dispensa />
+    </SlotDockProvider>,
+  );
 }
 
-const OGGI = new Date().toISOString().slice(0, 10);
-
-const FARROTTO: Dish = {
-  id: 'd-farrotto', nome: 'Farrotto ai funghi', slotDefId: 'sd-cena', fonte: 'proprio',
-  attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
-  ingredienti: [], componenti: [],
-};
-
-function lottoPronto(overrides: Partial<LottoPronto>): LottoPronto {
-  return {
-    id: 'lp-1', dishId: FARROTTO.id, porzioni: 2, congelato: false,
-    preparataIl: OGGI, mealSlotId: null,
-    ...overrides,
-  };
+async function montaCaricata() {
+  monta();
+  await screen.findByRole('button', { name: 'Apri Petto di pollo' });
 }
 
-function slotDaPronti(overrides: Partial<MealSlot>): MealSlot {
-  return {
-    id: 'ms-1', data: OGGI, slotDefId: 'sd-cena', stato: 'casa', dishId: FARROTTO.id,
-    fonteStato: 'default', scelte: {}, porzioniPreparate: 0, daPronti: true,
-    ...overrides,
-  };
+function dock() {
+  return screen.queryByRole('region', { name: 'Azione principale' });
 }
 
-describe('Dispensa', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+/** I widget in pagina, per nome, nell'ordine del documento (il Dock escluso). */
+function widget(): string[] {
+  return screen.getAllByRole('region').map((r) => r.getAttribute('aria-label') ?? '').filter((n) => n !== 'Azione principale');
+}
+
+function tessera(nome: string) {
+  return screen.getByRole('button', { name: `Apri ${nome}` });
+}
+
+function mai(): Promise<never> {
+  return new Promise(() => {});
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  onCodiceCapturato = null;
+  slot = document.createElement('div');
+  document.body.appendChild(slot);
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+});
+
+afterEach(() => {
+  slot.remove();
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+  delete window.SpeechRecognition;
+  delete window.webkitSpeechRecognition;
+});
+
+describe('Dispensa: gli stati', () => {
+  it('caricamento: la luce sui widget vuoti, la ricerca ferma, niente Dock', () => {
+    mockBase();
+    vi.mocked(leggiIngredienti).mockReturnValue(mai());
+    monta();
+    expect(screen.getByRole('status', { name: 'Carico la dispensa' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Cerca in dispensa' })).toBeDisabled();
+    expect(dock()).not.toBeInTheDocument();
   });
 
-  it('separa in casa, finiti e mai comprati', async () => {
-    // "Finito" e "mai avuto" non sono la stessa cosa: il primo e' una cosa
-    // che usi e si e' esaurita, il secondo e' catalogo. Dopo il seed i
-    // secondi sono decine e seppellivano i primi.
-    mockBase(statoDispensa([
-      { ingredientId: 'i-riso', residuo: 920, ultimoAcquisto: '2026-08-28' },
-      { ingredientId: 'i-banane', residuo: 0, ultimoAcquisto: '2026-08-20' },
-    ]));
+  it('dopo 8 s senza dati: l\'errore con RIPROVA; la risposta tardiva si scarta; RIPROVA rilegge', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    mockBase();
+    let rispondi: (v: Ingredient[]) => void = () => {};
+    vi.mocked(leggiIngredienti).mockReturnValueOnce(new Promise((r) => { rispondi = r; }));
+    monta();
 
-    render(<Dispensa />);
+    act(() => { vi.advanceTimersByTime(7999); });
+    expect(screen.getByRole('status', { name: 'Carico la dispensa' })).toBeInTheDocument();
+    act(() => { vi.advanceTimersByTime(1); });
+    expect(screen.getByText('Non riusciamo a caricare la dispensa. Riprova.')).toBeInTheDocument();
+    expect(dock()).not.toBeInTheDocument();
 
-    expect(await screen.findByText('IN CASA')).toBeInTheDocument();
-    expect(screen.getByText('FINITI')).toBeInTheDocument();
-    expect(screen.queryByText('MAI COMPRATI')).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Residuo di Riso')).toHaveValue(920);
-    expect(screen.getByLabelText('Residuo di Banane')).toHaveValue(0);
+    // La risposta arriva dopo il timeout: la pagina resta sull'errore.
+    await act(async () => { rispondi([POLLO, PASTA, BANANE, PANE]); });
+    expect(screen.getByText('Non riusciamo a caricare la dispensa. Riprova.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Apri Petto di pollo' })).not.toBeInTheDocument();
+
+    vi.useRealTimers();
+    fireEvent.click(screen.getByRole('button', { name: 'RIPROVA' }));
+    expect(leggiIngredienti).toHaveBeenCalledTimes(2);
+    expect(await screen.findByRole('button', { name: 'Apri Petto di pollo' })).toBeInTheDocument();
+    expect(screen.queryByText('Non riusciamo a caricare la dispensa. Riprova.')).not.toBeInTheDocument();
+    expect(dock()).toBeInTheDocument();
   });
 
-  it('i mai comprati stanno in un gruppo a parte, chiuso di partenza', async () => {
-    mockBase(statoDispensa([{ ingredientId: 'i-riso', residuo: 920, ultimoAcquisto: '2026-08-28' }]));
-
-    render(<Dispensa />);
-
-    // Banane non ha riga di dispensa: mai comprato.
-    const intestazione = await screen.findByRole('button', { name: /MAI COMPRATI/ });
-    expect(intestazione).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByText('FINITI')).not.toBeInTheDocument();
-
-    fireEvent.click(intestazione);
-    expect(intestazione).toHaveAttribute('aria-expanded', 'true');
+  it('una lettura che fallisce: stesso messaggio, niente Dock', async () => {
+    mockBase();
+    vi.mocked(leggiDispensa).mockRejectedValue(new Error('rete'));
+    monta();
+    expect(await screen.findByText('Non riusciamo a caricare la dispensa. Riprova.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'RIPROVA' })).toBeInTheDocument();
+    expect(dock()).not.toBeInTheDocument();
   });
 
-  it('mostra a zero un ingrediente che non ha ancora una riga di dispensa', async () => {
-    // Mai comprato: la riga in pantry_state non esiste. Senza questo,
-    // l'ingrediente sparirebbe dalla schermata e non sarebbe correggibile
-    // proprio nel caso in cui serve — dichiarare che ne hai già in casa.
-    mockBase([]);
-
-    render(<Dispensa />);
-
-    expect(await screen.findByLabelText('Residuo di Riso')).toHaveValue(0);
-    expect(screen.getAllByText(/MAI COMPRATO/).length).toBe(2);
-  });
-
-  it('salva la correzione quando si esce dal campo, non a ogni tasto', async () => {
-    mockBase(statoDispensa([{ ingredientId: 'i-riso', residuo: 920 }]));
-    vi.mocked(correggiResiduo).mockResolvedValue(undefined);
-
-    render(<Dispensa />);
-    const campo = await screen.findByLabelText('Residuo di Riso');
-
-    fireEvent.change(campo, { target: { value: '5' } });
-    fireEvent.change(campo, { target: { value: '50' } });
-    // Ancora niente: scrivendo "500" si passa per 5 e 50, e salvarli
-    // scriverebbe valori che l'utente non ha mai voluto.
-    expect(correggiResiduo).not.toHaveBeenCalled();
-
-    fireEvent.change(campo, { target: { value: '500' } });
-    fireEvent.blur(campo);
-
-    await waitFor(() => expect(correggiResiduo).toHaveBeenCalledWith('i-riso', 500, 920));
-    expect(correggiResiduo).toHaveBeenCalledOnce();
-  });
-
-  it('non scrive nulla se il valore non e cambiato', async () => {
-    mockBase(statoDispensa([{ ingredientId: 'i-riso', residuo: 920 }]));
-
-    render(<Dispensa />);
-    const campo = await screen.findByLabelText('Residuo di Riso');
-    fireEvent.blur(campo);
-
-    expect(correggiResiduo).not.toHaveBeenCalled();
-  });
-
-  it('rifiuta un valore vuoto o negativo tornando a quello di prima', async () => {
-    mockBase(statoDispensa([{ ingredientId: 'i-riso', residuo: 920 }]));
-
-    render(<Dispensa />);
-    const campo = await screen.findByLabelText('Residuo di Riso');
-
-    fireEvent.change(campo, { target: { value: '' } });
-    fireEvent.blur(campo);
-    expect(correggiResiduo).not.toHaveBeenCalled();
-    expect(campo).toHaveValue(920);
-
-    fireEvent.change(campo, { target: { value: '-3' } });
-    fireEvent.blur(campo);
-    expect(correggiResiduo).not.toHaveBeenCalled();
-    expect(campo).toHaveValue(920);
-  });
-
-  it('se il salvataggio fallisce riporta il valore di prima e lo dice', async () => {
-    // Una correzione persa in silenzio e peggio del residuo sbagliato:
-    // l'utente crede di aver rimesso le cose a posto e non lo sono.
-    mockBase(statoDispensa([{ ingredientId: 'i-riso', residuo: 920 }]));
-    vi.mocked(correggiResiduo).mockRejectedValue(new Error('rete'));
-
-    render(<Dispensa />);
-    const campo = await screen.findByLabelText('Residuo di Riso');
-    fireEvent.change(campo, { target: { value: '500' } });
-    fireEvent.blur(campo);
-
-    await waitFor(() =>
-      expect(screen.getByText('Non siamo riusciti a salvare la correzione. Riprova.')).toBeInTheDocument(),
-    );
-    expect(screen.getByLabelText('Residuo di Riso')).toHaveValue(920);
-  });
-
-  it('avverte quando un fresco e troppo vecchio per contare ancora', async () => {
-    // Senza questo avviso la schermata direbbe "200 g di pollo" mentre la
-    // lista lo richiede lo stesso: due verita' diverse nella stessa app.
-    const POLLO: Ingredient = {
-      id: 'i-pollo', nome: 'Petto di pollo', unitaBase: 'g', area: 'macelleria',
-      classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 300, prezzoConfezione: null, ean: null,
-    };
-    mockBase(statoDispensa([{ ingredientId: 'i-pollo', residuo: 200, ultimoAcquisto: '2020-01-01' }]), [POLLO]);
-
-    render(<Dispensa />);
-
-    expect(await screen.findByText(/Troppo tempo per essere ancora buono/)).toBeInTheDocument();
-  });
-
-  it('non avverte se quel fresco e dichiarato in congelatore', async () => {
-    const POLLO: Ingredient = {
-      id: 'i-pollo', nome: 'Petto di pollo', unitaBase: 'g', area: 'macelleria',
-      classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 300, prezzoConfezione: null, ean: null,
-    };
-    const oggi = new Date().toISOString().slice(0, 10);
-    mockBase(statoDispensa([{ ingredientId: 'i-pollo', residuo: 200, ultimoAcquisto: oggi, congelato: true }]), [POLLO]);
-
-    render(<Dispensa />);
-
-    await screen.findByLabelText('Residuo di Petto di pollo');
-    expect(screen.queryByText(/Troppo tempo per essere ancora buono/)).not.toBeInTheDocument();
-    expect(screen.getByText(/IN CONGELATORE/)).toBeInTheDocument();
-  });
-
-  it('il congelatore si accende e si spegne, e non compare sui non deperibili', async () => {
-    mockBase(statoDispensa([{ ingredientId: 'i-banane', residuo: 3 }]));
-    vi.mocked(impostaCongelato).mockResolvedValue(undefined);
-
-    render(<Dispensa />);
-
-    // Riso non e' deperibile: un controllo che non farebbe niente.
-    expect(await screen.findByLabelText(/Banane: metti in congelatore/)).toBeInTheDocument();
-    expect(screen.queryByLabelText(/Riso: metti in congelatore/)).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByLabelText(/Banane: metti in congelatore/));
-    await waitFor(() => expect(impostaCongelato).toHaveBeenCalledWith('i-banane', true));
-  });
-
-  it('senza ingredienti spiega che la dispensa si riempie da se', async () => {
-    mockBase([], []);
-
-    render(<Dispensa />);
-
+  it('vuoto: niente in casa né finito e nessun lotto; il Dock e la ricerca restano, e i mai comprati si trovano', async () => {
+    mockBase({ ingredienti: [PANE, PASTA], dispensa: [], lotti: [] });
+    monta();
     expect(await screen.findByText('Ancora niente in dispensa')).toBeInTheDocument();
+    expect(screen.getByText('Si riempie da sé: appena chiudi la prima spesa, qui trovi quello che è rimasto.')).toBeInTheDocument();
+    expect(dock()).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Cerca in dispensa' }), { target: { value: 'pane' } });
+    expect(tessera('Pane')).toHaveTextContent('Mai comprato');
+    expect(screen.queryByText('Ancora niente in dispensa')).not.toBeInTheDocument();
+  });
+});
+
+describe('Dispensa: i widget', () => {
+  it('un widget per area con tessere, nell\'ordine delle Impostazioni, senza contatori; Pronti in fondo', async () => {
+    mockBase();
+    await montaCaricata();
+    expect(widget()).toEqual(['PASTA, RISO E CEREALI', 'ORTOFRUTTA', 'MACELLERIA E PESCHERIA', 'Pronti']);
+    expect(screen.queryByText(/\d+ voci/)).not.toBeInTheDocument();
+
+    expect(tessera('Petto di pollo')).toHaveTextContent('600 g');
+    expect(tessera('Banane')).toHaveTextContent('Finito');
+    // Il mai comprato sta solo fra i risultati della ricerca.
+    expect(screen.queryByRole('button', { name: 'Apri Pane' })).not.toBeInTheDocument();
   });
 
-  it('la sezione PRONTI mostra i lotti utilizzabili col nome del piatto e gli impegni', async () => {
-    mockBase(statoDispensa([{ ingredientId: 'i-riso', residuo: 920 }]));
-    vi.mocked(leggiPronti).mockResolvedValue([
-      lottoPronto({ id: 'lp-farrotto', dishId: FARROTTO.id, porzioni: 2, congelato: true, preparataIl: OGGI }),
-      // Fresco, preparato 10 giorni fa: oltre i 3 giorni di GIORNI_PRONTO_FRESCO, quindi decaduto.
-      lottoPronto({ id: 'lp-scaduto', dishId: FARROTTO.id, porzioni: 1, congelato: false, preparataIl: sommaGiorni(OGGI, -10) }),
-    ]);
-    vi.mocked(leggiRepertorio).mockResolvedValue([FARROTTO]);
-    vi.mocked(leggiSettimanaCorrente).mockResolvedValue({
-      id: 'w-1', dataInizio: OGGI, stato: 'confermata',
-      slots: [slotDaPronti({ id: 'ms-futuro', data: sommaGiorni(OGGI, 2) })],
+  it('Pronti: solo i lotti utilizzabili, e Piatto eliminato per un piatto che non c\'è più', async () => {
+    mockBase();
+    await montaCaricata();
+    const pronti = screen.getByRole('region', { name: 'Pronti' });
+    expect(within(pronti).getAllByRole('button', { name: 'Apri il lotto di Ragù di lenticchie' })).toHaveLength(1);
+    expect(within(pronti).getByRole('button', { name: 'Apri il lotto di Ragù di lenticchie' })).toHaveTextContent('4 porz.');
+    expect(within(pronti).getByRole('button', { name: 'Apri il lotto di Piatto eliminato' })).toHaveTextContent('Congelato');
+  });
+
+  it('senza lotti utilizzabili il widget Pronti non c\'è', async () => {
+    mockBase({ lotti: [lotto({ id: 'lp-3', preparataIl: sommaGiorni(OGGI, -10) })] });
+    await montaCaricata();
+    expect(screen.queryByRole('region', { name: 'Pronti' })).not.toBeInTheDocument();
+  });
+
+  it('la pillola: una voce dimenticata dice NESSUN PASTO LO USA', async () => {
+    // La macelleria ha tre giorni: perché la scadenza cada entro domenica,
+    // l'acquisto va spostato indietro se oggi è troppo vicino alla fine.
+    const domenica = sommaGiorni(lunediDi(OGGI), 6);
+    const acquisto = giorniTra(OGGI, domenica) >= 3 ? OGGI : sommaGiorni(OGGI, -3);
+    mockBase({ dispensa: [pantry({ ingredientId: 'pollo', residuo: 600, ultimoAcquisto: acquisto })] });
+    vi.mocked(leggiSettimanaCorrente).mockResolvedValue({ id: 'w-1', dataInizio: lunediDi(OGGI), stato: 'confermata', slots: [] });
+    await montaCaricata();
+    expect(tessera('Petto di pollo')).toHaveTextContent('NESSUN PASTO LO USA');
+
+    fireEvent.click(tessera('Petto di pollo'));
+    expect(within(screen.getByRole('dialog', { name: 'Petto di pollo' })).getByText('Nessun pasto in programma lo usa prima che scada.')).toBeInTheDocument();
+  });
+
+  it('la pillola: una scadenza, e un fresco troppo vecchio', async () => {
+    mockBase({
+      dispensa: [
+        pantry({ ingredientId: 'pollo', residuo: 600, ultimoAcquisto: OGGI }),
+        pantry({ ingredientId: 'banane', residuo: 2, ultimoAcquisto: sommaGiorni(OGGI, -30) }),
+        pantry({ ingredientId: 'pasta', residuo: 500, ultimoAcquisto: sommaGiorni(OGGI, -30) }),
+      ],
     });
+    await montaCaricata();
+    expect(tessera('Petto di pollo')).toHaveTextContent(`Scade il ${dataCorta(sommaGiorni(OGGI, 3))}`);
+    expect(tessera('Banane')).toHaveTextContent('FORSE NON PIÙ BUONO');
+    expect(tessera('Banane')).not.toHaveTextContent('Scade');
+    // Un non deperibile non scade: nessuna pillola.
+    expect(tessera('Pasta')).toHaveTextContent(/^500 gPasta$/);
+  });
+});
 
-    render(<Dispensa />);
+describe('Dispensa: la ricerca', () => {
+  it('filtra widget e tessere, mostra i mai comprati e il contatore; la X torna alla pagina', async () => {
+    mockBase();
+    await montaCaricata();
+    const campo = screen.getByRole('textbox', { name: 'Cerca in dispensa' });
+    fireEvent.change(campo, { target: { value: 'pa' } });
 
-    expect(await screen.findByText('PRONTI')).toBeInTheDocument();
-    expect(screen.getByText('Farrotto ai funghi')).toBeInTheDocument();
-    expect(screen.getByLabelText('Porzioni di Farrotto ai funghi')).toHaveValue(2);
-    expect(screen.getByText('1 impegnata')).toBeInTheDocument();
-    // Il lotto scaduto non ha porzioni utilizzabili: una sola tessera, non due.
-    expect(screen.getAllByText('Farrotto ai funghi')).toHaveLength(1);
+    expect(widget()).toEqual(['PASTA, RISO E CEREALI']);
+    expect(tessera('Pasta')).toBeInTheDocument();
+    expect(tessera('Pane')).toHaveTextContent('Mai comprato');
+    expect(screen.queryByRole('button', { name: 'Apri Petto di pollo' })).not.toBeInTheDocument();
+    expect(screen.getByText('2 risultati')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Svuota la ricerca' }));
+    expect(campo).toHaveValue('');
+    expect(campo).toHaveFocus();
+    expect(screen.queryByRole('button', { name: 'Apri Pane' })).not.toBeInTheDocument();
+    expect(tessera('Petto di pollo')).toBeInTheDocument();
+    expect(screen.queryByText(/risultat/)).not.toBeInTheDocument();
   });
 
-  it('con due lotti utilizzabili dello stesso piatto, "impegnata" compare una sola volta', async () => {
-    // impegniPerPiatto e' per dishId ma il layout resta per lotto: senza
-    // deduplica, due tessere dello stesso piatto avrebbero mostrato ognuna
-    // "1 impegnata", facendo leggere all'utente il doppio degli impegni veri.
-    mockBase(statoDispensa([{ ingredientId: 'i-riso', residuo: 920 }]));
-    vi.mocked(leggiPronti).mockResolvedValue([
-      lottoPronto({ id: 'lp-fresco', dishId: FARROTTO.id, porzioni: 1, congelato: false, preparataIl: sommaGiorni(OGGI, -1) }),
-      lottoPronto({ id: 'lp-freezer', dishId: FARROTTO.id, porzioni: 3, congelato: true, preparataIl: sommaGiorni(OGGI, -20) }),
-    ]);
-    vi.mocked(leggiRepertorio).mockResolvedValue([FARROTTO]);
-    vi.mocked(leggiSettimanaCorrente).mockResolvedValue({
-      id: 'w-1', dataInizio: OGGI, stato: 'confermata',
-      slots: [slotDaPronti({ id: 'ms-futuro', data: sommaGiorni(OGGI, 2) })],
-    });
-
-    render(<Dispensa />);
-
-    await screen.findByText('PRONTI');
-    expect(screen.getAllByText('Farrotto ai funghi')).toHaveLength(2);
-    expect(screen.getAllByText('1 impegnata')).toHaveLength(1);
+  it('trova i lotti per nome del piatto, col singolare nel contatore', async () => {
+    mockBase();
+    await montaCaricata();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Cerca in dispensa' }), { target: { value: 'lentic' } });
+    expect(widget()).toEqual(['Pronti']);
+    expect(screen.getByText('1 risultato')).toBeInTheDocument();
   });
 
-  it('senza lotti utilizzabili la sezione non compare', async () => {
-    mockBase(statoDispensa([{ ingredientId: 'i-riso', residuo: 920 }]));
-    vi.mocked(leggiPronti).mockResolvedValue([]);
+  it('nessun risultato: la scheda Crea, che apre Nuovo ingrediente col nome della query', async () => {
+    mockBase();
+    await montaCaricata();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Cerca in dispensa' }), { target: { value: ' zenzero ' } });
 
-    render(<Dispensa />);
+    expect(screen.getByText('Nessun ingrediente si chiama «zenzero»')).toBeInTheDocument();
+    expect(screen.getByText('Crealo ora: entra fra gli ingredienti e da qui lo segni in casa.')).toBeInTheDocument();
+    expect(screen.queryByText(/risultat/)).not.toBeInTheDocument();
+    expect(widget()).toEqual([]);
 
-    await screen.findByLabelText('Residuo di Riso');
-    expect(screen.queryByText('PRONTI')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'CREA «ZENZERO»' }));
+    const foglio = screen.getByRole('dialog', { name: 'Nuovo ingrediente' });
+    expect(within(foglio).getByRole('textbox', { name: 'Nome' })).toHaveValue('zenzero');
+  });
+});
+
+describe('Dispensa: il dettaglio', () => {
+  it('il tocco sulla tessera apre il dettaglio; FINITO scrive 0 col residuo di prima e la tessera diventa Finito', async () => {
+    mockBase();
+    vi.mocked(correggiResiduo).mockResolvedValue(undefined);
+    await montaCaricata();
+
+    fireEvent.click(tessera('Petto di pollo'));
+    const foglio = screen.getByRole('dialog', { name: 'Petto di pollo' });
+    fireEvent.click(within(foglio).getByRole('button', { name: 'Petto di pollo: segna finito' }));
+
+    await waitFor(() => expect(correggiResiduo).toHaveBeenCalledWith('pollo', 0, 600));
+    expect(tessera('Petto di pollo')).toHaveTextContent('Finito');
+    await waitFor(() => expect(within(foglio).getByRole('button', { name: 'Petto di pollo: segna finito' })).toHaveAttribute('aria-pressed', 'true'));
   });
 
-  it('correzione del numero e toggle freezer chiamano il data layer', async () => {
-    mockBase(statoDispensa([{ ingredientId: 'i-riso', residuo: 920 }]));
-    vi.mocked(leggiPronti).mockResolvedValue([
-      lottoPronto({ id: 'lp-farrotto', dishId: FARROTTO.id, porzioni: 2, congelato: false, preparataIl: OGGI }),
-    ]);
-    vi.mocked(leggiRepertorio).mockResolvedValue([FARROTTO]);
+  it('se la scrittura fallisce la tessera torna com\'era e il foglio lo dice', async () => {
+    mockBase();
+    vi.mocked(correggiResiduo).mockRejectedValue(new Error('rete'));
+    await montaCaricata();
+
+    fireEvent.click(tessera('Petto di pollo'));
+    fireEvent.click(screen.getByRole('button', { name: 'Petto di pollo: segna finito' }));
+
+    expect(await screen.findByText('Non siamo riusciti a salvare. Riprova.')).toBeInTheDocument();
+    expect(tessera('Petto di pollo')).toHaveTextContent('600 g');
+  });
+
+  it('SÌ su una finita scrive una confezione, da 0', async () => {
+    mockBase();
+    vi.mocked(correggiResiduo).mockResolvedValue(undefined);
+    await montaCaricata();
+
+    fireEvent.click(tessera('Banane'));
+    fireEvent.click(screen.getByRole('button', { name: 'Banane: segna in casa' }));
+
+    await waitFor(() => expect(correggiResiduo).toHaveBeenCalledWith('banane', 3, 0));
+    expect(tessera('Banane')).toHaveTextContent('3 pz');
+  });
+
+  it('il residuo si salva con SALVA; il mai comprato con un residuo entra in pagina', async () => {
+    mockBase();
+    vi.mocked(correggiResiduo).mockResolvedValue(undefined);
+    await montaCaricata();
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Cerca in dispensa' }), { target: { value: 'pane' } });
+    fireEvent.click(tessera('Pane'));
+    const foglio = screen.getByRole('dialog', { name: 'Pane' });
+    fireEvent.change(within(foglio).getByRole('textbox', { name: 'Residuo di Pane' }), { target: { value: '250' } });
+    fireEvent.click(within(foglio).getByRole('button', { name: 'SALVA' }));
+    await waitFor(() => expect(correggiResiduo).toHaveBeenCalledWith('pane', 250, 0));
+
+    fireEvent.click(within(foglio).getByRole('button', { name: 'Chiudi il foglio' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Svuota la ricerca' }));
+    expect(tessera('Pane')).toHaveTextContent('250 g');
+  });
+
+  it('la scadenza: MODIFICA, una data, SALVA; la tessera mostra la data nuova', async () => {
+    mockBase();
+    vi.mocked(impostaScadenza).mockResolvedValue(undefined);
+    await montaCaricata();
+    const nuova = sommaGiorni(OGGI, 5);
+
+    fireEvent.click(tessera('Petto di pollo'));
+    const foglio = screen.getByRole('dialog', { name: 'Petto di pollo' });
+    fireEvent.click(within(foglio).getByRole('button', { name: 'Modifica la scadenza di Petto di pollo' }));
+    const data = within(foglio).getByLabelText('Scadenza di Petto di pollo');
+    fireEvent.change(data, { target: { value: nuova } });
+    // Il SALVA accanto al campo data, non quello del residuo.
+    fireEvent.click(within(data.parentElement!).getByRole('button', { name: 'SALVA' }));
+
+    await waitFor(() => expect(impostaScadenza).toHaveBeenCalledWith('pollo', nuova));
+    expect(tessera('Petto di pollo')).toHaveTextContent(`Scade il ${dataCorta(nuova)}`);
+    expect(await within(foglio).findByText('MODIFICATA DA TE')).toBeInTheDocument();
+  });
+
+  it('il congelatore scrive e toglie la data a mano: la tessera torna alla stima in congelatore', async () => {
+    mockBase({ dispensa: [pantry({ ingredientId: 'pollo', residuo: 600, ultimoAcquisto: OGGI, scadenzaManuale: sommaGiorni(OGGI, 2) })] });
+    vi.mocked(impostaCongelato).mockResolvedValue(undefined);
+    await montaCaricata();
+    expect(tessera('Petto di pollo')).toHaveTextContent(`Scade il ${dataCorta(sommaGiorni(OGGI, 2))}`);
+
+    fireEvent.click(tessera('Petto di pollo'));
+    fireEvent.click(screen.getByRole('button', { name: 'Petto di pollo: metti in congelatore' }));
+
+    await waitFor(() => expect(impostaCongelato).toHaveBeenCalledWith('pollo', true));
+    expect(tessera('Petto di pollo')).toHaveTextContent(`Scade il ${dataCorta(sommaGiorni(OGGI, 90))}`);
+  });
+
+  it('un non deperibile non ha il congelatore', async () => {
+    mockBase();
+    await montaCaricata();
+    fireEvent.click(tessera('Pasta'));
+    expect(screen.getByRole('dialog', { name: 'Pasta' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Pasta: metti in congelatore' })).not.toBeInTheDocument();
+  });
+});
+
+describe('Dispensa: la scansione', () => {
+  it('SCANSIONA UNA CONFEZIONE porta alla lettura; la freccia torna al dettaglio', async () => {
+    mockBase();
+    await montaCaricata();
+    fireEvent.click(tessera('Petto di pollo'));
+    fireEvent.click(screen.getByRole('button', { name: /SCANSIONA UNA CONFEZIONE/ }));
+
+    expect(screen.getByRole('dialog', { name: 'Scansiona una confezione' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Torna a Petto di pollo' }));
+    expect(screen.getByRole('dialog', { name: 'Petto di pollo' })).toBeInTheDocument();
+  });
+
+  it('AGGIUNGI scrive la confezione e torna al dettaglio, con la tessera aggiornata', async () => {
+    mockBase();
+    vi.mocked(aggiungiConfezione).mockResolvedValue(undefined);
+    await montaCaricata();
+    fireEvent.click(tessera('Petto di pollo'));
+    fireEvent.click(screen.getByRole('button', { name: /SCANSIONA UNA CONFEZIONE/ }));
+
+    await waitFor(() => expect(onCodiceCapturato).not.toBeNull());
+    act(() => onCodiceCapturato!(EAN_POLLO));
+    expect(await screen.findByText('Confezione da 300 g')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'AGGIUNGI' }));
+
+    await waitFor(() => expect(aggiungiConfezione).toHaveBeenCalledWith({ ingredientId: 'pollo', formato: 300, ean: EAN_POLLO, residuoPrima: 600 }));
+    expect(await screen.findByRole('dialog', { name: 'Petto di pollo' })).toBeInTheDocument();
+    expect(tessera('Petto di pollo')).toHaveTextContent('900 g');
+  });
+});
+
+describe('Dispensa: il lotto', () => {
+  it('la tessera apre il lotto; il dialogo di eliminazione non si chiude dal velo; ELIMINA toglie la tessera', async () => {
+    mockBase();
+    vi.mocked(eliminaLotto).mockResolvedValue(undefined);
+    await montaCaricata();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Apri il lotto di Ragù di lenticchie' }));
+    expect(screen.getByRole('dialog', { name: 'Lotto di Ragù di lenticchie' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Elimina il lotto di Ragù di lenticchie' }));
+
+    const dialogo = screen.getByRole('alertdialog', { name: 'Elimini il lotto?' });
+    const veli = screen.getAllByTestId('velo-foglio');
+    fireEvent.click(veli[veli.length - 1]!);
+    expect(dialogo).toBeInTheDocument();
+
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'ELIMINA' }));
+    await waitFor(() => expect(eliminaLotto).toHaveBeenCalledWith('lp-1'));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Apri il lotto di Ragù di lenticchie' })).not.toBeInTheDocument();
+  });
+
+  it('SALVA a 0 porzioni: il lotto esce dalla pagina e il foglio si chiude', async () => {
+    mockBase();
+    vi.mocked(correggiLotto).mockResolvedValue(undefined);
+    await montaCaricata();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Apri il lotto di Ragù di lenticchie' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Porzioni di Ragù di lenticchie' }), { target: { value: '0' } });
+    fireEvent.click(screen.getByRole('button', { name: 'SALVA' }));
+
+    await waitFor(() => expect(correggiLotto).toHaveBeenCalledWith('lp-1', 0));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(screen.queryByRole('button', { name: 'Apri il lotto di Ragù di lenticchie' })).not.toBeInTheDocument();
+  });
+
+  it('SALVA a 3 porzioni: il foglio resta e la tessera dice 3 porz.; il congelatore del lotto scrive', async () => {
+    mockBase();
     vi.mocked(correggiLotto).mockResolvedValue(undefined);
     vi.mocked(impostaCongelatoLotto).mockResolvedValue(undefined);
-    vi.mocked(eliminaLotto).mockResolvedValue(undefined);
+    await montaCaricata();
 
-    render(<Dispensa />);
-    const campo = await screen.findByLabelText('Porzioni di Farrotto ai funghi');
+    fireEvent.click(screen.getByRole('button', { name: 'Apri il lotto di Ragù di lenticchie' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Porzioni di Ragù di lenticchie' }), { target: { value: '3' } });
+    fireEvent.click(screen.getByRole('button', { name: 'SALVA' }));
 
-    fireEvent.change(campo, { target: { value: '3' } });
-    fireEvent.blur(campo);
-    await waitFor(() => expect(correggiLotto).toHaveBeenCalledWith('lp-farrotto', 3));
+    await waitFor(() => expect(correggiLotto).toHaveBeenCalledWith('lp-1', 3));
+    expect(screen.getByRole('dialog', { name: 'Lotto di Ragù di lenticchie' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Apri il lotto di Ragù di lenticchie' })).toHaveTextContent('3 porz.');
 
-    fireEvent.click(screen.getByLabelText(/Farrotto ai funghi: metti in congelatore/));
-    await waitFor(() => expect(impostaCongelatoLotto).toHaveBeenCalledWith('lp-farrotto', true));
+    fireEvent.click(screen.getByRole('button', { name: 'Ragù di lenticchie: metti in congelatore' }));
+    await waitFor(() => expect(impostaCongelatoLotto).toHaveBeenCalledWith('lp-1', true));
+    expect(screen.getByRole('button', { name: 'Apri il lotto di Ragù di lenticchie' })).toHaveTextContent('Congelato');
+  });
+});
 
-    fireEvent.click(screen.getByLabelText('Elimina il lotto di Farrotto ai funghi'));
-    await waitFor(() => expect(eliminaLotto).toHaveBeenCalledWith('lp-farrotto'));
+describe('Dispensa: la creazione', () => {
+  async function apriNuovo() {
+    mockBase();
+    await montaCaricata();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Cerca in dispensa' }), { target: { value: 'zenzero' } });
+    fireEvent.click(screen.getByRole('button', { name: 'CREA «ZENZERO»' }));
+    const foglio = screen.getByRole('dialog', { name: 'Nuovo ingrediente' });
+    fireEvent.click(within(foglio).getByRole('button', { name: 'ORTOFRUTTA' }));
+    fireEvent.change(within(foglio).getByRole('textbox', { name: 'Residuo di zenzero' }), { target: { value: '50' } });
+    return foglio;
+  }
+
+  it('CREA L\'INGREDIENTE salva, scrive il residuo da 0, svuota la ricerca e rilegge', async () => {
+    vi.mocked(salvaIngrediente).mockResolvedValue('i-zenzero');
+    vi.mocked(correggiResiduo).mockResolvedValue(undefined);
+    const foglio = await apriNuovo();
+    expect(leggiIngredienti).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(within(foglio).getByRole('button', { name: "CREA L'INGREDIENTE" }));
+
+    await waitFor(() => expect(correggiResiduo).toHaveBeenCalledWith('i-zenzero', 50, 0));
+    expect(salvaIngrediente).toHaveBeenCalledWith(expect.objectContaining({ nome: 'zenzero', area: 'ortofrutta', prezzoConfezione: null, id: undefined }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(screen.getByRole('textbox', { name: 'Cerca in dispensa' })).toHaveValue('');
+    await waitFor(() => expect(leggiIngredienti).toHaveBeenCalledTimes(2));
   });
 
-  it('mostra prima l\'inventario, poi mai comprati, e la nota AI compressa in fondo', async () => {
-    // L'inventario (quello che l'utente e' venuto a controllare) precede la
-    // correzione via AI, che e' un ripiego per quando il calcolo non torna:
-    // in cima distraeva da cio' che la schermata serve davvero a mostrare.
-    mockBase(statoDispensa([{ ingredientId: 'i-riso', residuo: 920 }]));
+  it('se il residuo non si scrive, RIPROVA riscrive lo stesso ingrediente invece di crearne un altro', async () => {
+    vi.mocked(salvaIngrediente).mockResolvedValue('i-zenzero');
+    vi.mocked(correggiResiduo).mockRejectedValueOnce(new Error('rete')).mockResolvedValueOnce(undefined);
+    const foglio = await apriNuovo();
 
-    const { container } = render(<Dispensa />);
-    await screen.findByText('IN CASA');
+    fireEvent.click(within(foglio).getByRole('button', { name: "CREA L'INGREDIENTE" }));
+    expect(await within(foglio).findByText('Non siamo riusciti a salvare. Riprova.')).toBeInTheDocument();
 
-    const testo = container.textContent ?? '';
-    const posInCasa = testo.indexOf('IN CASA');
-    const posMaiComprati = testo.indexOf('MAI COMPRATI');
-    const posNota = testo.indexOf('Il conto non torna? Correggi con una nota');
-    expect(posInCasa).toBeGreaterThanOrEqual(0);
-    expect(posMaiComprati).toBeGreaterThan(posInCasa);
-    expect(posNota).toBeGreaterThan(posMaiComprati);
+    fireEvent.click(within(foglio).getByRole('button', { name: "CREA L'INGREDIENTE" }));
+    await waitFor(() => expect(correggiResiduo).toHaveBeenCalledTimes(2));
+    expect(salvaIngrediente).toHaveBeenLastCalledWith(expect.objectContaining({ nome: 'zenzero', id: 'i-zenzero' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+});
 
-    // Compressa: niente textarea finche' non si tocca la card.
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+describe('Dispensa: il Dock e Modifica con l\'AI', () => {
+  it('Modifica con l\'AI apre il widget e il Dock sparisce; Chiudi lo richiude, e la bozza resta', async () => {
+    mockBase();
+    await montaCaricata();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Il conto non torna? Correggi con una nota' }));
-    expect(await screen.findByRole('textbox')).toBeInTheDocument();
+    fireEvent.click(within(dock()!).getByRole('button', { name: "Modifica con l'AI" }));
+    const widgetAI = screen.getByRole('dialog', { name: "Modifica con l'AI" });
+    expect(dock()).not.toBeInTheDocument();
+    fireEvent.change(within(widgetAI).getByRole('textbox', { name: "Nota per l'AI" }), { target: { value: 'ho finito il riso' } });
+
+    fireEvent.click(within(widgetAI).getByRole('button', { name: 'Chiudi' }));
+    expect(screen.queryByRole('dialog', { name: "Modifica con l'AI" })).not.toBeInTheDocument();
+    expect(dock()).toBeInTheDocument();
+
+    fireEvent.click(within(dock()!).getByRole('button', { name: "Modifica con l'AI" }));
+    expect(screen.getByRole('textbox', { name: "Nota per l'AI" })).toHaveValue('ho finito il riso');
   });
 
-  // Review finale, finding MINOR: la card si apriva ma non si richiudeva
-  // mai (notaAperta senza via di ritorno).
-  it('la card di correzione con nota si può richiudere', async () => {
-    mockBase(statoDispensa([{ ingredientId: 'i-riso', residuo: 920 }]));
-
-    render(<Dispensa />);
-    await screen.findByText('IN CASA');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Il conto non torna? Correggi con una nota' }));
-    expect(await screen.findByRole('textbox')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Chiudi correzione con una nota' }));
-
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
-    // La card compressa torna disponibile per riaprirla.
-    expect(screen.getByRole('button', { name: 'Il conto non torna? Correggi con una nota' })).toBeInTheDocument();
+  it('senza SpeechRecognition non c\'è Registra un vocale, né nel Dock né nel widget', async () => {
+    mockBase();
+    await montaCaricata();
+    expect(screen.queryByRole('button', { name: 'Registra un vocale' })).not.toBeInTheDocument();
+    fireEvent.click(within(dock()!).getByRole('button', { name: "Modifica con l'AI" }));
+    expect(screen.queryByRole('button', { name: 'Registra un vocale' })).not.toBeInTheDocument();
   });
-  // Il totale del non ricomprato (spec 2026-09-05-non-ricomprato-design.md §5):
-  // una riga sotto la testata, solo se le settimane chiuse hanno confezioni > 0.
-  describe('Da quando usi Dispesa', () => {
-    it('mostra la riga del totale con confezioni, quantità ed euro', async () => {
-      mockBase(statoDispensa([{ ingredientId: 'i-riso', residuo: 920 }]));
-      vi.mocked(leggiRisparmioTotale).mockResolvedValue([
-        voceEvitata({ ingredientId: 'i-riso', nome: 'Riso', confezioniEvitate: 6, quantitaEvitata: 3000, prezzoConfezione: 3 }),
-        voceEvitata({ ingredientId: 'i-pasta', nome: 'Pasta', confezioniEvitate: 3, quantitaEvitata: 1100, prezzoConfezione: 4.5 }),
-      ]);
 
-      const { container } = render(<Dispensa />);
-
-      expect(await screen.findByText('Da quando usi Dispesa: 9 confezioni non ricomprate · 4,1 kg · circa 32 €')).toBeInTheDocument();
-      // Sotto la testata, prima dell'inventario.
-      const testo = container.textContent ?? '';
-      expect(testo.indexOf('Da quando usi Dispesa')).toBeLessThan(testo.indexOf('IN CASA'));
-    });
-
-    it('senza prezzi la riga non ha la parte in euro', async () => {
-      mockBase(statoDispensa([{ ingredientId: 'i-riso', residuo: 920 }]));
-      vi.mocked(leggiRisparmioTotale).mockResolvedValue([
-        voceEvitata({ confezioniEvitate: 2, quantitaEvitata: 500 }),
-      ]);
-
-      render(<Dispensa />);
-
-      expect(await screen.findByText('Da quando usi Dispesa: 2 confezioni non ricomprate · 500 g')).toBeInTheDocument();
-    });
-
-    it('con una sola confezione usa il singolare', async () => {
-      mockBase(statoDispensa([{ ingredientId: 'i-riso', residuo: 920 }]));
-      vi.mocked(leggiRisparmioTotale).mockResolvedValue([
-        voceEvitata({ confezioniEvitate: 1, quantitaEvitata: 1000, prezzoConfezione: 2.6 }),
-      ]);
-
-      render(<Dispensa />);
-
-      expect(await screen.findByText('Da quando usi Dispesa: 1 confezione non ricomprata · 1,0 kg · circa 3 €')).toBeInTheDocument();
-    });
-
-    it('con zero confezioni non fa rumore', async () => {
-      mockBase(statoDispensa([{ ingredientId: 'i-riso', residuo: 920 }]));
-      vi.mocked(leggiRisparmioTotale).mockResolvedValue([
-        voceEvitata({ confezioniIngenue: 1, confezioniReali: 1, confezioniEvitate: 0, quantitaEvitata: 0, prezzoConfezione: 3 }),
-      ]);
-
-      render(<Dispensa />);
-
-      await screen.findByText('IN CASA');
-      expect(screen.queryByText(/Da quando usi Dispesa/)).not.toBeInTheDocument();
-    });
-
-    it('se la lettura fallisce la pagina resta usabile, senza riga', async () => {
-      const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
-      mockBase(statoDispensa([{ ingredientId: 'i-riso', residuo: 920 }]));
-      vi.mocked(leggiRisparmioTotale).mockRejectedValue(new Error('rete'));
-
-      render(<Dispensa />);
-
-      expect(await screen.findByText('IN CASA')).toBeInTheDocument();
-      expect(screen.getByLabelText('Residuo di Riso')).toHaveValue(920);
-      expect(screen.queryByText(/Da quando usi Dispesa/)).not.toBeInTheDocument();
-      expect(errore).toHaveBeenCalled();
-      errore.mockRestore();
-    });
-  });
-  // Spec 2026-09-06-scadenza-fresco-design.md §3.2: il giorno in cui il
-  // residuo smetterà di contare, in coda alla riga mono; e, sotto, la riga
-  // anti-dimenticanza se nessun pasto della settimana lo usa prima.
-  describe('Scadenza del fresco', () => {
-    const POLLO: Ingredient = {
-      id: 'i-pollo', nome: 'Petto di pollo', unitaBase: 'g', area: 'macelleria',
-      classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 300, prezzoConfezione: null, ean: null,
-    };
-    const CENA_POLLO: Dish = {
-      id: 'd-pollo', nome: 'Pollo alla piastra', slotDefId: 'sd-cena', fonte: 'proprio',
-      attivo: true, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
-      ingredienti: [{ ingredientId: 'i-pollo', quantita: 150, unita: 'g' }], componenti: [],
-    };
-    const MESI = ['GEN', 'FEB', 'MAR', 'APR', 'MAG', 'GIU', 'LUG', 'AGO', 'SET', 'OTT', 'NOV', 'DIC'];
-    /** Lo stesso formato di PRESO IL: "9 SET". */
-    function dataMono(iso: string): string {
-      return `${Number(iso.slice(8, 10))} ${MESI[Number(iso.slice(5, 7)) - 1]}`;
+  describe('con la dettatura', () => {
+    let ultima: Finto | null = null;
+    class Finto implements SpeechRecognitionLike {
+      lang = '';
+      continuous = false;
+      interimResults = false;
+      onresult: SpeechRecognitionLike['onresult'] = null;
+      onend: SpeechRecognitionLike['onend'] = null;
+      onerror: SpeechRecognitionLike['onerror'] = null;
+      start = vi.fn();
+      stop = vi.fn();
+      abort = vi.fn();
+      constructor() {
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
+        ultima = this;
+      }
     }
-    const DOMENICA = sommaGiorni(lunediDi(OGGI), 6);
-    // La macelleria ha tre giorni di soglia. Perché la riga anti-dimenticanza
-    // possa comparire la scadenza deve cadere entro domenica: se oggi è
-    // troppo vicino alla fine della settimana, un acquisto di tre giorni fa
-    // scade oggi, che è sempre entro domenica.
-    const ACQUISTO_IN_SETTIMANA = giorniTra(OGGI, DOMENICA) >= 3 ? OGGI : sommaGiorni(OGGI, -3);
-    const SCADENZA_IN_SETTIMANA = sommaGiorni(ACQUISTO_IN_SETTIMANA, 3);
-
-    function slotCasa(overrides: Partial<MealSlot>): MealSlot {
-      return {
-        id: 'ms-pollo', data: OGGI, slotDefId: 'sd-cena', stato: 'casa', dishId: CENA_POLLO.id,
-        fonteStato: 'default', scelte: {}, porzioniPreparate: 0, daPronti: false,
-        ...overrides,
-      };
+    function puntatore(tipo: string, pointerId: number): Event {
+      return Object.assign(new Event(tipo), { pointerId });
+    }
+    function detta(testo: string) {
+      act(() => ultima!.onresult!({ resultIndex: 0, results: [Object.assign([{ transcript: testo }], { isFinal: true })] }));
     }
 
-    function settimanaCorrente(slots: MealSlot[]) {
-      vi.mocked(leggiRepertorio).mockResolvedValue([CENA_POLLO]);
-      vi.mocked(leggiSettimanaCorrente).mockResolvedValue({
-        id: 'w-1', dataInizio: lunediDi(OGGI), stato: 'confermata', slots,
-      });
-    }
-
-    it('dice il giorno in cui il residuo smetterà di contare, dopo PRESO IL', async () => {
-      mockBase(statoDispensa([{ ingredientId: 'i-pollo', residuo: 200, ultimoAcquisto: OGGI }]), [POLLO]);
-
-      render(<Dispensa />);
-
-      expect(
-        await screen.findByText(`${nomeArea('macelleria')} · PRESO IL ${dataMono(OGGI)} · SCADE IL ${dataMono(sommaGiorni(OGGI, 3))}`),
-      ).toBeInTheDocument();
+    beforeEach(() => {
+      ultima = null;
+      window.SpeechRecognition = Finto;
     });
 
-    it('l\'ultimo giorno buono dice SCADE OGGI', async () => {
-      mockBase(statoDispensa([{ ingredientId: 'i-pollo', residuo: 200, ultimoAcquisto: sommaGiorni(OGGI, -3) }]), [POLLO]);
+    it('il microfono del Dock apre il widget già in dettatura; conta solo il rilascio del dito che ha premuto', async () => {
+      mockBase();
+      await montaCaricata();
 
-      render(<Dispensa />);
+      fireEvent.pointerDown(within(dock()!).getByRole('button', { name: 'Registra un vocale' }), { pointerId: 3 });
+      expect(screen.getByRole('dialog', { name: "Modifica con l'AI" })).toBeInTheDocument();
+      expect(dock()).not.toBeInTheDocument();
+      expect(ultima!.start).toHaveBeenCalledTimes(1);
+      expect(screen.getByText('RILASCIA PER FERMARE')).toBeInTheDocument();
 
-      expect(await screen.findByText(/· SCADE OGGI$/)).toBeInTheDocument();
-      expect(screen.queryByText(/Troppo tempo per essere ancora buono/)).not.toBeInTheDocument();
+      act(() => { window.dispatchEvent(puntatore('pointerup', 9)); });
+      expect(screen.getByText('RILASCIA PER FERMARE')).toBeInTheDocument();
+      // Rilasciato subito: era un tocco breve, la dettatura continua a tocchi.
+      act(() => { window.dispatchEvent(puntatore('pointerup', 3)); });
+      expect(screen.getByText('TOCCA PER FERMARE')).toBeInTheDocument();
     });
 
-    it('un residuo già decaduto ha solo la riga esistente, senza scadenza', async () => {
-      // "Scade il 2 set" su una cosa già scaduta direbbe una data passata:
-      // la riga "Troppo tempo" basta e avanza.
-      mockBase(statoDispensa([{ ingredientId: 'i-pollo', residuo: 200, ultimoAcquisto: sommaGiorni(OGGI, -4) }]), [POLLO]);
+    it('il testo dettato si accoda alla bozza con uno spazio; chiudere ferma la dettatura e tiene il testo', async () => {
+      mockBase();
+      await montaCaricata();
 
-      render(<Dispensa />);
+      fireEvent.click(within(dock()!).getByRole('button', { name: "Modifica con l'AI" }));
+      fireEvent.change(screen.getByRole('textbox', { name: "Nota per l'AI" }), { target: { value: 'ho finito il riso' } });
+      // Da tastiera: il click senza pointerdown (detail 0) avvia a tocchi.
+      fireEvent.click(screen.getByRole('button', { name: 'Registra un vocale' }), { detail: 0 });
+      expect(screen.getByText('TOCCA PER FERMARE')).toBeInTheDocument();
+      detta("l'olio è a metà");
 
-      expect(await screen.findByText(/Troppo tempo per essere ancora buono/)).toBeInTheDocument();
-      expect(screen.queryByText(/SCADE/)).not.toBeInTheDocument();
-    });
+      fireEvent.click(screen.getByRole('button', { name: 'Chiudi' }));
+      expect(ultima!.stop).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole('dialog', { name: "Modifica con l'AI" })).not.toBeInTheDocument();
 
-    it('un non deperibile non scade', async () => {
-      mockBase(statoDispensa([{ ingredientId: 'i-riso', residuo: 920, ultimoAcquisto: OGGI }]), [RISO]);
-
-      render(<Dispensa />);
-
-      await screen.findByLabelText('Residuo di Riso');
-      expect(screen.queryByText(/SCADE/)).not.toBeInTheDocument();
-    });
-
-    it('avverte se nessun pasto della settimana lo usa prima che scada', async () => {
-      mockBase(statoDispensa([{ ingredientId: 'i-pollo', residuo: 200, ultimoAcquisto: ACQUISTO_IN_SETTIMANA }]), [POLLO]);
-      settimanaCorrente([]);
-
-      render(<Dispensa />);
-
-      expect(await screen.findByText('Nessun pasto in programma lo usa prima che scada.')).toBeInTheDocument();
-      expect(screen.getByText(/· SCADE/)).toBeInTheDocument();
-    });
-
-    it('tace se un pasto entro la scadenza lo usa', async () => {
-      mockBase(statoDispensa([{ ingredientId: 'i-pollo', residuo: 200, ultimoAcquisto: ACQUISTO_IN_SETTIMANA }]), [POLLO]);
-      settimanaCorrente([slotCasa({ data: SCADENZA_IN_SETTIMANA })]);
-
-      render(<Dispensa />);
-
-      await screen.findByText(/· SCADE/);
-      expect(screen.queryByText('Nessun pasto in programma lo usa prima che scada.')).not.toBeInTheDocument();
-    });
-
-    it('un pasto già passato non conta come uso', async () => {
-      // Il piano di ieri non può più dire se il pollo l'hai mangiato.
-      mockBase(statoDispensa([{ ingredientId: 'i-pollo', residuo: 200, ultimoAcquisto: sommaGiorni(OGGI, -3) }]), [POLLO]);
-      settimanaCorrente([slotCasa({ data: sommaGiorni(OGGI, -1) })]);
-
-      render(<Dispensa />);
-
-      expect(await screen.findByText('Nessun pasto in programma lo usa prima che scada.')).toBeInTheDocument();
-    });
-
-    it('oltre la domenica corrente il piano non può dire nulla: solo la scadenza', async () => {
-      // In congelatore la soglia è di novanta giorni: la settimana dopo non
-      // esiste ancora, quindi nessuna riga anti-dimenticanza.
-      mockBase(statoDispensa([{ ingredientId: 'i-pollo', residuo: 200, ultimoAcquisto: OGGI, congelato: true }]), [POLLO]);
-      settimanaCorrente([]);
-
-      render(<Dispensa />);
-
-      expect(
-        await screen.findByText(
-          `${nomeArea('macelleria')} · PRESO IL ${dataMono(OGGI)} · IN CONGELATORE · SCADE IL ${dataMono(sommaGiorni(OGGI, 90))}`,
-        ),
-      ).toBeInTheDocument();
-      expect(screen.queryByText('Nessun pasto in programma lo usa prima che scada.')).not.toBeInTheDocument();
-    });
-
-    it('senza settimana corrente resta la scadenza, non la riga anti-dimenticanza', async () => {
-      mockBase(statoDispensa([{ ingredientId: 'i-pollo', residuo: 200, ultimoAcquisto: sommaGiorni(OGGI, -3) }]), [POLLO]);
-      vi.mocked(leggiSettimanaCorrente).mockResolvedValue(null);
-
-      render(<Dispensa />);
-
-      expect(await screen.findByText(/· SCADE OGGI$/)).toBeInTheDocument();
-      expect(screen.queryByText('Nessun pasto in programma lo usa prima che scada.')).not.toBeInTheDocument();
+      fireEvent.click(within(dock()!).getByRole('button', { name: "Modifica con l'AI" }));
+      expect(screen.getByRole('textbox', { name: "Nota per l'AI" })).toHaveValue("ho finito il riso l'olio è a metà");
+      expect(screen.queryByText('TOCCA PER FERMARE')).not.toBeInTheDocument();
     });
   });
 });

@@ -81,8 +81,7 @@ export function useDettatura(onDefinitivo: (testo: string) => void): Dettatura {
   useEffect(() => {
     if (!costruttore()) return;
     // Un'API del browser assente nel render statico: il primo render, server e
-    // client, resta senza microfono; l'effetto lo aggiunge appena può (come
-    // faceva NotaDispensa).
+    // client, resta senza microfono; l'effetto lo aggiunge appena può.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setDisponibile(true);
   }, []);

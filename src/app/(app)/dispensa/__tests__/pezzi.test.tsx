@@ -117,10 +117,11 @@ describe('DockDispensa', () => {
     slot.remove();
   });
 
-  it('pointerDown sul tondo chiama onPremiMicrofono', () => {
+  it('pointerDown sul tondo chiama onPremiMicrofono col pointerId del dito', () => {
     const { onPremiMicrofono, slot } = renderDockDispensa({ dettatura: true });
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Registra un vocale' }));
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Registra un vocale' }), { pointerId: 7 });
     expect(onPremiMicrofono).toHaveBeenCalledTimes(1);
+    expect(onPremiMicrofono).toHaveBeenCalledWith(7);
     slot.remove();
   });
 

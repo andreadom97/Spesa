@@ -8,8 +8,12 @@ interface Props {
   /** Il browser sa dettare: senza, il tondo non c'è (spec §A, v1 15). */
   dettatura: boolean;
   onModifica: () => void;
-  /** pointerdown sul tondo: la dettatura parte subito, il rilascio decide se era tenuto (Task 8). */
-  onPremiMicrofono: () => void;
+  /**
+   * pointerdown sul tondo: la dettatura parte subito, il rilascio decide se
+   * era tenuto. Passa il `pointerId` del dito, così `useDettatura` ascolta il
+   * rilascio di quel dito e non di un altro.
+   */
+  onPremiMicrofono: (pointerId: number) => void;
   /** Attivazione da tastiera (click senza puntatore): avvia a tocchi. */
   onToccaMicrofono: () => void;
 }
@@ -44,7 +48,7 @@ export function DockDispensa({ dettatura, onModifica, onPremiMicrofono, onToccaM
         <button
           type="button"
           aria-label="Registra un vocale"
-          onPointerDown={onPremiMicrofono}
+          onPointerDown={(e) => onPremiMicrofono(e.pointerId)}
           onClick={click}
           style={{
             width: 56, height: 56, flex: 'none', borderRadius: 999, background: 'var(--ink)', boxShadow: 'var(--ombra-nav)',
