@@ -1,4 +1,4 @@
-/* Dispesa — token del design system v3, aggiornato il 20/09/2026.
+/* Dispesa — token del design system v3, aggiornato il 20/09/2026 e il 25/09/2026 (fase 5: tab bar a tre voci, pannello).
    (v2 approvata il 17/09/2026; la v3 incorpora il ridisegno del 19/09 e le
    risposte di Andrea del 20/09.)
    Fonte dei neutri, delle aree e dei font: src/app/globals.css.
@@ -116,22 +116,24 @@
   --maschera-meta: 74px;              /* dove la maschera di scorrimento passa al 55% */
   --maschera-zero: 30px;              /* dove la maschera di scorrimento si annulla */
 
-  /* ---------- Ridisegno 19-20/09: tab bar flottante ---------- */
-  --barra-lato: 16px;                 /* distanza della pillola dai lati a barra grande */
-  --barra-lato-giu: 46px;             /* distanza dai lati a barra ridotta: si stringe, non solo si abbassa */
+  /* ---------- Ridisegno 19-20/09, rivista il 25/09: tab bar flottante, tre voci ---------- */
+  --barra-larga: 304px;               /* larghezza della pillola a barra grande, centrata: 3 voci da 96 + 2 gap da 2 + 2 × 6 di padding */
+  --barra-larga-giu: 244px;           /* larghezza a barra ridotta: 3 × 76 + 2 × 2 + 2 × 6. Si anima width, non più left/right */
   --barra-fondo: 22px;                /* distacco della pillola dal fondo dello schermo */
   --barra-alta: 84px;                 /* altezza della pillola a riposo */
   --barra-bassa: 66px;                /* altezza della pillola ridotta */
   --barra-voce: 72px;                 /* altezza della voce a riposo (bersaglio reale) */
   --barra-voce-giu: 54px;             /* altezza della voce a barra ridotta */
+  --barra-voce-larga: 96px;           /* larghezza della voce a barra grande (bersaglio 96 × 72) */
+  --barra-voce-larga-giu: 76px;       /* larghezza della voce a barra ridotta (76 × 54) */
   --barra-padding: 6px;               /* padding interno della pillola */
-  --barra-gap: 2px;                   /* gap tra le quattro voci */
+  --barra-gap: 2px;                   /* gap tra le tre voci */
   --barra-icona: 26px;                /* taglia delle icone di navigazione, piene */
   --barra-segno: 26px;                /* altezza fissa del contenitore del segno: allinea icone e marchio */
   --barra-attiva: rgba(20, 22, 58, 0.07);  /* fondo della voce attiva, e del menù utente */
 
   /* ---------- Ridisegno 19-20/09: dock ---------- */
-  --dock-lato: 16px;                  /* distanza del dock dai lati, come la barra */
+  --dock-lato: 16px;                  /* distanza del dock dai lati, anche dopo che la barra è diventata centrata (25/09) */
   --dock-fondo: 114px;                /* bottom del dock a barra grande: 84 + 22 + 8 di respiro */
   --dock-fondo-giu: 96px;             /* bottom del dock a barra ridotta: 66 + 22 + 8 */
   --dock-respiro: 8px;                /* aria tra dock e tab bar, e gap interno del dock */
@@ -146,6 +148,7 @@
   --utente-iniziale: 16px;            /* menù utente: mono 16 / 700 / 0,06em, l'unico mono 16 del sistema */
   --pannello-alto: 76px;              /* pannello impostazioni: top dal bordo della cornice */
   --pannello-velo: rgba(20, 22, 58, 0.55);  /* velo dietro il pannello: scurisce parecchio ma lascia vedere */
+  --z-pannello: 70;                   /* pannello impostazioni e suo velo: sopra tab bar (20), Dock (19) e fogli (50, 60); il suo dialogo sta a 80 */
   --scatto-anello: 76px;              /* tasto di scatto: anello con bordo 2 px bianco, fondo trasparente */
   --scatto-disco: 62px;               /* tasto di scatto: disco bianco dentro l'anello */
   --banda-fondo: rgba(20, 22, 58, 0.72);    /* banda dei comandi sopra l'anteprima fotocamera */

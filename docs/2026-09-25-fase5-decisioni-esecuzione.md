@@ -1,0 +1,144 @@
+# Fase 5 del ridisegno: le decisioni prese durante l'esecuzione
+
+**Data:** 25/09/2026 · **Ramo:** `fase5-impostazioni` · **Piano:** il piano della fase 5 (Impostazioni) in
+`docs/superpowers/plans/` · **Spec:** `docs/superpowers/specs/2026-09-25-impostazioni-design.md`
+
+L'esecuzione subagent-driven tiene il suo registro in `.superpowers/`, una cartella che git
+ignora e che a fine lavoro viene cancellata. Questo file la sostituisce: raccoglie le decisioni
+prese al posto di Andrea durante l'esecuzione, ognuna con quanto costa se è sbagliata, così
+Andrea può rifare quelle che non gli tornano. Ogni task che prende una decisione che la spec
+non copre la scrive qui, con `[misurato]` o `[ipotesi]`. Le righe della tabella delle
+decisioni si numerano di seguito: ogni task continua dall'ultimo numero che trova, e i numeri
+scritti nel piano sono indicativi.
+
+## Le decisioni, con il loro costo
+
+| # | Decisione | Perché | Costo se è sbagliata |
+|---|---|---|---|
+| 1 | `.barra` passa a larghezza propria già nel Task 1; le voci restano `flex: 1 1 0` con un tetto `max-width` di 96 / 76, invece di una `width` fissa | con tre voci la larghezza è esattamente 96 e 76 [calcolo: (304 − 12 − 4) / 3, (244 − 12 − 4) / 3]; con le quattro voci di oggi le voci sono 71,5 e 56,5, sopra 44, e la barra regge fino al Task 11 senza che il Task 11 tocchi il CSS | se tornasse una quarta voce si stringerebbero invece di sbordare |
+| 2 | `.guscio-main` prende `transform` solo a pannello aperto (Task 1) | un `transform` fisso farebbe da contenitore ai `position: fixed` delle pagine (fogli, dialoghi, widget AI) e li sposterebbe | nessuno: col pannello aperto quei fogli non sono aperti, perché il loro velo copre il Menù utente che apre il pannello |
+| 3 | La maschera del corpo del pannello sfuma solo gli ultimi 26 px (Task 1) | la spec dice «maschera ferma in fondo, `--fine` non serve» senza un valore; 26 è il padding in fondo al corpo, quindi a fine scorrimento niente resta sfumato | da guardare sul telefono: se la sfumatura non si vede, si toglie |
+| 4 | Lo z-index dell'avvio (100) sta inline in `AvvioMarchio.tsx` (Task 14), senza token; il CSS dell'avvio (Task 1) ha solo stati, durate e curve | la spec §K chiede solo `--z-pannello`; l'avvio è un livello unico, sopra pannello (70) e dialogo (80) | nessuno: un numero in un posto solo |
+| 5 | In `DESIGN.md` §6 «le quattro icone della tab bar» diventa «le icone della tab bar», con la conta di oggi (Task 1) | la spec §K non lo elenca, ma la barra perde una voce e §6 deve dire una cosa sola (come la decisione 2 della fase 4) | nessuno |
+
+## Misure nel browser
+
+### Sonda del Task 2: `chiudiTuttoPoi` + `router.push` (spec §A.5, §M.3 punto 1)
+
+La scrive il Task 2.
+
+## Migrazione dei test (spec §M.2)
+
+Nessun test delle vecchie Impostazioni si cancella senza un sostituto. **Una regola sola per le
+colonne:**
+- «Test vecchio» è il titolo **esatto** dell'`it(...)` di oggi, carattere per carattere:
+  apostrofi tipografici `’` compresi, `−` e `+` compresi, senza backtick attorno. Lo script
+  del Task 11 (Step 12) cerca la riga col titolo esatto;
+- «Va a» è il task che lo migra, e non cambia durante l'esecuzione;
+- «Test nuovo» lo scrive il task che migra: il file, poi ` › `, poi il titolo esatto
+  dell'`it(...)` nuovo (per un `describe` annidato, i titoli separati da ` › `, l'`it` per
+  ultimo). Un test nuovo per riga: gli altri che provano la stessa cosa vanno nella «Nota»;
+- «Nota» dice cosa è cambiato: un comportamento tolto dalla spec diventa il test del
+  comportamento che lo sostituisce, e la nota lo dice.
+
+La tabella tiene i test delle vecchie Impostazioni e quelli della Testata e di `utente.ts` che
+cambiano nome. I test di altre pagine che cambiano nome (Importa, editor dell'ingrediente,
+striscia dei giorni) si scrivono come coppia «vecchio → nuovo» nella tabella delle decisioni,
+dal task che li tocca.
+
+`P` = `src/app/(app)/impostazioni/__tests__/page.test.tsx` (47 test), `R` =
+`src/app/(app)/impostazioni/reparti/__tests__/page.test.tsx` (5 test) [misurato il 26/09:
+`grep -c "^\s*it("`]. Le righe 53–57 sono i test della Testata e di `utente.ts` che cambiano
+nome. I dodici test di `useIndietroFogli` si spostano senza cambiare (Task 2, decisione 7) e
+non stanno qui.
+
+**Nota d'esecuzione (Task 1, ruling P9 del controller):** la riga 53 riporta il titolo con il
+`describe` davanti (`Testata (spec §D) › …`), perché il test vive dentro quel blocco annidato e
+il titolo da solo non basta a identificarlo — la stessa convenzione che la regola sopra chiede
+per «Test nuovo». Le altre righe restano al titolo esatto dell'`it(...)`, come la regola dice.
+
+| # | Test vecchio | File | Va a | Test nuovo | Nota |
+|---|---|---|---|---|---|
+| 1 | mostra i pasti reali letti da leggiSlotDefs, non i quattro cablati nel mock dell’artboard | P | Task 8, Gestione dei pasti | | |
+| 2 | sta nella sezione CASA, dichiara l’assunzione e parte da 1 con il − spento | P | Task 7, campo `PERS` | | lo stepper è tolto (spec §C.10); la riga sta in «Come calcolo la lista» |
+| 3 | + salva subito le impostazioni intere con 2, mostra 2 e dice per quanti compra la lista | P | Task 7, campo `PERS` | | si scrive 2 e si esce dal campo |
+| 4 | a 4 il + è spento e non salva | P | Task 7, campo `PERS` | | diventa: 5 torna al valore di prima con `Scrivi un numero da 1 a 4.` |
+| 5 | − scende di uno e salva | P | Task 7, campo `PERS` | | si scrive il valore nuovo e si dà Invio |
+| 6 | due tap veloci: se la rilettura del primo arriva dopo quella del secondo, resta il valore del secondo | P | Task 9, Cadenza (la coda del provider) | | il campo `PERS` è spento in volo (frame 25), il segmento della Cadenza no |
+| 7 | due tap veloci: se il primo salvataggio fallisce, il secondo si scrive lo stesso e resta il suo valore senza errore | P | Task 9, Cadenza (la coda del provider) | | idem |
+| 8 | due tap veloci: se il primo riesce ma la sua rilettura non è l’ultima e il secondo fallisce, mostra il valore del server | P | Task 9, Cadenza (la coda del provider) | | idem |
+| 9 | due tap veloci: se la seconda scrittura fallisce mentre la prima è in volo, alla fine schermo e server dicono 2 | P | Task 9, Cadenza (la coda del provider) | | idem |
+| 10 | se il salvataggio fallisce e anche la rilettura fallisce, torna all’ultimo valore confermato e lo dice | P | Task 7, campo `PERS` | | |
+| 11 | se il salvataggio fallisce torna al valore del server e lo dice | P | Task 7, campo `PERS` | | |
+| 12 | se la RLS rifiuta il salvataggio (la casa è cambiata) scarta l’id della casa, ricarica tutto e lo dice | P | Task 7, campo `PERS` | | |
+| 13 | un rifiuto RLS riconosciuto dal solo messaggio (senza codice) ricarica allo stesso modo | P | Task 7, campo `PERS` | | |
+| 14 | porta all elenco degli ingredienti | P | Task 7, riga Ingredienti | | apre la sotto-schermata, non un link |
+| 15 | sotto il minimo di 3 pasti il pulsante di rimozione è disattivato | P | Task 8, Gestione dei pasti | | |
+| 16 | sopra il minimo la rimozione funziona e salva l’insieme aggiornato | P | Task 8, Gestione dei pasti | | senza piatti al tocco; con piatti il dialogo (spec §C.2) |
+| 17 | al massimo di 6 pasti il pulsante di aggiunta è disattivato | P | Task 8, Gestione dei pasti | | diventa: a 6 `AGGIUNGI PASTO` non c'è e c'è `Sei pasti sono il massimo.` |
+| 18 | aggiunge un pasto sotto il massimo e lo salva con un id generato | P | Task 8, Gestione dei pasti | | |
+| 19 | la prima riga non può salire e l’ultima non può scendere; riordinare aggiorna le posizioni e salva | P | Task 8, Gestione dei pasti | | |
+| 20 | la pastiglia del giorno abitualmente fuori casa ha 44px di area di tap sopra una pillola di 36px | P | Task 8, Pasti a casa | | diventa la cella 44 della matrice |
+| 21 | accende una pastiglia del giorno e salva le assenze abituali aggiornate | P | Task 8, Pasti a casa | | |
+| 22 | rinominare un pasto salva il nuovo nome al blur, non a ogni carattere digitato | P | Task 8, Gestione dei pasti | | |
+| 23 | con leggiSlotDefs() vuoto semina i quattro pasti di default e li salva davvero sul server | P | Task 8, Gestione dei pasti | | la semina sta nel provider (Task 6) |
+| 24 | il link ordine dei reparti mostra l’anteprima e il riepilogo nell’ordine reale, non un ordine fisso | P | Task 7, riga Ordine delle aree | | l'anteprima è tolta (spec §C.5): diventa `PERSONALIZZATO` / `DI BASE` |
+| 25 | con il ciclo spento la rotazione si può accendere e dice cosa cambia | P | Task 8, Rotazione del piano | | |
+| 26 | se il salvataggio del ciclo fallisce torna al valore di prima e lo dice | P | Task 8, Rotazione del piano | | |
+| 27 | il copy del giro con origine futura dice "comincia" | P | Task 8, Rotazione del piano | | |
+| 28 | il copy del giro con origine passata (o oggi) dice "è cominciato" | P | Task 8, Rotazione del piano | | |
+| 29 | RIPARTI da lunedì richiede due tocchi: il primo arma senza salvare, il secondo salva davvero | P | Task 8, Rotazione del piano | | diventa il dialogo `riparti`: ANNULLA non salva, `RIPARTI DA LUNEDÌ` salva |
+| 30 | RIPARTI armato: un tap fuori dal bottone annulla senza salvare | P | Task 8, Rotazione del piano | | diventa: il velo del dialogo non chiude e non salva |
+| 31 | RIPARTI armato: un cambio di stato altrove (la rotazione) lo disarma | P | Task 8, Rotazione del piano | | diventa: `RIPARTI` spento quando l'origine è già il lunedì corrente |
+| 32 | da solo: invita a fare la spesa con qualcuno, offre il codice e il campo per entrare | P | Task 10, Casa condivisa | | |
+| 33 | CREA UN CODICE chiama creaInvito e mostra il codice grande con la sua durata | P | Task 10, Casa condivisa | | |
+| 34 | se creaInvito fallisce lo dice senza rompere la scheda | P | Task 10, Casa condivisa | | |
+| 35 | ENTRA maiuscola il codice, chiama entraInCasa e ricarica su /lista | P | Task 10, Casa condivisa | | |
+| 36 | con un codice sbagliato mostra il messaggio della funzione SQL (P0001) così com’è | P | Task 10, Casa condivisa | | |
+| 37 | un errore che non è un raise exception della funzione (es. 23505) non mostra il messaggio grezzo di Postgres | P | Task 10, Casa condivisa | | |
+| 38 | da proprietario: elenca le email dei membri e offre un altro codice, senza ESCI | P | Task 10, Casa condivisa | | |
+| 39 | da proprietario: TOGLI chiede conferma al primo tocco, al secondo toglie per id e rilegge la casa | P | Task 10, Casa condivisa | | diventa il dialogo `togli` |
+| 40 | da proprietario: tolto l’ultimo membro la scheda torna allo stato da solo | P | Task 10, Casa condivisa | | |
+| 41 | da proprietario: TOGLI armato, un tap fuori disarma senza togliere | P | Task 10, Casa condivisa | | diventa: ANNULLA del dialogo non toglie |
+| 42 | se togliere fallisce lo dice e il membro resta in elenco | P | Task 10, Casa condivisa | | l'errore sta nel dialogo |
+| 43 | se la rilettura dopo TOGLI fallisce la riga sparisce comunque, senza dire che non siamo riusciti | P | Task 10, Casa condivisa | | usa `ricaricaCasa(seFallisce)` del Task 6 |
+| 44 | da membro: ESCI DALLA CASA chiede conferma al primo tocco ed esce al secondo | P | Task 10, Casa condivisa | | diventa il dialogo `esci-casa` |
+| 45 | da membro: ESCI armato, un tap fuori disarma senza uscire | P | Task 10, Casa condivisa | | diventa: ANNULLA del dialogo non esce |
+| 46 | se uscire fallisce lo dice e resta nella casa | P | Task 10, Casa condivisa | | l'errore sta nel dialogo |
+| 47 | se statoCasa fallisce la sezione lo dice e il resto delle impostazioni resta usabile | P | Task 10, Casa condivisa | | `casa: null` nel provider (Task 6), il messaggio nella sotto-schermata |
+| 48 | mostra le sei righe nell’ordine caricato, con le frecce ai limiti disattivate al 35% di opacità | R | Task 9, Ordine delle aree | | i limiti sono `--icona-spenta` + `disabled` |
+| 49 | riordinare con le frecce non salva finché non si preme SALVA ORDINE | R | Task 9, Ordine delle aree | | |
+| 50 | SALVA ORDINE persiste il nuovo ordine lasciando intatto tutto il resto, poi torna a Impostazioni | R | Task 9, Ordine delle aree | | diventa: resta sulla sotto-schermata (spec §C.5) |
+| 51 | se il salvataggio fallisce, mostra un errore e resta sulla pagina | R | Task 9, Ordine delle aree | | |
+| 52 | il link indietro torna alla pagina statica /impostazioni | R | Task 9, Ordine delle aree | | diventa: la freccia torna in cima al pannello |
+| 53 | Testata (spec §D) › il menù utente porta alle impostazioni, si chiama Impostazioni e mostra l'iniziale | `src/components/__tests__/testata.test.tsx` | Task 6, Testata | | il Menù è un `button` che apre il pannello |
+| 54 | con indietro c'è il link Indietro e non c'è Impostazioni | `src/components/__tests__/testata.test.tsx` | Task 11, Testata | | la pillola con le tre etichette |
+| 55 | usa il nome se c'è | `src/data/__tests__/utente.test.ts` | Task 6, `leggiUtente` | | |
+| 56 | altrimenti l'email | `src/data/__tests__/utente.test.ts` | Task 6, `leggiUtente` | | |
+| 57 | senza utente o con errore torna il puntino | `src/data/__tests__/utente.test.ts` | Task 6, `leggiUtente` e `inizialeDi` | | |
+
+Per task: Task 6 = 4 (53, 55–57); Task 7 = 10 (2–5, 10–14, 24); Task 8 = 17 (1, 15–23,
+25–31); Task 9 = 9 (6–9, 48–52); Task 10 = 16 (32–47); Task 11 = 1 (54). Le righe 1–52 sono
+i 52 test di `P` e `R`: 10 + 17 + 9 + 16 = 52.
+
+## Non eseguiti: restano per il gate dal telefono
+
+Ogni task aggiunge qui quello che non ha potuto provare fuori dal telefono.
+
+## Rimasto aperto, di proposito
+
+Ogni task aggiunge qui i minor che la review lascia aperti, col motivo.
+
+## Domande per Andrea (in review)
+
+Le domande che l'esecuzione trova e non decide: ognuna col punto del codice o della spec, e la
+proposta. Andrea le vede in review.
+
+## I gate di Andrea, in ordine
+
+1. **L'ok alla migrazione `0015`** in produzione (`supabase/migrations/0015_cadenza_e_dispensa.sql`:
+   `settings.giorni_controllo` e `cancella_dispensa()`), **prima del merge**: Vercel pubblica da
+   solo al merge (spec §O).
+2. **La migrazione applicata.**
+3. **Il merge della PR**, che va in produzione da solo.
+4. **Le prove dal telefono** della spec §M.4, più quelle della sezione «Non eseguiti».

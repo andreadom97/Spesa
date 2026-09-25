@@ -1,6 +1,6 @@
 # Dispesa — design system
 
-**Versione 3, aggiornata il 23/09/2026.** La v2 è stata approvata da Andrea il 17/09/2026; la
+**Versione 3, aggiornata il 25/09/2026 (fase 5: Impostazioni).** La v2 è stata approvata da Andrea il 17/09/2026; la
 v3 incorpora il ridisegno fatto in Claude Design il 19/09 e le cinque risposte di Andrea del
 20/09. Questo documento è la fonte di verità per chi disegna una schermata nuova di Dispesa —
 designer o modello. Contiene i valori, non le intenzioni: ogni token, taglia, misura e stato è
@@ -71,7 +71,7 @@ testo è decorativo. Un testo che informa va in `--testo-2` o in `--ink`.
 | Token | Valore | Uso | Contrasto su bianco |
 |---|---|---|---|
 | `--avviso` | `#9A5C00` | avviso in linea, data di scadenza nella Dispensa | 5,4:1 |
-| `--errore` | `#C4423E` | errori di validazione, caricamento, scrittura; fondo del tasto distruttivo | 5,0:1 |
+| `--errore` | `#C4423E` | errori di validazione, caricamento, scrittura; fondo del tasto distruttivo; **nome della riga `Esci`** nel Pannello impostazioni (eccezione dichiarata il 25/09: l'azione non è distruttiva, e nel suo dialogo il tasto è in `--ink`, §8 Dialogo di conferma) | 5,0:1 |
 | `--freddo` | `#2F6FBF` | marca il congelato (Dispensa, meal prep) | 5,1:1 |
 | `--icona-spenta` | `#C4C4CE` | kebab, chevron, X, icone spente, testo fuori casa | 1,7:1, di proposito |
 
@@ -135,10 +135,10 @@ scritto:
 
 | Alfa | Dove |
 |---|---|
-| `0,04` su `--ink` | fondo delle voci del Foglio dal basso e dei tasti di «Rivedi i fogli presi», delle righe di scadenza e di proposta, delle tessere dei Pronti, dell'esito della scansione e dei tondi della testata dei fogli della Dispensa |
+| `0,04` su `--ink` | fondo delle voci del Foglio dal basso e dei tasti di «Rivedi i fogli presi», delle righe di scadenza e di proposta, delle tessere dei Pronti, dell'esito della scansione e dei tondi della testata dei fogli della Dispensa; dal 25/09 anche dei tondi di Gestione dei pasti e di Ordine delle aree, del riquadro del ciclo in Rotazione del piano e del riquadro del codice della casa |
 | `0,045` su `--ink` | fondo della riga pasto fuori casa |
 | `0,06` su `--ink` | pillola delle confezioni sulla tessera spenta, tessere dei widget vuoti nel caricamento della Dispensa |
-| `0,07` su `--ink` | voce attiva della tab bar, fondo del Menù utente, tondo della X nel pannello |
+| `0,07` su `--ink` | voce attiva della tab bar, fondo del Menù utente, tondi della testata del Pannello impostazioni (X e freccia), pillola della Testata in modo indietro |
 | `0,09` su `--ink` | bordo delle pillole d'azione, della Riga piatto, della Riga pasto, della foto in «Rivedi i fogli presi» |
 | `0,10` su `--ink` | alone del microfono tenuto premuto; fondo delle pillole e dei tasti spenti |
 | `0,12` su `--ink` | Menù utente premuto |
@@ -152,6 +152,7 @@ scritto:
 | `0,72` su `--ink` | Banda dei comandi sopra l'anteprima fotocamera |
 | `0,62` su bianco | bordo del tasto secondario sopra l'anteprima fotocamera |
 | `0,62` su bianco | tempo di registrazione nello stato "Registro" |
+| `0,62` su bianco | contorno del pallino vuoto della Striscia dei giorni sul giorno selezionato |
 | `0,85` su bianco | fascia della luce che attraversa i widget vuoti |
 | `0,92` su bianco | angoli della cornice guida sopra l'anteprima fotocamera |
 
@@ -199,6 +200,10 @@ rese e censite: una schermata nuova usa i nove livelli.
 **Mono 16** è ammesso in un punto solo: l'iniziale dentro il Menù utente. È una lettera, non un
 testo.
 
+**Mono 21 / 700 / 0,16em** è ammesso in un punto solo (dal 25/09): il codice della casa
+condivisa, otto caratteri nel riquadro del codice. È un codice da leggere e dettare lettera per
+lettera, non un testo.
+
 ---
 
 ## 4. Spaziatura
@@ -213,43 +218,48 @@ Scala a base 4: **4 · 8 · 12 · 16 · 20 · 26**, più 22 per il distacco dal 
 | Interno di una Tessera widget di sezione | 14 alto / 12 lati / 12 basso, gap 12 |
 | Griglia di tessere | gap 8, con 12 ai lati |
 | Tra un gruppo e l'altro | 12 |
-| Tab bar flottante | 16 dai lati, 22 dal fondo, padding 6, gap 2 |
+| Tab bar flottante | larga 304 (244 ridotta), centrata, 22 dal fondo, padding 6, gap 2 |
 | Dock | 16 dai lati, 8 sopra la tab bar, padding 8, gap 8 |
 | Ultimo elemento dal fondo | 22 |
 | Foglio dal basso | 16 / 16 / 26 |
+| Pannello impostazioni | testata `16 16 12`; corpo `0 12 26`, gap 12; piede fisso `12 16 26`; piede di versione `12 18 26` |
 | Coda di scorrimento sotto l'ultimo contenuto | **140** senza Dock (84 di barra + 22 dal fondo + 34 di respiro) · **194** col Dock (70 di dock + 114 dal fondo + 10) |
 
 Nessun valore intermedio: 13, 14 e 15 diventano 12 o 16, tranne dentro l'anatomia di un
 componente dove il valore è dichiarato (padding `12 14 13` della tessera, `13 16 14` della
 protagonista, `14 15` della riga di controllo).
 
-**La cornice: 375 × 812, riferimento e minimo supportato.** Ogni misura di questo documento si
-verifica in una cornice da **375 × 812**, che è anche la **larghezza minima che Dispesa
-dichiara di supportare**: sotto i 375 px una schermata può sbordare e non è un difetto da
-riparare. La cornice del dispositivo dei mockup resta **393 × 852** (§5, raggio 26): è il telaio
-in cui i file di disegno sono resi, non la larghezza su cui si giudica se una schermata regge.
-Limite noto che questa dichiarazione mette fuori mandato: **a 360 px la striscia dei giorni con
-sei pasti sborda** col gap 3 dei pallini che il file di disegno prescrive — di 0,36 px per lato,
-e a 320 px di 3,22 (misurato il 21/09, sonda nel browser). A 375 il 3 ci sta, ma per 0,71 px per
-lato: per questo il codice scende a gap 2 **solo** a sei pasti (`StrisciaGiorni.tsx`), e da tre a
-cinque tiene il 3. È l'unica deroga a un valore dei file di disegno decisa da una misura e non
-da un file, e vale perché il caso a sei pasti non è reso in nessuno di quei file.
+**La cornice: 375 × 812, riferimento e minimo supportato; 360 per le schermate coi pasti.**
+Ogni misura di questo documento si verifica in una cornice da **375 × 812**, che è anche la
+**larghezza minima che Dispesa dichiara di supportare**: sotto i 375 px una schermata può
+sbordare e non è un difetto da riparare. **Con un'eccezione, dal 25/09** (fase 5, decisione 7):
+le schermate coi pasti reggono **360**. La Matrice dei pasti, la Striscia dei giorni e il
+giorno del Piano, da tre a sei pasti, a 360 px non sbordano e non hanno celle sotto 44. La
+cornice del dispositivo dei mockup resta **393 × 852** (§5, raggio 26): è il telaio in cui i
+file di disegno sono resi, non la larghezza su cui si giudica se una schermata regge.
+
+**Il gap 2 dei pallini non c'è più.** Fino al 25/09 i pallini della striscia stavano in fila, e
+a 360 con sei pasti la striscia sbordava col gap 3 (di 0,36 px per lato, misurato il 21/09):
+il codice scendeva a gap 2 solo a sei pasti. Dal 25/09 i pallini stanno in una griglia a tre
+colonne (§8 Striscia dei giorni), larga 21 px (3 × 5 + 2 × 3) su un giorno largo 44,3 a 360
+[misurato sul disegno, frame 27]: il gap torna 3 per tutti, e la deroga decade.
 
 ---
 
 ## 5. Raggi, bordi, ombre
 
-**Cinque raggi, più due eccezioni dichiarate:**
+**Cinque raggi, più tre eccezioni dichiarate:**
 
 | Raggio | Cosa |
 |---|---|
 | 999 | pillole, tasti SÌ/NO, pillola settimana, tab bar, voci della tab bar, dock della Dispensa, tondo del Menù utente, anello e disco del tasto di scatto |
-| 22 | schede grandi, Tessera widget di sezione, Pannello impostazioni, fogli dal basso (`22px 22px 0 0`), Banda dei comandi (`22px 22px 0 0`), contenitore del Dock, stato vuoto |
-| 18 | tasti da 54 px, schede medie, riga di controllo, riga pasto, Blocco di gruppo del pannello |
+| 22 | schede grandi, Tessera widget di sezione, Pannello impostazioni (`22px 22px 0 0`, dal 25/09), fogli dal basso (`22px 22px 0 0`), Banda dei comandi (`22px 22px 0 0`), contenitore del Dock, stato vuoto |
+| 18 | tasti da 54 px, schede medie, riga di controllo, riga pasto, Blocco di gruppo del pannello, tessere del pannello |
 | 14 | tessere, campi di testo, segmenti a blocco, celle della matrice dei pasti, Riga piatto, miniatura della Striscia dei fogli, voci del foglio |
 | 4 | quadratino d'area da 10 px, quadrato dello stop nel Registro |
 | **26 — eccezione** | **la cornice del dispositivo** (393 × 852). È il telaio del mockup e la cornice della PWA, non un elemento di prodotto: nessun altro oggetto usa 26. |
 | **2,52 — eccezione** | **le caselle del Marchio quando è icona di tab bar** (lato 9). Rispetta la formula `lato × 0,28` che governa il raggio 4 sul lato 16: è la stessa regola, applicata a un lato più piccolo. Nessun altro oggetto usa 2,52. |
+| **11,2 — eccezione** | **le caselle del Marchio grande dell'animazione d'avvio** (lato 40, dal 25/09). È la formula `lato × 0,28` di 2,52 e di 4, applicata a un lato più grande. Nessun altro oggetto usa 11,2. |
 
 Il Marchio a lato 16 (testata e rese grandi) tiene il raggio 4. I pallini d'area da 8 px sulla
 Riga piatto e sulla riga pasto restano a 2,6, come nella v2.
@@ -259,7 +269,7 @@ Riga piatto e sulla riga pasto restano a 2,6, come nella v2.
 | Spessore | Uso |
 |---|---|
 | 1 px `--bordo` | schede, campi, tasto secondario, Tessera widget di sezione, Blocco di gruppo |
-| 1,5 px `--ink` | stato selezionato, avviso sulla riga di revisione, **e il perimetro di una superficie che deve staccarsi dal contenuto sotto**: il Pannello impostazioni. Sopra l'anteprima fotocamera lo stesso spessore è bianco al 62% |
+| 1,5 px `--ink` | stato selezionato, avviso sulla riga di revisione. Sopra l'anteprima fotocamera lo stesso spessore è bianco al 62%. Il Pannello impostazioni **non ha più bordo** dal 25/09: sta a tutta larghezza, e lo stacca `--ombra-alta` |
 | 2 px | caselle del Marchio; tratteggiato degli "aggiungi", degli stati vuoti e della Tessera di dispensa finita, in `rgba(20,22,58,0.20)`; bordo bianco dell'anello di scatto |
 | 3 px `--ink` | il giorno corrente nella striscia, **dentro** il riquadro (`inset`) |
 
@@ -269,9 +279,9 @@ strati e governano le superfici flottanti.
 | Token | Valore | Su cosa |
 |---|---|---|
 | `--ombra-tessera` | `0 1px 2px rgba(20,22,58,0.05)` | tessera accesa della Lista, quando non è dentro una Tessera widget |
-| `--ombra-casetta` | `0 1px 3px rgba(20,22,58,0.28)` | casetta piena della riga pasto |
+| `--ombra-casetta` | `0 1px 3px rgba(20,22,58,0.28)` | casetta piena della riga pasto, cella a casa della Matrice dei pasti |
 | `--ombra-tasto` | `0 3px 10px rgba(20,22,58,0.24)` | tasto primario e tasto distruttivo |
-| `--ombra-pannello` | `0 1px 2px rgba(20,22,58,.05), 0 6px 16px rgba(20,22,58,.06)` | Tessera widget di sezione, Riga piatto, campi, celle della striscia, Blocco di gruppo |
+| `--ombra-pannello` | `0 1px 2px rgba(20,22,58,.05), 0 6px 16px rgba(20,22,58,.06)` | Tessera widget di sezione, Riga piatto, campi, celle della striscia, Blocco di gruppo, tessere del Pannello impostazioni |
 | `--ombra-nav` | `0 2px 6px rgba(20,22,58,.08), 0 12px 30px rgba(20,22,58,.16)` | tab bar, Dock, Menù utente aperto, chrome sopra la fotocamera |
 | `--ombra-alta` | `0 8px 24px rgba(20,22,58,.28), 0 26px 64px rgba(20,22,58,.26)` | Pannello impostazioni |
 
@@ -303,8 +313,9 @@ righe e le tessere.
 La **matita** del Dock della Dispensa esce di scena: il Dock ora porta l'icona AI.
 
 **Le forme piene ammesse:** la casetta della riga pasto, il kebab a tre punti, **l'icona AI**
-(dal 25/09), e **le quattro icone della tab bar**, che dal 19/09 sono piene: a 26 px, appoggiate
-su bianco e in mezzo a quattro nomi, il tratto si perdeva. La regola "solo tratto" vale ancora
+(dal 25/09), e **le icone della tab bar**, che dal 19/09 sono piene: a 26 px, appoggiate su bianco e in
+mezzo ai nomi, il tratto si perdeva. Dal 25/09 la barra ha tre voci: le icone piene sono Piano
+e Dispensa, accanto al Marchio della Lista. La regola "solo tratto" vale ancora
 fuori dalla tab bar.
 
 **Mai emoji**, in nessun punto dell'interfaccia. Nessuna illustrazione, nessuna foto, nessun
@@ -323,9 +334,10 @@ esistono:
 - `.anim-apparsa` — comparsa di un elemento nuovo, 180 ms
 - `.anim-giorno` — cambio di giorno nella Settimana, 160 ms
 - **`.anim-barra`** — la tab bar che si restringe e il Dock che la segue, **200 ms**
-  `cubic-bezier(.2,.8,.25,1)`, opacità delle etichette in 150 ms lineari. Il gesto è lo
-  **scorrimento**: soglia 8 px per cambiare stato, ritorno a barra grande sotto i 4 px di
-  scroll. **[aggiunto 19/09]**
+  `cubic-bezier(.2,.8,.25,1)`, opacità delle etichette in 150 ms lineari. Si animano `width` e
+  `height` della pillola (dal 25/09; prima `left` e `right`). Il gesto è lo **scorrimento**:
+  soglia 8 px per cambiare stato, ritorno a barra grande sotto i 4 px di scroll. **[aggiunto
+  19/09]**
 - **`.scatto` e `.scatto-disco`** — anello `scale(.96)` e disco `scale(.88)` sul tasto di scatto, 180 ms
 - **`.anim-registro`** — le quattro barre del metro nello stato "Registro": da 7 a 22 px in
   220 ms `ease-in-out` `infinite alternate`, sfasature 40 / 70 / 140 ms. È l'**unica animazione
@@ -345,13 +357,39 @@ Queste tre, con `.anim-registro`, sono le **uniche animazioni in loop** del sist
 dicono un'attesa o un ascolto. Con `prefers-reduced-motion: reduce`: widget vuoti fermi, testo
 fermo in `--ink`, barre ferme a 13 px; lo stato lo dice la riga di testo con `role="status"`.
 
-Vietati: animazione d'ingresso della pagina, parallax, cascate, contatori animati, e qualunque
-animazione che ritardi un'azione dell'utente.
+- **`.anim-pannello`** — il Pannello impostazioni (dal 25/09). **Apertura, 250 ms**
+  `cubic-bezier(.2,.8,.25,1)`: il pannello da `translateY(100%)` a 0, il velo da opacità 0 a 1
+  in 200 ms lineari, l'app dietro (`.guscio-main`) da `scale(1)` a `scale(.96)` con
+  `transform-origin: 50% 0`. **Chiusura, 200 ms** `cubic-bezier(.4,0,1,1)`, al contrario, col
+  velo in 180 ms; alla fine il pannello va a `visibility: hidden` e il fuoco torna al Menù
+  utente. **Sotto-schermate:** entrano da destra, `translateX(24px)` e opacità in 200 ms, ed
+  escono verso destra con la freccia. **Aperto da un indirizzo** (`?impostazioni=`, il ritorno
+  da una pagina piena) il pannello compare già aperto, senza salita: il gesto di chi torna è la
+  freccia della pagina che lascia. Con `prefers-reduced-motion: reduce`: solo opacità in 120 ms,
+  e l'app dietro non si scala. **Eccezione dichiarata:** la curva di chiusura
+  `cubic-bezier(.4,0,1,1)` è l'unica curva d'autore oltre a quella della barra.
+- **`.anim-avvio`** — **eccezione dichiarata** (25/09): all'apertura dell'app, solo su `/lista`
+  e una volta per sessione di navigazione, il Marchio si compone al centro e vola sull'icona
+  della Lista in tab bar. Dura **2,1 s** e non segue un gesto: è ammessa perché accade una volta
+  sola, all'apertura, ed è il marchio. Un livello fisso sopra tutto, che non prende tocchi, col
+  fondo a gradiente (§2.4) e il Marchio grande al centro (§8 Marchio). I tempi:
+  0–1045 ms ogni casella fa il pop `pb` (620 ms lineari, scala `0 → 1,32 (40%) → 0,93 (62%) →
+  1,05 (80%) → 0,99 (92%) → 1`, opacità 0 → 1 entro il 40%, ritardi in ordine di griglia
+  `0, 340, 170, 255, 85, 425` ms); 1045–1200 pausa; 1200–1820 il Marchio va al suo posto in
+  620 ms `cubic-bezier(.2,.8,.25,1)`, e negli ultimi 120 ms si dissolve in quello della barra;
+  1200–1620 il fondo del livello si dissolve e la Lista, già pronta sotto, si vede; a 2100 ms
+  il livello si smonta. **Non ritarda niente:** la Lista carica sotto come sempre. Con
+  `prefers-reduced-motion: reduce` non parte: il Marchio è già al suo posto.
 
-**Direzione aperta (Andrea, 17/09, ancora aperta).** Il carattere del moto può diventare più
-dinamico senza esagerare: durate sempre 150–250 ms, mai un'animazione senza gesto. Il
-**Marchio** è il primo candidato, e va proposto in almeno due idee, una delle quali non tocca
-il riempimento delle caselle.
+Vietati: animazione d'ingresso della pagina, parallax, cascate, contatori animati, e qualunque
+animazione che ritardi un'azione dell'utente. L'avvio del Marchio non è un ingresso della Lista:
+è un livello sopra di lei, che la Lista non aspetta, e la Lista non ha un'animazione propria.
+
+**Direzione del moto (Andrea, 17/09; chiusa per il Marchio il 25/09).** Il carattere del moto
+può diventare più dinamico senza esagerare: durate sempre 150–250 ms, mai un'animazione senza
+gesto. Il Marchio, che era il primo candidato, ha la sua animazione dal 25/09: l'avvio
+(`.anim-avvio`), scelto fra cinque varianti (la 3a, «Pop elastico»), con l'arrivo sulla tab bar
+deciso da Andrea.
 
 **La maschera di scorrimento non è un'animazione.** È una `mask-image` ferma sul contenitore
 che scorre: il contenuto sfuma entrando sotto la tab bar invece di essere tagliato.
@@ -379,8 +417,11 @@ piede del titolo. Il Marchio **non è più in testata**: è l'icona della Lista 
 lui è sparito il link "Vai alla lista" da ogni schermata. Sotto, facoltativa, la **pillola
 settimana**: alta 34, raggio 999, fondo `--ink`, mono 10.5/700/0.13em in bianco, testo
 informativo e non interattivo, senza freccetta (`Settimana del 21 settembre`). Padding
-`20px 18px 12px`, gap interno 15. Modalità `indietro`: freccia 20 px a sinistra, niente Menù
-utente.
+`20px 18px 12px`, gap interno 15. **Modalità indietro** (dal 25/09), per le pagine piene aperte dal Pannello impostazioni o dagli stati vuoti: niente Menù utente; in cima una **pillola** alta 44 su `rgba(20,22,58,0.07)`,
+raggio 999, padding `0 16 0 10`, gap 6, con la freccia 20 (tratto 1,8) e un'etichetta mono
+11/700/0,08em che dice **dove porta**: `IMPOSTAZIONI`, `LISTA` o `PIANO`. L'`aria-label` lo dice
+per intero: `Torna alle impostazioni`, `Torna alla lista`, `Torna al piano`. Sotto, il titolo
+52, a 12 dalla pillola. La freccia sola con `aria-label="Indietro"` non c'è più.
 
 ### Menù utente
 **Nuovo il 19/09.** Sostituisce l'ingranaggio: dice anche **di chi** è l'account, non solo che
@@ -392,29 +433,34 @@ esistono preferenze.
   bianca (17,4:1), e il **kebab pieno 20 px** in `--ink`. Nessun bordo, nessuna ombra a riposo.
 - **Stati:** riposo come sopra; premuto `rgba(20,22,58,0.12)`; aperto `aria-expanded="true"` e
   `--ombra-nav`.
-- **Misure e accesso:** un solo bersaglio 81 × 50, `aria-label="{Nome}: profilo e
-  impostazioni"`. Apre il **Pannello impostazioni**.
+- **Misure e accesso:** un solo bersaglio 81 × 50, un `button` con
+  `aria-label="{Nome}: profilo e impostazioni"`, `aria-expanded` e `aria-controls` che punta al
+  pannello. `{Nome}` è il nome del profilo se c'è, altrimenti la parte dell'email prima della
+  `@`. Apre il **Pannello impostazioni**; un secondo tocco lo chiude.
 - L'iniziale è **testo**, non un avatar: nessuna immagine, nessun colore assegnato per persona.
 
 ### Tab bar
-Pillola bianca **flottante**: `left/right 16`, `bottom 22`, altezza **84**, raggio 999, padding
-6, gap 2, `--ombra-nav`. Quattro voci `flex: 1` alte **72**, in colonna, gap 4, raggio 999;
-attiva su `rgba(20,22,58,0.07)`.
+Pillola bianca **flottante e centrata** (`left: 0; right: 0; margin: 0 auto`), larga **304**,
+`bottom 22`, altezza **84**, raggio 999, padding 6, gap 2, `--ombra-nav`. **Tre voci** da
+**96 × 72**, in colonna, gap 4, raggio 999; attiva su `rgba(20,22,58,0.07)`. (Dal 25/09: prima
+erano quattro voci `flex: 1` su una pillola a 16 dai lati.)
 
-- **Ordine e nomi:** **Lista · Piano · Piatti · Dispensa**. `SETTIMANA` non esiste più: la
-  sezione si chiama **Piano** perché è la pianificazione dei pasti, e la settimana è il periodo,
-  che lo dice la pillola sotto il titolo.
+- **Ordine e nomi:** **Lista · Piano · Dispensa**. Piatti esce dalla barra il 25/09: è una
+  pagina piena, aperta da una tessera del Pannello impostazioni e dagli stati vuoti di Lista e
+  Piano. `SETTIMANA` non esiste più: la sezione si chiama **Piano** perché è la pianificazione
+  dei pasti, e la settimana è il periodo, che lo dice la pillola sotto il titolo.
 - **Icone 26 px, piene**; spente `#9A9AA6`, accesa `--ink`. Il segno sta in uno `.segno` ad
-  **altezza fissa 26**, così le quattro icone e il Marchio hanno la stessa linea di base e i
-  quattro nomi sono allineati fra loro.
+  **altezza fissa 26**, così le icone e il Marchio hanno la stessa linea di base e i tre nomi
+  sono allineati fra loro.
 - **Etichette** mono **8,5 / 0,12em**, spente `--off` a 500, accesa `--ink` a 700, rese
   maiuscole da `text-transform`.
-- **Stato ridotto:** scorrendo giù la barra diventa alta **66**, voci **54**, `left/right 46`;
-  le etichette vanno a `max-height: 0; opacity: 0` ma **restano cliccabili**. 200 ms,
-  `cubic-bezier(.2,.8,.25,1)`; `--fine` passa da 128 a 110.
+- **Stato ridotto:** scorrendo giù la barra diventa larga **244** e alta **66**, voci **76 ×
+  54**; le etichette vanno a `max-height: 0; opacity: 0` ma **restano cliccabili**. Si animano
+  `width` e `height`, 200 ms, `cubic-bezier(.2,.8,.25,1)`; `--fine` passa da 128 a 110.
 - **L'icona della Lista è il Marchio**, non un'icona di lista: deciso esplicitamente.
-- Su Impostazioni la barra è **coperta dal pannello**: la navigazione è sospesa finché il
-  pannello è aperto. Su Importa nessuna voce è attiva.
+- **Nessuna voce attiva** su Piatti, Importa e nell'editor dell'ingrediente. Col Pannello
+  impostazioni aperto la barra è **coperta**: la navigazione è sospesa finché il pannello è
+  aperto. Nell'editor dell'ingrediente, come nella fotocamera, la barra non c'è.
 
 ### Marchio
 Griglia **3 colonne × 2 righe, sei caselle**, nell'**ordine fisso** arancio (dispensa), azzurro
@@ -425,6 +471,10 @@ quell'area non manca niente; **contornata** = manca qualcosa. Mai grigia.
 - In **tab bar**, come icona della Lista: lato **9**, gap 4, raggio **2,52**, bordo 2.
 - Nelle **rese grandi** (copertine, schede di sistema): lato 16 o 20, gap 4, raggio
   `lato × 0,28`.
+- Nell'**animazione d'avvio** (§7 `.anim-avvio`, dal 25/09): lato **40**, gap **10**, raggio
+  **11,2** (§5, eccezione), bordo 2, `box-sizing: border-box`, tutte e sei le caselle piene.
+  Atterra sul Marchio della tab bar; il rapporto fra gap e lato non è quello della barra (10/40
+  contro 4/9), e per questo negli ultimi 120 ms si dissolve in lui invece di coincidere.
 - Solo la Lista passa le aree mancanti; altrove il Marchio è pieno.
 
 ### Dock
@@ -437,6 +487,10 @@ flottante: il tasto primario non ha più il suo posto in coda al contenuto. Il D
 - **Posizione:** `left/right 16`; `bottom` **114** a barra grande (84 + 22 di distacco + 8 di
   respiro) e **96** a barra ridotta (66 + 22 + 8). La transizione è `bottom 200ms
   cubic-bezier(.2,.8,.25,1)`, la stessa `.anim-barra`.
+- **Senza tab bar** (dal 25/09: l'editor dell'ingrediente, che la nasconde come la fotocamera)
+  il Dock scende a `bottom 22`, il distacco della barra dal fondo.
+- **Dentro il Pannello impostazioni il Dock non c'è:** sta sotto il pannello, coperto. I tre
+  primari del pannello vivono nel suo piede fisso (§8 Pannello impostazioni).
 - **Una riga sola** (deciso il 20/09: la forma a due righe è decaduta con Base / Top-up).
   Contenitore bianco raggio **999**, padding 8, `--ombra-nav`; dentro, una riga di controlli con
   gap 8. **Altezza 70** = 8 + 54 + 8. Due riempimenti dello stesso contenitore:
@@ -471,7 +525,9 @@ coppia.
   conferma a due tasti accanto ad ANNULLA secondario.
 - **Aggiungi tratteggiato** — alto **56**, raggio 14, bordo 2 px tratteggiato
   `rgba(20,22,58,0.20)`, nessun fondo, mono 11/700/0.08em con un più da 16 px. Sta **in cima**
-  alla lista che popola (`Nuovo piatto`), non in fondo.
+  alla lista che popola (`Nuovo piatto`), non in fondo. Eccezione dichiarata
+  (25/09): `AGGIUNGI PASTO` in Gestione dei pasti sta **in fondo** al blocco, perché il pasto
+  nuovo nasce in fondo all'elenco, e l'elenco è nell'ordine in cui i pasti si fanno.
 
 ### Pillole d'azione
 Disegno 38 px (44 nei SÌ/NO), raggio 999, mono 11/700/0.08em maiuscolo, `padding 0 15px`.
@@ -518,7 +574,8 @@ cosa fa il tap.
 ### Riga di controllo
 "Olio: ne hai ancora?" dentro il widget della sua area. Fondo colore d'area al 26%, raggio 18,
 padding `14px 15px`. Nome 16/700/-0.024em, sotto una riga mono 8.5/0.11em con la cadenza
-(`controllo ogni 4 settimane` — la cadenza è configurabile, non più fissa a 90 giorni). A
+(`CONTROLLO OGNI MESE`, `CONTROLLO OGNI 2 MESI` o `CONTROLLO OGNI 3 MESI`: la cadenza si sceglie
+nel Pannello impostazioni, Cadenza dei controlli, e di default è ogni 3 mesi). A
 destra due pillole bianche `Sì` / `No` da 44, min-width 52, gap 7, ognuna col suo `aria-label`
 ("Sì, hai ancora {nome}" / "No, comprane una confezione di {nome}"). Mentre la risposta è in
 volo: opacità 0,5 e `disabled`.
@@ -551,73 +608,111 @@ Raggio 18, fondo bianco con bordo 1 px `rgba(20,22,58,0.09)` a casa, fondo
 
 ### Striscia dei giorni
 Sette riquadri `flex: 1`, gap 3, raggio 14, padding `9px 0 10px`, `--ombra-pannello`. Dentro:
-sigla del giorno mono 8.5/700/0.08em in `--ter`, numero 15/800, e sotto un pallino da 5 px per
-pasto (pieno se quel pasto è a casa e ha un piatto). **Quattro stati**, indipendenti:
+sigla del giorno mono 8.5/700/0.08em in `--ter`, numero 15/800, e sotto **un pallino da
+5 px per pasto, in una griglia a tre colonne con gap 3** (dal 25/09): fino a tre pasti una riga,
+da quattro a sei due righe, e la prima riga è sempre piena; da quattro pasti il riquadro cresce
+di 8. Il pallino è **pieno** in `--ink` (bianco sul giorno selezionato) se quel pasto è a casa e
+ha un piatto, **vuoto** a contorno 1 px `rgba(20,22,58,0.20)` (bianco a 0,62 sul selezionato)
+se no. A 360 ogni giorno è largo 44,3 e la griglia occupa 21. **Quattro stati**, indipendenti:
 riposo · **selezionato** (fondo `--ink`, testi bianchi, ombra `0 2px 6px rgba(20,22,58,.20)`) ·
 **oggi** (`inset 0 0 0 3px --ink`, vale anche se oggi non è selezionato) · **oggi e selezionato**
 (`inset` 3 px bianco più `inset` 4,5 px `--ink`). `aria-pressed` e `aria-label` "Venerdì 18,
 domani, 3 pasti a casa, selezionato".
 
 ### Pannello impostazioni
-**Nuovo il 19/09.** Le Impostazioni **non sono una schermata**: sono un pannello che esce dal
-Menù utente.
+**Nuovo il 19/09, ridisegnato il 25/09 (fase 5).** Le Impostazioni **non sono una schermata**:
+sono un pannello che esce dal Menù utente, sopra la pagina in cui si è. È un componente del
+guscio dell'app, non una pagina.
 
-- **Anatomia:** ancorato `top 76`, `left/right 16`, `bottom 22`, raggio **22**, fondo `--fondo`
-  **pieno**, bordo **1,5 px `--ink`**, `--ombra-alta`. Velo dietro `rgba(20,22,58,0.55)`: il
-  resto dell'app si scurisce parecchio ma resta visibile. Il velo è `data-chiudi` come la X.
-- **Testata del pannello:** titolo di dettaglio 32/800 (`Impostazioni`) e tondo 44 su
-  `rgba(20,22,58,0.07)` con la X, `aria-label="Chiudi le impostazioni"`. Fissa, non scorre.
-- **Corpo:** scorrevole, gap 12, fatto di **Blocchi di gruppo** — bianco, raggio 18, bordo 1 px
-  `--bordo`, padding `12 / 12 / 10`, `--ombra-pannello` — ognuno titolato da un'etichetta di
-  sezione.
-- **Piede:** riga di versione in mono, `Versione 2.0.4 · ultimo salvataggio il 18/09/2026 alle
-  9:12`.
-- **Sotto-schermate.** **[deciso 20/09]** Il pannello non è un menù piatto: le funzioni che
-  hanno un contenuto proprio vivono in **sotto-schermate dello stesso pannello**, raggiunte da
-  una riga di impostazione col suo valore e il chevron, e lasciate con la freccia al posto della
-  X (`aria-label="Torna alle impostazioni"`). Le sotto-schermate previste, tutte **nel
-  prodotto** e nessuna tolta:
-  `Pasti a casa` (la matrice del default) · `Gestione dei pasti` (nome, aggiunta, rimozione,
-  riordino: da 3 a 6) · `Rotazione del piano` (nessuna / 2 / 3 / 4 settimane, contatore del
-  ciclo, riparti dalla settimana 1 con la sua conferma) · `Casa condivisa` (crea un codice,
-  entra con un codice, membri, esci dalla casa, nelle tre varianti di ruolo) ·
-  `Ingredienti` (il repertorio) · `Ordine delle aree` · `Importa un piano`.
-- **La riga `Esci` resta, ed è spenta.** **[deciso 20/09]** Il logout non esiste ancora: la riga
-  sta nel gruppo Account come voce `disabled` con opacità 0,5, e non si finge un'azione che il
-  sistema non sa fare. Si accende quando il logout c'è.
-- **Il pannello copre la tab bar**, di proposito: finché è aperto non si naviga.
+- **Anatomia:** **a tutta larghezza**, `top 76`, `left 0`, `right 0`, `bottom 0`, raggio
+  `22 22 0 0`, **senza bordo**, fondo `--fondo` pieno, `--ombra-alta`, z-index 70
+  (`--z-pannello`): sopra tab bar e Dock. Velo dietro `rgba(20,22,58,0.55)`, che chiude.
+  `role="dialog"`, `aria-modal="true"`, `aria-labelledby` sul titolo.
+- **Testata**, fissa: padding `16 16 12`, gap 10. In cima il titolo di dettaglio 32/800
+  `Impostazioni` e, a destra, il tondo 44 su `rgba(20,22,58,0.07)` con la X 18
+  (`aria-label="Chiudi le impostazioni"`). In una sotto-schermata il tondo 44 su 0,07 ha la
+  freccia 20 e sta **a sinistra** del titolo (`aria-label="Torna alle impostazioni"`), il titolo
+  è quello della sotto-schermata, e la X non c'è.
+- **Corpo:** l'unico che scorre, padding `0 12 26`, gap 12. La maschera sfuma solo gli ultimi
+  26 px, cioè il padding: la barra è coperta, e `--fine` qui non serve.
+- **Due livelli.** In cima le funzioni che si usano ogni tanto: **quattro tessere** in griglia
+  2 × 2 sul fondo del pannello, senza Blocco attorno (gap 8, minimo 104, raggio 18, bianche,
+  `--bordo`, `--ombra-pannello`, padding `12 14 13`; nome 17/700, nota 12,5 in `--testo-2`;
+  nessuna icona, nessun contatore): `Piatti`, `Importa un piano`, `Casa condivisa` (col valore
+  in mono 11), `Esporta i tuoi dati`. Poi il separatore `SI CAMBIANO DI RADO`, etichetta mono 10
+  in `--testo-2` col suo filetto `--bordo`, e sotto le impostazioni che si cambiano di rado:
+  cinque **Blocchi di gruppo** (bianco, raggio 18, bordo 1 px `--bordo`, padding `12 / 12 / 10`,
+  `--ombra-pannello`) di Righe di impostazione: `La settimana di base`, `Come calcolo la lista`,
+  `Come la vedi in corsia`, `I tuoi dati`, `Account`.
+- **Piede di versione**, in fondo al corpo: `Versione {x}` in mono, padding `12 18 26`.
+  «Ultimo salvataggio» non c'è: non è un dato che esiste.
+- **Sotto-schermate.** **[deciso 20/09, rese il 25/09]** Le funzioni con un contenuto proprio
+  vivono in sotto-schermate dello stesso pannello, raggiunte da una riga o da una tessera e
+  lasciate con la freccia: `Pasti a casa` · `Gestione dei pasti` · `Rotazione del piano` ·
+  `Ingredienti` · `Ordine delle aree` · `Cadenza dei controlli` · `Casa condivisa` · `Esporta i
+  tuoi dati`. Un livello solo: nessuna sotto-schermata ne apre un'altra. Piatti, Importa e
+  l'editor dell'ingrediente sono **pagine piene**: si lascia il pannello, e la freccia della
+  pagina lo riapre sopra la pagina da cui si era partiti.
+- **Piede fisso col primario** — eccezione dichiarata alla regola del Dock: in tre
+  sotto-schermate (`Ordine delle aree`, `Esporta i tuoi dati`, `Casa condivisa`) il primario
+  (`SALVA ORDINE`, `PREPARA IL FILE`, `CREA UN CODICE`) sta in un piede del pannello, fuori dallo
+  scorrimento, sopra un filetto `--bordo`, padding `12 16 26`. Il Dock sta sotto il pannello e
+  non si vede.
+- **La riga `Esci` è accesa** dal 25/09: il logout esiste. È una riga d'azione nel gruppo
+  Account, col nome in `--errore` (§2.2), e passa dal Dialogo di conferma col tono primario.
+- **Stati.** Caricamento: testata e tessere già disegnate e toccabili, al posto dei blocchi
+  `CARICO…` in mono `--sec` con `role="status"`. Errore di caricamento: le tessere restano, al
+  posto dei blocchi un Blocco con `Non riusciamo a caricare le impostazioni. Controlla la
+  connessione e tocca RIPROVA.` e la pillola `RIPROVA`. Errore di salvataggio: §8 Riga di
+  impostazione.
+- **Il pannello copre la tab bar**, di proposito: finché è aperto non si naviga. Si chiude con
+  la X, col velo, col Menù utente e col gesto indietro, che scende di un livello alla volta
+  (dialogo → sotto-schermata → cima → chiuso). Movimento in §7, `.anim-pannello`.
 
 ### Riga di impostazione
 **Nuova il 19/09.** Minimo **56**, raggio 14, senza fondo proprio, dentro un Blocco di gruppo.
 Nome 15/700/-0.024em, nota 12,5 in `--testo-2`. A destra **uno di quattro finali**:
 
-1. **valore + chevron** — valore in mono 11/700 maiuscolo: la riga apre una sotto-schermata;
+1. **valore + chevron** — valore in mono 11/700 maiuscolo: la riga apre una sotto-schermata
+   (`{N} FUORI CASA`, `{N} PASTI`, `NESSUNA` / `{N} SETT.`, `OGNI 3 MESI`, `PERSONALIZZATO` /
+   `DI BASE`);
 2. **coppia `Sì` / `No`** da 44, `aria-pressed`;
-3. **campo numerico** 78 × 44 con l'unità in mono 10;
-4. **niente** — la riga è un'azione (`Esporta i tuoi dati`, `Cancella la dispensa`, `Esci`).
+3. **campo numerico** 78 × 44 con l'unità in mono 10: dal 25/09 è `Per quante persone cucini`,
+   unità `PERS`, da 1 a 4. Salva all'uscita dal campo e con Invio; fuori intervallo, o se non è
+   un intero, torna al valore di prima e sotto la riga compare `Scrivi un numero da 1 a 4.`.
+   Lo stepper `−` / `+` non c'è più;
+4. **niente** — la riga è un'azione (`Cancella la dispensa`, `Esci`). Il nome di `Esci` è in
+   `--errore` (§2.2).
+
+Una riga informativa (nome ed email nel gruppo Account) non ha finale e non è un bersaglio.
+**Errore di salvataggio** (dal 25/09): il valore torna a quello di prima e sotto la riga
+compare `Non siamo riusciti a salvare. Riprova.` in 12,5 `--errore`, con `role="alert"`; non c'è
+RIPROVA: si rifà il gesto, e l'errore sparisce al gesto successivo.
 
 **Niente switch**, in nessuna forma.
 
 ### Matrice dei pasti
-**Nuova il 19/09, riorientata il 20/09.** Dice con quali pasti nasce ogni settimana nuova.
-Acceso = a casa.
+**Nuova il 19/09, riorientata il 20/09, ridisegnata il 25/09.** È la sotto-schermata `Pasti a
+casa` del pannello: dice con quali pasti nasce ogni settimana nuova.
 
 - **Orientamento [deciso 20/09]: i pasti in riga, i giorni in colonna.** Il prodotto ammette
-  **da 3 a 6 pasti**: con i pasti in colonna, a sei pasti le celle scendevano a ~36 px, sotto i
-  44. Con i pasti in riga il numero di pasti fa crescere l'altezza, che scorre, e la larghezza
-  resta quella dei sette giorni.
-- **Misure:** il nome del pasto sta su **riga propria** sopra le sue sette celle (etichetta di
-  sezione mono 10), e la matrice occupa la **larghezza interna piena del pannello** — 334 px,
-  senza Blocco di gruppo attorno. Sette celle `flex: 1`, gap 4, alte **44** → **44,28 px** di
-  lato: `(334 − 6 × 4) / 7`. Raggio 14. Sopra le celle, la fila delle sigle dei giorni in mono
-  8.5/700/0.08em in `--ter`.
-- **Stati:** accesa = fondo `--ink` pieno col pallino bianco e `--ombra-casetta`; spenta =
-  bianca, bordo 1 px `--bordo`, pallino grigio. `aria-pressed`, `aria-label="Lun colazione: di
-  base a casa, tocca per mettere fuori casa"`.
+  **da 3 a 6 pasti**: il numero di pasti fa crescere l'altezza, che scorre, e la larghezza resta
+  quella dei sette giorni.
+- **Misure [25/09]:** la fila delle sigle `L M M G V S D` sta **una volta sola in cima**, mono
+  8.5/700/0.08em in `--ter`, in `position: sticky`; il nome del pasto è un'etichetta mono 10 su
+  riga propria sopra le sue sette celle. La matrice occupa la larghezza piena del corpo del
+  pannello, senza Blocco di gruppo. Sette celle `flex: 1`, gap 4, alte **44**, raggio 14. **A
+  360** il corpo è largo 336 (360 − 2 × 12) e le celle `(336 − 6 × 4) / 7` = **44,6**; a 375
+  sono 46,7, a 393 sono 49,3.
+- **Stati:** **a casa** = fondo `--ink`, `--ombra-casetta`, la **casetta bianca 16** (la stessa
+  della Riga pasto); **fuori** = bianca, bordo 1 px `--bordo`, vuota. `aria-pressed`;
+  `aria-label="{Giorno} {pasto}: di base a casa, tocca per mettere fuori casa"`, e dalla cella
+  fuori `…: di base fuori casa, tocca per mettere a casa`. Salva al tocco.
 - **Nessuna cella sotto 44 px, in nessuna delle due dimensioni.** Se un giorno la larghezza non
   bastasse più, la matrice scorre in orizzontale: non si rimpiccioliscono le celle.
-- Sotto, la nota: `Acceso vuole dire a casa. Ogni settimana nuova nasce così: nel Piano puoi
-  correggere il singolo giorno senza cambiare questo default.` e il riepilogo che si ricalcola.
+- Sotto, la nota `La casetta vuol dire che quel pasto lo fai a casa. Ogni settimana nuova nasce
+  così: nel Piano puoi correggere il singolo giorno senza cambiare questo default.` e il
+  riepilogo che si ricalcola.
 
 ### Tessera di dispensa
 **Nuova il 19/09, gesto cambiato il 25/09.** Griglia 2 colonne gap 8, minimo **104**, raggio
@@ -672,10 +767,20 @@ continua. Sotto, la riga di stato e il tasto secondario `DIGITA IL CODICE`. L'es
 0,04: `CODICE {ean}` mono 10, formato 15,5/700, stima 12,5; due tasti 54.
 
 ### Dialogo di conferma
-**Nuovo il 25/09.** Secondo velo 0,35 sopra il foglio e un foglio piccolo ancorato in basso,
-padding `20 / 16 / 26`, gap 12, `role="alertdialog"`. Titolo 21/800, testo 14/1,5 in
-`--testo-2`, due tasti 54 affiancati gap 8: `ANNULLA` secondario, il distruttivo pieno in
-`--errore` con `--ombra-tasto`. Il velo **non** chiude.
+**Nuovo il 25/09 (fase 4), generalizzato il 25/09 (fase 5):** è il componente `DialogoConferma`.
+Secondo velo 0,35 sopra il foglio o il pannello, e un foglio piccolo ancorato in basso a tutta
+larghezza, raggio `22 22 0 0`, padding `20 / 16 / 26`, gap 12, `role="alertdialog"`. Titolo
+21/800, testo 14/1,5 in `--testo-2`, due tasti 54 `flex: 1` affiancati gap 8: `ANNULLA`
+secondario a sinistra, l'azione a destra.
+
+- **Due toni.** `distruttivo`: pieno in `--errore` con `--ombra-tasto` (Riparti, Togli, Esci
+  dalla casa, Cancella la dispensa, Togliere un pasto con piatti, Elimina il lotto).
+  `primario`: pieno in `--ink` con `--ombra-tasto` (Esci da Dispesa, che è reversibile: §9).
+- **In volo** i due tasti vanno a 0,5 e `disabled`. Se l'azione fallisce, l'errore compare in
+  12,5 `--errore` **sotto i tasti**, con `role="alert"`, e i tasti si riaccendono. Il dialogo si
+  chiude solo quando l'azione riesce.
+- Il velo **non** chiude: si esce da ANNULLA. (Il log del designer lo voleva come ANNULLA; resta
+  com'era, spec fase 5 §N.) Sopra il Pannello impostazioni il dialogo sta a z-index 80.
 
 ### Onda di dettatura
 **Nuova il 25/09.** Banda `--ink` alta 54, raggio 999, con 22 barre bianche da 3 px (§7
@@ -797,13 +902,21 @@ Andrea; un tocco breve avvia e un secondo tocco ferma, ed è la via per lo scree
 **Dove sta l'azione principale.** Nel **Dock**, sopra la tab bar. Non in coda al contenuto: il
 fondo schermo è della barra.
 
-**Conferme.** Ogni azione distruttiva o non reversibile passa da un dialogo a due tasti: il
-distruttivo pieno in `--errore`, ANNULLA secondario accanto. Le azioni reversibili non chiedono
-niente e si annullano rifacendo il gesto. Eccezione dichiarata (23/09): togliere un foglio in
-«Rivedi i fogli presi» non chiede conferma. Il foglio si rifà con uno scatto, niente di salvato
-va perso, e un dialogo per ogni foglio renderebbe il riordino un lavoro. Eliminare un lotto
-Pronto chiede il dialogo (25/09): è cibo già cucinato e le sue porzioni impegnate reggono i
-pasti in programma.
+**Conferme.** Ogni azione distruttiva o non reversibile passa dal Dialogo di conferma a due
+tasti: il distruttivo pieno in `--errore`, ANNULLA secondario accanto. **La conferma a doppio
+tocco (`SICURO?`) non esiste più** dal 25/09: Riparti, Togli ed Esci dalla casa passano dal
+dialogo. Le azioni reversibili non chiedono niente e si annullano rifacendo il gesto. Eccezioni
+dichiarate:
+- (23/09) togliere un foglio in «Rivedi i fogli presi» non chiede conferma. Il foglio si rifà
+  con uno scatto, niente di salvato va perso, e un dialogo per ogni foglio renderebbe il
+  riordino un lavoro;
+- (25/09) eliminare un lotto Pronto chiede il dialogo: è cibo già cucinato e le sue porzioni
+  impegnate reggono i pasti in programma;
+- (25/09, fase 5) **Esci chiede conferma pur essendo reversibile**: i dati restano, ma per
+  rientrare serve il link che arriva via email. Il tono del dialogo è `primario`, in `--ink`;
+- (25/09, fase 5) **togliere un pasto chiede il dialogo solo se il pasto ha piatti**: la
+  rimozione cancella a cascata i suoi piatti e le sue righe nel piano. Senza piatti si toglie al
+  tocco.
 
 **Feedback di scrittura.** Lo stato si mostra sul controllo (opacità 0,5 e `disabled` mentre è
 in volo) e la conferma è il cambio di stato del dato, non un messaggio. In caso di errore, un
@@ -845,9 +958,10 @@ abbandona, e sono entrambi visibili.
 ## 11. Accessibilità
 
 - Ogni controllo ha un nome: testo visibile o `aria-label`.
-- `aria-pressed` su ogni toggle e ogni segmento; `aria-expanded` sul Menù utente;
-  `role="dialog"` con nome su ogni foglio e sul Pannello impostazioni; `role="status"` sul
-  Registro.
+- `aria-pressed` su ogni toggle e ogni segmento; `aria-expanded` e `aria-controls` sul Menù
+  utente; `role="dialog"` con nome su ogni foglio; sul Pannello impostazioni `role="dialog"`,
+  `aria-modal="true"` e `aria-labelledby` sul titolo; `role="alertdialog"` sul Dialogo di
+  conferma; `role="status"` sul Registro e sugli stati in attesa.
 - Bersagli ≥ 44 px anche quando il disegno è più piccolo: l'area trasparente sporge.
 - Le etichette della tab bar ridotta sono invisibili ma **la voce resta cliccabile** e il nome
   accessibile resta.
@@ -964,3 +1078,38 @@ Prese in Claude Design sulle schermate rese (19/09) e sulle sette domande aperte
   **a destra**, dopo `FAI LE MODIFICHE` o dopo l'onda di dettatura: com'era a sinistra, aprendo
   il widget dal microfono del Dock (a destra) il tondo saltava di lato (§8 Widget AI, Onda di
   dettatura).
+
+### Decisioni del 25/09/2026 (fase 5: Impostazioni)
+
+Dalla spec `docs/superpowers/specs/2026-09-25-impostazioni-design.md`, approvata da Andrea il
+25/09. Le decisioni 1–7 sono di Andrea prima del disegno, 8–10 del designer, 11–16 di Andrea
+dopo il disegno.
+
+1. **Piatti esce dalla tab bar.** La barra ha tre voci, Lista · Piano · Dispensa; Piatti resta
+   una pagina piena, aperta da una tessera del pannello (§8 Tab bar).
+2. **Il pannello ha due livelli:** in cima le funzioni che si usano ogni tanto, sotto quelle che
+   si cambiano di rado (§8 Pannello impostazioni).
+3. **Nessuna funzione di oggi si perde** (deciso il 20/09): quelle con contenuto proprio sono
+   sotto-schermate.
+4. **Quattro funzioni nuove, vere:** Esci, Cancella la dispensa, Esporta i tuoi dati, Cadenza
+   dei controlli (ogni mese, ogni 2 mesi, ogni 3 mesi; di default ogni 3 mesi).
+5. Si tolgono `Arrotonda alle confezioni` e `Unità di misura`.
+6. «Da quando usi Dispesa» va nel gruppo I tuoi dati.
+7. **Da 3 a 6 pasti, a 360 px** (§4, §8 Matrice dei pasti, §8 Striscia dei giorni).
+8. Riparti, Togli ed Esci dalla casa passano dal Dialogo di conferma, e `SICURO?` sparisce (§9).
+9. Esci chiede conferma, con `ESCI` primario in `--ink` (§8 Dialogo di conferma, §9).
+10. Da Piatti si torna con una pillola che riapre il pannello (§8 Testata).
+11. Il pannello è un componente del guscio dell'app, non una pagina.
+12. Togliere un pasto che ha piatti chiede un dialogo; senza piatti si toglie al tocco (§9).
+13. Nel perimetro entrano la scansione nell'editor dell'ingrediente, l'animazione d'avvio del
+    Marchio e `COPIA` accanto al codice della casa. La ricerca in Ingredienti resta fuori.
+14. Le quattro proposte di testo del designer sono accettate: `SETTIMANA {k} DI {n}`, «nel
+    Piano», «l'ordine delle aree», «Controlla la connessione e tocca RIPROVA.».
+15. Il «finito» della Dispensa resta a due tocchi.
+16. Nell'animazione d'avvio il Marchio atterra sull'icona della Lista in tab bar, non in
+    testata (§7 `.anim-avvio`).
+
+Eccezioni dichiarate da questa fase: 360 per le schermate coi pasti (§4); `.anim-pannello` con
+la sua curva di chiusura e `.anim-avvio` (§7); raggio 11,2 (§5); mono 21 (§3); `--errore` sul
+nome di `Esci` (§2.2); il piede fisso col primario nel pannello (§8 Pannello impostazioni);
+`AGGIUNGI PASTO` in fondo (§8 Tasti); Esci che chiede conferma (§9).
