@@ -1,5 +1,7 @@
+import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, render, fireEvent, screen } from '@testing-library/react';
+import { useState } from 'react';
 import { useIndietroFogli } from '../useIndietroFogli';
 
 /*
@@ -20,6 +22,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 function monta(profondita: number, chiudiUltimo: () => void = vi.fn()) {
@@ -170,5 +173,104 @@ describe('useIndietroFogli', () => {
     expect(window.history.go).not.toHaveBeenCalled();
     indietro();
     expect(chiudi).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Il modo in cui il pannello userà l'hook (spec fase 5 §A.5): nello stesso gesto registra la
+ * navigazione con `chiudiTuttoPoi` e porta il proprio stato a profondità 0.
+ */
+function Banco({ fn }: { fn: () => void }) {
+  const [livelli, setLivelli] = useState(0);
+  const { chiudiTuttoPoi } = useIndietroFogli(livelli, () => setLivelli((l) => Math.max(0, l - 1)));
+  return (
+    <div>
+      <p>{`livelli ${livelli}`}</p>
+      <button type="button" onClick={() => setLivelli(2)}>apri due</button>
+      <button type="button" onClick={() => { chiudiTuttoPoi(fn); setLivelli(0); }}>vai</button>
+    </div>
+  );
+}
+
+const tocca = (nome: string) => fireEvent.click(screen.getByRole('button', { name: nome }));
+
+describe('chiudiTuttoPoi (spec fase 5 §A.5)', () => {
+  it('con due voci aperte: un solo go(-2), e fn parte al popstate atteso, non prima, una volta sola', () => {
+    const fn = vi.fn();
+    render(<Banco fn={fn} />);
+    tocca('apri due');
+    expect(window.history.pushState).toHaveBeenCalledTimes(2);
+
+    tocca('vai');
+    expect(window.history.go).toHaveBeenCalledTimes(1);
+    expect(window.history.go).toHaveBeenLastCalledWith(-2);
+    expect(fn).not.toHaveBeenCalled();
+
+    indietro(); // il popstate del go(-2)
+    expect(fn).toHaveBeenCalledTimes(1);
+    indietro(); // un popstate dopo: non è più nostro, non la richiama
+    expect(fn).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('livelli 0')).toBeInTheDocument();
+  });
+
+  it('senza voci aperte fn parte subito, nell\'effetto, senza go()', () => {
+    const fn = vi.fn();
+    render(<Banco fn={fn} />);
+    tocca('vai');
+    expect(fn).toHaveBeenCalledTimes(1);
+    expect(window.history.go).not.toHaveBeenCalled();
+  });
+
+  it('se il popstate atteso non arriva, fn parte dopo 1 s, e il popstate in ritardo non la richiama', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    let avanti = 0;
+    const vero = performance.now.bind(performance);
+    vi.spyOn(performance, 'now').mockImplementation(() => vero() + avanti);
+    const fn = vi.fn();
+    render(<Banco fn={fn} />);
+    tocca('apri due');
+    tocca('vai');
+
+    act(() => { vi.advanceTimersByTime(999); });
+    expect(fn).not.toHaveBeenCalled();
+    act(() => { vi.advanceTimersByTime(1); });
+    expect(fn).toHaveBeenCalledTimes(1);
+
+    avanti = 1500;
+    indietro(); // il popstate arrivato tardi: fuori tempo, e le voci sono già 0
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
+  it('dopo chiudiTuttoPoi il gesto indietro torna a chiudere un livello alla volta', () => {
+    const fn = vi.fn();
+    render(<Banco fn={fn} />);
+    tocca('apri due');
+    tocca('vai');
+    indietro(); // atteso
+    expect(fn).toHaveBeenCalledTimes(1);
+
+    tocca('apri due');
+    expect(window.history.pushState).toHaveBeenCalledTimes(4);
+    indietro(); // il gesto dell'utente
+    expect(screen.getByText('livelli 1')).toBeInTheDocument();
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
+  it('allo smontaggio una fn in attesa non parte più', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const fn = vi.fn();
+    const { unmount } = render(<Banco fn={fn} />);
+    tocca('apri due');
+    tocca('vai');
+    unmount();
+    act(() => { vi.advanceTimersByTime(2000); });
+    expect(fn).not.toHaveBeenCalled();
+  });
+
+  it('chiudiTuttoPoi è la stessa funzione a ogni render', () => {
+    const { result, porta } = monta(0);
+    const prima = result.current.chiudiTuttoPoi;
+    porta(1);
+    expect(result.current.chiudiTuttoPoi).toBe(prima);
   });
 });

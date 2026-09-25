@@ -20,12 +20,80 @@ scritti nel piano sono indicativi.
 | 3 | La maschera del corpo del pannello sfuma solo gli ultimi 26 px (Task 1) | la spec dice «maschera ferma in fondo, `--fine` non serve» senza un valore; 26 è il padding in fondo al corpo, quindi a fine scorrimento niente resta sfumato | da guardare sul telefono: se la sfumatura non si vede, si toglie |
 | 4 | Lo z-index dell'avvio (100) sta inline in `AvvioMarchio.tsx` (Task 14), senza token; il CSS dell'avvio (Task 1) ha solo stati, durate e curve | la spec §K chiede solo `--z-pannello`; l'avvio è un livello unico, sopra pannello (70) e dialogo (80) | nessuno: un numero in un posto solo |
 | 5 | In `DESIGN.md` §6 «le quattro icone della tab bar» diventa «le icone della tab bar», con la conta di oggi (Task 1) | la spec §K non lo elenca, ma la barra perde una voce e §6 deve dire una cosa sola (come la decisione 2 della fase 4) | nessuno |
+| 6 | L'errore di `DialogoConferma` sta sotto i tasti, con `role="alert"`, anche nel dialogo di eliminazione del lotto (Task 2) | spec §D; `DialogoElimina` è ora un suo uso, coi testi di oggi | nessuno: i test di oggi del dialogo cercano il testo, non la posizione |
+| 7 | Il test dell'hook passa da `indietro.test.ts` a `src/components/__tests__/useIndietroFogli.test.tsx` (Task 2) | i test di `chiudiTuttoPoi` montano un componente; i dodici test di oggi sono invariati | nessuno |
+| 8 | Una seconda `chiudiTuttoPoi` prima che la prima parta la sostituisce (Task 2) | una navigazione sola alla volta: vale l'ultima intenzione | due tocchi su due tessere diverse in meno di un `popstate` portano alla seconda |
+| 9 | Il timer di riserva di `chiudiTuttoPoi` è sempre `ATTESA_POPSTATE_MS` pieno, anche quando un `go()` precedente è già in volo (Task 2) | un'attesa sola, deterministica e testabile coi timer finti | nel caso raro fn parte fino a 1 s più tardi del necessario |
+| 10 | `DialogoConferma` ha `erroreTesto` e tiene da sé lo stato in volo e l'errore, invece delle prop `inVolo` ed `errore` della spec §D (Task 2, ruling P1 del controller) | è la forma di `DialogoElimina` della fase 4, già provata; chi lo usa passa solo `onConferma` che rifiuta se fallisce | nessuno: la firma è interna, il comportamento visibile è quello di §D |
 
 ## Misure nel browser
 
 ### Sonda del Task 2: `chiudiTuttoPoi` + `router.push` (spec §A.5, §M.3 punto 1)
 
-La scrive il Task 2.
+**Come:** due pagine temporanee, `src/app/auth/sonda-a` e `sonda-b` (fuori dal proxy di
+sessione), su `next dev` alla porta 3100 con Supabase finto; il browser del pannello di Claude,
+con clic veri sui tasti (`computer left_click`) e l'indietro da `history.back()` o dal browser.
+La pagina A usa `useIndietroFogli` vero, già spostato in `src/components/`. Le pagine, `.next/dev`
+e `next-env.d.ts` sono stati ripuliti dopo la misura. L0 e L1 sono `history.length` prima di
+aprire i livelli. Misurato il 26/09. Dal secondo giro di A1 in poi la pagina registra anche, con
+il loro istante in ms, le chiamate a `pushState`, `replaceState`, `go` e `fetch`: sono loro a
+dire perché la pagina B non arriva. Il primo giro di A1 aveva prima un `navigate` a vuoto su
+`/auth/sonda-a`, per far compilare la pagina (L0 = 3); i giri dopo partono come dice il piano.
+
+| Misura | Atteso se regge | Misurato |
+|---|---|---|
+| A1. `APRI DUE LIVELLI`: lunghezza e livelli | L0 + 2, `LIVELLI 2` | L0 + 2, `LIVELLI 2` (giro 1: 3 → 5; giro 2: 5 → 7) |
+| A1. `VAI A B CON CHIUDITUTTOPOI`, dopo 1,5 s: URL | `/auth/sonda-b` | **`/auth/sonda-a`**, pagina B assente (giro 1 e 2); ancora A dopo altri 3 s (giro 1) |
+| A1. … lunghezza | L0 + 1 | **L0 + 2** (giro 1: 5; giro 2: 7) |
+| A1. … `popstate` registrati | uno, su `/auth/sonda-a` | uno, su `/auth/sonda-a` |
+| A1. indietro da B (`history.back()`) | `/auth/sonda-a`, `LIVELLI 0` | B non c'è: dall'A il `history.back()` porta a `/auth/sonda-b?inizio=1`, con un nuovo caricamento del documento (giro 2) |
+| A1. un altro indietro | `/auth/sonda-b?inizio=1` | **NON ESEGUITA**: il primo indietro è già fuori da A |
+| A1 bis. indietro da B col browser | `/auth/sonda-a`, `LIVELLI 0` | B non arriva neanche qui (L0 5, dopo `VAI` URL `/auth/sonda-a`, lunghezza 7, un `popstate`); l'indietro del browser porta a `/auth/sonda-b?inizio=1` |
+| A2 (controllo). `VAI A B SENZA ASPETTARE`, dopo 1,5 s: URL, lunghezza, `popstate` | nessun atteso: dice perché serve la regola | `/auth/sonda-a`, L0 + 2 (5 → 7), un `popstate` su `/auth/sonda-a`, `LIVELLI 0`, pagina B assente: identico ad A1 |
+| B. `/auth/sonda-a?impostazioni=ingredienti`: URL, lunghezza, livelli | `/auth/sonda-a`, L1 + 3, `LIVELLI 2` | `/auth/sonda-a`, L1 + 3 (6 → 9), `LIVELLI 2` |
+| B. primo indietro | `/auth/sonda-a`, `LIVELLI 1` | **`/auth/sonda-a`, `LIVELLI 0`, con un ricaricamento della pagina** (lo script è stato interrotto dalla navigazione) |
+| B. secondo indietro | `/auth/sonda-a`, `LIVELLI 0` | `/auth/sonda-a`, `LIVELLI 0`, stesso documento |
+| B. terzo indietro | `/auth/sonda-b?inizio=1` | `/auth/sonda-b?inizio=1`; in nessun passo l'URL riprende `?impostazioni=` |
+| Errori in console | nessuno | nessuno (letti dopo A1, dopo B e a fine sonda) |
+
+**Perché A1 non regge** [misurato, giro 2 di A1; A1 bis e A2 danno la stessa sequenza a
+pochi ms]: `go(-2)` a 8860 ms, la `fetch` RSC di `/auth/sonda-b` a 8862 (quindi `fn`, cioè
+`router.push`, parte davvero al `popstate`), poi `replaceState('/auth/sonda-a')` di Next a 8871,
+e il `popstate` visto dal registro della sonda a 8872. Nel codice di Next
+(`node_modules/next/dist/client/components/app-router.js`, `onPopState`, e
+`app-router-instance.js`, dove un `ACTION_RESTORE` segna `discarded` l'azione in volo): gli
+effetti della pagina girano prima di quello dell'`AppRouter`, quindi l'ascoltatore `popstate`
+dell'hook è registrato **prima** di quello di Next. Al `popstate` l'hook fa partire la `push`;
+subito dopo Next manda la sua traversata, che scarta la `push` ancora in volo.
+
+**Perché B non regge** [misurato; la causa è letta nel codice di Next, stesso file]: la
+`replaceState(null, '', …)` della sonda gira in un effetto della pagina, prima che l'`AppRouter`
+avvolga `history.pushState`/`replaceState`, e cancella dalla voce lo stato di Next (`__NA`). Le
+due voci dell'hook nascono da quella voce senza `__NA`; al primo indietro l'`onPopState` di Next
+trova uno stato senza `__NA` e fa `window.location.reload()`.
+
+**Due varianti, misurate in più, solo nella sonda** (non sono nel piano; non c'è codice nel
+commit che le usi):
+- **A′, `fn` differita di un giro:** `chiudiTuttoPoi(() => setTimeout(() => router.push('/auth/sonda-b'), 0))`.
+  L0 9 → `APRI` 11 → dopo 1,5 s `/auth/sonda-b`, lunghezza 10 (L0 + 1), pagina B presente, un
+  solo `popstate`, su `/auth/sonda-a` (sequenza: `go(-2)` 10545, `replaceState` di Next 10555,
+  `popstate` 10556, `pushState('/auth/sonda-b')` 10586). Indietro da B con `history.back()`:
+  `/auth/sonda-a`, `LIVELLI 0`, stesso documento, un `popstate`; un altro indietro:
+  `/auth/sonda-b?inizio=1`. A′ bis, indietro dal browser: `/auth/sonda-a`, `LIVELLI 0`, stesso
+  documento. **A′ dà tutti gli attesi di A1 e A1 bis.**
+- **B′, la `replaceState` conserva lo stato di Next:** `replaceState(window.history.state, '', pathname)`.
+  L1 10 → `/auth/sonda-a`, 13 (L1 + 3), `LIVELLI 2`, la voce ha `__NA`. Tre indietro:
+  `/auth/sonda-a` `LIVELLI 1`, `/auth/sonda-a` `LIVELLI 0` (tutti e due nello stesso documento),
+  `/auth/sonda-b?inizio=1`. **B′ dà tutti gli attesi di B.**
+
+**Esito: «non regge»**, col criterio del piano: in A1 e A1 bis la pagina B non arriva e la
+lunghezza resta L0 + 2 (e anche B non dà gli attesi al primo indietro). **La scelta del ramo per
+il Task 6 è sospesa**, in attesa del controller: il piano porta al ramo B (`lasciaVoci` +
+`router.replace`, Step 11 del Task 2, non ancora fatto), ma la misura A′ dice che il ramo A
+regge se `chiudiTuttoPoi` esegue `fn` un giro dopo il `popstate` (nell'hook, un
+`setTimeout(…, 0)`), senza voci orfane. Per `?impostazioni=` il Task 6 dovrà comunque usare la
+forma B′ (conservare `history.state`), perché il `PannelloProvider` sta sotto l'`AppRouter`
+come la sonda.
 
 ## Migrazione dei test (spec §M.2)
 

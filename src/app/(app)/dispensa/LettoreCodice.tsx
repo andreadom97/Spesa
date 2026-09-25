@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { eanValido } from '@/domain/ean';
 import type { RispostaProdotto } from '@/domain/scansione-dispensa';
 import { useLettoreCodici } from '@/components/useLettoreCodici';
-import { TastoPrimario, TastoSecondario } from './controlli';
+import { TastoPrimario, TastoSecondario } from '@/components/controlli';
 
 const MAX_CIFRE = 14;
 

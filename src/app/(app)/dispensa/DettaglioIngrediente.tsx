@@ -4,7 +4,7 @@ import { coloreArea, nomeArea } from '@/domain/aree';
 import { TESTO_AVVISO, scadenzaVoce, stimaVoce, type AvvisoVoce, type VoceDispensa } from '@/domain/dispensa-vista';
 import { TestataFoglio } from '@/components/FoglioDalBasso';
 import { IconaScansione } from './icone';
-import { Blocco, CampoConSalva, RigaSiNo, TastoSecondario } from './controlli';
+import { Blocco, CampoConSalva, RigaSiNo, TastoSecondario } from '@/components/controlli';
 import { RigaScadenza } from './RigaScadenza';
 
 interface Props {

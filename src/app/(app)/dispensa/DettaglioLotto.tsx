@@ -3,7 +3,7 @@
 import type { LottoPronto } from '@/domain/types';
 import { dataBreve } from '@/domain/dispensa-vista';
 import { TestataFoglio } from '@/components/FoglioDalBasso';
-import { Blocco, CampoConSalva, RigaSiNo, TastoSecondario } from './controlli';
+import { Blocco, CampoConSalva, RigaSiNo, TastoSecondario } from '@/components/controlli';
 
 interface Props {
   lotto: LottoPronto;

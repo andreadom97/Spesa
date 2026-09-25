@@ -64,4 +64,15 @@ describe('FoglioDalBasso', () => {
     expect(screen.getByRole('button', { name: 'Torna al lotto' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Chiudi il foglio' })).toBeInTheDocument();
   });
+
+  it('i livelli stanno a 50, 60 e 80: il 3 è il dialogo sopra il pannello (70)', () => {
+    const { rerender } = render(
+      <FoglioDalBasso etichetta="Foglio" onChiudi={vi.fn()}><p>Contenuto</p></FoglioDalBasso>,
+    );
+    expect(screen.getByTestId('velo-foglio').style.zIndex).toBe('50');
+    rerender(<FoglioDalBasso etichetta="Foglio" onChiudi={vi.fn()} livello={2}><p>Contenuto</p></FoglioDalBasso>);
+    expect(screen.getByTestId('velo-foglio').style.zIndex).toBe('60');
+    rerender(<FoglioDalBasso etichetta="Foglio" onChiudi={vi.fn()} livello={3}><p>Contenuto</p></FoglioDalBasso>);
+    expect(screen.getByTestId('velo-foglio').style.zIndex).toBe('80');
+  });
 });

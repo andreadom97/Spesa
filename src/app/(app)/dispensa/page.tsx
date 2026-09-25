@@ -30,9 +30,9 @@ import { ScansioneConfezione } from './ScansioneConfezione';
 import { NuovoIngrediente, type DatiNuovoIngrediente } from './NuovoIngrediente';
 import { WidgetAI } from './WidgetAI';
 import { useDettatura } from './useDettatura';
-import { useIndietroFogli } from './useIndietroFogli';
+import { useIndietroFogli } from '@/components/useIndietroFogli';
 import { IconaBarattolo } from './icone';
-import { MessaggioErrore, STILE_PILLOLA, TastoPrimario } from './controlli';
+import { MessaggioErrore, STILE_PILLOLA, TastoPrimario } from '@/components/controlli';
 
 /** Oltre questa attesa il caricamento diventa errore, e la risposta che arriva dopo si scarta (spec §A). */
 const ATTESA_MAX_MS = 8000;
