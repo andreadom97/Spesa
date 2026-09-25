@@ -372,6 +372,22 @@ describe('costruisciLista — evitato (il non ricomprato)', () => {
     expect(v.quantitaEvitata).toBe(0);
   });
 
+  it('una scadenza scritta a mano tiene in casa un deperibile oltre la stima (spec fase 4 §E)', () => {
+    // Yogurt comprato il 1/08: la stima (latticini, 7 giorni) lo spegne l'8/08,
+    // ben prima di oggi (30/08) — residuoUtilizzabile lo azzera, come sopra.
+    const pantryScaduto = dispensaVuota().map((p) =>
+      p.ingredientId === 'yogurt' ? { ...p, residuo: 750, ultimoAcquisto: '2026-08-01' } : p);
+    const senza = voce(base({ pantry: pantryScaduto }), 'yogurt')!;
+    expect(senza.residuo).toBe(0); // la stima l'ha già spento: tocca ricomprare tutto
+    expect(senza.daComprare).toBe(750);
+
+    // Stessa dispensa, con una data scritta a mano dopo oggi: il residuo
+    // conta ancora, copre l'intero fabbisogno e la voce sparisce dalla lista.
+    const pantryConData = pantryScaduto.map((p) =>
+      p.ingredientId === 'yogurt' ? { ...p, scadenzaManuale: '2026-09-05' } : p);
+    expect(voce(base({ pantry: pantryConData }), 'yogurt')).toBeUndefined();
+  });
+
   it('un ingrediente con fabbisogno zero non entra nel denominatore', () => {
     const dishes = [{
       ...colazione,

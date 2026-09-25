@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { nuovoResiduo, serveControllo, GIORNI_CONTROLLO_STAPLE, residuoUtilizzabile } from '../pantry';
+import {
+  nuovoResiduo, serveControllo, GIORNI_CONTROLLO_STAPLE, residuoUtilizzabile,
+  effettoCorrezione, scadenzaResiduo, scadenzaStimata,
+} from '../pantry';
 
 describe('nuovoResiduo', () => {
   it('somma il comprato e sottrae il consumato dal piano', () => {
@@ -64,6 +67,7 @@ describe('residuoUtilizzabile', () => {
     area: 'macelleria' as const,
     ultimoAcquisto: '2026-08-20',
     congelato: false,
+    scadenzaManuale: null,
     oggi: '2026-08-28',
   };
 
@@ -115,5 +119,76 @@ describe('residuoUtilizzabile', () => {
 
   it('zero resta zero', () => {
     expect(residuoUtilizzabile({ ...BASE, residuo: 0 })).toBe(0);
+  });
+});
+
+describe('scadenza manuale (spec fase 4 §E)', () => {
+  const base = {
+    residuo: 100, deperibile: true, area: 'macelleria' as const,
+    ultimoAcquisto: '2026-09-20', congelato: false,
+  };
+
+  it('la stima resta quella di oggi: acquisto + soglia dell’area', () => {
+    expect(scadenzaStimata(base)).toBe('2026-09-23'); // macelleria: 3 giorni
+    expect(scadenzaStimata({ ...base, congelato: true })).toBe('2026-12-19'); // 90 giorni
+  });
+
+  it('la data manuale vince sulla stima', () => {
+    expect(scadenzaResiduo({ ...base, scadenzaManuale: '2026-09-28' })).toBe('2026-09-28');
+    expect(scadenzaResiduo({ ...base, scadenzaManuale: null })).toBe('2026-09-23');
+  });
+
+  it('senza stima la data manuale si ignora', () => {
+    expect(scadenzaResiduo({ ...base, deperibile: false, scadenzaManuale: '2026-09-28' })).toBeNull();
+    expect(scadenzaResiduo({ ...base, ultimoAcquisto: null, scadenzaManuale: '2026-09-28' })).toBeNull();
+    expect(scadenzaResiduo({ ...base, residuo: 0, scadenzaManuale: '2026-09-28' })).toBeNull();
+  });
+
+  it('una data più lontana tiene vivo il residuo fino a quel giorno compreso', () => {
+    const i = { ...base, scadenzaManuale: '2026-09-28' };
+    expect(residuoUtilizzabile({ ...i, oggi: '2026-09-27' })).toBe(100);
+    expect(residuoUtilizzabile({ ...i, oggi: '2026-09-28' })).toBe(100);
+    expect(residuoUtilizzabile({ ...i, oggi: '2026-09-29' })).toBe(0);
+  });
+
+  it('una data più vicina lo spegne prima della stima', () => {
+    const i = { ...base, area: 'ortofrutta' as const, scadenzaManuale: '2026-09-22' }; // stima 27/09
+    expect(residuoUtilizzabile({ ...i, oggi: '2026-09-23' })).toBe(0);
+  });
+
+  it('un non deperibile non scade, data manuale o no', () => {
+    expect(residuoUtilizzabile({ ...base, deperibile: false, scadenzaManuale: '2026-09-01', oggi: '2026-09-25' })).toBe(100);
+  });
+
+  it('contratto: utilizzabile > 0 ⇔ oggi ≤ scadenza, con e senza data manuale', () => {
+    const casi = [
+      { ...base, scadenzaManuale: null },
+      { ...base, scadenzaManuale: '2026-09-21' },
+      { ...base, scadenzaManuale: '2026-10-05' },
+      { ...base, congelato: true, scadenzaManuale: null },
+      { ...base, area: 'surgelati' as const, scadenzaManuale: '2026-09-22' },
+    ];
+    for (const c of casi) {
+      for (let g = 0; g < 120; g++) {
+        const oggi = new Date(Date.UTC(2026, 8, 18 + g)).toISOString().slice(0, 10);
+        const scadenza = scadenzaResiduo(c);
+        const vivo = residuoUtilizzabile({ ...c, oggi }) > 0;
+        expect(vivo).toBe(scadenza === null || oggi <= scadenza);
+      }
+    }
+  });
+});
+
+describe('effettoCorrezione (spec fase 4 §E.2, §E.3)', () => {
+  const oggi = '2026-09-25';
+  it('da 0 a più di 0 è un’entrata: acquisto a oggi e data manuale cancellata', () => {
+    expect(effettoCorrezione(0, 500, oggi)).toEqual({ ultimoAcquisto: oggi, cancellaScadenza: true });
+  });
+  it('da più di 0 a più di 0 non tocca le date', () => {
+    expect(effettoCorrezione(500, 300, oggi)).toEqual({ ultimoAcquisto: null, cancellaScadenza: false });
+  });
+  it('a 0 cancella la data manuale e non tocca l’acquisto', () => {
+    expect(effettoCorrezione(500, 0, oggi)).toEqual({ ultimoAcquisto: null, cancellaScadenza: true });
+    expect(effettoCorrezione(0, 0, oggi)).toEqual({ ultimoAcquisto: null, cancellaScadenza: true });
   });
 });

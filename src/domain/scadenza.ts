@@ -1,26 +1,10 @@
 import type { Dish, Ingredient, MealSlot, PantryState } from './types';
-import { giorniTra, lunediDi, sommaGiorni } from './date';
-import { GIORNI_CONGELATO, GIORNI_FRESCO, residuoUtilizzabile, type ResiduoUtilizzabileInput } from './pantry';
+import { giorniTra, lunediDi } from './date';
+import { residuoUtilizzabile, scadenzaResiduo } from './pantry';
 import { OpzioneMancanteError, righeEffettive } from './opzioni';
 import { fattoreConsumo } from './pronti';
 
-/**
- * L'ultimo giorno in cui residuoUtilizzabile conta ancora questo residuo:
- * `ultimoAcquisto + soglia`, con la stessa soglia (congelatore o area) che
- * residuoUtilizzabile applica. Non è la data sulla confezione: dice quando
- * l'app smetterà di contare il residuo, che è l'informazione che serve per
- * capire la lista. Contratto (spec §1.1): residuoUtilizzabile(oggi) > 0 ⇔
- * oggi ≤ scadenza. null quando non c'è niente che decada — non deperibile,
- * mai comprato, surgelati, residuo a zero — e quindi niente da mostrare.
- */
-export function scadenzaResiduo(i: Omit<ResiduoUtilizzabileInput, 'oggi'>): string | null {
-  if (i.residuo <= 0) return null;
-  if (!i.deperibile) return null;
-  if (!i.ultimoAcquisto) return null;
-  const soglia = i.congelato ? GIORNI_CONGELATO : GIORNI_FRESCO[i.area];
-  if (soglia === null) return null;
-  return sommaGiorni(i.ultimoAcquisto, soglia);
-}
+export { scadenzaResiduo, scadenzaStimata } from './pantry';
 
 export interface AvvisoScadenza {
   ingredientId: string;
@@ -84,6 +68,7 @@ export function avvisiScadenza(i: AvvisiScadenzaInput): AvvisoScadenza[] {
     const base = {
       residuo: riga.residuo, deperibile: ing.deperibile, area: ing.area,
       ultimoAcquisto: riga.ultimoAcquisto, congelato: riga.congelato,
+      scadenzaManuale: riga.scadenzaManuale ?? null,
     };
     if (residuoUtilizzabile({ ...base, oggi: i.oggi }) <= 0) continue;
     const scadenza = scadenzaResiduo(base);

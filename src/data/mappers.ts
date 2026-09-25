@@ -56,6 +56,8 @@ export function aPantryState(r: Record<string, unknown>): PantryState {
     giorniStimati: num(r.giorni_stimati),
     ultimoCheck: r.ultimo_check ? data(r.ultimo_check) : null,
     congelato: Boolean(r.congelato),
+    // Assente prima della migrazione 0014: undefined → null, e la pagina resta su.
+    scadenzaManuale: r.scadenza_manuale ? data(r.scadenza_manuale) : null,
   };
 }
 

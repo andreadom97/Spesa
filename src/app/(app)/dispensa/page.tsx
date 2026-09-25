@@ -23,6 +23,7 @@ interface Riga {
   residuo: number;
   ultimoAcquisto: string | null;
   congelato: boolean;
+  scadenzaManuale: string | null;
 }
 
 /** Una riga con quello che la schermata dice del suo fresco (spec 2026-09-06 §3.2). */
@@ -56,6 +57,7 @@ function annotaScadenza(riga: Riga, avviso: AvvisoScadenza | undefined, domenica
     area: riga.ingrediente.area,
     ultimoAcquisto: riga.ultimoAcquisto,
     congelato: riga.congelato,
+    scadenzaManuale: riga.scadenzaManuale,
   });
   const dimenticato =
     scadenza !== null && scadenza <= domenica && avviso !== undefined && avviso.scadenza === scadenza && !avviso.usatoInTempo;
@@ -149,6 +151,7 @@ export default function Dispensa() {
               residuo: stato?.residuo ?? 0,
               ultimoAcquisto: stato?.ultimoAcquisto ?? null,
               congelato: stato?.congelato ?? false,
+              scadenzaManuale: stato?.scadenzaManuale ?? null,
             };
           }),
         );
@@ -698,6 +701,7 @@ function RigaDispensa({
     area: riga.ingrediente.area,
     ultimoAcquisto: riga.ultimoAcquisto,
     congelato: riga.congelato,
+    scadenzaManuale: riga.scadenzaManuale,
     oggi,
   });
   const decaduto = riga.residuo > 0 && utilizzabile === 0;

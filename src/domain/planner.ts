@@ -149,6 +149,7 @@ export function assegnaPiatti(input: AssegnaPiattiInput): MealSlot[] {
         area: ing.area,
         ultimoAcquisto: statoDispensa?.ultimoAcquisto ?? null,
         congelato: statoDispensa?.congelato ?? false,
+        scadenzaManuale: statoDispensa?.scadenzaManuale ?? null,
         oggi,
       }));
     }

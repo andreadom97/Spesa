@@ -151,6 +151,7 @@ export function costruisciLista(input: ListaInput): ListaRisultato {
       area: ing.area,
       ultimoAcquisto: statoDispensa?.ultimoAcquisto ?? null,
       congelato: statoDispensa?.congelato ?? false,
+      scadenzaManuale: statoDispensa?.scadenzaManuale ?? null,
       oggi,
     });
     const classeResiduo = ing.classeResiduo as Exclude<ClasseResiduo, 'stima'>; // regola 7: 'stima' esclusa sopra
