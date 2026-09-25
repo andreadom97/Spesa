@@ -246,3 +246,24 @@ Dai `minor (deferred)` del registro dell'esecuzione:
    tocchi, tocco breve sul Dock col dito e con lo screen reader, widget sulla tastiera,
    fotocamera che legge un codice, una scadenza corretta che cambia la lista, i fogli su uno
    schermo più basso di 812 px.
+
+## Dopo le prove dal telefono (25/09)
+
+Andrea ha provato la Dispensa in produzione dal telefono. Tre difetti, tre commit sul ramo
+`fix/dispensa-indietro`, ognuno col suo test rosso prima della correzione.
+
+- **RIPROVA scriveva un'entrata dopo FINITO o SÌ** (`controlli.tsx`). Causa: `CampoConSalva`
+  si riallineava a `valore` solo da fermo. Dopo un SALVA fallito, FINITO nello stesso foglio
+  portava il residuo a 0 ma il campo teneva il numero tentato, e RIPROVA (o Invio) lo
+  scriveva con `prima` = 0: un'entrata, con acquisto a oggi e data a mano cancellata.
+  Correzione: in errore, se `valore` non è più quello visto, il campo lo segue e torna fermo;
+  RIPROVA e il messaggio spariscono. In volo il campo continua a non seguire.
+- **Il gesto indietro con un foglio aperto usciva dalla Dispensa** (`page.tsx`). Causa: fogli,
+  dialogo e widget AI erano solo stato React, senza voci nella cronologia. Correzione:
+  `useIndietroFogli(profondita, chiudiUltimo)`, il modello di /importa (fase 3) esteso a più
+  livelli. La pagina calcola quanti livelli sono aperti (widget 1; dettaglio, lotto, Nuovo
+  ingrediente 1; scansione e dialogo di eliminazione 2); l'hook mette una voce per livello con
+  `pushState(null, '')`, consuma con un solo `history.go(-n)` quando l'interfaccia chiude
+  (X, velo, ANNULLA, AGGIUNGI, ELIMINA, CREA, APRI {Y}), e su un `popstate` non atteso chiude
+  l'ultimo livello. Limite: dentro Nuovo ingrediente la vista di scansione è stato del
+  componente, e il gesto indietro lì chiude il foglio intero.
