@@ -3,6 +3,15 @@
 import { useEffect, useRef } from 'react';
 
 /**
+ * Per quanto un `popstate` atteso resta atteso dopo il nostro `go()`. Nel
+ * browser arriva in 16–33 ms (fase 3). La scadenza copre una traversata che il
+ * browser fonde con un'altra senza mandare due `popstate` [ipotesi, non
+ * misurata]: senza, l'atteso mai arrivato si mangerebbe il prossimo gesto
+ * indietro dell'utente, che non chiuderebbe niente.
+ */
+const ATTESA_POPSTATE_MS = 1000;
+
+/**
  * Il gesto indietro del telefono con fogli, dialogo o widget AI aperti: chiude
  * l'ultimo livello invece di uscire dalla Dispensa. È il modello di /importa
  * (fase 3, spec §G) esteso a più livelli: ogni livello aperto ha una voce
@@ -28,15 +37,6 @@ import { useEffect, useRef } from 'react';
  *
  * `chiudiUltimo` si legge da un ref: l'ascoltatore si aggancia una volta sola.
  */
-/**
- * Per quanto un `popstate` atteso resta atteso dopo il nostro `go()`. Nel
- * browser arriva in 16–33 ms (fase 3). La scadenza copre una traversata che il
- * browser fonde con un'altra senza mandare due `popstate` [ipotesi, non
- * misurata]: senza, l'atteso mai arrivato si mangerebbe il prossimo gesto
- * indietro dell'utente, che non chiuderebbe niente.
- */
-const ATTESA_POPSTATE_MS = 1000;
-
 export function useIndietroFogli(profondita: number, chiudiUltimo: () => void) {
   const voci = useRef(0);
   // I `popstate` dei nostri `go()` ancora da arrivare: il browser ne manda uno per traversata.
