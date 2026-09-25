@@ -410,6 +410,32 @@ describe('Dispensa: il dettaglio', () => {
     expect(tessera('Petto di pollo')).toHaveTextContent('250 g');
   });
 
+  it('RIPROVA acceso, poi FINITO: il campo segue lo 0, RIPROVA sparisce e il numero tentato non si scrive più come entrata', async () => {
+    mockBase();
+    vi.mocked(correggiResiduo).mockRejectedValueOnce(new Error('rete')).mockResolvedValue(undefined);
+    await montaCaricata();
+
+    fireEvent.click(tessera('Petto di pollo'));
+    const foglio = screen.getByRole('dialog', { name: 'Petto di pollo' });
+    const campo = within(foglio).getByRole('textbox', { name: 'Residuo di Petto di pollo' });
+    fireEvent.change(campo, { target: { value: '250' } });
+    fireEvent.click(within(foglio).getByRole('button', { name: 'SALVA' }));
+    await within(foglio).findByRole('button', { name: 'RIPROVA' });
+
+    fireEvent.click(within(foglio).getByRole('button', { name: 'Petto di pollo: segna finito' }));
+    await waitFor(() => expect(correggiResiduo).toHaveBeenLastCalledWith('pollo', 0, 600));
+    await waitFor(() => expect(tessera('Petto di pollo')).toHaveTextContent('Finito'));
+
+    expect(campo).toHaveValue('0');
+    expect(within(foglio).queryByRole('button', { name: 'RIPROVA' })).not.toBeInTheDocument();
+    expect(within(foglio).queryByText('Non siamo riusciti a salvare la correzione. Riprova.')).not.toBeInTheDocument();
+    // Invio nel campo è SALVA/RIPROVA: con il campo riallineato non scrive niente.
+    fireEvent.keyDown(campo, { key: 'Enter' });
+    await act(async () => {});
+    expect(correggiResiduo).not.toHaveBeenCalledWith('pollo', 250, 0);
+    expect(correggiResiduo).toHaveBeenCalledTimes(2);
+  });
+
   it('la scadenza: MODIFICA, una data, SALVA; la tessera mostra la data nuova', async () => {
     mockBase();
     vi.mocked(impostaScadenza).mockResolvedValue(undefined);

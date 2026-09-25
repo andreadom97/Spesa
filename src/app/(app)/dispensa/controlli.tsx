@@ -143,10 +143,16 @@ function numeroDa(testo: string, intero: boolean): number | null {
  * Un valore non valido riporta il campo al valore salvato. Se `valore` cambia
  * da fuori (SÌ di In casa, la nota AI), il campo lo segue: aggiustamento dello
  * stato durante il render, come in `Guscio`, non un effetto. Mentre la
- * scrittura è in volo o in errore il campo NON segue `valore`: la pagina fa
- * l'aggiornamento ottimistico e poi il ritorno a prima, e riallinearsi lì
- * cancellerebbe il numero tentato e spegnerebbe RIPROVA. RIPROVA rimanda il
- * numero nel campo; dopo un successo il campo torna a seguire `valore`.
+ * scrittura è in volo il campo NON segue `valore`: la pagina fa lì
+ * l'aggiornamento ottimistico e poi il ritorno a prima, e riallinearsi
+ * cancellerebbe il numero tentato e spegnerebbe RIPROVA. Subito dopo l'errore
+ * `valore` è di nuovo quello visto (il ritorno a prima), e il campo resta in
+ * errore col numero tentato: RIPROVA lo rimanda. Se invece in errore `valore`
+ * cambia da fuori (FINITO o SÌ nello stesso foglio, la nota AI), il campo lo
+ * segue e torna fermo: RIPROVA sparisce col messaggio, perché il numero
+ * tentato era pensato sul residuo di prima e riscritto ora partirebbe da un
+ * altro (da 0 diventerebbe un'entrata). Dopo un successo il campo torna a
+ * seguire `valore`.
  */
 export function CampoConSalva({ aria, valore, unita, intero = false, messaggioErrore, onSalva }: {
   aria: string; valore: number; unita: string; intero?: boolean; messaggioErrore: string; onSalva: (n: number) => Promise<void>;
@@ -154,9 +160,10 @@ export function CampoConSalva({ aria, valore, unita, intero = false, messaggioEr
   const [testo, setTesto] = useState(String(valore));
   const [visto, setVisto] = useState(valore);
   const [stato, setStato] = useState<'fermo' | 'volo' | 'errore'>('fermo');
-  if (stato === 'fermo' && visto !== valore) {
+  if (stato !== 'volo' && visto !== valore) {
     setVisto(valore);
     setTesto(String(valore));
+    if (stato === 'errore') setStato('fermo');
   }
   const cambiato = testo !== String(valore);
   const errore = stato === 'errore';
