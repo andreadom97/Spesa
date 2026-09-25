@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
-import type { Dish, Ingredient, LottoPronto, PantryState } from '@/domain/types';
+import type { Dish, Ingredient, LottoPronto, MealSlot, PantryState } from '@/domain/types';
 import { giorniTra, lunediDi, sommaGiorni } from '@/domain/date';
 import { dataCorta } from '@/domain/dispensa-vista';
 import { SlotDockProvider } from '@/components/dock-slot';
@@ -252,6 +252,20 @@ describe('Dispensa: i widget', () => {
     expect(within(screen.getByRole('dialog', { name: 'Petto di pollo' })).getByText('Nessun pasto in programma lo usa prima che scada.')).toBeInTheDocument();
   });
 
+  it('una scadenza dopo la domenica corrente: il piano di questa settimana non dice niente, resta la data', async () => {
+    // Stessa settimana senza pasti, ma la data a mano cade lunedì prossimo:
+    // l'avviso c'è (nessun uso in tempo), la pillola dimenticata no.
+    const lunediProssimo = sommaGiorni(lunediDi(OGGI), 7);
+    mockBase({ dispensa: [pantry({ ingredientId: 'pollo', residuo: 600, ultimoAcquisto: OGGI, scadenzaManuale: lunediProssimo })] });
+    vi.mocked(leggiSettimanaCorrente).mockResolvedValue({ id: 'w-1', dataInizio: lunediDi(OGGI), stato: 'confermata', slots: [] });
+    await montaCaricata();
+    expect(tessera('Petto di pollo')).not.toHaveTextContent('NESSUN PASTO LO USA');
+    expect(tessera('Petto di pollo')).toHaveTextContent(`Scade il ${dataCorta(lunediProssimo)}`);
+
+    fireEvent.click(tessera('Petto di pollo'));
+    expect(screen.queryByText('Nessun pasto in programma lo usa prima che scada.')).not.toBeInTheDocument();
+  });
+
   it('la pillola: una scadenza, e un fresco troppo vecchio', async () => {
     mockBase({
       dispensa: [
@@ -403,6 +417,33 @@ describe('Dispensa: il dettaglio', () => {
     expect(tessera('Petto di pollo')).toHaveTextContent(`Scade il ${dataCorta(sommaGiorni(OGGI, 90))}`);
   });
 
+  it('due scritture in volo: il congelatore fallisce dopo che la scadenza è riuscita, e a schermo resta la scadenza nuova', async () => {
+    mockBase();
+    let rifiuta: (e: Error) => void = () => {};
+    vi.mocked(impostaCongelato).mockReturnValue(new Promise((_, r) => { rifiuta = r; }));
+    vi.mocked(impostaScadenza).mockResolvedValue(undefined);
+    await montaCaricata();
+    const nuova = sommaGiorni(OGGI, 5);
+
+    fireEvent.click(tessera('Petto di pollo'));
+    const foglio = screen.getByRole('dialog', { name: 'Petto di pollo' });
+    fireEvent.click(within(foglio).getByRole('button', { name: 'Petto di pollo: metti in congelatore' }));
+    // Il congelatore è in volo; intanto si corregge la scadenza.
+    fireEvent.click(within(foglio).getByRole('button', { name: 'Modifica la scadenza di Petto di pollo' }));
+    const data = within(foglio).getByLabelText('Scadenza di Petto di pollo');
+    fireEvent.change(data, { target: { value: nuova } });
+    fireEvent.click(within(data.parentElement!).getByRole('button', { name: 'SALVA' }));
+    await waitFor(() => expect(impostaScadenza).toHaveBeenCalledWith('pollo', nuova));
+    await within(foglio).findByText('MODIFICATA DA TE');
+
+    await act(async () => { rifiuta(new Error('rete')); });
+
+    expect(await within(foglio).findByText('Non siamo riusciti a salvare. Riprova.')).toBeInTheDocument();
+    expect(within(foglio).getByRole('button', { name: 'Petto di pollo: metti in congelatore' })).toHaveAttribute('aria-pressed', 'false');
+    expect(tessera('Petto di pollo')).toHaveTextContent(`Scade il ${dataCorta(nuova)}`);
+    expect(within(foglio).getByText('MODIFICATA DA TE')).toBeInTheDocument();
+  });
+
   it('un non deperibile non ha il congelatore', async () => {
     mockBase();
     await montaCaricata();
@@ -443,6 +484,51 @@ describe('Dispensa: la scansione', () => {
 });
 
 describe('Dispensa: il lotto', () => {
+  function slotPronti(id: string, data: string, dishId: string): MealSlot {
+    return {
+      id, data, slotDefId: 'sd-cena', stato: 'casa', dishId, fonteStato: 'default', scelte: {}, porzioniPreparate: 0, daPronti: true,
+    };
+  }
+  /** Tre pasti dai Pronti: uno futuro sul ragù, uno passato sul ragù, uno futuro su un altro piatto. Conta solo il primo. */
+  function settimanaConImpegni() {
+    vi.mocked(leggiSettimanaCorrente).mockResolvedValue({
+      id: 'w-1', dataInizio: lunediDi(OGGI), stato: 'confermata',
+      slots: [
+        slotPronti('ms-futuro', sommaGiorni(OGGI, 2), RAGU.id),
+        slotPronti('ms-passato', sommaGiorni(OGGI, -1), RAGU.id),
+        slotPronti('ms-altro', sommaGiorni(OGGI, 1), 'd-altro'),
+      ],
+    });
+  }
+
+  it('le impegnate del lotto: solo i pasti di oggi o dopo, dello stesso piatto; anche nel dialogo di eliminazione', async () => {
+    mockBase();
+    settimanaConImpegni();
+    await montaCaricata();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Apri il lotto di Ragù di lenticchie' }));
+    const foglio = screen.getByRole('dialog', { name: 'Lotto di Ragù di lenticchie' });
+    expect(within(foglio).getByText('1 impegnata')).toBeInTheDocument();
+
+    fireEvent.click(within(foglio).getByRole('button', { name: 'Elimina il lotto di Ragù di lenticchie' }));
+    const dialogo = screen.getByRole('alertdialog', { name: 'Elimini il lotto?' });
+    expect(within(dialogo).getByText(
+      'Ragù di lenticchie, 4 porzioni. 1 è impegnata dai pasti in programma: dopo, quei pasti non la trovano più.',
+    )).toBeInTheDocument();
+  });
+
+  it('con un altro lotto vivo dello stesso piatto che copre gli impegni, il lotto non ne porta', async () => {
+    mockBase({ lotti: [lotto({ id: 'lp-1' }), lotto({ id: 'lp-4', porzioni: 2, congelato: true, preparataIl: sommaGiorni(OGGI, -5) })] });
+    settimanaConImpegni();
+    await montaCaricata();
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Apri il lotto di Ragù di lenticchie' })[0]!);
+    const foglio = screen.getByRole('dialog', { name: 'Lotto di Ragù di lenticchie' });
+    expect(within(foglio).queryByText(/impegnat/)).not.toBeInTheDocument();
+    fireEvent.click(within(foglio).getByRole('button', { name: 'Elimina il lotto di Ragù di lenticchie' }));
+    expect(within(screen.getByRole('alertdialog', { name: 'Elimini il lotto?' })).getByText('Ragù di lenticchie, 4 porzioni.')).toBeInTheDocument();
+  });
+
   it('la tessera apre il lotto; il dialogo di eliminazione non si chiude dal velo; ELIMINA toglie la tessera', async () => {
     mockBase();
     vi.mocked(eliminaLotto).mockResolvedValue(undefined);
@@ -610,6 +696,25 @@ describe('Dispensa: il Dock e Modifica con l\'AI', () => {
       // Rilasciato subito: era un tocco breve, la dettatura continua a tocchi.
       act(() => { window.dispatchEvent(puntatore('pointerup', 3)); });
       expect(screen.getByText('TOCCA PER FERMARE')).toBeInTheDocument();
+    });
+
+    it('il click che segue il tocco sul microfono del Dock e cade sul velo non chiude il widget; un tocco sul velo sì', async () => {
+      mockBase();
+      await montaCaricata();
+
+      fireEvent.pointerDown(within(dock()!).getByRole('button', { name: 'Registra un vocale' }), { pointerId: 3 });
+      act(() => { window.dispatchEvent(puntatore('pointerup', 3)); });
+      // Il pointerdown era sul Dock: il click sul velo è il resto di quel tocco.
+      fireEvent.click(screen.getByTestId('velo-widget'));
+      expect(screen.getByRole('dialog', { name: "Modifica con l'AI" })).toBeInTheDocument();
+      expect(screen.getByText('TOCCA PER FERMARE')).toBeInTheDocument();
+
+      const velo = screen.getByTestId('velo-widget');
+      fireEvent.pointerDown(velo);
+      fireEvent.click(velo);
+      expect(screen.queryByRole('dialog', { name: "Modifica con l'AI" })).not.toBeInTheDocument();
+      expect(ultima!.stop).toHaveBeenCalledTimes(1);
+      expect(dock()).toBeInTheDocument();
     });
 
     it('il testo dettato si accoda alla bozza con uno spazio; chiudere ferma la dettatura e tiene il testo', async () => {

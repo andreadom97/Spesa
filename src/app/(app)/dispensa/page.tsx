@@ -13,7 +13,7 @@ import { effettoCorrezione } from '@/domain/pantry';
 import { porzioniUtilizzabili } from '@/domain/pronti';
 import { lunediDi, sommaGiorni } from '@/domain/date';
 import { coloreArea, nomeArea } from '@/domain/aree';
-import { avvisoVoce, eDimenticato, pillolaStato, scadenzaVoce, type VoceDispensa } from '@/domain/dispensa-vista';
+import { avvisoVoce, eDimenticato, impegnateLotto, pillolaStato, scadenzaVoce, type VoceDispensa } from '@/domain/dispensa-vista';
 import { cercaInDispensa, etichettaRisultati, raggruppaPerArea, vociInPagina } from '@/domain/ricerca-dispensa';
 import { Testata } from '@/components/Testata';
 import { FoglioDalBasso } from '@/components/FoglioDalBasso';
@@ -52,6 +52,21 @@ type Foglio =
   | { tipo: 'lotto'; id: string; elimina: boolean }
   | { tipo: 'nuovo'; nome: string }
   | null;
+
+/**
+ * Il ritorno a prima di una scrittura ottimistica fallita: per ogni chiave
+ * della patch il valore di prima, ma solo dove c'è ancora il valore della
+ * patch. Con due scritture in volo sulla stessa voce (congelatore e scadenza
+ * toccano entrambe `scadenzaManuale`), se la prima fallisce dopo che la
+ * seconda è riuscita, quello che ha scritto la seconda resta.
+ */
+function ripristina<T extends object>(ora: T, patch: Partial<T>, prima: T): T {
+  const indietro: Partial<T> = {};
+  for (const k of Object.keys(patch) as (keyof T)[]) {
+    if (ora[k] === patch[k]) indietro[k] = prima[k];
+  }
+  return { ...ora, ...indietro };
+}
 
 function oggiIso(): string {
   return new Date().toISOString().slice(0, 10);
@@ -187,8 +202,9 @@ export default function Dispensa() {
    * Ottimistico, con ritorno a prima se la scrittura fallisce, e l'errore
    * rilanciato: lo mostra la riga del foglio che l'ha chiesto. Una correzione
    * persa in silenzio sarebbe peggio del residuo sbagliato che si correggeva:
-   * l'utente crede di aver rimesso le cose a posto. Il ritorno rimette la
-   * voce intera, ingrediente compreso (serve dopo un AGGIUNGI fallito).
+   * l'utente crede di aver rimesso le cose a posto. Il ritorno tocca solo le
+   * chiavi della patch (con AGGIUNGI anche `ingrediente`), e solo dove
+   * nessun'altra scrittura le ha cambiate nel frattempo (`ripristina`).
    */
   async function scriviVoce(id: string, patch: Partial<VoceDispensa>, scrivi: () => Promise<void>) {
     const prima = dati?.voci.find((v) => v.ingrediente.id === id);
@@ -198,7 +214,7 @@ export default function Dispensa() {
       await scrivi();
     } catch (e) {
       console.error('dispensa: scrittura fallita.', e);
-      cambiaVoce(id, prima);
+      setDati((d) => d && { ...d, voci: d.voci.map((v) => (v.ingrediente.id === id ? ripristina(v, patch, prima) : v)) });
       throw e;
     }
   }
@@ -242,7 +258,7 @@ export default function Dispensa() {
       await scrivi();
     } catch (e) {
       console.error('dispensa: scrittura del lotto fallita.', e);
-      cambiaLotto(id, prima);
+      setDati((d) => d && { ...d, lotti: d.lotti.map((l) => (l.id === id ? ripristina(l, patch, prima) : l)) });
       throw e;
     }
   }
@@ -390,6 +406,8 @@ export default function Dispensa() {
 
   const voceAperta = foglio?.tipo === 'ingrediente' ? dati.voci.find((v) => v.ingrediente.id === foglio.id) : undefined;
   const lottoAperto = foglio?.tipo === 'lotto' ? dati.lotti.find((l) => l.id === foglio.id) : undefined;
+  // Gli impegni sono del piatto: il lotto porta solo quelli che gli altri suoi lotti vivi non coprono.
+  const impegnateAperto = lottoAperto ? impegnateLotto(lottoAperto, lottiVivi, dati.impegni.get(lottoAperto.dishId) ?? 0) : 0;
   const ingredienti = dati.voci.map((v) => v.ingrediente);
   // APRI {Y} dallo scanner o da Nuovo ingrediente: il dettaglio di Y al posto di quello aperto.
   const apri = (altro: Ingredient) => {
@@ -459,7 +477,7 @@ export default function Dispensa() {
             <DettaglioLotto
               lotto={lottoAperto}
               nome={nomeLotto(lottoAperto)}
-              impegnate={dati.impegni.get(lottoAperto.dishId) ?? 0}
+              impegnate={impegnateAperto}
               onPorzioni={(n) => porzioni(lottoAperto.id, n)}
               onCongelato={(c) => scriviLotto(lottoAperto.id, { congelato: c }, () => impostaCongelatoLotto(lottoAperto.id, c))}
               onElimina={() => setFoglio({ tipo: 'lotto', id: lottoAperto.id, elimina: true })}
@@ -478,7 +496,7 @@ export default function Dispensa() {
               <DialogoElimina
                 nome={nomeLotto(lottoAperto)}
                 porzioni={lottoAperto.porzioni}
-                impegnate={dati.impegni.get(lottoAperto.dishId) ?? 0}
+                impegnate={impegnateAperto}
                 onAnnulla={() => setFoglio({ tipo: 'lotto', id: lottoAperto.id, elimina: false })}
                 onElimina={() => elimina(lottoAperto.id)}
               />

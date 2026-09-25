@@ -93,8 +93,28 @@ describe('WidgetAI', () => {
       expect(onChiudi).not.toHaveBeenCalled();
       fireEvent.click(screen.getByRole('button', { name: 'Chiudi' }));
       expect(onChiudi).toHaveBeenCalledTimes(1);
-      fireEvent.click(screen.getByTestId('velo-widget'));
+      const velo = screen.getByTestId('velo-widget');
+      fireEvent.pointerDown(velo);
+      fireEvent.click(velo);
       expect(onChiudi).toHaveBeenCalledTimes(2);
+    });
+
+    it('il velo chiude solo se anche il pointerdown è partito sul velo', () => {
+      render(<Banco />);
+      const velo = screen.getByTestId('velo-widget');
+      // Il click che segue un tocco partito altrove (il microfono del Dock) non chiude.
+      fireEvent.click(velo);
+      expect(onChiudi).not.toHaveBeenCalled();
+      // Un pointerdown dentro il widget e un click sul velo: nemmeno.
+      fireEvent.pointerDown(screen.getByRole('dialog', { name: "Modifica con l'AI" }));
+      fireEvent.click(velo);
+      expect(onChiudi).not.toHaveBeenCalled();
+      fireEvent.pointerDown(velo);
+      fireEvent.click(velo);
+      expect(onChiudi).toHaveBeenCalledTimes(1);
+      // La guardia si azzera: un secondo click senza pointerdown non chiude.
+      fireEvent.click(velo);
+      expect(onChiudi).toHaveBeenCalledTimes(1);
     });
 
     it('FAI LE MODIFICHE è spento a bozza vuota (o di soli spazi) e acceso con testo', () => {

@@ -38,6 +38,12 @@ function applica(p: ModificaProposta, valore: number | boolean, prima: number | 
 }
 
 const TASTIERA_APERTA = 80;
+
+/**
+ * Sulla banda della dettatura e sulla riga sotto: un tenuto lungo partito dal
+ * Dock può finire sopra di loro, e non deve aprire la selezione o il menu.
+ */
+const SENZA_SELEZIONE = { userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as const;
 const BARRE = Array.from({ length: 22 }, (_, i) => i);
 
 function tempo(s: number): string {
@@ -61,6 +67,12 @@ export function WidgetAI({ contesto, dettatura, bozza, onBozza, onDatiCambiati, 
   const esitoRef = useRef<HTMLDivElement>(null);
   // Il click che segue un pointerdown sul tondo è già stato gestito da `premi`.
   const premutoRef = useRef(false);
+  // Il velo chiude solo se anche il pointerdown è partito sul velo. Dal Dock il
+  // tocco breve sul microfono apre il widget al pointerdown, e il click che
+  // segue il rilascio può cadere sul velo (Dock a bottom 96 con la barra
+  // ridotta, widget a 114): senza questa guardia il widget si richiuderebbe
+  // subito. Tastiera e screen reader escono dalla X, che è il controllo.
+  const veloPremutoRef = useRef(false);
   const [inviando, setInviando] = useState(false);
   const [errore, setErrore] = useState<string | null>(null);
   const [nonDisponibile, setNonDisponibile] = useState(false);
@@ -270,7 +282,16 @@ export function WidgetAI({ contesto, dettatura, bozza, onBozza, onDatiCambiati, 
   };
 
   return (
-    <div data-testid="velo-widget" onClick={onChiudi} style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'var(--overlay-foglio)' }}>
+    <div
+      data-testid="velo-widget"
+      onPointerDown={(e) => { veloPremutoRef.current = e.target === e.currentTarget; }}
+      onClick={() => {
+        const dalVelo = veloPremutoRef.current;
+        veloPremutoRef.current = false;
+        if (dalVelo) onChiudi();
+      }}
+      style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'var(--overlay-foglio)' }}
+    >
       <div
         role="dialog"
         aria-modal="true"
@@ -336,7 +357,7 @@ export function WidgetAI({ contesto, dettatura, bozza, onBozza, onDatiCambiati, 
                 </button>
               )}
               {dettatura.attiva ? (
-                <div role="status" style={{ flex: 1, height: 54, borderRadius: 999, background: 'var(--ink)', display: 'flex', alignItems: 'center', gap: 10, padding: '0 16px', overflow: 'hidden' }}>
+                <div role="status" style={{ flex: 1, height: 54, borderRadius: 999, background: 'var(--ink)', display: 'flex', alignItems: 'center', gap: 10, padding: '0 16px', overflow: 'hidden', ...SENZA_SELEZIONE }}>
                   <span aria-hidden="true" style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 3, height: 26 }}>
                     {BARRE.map((i) => (
                       <span key={i} className="onda-barra" style={{ animationDelay: `${(i * 37) % 220}ms` }} />
@@ -359,7 +380,7 @@ export function WidgetAI({ contesto, dettatura, bozza, onBozza, onDatiCambiati, 
             </div>
 
             {dettatura.attiva && (
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.13em', color: 'var(--testo-2)' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.13em', color: 'var(--testo-2)', ...SENZA_SELEZIONE }}>
                 {dettatura.modo === 'tenuto' ? 'RILASCIA PER FERMARE' : 'TOCCA PER FERMARE'}
               </span>
             )}

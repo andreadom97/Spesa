@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import type { Ingredient } from '../types';
+import type { Ingredient, LottoPronto } from '../types';
 import {
-  avvisoVoce, dataBreve, dataCorta, dataScadenzaValida, decaduta, eDimenticato, etichettaQuantita,
+  avvisoVoce, dataBreve, dataCorta, impegnateLotto, dataScadenzaValida, decaduta, eDimenticato, etichettaQuantita,
   maxScadenza, pillolaStato, scadeVicino, statoTessera, stimaNuovaConfezione, type VoceDispensa,
 } from '../dispensa-vista';
 
@@ -100,5 +100,36 @@ describe('etichette e date', () => {
     expect(stimaNuovaConfezione(pollo, false, OGGI)).toBe('2026-09-28');
     expect(stimaNuovaConfezione(pollo, true, OGGI)).toBe('2026-12-24');
     expect(stimaNuovaConfezione(riso, false, OGGI)).toBeNull();
+  });
+});
+
+describe('impegnateLotto', () => {
+  function lotto(id: string, porzioni: number, dishId = 'd-ragu'): LottoPronto {
+    return { id, dishId, porzioni, congelato: false, preparataIl: OGGI, mealSlotId: null };
+  }
+
+  it('un lotto solo: gli impegni del piatto, al massimo le sue porzioni', () => {
+    const a = lotto('a', 4);
+    expect(impegnateLotto(a, [a], 0)).toBe(0);
+    expect(impegnateLotto(a, [a], 2)).toBe(2);
+    expect(impegnateLotto(a, [a], 6)).toBe(4);
+    // Un lotto di un altro piatto non copre niente.
+    expect(impegnateLotto(a, [a, lotto('x', 5, 'd-altro')], 2)).toBe(2);
+  });
+
+  it('due lotti, impegni che stanno nell\'altro: nessuno dei due è impegnato', () => {
+    const a = lotto('a', 3);
+    const b = lotto('b', 2);
+    expect(impegnateLotto(a, [a, b], 2)).toBe(0);
+    expect(impegnateLotto(b, [a, b], 2)).toBe(0);
+  });
+
+  it('due lotti, impegni che li superano: ciascuno porta quello che l\'altro non copre', () => {
+    const a = lotto('a', 3);
+    const b = lotto('b', 2);
+    expect(impegnateLotto(a, [a, b], 4)).toBe(2);
+    expect(impegnateLotto(b, [a, b], 4)).toBe(1);
+    expect(impegnateLotto(a, [a, b], 6)).toBe(3);
+    expect(impegnateLotto(b, [a, b], 6)).toBe(2);
   });
 });

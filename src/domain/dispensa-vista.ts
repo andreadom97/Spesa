@@ -1,4 +1,4 @@
-import type { Ingredient, UnitaBase } from './types';
+import type { Ingredient, LottoPronto, UnitaBase } from './types';
 import type { AvvisoScadenza } from './scadenza';
 import { residuoUtilizzabile, scadenzaResiduo, scadenzaStimata, type ResiduoUtilizzabileInput } from './pantry';
 import { sommaGiorni } from './date';
@@ -129,4 +129,20 @@ export function dataScadenzaValida(data: string, oggi: string): boolean {
 /** La stima di una confezione comprata oggi (esito dello scanner, spec §F.2). */
 export function stimaNuovaConfezione(ing: Ingredient, congelato: boolean, oggi: string): string | null {
   return scadenzaStimata({ residuo: 1, deperibile: ing.deperibile, area: ing.area, ultimoAcquisto: oggi, congelato });
+}
+
+/**
+ * Le porzioni di un lotto impegnate dai pasti in programma (spec §G). Gli
+ * impegni sono per piatto, i lotti no: con due lotti dello stesso piatto, dare
+ * a ciascuno tutti gli impegni del piatto farebbe leggere il doppio, e il
+ * dialogo di eliminazione avvertirebbe anche quando l'altro lotto basta. Qui un
+ * lotto porta solo gli impegni che gli altri lotti vivi del piatto non coprono:
+ * quelli che mancherebbero davvero se questo lotto sparisse. `vivi` sono i
+ * lotti utilizzabili oggi, il lotto stesso compreso o no.
+ */
+export function impegnateLotto(lotto: LottoPronto, vivi: LottoPronto[], impegniPiatto: number): number {
+  const altri = vivi
+    .filter((l) => l.dishId === lotto.dishId && l.id !== lotto.id)
+    .reduce((somma, l) => somma + l.porzioni, 0);
+  return Math.min(lotto.porzioni, Math.max(0, impegniPiatto - altri));
 }
