@@ -1,6 +1,6 @@
 # Fase 5 del redesign: le Impostazioni — design
 
-**Data:** 25/09/2026 · **Stato:** bozza per la review di Andrea · **Base:** `main` `957674c`,
+**Data:** 25/09/2026 · **Stato:** approvata da Andrea il 25/09 · **Base:** `main` `957674c`,
 `design/sistema/DESIGN.md` v3, i file in `design/ridisegno/impostazioni/` (scaricati il 25/09
 dal progetto Claude Design `5f1a24e3-…`):
 - `Impostazioni - pannello completo.dc.html`, frame 00–27. È la fonte principale. Il download si
@@ -55,6 +55,7 @@ Di Andrea, 25/09, dopo il disegno:
 14. Le quattro proposte di testo del designer sono accettate: `SETTIMANA {k} DI {n}`, «nel
     Piano», «l'ordine delle aree», «Controlla la connessione e tocca RIPROVA.».
 15. Il «finito» della Dispensa resta a due tocchi. Il punto è chiuso.
+16. Nell'animazione d'avvio il Marchio atterra sull'icona della voce Lista nella tab bar (§J).
 
 Le etichette **[misurato]** e **[ipotesi]** valgono come sempre. «Misurato» qui vuol dire letto
 nel codice o nelle migrazioni il 25/09.
@@ -920,14 +921,12 @@ gradiente (§2.4). Al centro c'è il Marchio grande: caselle 40, gap 10, raggio 
 | 1200–1620 ms | il fondo del livello si dissolve, e la Lista, già pronta sotto, si vede |
 | 2100 ms | il livello si smonta |
 
-**Dove va il Marchio** è l'unico punto aperto di questa spec (§N). La variante 3a lo porta in
-testata, 16 × 16 accanto al titolo. Ma DESIGN.md §8 Testata dice che il Marchio **non è più in
-testata**: vive nella voce Lista della tab bar, lato 9 (deciso il 19/09).
-- **Proposta:** il Marchio va sull'icona della voce Lista nella tab bar. Il punto d'arrivo si
-  calcola dal `getBoundingClientRect` del Marchio della barra, e negli ultimi 120 ms si dissolve
-  in lui, perché il rapporto fra gap e lato non è identico: 10/40 contro 4/9.
-- **Alternativa:** tornare al Marchio in testata, che vorrebbe dire riaprire una decisione del
-  19/09.
+**Dove va il Marchio (deciso da Andrea il 25/09, decisione 16).** Sull'icona della voce Lista
+nella tab bar, non in testata come nella variante 3a: DESIGN.md §8 Testata dice che il Marchio
+**non è più in testata** (19/09). Il punto d'arrivo si calcola dal `getBoundingClientRect` del
+Marchio della barra; negli ultimi 120 ms il Marchio in volo si dissolve in quello della barra,
+perché il rapporto fra gap e lato non è identico (10/40 contro 4/9). Con la barra ridotta o
+assente (nessuna delle due all'apertura su `/lista`) il volo non parte e il livello si dissolve.
 
 **Non ritarda niente.** Il livello non intercetta tocchi, e `PrimoAvvio` e i dati caricano sotto
 di lui come oggi. La Lista non ha un'animazione d'ingresso propria: il titolo e le tessere della
@@ -960,7 +959,7 @@ il marchio.
 - **§2.2:** `--errore` sul nome della riga Esci;
 - **§9 Conferme:** Esci chiede conferma pur essendo reversibile; Togli pasto solo con piatti;
   sparisce il doppio tocco `SICURO?`;
-- **§13:** «Decisioni del 25/09/2026 (fase 5: Impostazioni)», con le decisioni 1–15.
+- **§13:** «Decisioni del 25/09/2026 (fase 5: Impostazioni)», con le decisioni 1–16.
 
 Le eccezioni del log §7 che riguardano la Dispensa (`lucev`, `lucet`, onda, long-press, icona AI,
 scheletro) sono **già** in DESIGN.md dalla fase 4 [misurato]. Non si riscrivono.
@@ -1084,7 +1083,7 @@ misura:
 | Piede di versione | `Versione {x} · ultimo salvataggio il {data} alle {ora}` | `Versione {x}` | «Ultimo salvataggio» non è un dato che esiste, e i salvataggi sono per singolo controllo |
 | Rimuovi pasto | senza conferma | dialogo se ha piatti | decisione 12: la cascata cancella i piatti e le righe del piano |
 | Editor ingrediente | Area, Confezione, Scansiona, Consumo, Fresco | lo stesso, più Prezzo ed Elimina, e il nome modificabile | nessuna funzione di oggi si perde (decisione 3) |
-| Avvio 3a | Marchio in testata, titolo e tessere che salgono | Marchio sull'icona Lista della tab bar (proposta); nessun ingresso della Lista | DESIGN.md §8 Testata (19/09) e §7 (niente ingressi di pagina). **Da confermare con Andrea** |
+| Avvio 3a | Marchio in testata, titolo e tessere che salgono | Marchio sull'icona Lista della tab bar; nessun ingresso della Lista | DESIGN.md §8 Testata (19/09) e §7 (niente ingressi di pagina); decisione 16 |
 | Riparti spento | non disegnato | spento se l'origine è già il lunedì corrente | è il comportamento di oggi |
 | `COPIA` | proposto, non disegnato | pillola 44 nel riquadro del codice | decisione 13 |
 | Matrice a 360 | celle 44,1 | 44,6 | calcolo sul corpo reale del pannello (§C.1) |
