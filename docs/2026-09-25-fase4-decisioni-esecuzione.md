@@ -1,7 +1,10 @@
 # Fase 4 del ridisegno: le decisioni prese durante l'esecuzione
 
-**Data:** 25/09/2026 · **Ramo:** `redesign/dispensa`, 15 commit di esecuzione da `cd74efb` a `5bf2dc4`
-[misurato con `git log dbfb1ea..5bf2dc4`], più il commit di questo documento
+**Data:** 25/09/2026 · **Ramo:** `redesign/dispensa`, 19 commit da `cd74efb` in poi
+[misurato con `git rev-list --count dbfb1ea..HEAD` dopo l'ultimo commit del ramo]: 15 di
+esecuzione (`cd74efb`–`5bf2dc4`), il primo commit di questo documento (`e146ba2`), la
+correzione dei tasti schiacciati (`6af1b63`) e i due del giro di correzione dopo la review
+finale (codice, poi documenti)
 **Piano:** `docs/superpowers/plans/2026-09-25-dispensa.md`
 **Spec:** `docs/superpowers/specs/2026-09-25-dispensa-design.md`
 
@@ -30,8 +33,13 @@ Il piano avvertiva di nuovo che il suo codice di test era una bozza. I risultati
   velo del widget AI che si richiudeva sul click di un tocco breve dal Dock a barra ridotta
   (decisione 8). Nel browser la guardia regge (sotto, misura A).
 - **Un difetto trovato solo dalla sonda nel browser**, sotto 812 px di altezza: i tasti alti 54
-  in fondo ai fogli si schiacciano invece di far scorrere il foglio. È descritto più sotto ed è
-  **aperto**: la sonda non corregge il codice.
+  in fondo ai fogli si schiacciavano invece di far scorrere il foglio. È descritto più sotto ed
+  è **corretto** in `6af1b63` (decisione 14), senza rifare la misura nel browser.
+- **Un difetto trovato dalla review finale del ramo:** dopo un `SALVA` fallito del residuo o
+  delle porzioni, `RIPROVA` restava spento e il numero scritto spariva, perché il campo seguiva
+  il ritorno a prima della pagina. I test dei pezzi non lo vedevano: montavano il campo da solo,
+  senza la pagina che fa ottimistico e ritorno. Corretto nel giro finale (decisione 15), con due
+  test sulla pagina vera.
 
 ## Le decisioni, con il loro costo
 
@@ -50,6 +58,12 @@ Il piano avvertiva di nuovo che il suo codice di test era una bozza. I risultati
 | 11 | Il ponte `DESIGN-SYSTEM.md` tiene la riga di Stato «Registro» senza file (Task 10) | la voce è ancora in `DESIGN.md` §8, ma `NotaDispensa.tsx`, l'unico codice che la usava, è cancellato | una riga: se Andrea toglie la voce da `DESIGN.md`, va tolta anche qui |
 | 12 | Il ponte dice «chiusa con la PR del ramo», senza data (Task 10) | il merge lo fa Andrea, e la data non si sa | una riga |
 | 13 | La sonda ha misurato anche a 375 × 740 e 375 × 667, fuori dal brief (Task 10) | a 812 il dettaglio e Nuovo ingrediente stavano senza scorrere, quindi «raggiungibile scorrendo» non si poteva verificare | nessuno: sono misure in più |
+| 14 | I tasti schiacciati si correggono con `.corpo-foglio > * { flex-shrink: 0 }` in `globals.css`, sui corpi che scorrono di dettaglio, lotto, scansione e Nuovo ingrediente (`6af1b63`), non con `flexShrink: 0` su `STILE_TASTO` | copre tutti i figli diretti del corpo, anche pillole e righe, non solo i tasti alti 54; il widget AI non ha figli ad altezza fissa nel riquadro che scorre | la misura a 667 px non è stata rifatta: resta al gate dal telefono. I test in jsdom controllano solo che la classe ci sia, non il layout |
+| 15 | `CampoConSalva` non segue `valore` mentre la scrittura è in volo o in errore; nel `catch` rimette il testo tentato; il tasto è `disabled={(!cambiato && !errore) \|\| volo}` come in `RigaScadenza` (giro finale) | la pagina fa l'ottimistico e poi il ritorno a prima: il campo si riallineava al valore vecchio, `cambiato` diventava falso e `RIPROVA` restava spento | in errore il campo non segue un cambio da fuori: dopo un `SALVA` fallito, un `FINITO` o un `SÌ` nello stesso foglio lasciano nel campo il numero tentato, e `RIPROVA` lo scriverebbe sopra; si esce chiudendo il foglio. Dopo un successo il campo torna a seguire `valore` |
+| 16 | Il tondo del Dock tratta il click come quello di `WidgetAI`: un click senza `pointerdown` prima è un tocco breve (screen reader con `detail` 1), `detail` 0 sempre (giro finale) | prima il Dock chiamava `onToccaMicrofono` solo con `detail` 0, e uno screen reader che sintetizza il click con `detail` 1 non avviava niente | nessuno sui dati; lo screen reader vero resta da sentire sul telefono |
+| 17 | Una seconda scansione senza quantità, in Nuovo ingrediente, azzera formato e unità letti dalla prima (giro finale) | il formato letto era di un altro prodotto: restava in silenzio sul nuovo ingrediente | chi scansiona due volte lo stesso prodotto, la seconda senza catalogo, perde il formato della prima e ha il default del reparto |
+| 18 | La prova di equivalenza fra `residuoUtilizzabile` nuovo e la formula di `dbfb1ea` sta in un file suo, `src/domain/__tests__/pantry-equivalenza.test.ts`, con i giorni da −5 a 100 dall'acquisto più il 365, invece dei 400 giorni di fila della review (giro finale) | la formula vecchia copiata nel test è un riferimento fisso; la finestra copre ogni soglia (la più lunga è 90) col giorno prima e quello dopo, e il test gira in 38 ms [misurato ora] | un salto oltre i 100 giorni diverso da 365 non è coperto, ma nessuna soglia sta lì |
+| 19 | §K della spec riscritta con l'elenco vero delle scritture che una `0014` mancante ferma, e la regola ripetuta nel gate 1 (giro finale) | la spec diceva che si rompeva solo la correzione della scadenza; scrivono la colonna anche congelatore, `FINITO`/`SÌ`, `AGGIUNGI` e `chiudiSpesa` | nessuno: è documentazione |
 
 ## Misure nel browser, a 375 × 812, dati finti [misurato, Task 10]
 
@@ -111,7 +125,7 @@ emulava un telefono (touch, rapporto 2).
 **Non eseguito nel browser:** la variante ferma con `prefers-reduced-motion: reduce`, perché
 il browser della sessione non la emula. Resta la prova sui fogli di stile qui sopra.
 
-## Trovato nel browser, e aperto: i tasti in fondo ai fogli si schiacciano sotto 812 px
+## Trovato nel browser, e corretto: i tasti in fondo ai fogli si schiacciavano sotto 812 px
 
 Il contenuto di un foglio è un contenitore flex in colonna che scorre (`.sc`, `overflowY:
 auto`). I tasti alti 54 (`STILE_TASTO` in `controlli.tsx`) hanno `height: 54` ma nessun
@@ -131,9 +145,13 @@ A 740 anche `ELIMINA IL LOTTO` resta a 54, perché il foglio del lotto è più c
 dettaglio con la riga aperta ha bisogno di circa 766 px di finestra, e Nuovo ingrediente di
 761, prima che i tasti inizino a schiacciarsi. Il calcolo è `top` del contenuto (148) più
 l'altezza naturale del contenuto. Safari sull'iPhone, fuori dalla PWA, lascia meno di 812 px
-[ipotesi, non misurata sul telefono]. Il rimedio probabile è un `flexShrink: 0` sui tasti, o
-sui figli di `.sc` [ipotesi, non provata]. Il difetto sta nel codice, non nella sonda, e lo
-decide il controller prima della PR.
+[ipotesi, non misurata sul telefono].
+
+**Corretto in `6af1b63`** (decisione 14): `.corpo-foglio > * { flex-shrink: 0 }` in
+`globals.css`, applicata ai corpi che scorrono di `DettaglioIngrediente`, `DettaglioLotto`,
+`ScansioneConfezione` e `NuovoIngrediente` (entrambe le viste). I test controllano che la classe
+sia sul corpo; jsdom non calcola il layout. **La misura a 740 e 667 px non è stata rifatta**
+dopo la correzione: resta al gate dal telefono.
 
 ## Non eseguiti: restano per il gate dal telefono
 
@@ -145,7 +163,11 @@ decide il controller prima della PR.
 - La fotocamera che legge un codice: la sonda ha tolto `BarcodeDetector` per provare il modo
   senza fotocamera, e la lettura vera non si è provata.
 - Un giro completo: correggere una scadenza e vedere la lista che cambia.
-- I fogli su uno schermo più basso di 812, se il difetto qui sopra resta.
+- I fogli su uno schermo più basso di 812: la correzione dei tasti schiacciati (`6af1b63`) non
+  è stata misurata nel browser. Sul telefono: dettaglio con la riga di scadenza aperta e Nuovo
+  ingrediente, i tasti devono restare alti 54 e il foglio deve scorrere.
+- Il tocco breve sul tondo del Dock con VoiceOver o TalkBack (decisione 16): nei test il click
+  sintetizzato con `detail` 1 avvia la dettatura a tocchi, lo screen reader vero no.
 
 ## Rimasto aperto, di proposito
 
@@ -160,6 +182,13 @@ Dai `minor (deferred)` del registro dell'esecuzione:
     stessa chiave (congelatore e poi `FINITO`, entrambe con `scadenzaManuale` a null), il
     fallimento della prima rimette a schermo la data vecchia.
   - `aggiungiConfezione` assorbe un `residuoPrima` negativo con `Math.max(0, …)`, senza errore.
+  - L'annulla di un'entrata nella nota AI (0 → 500 → 0) non ripristina `ultimo_acquisto`: un
+    mai comprato torna a 0 con l'acquisto di oggi e in pagina compare come «Finito». Limite
+    dichiarato nel commento di `annulla` in `WidgetAI.tsx`, senza cambio di codice.
+  - `chiudiSpesa` con la `0014` mancante (spec §K): le scritture del passo 1 partono insieme, e
+    l'insert in `purchase` può riuscire mentre le voci comprate falliscono. Il ritentativo
+    inserisce di nuovo lo storico di quella spesa [da lettura del codice, non provato]. Il
+    gate 1 lo evita.
 - **Accessibilità:**
   - Gli errori dei fogli non hanno `aria-live` né `role="alert"`.
   - Il `role="status"` della banda di dettatura non ha più contenuto accessibile, perché tempo
@@ -168,15 +197,14 @@ Dai `minor (deferred)` del registro dell'esecuzione:
   - `pantry.ts:117`: il `??` non ricade sulla stima con una stringa vuota. Il mapper la filtra
     prima, e il Task 3 valida il formato.
   - Un `oggi` malformato non lancia più.
-  - Il test «contratto» della scadenza è tautologico: manca un property test contro la formula
-    vecchia.
+  - Il test «contratto» della scadenza è tautologico. Chiuso in parte nel giro finale: la prova
+    di equivalenza con la formula vecchia (decisione 18) copre `scadenzaManuale` null; con la
+    manuale restano i test a casi.
 - **Forma:**
   - `WidgetArea` ha il gap interno a 10, come il mockup v2, contro il 12 di `DESIGN.md` §4 per
     la Tessera widget.
   - Le pillole `g`/`pz`/`ml` sono scritte in minuscolo e le rende maiuscole il CSS.
   - La riga di scadenza con la data vuota mostra il messaggio dell'intervallo.
-  - Una seconda scansione senza quantità, in Nuovo ingrediente, non azzera formato e unità
-    letti dalla prima.
 - **Minori:**
   - `setState` dopo lo smontaggio da percorsi asincroni: innocuo.
   - L'ignore di eslint copre tutta `design/ridisegno`, non solo `support.js`.
@@ -206,9 +234,15 @@ Dai `minor (deferred)` del registro dell'esecuzione:
 
 1. **L'ok alla migrazione `0014`** in produzione
    (`supabase/migrations/0014_scadenza_manuale.sql`: la scadenza scritta a mano).
+   **La migrazione PRIMA del deploy, altrimenti anche la chiusura della spesa si ferma:** senza
+   la colonna falliscono `HAI PRESO TUTTO` (`chiudiSpesa` la scrive su ogni voce comprata),
+   `FINITO` e `SÌ`, il congelatore, `AGGIUNGI` dello scanner e la correzione della scadenza
+   (elenco in spec §K). La `0014` **non è rieseguibile**: è un `alter table … add column`
+   senza `if not exists`, e una seconda esecuzione fallisce sulla colonna che c'è già.
 2. **La migrazione applicata.**
 3. **Il merge della PR e il deploy:** prima `git pull`, poi `npx --yes vercel@59.26.0 --prod`,
    rispondendo `n` alla domanda di aggiornamento della CLI.
 4. **Le prove dal telefono**, quelle della sezione «Non eseguiti»: dettatura vera tenuta e a
-   tocchi, tocco breve sul Dock col dito, widget sulla tastiera, fotocamera che legge un
-   codice, una scadenza corretta che cambia la lista.
+   tocchi, tocco breve sul Dock col dito e con lo screen reader, widget sulla tastiera,
+   fotocamera che legge un codice, una scadenza corretta che cambia la lista, i fogli su uno
+   schermo più basso di 812 px.

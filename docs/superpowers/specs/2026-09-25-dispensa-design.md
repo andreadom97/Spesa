@@ -303,7 +303,8 @@ un acquisto.
   applica E.2 ed E.3 nella stessa `upsert`. Le usano il dettaglio, la creazione e la nota AI.
 - `impostaCongelato` cancella anche `scadenza_manuale`.
 - **nuova** `impostaScadenza(ingredientId, data: string | null)`; null = `USA LA STIMA`.
-- **nuova** `aggiungiConfezione(ingredientId, formato, ean)` (§F.2).
+- **nuova** `aggiungiConfezione({ ingredientId, formato, ean, residuoPrima })` (§F.2); il
+  residuo di prima lo dà chi chiama, come in `correggiResiduo`.
 
 La logica di E.2 ed E.3 sta in una funzione pura di dominio, testata da sola; le funzioni di
 dati la applicano.
@@ -560,9 +561,25 @@ Dopo il merge, Andrea ricarica `DESIGN.md` nel progetto Claude Design «Spesa».
 
 ## K. Errori e casi limite
 
-- **Migrazione non applicata:** il codice che scrive `scadenza_manuale` fallisce. Il deploy
-  aspetta la migrazione (§N). La lettura tollera la colonna assente (`undefined` → null), così
-  un deploy anticipato rompe solo la correzione della scadenza, non la pagina.
+- **Migrazione non applicata:** la `0014` va applicata **prima** del deploy (gate 1 del
+  registro `docs/2026-09-25-fase4-decisioni-esecuzione.md`). La lettura tollera la colonna
+  assente (`select('*')`, e il mapper fa `undefined` → null), quindi la pagina si apre. Si
+  fermano invece tutte le scritture che mettono `scadenza_manuale` nella patch
+  [ipotesi, non provata: PostgREST rifiuta una colonna che non conosce]:
+  - `impostaScadenza`: la correzione della scadenza;
+  - `impostaCongelato`: In congelatore, SÌ e NO;
+  - `correggiResiduo` sulle transizioni da e verso 0: `FINITO`, `SÌ` di In casa su una finita,
+    il `SALVA` del residuo da 0 o a 0, la nota AI che finisce o rimette in casa, la creazione
+    di un ingrediente con un residuo; da più di 0 a più di 0 non scrive la colonna e passa;
+  - `aggiungiConfezione`: `AGGIUNGI` dello scanner (l'ingrediente prende formato ed EAN, la
+    dispensa no);
+  - **`chiudiSpesa`** (`src/data/lista.ts`) su ogni voce comprata: `HAI PRESO TUTTO` fallisce.
+  Nessun dato si perde, e dopo la migrazione si può ritentare: `chiudiSpesa` arma il guardiano
+  di idempotenza solo dopo le scritture dei dati. Un rischio, da lettura del codice e non
+  provato: le scritture del passo 1 partono insieme, e l'insert in `purchase` e i residui delle
+  voci non comprate possono riuscire mentre le voci comprate falliscono; il ritentativo
+  riscrive i residui con lo stesso valore, ma inserisce di nuovo le righe di `purchase`
+  (nessun vincolo di unicità), cioè lo storico degli acquisti doppio per quella spesa.
 - **Dati letti dopo 8 s:** scartati (§A); `RIPROVA` rilancia.
 - **Scrittura concorrente** (Andrea e un membro della casa sullo stesso ingrediente):
   `correggiResiduo` riceve il residuo di prima da chi chiama; vince l'ultima scrittura, come oggi.
