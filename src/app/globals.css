@@ -243,3 +243,32 @@
 .guscio[data-barra="ridotta"] .barra { height: var(--barra-bassa); left: var(--barra-lato-giu); right: var(--barra-lato-giu); }
 .guscio[data-barra="ridotta"] .barra-voce { height: var(--barra-voce-giu); gap: 0; }
 .guscio[data-barra="ridotta"] .barra-etichetta { max-height: 0; opacity: 0; }
+
+/* ---------- Dispensa (spec fase 4 §H.5, DESIGN.md §7) ---------- */
+/* Le due luci e l'onda sono le sole animazioni in loop oltre al Registro: dicono
+   un'attesa o un ascolto. Fuori da no-preference non si muovono. */
+.foglio-alto { position: absolute; left: 0; right: 0; top: 88px; bottom: 0; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .anim-luce-widget { position: relative; overflow: hidden; }
+  .anim-luce-widget::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.85) 50%, rgba(255, 255, 255, 0) 100%);
+    background-size: 50% 100%; background-repeat: no-repeat;
+    animation: luce-widget 1400ms cubic-bezier(.4, 0, .2, 1) infinite;
+  }
+  @keyframes luce-widget { from { background-position: -100% 0; } to { background-position: 200% 0; } }
+
+  .anim-luce-testo {
+    background: linear-gradient(90deg, var(--ink) 0%, var(--ink) 30%, var(--area-surgelati) 42%, var(--area-latticini) 50%, var(--area-surgelati) 58%, var(--ink) 70%, var(--ink) 100%);
+    background-size: 300% 100%;
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent;
+    animation: luce-testo 1600ms linear infinite;
+  }
+  @keyframes luce-testo { from { background-position: 100% 0; } to { background-position: 0% 0; } }
+
+  .onda-barra { animation: onda 220ms ease-in-out infinite alternate; }
+  @keyframes onda { from { height: 6px; } to { height: 26px; } }
+}
+.onda-barra { display: block; width: 3px; height: 13px; border-radius: 2px; background: var(--superficie); }

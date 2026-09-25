@@ -91,7 +91,7 @@ Fisse, non personalizzabili. L'utente personalizza solo l'ordine di apparizione 
 | 5 | Dispensa e conserve | `--area-dispensa` | `#F2A465` | 8,5:1 |
 | 6 | Surgelati | `--area-surgelati` | `#B9AEF5` | 8,7:1 |
 
-Il colore d'area si usa in **cinque modi**, e nessun altro:
+Il colore d'area si usa in **sei modi**, e nessun altro:
 
 1. bordo della tessera accesa (al 45%) o fondo pieno sulla protagonista della Lista;
 2. quadratino 10 px accanto all'etichetta di sezione, e pallini 8 px sulla Riga piatto;
@@ -99,6 +99,9 @@ Il colore d'area si usa in **cinque modi**, e nessun altro:
 4. casella del Marchio (piena o contornata 2 px);
 5. **tinta al 26% come fondo della Tessera di dispensa** in casa — uso aggiunto il 19/09, e
    **solo** lì.
+6. **luce sul testo** mentre l'AI prepara le modifiche (§7) — uso aggiunto il 25/09: `#B9AEF5`
+   (surgelati) e `#9CC7F2` (latticini) passano sulle lettere. Lì non dicono un'area: sono luce.
+   Nessun altro uso dei colori d'area fuori da questi sei.
 
 Mai come colore di testo. Mai come fondo di un tasto, con l'unica deroga della protagonista
 della Lista e della Tessera di dispensa, che sono tessere-interruttore e non tasti.
@@ -132,11 +135,12 @@ scritto:
 
 | Alfa | Dove |
 |---|---|
-| `0,04` su `--ink` | fondo delle voci del Foglio dal basso e dei tasti di «Rivedi i fogli presi» |
+| `0,04` su `--ink` | fondo delle voci del Foglio dal basso e dei tasti di «Rivedi i fogli presi», delle righe di scadenza e di proposta, delle tessere dei Pronti, dell'esito della scansione e dei tondi della testata dei fogli della Dispensa |
 | `0,045` su `--ink` | fondo della riga pasto fuori casa |
-| `0,06` su `--ink` | pillola delle confezioni sulla tessera spenta |
+| `0,06` su `--ink` | pillola delle confezioni sulla tessera spenta, tessere dei widget vuoti nel caricamento della Dispensa |
 | `0,07` su `--ink` | voce attiva della tab bar, fondo del Menù utente, tondo della X nel pannello |
 | `0,09` su `--ink` | bordo delle pillole d'azione, della Riga piatto, della Riga pasto, della foto in «Rivedi i fogli presi» |
+| `0,10` su `--ink` | alone del microfono tenuto premuto; fondo delle pillole e dei tasti spenti |
 | `0,12` su `--ink` | Menù utente premuto |
 | `0,14` su `--ink` | righe finte della miniatura nella Striscia dei fogli presi |
 | `0,26` su un colore d'area | tinta della riga di controllo e della Tessera di dispensa |
@@ -148,6 +152,7 @@ scritto:
 | `0,72` su `--ink` | Banda dei comandi sopra l'anteprima fotocamera |
 | `0,62` su bianco | bordo del tasto secondario sopra l'anteprima fotocamera |
 | `0,62` su bianco | tempo di registrazione nello stato "Registro" |
+| `0,85` su bianco | fascia della luce che attraversa i widget vuoti |
 | `0,92` su bianco | angoli della cornice guida sopra l'anteprima fotocamera |
 
 Un'alfa che non è in questa tabella non si usa: si aggiunge prima qui.
@@ -290,6 +295,13 @@ righe e le tessere.
 (forchetta e coltello), dispensa (barattolo), chevron, X, più, lente, **matita** (aggiunta il
 19/09 per il Dock), microfono.
 
+**Aggiunte il 25/09 (Dispensa):**
+- **icona AI** — due stelle a quattro punte **piene**, in `--ink`: 18 nel Dock, 14 nell'etichetta
+  del widget. È la terza forma piena fuori dalla tab bar.
+- **icona di scansione** — quattro angoli e quattro barre verticali, tratto 2,1, 20 px, nei tasti
+  `SCANSIONA UNA CONFEZIONE` / `SCANSIONA LA CONFEZIONE`.
+La **matita** del Dock della Dispensa esce di scena: il Dock ora porta l'icona AI.
+
 **Le forme piene ammesse:** la casetta della riga pasto, il kebab a tre punti, e **le quattro
 icone della tab bar**, che dal 19/09 sono piene: a 26 px, appoggiate su bianco e in mezzo a
 quattro nomi, il tratto si perdeva. La regola "solo tratto" vale ancora fuori dalla tab bar.
@@ -319,6 +331,18 @@ esistono:
   in loop del sistema**, ammessa perché dice che il microfono sta ascoltando: dura quanto la
   registrazione e finisce col gesto di stop. Con `prefers-reduced-motion: reduce` le barre
   restano ferme a 13 px e lo stato si legge dal testo `Registro…` con `role="status"`.
+- **`.anim-luce-widget`** — nel caricamento della Dispensa, una fascia bianca all'85% attraversa
+  ogni widget vuoto da sinistra a destra: **1400 ms** `cubic-bezier(.4,0,.2,1)`, in loop, **in
+  fase su tutti i widget** (partono insieme perché si montano insieme). Dura quanto l'attesa.
+- **`.anim-luce-testo`** — mentre l'AI prepara le modifiche, una sfumatura `--ink` → `#B9AEF5` →
+  `#9CC7F2` → `#B9AEF5` → `--ink`, larga il 300%, ritagliata sulle lettere, passa da sinistra a
+  destra: **1600 ms** lineari, in loop, finché arriva l'esito.
+- **`.onda-barra`** — l'onda di dettatura: 22 barre da 3 px, da 6 a 26 px in **220 ms**
+  `ease-in-out` `infinite alternate`, sfasate. È l'estensione del metro dello stato "Registro".
+
+Queste tre, con `.anim-registro`, sono le **uniche animazioni in loop** del sistema, e tutte
+dicono un'attesa o un ascolto. Con `prefers-reduced-motion: reduce`: widget vuoti fermi, testo
+fermo in `--ink`, barre ferme a 13 px; lo stato lo dice la riga di testo con `role="status"`.
 
 Vietati: animazione d'ingresso della pagina, parallax, cascate, contatori animati, e qualunque
 animazione che ritardi un'azione dell'utente.
@@ -417,11 +441,11 @@ flottante: il tasto primario non ha più il suo posto in coda al contenuto. Il D
   gap 8. **Altezza 70** = 8 + 54 + 8. Due riempimenti dello stesso contenitore:
   - **Un primario a larghezza piena** (Lista, Piano, stati vuoti): tasto alto **54**, raggio
     999, mono 12/700/0,09em, `--ombra-tasto`.
-  - **Due controlli affiancati** (Dispensa): pillole alte **56**, raggio 999, gap 8 — il testo
-    `Fai una modifica` e il vocale.
+  - **Due controlli affiancati** (Dispensa): pillole alte **56**, raggio 999, gap 8 —
+    `Modifica con l'AI` (icona AI) e il vocale.
 - **Cosa ci vive:** `HAI PRESO TUTTO` (Lista), `CONFERMA E CREA LA LISTA` (Piano), `ESTRAI LA
-  DIETA` (Importa, solo con un PDF scelto), il primario di ogni stato vuoto, `Fai una modifica`
-  e il vocale (Dispensa). `HO FINITO` della fotocamera non sta qui: sopra l'anteprima lo porta
+  DIETA` (Importa, solo con un PDF scelto), il primario di ogni stato vuoto, `Modifica con l'AI`
+  (icona AI) e il vocale (Dispensa). `HO FINITO` della fotocamera non sta qui: sopra l'anteprima lo porta
   la Banda dei comandi.
 - **Accesso:** il contenitore è una regione, `role="region"` con `aria-label="Azione
   principale"`, lo stesso nome per ogni Dock: chi naviga per regioni con lo screen reader trova
@@ -595,33 +619,66 @@ Acceso = a casa.
   correggere il singolo giorno senza cambiare questo default.` e il riepilogo che si ricalcola.
 
 ### Tessera di dispensa
-**Nuova il 19/09.** Griglia 2 colonne gap 8, minimo **104**, raggio **14**, padding
-`12 / 14 / 13`.
+**Nuova il 19/09, gesto cambiato il 25/09.** Griglia 2 colonne gap 8, minimo **104**, raggio
+**14**, padding `12 / 14 / 13`. **È un tasto che apre il dettaglio** dell'ingrediente
+(`aria-label` `Apri {Nome}`), non più l'interruttore: in casa / finito sta nel dettaglio.
 
 - **In casa:** fondo **colore d'area al 26%**, nessuna ombra, nessun bordo. In alto la pillola
-  della quantità in mono **10,5/700/0.07em** su **bianco**, raggio 999, padding `5 / 10`. In
-  basso il nome 17/700/-0.032em. Sotto, se serve, una seconda pillola bianca raggio 999 padding
-  `4 / 9` con una riga mono 8,5: `Scade il 22/09` in `--avviso` o `Congelato` in `--freddo`.
-  **Le righe semantiche vivono su pillola bianca perché sulla tinta al 26% scenderebbero sotto
-  4,5:1** (§2.2).
+  della quantità in mono **10,5/700/0.07em** maiuscola su **bianco**, raggio 999, padding
+  `5 / 10`. In basso il nome 17/700/-0.032em.
 - **Finita:** nessun fondo, **bordo 2 px tratteggiato** `rgba(20,22,58,0.20)`, pillola `Finito`
-  in `--testo-2`, nome barrato.
-- Tutta la tessera è l'interruttore, `aria-pressed`. La presenza si legge da **tinta e testo**,
-  mai da una barra di livello né da un pallino.
+  in `--testo-2`, nome barrato a 0,34.
+- **Mai comprata** (solo fra i risultati della ricerca): come la finita, pillola
+  `MAI COMPRATO`, nome in `--testo-2` **non barrato**.
+- **Una pillola di stato sola**, bianca raggio 999 padding `4 / 9`, mono 8,5/700, sotto il nome.
+  Precedenza: `NESSUN PASTO LO USA` · `Scade il {gg/mm}` / `Scade oggi` · `FORSE NON PIÙ BUONO`
+  (le tre in `--avviso`) · `Congelato` (in `--freddo`). Il testo intero degli avvisi sta nel
+  dettaglio. **Le righe semantiche vivono su pillola bianca** perché sulla tinta al 26%
+  scenderebbero sotto 4,5:1 (§2.2).
+- **Tessera del lotto** (widget Pronti): fondo `rgba(20,22,58,0.04)`, stessa anatomia, pillola
+  `{n} porz.`, nome del piatto o `Piatto eliminato`, pillola `Congelato` se lo è.
 
-### Foglio del Dock della Dispensa
-**[deciso 20/09]** Il dock `Fai una modifica` apre un **foglio dal basso con tre vie**, e
-**nessuna funzione attuale si perde**:
+### Widget AI (Dispensa)
+**Nuovo il 25/09, sostituisce il Foglio del Dock della Dispensa.** Dal tocco su
+`MODIFICA CON L'AI`: velo 0,35 su tutta la schermata, il Dock sparisce, e al suo posto nasce
+una scheda bianca a **12** dai lati, raggio **22**, `--ombra-alta`, padding `12 / 12 / 12 / 16`,
+`role="dialog"`. In cima l'etichetta mono 10 `MODIFICA CON L'AI` con l'icona AI 14 e la X 44.
+Poi il campo libero (textarea, minimo 96, fino a 5 righe, 15/1,5) e la fila: tondo del
+microfono 56 + `FAI LE MODIFICHE` primario 54. Poggia sulla tastiera; senza tastiera sta a
+`bottom` 114. Con l'esito cresce fino a `top` 88 e dentro scorre. Chiude con la X o col velo.
+Il microfono **si tiene premuto** per dettare (eccezione §9) o si tocca per avviare e fermare.
 
-1. **A mano** — campo del residuo con l'unità, interruttore del **congelatore**, e i **Pronti**
-   (porzioni, freezer/frigo, elimina).
-2. **Con una nota** — un testo scritto oppure un vocale; il vocale usa lo stato "Registro".
-3. **Scansione** — la fotocamera sulla confezione.
+### Dettaglio di ingrediente
+**Nuovo il 25/09.** Foglio dal basso da `top` 88, un livello solo: in testata il reparto (mono 10
+col quadratino) e la X 44; il nome 32/800; l'avviso intero se c'è (11,5 in `--avviso`). Blocchi
+divisi da filetti 1 px `--bordo` con 16 di distacco: **In casa** (`SÌ` / `FINITO`), **Residuo**
+(campo 96 + `SALVA`), **In congelatore** (solo deperibili), **Scadenza** (una Riga di
+scadenza), e `SCANSIONA UNA CONFEZIONE` (secondario 54). `SALVA` è spenta finché il numero non
+cambia; in volo 0,5 e `disabled`; in errore diventa `RIPROVA` piena. I Sì/No salvano al tocco.
 
-Il foglio è un Foglio dal basso normale (raggio `22px 22px 0 0`, overlay 0,35, voci ≥ 50): le
-tre vie sono le sue tre voci, e ognuna apre la propria vista. Il dock a una riga tiene
-`Fai una modifica` (pillola bianca 56, matita 18 a tratto 2,1, mono 11/700/0.08em) e il tondo
-**56** pieno in `--ink` col microfono 22, `aria-label="Registra un vocale"`.
+### Riga di scadenza
+**Nuova il 25/09.** Fondo 0,04, raggio 14, padding `10 / 8 / 10 / 14`. `Scade il {gg/mm}` 14/700
+(in `--avviso` se scade oggi o domani), sotto l'origine in mono 9: `STIMA` in `--testo-2` o
+`MODIFICATA DA TE` in `--ink`; a destra `MODIFICA`, pillola 44. Aperta: campo data 140 × 44,
+`SALVA`, la stima in 12,5 `--testo-2` e `USA LA STIMA` (pillola bianca). La stima resta salvata
+come default.
+
+### Anteprima di scansione
+**Nuova il 25/09.** L'anteprima della fotocamera dentro un foglio, raggio 14, con la cornice guida
+a quattro angoli (30 × 30, tratto 3 bianco al 92%). Nessun tasto di scatto: la lettura è
+continua. Sotto, la riga di stato e il tasto secondario `DIGITA IL CODICE`. L'esito sta su fondo
+0,04: `CODICE {ean}` mono 10, formato 15,5/700, stima 12,5; due tasti 54.
+
+### Dialogo di conferma
+**Nuovo il 25/09.** Secondo velo 0,35 sopra il foglio e un foglio piccolo ancorato in basso,
+padding `20 / 16 / 26`, gap 12, `role="alertdialog"`. Titolo 21/800, testo 14/1,5 in
+`--testo-2`, due tasti 54 affiancati gap 8: `ANNULLA` secondario, il distruttivo pieno in
+`--errore` con `--ombra-tasto`. Il velo **non** chiude.
+
+### Onda di dettatura
+**Nuova il 25/09.** Banda `--ink` alta 54, raggio 999, con 22 barre bianche da 3 px (§7
+`.onda-barra`) e il tempo `0:07` mono 11/500 a `rgba(255,255,255,.62)` con `tabular-nums`,
+`role="status"`. Il tondo del microfono accanto sta a scala 1,06 con un alone di 6 px a 0,10.
 
 ### Stato "Registro"
 **Nuovo il 19/09.** Pillola `--ink` alta 56: metro a **quattro barre** larghe 3 px (§7
@@ -727,9 +784,12 @@ Nessun toast, nessuna snackbar, nessun banner colorato: lo stato si legge dove s
 ## 9. Pattern
 
 **Gesti.** Tap sulla card = apre. Cambiare stato ha sempre un controllo suo (casetta, pillola,
-cella). Eccezioni dichiarate: la tessera della Lista e la Tessera di dispensa sono esse stesse
-l'interruttore. **Nessuno swipe, nessun long-press.** Lo **scorrimento** è un gesto con un
-effetto dichiarato: restringe la tab bar e abbassa il Dock (§7).
+cella). Eccezione dichiarata: la tessera della Lista è essa stessa l'interruttore (la Tessera di
+dispensa, dal 25/09, apre). **Nessuno swipe, nessun long-press**, con un'eccezione dichiarata il
+25/09: il microfono della Dispensa **si tiene premuto** per dettare, perché lo ha chiesto
+Andrea; un tocco breve avvia e un secondo tocco ferma, ed è la via per lo screen reader. Lo
+**scorrimento** è un gesto con un effetto dichiarato: restringe la tab bar e abbassa il Dock
+(§7).
 
 **Dove sta l'azione principale.** Nel **Dock**, sopra la tab bar. Non in coda al contenuto: il
 fondo schermo è della barra.
@@ -738,13 +798,17 @@ fondo schermo è della barra.
 distruttivo pieno in `--errore`, ANNULLA secondario accanto. Le azioni reversibili non chiedono
 niente e si annullano rifacendo il gesto. Eccezione dichiarata (23/09): togliere un foglio in
 «Rivedi i fogli presi» non chiede conferma. Il foglio si rifà con uno scatto, niente di salvato
-va perso, e un dialogo per ogni foglio renderebbe il riordino un lavoro.
+va perso, e un dialogo per ogni foglio renderebbe il riordino un lavoro. Eliminare un lotto
+Pronto chiede il dialogo (25/09): è cibo già cucinato e le sue porzioni impegnate reggono i
+pasti in programma.
 
 **Feedback di scrittura.** Lo stato si mostra sul controllo (opacità 0,5 e `disabled` mentre è
 in volo) e la conferma è il cambio di stato del dato, non un messaggio. In caso di errore, un
 messaggio in `--errore` e un RIPROVA.
 
-**Caricamento.** Riga mono `CARICO…` in `--sec`. Niente spinner, niente scheletro.
+**Caricamento.** Riga mono `CARICO…` in `--sec`. Niente spinner, niente scheletro. Eccezione
+(25/09): la Dispensa carica mostrando i suoi widget vuoti attraversati dalla luce (§7); dopo 8 s
+senza dati passa all'errore.
 
 **Stati vuoti.** Ogni lista vuota dice **perché** è vuota e qual è la prossima azione, col
 primario nel Dock.
@@ -797,12 +861,16 @@ abbandona, e sono entrambi visibili.
 
 Glassmorphism, ombre colorate, emoji, illustrazioni, foto, avatar, toast, snackbar, banner
 colorati, onboarding a quiz, paywall, badge "novità", contatori animati, conferme a un tap per
-azioni distruttive, swipe nascosti, long-press, spinner, scheletri, dark mode, caratteri sotto
+azioni distruttive, swipe nascosti, spinner, dark mode, caratteri sotto
 8,5 px, checkbox, switch.
 
 **I gradienti non sono più in questo elenco:** il fondo della schermata è a gradiente (§2.4).
 Restano vietati i gradienti **sugli oggetti** — nessuna superficie, nessun tasto, nessuna
 tessera ha un gradiente.
+
+**Eccezioni del 25/09 (Dispensa):** il long-press sul microfono e i widget vuoti del caricamento
+(§9); e la luce sul testo in attesa, l'unico gradiente ammesso su un contenuto, ritagliato sulle
+lettere e in movimento (§7).
 
 **Le foto dell'utente sono un'eccezione dichiarata** (23/09): l'anteprima della fotocamera e le
 miniature di «Rivedi i fogli presi» mostrano il contenuto del dispositivo, non un'illustrazione.
@@ -877,3 +945,15 @@ Prese in Claude Design sulle schermate rese (19/09) e sulle sette domande aperte
 - **Il Dock è una regione** di nome `Azione principale` (§8 Dock).
 - **Le foto dell'utente** sono un'eccezione dichiarata a §12.
 - **«Togli il foglio» non chiede conferma** (§9 Conferme).
+
+### Decisioni del 25/09/2026 (fase 4: Dispensa)
+- La tessera di dispensa **apre il dettaglio**; «finito» costa due tocchi (tessera → `FINITO`).
+- Il Dock dice `Modifica con l'AI`; nota e voce sono un **widget** sopra la pagina.
+- La **ricerca** sta in pagina e filtra i widget; i mai comprati solo fra i risultati; senza
+  risultati, `Crea «…»` apre Nuovo ingrediente.
+- **Una scadenza per ingrediente**, stimata e correggibile a mano; la correzione entra nel
+  calcolo della lista. Le confezioni con scadenza propria restano fuori.
+- La **scansione** vive nel dettaglio e in Nuovo ingrediente; un codice nuovo si lega
+  all'ingrediente aperto.
+- Eccezioni dichiarate: long-press sul microfono, caricamento a widget vuoti, luce sul testo,
+  colori d'area come luce, icona AI piena.
