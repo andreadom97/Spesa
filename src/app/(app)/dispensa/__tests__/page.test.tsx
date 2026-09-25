@@ -142,7 +142,17 @@ beforeEach(() => {
   slot = document.createElement('div');
   document.body.appendChild(slot);
   vi.spyOn(console, 'error').mockImplementation(() => {});
+  // La cronologia (vedi indietro.test.ts): `pushState` quello di jsdom,
+  // osservato; `go` non naviga, così nessun `popstate` in ritardo cade in un
+  // altro test. Il gesto indietro lo emette il test con `indietro()`.
+  vi.spyOn(window.history, 'pushState');
+  vi.spyOn(window.history, 'go').mockImplementation(() => {});
 });
+
+/** Il gesto indietro del telefono, o il `popstate` che segue un `go()`. */
+function indietro() {
+  act(() => { window.dispatchEvent(new PopStateEvent('popstate')); });
+}
 
 afterEach(() => {
   slot.remove();
@@ -410,6 +420,32 @@ describe('Dispensa: il dettaglio', () => {
     expect(tessera('Petto di pollo')).toHaveTextContent('250 g');
   });
 
+  it('RIPROVA acceso, poi FINITO: il campo segue lo 0, RIPROVA sparisce e il numero tentato non si scrive più come entrata', async () => {
+    mockBase();
+    vi.mocked(correggiResiduo).mockRejectedValueOnce(new Error('rete')).mockResolvedValue(undefined);
+    await montaCaricata();
+
+    fireEvent.click(tessera('Petto di pollo'));
+    const foglio = screen.getByRole('dialog', { name: 'Petto di pollo' });
+    const campo = within(foglio).getByRole('textbox', { name: 'Residuo di Petto di pollo' });
+    fireEvent.change(campo, { target: { value: '250' } });
+    fireEvent.click(within(foglio).getByRole('button', { name: 'SALVA' }));
+    await within(foglio).findByRole('button', { name: 'RIPROVA' });
+
+    fireEvent.click(within(foglio).getByRole('button', { name: 'Petto di pollo: segna finito' }));
+    await waitFor(() => expect(correggiResiduo).toHaveBeenLastCalledWith('pollo', 0, 600));
+    await waitFor(() => expect(tessera('Petto di pollo')).toHaveTextContent('Finito'));
+
+    expect(campo).toHaveValue('0');
+    expect(within(foglio).queryByRole('button', { name: 'RIPROVA' })).not.toBeInTheDocument();
+    expect(within(foglio).queryByText('Non siamo riusciti a salvare la correzione. Riprova.')).not.toBeInTheDocument();
+    // Invio nel campo è SALVA/RIPROVA: con il campo riallineato non scrive niente.
+    fireEvent.keyDown(campo, { key: 'Enter' });
+    await act(async () => {});
+    expect(correggiResiduo).not.toHaveBeenCalledWith('pollo', 250, 0);
+    expect(correggiResiduo).toHaveBeenCalledTimes(2);
+  });
+
   it('la scadenza: MODIFICA, una data, SALVA; la tessera mostra la data nuova', async () => {
     mockBase();
     vi.mocked(impostaScadenza).mockResolvedValue(undefined);
@@ -675,6 +711,122 @@ describe('Dispensa: la creazione', () => {
   });
 });
 
+describe('Dispensa: il gesto indietro', () => {
+  it('aprire un ingrediente mette una voce; il gesto indietro chiude il foglio e la pagina resta la Dispensa', async () => {
+    mockBase();
+    await montaCaricata();
+    fireEvent.click(tessera('Petto di pollo'));
+    expect(window.history.pushState).toHaveBeenCalledTimes(1);
+
+    indietro();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(tessera('Petto di pollo')).toBeInTheDocument();
+    expect(dock()).toBeInTheDocument();
+    expect(window.history.go).not.toHaveBeenCalled();
+  });
+
+  it('dettaglio → scansione: il primo gesto indietro torna al dettaglio, il secondo chiude', async () => {
+    mockBase();
+    await montaCaricata();
+    fireEvent.click(tessera('Petto di pollo'));
+    fireEvent.click(screen.getByRole('button', { name: /SCANSIONA UNA CONFEZIONE/ }));
+    expect(screen.getByRole('dialog', { name: 'Scansiona una confezione' })).toBeInTheDocument();
+    expect(window.history.pushState).toHaveBeenCalledTimes(2);
+
+    indietro();
+    expect(screen.getByRole('dialog', { name: 'Petto di pollo' })).toBeInTheDocument();
+    indietro();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(window.history.go).not.toHaveBeenCalled();
+  });
+
+  it('lotto → dialogo di eliminazione: il gesto indietro chiude solo il dialogo', async () => {
+    mockBase();
+    await montaCaricata();
+    fireEvent.click(screen.getByRole('button', { name: 'Apri il lotto di Ragù di lenticchie' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Elimina il lotto di Ragù di lenticchie' }));
+    expect(screen.getByRole('alertdialog', { name: 'Elimini il lotto?' })).toBeInTheDocument();
+
+    indietro();
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Lotto di Ragù di lenticchie' })).toBeInTheDocument();
+  });
+
+  it('la X consuma la voce con go(-1), una volta anche col doppio tocco; il popstate che segue non chiude altro', async () => {
+    mockBase();
+    await montaCaricata();
+    fireEvent.click(tessera('Petto di pollo'));
+    const x = screen.getByRole('button', { name: 'Chiudi il foglio' });
+    fireEvent.click(x);
+    fireEvent.click(x);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(window.history.go).toHaveBeenCalledTimes(1);
+    expect(window.history.go).toHaveBeenLastCalledWith(-1);
+
+    // Il popstate di quel go(-1) arriva mentre si è già riaperto un foglio: non lo chiude.
+    fireEvent.click(tessera('Pasta'));
+    indietro();
+    expect(screen.getByRole('dialog', { name: 'Pasta' })).toBeInTheDocument();
+  });
+
+  it('ANNULLA nel dialogo (2 → 1) chiama go(-1) e il popstate che segue lascia aperto il lotto', async () => {
+    mockBase();
+    await montaCaricata();
+    fireEvent.click(screen.getByRole('button', { name: 'Apri il lotto di Ragù di lenticchie' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Elimina il lotto di Ragù di lenticchie' }));
+    fireEvent.click(within(screen.getByRole('alertdialog', { name: 'Elimini il lotto?' })).getByRole('button', { name: 'ANNULLA' }));
+    expect(window.history.go).toHaveBeenCalledTimes(1);
+    expect(window.history.go).toHaveBeenLastCalledWith(-1);
+
+    indietro();
+    expect(screen.getByRole('dialog', { name: 'Lotto di Ragù di lenticchie' })).toBeInTheDocument();
+  });
+
+  it('ELIMINA dal dialogo (2 → 0) chiama go(-2) una volta', async () => {
+    mockBase();
+    vi.mocked(eliminaLotto).mockResolvedValue(undefined);
+    await montaCaricata();
+    fireEvent.click(screen.getByRole('button', { name: 'Apri il lotto di Ragù di lenticchie' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Elimina il lotto di Ragù di lenticchie' }));
+    fireEvent.click(within(screen.getByRole('alertdialog', { name: 'Elimini il lotto?' })).getByRole('button', { name: 'ELIMINA' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(window.history.go).toHaveBeenCalledTimes(1);
+    expect(window.history.go).toHaveBeenLastCalledWith(-2);
+    indietro();
+    expect(tessera('Petto di pollo')).toBeInTheDocument();
+  });
+
+  it('APRI {Y} dalla scansione (2 → 1) chiama go(-1) e lascia aperto il dettaglio di Y', async () => {
+    mockBase();
+    await montaCaricata();
+    fireEvent.click(tessera('Pasta'));
+    fireEvent.click(screen.getByRole('button', { name: /SCANSIONA UNA CONFEZIONE/ }));
+    await waitFor(() => expect(onCodiceCapturato).not.toBeNull());
+    act(() => onCodiceCapturato!(EAN_POLLO));
+    fireEvent.click(await screen.findByRole('button', { name: 'APRI PETTO DI POLLO' }));
+
+    expect(screen.getByRole('dialog', { name: 'Petto di pollo' })).toBeInTheDocument();
+    expect(window.history.go).toHaveBeenCalledTimes(1);
+    expect(window.history.go).toHaveBeenLastCalledWith(-1);
+    indietro(); // il popstate di quel go(-1)
+    expect(screen.getByRole('dialog', { name: 'Petto di pollo' })).toBeInTheDocument();
+    indietro(); // il gesto dell'utente
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('Modifica con l\'AI mette una voce; il gesto indietro chiude il widget e torna il Dock', async () => {
+    mockBase();
+    await montaCaricata();
+    fireEvent.click(within(dock()!).getByRole('button', { name: "Modifica con l'AI" }));
+    expect(window.history.pushState).toHaveBeenCalledTimes(1);
+
+    indietro();
+    expect(screen.queryByRole('dialog', { name: "Modifica con l'AI" })).not.toBeInTheDocument();
+    expect(dock()).toBeInTheDocument();
+  });
+});
+
 describe('Dispensa: il Dock e Modifica con l\'AI', () => {
   it('Modifica con l\'AI apre il widget e il Dock sparisce; Chiudi lo richiude, e la bozza resta', async () => {
     mockBase();
@@ -764,6 +916,52 @@ describe('Dispensa: il Dock e Modifica con l\'AI', () => {
       expect(screen.queryByRole('dialog', { name: "Modifica con l'AI" })).not.toBeInTheDocument();
       expect(ultima!.stop).toHaveBeenCalledTimes(1);
       expect(dock()).toBeInTheDocument();
+    });
+
+    // Il tondo del widget ora sta a destra, quasi sotto il dito che ha toccato il
+    // microfono del Dock: il click che segue il tocco breve può cadere lì.
+    it('tocco breve dal Dock: il click che cade sul tondo del widget appena nato non ferma la dettatura', async () => {
+      mockBase();
+      await montaCaricata();
+
+      fireEvent.pointerDown(within(dock()!).getByRole('button', { name: 'Registra un vocale' }), { pointerId: 3 });
+      act(() => { window.dispatchEvent(puntatore('pointerup', 3)); });
+      fireEvent.click(screen.getByRole('button', { name: 'Registra un vocale' }), { detail: 1 });
+
+      expect(screen.getByText('TOCCA PER FERMARE')).toBeInTheDocument();
+      expect(ultima!.stop).not.toHaveBeenCalled();
+    });
+
+    it('oltre 500 ms dall\'apertura un click senza pointerdown (screen reader, detail 1) è un tocco e ferma', async () => {
+      mockBase();
+      await montaCaricata();
+      let avanti = 0;
+      const vero = performance.now.bind(performance);
+      vi.spyOn(performance, 'now').mockImplementation(() => vero() + avanti);
+
+      fireEvent.pointerDown(within(dock()!).getByRole('button', { name: 'Registra un vocale' }), { pointerId: 3 });
+      act(() => { window.dispatchEvent(puntatore('pointerup', 3)); });
+      avanti = 501;
+      fireEvent.click(screen.getByRole('button', { name: 'Registra un vocale' }), { detail: 1 });
+
+      expect(ultima!.stop).toHaveBeenCalledTimes(1);
+      expect(screen.queryByText('TOCCA PER FERMARE')).not.toBeInTheDocument();
+    });
+
+    it('il gesto indietro col widget in dettatura lo chiude e ferma la dettatura', async () => {
+      mockBase();
+      await montaCaricata();
+
+      fireEvent.pointerDown(within(dock()!).getByRole('button', { name: 'Registra un vocale' }), { pointerId: 3 });
+      act(() => { window.dispatchEvent(puntatore('pointerup', 3)); });
+      expect(screen.getByText('TOCCA PER FERMARE')).toBeInTheDocument();
+      expect(window.history.pushState).toHaveBeenCalledTimes(1);
+
+      indietro();
+      expect(screen.queryByRole('dialog', { name: "Modifica con l'AI" })).not.toBeInTheDocument();
+      expect(ultima!.stop).toHaveBeenCalledTimes(1);
+      expect(dock()).toBeInTheDocument();
+      expect(window.history.go).not.toHaveBeenCalled();
     });
 
     it('il testo dettato si accoda alla bozza con uno spazio; chiudere ferma la dettatura e tiene il testo', async () => {

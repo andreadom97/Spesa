@@ -246,3 +246,56 @@ Dai `minor (deferred)` del registro dell'esecuzione:
    tocchi, tocco breve sul Dock col dito e con lo screen reader, widget sulla tastiera,
    fotocamera che legge un codice, una scadenza corretta che cambia la lista, i fogli su uno
    schermo più basso di 812 px.
+
+## Dopo le prove dal telefono (25/09)
+
+Andrea ha provato la Dispensa in produzione dal telefono. Tre difetti, tre commit sul ramo
+`fix/dispensa-indietro`, ognuno col suo test rosso prima della correzione.
+
+- **RIPROVA scriveva un'entrata dopo FINITO o SÌ** (`controlli.tsx`). Causa: `CampoConSalva`
+  si riallineava a `valore` solo da fermo. Dopo un SALVA fallito, FINITO nello stesso foglio
+  portava il residuo a 0 ma il campo teneva il numero tentato, e RIPROVA (o Invio) lo
+  scriveva con `prima` = 0: un'entrata, con acquisto a oggi e data a mano cancellata.
+  Correzione: in errore, se `valore` non è più quello visto, il campo lo segue e torna fermo;
+  RIPROVA e il messaggio spariscono. In volo il campo continua a non seguire.
+- **Il gesto indietro con un foglio aperto usciva dalla Dispensa** (`page.tsx`). Causa: fogli,
+  dialogo e widget AI erano solo stato React, senza voci nella cronologia. Correzione:
+  `useIndietroFogli(profondita, chiudiUltimo)`, il modello di /importa (fase 3) esteso a più
+  livelli. La pagina calcola quanti livelli sono aperti (widget 1; dettaglio, lotto, Nuovo
+  ingrediente 1; scansione e dialogo di eliminazione 2); l'hook mette una voce per livello con
+  `pushState(null, '')`, consuma con un solo `history.go(-n)` quando l'interfaccia chiude
+  (X, velo, ANNULLA, AGGIUNGI, ELIMINA, CREA, APRI {Y}), e su un `popstate` non atteso chiude
+  l'ultimo livello. Limite: dentro Nuovo ingrediente la vista di scansione è stato del
+  componente, e il gesto indietro lì chiude il foglio intero.
+- **Nel widget AI il microfono stava a sinistra** (`WidgetAI.tsx`). Causa: nella fila il tondo
+  era il primo figlio, mentre nel Dock è l'ultimo, a destra; aprendo il widget dal microfono
+  del Dock il tondo saltava di lato. Correzione, decisa da Andrea dopo le prove: prima
+  `FAI LE MODIFICHE` (o la banda della dettatura), poi il tondo 56 a destra. Il tondo resta
+  nella stessa posizione fra i figli quando la dettatura parte e si ferma, quindi non si
+  rimonta sotto il dito. Aggiornati `DESIGN.md` §8 (Widget AI, Onda di dettatura) e §13, e la
+  spec §H.1 e §H.2.
+
+**Da provare sul telefono** (non eseguito qui: i test girano in jsdom, con `go()` osservato e
+i `popstate` emessi dal test):
+- il gesto indietro vero su Android, con un foglio, con la scansione sopra il dettaglio, col
+  dialogo di eliminazione e col widget AI (anche mentre detta): chiude un livello alla volta e
+  la pagina resta la Dispensa. Il modello è quello misurato in fase 3 per /importa, ma lì la
+  voce era una sola: `history.go(-2)` (ELIMINA dal dialogo) nel browser vero non è misurato;
+- la X seguita subito da un tocco su un'altra tessera: il `go(-1)` è ancora in volo quando
+  parte il `pushState`. Il conto torna se il browser esegue la traversata dopo il `pushState`
+  [ipotesi, non misurata];
+- lo swipe indietro di iOS, come in fase 3: con un foglio, con la scansione, col dialogo e col
+  widget AI;
+- RIPROVA dopo FINITO: il campo del residuo torna a 0 e RIPROVA sparisce;
+- il microfono del Dock col tondo del widget ora a destra, quasi sotto il dito: il **tocco
+  breve** apre il widget e la dettatura **resta accesa** (`TOCCA PER FERMARE`), e il **tenuto**
+  detta finché non si rilascia. Il click orfano sul tondo del widget nei primi 500 ms si ignora;
+- il **primo gesto sulla pagina** è un tenuto sul microfono del Dock, poi indietro: la voce
+  della cronologia potrebbe non entrare, o essere saltata dal gesto indietro, senza
+  un'attivazione utente già avvenuta sulla pagina [ipotesi, non misurata]. Se succede,
+  l'indietro esce dalla Dispensa invece di chiudere il widget.
+
+**Giro 2 dalla review (25/09).** Quattro ritocchi, un commit: la guardia sul click orfano del
+tondo del widget (sopra); i `popstate` attesi di `useIndietroFogli` che scadono dopo 1 s, così
+una traversata fusa dal browser senza il suo `popstate` non si mangia il prossimo gesto
+dell'utente [ipotesi]; la riga sul gesto indietro nella spec §A; questo elenco di prove.

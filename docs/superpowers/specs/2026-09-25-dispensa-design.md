@@ -113,6 +113,12 @@ tocco apre il dettaglio del lotto (§G).
   `Ancora niente in dispensa` e il testo di oggi. **Il Dock resta intero**, e la ricerca pure:
   dopo l'import i mai comprati ci sono già, e si trovano da lì.
 
+**Il gesto indietro** (fix del 25/09, dopo le prove dal telefono). Ogni livello aperto sopra la
+pagina (un foglio, la scansione sopra il dettaglio, il dialogo di eliminazione sopra il lotto,
+il widget AI) ha una voce nella cronologia, sullo stesso URL: il gesto indietro del telefono
+chiude un livello alla volta e la pagina resta la Dispensa. Nuovo ingrediente si chiude intero,
+anche dalla sua vista di scansione (è stato del foglio, non un livello).
+
 **Tolto dalla pagina:**
 - i gruppi `IN CASA`, `FINITI`, `MAI COMPRATI` e il gruppo `PRONTI` di oggi;
 - i campi del residuo e delle porzioni, e i tasti congelatore ed elimina dentro le righe;
@@ -399,8 +405,10 @@ forma.
 - in cima l'etichetta mono 10 `MODIFICA CON L'AI` con l'icona AI 14, e la X 44 `Chiudi`;
 - il campo libero (textarea), col fuoco, minimo 96, cresce col testo fino a 5 righe, 15/1,5,
   segnaposto `Es. ho finito il riso, l'olio è a metà…`;
-- sotto, la fila: il tondo 56 del microfono `Registra un vocale` (se c'è la dettatura) e
-  `FAI LE MODIFICHE`, primario 54, spento a campo vuoto.
+- sotto, la fila: `FAI LE MODIFICHE`, primario 54 (flex 1), spento a campo vuoto, e **a
+  destra** il tondo 56 del microfono `Registra un vocale` (se c'è la dettatura), allineato a
+  quello del Dock [decisione di Andrea del 25/09, dopo le prove dal telefono: a sinistra il
+  tondo saltava di lato aprendo dal Dock].
 
 **Posizione.** Con la tastiera aperta il widget poggia sulla tastiera; senza, sta dove stava
 il Dock (bottom 114). L'altezza della tastiera si legge da `visualViewport` [ipotesi: su
@@ -414,13 +422,18 @@ nella memoria della pagina (non in `localStorage`). Chiudere dopo l'esito svuota
 `interimResults = true`. Due modi di usarla:
 - **tenuto premuto** (eccezione dichiarata a §9, chiesta da Andrea): `pointerdown` avvia; il
   rilascio dopo almeno 350 ms ferma. Il rilascio si ascolta su `window`, perché dal Dock il
-  tondo sparisce sotto il dito quando il widget si apre;
+  tondo del Dock si smonta sotto il dito quando il widget si apre, e al suo posto nasce quasi
+  lì sotto il tondo del widget (a destra, con circa 48 × 19–33 px di sovrapposizione). Il
+  `click` che il browser manda dopo un tocco breve può quindi cadere sul tondo del widget,
+  senza il suo `pointerdown`: nei primi 500 ms dall'apertura un click così, con `detail`
+  diverso da 0, si ignora, altrimenti fermerebbe la dettatura appena partita. La tastiera
+  (`detail` 0) vale sempre;
 - **tocco breve** (rilascio prima di 350 ms, oppure attivazione da tastiera): avvia, e un
   secondo tocco ferma. È la via principale per lo screen reader.
 
 **Mentre detta** (v2 10), niente tastiera; il widget sta a bottom 114:
-- il tondo a scala 1,06 con alone 6 px a 0,10;
-- accanto, la banda `--ink` 54 con l'**onda di dettatura** (22 barre da 3 px, da 6 a 26 px,
+- il tondo, sempre a destra, a scala 1,06 con alone 6 px a 0,10;
+- alla sua sinistra, al posto di `FAI LE MODIFICHE`, la banda `--ink` 54 con l'**onda di dettatura** (22 barre da 3 px, da 6 a 26 px,
   220 ms alternate, sfasate) e il tempo `0:07` in `tabular-nums`, `role="status"`;
 - il testo dettato entra nel campo **mentre parli**: le parole provvisorie in `--ter`, quelle
   definitive in `--ink`. Il campo ha `aria-live="polite"`;

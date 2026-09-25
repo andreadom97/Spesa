@@ -4,6 +4,7 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import type { Ingredient } from '@/domain/types';
 import type { VoceDispensa } from '@/domain/dispensa-vista';
 import { DettaglioIngrediente } from '../DettaglioIngrediente';
+import { CampoConSalva } from '../controlli';
 
 const OGGI = '2026-09-25';
 
@@ -119,6 +120,30 @@ describe('DettaglioIngrediente', () => {
       const { rerender } = render(<DettaglioIngrediente {...props} />);
       rerender(<DettaglioIngrediente {...props} voce={voce({ residuo: 300 })} />);
       expect(screen.getByLabelText('Residuo di Petto di pollo')).toHaveValue('300');
+    });
+  });
+
+  describe('CampoConSalva da solo', () => {
+    it('in errore, un valore che cambia da fuori riporta il campo al nuovo valore e il tasto a SALVA spento', async () => {
+      const onSalva = vi.fn().mockRejectedValueOnce(new Error('no'));
+      const props = { aria: 'Residuo', unita: 'g', messaggioErrore: 'Errore del residuo.', onSalva };
+      const { rerender } = render(<CampoConSalva {...props} valore={600} />);
+      const campo = screen.getByLabelText('Residuo');
+      fireEvent.change(campo, { target: { value: '250' } });
+      fireEvent.click(screen.getByRole('button', { name: 'SALVA' }));
+      expect(await screen.findByRole('button', { name: 'RIPROVA' })).toBeInTheDocument();
+
+      // Il ritorno a prima riporta lo stesso valore: il campo resta in errore.
+      rerender(<CampoConSalva {...props} valore={600} />);
+      expect(campo).toHaveValue('250');
+      expect(screen.getByRole('button', { name: 'RIPROVA' })).toBeInTheDocument();
+
+      // FINITO o SÌ nello stesso foglio: il valore cambia da fuori.
+      rerender(<CampoConSalva {...props} valore={0} />);
+      expect(campo).toHaveValue('0');
+      expect(screen.getByRole('button', { name: 'SALVA' })).toBeDisabled();
+      expect(screen.queryByText('Errore del residuo.')).not.toBeInTheDocument();
+      expect(onSalva).toHaveBeenCalledTimes(1);
     });
   });
 

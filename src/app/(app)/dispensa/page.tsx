@@ -30,6 +30,7 @@ import { ScansioneConfezione } from './ScansioneConfezione';
 import { NuovoIngrediente, type DatiNuovoIngrediente } from './NuovoIngrediente';
 import { WidgetAI } from './WidgetAI';
 import { useDettatura } from './useDettatura';
+import { useIndietroFogli } from './useIndietroFogli';
 import { IconaBarattolo } from './icone';
 import { MessaggioErrore, STILE_PILLOLA, TastoPrimario } from './controlli';
 
@@ -66,6 +67,18 @@ function ripristina<T extends object>(ora: T, patch: Partial<T>, prima: T): T {
     if (ora[k] === patch[k]) indietro[k] = prima[k];
   }
   return { ...ora, ...indietro };
+}
+
+/**
+ * Quanti livelli apre un foglio, per il gesto indietro: il dettaglio, il lotto
+ * e Nuovo ingrediente uno; la scansione sopra il dettaglio e il dialogo di
+ * eliminazione sopra il lotto due.
+ */
+function profonditaDi(foglio: Foglio): number {
+  if (foglio === null) return 0;
+  if (foglio.tipo === 'ingrediente') return foglio.vista === 'scansione' ? 2 : 1;
+  if (foglio.tipo === 'lotto') return foglio.elimina ? 2 : 1;
+  return 1;
 }
 
 function oggiIso(): string {
@@ -324,6 +337,31 @@ export default function Dispensa() {
     dettatura.ferma();
     setWidgetAperto(false);
   }
+
+  /**
+   * Il gesto indietro del telefono chiude l'ultimo livello aperto
+   * (`useIndietroFogli`): il widget AI se c'è, poi scansione → dettaglio,
+   * dialogo → lotto, e il foglio di primo livello → niente. La vista di
+   * scansione dentro Nuovo ingrediente è stato del foglio: lì indietro chiude
+   * il foglio intero.
+   */
+  function chiudiUltimo() {
+    if (widgetAperto) {
+      chiudiWidget();
+      return;
+    }
+    if (foglio?.tipo === 'ingrediente' && foglio.vista === 'scansione') {
+      setFoglio({ ...foglio, vista: 'dettaglio' });
+    } else if (foglio?.tipo === 'lotto' && foglio.elimina) {
+      setFoglio({ ...foglio, elimina: false });
+    } else if (foglio?.tipo === 'nuovo') {
+      chiudiNuovo();
+    } else {
+      setFoglio(null);
+    }
+  }
+
+  useIndietroFogli(profonditaDi(foglio) + (widgetAperto ? 1 : 0), chiudiUltimo);
 
   if (errore) {
     return (

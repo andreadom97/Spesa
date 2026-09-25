@@ -644,8 +644,9 @@ Acceso = a casa.
 `MODIFICA CON L'AI`: velo 0,35 su tutta la schermata, il Dock sparisce, e al suo posto nasce
 una scheda bianca a **12** dai lati, raggio **22**, `--ombra-alta`, padding `12 / 12 / 12 / 16`,
 `role="dialog"`. In cima l'etichetta mono 10 `MODIFICA CON L'AI` con l'icona AI 14 e la X 44.
-Poi il campo libero (textarea, minimo 96, fino a 5 righe, 15/1,5) e la fila: tondo del
-microfono 56 + `FAI LE MODIFICHE` primario 54. Poggia sulla tastiera; senza tastiera sta a
+Poi il campo libero (textarea, minimo 96, fino a 5 righe, 15/1,5) e la fila: `FAI LE
+MODIFICHE` primario 54 (flex 1) e **a destra** il tondo del microfono 56, allineato a quello
+del Dock. Poggia sulla tastiera; senza tastiera sta a
 `bottom` 114. Con l'esito cresce fino a `top` 88 e dentro scorre. Chiude con la X o col velo.
 Il microfono **si tiene premuto** per dettare (eccezione §9) o si tocca per avviare e fermare.
 
@@ -679,7 +680,8 @@ padding `20 / 16 / 26`, gap 12, `role="alertdialog"`. Titolo 21/800, testo 14/1,
 ### Onda di dettatura
 **Nuova il 25/09.** Banda `--ink` alta 54, raggio 999, con 22 barre bianche da 3 px (§7
 `.onda-barra`) e il tempo `0:07` mono 11/500 a `rgba(255,255,255,.62)` con `tabular-nums`,
-`role="status"`. Il tondo del microfono accanto sta a scala 1,06 con un alone di 6 px a 0,10.
+`role="status"`. Prende il posto di `FAI LE MODIFICHE` (flex 1); il tondo del microfono resta
+a destra, a scala 1,06 con un alone di 6 px a 0,10.
 
 ### Stato "Registro"
 **Nuovo il 19/09.** Pillola `--ink` alta 56: metro a **quattro barre** larghe 3 px (§7
@@ -958,3 +960,7 @@ Prese in Claude Design sulle schermate rese (19/09) e sulle sette domande aperte
   all'ingrediente aperto.
 - Eccezioni dichiarate: long-press sul microfono, caricamento a widget vuoti, luce sul testo,
   colori d'area come luce, icona AI piena.
+- **[25/09, dopo le prove dal telefono]** Nella fila del widget AI il tondo del microfono sta
+  **a destra**, dopo `FAI LE MODIFICHE` o dopo l'onda di dettatura: com'era a sinistra, aprendo
+  il widget dal microfono del Dock (a destra) il tondo saltava di lato (§8 Widget AI, Onda di
+  dettatura).

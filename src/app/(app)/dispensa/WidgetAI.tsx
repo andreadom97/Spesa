@@ -40,6 +40,17 @@ function applica(p: ModificaProposta, valore: number | boolean, prima: number | 
 const TASTIERA_APERTA = 80;
 
 /**
+ * Per quanto tempo dall'apertura del widget un click sul tondo senza il suo
+ * pointerdown, e con `detail` diverso da 0, si ignora. Il tondo del widget sta
+ * a destra, quasi sotto il dito che ha toccato il microfono del Dock (circa
+ * 48 × 19–33 px di sovrapposizione): dopo il tocco breve il browser manda il
+ * `click` nel punto del dito, e senza questa guardia `tocca()` fermerebbe la
+ * dettatura appena partita. La tastiera (`detail` 0) passa sempre; uno screen
+ * reader non attiva un tasto nei primi 500 ms [ipotesi, non misurata].
+ */
+const CLICK_ORFANO_DOPO_APERTURA_MS = 500;
+
+/**
  * Sulla banda della dettatura e sulla riga sotto: un tenuto lungo partito dal
  * Dock può finire sopra di loro, e non deve aprire la selezione o il menu.
  */
@@ -100,6 +111,13 @@ export function WidgetAI({ contesto, dettatura, bozza, onBozza, onDatiCambiati, 
   // dettatura (dal Dock), il campo non c'è e il fuoco resta dov'è.
   useEffect(() => {
     campoRef.current?.focus();
+  }, []);
+
+  // L'istante in cui il widget è nato: `null` finché l'effetto non è girato,
+  // e un click in quel frattempo conta come appena aperto.
+  const apertoAlle = useRef<number | null>(null);
+  useEffect(() => {
+    apertoAlle.current = performance.now();
   }, []);
 
   // All'esito il campo sparisce: il fuoco va al contenitore del recap, così
@@ -267,11 +285,15 @@ export function WidgetAI({ contesto, dettatura, bozza, onBozza, onDatiCambiati, 
   // Il click dopo un pointerdown è il dito: l'ha già gestito `premi`. Senza
   // pointerdown (tastiera, `detail` 0, o uno screen reader che sintetizza il
   // click con `detail` 1) è un tocco breve. `detail` 0 vale sempre come
-  // tastiera, anche se un pointerdown è rimasto senza click.
+  // tastiera, anche se un pointerdown è rimasto senza click. Un click senza
+  // pointerdown proprio e con `detail` diverso da 0 nei primi
+  // `CLICK_ORFANO_DOPO_APERTURA_MS` è il resto del tocco sul microfono del Dock.
   function clickMicrofono(e: MouseEvent<HTMLButtonElement>) {
     const dalDito = premutoRef.current && e.detail !== 0;
+    const orfano = !premutoRef.current && e.detail !== 0
+      && (apertoAlle.current === null || performance.now() - apertoAlle.current < CLICK_ORFANO_DOPO_APERTURA_MS);
     premutoRef.current = false;
-    if (!dalDito) dettatura.tocca();
+    if (!dalDito && !orfano) dettatura.tocca();
   }
 
   const conEsito = esito !== null;
@@ -339,27 +361,6 @@ export function WidgetAI({ contesto, dettatura, bozza, onBozza, onDatiCambiati, 
             {dettatura.errore && <MessaggioErrore ruolo="alert">{dettatura.errore}</MessaggioErrore>}
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {dettatura.disponibile && (
-                <button
-                  type="button"
-                  aria-label="Registra un vocale"
-                  onPointerDown={inviando ? undefined : premiMicrofono}
-                  onClick={clickMicrofono}
-                  // Su Android il tenuto lungo aprirebbe il menu o la
-                  // selezione, e il browser manderebbe pointercancel.
-                  onContextMenu={(e) => e.preventDefault()}
-                  disabled={inviando}
-                  style={{
-                    width: 56, height: 56, flex: 'none', borderRadius: 999, background: 'var(--ink)', touchAction: 'none',
-                    userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: inviando ? 0.5 : 1,
-                    transform: dettatura.attiva ? 'scale(1.06)' : 'none',
-                    boxShadow: dettatura.attiva ? '0 0 0 6px rgba(20,22,58,0.10)' : 'none',
-                  }}
-                >
-                  <IconaMicrofono />
-                </button>
-              )}
               {dettatura.attiva ? (
                 <div role="status" style={{ flex: 1, height: 54, borderRadius: 999, background: 'var(--ink)', display: 'flex', alignItems: 'center', gap: 10, padding: '0 16px', overflow: 'hidden', ...SENZA_SELEZIONE }}>
                   <span aria-hidden="true" style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 3, height: 26 }}>
@@ -380,6 +381,28 @@ export function WidgetAI({ contesto, dettatura, bozza, onBozza, onDatiCambiati, 
                 >
                   FAI LE MODIFICHE
                 </TastoPrimario>
+              )}
+              {/* Il tondo a destra, come nel Dock: aprendo dal microfono del Dock non salta di lato (25/09). */}
+              {dettatura.disponibile && (
+                <button
+                  type="button"
+                  aria-label="Registra un vocale"
+                  onPointerDown={inviando ? undefined : premiMicrofono}
+                  onClick={clickMicrofono}
+                  // Su Android il tenuto lungo aprirebbe il menu o la
+                  // selezione, e il browser manderebbe pointercancel.
+                  onContextMenu={(e) => e.preventDefault()}
+                  disabled={inviando}
+                  style={{
+                    width: 56, height: 56, flex: 'none', borderRadius: 999, background: 'var(--ink)', touchAction: 'none',
+                    userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: inviando ? 0.5 : 1,
+                    transform: dettatura.attiva ? 'scale(1.06)' : 'none',
+                    boxShadow: dettatura.attiva ? '0 0 0 6px rgba(20,22,58,0.10)' : 'none',
+                  }}
+                >
+                  <IconaMicrofono />
+                </button>
               )}
             </div>
 
