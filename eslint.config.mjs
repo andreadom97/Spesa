@@ -16,6 +16,8 @@ const eslintConfig = defineConfig([
     // loro .next/ compilato, e senza questa riga il lint del checkout principale li scansiona
     // come codice (8261 problemi misurati il 23/09, tutti in un worktree, zero in src/).
     ".claude/**",
+    // I mockup di Claude Design portano il loro runtime JS, che non è codice dell'app.
+    "design/ridisegno/**",
   ]),
 ]);
 
