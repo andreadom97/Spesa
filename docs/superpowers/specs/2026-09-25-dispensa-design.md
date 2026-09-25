@@ -502,7 +502,8 @@ Le righe segnate **nuovo** sono testo scritto per questa fase: vanno approvate c
 | Dialogo del lotto, singolare | nessuno | **nuovo** (Task 6) con 1 porzione: `{Piatto}, 1 porzione.`; con 1 impegnata: ` 1 è impegnata dai pasti in programma: dopo, quei pasti non la trovano più.` |
 | Dock | `Fai una modifica` (disegno) | **nuovo** `Modifica con l'AI` (reso `MODIFICA CON L'AI`) |
 | Microfono | `Detta la nota` | `Registra un vocale`, ovunque |
-| Widget AI | scheda `Il conto non torna? Correggi con una nota` | **nuovo** `Modifica con l'AI` (nome del dialogo ed etichetta) · `Chiudi` |
+| Widget AI | scheda `Il conto non torna? Correggi con una nota` | **nuovo** `Modifica con l'AI` (nome del dialogo ed etichetta) · `Chiudi` · `Nota per l'AI` (nome accessibile del campo) |
+| Esito, nomi accessibili | `Annulla` / `Conferma` | **nuovo** (Task 8, dai frame v1 10) `Annulla: {Nome} {cambio}` · `Conferma: {Nome} {cambio}`, con `{cambio}` nelle forme della riga di proposta (`400 → 0 g`, `frigo → freezer`); il testo visibile resta `ANNULLA` / `CONFERMA` |
 | Dettatura | — | **nuovo** `RILASCIA PER FERMARE` · `TOCCA PER FERMARE` · `Il microfono non è disponibile: scrivi la nota.` |
 | Mandare la nota | `Correggi` | **nuovo** `FAI LE MODIFICHE` |
 | In volo | — | **nuovo** `PREPARO LE MODIFICHE…` |

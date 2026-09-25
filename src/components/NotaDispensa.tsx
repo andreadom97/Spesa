@@ -5,6 +5,9 @@ import type { EsitoCorrezione, ModificaProposta, VoceContesto } from '@/domain/d
 import { CONFIDENCE_SOGLIA } from '@/domain/dispensa-ai';
 import { correggiResiduo, impostaCongelato } from '@/data/dispensa';
 import { client } from '@/data/supabase';
+// Il tipo e la dichiarazione globale di `window.SpeechRecognition` stanno in
+// useDettatura: due `declare global` diversi per la stessa proprietà non compilano.
+import type { SpeechRecognitionLike } from '@/app/(app)/dispensa/useDettatura';
 
 interface Props {
   contesto: VoceContesto[];
@@ -13,21 +16,6 @@ interface Props {
 }
 
 type StatoProposta = 'applicata' | 'annullata' | 'daConfermare';
-
-// Minimo indispensabile dell'API SpeechRecognition per la dettatura: il resto
-// del browser (webkitSpeechRecognition compreso) non serve qui.
-interface SpeechRecognitionLike {
-  lang: string;
-  onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
-  start: () => void;
-}
-
-declare global {
-  interface Window {
-    SpeechRecognition?: new () => SpeechRecognitionLike;
-    webkitSpeechRecognition?: new () => SpeechRecognitionLike;
-  }
-}
 
 /**
  * Applica una proposta (residuo o congelato) sull'ingrediente che indica, e
