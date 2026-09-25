@@ -170,6 +170,10 @@
 }
 .guscio[data-barra="ridotta"] .dock { bottom: var(--dock-fondo-giu); }
 
+/* La Dispensa (spec fase 4 §A): stessa posizione e stessa discesa con la barra, ma
+   niente contenitore — i due controlli portano ognuno la propria ombra. */
+.dock.dock-sciolto { background: none; box-shadow: none; padding: 0; justify-content: flex-end; align-items: center; }
+
 /* Il primario del Dock: una classe e non quattro copie di stile inline, perché i
    chiamanti sono un <Link> in Lista e un <button> in Piano e devono essere identici. */
 .dock-primario {
