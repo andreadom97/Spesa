@@ -284,5 +284,18 @@ i `popstate` emessi dal test):
 - la X seguita subito da un tocco su un'altra tessera: il `go(-1)` è ancora in volo quando
   parte il `pushState`. Il conto torna se il browser esegue la traversata dopo il `pushState`
   [ipotesi, non misurata];
-- lo swipe indietro di iOS, come in fase 3;
-- RIPROVA dopo FINITO: il campo del residuo torna a 0 e RIPROVA sparisce.
+- lo swipe indietro di iOS, come in fase 3: con un foglio, con la scansione, col dialogo e col
+  widget AI;
+- RIPROVA dopo FINITO: il campo del residuo torna a 0 e RIPROVA sparisce;
+- il microfono del Dock col tondo del widget ora a destra, quasi sotto il dito: il **tocco
+  breve** apre il widget e la dettatura **resta accesa** (`TOCCA PER FERMARE`), e il **tenuto**
+  detta finché non si rilascia. Il click orfano sul tondo del widget nei primi 500 ms si ignora;
+- il **primo gesto sulla pagina** è un tenuto sul microfono del Dock, poi indietro: la voce
+  della cronologia potrebbe non entrare, o essere saltata dal gesto indietro, senza
+  un'attivazione utente già avvenuta sulla pagina [ipotesi, non misurata]. Se succede,
+  l'indietro esce dalla Dispensa invece di chiudere il widget.
+
+**Giro 2 dalla review (25/09).** Quattro ritocchi, un commit: la guardia sul click orfano del
+tondo del widget (sopra); i `popstate` attesi di `useIndietroFogli` che scadono dopo 1 s, così
+una traversata fusa dal browser senza il suo `popstate` non si mangia il prossimo gesto
+dell'utente [ipotesi]; la riga sul gesto indietro nella spec §A; questo elenco di prove.

@@ -918,6 +918,36 @@ describe('Dispensa: il Dock e Modifica con l\'AI', () => {
       expect(dock()).toBeInTheDocument();
     });
 
+    // Il tondo del widget ora sta a destra, quasi sotto il dito che ha toccato il
+    // microfono del Dock: il click che segue il tocco breve può cadere lì.
+    it('tocco breve dal Dock: il click che cade sul tondo del widget appena nato non ferma la dettatura', async () => {
+      mockBase();
+      await montaCaricata();
+
+      fireEvent.pointerDown(within(dock()!).getByRole('button', { name: 'Registra un vocale' }), { pointerId: 3 });
+      act(() => { window.dispatchEvent(puntatore('pointerup', 3)); });
+      fireEvent.click(screen.getByRole('button', { name: 'Registra un vocale' }), { detail: 1 });
+
+      expect(screen.getByText('TOCCA PER FERMARE')).toBeInTheDocument();
+      expect(ultima!.stop).not.toHaveBeenCalled();
+    });
+
+    it('oltre 500 ms dall\'apertura un click senza pointerdown (screen reader, detail 1) è un tocco e ferma', async () => {
+      mockBase();
+      await montaCaricata();
+      let avanti = 0;
+      const vero = performance.now.bind(performance);
+      vi.spyOn(performance, 'now').mockImplementation(() => vero() + avanti);
+
+      fireEvent.pointerDown(within(dock()!).getByRole('button', { name: 'Registra un vocale' }), { pointerId: 3 });
+      act(() => { window.dispatchEvent(puntatore('pointerup', 3)); });
+      avanti = 501;
+      fireEvent.click(screen.getByRole('button', { name: 'Registra un vocale' }), { detail: 1 });
+
+      expect(ultima!.stop).toHaveBeenCalledTimes(1);
+      expect(screen.queryByText('TOCCA PER FERMARE')).not.toBeInTheDocument();
+    });
+
     it('il gesto indietro col widget in dettatura lo chiude e ferma la dettatura', async () => {
       mockBase();
       await montaCaricata();

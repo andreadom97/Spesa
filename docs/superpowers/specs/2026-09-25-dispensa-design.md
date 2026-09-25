@@ -113,6 +113,12 @@ tocco apre il dettaglio del lotto (§G).
   `Ancora niente in dispensa` e il testo di oggi. **Il Dock resta intero**, e la ricerca pure:
   dopo l'import i mai comprati ci sono già, e si trovano da lì.
 
+**Il gesto indietro** (fix del 25/09, dopo le prove dal telefono). Ogni livello aperto sopra la
+pagina (un foglio, la scansione sopra il dettaglio, il dialogo di eliminazione sopra il lotto,
+il widget AI) ha una voce nella cronologia, sullo stesso URL: il gesto indietro del telefono
+chiude un livello alla volta e la pagina resta la Dispensa. Nuovo ingrediente si chiude intero,
+anche dalla sua vista di scansione (è stato del foglio, non un livello).
+
 **Tolto dalla pagina:**
 - i gruppi `IN CASA`, `FINITI`, `MAI COMPRATI` e il gruppo `PRONTI` di oggi;
 - i campi del residuo e delle porzioni, e i tasti congelatore ed elimina dentro le righe;
@@ -416,7 +422,12 @@ nella memoria della pagina (non in `localStorage`). Chiudere dopo l'esito svuota
 `interimResults = true`. Due modi di usarla:
 - **tenuto premuto** (eccezione dichiarata a §9, chiesta da Andrea): `pointerdown` avvia; il
   rilascio dopo almeno 350 ms ferma. Il rilascio si ascolta su `window`, perché dal Dock il
-  tondo sparisce sotto il dito quando il widget si apre;
+  tondo del Dock si smonta sotto il dito quando il widget si apre, e al suo posto nasce quasi
+  lì sotto il tondo del widget (a destra, con circa 48 × 19–33 px di sovrapposizione). Il
+  `click` che il browser manda dopo un tocco breve può quindi cadere sul tondo del widget,
+  senza il suo `pointerdown`: nei primi 500 ms dall'apertura un click così, con `detail`
+  diverso da 0, si ignora, altrimenti fermerebbe la dettatura appena partita. La tastiera
+  (`detail` 0) vale sempre;
 - **tocco breve** (rilascio prima di 350 ms, oppure attivazione da tastiera): avvia, e un
   secondo tocco ferma. È la via principale per lo screen reader.
 

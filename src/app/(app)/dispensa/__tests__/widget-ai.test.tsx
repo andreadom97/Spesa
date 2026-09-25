@@ -230,11 +230,17 @@ describe('WidgetAI', () => {
     });
 
     it('un click senza pointerdown (tastiera, detail 0, o screen reader, detail 1) chiama tocca', () => {
+      let avanti = 0;
+      const vero = performance.now.bind(performance);
+      vi.spyOn(performance, 'now').mockImplementation(() => vero() + avanti);
       const dettatura = dettaturaFinta();
       render(<Banco dettatura={dettatura} />);
       const tondo = screen.getByRole('button', { name: 'Registra un vocale' });
+      // La tastiera vale subito, anche appena aperto il widget.
       fireEvent.click(tondo, { detail: 0 });
       expect(dettatura.tocca).toHaveBeenCalledTimes(1);
+      // Il click sintetizzato dallo screen reader, dopo i primi 500 ms.
+      avanti = 501;
       fireEvent.click(tondo, { detail: 1 });
       expect(dettatura.tocca).toHaveBeenCalledTimes(2);
       // Un pointerdown rimasto senza click non si mangia il tasto da tastiera.
@@ -242,6 +248,16 @@ describe('WidgetAI', () => {
       fireEvent.click(tondo, { detail: 0 });
       expect(dettatura.tocca).toHaveBeenCalledTimes(3);
       expect(dettatura.premi).toHaveBeenCalledTimes(1);
+    });
+
+    it('nei primi 500 ms dall\'apertura un click senza pointerdown e con detail 1 si ignora; con detail 0 no', () => {
+      const dettatura = dettaturaFinta({ attiva: true, modo: 'tocco' });
+      render(<Banco dettatura={dettatura} />);
+      const tondo = screen.getByRole('button', { name: 'Registra un vocale' });
+      fireEvent.click(tondo, { detail: 1 });
+      expect(dettatura.tocca).not.toHaveBeenCalled();
+      fireEvent.click(tondo, { detail: 0 });
+      expect(dettatura.tocca).toHaveBeenCalledTimes(1);
     });
 
     it('il tenuto lungo non apre il menu contestuale', () => {

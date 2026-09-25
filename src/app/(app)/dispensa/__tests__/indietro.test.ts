@@ -109,6 +109,39 @@ describe('useIndietroFogli', () => {
     expect(chiudi).toHaveBeenCalledTimes(1);
   });
 
+  it('un popstate atteso scade dopo 1 s: quello che arriva dopo è il gesto dell\'utente', () => {
+    let avanti = 0;
+    const vero = performance.now.bind(performance);
+    vi.spyOn(performance, 'now').mockImplementation(() => vero() + avanti);
+    const chiudi = vi.fn();
+    const { porta } = monta(0, chiudi);
+    porta(2);
+    porta(1); // go(-1): un popstate atteso, che il browser qui non manda mai
+    expect(window.history.go).toHaveBeenCalledTimes(1);
+
+    avanti = 1001;
+    indietro(); // il gesto dell'utente, oltre la scadenza
+    expect(chiudi).toHaveBeenCalledTimes(1);
+    porta(0);
+    // L'atteso scaduto è azzerato: non si mangia neanche il popstate successivo.
+    porta(1);
+    indietro();
+    expect(chiudi).toHaveBeenCalledTimes(2);
+  });
+
+  it('un popstate atteso entro 1 s si consuma', () => {
+    let avanti = 0;
+    const vero = performance.now.bind(performance);
+    vi.spyOn(performance, 'now').mockImplementation(() => vero() + avanti);
+    const chiudi = vi.fn();
+    const { porta } = monta(0, chiudi);
+    porta(1);
+    porta(0);
+    avanti = 999;
+    indietro();
+    expect(chiudi).not.toHaveBeenCalled();
+  });
+
   it('un popstate senza livelli aperti non chiama niente (è la navigazione della pagina)', () => {
     const chiudi = vi.fn();
     monta(0, chiudi);

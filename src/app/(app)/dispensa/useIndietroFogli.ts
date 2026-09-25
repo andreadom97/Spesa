@@ -13,7 +13,8 @@ import { useEffect, useRef } from 'react';
  * - `profondita > voci`: `pushState(null, '')` per la differenza;
  * - `profondita < voci` perché l'interfaccia ha chiuso (X, velo, ANNULLA,
  *   AGGIUNGI, ELIMINA, CREA…): un solo `history.go(-(voci - profondita))`, e
- *   il `popstate` che ne segue è atteso: non chiude altro. `voci` si aggiorna
+ *   il `popstate` che ne segue, se arriva entro `ATTESA_POPSTATE_MS`, è
+ *   atteso: non chiude altro. `voci` si aggiorna
  *   subito, quindi due chiusure di fila non consumano due volte la stessa voce;
  * - un `popstate` non atteso è il gesto indietro: `voci` scende di uno e
  *   `chiudiUltimo` riporta lo stato al livello di sotto, così la profondità
@@ -27,10 +28,21 @@ import { useEffect, useRef } from 'react';
  *
  * `chiudiUltimo` si legge da un ref: l'ascoltatore si aggancia una volta sola.
  */
+/**
+ * Per quanto un `popstate` atteso resta atteso dopo il nostro `go()`. Nel
+ * browser arriva in 16–33 ms (fase 3). La scadenza copre una traversata che il
+ * browser fonde con un'altra senza mandare due `popstate` [ipotesi, non
+ * misurata]: senza, l'atteso mai arrivato si mangerebbe il prossimo gesto
+ * indietro dell'utente, che non chiuderebbe niente.
+ */
+const ATTESA_POPSTATE_MS = 1000;
+
 export function useIndietroFogli(profondita: number, chiudiUltimo: () => void) {
   const voci = useRef(0);
   // I `popstate` dei nostri `go()` ancora da arrivare: il browser ne manda uno per traversata.
   const attesi = useRef(0);
+  // Fin quando un atteso vale (`performance.now()`): dopo, il popstate è dell'utente.
+  const attesiFino = useRef(0);
   const chiudi = useRef(chiudiUltimo);
 
   useEffect(() => {
@@ -45,16 +57,19 @@ export function useIndietroFogli(profondita: number, chiudiUltimo: () => void) {
       const passi = voci.current - profondita;
       voci.current = profondita;
       attesi.current += 1;
+      attesiFino.current = performance.now() + ATTESA_POPSTATE_MS;
       window.history.go(-passi);
     }
   }, [profondita]);
 
   useEffect(() => {
     const suPopstate = () => {
-      if (attesi.current > 0) {
+      if (attesi.current > 0 && performance.now() < attesiFino.current) {
         attesi.current -= 1;
         return;
       }
+      // Un atteso mai arrivato non si mangia il gesto dell'utente.
+      attesi.current = 0;
       // Senza livelli aperti il popstate è la navigazione della pagina: non è nostro.
       if (voci.current === 0) return;
       voci.current -= 1;
