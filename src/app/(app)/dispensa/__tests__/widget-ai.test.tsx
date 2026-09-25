@@ -207,6 +207,17 @@ describe('WidgetAI', () => {
       expect(screen.queryByRole('button', { name: 'Registra un vocale' })).not.toBeInTheDocument();
     });
 
+    // Decisione del 25/09 dopo le prove: il tondo sta a destra nella fila, come nel Dock,
+    // così aprendo il widget dal microfono del Dock non salta da destra a sinistra.
+    it('nella fila il tondo sta a destra: dopo FAI LE MODIFICHE, e dopo la banda quando detta', () => {
+      const { rerender } = render(<Banco />);
+      const dopo = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+      expect(dopo(screen.getByRole('button', { name: 'FAI LE MODIFICHE' }), screen.getByRole('button', { name: 'Registra un vocale' }))).toBe(true);
+
+      rerender(<Banco dettatura={dettaturaFinta({ attiva: true, modo: 'tocco' })} />);
+      expect(dopo(screen.getByRole('status'), screen.getByRole('button', { name: 'Registra un vocale' }))).toBe(true);
+    });
+
     it('pointerDown sul tondo chiama premi col pointerId; il click che lo segue non chiama tocca', () => {
       const dettatura = dettaturaFinta();
       render(<Banco dettatura={dettatura} />);

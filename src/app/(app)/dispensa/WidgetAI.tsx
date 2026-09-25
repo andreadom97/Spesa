@@ -339,27 +339,6 @@ export function WidgetAI({ contesto, dettatura, bozza, onBozza, onDatiCambiati, 
             {dettatura.errore && <MessaggioErrore ruolo="alert">{dettatura.errore}</MessaggioErrore>}
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {dettatura.disponibile && (
-                <button
-                  type="button"
-                  aria-label="Registra un vocale"
-                  onPointerDown={inviando ? undefined : premiMicrofono}
-                  onClick={clickMicrofono}
-                  // Su Android il tenuto lungo aprirebbe il menu o la
-                  // selezione, e il browser manderebbe pointercancel.
-                  onContextMenu={(e) => e.preventDefault()}
-                  disabled={inviando}
-                  style={{
-                    width: 56, height: 56, flex: 'none', borderRadius: 999, background: 'var(--ink)', touchAction: 'none',
-                    userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: inviando ? 0.5 : 1,
-                    transform: dettatura.attiva ? 'scale(1.06)' : 'none',
-                    boxShadow: dettatura.attiva ? '0 0 0 6px rgba(20,22,58,0.10)' : 'none',
-                  }}
-                >
-                  <IconaMicrofono />
-                </button>
-              )}
               {dettatura.attiva ? (
                 <div role="status" style={{ flex: 1, height: 54, borderRadius: 999, background: 'var(--ink)', display: 'flex', alignItems: 'center', gap: 10, padding: '0 16px', overflow: 'hidden', ...SENZA_SELEZIONE }}>
                   <span aria-hidden="true" style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 3, height: 26 }}>
@@ -380,6 +359,28 @@ export function WidgetAI({ contesto, dettatura, bozza, onBozza, onDatiCambiati, 
                 >
                   FAI LE MODIFICHE
                 </TastoPrimario>
+              )}
+              {/* Il tondo a destra, come nel Dock: aprendo dal microfono del Dock non salta di lato (25/09). */}
+              {dettatura.disponibile && (
+                <button
+                  type="button"
+                  aria-label="Registra un vocale"
+                  onPointerDown={inviando ? undefined : premiMicrofono}
+                  onClick={clickMicrofono}
+                  // Su Android il tenuto lungo aprirebbe il menu o la
+                  // selezione, e il browser manderebbe pointercancel.
+                  onContextMenu={(e) => e.preventDefault()}
+                  disabled={inviando}
+                  style={{
+                    width: 56, height: 56, flex: 'none', borderRadius: 999, background: 'var(--ink)', touchAction: 'none',
+                    userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: inviando ? 0.5 : 1,
+                    transform: dettatura.attiva ? 'scale(1.06)' : 'none',
+                    boxShadow: dettatura.attiva ? '0 0 0 6px rgba(20,22,58,0.10)' : 'none',
+                  }}
+                >
+                  <IconaMicrofono />
+                </button>
               )}
             </div>
 

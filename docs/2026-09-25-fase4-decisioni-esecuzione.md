@@ -267,3 +267,22 @@ Andrea ha provato la Dispensa in produzione dal telefono. Tre difetti, tre commi
   (X, velo, ANNULLA, AGGIUNGI, ELIMINA, CREA, APRI {Y}), e su un `popstate` non atteso chiude
   l'ultimo livello. Limite: dentro Nuovo ingrediente la vista di scansione è stato del
   componente, e il gesto indietro lì chiude il foglio intero.
+- **Nel widget AI il microfono stava a sinistra** (`WidgetAI.tsx`). Causa: nella fila il tondo
+  era il primo figlio, mentre nel Dock è l'ultimo, a destra; aprendo il widget dal microfono
+  del Dock il tondo saltava di lato. Correzione, decisa da Andrea dopo le prove: prima
+  `FAI LE MODIFICHE` (o la banda della dettatura), poi il tondo 56 a destra. Il tondo resta
+  nella stessa posizione fra i figli quando la dettatura parte e si ferma, quindi non si
+  rimonta sotto il dito. Aggiornati `DESIGN.md` §8 (Widget AI, Onda di dettatura) e §13, e la
+  spec §H.1 e §H.2.
+
+**Da provare sul telefono** (non eseguito qui: i test girano in jsdom, con `go()` osservato e
+i `popstate` emessi dal test):
+- il gesto indietro vero su Android, con un foglio, con la scansione sopra il dettaglio, col
+  dialogo di eliminazione e col widget AI (anche mentre detta): chiude un livello alla volta e
+  la pagina resta la Dispensa. Il modello è quello misurato in fase 3 per /importa, ma lì la
+  voce era una sola: `history.go(-2)` (ELIMINA dal dialogo) nel browser vero non è misurato;
+- la X seguita subito da un tocco su un'altra tessera: il `go(-1)` è ancora in volo quando
+  parte il `pushState`. Il conto torna se il browser esegue la traversata dopo il `pushState`
+  [ipotesi, non misurata];
+- lo swipe indietro di iOS, come in fase 3;
+- RIPROVA dopo FINITO: il campo del residuo torna a 0 e RIPROVA sparisce.
