@@ -41,9 +41,18 @@ const ATTESA_POPSTATE_MS = 1000;
  * correrebbero insieme, e la traversata porterebbe indietro anche la pagina nuova. Il
  * chiamante registra `fn` e, nello stesso gesto, porta il suo stato a profondità 0: l'hook
  * consuma le voci con un `go(-n)` ed esegue `fn` al `popstate` che lo conclude. Senza voci
- * aperte `fn` parte subito, nell'effetto. Se il `popstate` non arriva entro
- * `ATTESA_POPSTATE_MS`, `fn` parte comunque. In ogni caso una volta sola; una seconda chiamata
- * prima che parta sostituisce la prima. Allo smontaggio una `fn` in attesa si butta.
+ * aperte `fn` parte nell'effetto. Se il `popstate` non arriva entro `ATTESA_POPSTATE_MS`,
+ * `fn` parte comunque. In ogni caso una volta sola; una seconda chiamata prima che parta
+ * sostituisce la prima. Allo smontaggio una `fn` in attesa si butta.
+ *
+ * **`fn` parte sempre un giro dopo** (`setTimeout(fn, 0)`), mai dentro l'ascoltatore. Gli
+ * effetti della pagina girano prima di quello dell'`AppRouter`, quindi il nostro ascoltatore
+ * `popstate` sente la traversata prima di Next. Se `fn` facesse `router.push` lì dentro, la
+ * traversata che Next manda subito dopo segnerebbe la push in volo come scartata
+ * (`next/dist/client/components/app-router-instance.js`, righe 147–150), e la pagina nuova non
+ * arriverebbe. Misurato nel browser dalla sonda del Task 2 della fase 5 (registro della fase
+ * 5): con la push dentro il `popstate` la pagina resta quella di partenza; con la push un giro
+ * dopo arriva, con una voce sola in più e l'indietro che torna alla pagina di partenza.
  *
  * `chiudiUltimo` si legge da un ref: l'ascoltatore si aggancia una volta sola.
  */
@@ -60,6 +69,8 @@ export function useIndietroFogli(
   // chiudiTuttoPoi: cosa fare quando le voci sono consumate, e il timer di riserva.
   const dopo = useRef<(() => void) | null>(null);
   const riserva = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Il giro dopo in cui fn parte davvero (vedi la docstring).
+  const differita = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Ogni chiudiTuttoPoi fa girare un effetto: serve quando non ci sono voci da consumare.
   const [richieste, setRichieste] = useState(0);
 
@@ -67,7 +78,10 @@ export function useIndietroFogli(
     chiudi.current = chiudiUltimo;
   });
 
-  /** Esegue la funzione in attesa, una volta sola, e spegne il timer di riserva. */
+  /**
+   * Fa partire la funzione in attesa un giro dopo, una volta sola, e spegne il timer di
+   * riserva. Un giro dopo, e non qui, perché Next scarterebbe la navigazione (docstring).
+   */
   const esegui = useCallback(() => {
     const fn = dopo.current;
     dopo.current = null;
@@ -75,7 +89,11 @@ export function useIndietroFogli(
       clearTimeout(riserva.current);
       riserva.current = null;
     }
-    fn?.();
+    if (fn === null) return;
+    differita.current = setTimeout(() => {
+      differita.current = null;
+      fn();
+    }, 0);
   }, []);
 
   /** Il popstate atteso può non arrivare mai: fn parte comunque allo scadere dell'attesa. */
@@ -128,11 +146,18 @@ export function useIndietroFogli(
       window.removeEventListener('popstate', suPopstate);
       if (riserva.current !== null) clearTimeout(riserva.current);
       riserva.current = null;
+      if (differita.current !== null) clearTimeout(differita.current);
+      differita.current = null;
       dopo.current = null;
     };
   }, [esegui]);
 
   const chiudiTuttoPoi = useCallback((fn: () => void) => {
+    // Sostituisce anche una fn già differita e non ancora partita.
+    if (differita.current !== null) {
+      clearTimeout(differita.current);
+      differita.current = null;
+    }
     dopo.current = fn;
     setRichieste((n) => n + 1);
   }, []);

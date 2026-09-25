@@ -25,6 +25,7 @@ scritti nel piano sono indicativi.
 | 8 | Una seconda `chiudiTuttoPoi` prima che la prima parta la sostituisce (Task 2) | una navigazione sola alla volta: vale l'ultima intenzione | due tocchi su due tessere diverse in meno di un `popstate` portano alla seconda |
 | 9 | Il timer di riserva di `chiudiTuttoPoi` è sempre `ATTESA_POPSTATE_MS` pieno, anche quando un `go()` precedente è già in volo (Task 2) | un'attesa sola, deterministica e testabile coi timer finti | nel caso raro fn parte fino a 1 s più tardi del necessario |
 | 10 | `DialogoConferma` ha `erroreTesto` e tiene da sé lo stato in volo e l'errore, invece delle prop `inVolo` ed `errore` della spec §D (Task 2, ruling P1 del controller) | è la forma di `DialogoElimina` della fase 4, già provata; chi lo usa passa solo `onConferma` che rifiuta se fallisce | nessuno: la firma è interna, il comportamento visibile è quello di §D |
+| 11 | Nei test di `chiudiTuttoPoi` il «giro dopo» avanza i timer finti di 1 ms, non di 0 (Task 2) | vitest mette a +1 ms un `setTimeout(…, 0)` creato dentro un altro timer (`clock.duringTick ? 1 : 0`), com'è quello della riserva [letto in `node_modules/vitest/dist/chunks/test.DNmyFkvJ.js`, riga 1613] | nessuno: nessun altro timer dell'hook scade entro 1 ms |
 
 ## Misure nel browser
 
@@ -86,14 +87,38 @@ commit che le usi):
   `/auth/sonda-a` `LIVELLI 1`, `/auth/sonda-a` `LIVELLI 0` (tutti e due nello stesso documento),
   `/auth/sonda-b?inizio=1`. **B′ dà tutti gli attesi di B.**
 
-**Esito: «non regge»**, col criterio del piano: in A1 e A1 bis la pagina B non arriva e la
-lunghezza resta L0 + 2 (e anche B non dà gli attesi al primo indietro). **La scelta del ramo per
-il Task 6 è sospesa**, in attesa del controller: il piano porta al ramo B (`lasciaVoci` +
-`router.replace`, Step 11 del Task 2, non ancora fatto), ma la misura A′ dice che il ramo A
-regge se `chiudiTuttoPoi` esegue `fn` un giro dopo il `popstate` (nell'hook, un
-`setTimeout(…, 0)`), senza voci orfane. Per `?impostazioni=` il Task 6 dovrà comunque usare la
-forma B′ (conservare `history.state`), perché il `PannelloProvider` sta sotto l'`AppRouter`
-come la sonda.
+**Esito della misura del piano: «non regge»**: in A1 e A1 bis la pagina B non arriva e la
+lunghezza resta L0 + 2, e B non dà gli attesi al primo indietro.
+
+**Esito finale: «regge con `fn` differita (A′)»** (decisione del controller, 26/09). Il Task 6
+usa il **ramo A**: `chiudiTuttoPoi` + `router.push`. Lo Step 11 (`lasciaVoci`) non si fa.
+- **Nell'hook:** la `fn` registrata da `chiudiTuttoPoi` parte con `setTimeout(fn, 0)` in tutti e
+  tre i casi (al `popstate` atteso, nell'effetto senza voci, allo scadere della riserva), una
+  volta sola. Allo smontaggio anche la `fn` già differita si butta, e una seconda chiamata
+  sostituisce anche quella.
+- **Il motivo:** l'ascoltatore `popstate` dell'hook parte prima di quello di Next, e la
+  traversata di Next scarta la navigazione in volo
+  (`node_modules/next/dist/client/components/app-router-instance.js`, righe 147–150).
+- **Rimisurato col differimento dentro l'hook** [misurato il 26/09, pagina A senza più
+  differimento nel chiamante, `chiudiTuttoPoi(() => router.push('/auth/sonda-b'))` come nel
+  piano]:
+  - **A1:** L0 11, `APRI` porta a 13 e `LIVELLI 2`. Dopo `VAI`: `/auth/sonda-b`, lunghezza 12
+    (L0 + 1), pagina B presente, un solo `popstate`, su `/auth/sonda-a`. Sequenza: `go(-2)` 8523,
+    `replaceState` di Next 8533, `popstate` 8535, `pushState('/auth/sonda-b')` 8567.
+  - **Indietro da B** con `history.back()`: `/auth/sonda-a`, `LIVELLI 0`, stesso documento, un
+    `popstate`. Un altro indietro: `/auth/sonda-b?inizio=1`.
+  - **A1 bis:** L0 11, poi 13. Dopo `VAI`: `/auth/sonda-b`, lunghezza 12, un `popstate` su A.
+    L'indietro del browser porta a `/auth/sonda-a`, `LIVELLI 0`, stesso documento.
+  - **Console:** gli unici errori sono i tentativi del WebSocket HMR di `next dev`
+    (`ws://localhost:3100/_next/hmr`), rimasti dal server fermato dopo la prima sonda: sono dello
+    strumento di sviluppo, non dell'app.
+
+**Regola per il Task 6, `?impostazioni=` (B′):** la `replaceState` che toglie il parametro
+conserva lo stato di Next: `window.history.replaceState(window.history.state, '', pathname)`,
+**non** `null`. Il `PannelloProvider` sta sotto l'`AppRouter` come la sonda, quindi il suo
+effetto gira prima che Next avvolga `history`. Con `null` la voce perde `__NA`, e al primo
+indietro l'`onPopState` di Next ricarica la pagina (`app-router.js`, righe 284–292). Con lo stato
+conservato, B′ ha dato tutti gli attesi di B (numeri sopra).
 
 ## Migrazione dei test (spec §M.2)
 
