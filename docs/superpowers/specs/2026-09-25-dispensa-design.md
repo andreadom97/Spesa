@@ -498,6 +498,7 @@ Le righe segnate **nuovo** sono testo scritto per questa fase: vanno approvate c
 | Scansione, OFF | in `/lista/confezioni` | invariati: `Prodotto non trovato: puoi scrivere il formato a mano.` · `Non riusciamo a interrogare il catalogo. Riprova, o scrivi il formato a mano.` |
 | Lotto | icone | `PRONTI` · `Porzioni` · `ELIMINA IL LOTTO` (v1) |
 | Dialogo del lotto | nessuno | v1: `Elimini il lotto?` · `{Piatto}, {n} porzioni. {k} sono impegnate dai pasti in programma: dopo, quei pasti non le trovano più.` · `ANNULLA` · `ELIMINA` |
+| Dialogo del lotto, singolare | nessuno | **nuovo** (Task 6) con 1 porzione: `{Piatto}, 1 porzione.`; con 1 impegnata: ` 1 è impegnata dai pasti in programma: dopo, quei pasti non la trovano più.` |
 | Dock | `Fai una modifica` (disegno) | **nuovo** `Modifica con l'AI` (reso `MODIFICA CON L'AI`) |
 | Microfono | `Detta la nota` | `Registra un vocale`, ovunque |
 | Widget AI | scheda `Il conto non torna? Correggi con una nota` | **nuovo** `Modifica con l'AI` (nome del dialogo ed etichetta) · `Chiudi` |
