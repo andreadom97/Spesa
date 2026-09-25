@@ -196,6 +196,7 @@ export async function aggiungiConfezione(i: {
     throw new Error('formato non valido');
   }
   if (!eanValido(i.ean)) throw new Error('codice non valido');
+  if (!Number.isFinite(i.residuoPrima)) throw new Error('residuo non valido');
   const sb = client();
   const userId = await idCasa();
 

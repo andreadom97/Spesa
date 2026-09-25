@@ -187,6 +187,9 @@ describe('effettoCorrezione (spec fase 4 §E.2, §E.3)', () => {
   it('da più di 0 a più di 0 non tocca le date', () => {
     expect(effettoCorrezione(500, 300, oggi)).toEqual({ ultimoAcquisto: null, cancellaScadenza: false });
   });
+  it('annullare un «finito» della nota (400 → 0 → di nuovo 400) non riscrive l’acquisto: prima=dopo, non un’entrata', () => {
+    expect(effettoCorrezione(400, 400, oggi)).toEqual({ ultimoAcquisto: null, cancellaScadenza: false });
+  });
   it('a 0 cancella la data manuale e non tocca l’acquisto', () => {
     expect(effettoCorrezione(500, 0, oggi)).toEqual({ ultimoAcquisto: null, cancellaScadenza: true });
     expect(effettoCorrezione(0, 0, oggi)).toEqual({ ultimoAcquisto: null, cancellaScadenza: true });

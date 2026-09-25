@@ -170,16 +170,21 @@ export function NotaDispensa({ contesto, onDatiCambiati }: Props) {
     }
   }
 
-  // Limite noto: annullare un'entrata (0 → 500 → di nuovo 0) lascia
-  // l'acquisto a oggi, quindi un mai comprato diventa "finito". È il prezzo
-  // di non rileggere `prima` dal server; il dato che conta, il residuo,
-  // torna giusto.
+  // `prima` = `p.valoreAttuale` (non `p.valoreNuovo`): l'annulla ripristina
+  // il residuo di prima e non deve toccare le date come se fosse una nuova
+  // correzione. Un "finito" annullato (400 → 0 → 400) conserva l'acquisto
+  // originale; annullare un'entrata (0 → 500 → 0) resta un'uscita, corretto.
+  //
+  // Limite noto: la data scritta a mano, cancellata dal primo gesto (quello
+  // annullato), resta persa — annullare non la ripristina. È il prezzo di
+  // non rileggere lo stato dal server; il dato che conta, il residuo, torna
+  // giusto.
   async function annulla(indice: number, p: ModificaProposta) {
     if (righeInCorso.has(indice)) return;
     setRigheInCorso((prev) => new Set(prev).add(indice));
     setErrore(null);
     try {
-      await applica(p, p.valoreAttuale, p.valoreNuovo);
+      await applica(p, p.valoreAttuale, p.valoreAttuale);
       setStati((prev) => new Map(prev).set(indice, 'annullata'));
       onDatiCambiati();
     } catch (e) {

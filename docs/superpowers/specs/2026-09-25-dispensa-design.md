@@ -562,7 +562,7 @@ Dopo il merge, Andrea ricarica `DESIGN.md` nel progetto Claude Design «Spesa».
   un deploy anticipato rompe solo la correzione della scadenza, non la pagina.
 - **Dati letti dopo 8 s:** scartati (§A); `RIPROVA` rilancia.
 - **Scrittura concorrente** (Andrea e un membro della casa sullo stesso ingrediente):
-  `correggiResiduo` legge e poi scrive; vince l'ultima scrittura, come oggi.
+  `correggiResiduo` riceve il residuo di prima da chi chiama; vince l'ultima scrittura, come oggi.
 - **Un ingrediente con residuo > 0 e senza acquisto** (dichiarato prima di questa fase): non ha
   stima, quindi niente blocco Scadenza, e non decade, come oggi.
 - **Due ingredienti con lo stesso `ean`** (possibile: l'indice non è unico): lo scanner apre il

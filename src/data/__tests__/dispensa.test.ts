@@ -256,4 +256,38 @@ describe('aggiungiConfezione', () => {
     expect(scritture['ingredient']).toBeUndefined();
     expect(scritture['pantry_state']).toBeUndefined();
   });
+
+  it('un residuoPrima non numerico (NaN): lancia senza scrivere niente (review round 1)', async () => {
+    const { sb, scritture } = creaClientMock(risolviIngredienteTrovato());
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    await expect(
+      aggiungiConfezione({ ingredientId: 'ing-1', formato: 450, ean: '8001234567890', residuoPrima: Number.NaN }),
+    ).rejects.toThrow(/residuo non valido/);
+    expect(scritture['ingredient']).toBeUndefined();
+    expect(scritture['pantry_state']).toBeUndefined();
+  });
+
+  it('se la update su ingredient fallisce, propaga l\'errore e non scrive la pantry', async () => {
+    const { sb, scritture } = creaClientMock((tabella) =>
+      tabella === 'ingredient' ? { data: null, error: { message: 'boom-ingredient' } } : RISOLVI_OK(),
+    );
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    await expect(
+      aggiungiConfezione({ ingredientId: 'ing-1', formato: 450, ean: '8001234567890', residuoPrima: 600 }),
+    ).rejects.toEqual({ message: 'boom-ingredient' });
+    expect(scritture['pantry_state']).toBeUndefined();
+  });
+
+  it('se la scrittura su pantry_state fallisce, propaga l\'errore', async () => {
+    const { sb } = creaClientMock((tabella) =>
+      tabella === 'pantry_state' ? { data: null, error: { message: 'boom-pantry' } } : risolviIngredienteTrovato()(tabella),
+    );
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    await expect(
+      aggiungiConfezione({ ingredientId: 'ing-1', formato: 450, ean: '8001234567890', residuoPrima: 600 }),
+    ).rejects.toEqual({ message: 'boom-pantry' });
+  });
 });

@@ -47,7 +47,10 @@ describe('NotaDispensa', () => {
     expect(screen.getByText(/Riso/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Annulla' }));
-    await waitFor(() => expect(correggiResiduo).toHaveBeenCalledWith('i-riso', 400, 0));
+    // `prima` = `p.valoreAttuale` (400), non `p.valoreNuovo` (0): l'annulla
+    // di un «finito» non deve sembrare un'entrata a `correggiResiduo`, o
+    // scriverebbe ultimo_acquisto = oggi senza nessun acquisto (review round 1).
+    await waitFor(() => expect(correggiResiduo).toHaveBeenCalledWith('i-riso', 400, 400));
   });
 
   it('una proposta sotto soglia NON si applica finché non la confermi', async () => {
