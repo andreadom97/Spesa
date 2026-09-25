@@ -41,13 +41,13 @@ describe('NotaDispensa', () => {
 
     invia('finito il riso');
 
-    await waitFor(() => expect(correggiResiduo).toHaveBeenCalledWith('i-riso', 0));
+    await waitFor(() => expect(correggiResiduo).toHaveBeenCalledWith('i-riso', 0, 400));
     expect(onDatiCambiati).toHaveBeenCalled();
     expect(screen.getByText('APPLICATE')).toBeInTheDocument();
     expect(screen.getByText(/Riso/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Annulla' }));
-    await waitFor(() => expect(correggiResiduo).toHaveBeenCalledWith('i-riso', 400));
+    await waitFor(() => expect(correggiResiduo).toHaveBeenCalledWith('i-riso', 400, 0));
   });
 
   it('una proposta sotto soglia NON si applica finché non la confermi', async () => {
@@ -61,7 +61,7 @@ describe('NotaDispensa', () => {
     await screen.findByText('DA CONFERMARE');
     expect(correggiResiduo).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Conferma' }));
-    await waitFor(() => expect(correggiResiduo).toHaveBeenCalledWith('i-riso', 500));
+    await waitFor(() => expect(correggiResiduo).toHaveBeenCalledWith('i-riso', 500, 400));
   });
 
   it('i non riconosciuti sono elencati', async () => {

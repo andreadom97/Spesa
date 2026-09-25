@@ -33,9 +33,13 @@ declare global {
  * Applica una proposta (residuo o congelato) sull'ingrediente che indica, e
  * torna la promessa così l'invio può attenderla in sequenza — la spec vuole
  * un ordine deterministico, non una raffica di scritture in parallelo.
+ *
+ * Su `residuo`, `correggiResiduo` applica anche le regole delle date (spec
+ * fase 4 §E.2, §E.3) e per questo vuole il valore di prima: `prima` è quello
+ * che chi chiama sta lasciando, non quello a cui si sta scrivendo.
  */
-function applica(p: ModificaProposta, valore: number | boolean): Promise<void> {
-  if (p.campo === 'residuo') return correggiResiduo(p.ingredientId, valore as number);
+function applica(p: ModificaProposta, valore: number | boolean, prima: number | boolean): Promise<void> {
+  if (p.campo === 'residuo') return correggiResiduo(p.ingredientId, valore as number, prima as number);
   return impostaCongelato(p.ingredientId, valore as boolean);
 }
 
@@ -135,7 +139,7 @@ export function NotaDispensa({ contesto, onDatiCambiati }: Props) {
         const p = nuovoEsito.proposte[i]!;
         if (p.confidence >= CONFIDENCE_SOGLIA) {
           try {
-            await applica(p, p.valoreNuovo);
+            await applica(p, p.valoreNuovo, p.valoreAttuale);
             nuoviStati.set(i, 'applicata');
           } catch (e) {
             console.error('dispensa: nota, applicazione automatica fallita.', e);
@@ -166,12 +170,16 @@ export function NotaDispensa({ contesto, onDatiCambiati }: Props) {
     }
   }
 
+  // Limite noto: annullare un'entrata (0 → 500 → di nuovo 0) lascia
+  // l'acquisto a oggi, quindi un mai comprato diventa "finito". È il prezzo
+  // di non rileggere `prima` dal server; il dato che conta, il residuo,
+  // torna giusto.
   async function annulla(indice: number, p: ModificaProposta) {
     if (righeInCorso.has(indice)) return;
     setRigheInCorso((prev) => new Set(prev).add(indice));
     setErrore(null);
     try {
-      await applica(p, p.valoreAttuale);
+      await applica(p, p.valoreAttuale, p.valoreNuovo);
       setStati((prev) => new Map(prev).set(indice, 'annullata'));
       onDatiCambiati();
     } catch (e) {
@@ -191,7 +199,7 @@ export function NotaDispensa({ contesto, onDatiCambiati }: Props) {
     setRigheInCorso((prev) => new Set(prev).add(indice));
     setErrore(null);
     try {
-      await applica(p, p.valoreNuovo);
+      await applica(p, p.valoreNuovo, p.valoreAttuale);
       setStati((prev) => new Map(prev).set(indice, 'applicata'));
       onDatiCambiati();
     } catch (e) {

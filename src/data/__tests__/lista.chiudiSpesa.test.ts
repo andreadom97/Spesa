@@ -141,11 +141,12 @@ describe('chiudiSpesa', () => {
     expect(scrittePantry).toHaveLength(3);
 
     // Yogurt: comprato, residuo cambia (50 + 1000 − 750 = 300) e ultimo_acquisto si aggiorna.
-    expect(patchPantry(scrittePantry, 'ing-yogurt')).toEqual({ residuo: 300, ultimo_acquisto: '2026-09-06' });
-    // Pasta: NON spuntata, ma il piano la consuma comunque (100 + 0 − 500 → 0). Non è stata comprata: niente ultimo_acquisto.
+    // Voce comprata: la data scritta a mano parlava della confezione di prima e si cancella (spec fase 4 §E.3).
+    expect(patchPantry(scrittePantry, 'ing-yogurt')).toEqual({ residuo: 300, ultimo_acquisto: '2026-09-06', scadenza_manuale: null });
+    // Pasta: NON spuntata, ma il piano la consuma comunque (100 + 0 − 500 → 0). Non è stata comprata: niente ultimo_acquisto, niente scadenza_manuale.
     expect(patchPantry(scrittePantry, 'ing-pasta')).toEqual({ residuo: 0 });
-    // Olio: riga di controllo, la classe stima non tiene residuo — ma è stata spuntata, quindi ultimo_acquisto si aggiorna comunque.
-    expect(patchPantry(scrittePantry, 'ing-olio')).toEqual({ ultimo_acquisto: '2026-09-06' });
+    // Olio: riga di controllo, la classe stima non tiene residuo — ma è stata spuntata, quindi ultimo_acquisto (e scadenza_manuale) si aggiornano comunque.
+    expect(patchPantry(scrittePantry, 'ing-olio')).toEqual({ ultimo_acquisto: '2026-09-06', scadenza_manuale: null });
   });
 
   it('inserisce in purchase una riga solo per le voci spuntate, con la lista di provenienza corretta', async () => {
@@ -259,7 +260,7 @@ describe('chiudiSpesa', () => {
     await chiudiSpesa('week-1');
 
     expect(patchPantry(scritture['pantry_state'] ?? [], 'ing-yogurt'))
-      .toEqual({ residuo: 400, ultimo_acquisto: '2026-09-06' });
+      .toEqual({ residuo: 400, ultimo_acquisto: '2026-09-06', scadenza_manuale: null });
   });
 
   it('uno storno su un ingrediente fuori lista NON si riapplica: il residuo vivo lo ha già', async () => {

@@ -153,7 +153,7 @@ describe('Dispensa', () => {
     fireEvent.change(campo, { target: { value: '500' } });
     fireEvent.blur(campo);
 
-    await waitFor(() => expect(correggiResiduo).toHaveBeenCalledWith('i-riso', 500));
+    await waitFor(() => expect(correggiResiduo).toHaveBeenCalledWith('i-riso', 500, 920));
     expect(correggiResiduo).toHaveBeenCalledOnce();
   });
 

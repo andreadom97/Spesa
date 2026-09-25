@@ -299,8 +299,8 @@ un acquisto.
 - `chiudiSpesa`, per ogni voce comprata (dove scrive `ultimo_acquisto`).
 
 **E.4 Le funzioni di scrittura** (in `src/data/dispensa.ts`):
-- `correggiResiduo(ingredientId, residuo)` legge il residuo attuale e applica E.2 ed E.3
-  nella stessa `upsert`. Le usano il dettaglio, la creazione e la nota AI.
+- `correggiResiduo(ingredientId, residuo, prima)` riceve il residuo di prima da chi chiama e
+  applica E.2 ed E.3 nella stessa `upsert`. Le usano il dettaglio, la creazione e la nota AI.
 - `impostaCongelato` cancella anche `scadenza_manuale`.
 - **nuova** `impostaScadenza(ingredientId, data: string | null)`; null = `USA LA STIMA`.
 - **nuova** `aggiungiConfezione(ingredientId, formato, ean)` (§F.2).

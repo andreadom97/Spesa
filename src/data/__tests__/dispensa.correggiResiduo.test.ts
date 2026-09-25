@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('../supabase', () => ({ client: vi.fn() }));
 vi.mock('../casa', () => ({ idCasa: vi.fn() }));
@@ -49,7 +49,8 @@ describe('correggiResiduo', () => {
     const { sb, chiamate } = creaClientMock();
     vi.mocked(client).mockReturnValue(sb as never);
 
-    await correggiResiduo('ing-1', 250);
+    // prima > 0: da più di 0 a più di 0, nessuna data in gioco.
+    await correggiResiduo('ing-1', 250, 100);
 
     const upsert = chiamate.find((c) => c.metodo === 'upsert');
     expect(upsert).toBeDefined();
@@ -61,7 +62,7 @@ describe('correggiResiduo', () => {
     const { sb, chiamate } = creaClientMock();
     vi.mocked(client).mockReturnValue(sb as never);
 
-    await correggiResiduo('ing-mai-comprato', 3);
+    await correggiResiduo('ing-mai-comprato', 3, 0);
 
     expect(chiamate.find((c) => c.metodo === 'upsert')!.args[1]).toEqual({ onConflict: 'ingredient_id' });
   });
@@ -70,7 +71,7 @@ describe('correggiResiduo', () => {
     const { sb, chiamate } = creaClientMock();
     vi.mocked(client).mockReturnValue(sb as never);
 
-    await correggiResiduo('ing-1', 0);
+    await correggiResiduo('ing-1', 0, 500);
 
     expect((chiamate.find((c) => c.metodo === 'upsert')!.args[0] as { residuo: number }).residuo).toBe(0);
   });
@@ -81,7 +82,7 @@ describe('correggiResiduo', () => {
     const { sb, chiamate } = creaClientMock();
     vi.mocked(client).mockReturnValue(sb as never);
 
-    await expect(correggiResiduo('ing-1', -5)).rejects.toThrow(/Residuo non valido/);
+    await expect(correggiResiduo('ing-1', -5, 10)).rejects.toThrow(/Residuo non valido/);
     expect(chiamate).toHaveLength(0);
   });
 
@@ -89,7 +90,7 @@ describe('correggiResiduo', () => {
     const { sb } = creaClientMock();
     vi.mocked(client).mockReturnValue(sb as never);
 
-    await expect(correggiResiduo('ing-1', Number.NaN)).rejects.toThrow(/Residuo non valido/);
+    await expect(correggiResiduo('ing-1', Number.NaN, 10)).rejects.toThrow(/Residuo non valido/);
   });
 
   it('propaga l errore del database invece di ingoiarlo', async () => {
@@ -98,6 +99,43 @@ describe('correggiResiduo', () => {
     const { sb } = creaClientMock({ data: null, error: { message: 'rete' } });
     vi.mocked(client).mockReturnValue(sb as never);
 
-    await expect(correggiResiduo('ing-1', 10)).rejects.toEqual({ message: 'rete' });
+    await expect(correggiResiduo('ing-1', 10, 10)).rejects.toEqual({ message: 'rete' });
+  });
+});
+
+describe('correggiResiduo e le date (spec fase 4 §E.2, §E.3)', () => {
+  beforeEach(() => {
+    vi.mocked(client).mockReset();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-25T10:00:00Z'));
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it('da 0 a più di 0 scrive l’acquisto a oggi e cancella la data manuale', async () => {
+    const { sb, chiamate } = creaClientMock();
+    vi.mocked(client).mockReturnValue(sb as never);
+    await correggiResiduo('ing-1', 500, 0);
+    expect(chiamate.find((c) => c.metodo === 'upsert')!.args[0]).toEqual({
+      ingredient_id: 'ing-1', user_id: 'user-1', residuo: 500,
+      ultimo_acquisto: '2026-09-25', scadenza_manuale: null,
+    });
+  });
+
+  it('a 0 cancella la data manuale e non tocca l’acquisto', async () => {
+    const { sb, chiamate } = creaClientMock();
+    vi.mocked(client).mockReturnValue(sb as never);
+    await correggiResiduo('ing-1', 0, 500);
+    expect(chiamate.find((c) => c.metodo === 'upsert')!.args[0]).toEqual({
+      ingredient_id: 'ing-1', user_id: 'user-1', residuo: 0, scadenza_manuale: null,
+    });
+  });
+
+  it('da più di 0 a più di 0 scrive solo il residuo', async () => {
+    const { sb, chiamate } = creaClientMock();
+    vi.mocked(client).mockReturnValue(sb as never);
+    await correggiResiduo('ing-1', 300, 500);
+    expect(chiamate.find((c) => c.metodo === 'upsert')!.args[0]).toEqual({
+      ingredient_id: 'ing-1', user_id: 'user-1', residuo: 300,
+    });
   });
 });

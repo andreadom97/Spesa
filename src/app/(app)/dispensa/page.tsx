@@ -207,7 +207,7 @@ export default function Dispensa() {
     setErroreSalvataggio(null);
     setRighe((prev) => prev?.map((r) => (r.ingrediente.id === ingredientId ? { ...r, residuo: nuovo } : r)) ?? null);
     try {
-      await correggiResiduo(ingredientId, nuovo);
+      await correggiResiduo(ingredientId, nuovo, precedente);
     } catch (e) {
       console.error('dispensa: correzione del residuo fallita.', e);
       setRighe((prev) => prev?.map((r) => (r.ingrediente.id === ingredientId ? { ...r, residuo: precedente } : r)) ?? null);

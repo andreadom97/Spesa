@@ -1,11 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('../supabase', () => ({ client: vi.fn() }));
 vi.mock('../casa', () => ({ idCasa: vi.fn() }));
 
 import { client } from '../supabase';
 import { idCasa } from '../casa';
-import { rispondiControllo } from '../dispensa';
+import { rispondiControllo, impostaCongelato, impostaScadenza, aggiungiConfezione } from '../dispensa';
 
 // L'id che finisce in `user_id` non viene più da `auth.getUser` sul client
 // finto ma da `idCasa()` (l'account della casa): lo stesso valore di prima,
@@ -128,5 +128,132 @@ describe('rispondiControllo', () => {
     expect(scritteItem).toHaveLength(1);
     expect(scritteItem[0].some((c) => c.metodo === 'upsert')).toBe(true);
     expect(scritteItem[0].some((c) => c.metodo === 'delete')).toBe(false);
+  });
+});
+
+describe('impostaCongelato', () => {
+  beforeEach(() => {
+    vi.mocked(client).mockReset();
+  });
+
+  it('scrive congelato e cancella anche la data manuale (spec fase 4 §E.3)', async () => {
+    const { sb, scritture } = creaClientMock(RISOLVI_OK);
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    await impostaCongelato('ing-1', true);
+
+    const patch = scritture['pantry_state']?.[0]?.find((c) => c.metodo === 'upsert')?.args[0];
+    expect(patch).toEqual({ ingredient_id: 'ing-1', user_id: 'user-1', congelato: true, scadenza_manuale: null });
+    expect(scritture['pantry_state']?.[0]?.find((c) => c.metodo === 'upsert')?.args[1]).toEqual({ onConflict: 'ingredient_id' });
+  });
+});
+
+describe('impostaScadenza', () => {
+  beforeEach(() => {
+    vi.mocked(client).mockReset();
+  });
+
+  it('scrive la data a mano', async () => {
+    const { sb, scritture } = creaClientMock(RISOLVI_OK);
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    await impostaScadenza('ing-1', '2026-10-02');
+
+    const patch = scritture['pantry_state']?.[0]?.find((c) => c.metodo === 'upsert')?.args[0];
+    expect(patch).toEqual({ ingredient_id: 'ing-1', user_id: 'user-1', scadenza_manuale: '2026-10-02' });
+  });
+
+  it('null scrive null: torna a USA LA STIMA', async () => {
+    const { sb, scritture } = creaClientMock(RISOLVI_OK);
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    await impostaScadenza('ing-1', null);
+
+    const patch = scritture['pantry_state']?.[0]?.find((c) => c.metodo === 'upsert')?.args[0];
+    expect(patch).toEqual({ ingredient_id: 'ing-1', user_id: 'user-1', scadenza_manuale: null });
+  });
+
+  it('rifiuta una stringa che non è una data yyyy-mm-dd, senza scrivere', async () => {
+    const { sb, scritture } = creaClientMock(RISOLVI_OK);
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    await expect(impostaScadenza('ing-1', 'domani')).rejects.toThrow(/Data non valida/);
+    expect(scritture['pantry_state']).toBeUndefined();
+  });
+
+  it('rifiuta una stringa vuota, senza scrivere: il dominio usa `??`, quindi una vuota non deve mai arrivare al database', async () => {
+    const { sb, scritture } = creaClientMock(RISOLVI_OK);
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    await expect(impostaScadenza('ing-1', '')).rejects.toThrow(/Data non valida/);
+    expect(scritture['pantry_state']).toBeUndefined();
+  });
+});
+
+describe('aggiungiConfezione', () => {
+  beforeEach(() => {
+    vi.mocked(client).mockReset();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-25T10:00:00Z'));
+  });
+  afterEach(() => vi.useRealTimers());
+
+  function risolviIngredienteTrovato(righe: Array<{ id: string }> = [{ id: 'ing-1' }]) {
+    return (tabella: string) => (tabella === 'ingredient' ? { data: righe, error: null } : RISOLVI_OK());
+  }
+
+  it('scrive formato ed ean sull ingrediente, poi accredita il residuo con acquisto a oggi', async () => {
+    const { sb, scritture } = creaClientMock(risolviIngredienteTrovato());
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    await aggiungiConfezione({ ingredientId: 'ing-1', formato: 450, ean: '8001234567890', residuoPrima: 600 });
+
+    const chiamateIngrediente = scritture['ingredient']?.[0] ?? [];
+    expect(chiamateIngrediente.find((c) => c.metodo === 'update')?.args[0])
+      .toEqual({ formato_confezione: 450, ean: '8001234567890' });
+    expect(chiamateIngrediente).toEqual(expect.arrayContaining([
+      { metodo: 'eq', args: ['id', 'ing-1'] },
+      { metodo: 'eq', args: ['user_id', 'user-1'] },
+      { metodo: 'select', args: ['id'] },
+    ]));
+
+    const chiamataPantry = scritture['pantry_state']?.[0]?.find((c) => c.metodo === 'upsert');
+    expect(chiamataPantry?.args[0]).toEqual({
+      ingredient_id: 'ing-1', user_id: 'user-1', residuo: 1050,
+      ultimo_acquisto: '2026-09-25', scadenza_manuale: null,
+    });
+    expect(chiamataPantry?.args[1]).toEqual({ onConflict: 'ingredient_id' });
+  });
+
+  it('zero righe da ingredient: lancia "ingrediente non trovato" e non scrive la pantry', async () => {
+    const { sb, scritture } = creaClientMock(risolviIngredienteTrovato([]));
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    await expect(
+      aggiungiConfezione({ ingredientId: 'ing-1', formato: 450, ean: '8001234567890', residuoPrima: 600 }),
+    ).rejects.toThrow(/ingrediente non trovato/);
+    expect(scritture['pantry_state']).toBeUndefined();
+  });
+
+  it.each([0, 200000])('formato %s fuori dai limiti: lancia senza scrivere niente', async (formato) => {
+    const { sb, scritture } = creaClientMock(risolviIngredienteTrovato());
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    await expect(
+      aggiungiConfezione({ ingredientId: 'ing-1', formato, ean: '8001234567890', residuoPrima: 600 }),
+    ).rejects.toThrow(/formato non valido/);
+    expect(scritture['ingredient']).toBeUndefined();
+    expect(scritture['pantry_state']).toBeUndefined();
+  });
+
+  it('un ean troppo corto: lancia senza scrivere niente', async () => {
+    const { sb, scritture } = creaClientMock(risolviIngredienteTrovato());
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    await expect(
+      aggiungiConfezione({ ingredientId: 'ing-1', formato: 450, ean: '12', residuoPrima: 600 }),
+    ).rejects.toThrow(/codice non valido/);
+    expect(scritture['ingredient']).toBeUndefined();
+    expect(scritture['pantry_state']).toBeUndefined();
   });
 });
