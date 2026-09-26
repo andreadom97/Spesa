@@ -410,9 +410,12 @@ export default function Piatto() {
    * bozza si tratta come la trattava ANNULLA: su un piatto esistente si scarta,
    * perché un giro completo (uscita e rientro) non risusciti modifiche appena
    * buttate; su un piatto nuovo ANNULLA usciva senza toccarla, e così resta.
+   * Solo a piatto caricato, come ANNULLA che esisteva solo lì: in caricamento o
+   * dopo un caricamento fallito la bozza non è ancora stata ripresa, e c'era solo
+   * il link della vecchia intestazione, che non la toccava (review Task 6, R1).
    */
   function esci() {
-    if (!nuovo) scartaBozza(id);
+    if (!nuovo && piattoOriginale) scartaBozza(id);
     router.push('/piatti');
   }
 

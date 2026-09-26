@@ -874,6 +874,43 @@ describe('Piatto (editor): un modo solo, SALVA nel Dock ed ELIMINA (spec fase 7 
     expect(salvaPiatto).not.toHaveBeenCalled();
   });
 
+  // Review di correttezza del Task 6 (R1): la freccia prende il posto di ANNULLA, che esisteva
+  // solo a editor caricato. Durante il caricamento o dopo un caricamento fallito c'era solo il
+  // Link della vecchia intestazione, che la bozza non la toccava: una bozza messa al riparo
+  // uscendo verso l'editor di un ingrediente non deve sparire perché al rientro la rete è caduta.
+  const BOZZA_PENDENTE = {
+    nome: 'Yogurt e avena, a metà', slotDefId: 'sd-1',
+    descrizione: '', settimanaCiclo: null, giornoCiclo: null,
+    ingredienti: [{ ingredientId: 'i-1', quantita: 150, unita: 'g' as const }], componenti: [],
+  };
+
+  it('dopo un caricamento fallito la freccia torna a /piatti senza scartare la bozza pendente', async () => {
+    paramsId = 'd-1';
+    salvaBozza('d-1', BOZZA_PENDENTE);
+    vi.mocked(leggiIngredienti).mockRejectedValue(new Error('rete'));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    rendi();
+    await screen.findByRole('alert');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Torna ai piatti' }));
+
+    expect(push).toHaveBeenCalledWith('/piatti');
+    expect(riprendiBozza('d-1')).toEqual(BOZZA_PENDENTE);
+  });
+
+  it('durante il caricamento la freccia torna a /piatti senza scartare la bozza pendente', async () => {
+    paramsId = 'd-1';
+    salvaBozza('d-1', BOZZA_PENDENTE);
+    vi.mocked(leggiSlotDefs).mockReturnValue(new Promise(() => {}));
+    rendi();
+    await screen.findByText('CARICO…');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Torna ai piatti' }));
+
+    expect(push).toHaveBeenCalledWith('/piatti');
+    expect(riprendiBozza('d-1')).toEqual(BOZZA_PENDENTE);
+  });
+
   it('le pillole di una cifra della settimana del giro sono larghe almeno 44, come il bersaglio', async () => {
     mockBase(2);
     rendi();
