@@ -5,6 +5,8 @@ import Link from 'next/link';
 import type { AreaId, Dish } from '@/domain/types';
 import { coloreArea, nomeArea } from '@/domain/aree';
 import { listaFinita } from '@/domain/lista-finita';
+import { contatoreReparto, ordinaRepartiPerSpesa } from '@/domain/lista-reparti';
+import { useRiordinoAnimato } from '@/components/useRiordinoAnimato';
 import { leggiSettimanaCorrente } from '@/data/settimana';
 import { leggiRepertorio } from '@/data/repertorio';
 import {
@@ -501,6 +503,12 @@ export default function Lista() {
     }
   }
 
+  // Prima dei return anticipati: è un hook. Le chiavi sono l'ordine dei
+  // reparti così come verrà disegnato, per animare chi scende in fondo.
+  const registraReparto = useRiordinoAnimato(
+    stato ? ordinaRepartiPerSpesa(fondiSezioni(stato.lista)).map((s) => s.area) : [],
+  );
+
   if (erroreCaricamento) {
     return (
       <Cornice titolo="Lista" aree={[]}>
@@ -558,7 +566,8 @@ export default function Lista() {
   // La lista è una sola, per reparto (decisione del 20/09): la fusione delle
   // due righe `shopping_list` avviene qui, in lettura, e il database resta
   // com'è. Ogni voce porta il `listaId` della sua, che serve a `rispondi`.
-  const sezioni = fondiSezioni(lista);
+  // Reparti finiti in fondo (Andrea, 26/09): in cima c'è sempre il prossimo da fare.
+  const sezioni = ordinaRepartiPerSpesa(fondiSezioni(lista));
   // La cadenza viaggia con la lista (leggiListe la legge insieme all'ordine
   // delle aree): nessuna lettura in più. Un'istantanea offline di prima della
   // fase 5 non ce l'ha, e vale il default.
@@ -596,6 +605,7 @@ export default function Lista() {
         {sezioni.map((sezione) => (
           <CartaSezione
             key={sezione.area}
+            rif={registraReparto(sezione.area)}
             sezione={sezione}
             giorniControllo={giorniControllo}
             rigaInVolo={rigaInVolo}
@@ -636,8 +646,9 @@ function ordinaPerCarrello<T extends { spuntato: boolean }>(voci: T[]): T[] {
  * disegnavano più nessun confine.
  */
 function CartaSezione({
-  sezione, giorniControllo, rigaInVolo, onToggleVoce, onSi, onNo,
+  rif, sezione, giorniControllo, rigaInVolo, onToggleVoce, onSi, onNo,
 }: {
+  rif: (el: HTMLElement | null) => void;
   sezione: SezioneFusa;
   giorniControllo: GiorniControllo;
   rigaInVolo: string | null;
@@ -645,6 +656,7 @@ function CartaSezione({
   onSi: (c: VoceFusa) => void;
   onNo: (c: VoceFusa) => void;
 }) {
+  const { presi, totale } = contatoreReparto(sezione);
   return (
     // flexShrink: 0 non e' cosmetico. La carta sta in un contenitore flex in
     // colonna, e i figli flex si comprimono quando lo spazio non basta:
@@ -652,6 +664,7 @@ function CartaSezione({
     // invece di una lista che scorre. Su uno schermo alto lo spazio bastava e
     // il difetto non si vedeva; su un telefono si vede subito.
     <div
+      ref={rif}
       style={{
         margin: '0 12px 12px', background: '#FFFFFF', borderRadius: 22,
         border: '1px solid var(--bordo)', boxShadow: 'var(--ombra-pannello)',
@@ -666,9 +679,15 @@ function CartaSezione({
             {nomeArea(sezione.area)}
           </span>
         </div>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 500, letterSpacing: '0.1em', color: MUT }}>
-          {sezione.voci.length} {sezione.voci.length === 1 ? 'VOCE' : 'VOCI'}
-        </span>
+        {totale > 0 && (
+          // Quante voci del reparto sono già nel carrello (Andrea, 26/09): «13 VOCI» non diceva niente in corsia.
+          <span
+            aria-label={`${presi} su ${totale} prese`}
+            style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 500, letterSpacing: '0.1em', color: MUT }}
+          >
+            {presi}/{totale}
+          </span>
+        )}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
         {ordinaPerCarrello(sezione.voci).map((v, i) => (

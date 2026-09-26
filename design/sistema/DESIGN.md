@@ -359,6 +359,10 @@ esistono:
 - `.anim-foglio` — il foglio dal basso che sale, 200 ms
 - `.anim-apparsa` — comparsa di un elemento nuovo, 180 ms
 - `.anim-giorno` — cambio di giorno nella Settimana, 160 ms
+- **`.anim-riordino`** — un reparto finito della Lista che scende in fondo e gli altri che
+  salgono (FLIP: ogni widget parte dalla posizione vecchia e scivola nella nuova), `transform`
+  in **220 ms** `cubic-bezier(.2,.8,.25,1)`. Causa: la spunta dell'ultima voce. Con
+  `prefers-reduced-motion: reduce` il riordino è immediato. **[aggiunto 26/09]**
 - **`.anim-barra`** — la tab bar che si restringe e il Dock che la segue, **200 ms**
   `cubic-bezier(.2,.8,.25,1)`, opacità delle etichette in 150 ms lineari. Si animano `width` e
   `height` della pillola (dal 25/09; prima `left` e `right`). Il gesto è lo **scorrimento**:
@@ -578,12 +582,16 @@ superficie propria, non una sequenza di tessere sciolte.
 
 - **Anatomia:** `margin: 0 12px 12px`, fondo bianco, raggio **22**, bordo 1 px `--bordo`,
   `--ombra-pannello`, padding `14 / 12 / 12`, gap interno 12. Dentro, in ordine: etichetta di
-  sezione con quadratino d'area e contatore, griglia di tessere a 2 colonne gap 8, eventuali
-  righe di controllo dell'area.
+  sezione con quadratino d'area e contatore **`presi/totale`** (`0/13`, poi `1/13` a ogni
+  spunta; dal 26/09, prima `13 VOCI`), griglia di tessere a 2 colonne gap 8, eventuali righe di
+  controllo dell'area. Un reparto di soli controlli non ha contatore.
 - **La tessera accesa dentro il widget perde il fondo bianco** e resta tenuta dal solo bordo 1
   px nel colore d'area al 45%: il bianco non si ripete due volte. La protagonista e la spenta
   non cambiano.
-- **Stati:** nessuno. Non collassa, non si sposta, non ha controlli propri: è un involucro.
+- **Stati:** nessuno. Non collassa e non ha controlli propri: è un involucro.
+- **Ordine (26/09, Andrea):** un reparto **finito** (tutte le voci prese, nessun controllo da
+  rispondere) scende in fondo alla Lista e sale il prossimo; fra i finiti e fra i da fare resta
+  l'ordine delle aree scelto dall'utente. Lo spostamento è animato con `.anim-riordino` (§7).
 - **Perché serviva:** raggruppare per area a colpo d'occhio senza colorare il fondo (che è il
   quinto uso del colore, riservato alla Dispensa).
 
@@ -910,8 +918,9 @@ vuoti. Ombra solo se è una superficie flottante o una Tessera widget: `--ombra-
 
 ### Etichetta di sezione
 Mono 10/700/0.16em maiuscola, in `--ink` quando titola un gruppo. A destra, il contatore in
-mono 10/500/0.10em in `--sec` (`4 voci`, reso maiuscolo dal `text-transform`). Davanti alle
-sezioni della Lista, un quadratino 10×10 raggio 4 nel colore dell'area.
+mono 10/500/0.10em in `--sec` (`4 voci`, reso maiuscolo dal `text-transform`); **nella Lista
+il contatore è `presi/totale`** (`1/13`, dal 26/09), con `aria-label` «1 su 13 prese». Davanti
+alle sezioni della Lista, un quadratino 10×10 raggio 4 nel colore dell'area.
 
 ### Messaggi
 Nessun toast, nessuna snackbar, nessun banner colorato: lo stato si legge dove sta il dato.
