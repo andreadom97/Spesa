@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { act, configure, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { configure, screen, fireEvent, waitFor, within } from '@testing-library/react';
 
 // Alza il timeout di waitFor/findBy da 1s a 3s solo per questo file: le sue catene
 // asincrone sono le più lunghe del pannello (✕ → repertorio → salvaPasti → coda di
@@ -26,6 +26,25 @@ import type { Dish, MealSlotDef } from '@/domain/types';
 import { leggiSlotDefs, salvaSlotDefs } from '@/data/impostazioni';
 import { leggiRepertorio } from '@/data/repertorio';
 import { azzera, montaPannello, piatto, ASSENZE_VUOTE, COLAZIONE, PRANZO, CENA } from './aiuti';
+
+const AVVISO_CASA = 'La casa è cambiata: dati ricaricati. Riprova.';
+
+/**
+ * Chiama `rispondi` nel microtask subito dopo il commit che mette a schermo l'avviso della casa
+ * cambiata: il caso peggiore per una lettura del repertorio partita con la casa di prima, perché
+ * lì React ha scritto il DOM ma non ha ancora eseguito gli effetti passivi di quel render. Con
+ * `findByText` + `act` la risposta arrivava a volte prima e a volte dopo quegli effetti, a
+ * seconda del carico: il test era verde o rosso per caso (CI della PR #9, 26/09). Così il
+ * momento è sempre lo stesso.
+ */
+function rispondiAlCommitDellAvviso(rispondi: () => void): void {
+  const osservatore = new MutationObserver(() => {
+    if (!screen.queryByText(AVVISO_CASA)) return;
+    osservatore.disconnect();
+    rispondi();
+  });
+  osservatore.observe(document.body, { childList: true, subtree: true, characterData: true });
+}
 
 const SPUNTINO: MealSlotDef = { id: 'sd-4', nome: 'Spuntino', posizione: 3, assenzeAbituali: ASSENZE_VUOTE };
 const QUATTRO = [COLAZIONE, PRANZO, CENA, SPUNTINO];
@@ -204,11 +223,11 @@ describe('Gestione dei pasti', () => {
     vi.mocked(leggiSlotDefs).mockResolvedValue([COLAZIONE, PRANZO, CENA, MERENDA]);
     vi.mocked(leggiRepertorio).mockResolvedValue([piatto({ id: 'd-9', slotDefId: 'sd-9' })]);
     vi.mocked(salvaSlotDefs).mockRejectedValueOnce({ code: '42501', message: 'new row violates row-level security policy' });
+    // Arriva appena la casa nuova è a schermo la lettura partita al montaggio, con la casa di prima: nessun piatto.
+    rispondiAlCommitDellAvviso(() => rispondiMontaggio([]));
     fireEvent.change(campo, { target: { value: 'Brunch' } });
     fireEvent.blur(campo);
-    expect(await screen.findByText('La casa è cambiata: dati ricaricati. Riprova.')).toBeInTheDocument();
-    // Arriva ora la lettura partita al montaggio, con la casa di prima: nessun piatto.
-    await act(async () => { rispondiMontaggio([]); });
+    expect(await screen.findByText(AVVISO_CASA)).toBeInTheDocument();
     fireEvent.click(await screen.findByLabelText('Rimuovi Merenda'));
     const dialogo = await screen.findByRole('alertdialog');
     expect(within(dialogo).getByText('Se ne va anche il suo piatto, e il pasto sparisce dal piano. Non si può annullare.')).toBeInTheDocument();
@@ -232,10 +251,10 @@ describe('Gestione dei pasti', () => {
     vi.mocked(leggiSlotDefs).mockResolvedValue([COLAZIONE, PRANZO, CENA, MERENDA]);
     vi.mocked(leggiRepertorio).mockResolvedValue([piatto({ id: 'd-9', slotDefId: 'sd-9' })]);
     vi.mocked(salvaSlotDefs).mockRejectedValueOnce({ code: '42501', message: 'new row violates row-level security policy' });
+    rispondiAlCommitDellAvviso(() => rispondiTocco([]));
     fireEvent.change(campo, { target: { value: 'Brunch' } });
     fireEvent.blur(campo);
-    expect(await screen.findByText('La casa è cambiata: dati ricaricati. Riprova.')).toBeInTheDocument();
-    await act(async () => { rispondiTocco([]); });
+    expect(await screen.findByText(AVVISO_CASA)).toBeInTheDocument();
     fireEvent.click(await screen.findByLabelText('Rimuovi Merenda'));
     const dialogo = await screen.findByRole('alertdialog');
     expect(within(dialogo).getByText('Se ne va anche il suo piatto, e il pasto sparisce dal piano. Non si può annullare.')).toBeInTheDocument();
@@ -373,7 +392,7 @@ describe('Gestione dei pasti', () => {
     vi.mocked(salvaSlotDefs).mockRejectedValueOnce({ code: '42501', message: 'new row violates row-level security policy' });
     fireEvent.change(campo, { target: { value: 'Brunch' } });
     fireEvent.blur(campo);
-    expect(await screen.findByText('La casa è cambiata: dati ricaricati. Riprova.')).toBeInTheDocument();
+    expect(await screen.findByText(AVVISO_CASA)).toBeInTheDocument();
     fireEvent.click(await screen.findByLabelText('Rimuovi Merenda'));
     const dialogo = await screen.findByRole('alertdialog');
     expect(within(dialogo).getByText('Se ne va anche il suo piatto, e il pasto sparisce dal piano. Non si può annullare.')).toBeInTheDocument();
