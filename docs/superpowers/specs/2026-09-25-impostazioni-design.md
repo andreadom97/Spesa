@@ -133,10 +133,14 @@ utente, il gesto indietro (§A.4). Alla chiusura il fuoco torna al Menù utente.
 **Il provider legge il parametro.** Al montaggio e a ogni cambio di `pathname`, il provider
 legge `impostazioni` da `window.location.search`. Non usa `useSearchParams`, così non serve un
 `Suspense`: è lo stesso modello di `?torna=` nell'editor, oggi [misurato]. I valori ammessi sono
-`cima` e gli otto `SottoSchermata`. Un valore sconosciuto vale `cima`.
+`cima` e gli otto `SottoSchermata`. Un valore sconosciuto vale `cima`. Nel Guscio il parametro si
+legge solo dopo che `PrimoAvvio` ha finito la semina: un utente nuovo da un vecchio segnalibro
+`/impostazioni` farebbe seminare i pasti anche al pannello, in parallelo, fino a otto (review
+finale, M2).
 
 **Cosa fa quando lo trova:**
-1. toglie il parametro con `window.history.replaceState(window.history.state, '', pathname)`,
+1. toglie il parametro con `window.history.replaceState(window.history.state, '', …)`, e solo
+   quello: gli altri parametri e l'ancora restano (review finale, M7). Lo fa
    **prima** di aprire. Lo stato della voce si passa com'è, **mai** `null`: l'effetto del
    provider gira prima che l'`AppRouter` di Next avvolga la History API, e con `null` la voce
    perde lo stato di Next (`__NA`), che al primo indietro ricarica la pagina [misurato, sonda
@@ -1097,7 +1101,14 @@ impostazione, Matrice, Tab bar, Testata, Dialogo di conferma e Marchio (avvio) v
 ## L. Errori e casi limite
 
 - **Salvataggi che si incrociano.** La coda serializzata delle scritture di oggi resta
-  [misurato]: due tocchi veloci su celle diverse non si pestano.
+  [misurato]: due tocchi veloci su celle diverse non si pestano. Una rilettura silenziosa del
+  pannello che vede partire una scrittura mentre è in volo si scarta (review finale, M1).
+- **La pagina sotto il pannello.** Dopo un salvataggio riuscito (ordine, cadenza, persone,
+  rotazione, pasti) il pannello pubblica `spesa:impostazioni-cambiate`; la Lista rifà il
+  caricamento intero, il Piano si rilegge in silenzio (review finale, I2) [misurato nei test].
+- **Pasti in una casa condivisa.** Dal pannello si cancellano solo i pasti tolti a schermo: un
+  pasto aggiunto dall'altro membro dopo l'apertura resta, coi suoi piatti (review finale, I4)
+  [misurato nei test]. La semina del primo avvio cancella come prima.
 - **Rifiuto RLS** (la casa è cambiata): si ricarica tutto e si mostra il messaggio di §B.5.
 - **Pannello aperto e cambio di casa da un altro telefono:** vale la stessa regola al primo
   salvataggio. Non c'è un ascolto in tempo reale.
@@ -1135,8 +1146,8 @@ impostazione, Matrice, Tab bar, Testata, Dialogo di conferma e Marchio (avvio) v
   Dispensa ascolta `spesa:dispensa-cambiata` (§E.2). Il Piano mostra `Porzione pronta` su un
   pasto che non lo è più, la Lista «in casa …», finché non si riaprono; toccare quel pasto è
   innocuo (Task 4) [misurato: chi ascolta l'evento; l'innocuità letta in `aggiornaSlot`].
-- **Lo stesso dopo aver tolto un pasto**: il Piano o la Lista sotto il pannello tengono le righe
-  del pasto tolto finché non si rileggono (Task 8) [ipotesi, non testato].
+- ~~**Lo stesso dopo aver tolto un pasto**~~: dalla review finale (I2) Piano e Lista si
+  rileggono dopo ogni salvataggio del pannello, pasti compresi (Task 8; vedi sopra).
 - **Togliere un pasto con piatti cancella a cascata anche i lotti Pronti di quei piatti**
   (`porzione_pronta.dish_id … on delete cascade`), e il dialogo `rimuovi-pasto` non lo dice
   (Task 8) [misurato, `0009_meal_prepping.sql` riga 17].
@@ -1166,6 +1177,11 @@ impostazione, Matrice, Tab bar, Testata, Dialogo di conferma e Marchio (avvio) v
 - **Cambiare a mano l'unità di un ingrediente usato nei piatti rompe la generazione della
   lista**, come prima della fase 5: la scansione non lo fa più (§F.1), il segmento sì (Task 12)
   [letto nel codice, non riprodotto su dati veri].
+- **Il cancello di `PrimoAvvio` si apre comunque dopo 4 s**: con una semina più lenta il pannello
+  aperto da indirizzo può ancora correrle accanto (review finale, M2, residuo) [dal codice, non
+  riprodotto].
+- **La rilettura del Piano dopo le Impostazioni si scarta se nel frattempo tocchi il piano**:
+  resta coi dati di prima finché non si riapre (review finale, I2) [misurato nei test].
 
 ---
 

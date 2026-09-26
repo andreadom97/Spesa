@@ -554,7 +554,12 @@ Ogni task aggiunge qui i minor che la review lascia aperti, col motivo.
     FoglioDalBasso / lotto / pagina della Dispensa: una volta, poi 0 su 16 giri [misurato dal
     Task 2; il titolo del test non è stato registrato];
   - `src/app/(app)/lista/__tests__/page.test.tsx` › «il marchio segna mancante…»: 1 su 5 anche
-    da solo, e 1 su 10 già prima del Task 6 [misurato dal Task 6]: preesistente;
+    da solo, e 1 su 10 già prima del Task 6 [misurato dal Task 6]: preesistente; **corretto
+    dopo la review finale** (I1, decisione 107);
+  - `src/components/pannello/__tests__/gestione-pasti.test.tsx`, i test della ✕ col repertorio
+    in attesa e dopo un rifiuto RLS: un `waitFor` scade a 1 s, 2 volte su 6 in suite intera sul
+    ramo corretto e 1 su 4 a `d967bae` [misurato dopo la review finale, vedi «Dopo la review
+    finale»]: preesistente, non corretto;
   - `src/app/(app)/dispensa/__tests__/widget-ai.test.tsx` (il fuoco del `role="status"` del
     widget AI): una volta in suite intera, verde da solo e alla riesecuzione [misurato dal
     Task 5];
@@ -596,7 +601,9 @@ proposta. Andrea le vede in review.
   (`src/components/pannello/GestionePasti.tsx`, `NOTA_GESTIONE`). Resta com'è in §I (il testo di
   oggi con «nel Piano») finché non dai il testo. **Proposta:** `Da tre a sei pasti, nell’ordine in
   cui li fai. I giorni a casa si segnano in Pasti a casa.` — da confermare, non l'ho scritta.
-- **Il Piano aperto sotto il pannello dopo aver tolto un pasto (Task 8, review di correttezza,
+- ~~**Il Piano aperto sotto il pannello dopo aver tolto un pasto**~~ — **risolta dalla review
+  finale (I2, decisioni 108–110)**: Lista e Piano ascoltano `spesa:impostazioni-cambiate`. Il
+  testo di prima, per la storia: **(Task 8, review di correttezza,
   punto 4).** Il Piano (o la Lista) sotto il pannello tiene in memoria le righe del pasto tolto
   finché non si rilegge; con la pagina piena delle Impostazioni il problema non c'era, perché si
   tornava al Piano ricaricandolo. La spec non lo dice. **Proposta:** un evento come
@@ -638,8 +645,15 @@ del controller; il Task 15 le riporta qui, così stanno tutte in un posto.
   il conteggio vecchio di un piatto nel dialogo; non copre il caso in cui a schermo il pasto
   valeva 0 piatti (si toglie al tocco, senza dialogo) e intanto un altro telefono ci ha messo
   un piatto: quel piatto se ne va senza che nessuno l'abbia confermato. **Proposta:** va bene
-  così, com'era con la pagina di prima (e `salvaSlotDefs` cancella anche i pasti che il client
-  non ha, preesistente); rileggere il repertorio a ogni ✕ costerebbe una lettura per tocco.
+  così, com'era con la pagina di prima; rileggere il repertorio a ogni ✕ costerebbe una lettura
+  per tocco. (Che `salvaSlotDefs` cancellasse anche i pasti che il client non ha è risolto dalla
+  review finale: I4, decisione 111.)
+- **L'avvio del Marchio lascia passare i tocchi mentre è opaco (review finale, M3).** Per 1,2 s
+  il livello dell'avvio copre la Lista col fondo pieno, ma non intercetta i tocchi (spec §J,
+  `pointer-events: none`): un tocco in quel momento arriva alla Lista che non si vede.
+  **Proposta:** va bene così — la spec §J lo vuole («Non ritarda niente»: l'avvio è un ornamento
+  e non deve far aspettare). Se preferisci bloccarli, è una riga di CSS sul livello, per quei
+  1,2 s.
 - **Il salvataggio del file che fallisce dice «preparare» (Task 10, decisione 69).** Se
   `salvaFile` rigetta (raro: una condivisione fallita ripiega già sul download), compare
   `Non siamo riusciti a preparare il file. Riprova.`. **Proposta:** un testo proprio, per
@@ -662,7 +676,20 @@ del controller; il Task 15 le riporta qui, così stanno tutte in un posto.
    eseguiti»). Vercel pubblica da solo al merge su `main`, e il codice nuovo legge
    `giorni_controllo`. La migrazione è additiva: la colonna ha un default e la funzione è nuova,
    quindi il codice di oggi continua a funzionare con la migrazione applicata (spec §O).
-3. **Il merge della PR**: va in produzione senza altri comandi.
+   **Dopo averla applicata e prima del merge**, la prova che la colonna c'è:
+   `select giorni_controllo from settings limit 1;` deve rispondere senza errore (review
+   finale, I3).
+   - **La 0015 non si toglie mai dopo il deploy**: il codice nuovo legge `giorni_controllo` e
+     chiama `cancella_dispensa()`, e senza la colonna `leggiImpostazioni` fallisce, e con lei la
+     Lista e il pannello (review finale, I3) [dal codice: la `select` di `leggiImpostazioni`
+     nomina la colonna].
+   - **Finché la 0015 non è applicata, le anteprime di Vercel del ramo sono rotte**: puntano al
+     Supabase di produzione, dove la colonna non c'è ancora. Non è un difetto del ramo; non si
+     provano le anteprime prima del punto 2 (review finale, I3).
+3. **Il merge della PR**: va in produzione senza altri comandi. **Prima, la versione**: il piede
+   del pannello (e il file di Esporta) dicono `version` di `package.json`, oggi `0.1.0`, scritta
+   nel bundle a build (`src/components/pannello/versione.ts`); se al rilascio deve dire altro,
+   si alza lì prima del merge (review finale, M5).
 4. **Le prove dal telefono** della spec §M.4, una per una, più quelle della sezione «Non
    eseguiti» (il foglio di condivisione di Esporta, un logout D3 verificato dallo stare dentro
    su un secondo dispositivo, la tastiera sul campo `PERS`, il moto ridotto). **Cancella la
@@ -1064,3 +1091,43 @@ ingredienti"`, perché la freccia era un `<Link href="/piatti/nuovo">` senza nom
 - `npx vitest run` su editor, `dock.test.tsx` e `src/domain/__tests__/scansione-dispensa.test.ts`:
   59 verdi, tre esecuzioni, stderr pulito; `"src/app/(app)/dispensa" "src/app/(app)/piatti"`: 347
   verdi; `npx tsc --noEmit` e `npm run lint` puliti [misurato 26/09].
+
+## Dopo la review finale (26/09)
+
+La review di tutto il ramo (`f983c43..d967bae`) ha chiesto un'ondata sola di correzioni: I1, I2,
+I4, M1, M2, M4b, M7. M3 resta com'è ed è fra le domande; M4a (`RIPROVA` sull'errore di
+caricamento dell'ordine) non si fa, perché la spec non la prevede; I3 e M5 vanno fra i gate. Le
+decisioni continuano la numerazione della tabella.
+
+| # | Decisione | Perché | Costo se è sbagliata |
+|---|---|---|---|
+| 107 | **I1.** Nel test «il marchio segna mancante…» della Lista le due attese stanno in `await waitFor(...)` | il marchio si pubblica in un effetto dopo il render che mostra la lista; letto subito dopo `findByText` poteva essere vuoto [misurato: rosso 1 volta sulla suite intera prima della correzione, e 2 su 4 a `d967bae`; dopo, 10 su 10 verdi sul file da solo] | nessuno |
+| 108 | **I2.** `EVENTO_IMPOSTAZIONI_CAMBIATE` (`spesa:impostazioni-cambiate`) sta in `src/components/pannello/eventi.ts`, non in `@/data/impostazioni`; lo pubblica `DatiPannello` dopo una scrittura riuscita **e** ultima (impostazioni: dopo la rilettura; pasti: dopo la scrittura), mai dopo un rollback, un rifiuto RLS o una richiesta superata. Lista e Piano ascoltano con `useRileggiDopoImpostazioni` (stesso file): una lettura alla volta, e chi arriva con una in volo ne chiede un'altra sola dopo | `@/data/impostazioni` è finto con una fabbrica esplicita in una ventina di file di test: con la costante lì, ogni finto avrebbe dovuto ripeterla per non far lanciare Vitest a chi la legge. Due salvataggi di fila con due letture in parallelo potrebbero chiudersi al contrario [misurato: i test dell'evento e di Lista e Piano, elencati sotto] | se l'ultima richiesta fallisce dopo che una superata è arrivata al server, la pagina sotto resta coi dati di prima fino alla riapertura |
+| 109 | **I2, Lista.** Al segnale la Lista rifà il caricamento intero (`carica`: settimana, `allineaTopUp`, liste), non la sola `leggiListe` del ritorno in primo piano | prima della fase 5 tornare dalla pagina Impostazioni rimontava la Lista, e il caricamento intero riallineava il top-up a pasti, persone e rotazione nuovi; `leggiListe` da sola rileggerebbe solo ordine e cadenza. `carica` non azzera niente prima di leggere e scarta la risposta se nel frattempo c'è stato un tocco | un `allineaTopUp` (una scrittura) in più a ogni salvataggio del pannello; se `carica` fallisce senza istantanea compare l'errore di caricamento, come al montaggio |
+| 110 | **I2, Piano.** Il Piano pubblica il suo `carica` in un ref e lo richiama con `silenziosa`: non cambia il giorno selezionato, non mostra l'errore (lo scrive in console), e si scarta se nel frattempo un tocco ha cambiato il piano (`versioneTocchi`, sale in `aggiornaSlotLocale`) | il Piano sotto il pannello non si rimonta; un errore di rete su una rilettura di cortesia non deve sostituire il piano con la schermata d'errore | con un tocco durante la rilettura il Piano resta coi dati di prima fino alla riapertura (in spec §L) |
+| 111 | **I4.** `salvaSlotDefs(defs, { soloTolti })`: con `soloTolti` cancella solo quegli id (se non sono tornati nell'elenco) e non legge il server; senza, la semantica di sempre. Il pannello passa gli id che conosceva, **a schermo o confermati** (`pastiSalvati`), meno quelli del nuovo elenco. Semina di `leggiNucleo` e `assicuraDatiIniziali` restano senza (gli unici altri chiamanti, `grep salvaSlotDefs`) | un parametro e non una funzione a parte: il vincolo 3–6 e l'upsert restano in un posto solo, e il vincolo si controlla sempre per primo. Lo schermo copre un pasto aggiunto e tolto prima che la sua scrittura arrivi; i confermati coprono un pasto tolto da una scrittura fallita mentre la successiva era già in fila [misurato: 7 test nuovi fra `impostazioni.test.ts` e `dati-pannello.test.tsx`, 4 rossi prima; con lo schermo soltanto il test della scrittura fallita è rosso] | con `soloTolti` il server può avere più di sei pasti (sei a schermo più quello dell'altro membro): il vincolo è sull'elenco del client, e la colonna non ha un tetto |
+| 112 | **M1.** `carica` scarta la lettura (`superata`) se è partita una scrittura mentre era in volo (`scritture`, un contatore che sale all'inizio di `salvaImpostazioni` e `salvaPasti`) | la fila da sola non bastava: una scrittura partita dopo l'attesa della fila correva insieme alla lettura, che poteva tornare dopo coi valori di prima, metterli a schermo e prenderli come confermati [misurato: il test nuovo era rosso, «Porzioni: 2» sostituito da 1] | una riapertura con un gesto subito dopo tiene casa e risparmio della lettura precedente fino alla prossima apertura |
+| 113 | **M2.** `PannelloProvider attendiPrimoAvvio` (lo passa il Guscio): `?impostazioni=` si legge solo dopo `primoAvvioFinito()`, che `PrimoAvvio` chiama quando apre il cancello; fino ad allora il parametro resta nell'indirizzo. Senza la prop (i test che montano il pannello da solo) si legge subito, come prima | un segnale nel contesto interno del pannello, perché `PrimoAvvio` sta dentro il Guscio e non aveva un modo di dire che aveva finito; spostare il cancello attorno al Guscio avrebbe cambiato l'avvio del Marchio (§J) [misurato: 2 test nuovi, rossi prima] | il cancello si apre anche per timeout (4 s): con una semina più lenta il pannello può ancora correrle accanto (in spec §L) |
+| 114 | **M4b.** `OrdineAree` azzera l'ordine locale quando `casaCambiata` diventa vero, aggiustato durante il render come `GestionePasti` | l'azzeramento c'era già per un'altra strada: dopo un rifiuto RLS `salvaImpostazioni` torna `true` e `if (ok) setOrdine(null)`. Il test nuovo è **verde anche prima** della correzione [misurato]; è rosso solo togliendo tutti e due gli azzeramenti. La correzione toglie la dipendenza dal contratto di ritorno | nessuno |
+| 115 | **M7.** La `replaceState` che toglie `?impostazioni=` toglie solo quel parametro: gli altri e l'ancora restano; lo stato della voce resta `window.history.state` | un indirizzo `/lista?da=…&impostazioni=cima` perdeva `da` [misurato: il test nuovo era rosso] | nessuno |
+
+**Test nuovi, rossi e verdi** [misurato il 26/09]:
+- rossi prima, verdi dopo: 2 in `src/data/__tests__/impostazioni.test.ts` (soloTolti), 5 in
+  `dati-pannello.test.tsx` (evento dopo impostazioni, superata, pasti; soloTolti; M1) più 1
+  aggiunto dopo (la scrittura fallita in fila), 1 in `lista/__tests__/page.test.tsx` (cadenza
+  nuova dopo l'evento), 3 in `piano/__tests__/page.test.tsx`, 2 in `pannello.test.tsx` (M7, M2),
+  1 in `guscio.test.tsx` (M2, rosso togliendo `attendiPrimoAvvio`);
+- verdi già prima, perché provano un confine che il codice di prima rispettava da sé: semantica
+  di sempre senza soloTolti, id ancora nell'elenco, vincolo 3–6 con soloTolti, rollback e RLS
+  senza evento, Lista e Piano smontati che non ascoltano, tre salvataggi che fanno due
+  caricamenti, il pannello senza `PrimoAvvio` che apre subito, M4b (decisione 114);
+- cinque asserzioni di `gestione-pasti.test.tsx` e `pasti-a-casa.test.tsx` prendono il secondo
+  argomento (`{ soloTolti: [...] }`); la semina di `leggiNucleo` controlla di non passarlo.
+
+**Test intermittenti** [misurato il 26/09]: il file della Lista da solo 10 volte su 10 verde. La
+suite intera 6 volte: 4 verdi, 2 con un test rosso in `gestione-pasti.test.tsx` («con il
+repertorio non ancora letto, la ✕ lo rilegge e poi decide» e «la rilettura della ✕ che arriva
+dopo un rifiuto RLS…», tutti e due a 1 s, il tempo di `waitFor`). Lo stesso file è rosso anche a
+`d967bae` (1 volta su 4 sulla suite intera, «la lettura del repertorio al montaggio che arriva
+dopo un rifiuto RLS…»): non viene da questa ondata. Da solo sul ramo 1 volta su 50, a `d967bae` 0
+su 50. La causa non è indagata [ipotesi: tempi sotto carico, come i due di «Rimasto aperto»].
