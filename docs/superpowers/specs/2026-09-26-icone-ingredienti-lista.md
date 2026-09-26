@@ -1,6 +1,6 @@
 # Icone ingrediente — catalogo (bozza da rivedere)
 
-64 icone (70 meno le 4 uscite al gate del 26/09: kiwi, affettato, mais tolte; mozzarella confluita in formaggio), ~135 nomi coperti. Rivista da Andrea il 26/09: tenute tutte le aggiunte, tofu con ricotta. **Fonte** di ogni nome:
+64 icone (70 → 68, latta e scatoletta confluite il 26/09 → 64 al gate del 26/09: kiwi, affettato, mais tolte; mozzarella confluita in formaggio), ~135 nomi coperti. Rivista da Andrea il 26/09: tenute tutte le aggiunte, tofu con ricotta. **Fonte** di ogni nome:
 **P** = in produzione e usato in almeno un piatto o una lista (query del 26/09/2026),
 **B** = `INGREDIENTI_BASE`, **F** = `formati-tipici`, **D** = estrazioni delle diete,
 **A** = aggiunta mia (spesa italiana comune, nessun dato a supporto).

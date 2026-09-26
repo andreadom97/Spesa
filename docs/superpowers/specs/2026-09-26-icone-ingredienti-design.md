@@ -11,8 +11,9 @@ Decisioni prese con Andrea il 26/09/2026 in brainstorming.
 - **Tre tessere:** Lista (`src/components/Tessera.tsx`, compresa la protagonista/hero),
   Dispensa (`src/app/(app)/dispensa/TesseraDispensa.tsx`), ingredienti del piatto
   (`src/components/TesseraIngrediente.tsx`). `TesseraLotto` resta fuori.
-- **Catalogo:** 64 icone (70 meno le 4 uscite al gate di Andrea del 26/09: kiwi, affettato e mais
-  tolte, mozzarella confluita in formaggio) che coprono ~135 nomi, in
+- **Catalogo:** 64 icone (70 → 68, latta e scatoletta confluite il 26/09 → 64 al gate di Andrea
+  del 26/09: via kiwi, affettato e mais, mozzarella confluita in formaggio) che coprono ~135
+  nomi, in
   [`2026-09-26-icone-ingredienti-lista.md`](2026-09-26-icone-ingredienti-lista.md).
   "I 100 più usati" non si ricava dai dati: in produzione ci sono 2 utenti e ~95 nomi distinti,
   quasi tutti dal seed (query del 26/09). La lista unisce produzione, `INGREDIENTI_BASE`,
@@ -58,9 +59,22 @@ caso di famiglia (legumi) e il caso più a rischio di confusione (legumi vs pise
 ## 4. Architettura
 
 - `src/domain/icone-ingredienti.ts`: catalogo `chiave → sinonimi[]` e `trovaIcona(nome):
-  ChiaveIcona | null`. Riusa `normalizza()` di `src/domain/import/mapping.ts`. Ordine di
-  ricerca: nome intero → sinonimo intero → singolare/plurale → prima parola significativa
-  ("petto di pollo" → pollo, "pasta integrale" → pasta). Puro, senza React.
+  ChiaveIcona | null`. Riusa `normalizza()` di `src/domain/import/mapping.ts`. Criterio di
+  precedenza (dal 26/09, fix finale): **prima la posizione, poi la lunghezza** — vince il
+  sinonimo che compare prima nel nome ("petto di pollo" → pollo, "pasta integrale" → pasta,
+  "Yogurt alla fragola" → yogurt, non fragola); a parità di posizione vince il più lungo
+  ("Burro di arachidi" → arachide, non burro; "Pane in cassetta" → pancarre, non pane). Prima
+  del fix vinceva il sinonimo più lungo ovunque comparisse, il che faceva vincere il gusto sul
+  prodotto in casi come "Yogurt alla fragola".
+  `radici()` spezza anche sulla punteggiatura, non solo sugli spazi (`/[^a-z0-9]+/` dopo
+  `normalizza`), scartando le parti vuote: così "Fiocchi d'avena" trova avena.
+  **Blocchi:** `BLOCCHI` è una lista di espressioni (`pesca`, `pesche noci`, `grano`, `semola`,
+  le "paste" impasto/crema — sfoglia, frolla, brisée, per pizza, di acciughe) che partecipano
+  alla ricerca come i sinonimi, con la stessa regola di precedenza, ma se vincono fanno
+  restituire `null`: `pesca` condivide la radice con `pesce` (pesc), `grano` con `grana` (gran) —
+  senza il blocco vincerebbero l'icona sbagliata; le paste sono impasti o creme, non pasta
+  secca. A parità di posizione e lunghezza tra un blocco e un sinonimo, vince il blocco (è il
+  caso reale di pesca/pesce e grano/grana, che condividono anche la lunghezza).
 - `src/components/IconaIngrediente.tsx`: tracciati SVG (una mappa `chiave → elementi`) e
   componente `IconaIngrediente({ chiave, area, tono: 'area' | 'hero' | 'spento', taglia })`.
 - Le tre tessere chiamano `trovaIcona(nome)` e, se c'è una chiave, rendono l'icona e applicano

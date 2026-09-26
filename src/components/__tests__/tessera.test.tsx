@@ -31,10 +31,10 @@ describe('Tessera', () => {
   });
 });
 
-// Ruling 26/09 (controller): 'Zucchine' → chiave 'zucchina', fuori dal pilota
-// (12 chiavi con tracciato). Qui si usa 'Carote' → chiave 'carota', stessa
-// area ortofrutta, stesso tono #7AA838 e colore d'area #A8D96A: la fixture
-// `base` resta quella dei test sopra.
+// Tutte le chiavi hanno ora un tracciato. Qui si usa comunque 'Carote' →
+// chiave 'carota', stessa area ortofrutta, stesso tono #7AA838 e colore
+// d'area #A8D96A: resta come fixture, la fixture `base` resta quella dei
+// test sopra.
 describe('Tessera · icona ingrediente', () => {
   const icona = (c: HTMLElement) => c.querySelector('svg[data-icona]');
 
