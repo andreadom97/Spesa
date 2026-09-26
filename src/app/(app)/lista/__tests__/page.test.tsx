@@ -176,12 +176,17 @@ describe('Lista', () => {
     );
     await screen.findByText('Riso Carnaroli');
 
-    const aree = screen.getByTestId('aree-mancanti').textContent!.split(',').filter(Boolean);
-    // cereali ha due voci non spuntate: manca qualcosa.
-    expect(aree).toContain('cereali');
-    // dispensa ha zero voci ma un controllo ancora in sospeso: manca
-    // qualcosa anche lì, quindi il marchio non deve segnarla piena.
-    expect(aree).toContain('dispensa');
+    // Il marchio si pubblica in un effetto, dopo il render che mostra la
+    // lista: letto subito dopo findByText può essere ancora vuoto (test
+    // intermittente, review finale della fase 5). Si aspetta.
+    const aree = () => screen.getByTestId('aree-mancanti').textContent!.split(',').filter(Boolean);
+    await waitFor(() => {
+      // cereali ha due voci non spuntate: manca qualcosa.
+      expect(aree()).toContain('cereali');
+      // dispensa ha zero voci ma un controllo ancora in sospeso: manca
+      // qualcosa anche lì, quindi il marchio non deve segnarla piena.
+      expect(aree()).toContain('dispensa');
+    });
   });
 
   it('il tap spunta subito in locale, accoda offline, e sincronizza se il server risponde', async () => {
