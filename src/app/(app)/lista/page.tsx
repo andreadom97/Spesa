@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 're
 import Link from 'next/link';
 import type { AreaId, Dish } from '@/domain/types';
 import { coloreArea, nomeArea } from '@/domain/aree';
+import { listaFinita } from '@/domain/lista-finita';
 import { leggiSettimanaCorrente } from '@/data/settimana';
 import { leggiRepertorio } from '@/data/repertorio';
 import {
@@ -28,25 +29,12 @@ const INK = '#14163A';
 const MUT = '#8A8A96';
 
 /**
- * Vero solo quando non resta più nulla da fare: ogni voce spuntata *e*
- * nessun controllo ancora in sospeso (un controllo si risponde, non si
- * spunta — finché non ha risposta la spesa non è finita). Guida solo il tap
- * verso /lista/fatta: quella schermata non si fida di questo calcolo e lo
- * rifà per conto suo prima di mostrare "hai preso tutto".
- */
-function tuttoFatto(lista: ListaSalvata): boolean {
-  const sezioni = [...lista.base, ...lista.topup];
-  const haVoci = sezioni.some((s) => s.voci.length > 0);
-  return haVoci && sezioni.every((s) => s.controlli.length === 0 && s.voci.every((v) => v.spuntato));
-}
-
-/**
  * Le aree con almeno una voce non spuntata *o* un controllo ancora in
  * sospeso, considerando base e topup insieme. Solo qui si calcolano le aree
  * mancanti: un'area assente dalla spesa non entra in questo insieme, quindi
  * resta piena nel marchio.
  *
- * I controlli contano quanto le voci (I10): tuttoFatto() già richiede zero
+ * I controlli contano quanto le voci (I10): listaFinita() già richiede zero
  * controlli in sospeso oltre a ogni voce spuntata, quindi un'area con solo
  * un controllo aperto non è "a posto" — se il marchio la segnasse piena,
  * l'utente vedrebbe tutto completo senza capire perché HAI PRESO TUTTO non
@@ -577,7 +565,7 @@ export default function Lista() {
   const giorniControllo = lista.giorniControllo ?? GIORNI_CONTROLLO_DEFAULT;
   // Un solo booleano decide due cose che non possono divergere: se il Dock
   // c'è, e se lo scroller deve lasciargli la coda.
-  const finito = tuttoFatto(lista);
+  const finito = listaFinita(lista);
 
   return (
     <Cornice titolo="Lista" settimana={stato.settimanaLabel} aree={areeMancanti(lista)}>

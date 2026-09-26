@@ -19,7 +19,7 @@ export async function cercaProdotto(ean: string): Promise<RispostaProdotto | 'er
     if (!res.ok) return 'errore';
     return (await res.json()) as RispostaProdotto;
   } catch (e) {
-    console.error('dispensa: catalogo non raggiungibile.', e instanceof Error ? e.name : 'errore');
+    console.error('lettore-codice: catalogo non raggiungibile.', e instanceof Error ? e.name : 'errore');
     return 'errore';
   }
 }

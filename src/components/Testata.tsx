@@ -13,7 +13,9 @@ interface Props {
    * Modo indietro (spec fase 5 §G.2): una pillola sopra il titolo, al posto del
    * Menù utente. L'etichetta dice dove porta (`IMPOSTAZIONI`, `LISTA`, `PIANO`),
    * `ariaLabel` lo dice per intero, e `onTorna` ci va: la Testata non sa
-   * niente di pannello e cronologia, lo sa chi la monta.
+   * niente di pannello e cronologia, lo sa chi la monta. La pillola settimana,
+   * se c'è, sta sotto il titolo anche qui (spec fase 6 §D.2): il traguardo
+   * chiude quella settimana.
    */
   indietro?: { etichetta: string; ariaLabel: string; onTorna: () => void };
 }
@@ -39,6 +41,7 @@ export function Testata({ titolo, settimana, indietro }: Props) {
       <div style={{ padding: '20px 18px 12px', display: 'flex', flexDirection: 'column', gap: 12 }}>
         <PillolaIndietro {...indietro} />
         <h1 style={STILE_TITOLO}>{titolo}</h1>
+        {settimana && <PillolaSettimana testo={settimana} />}
       </div>
     );
   }
@@ -71,13 +74,7 @@ export function Testata({ titolo, settimana, indietro }: Props) {
           </svg>
         </button>
       </div>
-      {settimana && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7, alignSelf: 'flex-start', height: 34, padding: '0 14px', borderRadius: 999, background: 'var(--ink)' }}>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.13em', textTransform: 'uppercase', color: 'var(--superficie)' }}>
-            {settimana}
-          </span>
-        </div>
-      )}
+      {settimana && <PillolaSettimana testo={settimana} />}
     </div>
   );
 }
@@ -105,5 +102,16 @@ function PillolaIndietro({ etichetta, ariaLabel, onTorna }: { etichetta: string;
       </svg>
       {etichetta}
     </button>
+  );
+}
+
+/** La pillola settimana (DESIGN.md §8 Testata): informativa, non si tocca. */
+function PillolaSettimana({ testo }: { testo: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 7, alignSelf: 'flex-start', height: 34, padding: '0 14px', borderRadius: 999, background: 'var(--ink)' }}>
+      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.13em', textTransform: 'uppercase', color: 'var(--superficie)' }}>
+        {testo}
+      </span>
+    </div>
   );
 }
