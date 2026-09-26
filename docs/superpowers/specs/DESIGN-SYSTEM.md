@@ -80,7 +80,7 @@ del file, è lì.
 | Dettaglio di ingrediente | `DettaglioIngrediente.tsx` + `src/components/controlli.tsx` (Sì/No, campo con `SALVA`, tasti, blocchi; spostato dalla Dispensa nella fase 5); il lotto in `DettaglioLotto.tsx` | fatto nella fase 4 |
 | Riga di scadenza | `RigaScadenza.tsx` | fatta nella fase 4 |
 | Dialogo di conferma | `src/components/DialogoConferma.tsx`, dentro un `FoglioDalBasso` con `ruolo="alertdialog"`; `DialogoElimina.tsx` della Dispensa ne è un uso | generalizzato nella fase 5: tono `distruttivo` in `--errore` e `primario` in `--ink` (Esci) |
-| Anteprima di scansione | `LettoreCodice.tsx` + `src/components/useLettoreCodici.ts` (la lettura, condivisa con `Scanner.tsx`); l'esito in `ScansioneConfezione.tsx` | fatta nella fase 4; dalla fase 6 anche in `lista/confezioni/page.tsx`, in un `FoglioDalBasso`; `src/components/Scanner.tsx` è stato cancellato |
+| Anteprima di scansione | `LettoreCodice.tsx` + `src/components/useLettoreCodici.ts` (la lettura); l'esito in `ScansioneConfezione.tsx` | fatta nella fase 4; dalla fase 6 anche in `lista/confezioni/page.tsx`, in un `FoglioDalBasso`; `src/components/Scanner.tsx` è stato cancellato |
 | Nuovo ingrediente | `NuovoIngrediente.tsx` | fatto nella fase 4; non è una voce di `DESIGN.md` §8, lo descrive la spec della fase 4 §C |
 | Editor dell'ingrediente | `src/app/(app)/piatti/[id]/ingredienti/[ingId]/page.tsx` | frame 12 della fase 5: SALVA nel Dock senza barra, scansione con `LettoreCodice`; non è una voce di `DESIGN.md` §8 |
 | Tasto di scatto · Banda dei comandi · Striscia dei fogli presi | `src/app/(app)/importa/Camera.tsx` (+ `.scatto`, `.guida-angolo` in `globals.css`), «Rivedi i fogli presi» in `src/app/(app)/importa/FogliPresi.tsx` | fatti nella fase 3 |
