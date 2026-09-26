@@ -133,7 +133,15 @@ export function StrisciaGiorni({ giorni, slotDefs, slots, oggi, selezionato, onS
             </span>
             <span
               aria-hidden="true"
-              style={{ display: 'grid', gridTemplateColumns: `repeat(${COLONNE_PALLINI}, 5px)`, gap: 3 }}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: `repeat(${COLONNE_PALLINI}, 5px)`,
+                // Righe esplicite (non lasciate all'auto-placement): righePallini
+                // è la stessa regola che il test prova da sola, e che la sonda
+                // del Task 15 confronta con l'altezza misurata del riquadro.
+                gridTemplateRows: `repeat(${righePallini(slotDefs.length)}, 5px)`,
+                gap: 3,
+              }}
             >
               {slotDefs.map((def, i) => {
                 const slot = slots.find((s) => s.data === data && s.slotDefId === def.id);
