@@ -52,6 +52,8 @@ scritti nel piano sono indicativi.
 | 35 | `StatoDatiPannello` disegna con `Carico` ed `ErroreCaricamento` di `pezzi.tsx` (Task 7) | un disegno solo per `CARICO…` e per l'errore di caricamento, nella cima e nelle sotto-schermate che leggono dati propri (Casa, Ingredienti, Aree) | nessuno: i test del Task 6 cercano `role="status"`, il testo dell'errore e `RIPROVA`, e restano verdi |
 | 36 | La nota `Cancellata il {gg/mm} alle {hh:mm}.` si legge da `cancellataIl` del provider dei dati, non da uno stato della cima; l'ora è quella locale del telefono (Task 7) | la cima si smonta entrando in una sotto-schermata: con uno stato locale la nota sparirebbe al ritorno, prima della chiusura del pannello (spec §D, decisione 26). Un test lo prova passando da Esporta | nessuno |
 | 37 | `montaPannello` resta sincrono (restituisce il `RenderResult`, come nel piano), e ogni test aspetta i dati con un `findBy…` prima di toccare le righe (Task 7) | la firma è quella che i Task 8–10 usano nel piano; i mock rispondono subito, e i `findBy`/`waitFor` lasciano arrivare le letture. I test della cima e delle persone girano senza avvisi `act(...)` [misurato: `npx vitest run src/components/pannello`, stderr vuoto, 5 volte di fila] | se un test dei Task 8–10 tocca prima che i dati arrivino e finisce senza aspettare, può uscire un avviso: si aggiunge un `findBy` |
+| 38 | Senza email letta, il testo del dialogo di Esci è `I tuoi dati restano. Per rientrare ti mandiamo un link via email.`; con l'email resta quello di §D (Task 7, review, decisione del controller del 26/09) | `leggiUtente` non lancia: se fallisce torna nome ed email vuoti, e il testo di §D diventava «ti mandiamo un link a .». Testo nuovo, fuori dalla spec: è fra le domande per Andrea | nessuno: un testo, da cambiare se Andrea ne vuole un altro |
+| 39 | Con nome ed email entrambi vuoti, la riga informativa dell'Account non c'è; la riga Esci resta (Task 7, review, decisione del controller del 26/09) | una riga con nome e nota vuoti è un rettangolo bianco da 56 senza senso; Esci serve comunque. La condizione è un booleano, così `BloccoGruppo` non tiene la stringa vuota come figlio col suo filetto | il blocco Account con una riga sola; da rivedere se Andrea preferisce un segnaposto |
 
 ## Misure nel browser
 
@@ -289,6 +291,13 @@ proposta. Andrea le vede in review.
   attivi), non un archivio storico completo; chi lo rilegge un domani (un import, fuori da questa
   fase) troverebbe comunque un `dishId` orfano. Se invece Esporta deve essere un archivio completo,
   serve leggere anche i piatti disattivati: un cambio piccolo, ma cambia cosa promette il file.
+- **Account senza utente letto: testo e forma vanno bene? (Task 7, decisioni 38 e 39)** Se la
+  lettura dell'utente fallisce (`leggiUtente` torna nome ed email vuoti), il dialogo di Esci
+  dice `I tuoi dati restano. Per rientrare ti mandiamo un link via email.` invece di «… un link
+  a .», e la riga col nome e l'email non si mostra: nel blocco Account resta solo Esci
+  (`src/components/pannello/Cima.tsx`, `testoEsci` e il blocco Account). **Proposta:** va
+  bene così — è un caso raro (rete assente all'apertura) e la frase resta vera. Se preferisci
+  un altro testo, o un segnaposto al posto della riga, è una riga di codice.
 
 ## I gate di Andrea, in ordine
 

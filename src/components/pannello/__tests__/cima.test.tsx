@@ -20,7 +20,7 @@ import { esci } from '@/data/sessione';
 import { ORDINE_AREE_DEFAULT } from '@/domain/aree';
 import { usePannello } from '../PannelloProvider';
 import { azzera, montaPannello, impostazioni, voce, COLAZIONE, CENA } from './aiuti';
-import { percorso, router } from './finti';
+import { auth, percorso, router, UTENTE } from './finti';
 
 /** L'indirizzo verso cui il pannello ha navigato: push o replace, come ha deciso il Task 6 dopo la sonda. */
 function navigatoA(): string[] {
@@ -197,6 +197,30 @@ describe('La cima del pannello', () => {
     const dialogo = await screen.findByRole('alertdialog');
     fireEvent.click(within(dialogo).getByRole('button', { name: 'ESCI' }));
     expect(await within(dialogo).findByText('Non siamo riusciti a farti uscire. Riprova.')).toBeInTheDocument();
+  });
+
+  // Decisione del controller del 26/09: leggiUtente non lancia, e senza email il testo di §D
+  // direbbe «un link a .».
+  it('senza email letta il dialogo di Esci dice «via email», non «a .»', async () => {
+    auth.getUser.mockResolvedValueOnce({ data: { user: { ...UTENTE, email: '' } }, error: null });
+    montaPannello('cima');
+    fireEvent.click(await screen.findByRole('button', { name: /^Esci/ }));
+    const dialogo = await screen.findByRole('alertdialog');
+    expect(within(dialogo).getByText('I tuoi dati restano. Per rientrare ti mandiamo un link via email.')).toBeInTheDocument();
+    expect(within(dialogo).queryByText(/link a /)).not.toBeInTheDocument();
+  });
+
+  it('senza nome né email la riga informativa dell’Account non c’è, la riga Esci sì', async () => {
+    // Nessun utente: leggiUtente torna nome ed email vuoti.
+    auth.getUser.mockImplementationOnce(async () => ({ data: { user: null as unknown as typeof UTENTE }, error: null }));
+    montaPannello('cima');
+    const esciRiga = await screen.findByRole('button', { name: /^Esci/ });
+    const account = screen.getByText('Account').closest('section')!;
+    expect(screen.queryByText('Andrea')).not.toBeInTheDocument();
+    // Il blocco ha il titolo e una riga sola, Esci: nessun figlio vuoto sopra, col suo filetto.
+    expect(within(account).getAllByRole('button')).toEqual([esciRiga]);
+    expect(account.children).toHaveLength(2);
+    expect(account.children[1]).toContainElement(esciRiga);
   });
 
   it('la nota Cancellata dura fino alla chiusura del pannello, anche passando da una sotto-schermata (§D)', async () => {

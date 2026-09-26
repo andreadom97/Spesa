@@ -38,6 +38,17 @@ export function ordinePersonalizzato(ordine: AreaId[]): boolean {
   return ordine.length !== ORDINE_AREE_DEFAULT.length || ordine.some((a, i) => a !== ORDINE_AREE_DEFAULT[i]);
 }
 
+/**
+ * Il testo del dialogo di Esci (§D). Senza email letta (`leggiUtente` non lancia e torna
+ * vuoto) la frase non può nominarla: «via email» al posto di «a {email}» (decisione del
+ * controller del 26/09, da confermare con Andrea).
+ */
+export function testoEsci(email: string): string {
+  return email
+    ? `I tuoi dati restano. Per rientrare ti mandiamo un link a ${email}.`
+    : 'I tuoi dati restano. Per rientrare ti mandiamo un link via email.';
+}
+
 function dueCifre(n: number): string {
   return String(n).padStart(2, '0');
 }
@@ -93,7 +104,7 @@ function BlocchiCima({ dati }: { dati: DatiPannello }) {
   function apriEsci(email: string) {
     mostraDialogo({
       titolo: 'Uscire da Dispesa?',
-      testo: `I tuoi dati restano. Per rientrare ti mandiamo un link a ${email}.`,
+      testo: testoEsci(email),
       azione: 'ESCI',
       tono: 'primario',
       erroreTesto: 'Non siamo riusciti a farti uscire. Riprova.',
@@ -150,7 +161,11 @@ function BlocchiCima({ dati }: { dati: DatiPannello }) {
         />
       </BloccoGruppo>
       <BloccoGruppo titolo="Account">
-        <RigaImpostazione nome={utente.nome} nota={utente.email} finale={{ tipo: 'niente' }} />
+        {/* Senza nome né email (lettura dell'utente fallita) la riga informativa non c'è: resta Esci. */}
+        {/* Un booleano, non la stringa vuota: BloccoGruppo terrebbe '' come figlio, col suo filetto. */}
+        {(utente.nome !== '' || utente.email !== '') && (
+          <RigaImpostazione nome={utente.nome} nota={utente.email} finale={{ tipo: 'niente' }} />
+        )}
         <RigaImpostazione
           nome="Esci"
           nota="Per rientrare ti serve il link che ti mandiamo via email."
