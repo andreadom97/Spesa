@@ -18,25 +18,37 @@ interface Props {
   onSeleziona: (indice: number) => void;
 }
 
+/** Le colonne della griglia dei pallini (spec fase 5 §H, frame 27). */
+const COLONNE_PALLINI = 3;
+
 /**
- * I sette riquadri del giorno, con sotto un pallino per pasto (pieno se quel
- * pasto è a casa e ha un piatto assegnato). "Oggi" e "selezionato" sono due
- * stati indipendenti, mai uno sostituto dell'altro: entrambi vivono nel
- * box-shadow (mai nel bordo, sempre 0) così le sette celle restano identiche
- * di ingombro qualunque sia la combinazione di stati.
+ * Dove sta il pallino `indice` (da 0) nella griglia: riga e colonna da 1, come
+ * `gridRow` e `gridColumn`. Si riempie per righe, quindi la prima riga è sempre
+ * piena e da quattro pasti la seconda comincia dalla prima colonna.
+ */
+export function posizionePallino(indice: number): { riga: number; colonna: number } {
+  return { riga: Math.floor(indice / COLONNE_PALLINI) + 1, colonna: (indice % COLONNE_PALLINI) + 1 };
+}
+
+/** Le righe che occupano `n` pallini: una fino a tre, due da quattro a sei. */
+export function righePallini(n: number): number {
+  return Math.max(1, Math.ceil(n / COLONNE_PALLINI));
+}
+
+/**
+ * I sette riquadri del giorno, con sotto un pallino per pasto in una griglia
+ * di tre colonne (pieno se quel pasto è a casa e ha un piatto assegnato).
+ * "Oggi" e "selezionato" sono due stati indipendenti, mai uno sostituto
+ * dell'altro: entrambi vivono nel box-shadow (mai nel bordo, sempre 0) così le
+ * sette celle restano identiche di ingombro qualunque sia la combinazione di
+ * stati.
  */
 export function StrisciaGiorni({ giorni, slotDefs, slots, oggi, selezionato, onSeleziona }: Props) {
-  // Solo a sei pasti i pallini si stringono. A sei, con gap 3, la fila misura
-  // 6 × 5 + 5 × 3 = 45 px dentro una cella che a 375 di schermo è larga 46,43:
-  // 0,71 px per lato, cioè dentro per caso — a 360 px la fila sbordava di 0,36 px
-  // per lato e a 320 di 3,22 (misurato nel browser). Con gap 2 la fila scende a
-  // 40 px: +3,21 px per lato a 375 e +2,14 a 360. A 320 sborda ancora, ma di
-  // 0,71 px invece di 3,22, e 320 è sotto la larghezza minima dichiarata in
-  // DESIGN.md §4 (375). Da tre a cinque pasti resta il 3 del file di disegno:
-  // a cinque la fila fa 5 × 5 + 4 × 3 = 37 px, cioè 4,7 px per lato a 375 e
-  // margine anche a 320 — la soglia misurata è sei, e abbandonare il valore del
-  // file di disegno a cinque non era giustificato da nessuna misura.
-  const gapPallini = slotDefs.length > 5 ? 2 : 3;
+  // Dalla fase 5 (spec §H, frame 27) i pallini stanno in una griglia di tre
+  // colonne da 5 con gap 3: 21 px di larghezza a qualunque numero di pasti,
+  // dentro un giorno che a 360 è largo 44,3 [misurato sul disegno]. Il gap 2 a sei
+  // pasti (fase 2, deciso da una misura a 375) non serve più: la fila da 45 px non
+  // c'è. Da quattro pasti la seconda riga alza il riquadro di 8 (3 + 5), da sé.
   return (
     <div style={{ display: 'flex', gap: 3 }}>
       {giorni.map((data, indice) => {
@@ -62,15 +74,10 @@ export function StrisciaGiorni({ giorni, slotDefs, slots, oggi, selezionato, onS
         // bordo 3 px rimpiccioliva la cella dentro e i due stati insieme non
         // avevano forma. Con gli inset le sette celle restano identiche.
         //
-        // Limite noto dell'inset da 4,5 px, misurato nel browser a 375 px di
-        // schermo con sei pasti: i pallini cominciano a 3,21 px dal bordo della
-        // cella, quindi sulla cella "oggi E selezionata" l'anello copre i due
-        // pallini esterni per 1,29 px — e col bianco dell'anello sotto un pallino
-        // pieno, che è bianco anch'esso, là i sei pallini non si contano. Sulla
-        // cella "oggi" non selezionata l'anello è 3 px e non li tocca (3,21 > 3).
-        // Non è un difetto da riparare qui: 4,5 è il valore del file di disegno, e
-        // il caso a sei pasti non è reso in nessuno di quei file. Chi cambia questo
-        // numero sappia che sotto ci passano i pallini.
+        // Con la griglia a tre colonne (fase 5) i pallini partono a (44,3 − 21) / 2 =
+        // 11,6 px dal bordo del giorno a 360 [calcolo]: l'inset da 4,5 px della cella
+        // "oggi e selezionata" non li copre più. Il limite della fase 2 era della fila
+        // da sei, che non c'è più.
         const ombra = sel
           ? (isOggi
             ? '0 2px 6px rgba(20,22,58,0.20), inset 0 0 0 3px #FFFFFF, inset 0 0 0 4.5px #14163A'
@@ -124,24 +131,32 @@ export function StrisciaGiorni({ giorni, slotDefs, slots, oggi, selezionato, onS
             >
               {numero}
             </span>
-            <div style={{ display: 'flex', gap: gapPallini }}>
-              {slotDefs.map((def) => {
+            <span
+              aria-hidden="true"
+              style={{ display: 'grid', gridTemplateColumns: `repeat(${COLONNE_PALLINI}, 5px)`, gap: 3 }}
+            >
+              {slotDefs.map((def, i) => {
                 const slot = slots.find((s) => s.data === data && s.slotDefId === def.id);
                 const pieno = !!slot && slot.stato === 'casa' && slot.dishId !== null;
+                const { riga, colonna } = posizionePallino(i);
                 return (
                   <span
                     key={def.id}
                     data-pallino
                     style={{
-                      width: 5, height: 5, borderRadius: 999, display: 'inline-block',
-                      background: pieno
-                        ? (sel ? '#FFFFFF' : '#14163A')
-                        : (sel ? 'rgba(255,255,255,0.32)' : 'rgba(20,22,58,0.18)'),
+                      gridRow: riga, gridColumn: colonna,
+                      width: 5, height: 5, boxSizing: 'border-box', borderRadius: 999, display: 'block',
+                      borderStyle: 'solid',
+                      borderWidth: pieno ? 0 : 1,
+                      // Vuoto: il contorno 0,20 del tratteggio (--bordo-tratteggio); sul giorno
+                      // selezionato bianco 0,62, lo stesso valore di --banda-bordo (spec §H).
+                      borderColor: sel ? 'var(--banda-bordo)' : 'var(--bordo-tratteggio)',
+                      backgroundColor: pieno ? (sel ? 'var(--superficie)' : 'var(--ink)') : 'transparent',
                     }}
                   />
                 );
               })}
-            </div>
+            </span>
           </button>
         );
       })}
