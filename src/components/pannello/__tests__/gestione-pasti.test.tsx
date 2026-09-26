@@ -146,6 +146,23 @@ describe('Gestione dei pasti', () => {
     errore.mockRestore();
   });
 
+  // Il test sotto era intermittente (~1 giro su 10 della suite): la lettura al montaggio partiva
+  // in un useEffect, cioè un task dopo il commit che mette a schermo le righe. Una ✕ toccata in
+  // quel frattempo faceva lei la prima lettura (quella che non arriva mai) e restava appesa;
+  // la lettura del montaggio, partita dopo, prendeva la seconda. Qui la ✕ si tocca proprio lì.
+  it('una ✕ toccata appena le righe compaiono non si prende la lettura del montaggio', async () => {
+    vi.mocked(leggiRepertorio).mockReturnValueOnce(new Promise(() => {})); // la lettura al montaggio non arriva
+    const osservatore = new MutationObserver(() => {
+      const x = screen.queryByLabelText('Rimuovi Spuntino');
+      if (!x) return;
+      osservatore.disconnect();
+      fireEvent.click(x);
+    });
+    osservatore.observe(document.body, { childList: true, subtree: true });
+    montaPannello('gestione-pasti', { pasti: QUATTRO, piatti: [] });
+    await waitFor(() => expect(salvaSlotDefs).toHaveBeenCalledTimes(1));
+  });
+
   it('con il repertorio non ancora letto, la ✕ lo rilegge e poi decide', async () => {
     vi.mocked(leggiRepertorio).mockReturnValueOnce(new Promise(() => {})); // la lettura al montaggio non arriva
     montaPannello('gestione-pasti', { pasti: QUATTRO, piatti: [] });

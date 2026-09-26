@@ -325,6 +325,23 @@ describe('Lista fatta — Testata, Dock e guardia (spec fase 6 §A)', () => {
     await waitFor(() => expect(push).toHaveBeenCalledWith('/piano'));
   });
 
+  // Il test sotto era intermittente: l'istante di comparsa del tasto si segnava in un
+  // useEffect, un task dopo il commit. Se l'orologio andava oltre la guardia in quel frattempo,
+  // la comparsa risultava «adesso» e il tocco successivo veniva ignorato. Qui l'orologio si
+  // sposta proprio lì: la comparsa deve essere già segnata col valore del commit.
+  it('la guardia conta dal commit in cui il tasto compare, non da un frame dopo', async () => {
+    const osservatore = new MutationObserver(() => {
+      if (!screen.queryByRole('button', { name: 'CHIUDI LA SPESA' })) return;
+      osservatore.disconnect();
+      oltreLaGuardia();
+    });
+    osservatore.observe(document.body, { childList: true, subtree: true });
+    monta();
+    const chiudi = await screen.findByRole('button', { name: 'CHIUDI LA SPESA' });
+    fireEvent.click(chiudi);
+    await waitFor(() => expect(chiudiSpesa).toHaveBeenCalledWith('week-1'));
+  });
+
   it('in volo il tasto è disabled; se la chiusura fallisce, il messaggio e si riprova', async () => {
     const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
     let rifiuta: (e: Error) => void = () => {};
