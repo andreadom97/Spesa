@@ -47,40 +47,42 @@ Le due inversioni della prima colonna — aree e semantici — sono la trappola 
 ## 3. Ogni componente, e dove vive
 
 L'anatomia, le misure e gli stati di ogni voce stanno in `DESIGN.md` §8, sotto lo stesso nome.
-Qui c'è solo il ponte verso il codice: 34 voci `###` in `DESIGN.md` §8, 20 file `.tsx` in
-`src/components/` [contati di nuovo il 25/09, a fase 4 finita]. I componenti della Dispensa
+Qui c'è solo il ponte verso il codice: 34 voci `###` in `DESIGN.md` §8, 42 file `.tsx` in
+`src/components/` e `src/components/pannello/` [contati di nuovo il 26/09, a fase 5 finita]. I componenti della Dispensa
 vivono accanto alla pagina, in `src/app/(app)/dispensa/`: dove la tabella scrive solo il nome
 del file, è lì.
 
 | Componente (`DESIGN.md` §8) | Dove vive nel codice | Stato |
 |---|---|---|
-| Testata | `src/components/Testata.tsx` | allineata alla fase 1 (20/09): menù utente e titoli in sentence case |
-| Menù utente | dentro `Testata.tsx` | fatto nella fase 1 |
-| Tab bar | `src/components/TabBar.tsx`, dentro `Guscio.tsx` | fatta nella fase 1: due stati, nomi, Marchio come icona della Lista |
-| Marchio | `src/components/Marchio.tsx` (+ `marchio-context.tsx`) | 3 × 2, sei aree |
-| Dock | `src/components/Dock.tsx`, montato con `createPortal` nello slot di `dock-slot.tsx`, reso da `Guscio.tsx` | fatto nella fase 2; dalla fase 3 è una regione di nome «Azione principale» (tutti i Dock), e porta anche ESTRAI LA DIETA in Importa col PDF scelto. In Lista `HAI PRESO TUTTO` e i primari dei due stati vuoti; nel Piano la sola conferma — lo stato vuoto del Piano resta una scheda con un link in linea, di proposito. Dalla fase 4 anche **sciolto** (`<Dock sciolto>`, classe `.dock-sciolto`): nella Dispensa `DockDispensa.tsx` mette `Modifica con l'AI` e il tondo del microfono, senza contenitore bianco |
+| Testata | `src/components/Testata.tsx` | fase 5: modo indietro a pillola (`indietro: { etichetta, ariaLabel, onTorna }`) in Piatti e Importa |
+| Menù utente | dentro `Testata.tsx` | fase 5: un `button` che apre il pannello, `aria-expanded`, nome `{Nome}: profilo e impostazioni` |
+| Tab bar | `src/components/TabBar.tsx`, dentro `Guscio.tsx` | fase 5: tre voci (Lista · Piano · Dispensa), pillola 304 / 244 centrata, voci `flex` con un tetto di 96 / 76 (con tre voci sono esattamente quelle), anima `width`; `data-marchio-barra` sul segno della Lista |
+| Marchio | `src/components/Marchio.tsx` (+ `marchio-context.tsx`); l'avvio in `src/components/AvvioMarchio.tsx`, montato nel `Guscio` | 3 × 2, sei aree; dalla fase 5 l'avvio `.anim-avvio-*` con `@keyframes pb`, una volta per sessione su `/lista` |
+| Dock | `src/components/Dock.tsx`, montato con `createPortal` nello slot di `dock-slot.tsx`, reso da `Guscio.tsx` | fatto nella fase 2; dalla fase 3 è una regione di nome «Azione principale» (tutti i Dock), e porta anche ESTRAI LA DIETA in Importa col PDF scelto. In Lista `HAI PRESO TUTTO` e i primari dei due stati vuoti; nel Piano la sola conferma — lo stato vuoto del Piano resta una scheda con un link in linea, di proposito. Dalla fase 4 anche **sciolto** (`<Dock sciolto>`, classe `.dock-sciolto`): nella Dispensa `DockDispensa.tsx` mette `Modifica con l'AI` e il tondo del microfono, senza contenitore bianco. Dalla fase 5 `.dock-senza-barra` a `bottom 22` quando una schermata nasconde la barra (l'editor dell'ingrediente) |
 | Tasti | nessun file: le tre basi sono copiate in otto punti | deriva dichiarata e accettata (§6) |
 | Pillole d'azione | `RigaControllo.tsx`, `Segmento.tsx` (variante pillola) | |
 | Segmento a blocco | `Segmento.tsx` (variante blocco) | |
 | Tessera widget di sezione | `CartaSezione`, dentro `src/app/(app)/lista/page.tsx` | fatta nella fase 2 |
 | Tessera della Lista | `src/components/Tessera.tsx` | allineata nella fase 2: l'accesa non protagonista perde fondo e ombra dentro il widget |
-| Riga di controllo | `src/components/RigaControllo.tsx` | allineata nella fase 2: la cadenza viene da `GIORNI_CONTROLLO_STAPLE`, la sottoriga è in `--testo-2` |
+| Riga di controllo | `src/components/RigaControllo.tsx` | fase 5: la cadenza viene dalle impostazioni (`giorniControllo`, `testoCadenza`) |
 | Riga pasto | `src/components/RigaPasto.tsx` | |
 | Riga piatto | `src/app/(app)/piatti/ElencoPiatti.tsx` (`RigaPiatto`) | fatta nella fase 3 |
-| Striscia dei giorni | `src/components/StrisciaGiorni.tsx` | allineata nella fase 2: quattro stati negli `inset`, sette celle dello stesso ingombro, regge da 3 a 6 pasti fino a 360 px |
-| Pannello impostazioni · Riga di impostazione | — | **da fare**, fase 5: oggi le Impostazioni sono una schermata, non un pannello |
-| Matrice dei pasti | — | **da fare**, fase 5: sotto-schermata delle Impostazioni |
+| Striscia dei giorni | `src/components/StrisciaGiorni.tsx` | fase 5: pallini in griglia di tre colonne gap 3 (`posizionePallino`), sei pasti a 360 senza deroga |
+| Pannello impostazioni · Riga di impostazione | `src/components/pannello/`: `PannelloProvider.tsx`, `Pannello.tsx`, `Cima.tsx`, `TesserePannello.tsx`, `RigaImpostazione.tsx`, `CampoPersone.tsx`, `NotaRisparmio.tsx`, `PiedePannello.tsx`, `schermate.tsx`, i dati in `DatiPannello.tsx` | fatto nella fase 5: pannello a due livelli montato nel `Guscio`, otto sotto-schermate, `?impostazioni=` e gesto indietro con `src/components/useIndietroFogli.ts` |
+| Matrice dei pasti | `src/components/pannello/PastiACasa.tsx` | fatta nella fase 5: casetta al posto del pallino, 360 nel mandato |
+| Aggiungi tratteggiato (in Gestione dei pasti) | `src/components/pannello/GestionePasti.tsx` | fase 5: in fondo al blocco |
 | Tessera di dispensa | `TesseraDispensa.tsx` | fatta nella fase 4: in casa con la tinta d'area al 26%, finita e mai comprata tratteggiate, una pillola di stato sola |
 | Tessera del lotto (dentro Tessera di dispensa) | `TesseraLotto.tsx` | fatta nella fase 4, nel widget Pronti |
 | Widget d'area (la Tessera widget di sezione della Dispensa) | `WidgetArea.tsx` | fatto nella fase 4: un widget per area più Pronti |
 | Caricamento a widget vuoti (§9 Caricamento, eccezione del 25/09) | `WidgetVuoti.tsx` (+ `.anim-luce-widget` in `globals.css`) | fatto nella fase 4: tre widget, luci in fase, dopo 8 s l'errore (il timer sta in `page.tsx`) |
 | Widget AI (Dispensa) · Onda di dettatura | `WidgetAI.tsx` + `useDettatura.ts` (+ `useAltezzaTastiera.ts`; `.onda-barra` e `.anim-luce-testo` in `globals.css`) | fatto nella fase 4; sostituisce il Foglio del Dock della Dispensa e `NotaDispensa.tsx`, cancellato |
 | Stato "Registro" | nessun file: `NotaDispensa.tsx` è stato cancellato nella fase 4 | la voce resta in `DESIGN.md` §8 senza codice; la dettatura della Dispensa usa l'Onda di dettatura |
-| Dettaglio di ingrediente | `DettaglioIngrediente.tsx` + `controlli.tsx` (Sì/No, campo con `SALVA`, tasti, blocchi); il lotto in `DettaglioLotto.tsx` | fatto nella fase 4 |
+| Dettaglio di ingrediente | `DettaglioIngrediente.tsx` + `src/components/controlli.tsx` (Sì/No, campo con `SALVA`, tasti, blocchi; spostato dalla Dispensa nella fase 5); il lotto in `DettaglioLotto.tsx` | fatto nella fase 4 |
 | Riga di scadenza | `RigaScadenza.tsx` | fatta nella fase 4 |
-| Dialogo di conferma | `DialogoElimina.tsx`, dentro un `FoglioDalBasso` con `ruolo="alertdialog"` e `livello={2}` | fatto nella fase 4 |
+| Dialogo di conferma | `src/components/DialogoConferma.tsx`, dentro un `FoglioDalBasso` con `ruolo="alertdialog"`; `DialogoElimina.tsx` della Dispensa ne è un uso | generalizzato nella fase 5: tono `distruttivo` in `--errore` e `primario` in `--ink` (Esci) |
 | Anteprima di scansione | `LettoreCodice.tsx` + `src/components/useLettoreCodici.ts` (la lettura, condivisa con `Scanner.tsx`); l'esito in `ScansioneConfezione.tsx` | fatta nella fase 4 |
 | Nuovo ingrediente | `NuovoIngrediente.tsx` | fatto nella fase 4; non è una voce di `DESIGN.md` §8, lo descrive la spec della fase 4 §C |
+| Editor dell'ingrediente | `src/app/(app)/piatti/[id]/ingredienti/[ingId]/page.tsx` | frame 12 della fase 5: SALVA nel Dock senza barra, scansione con `LettoreCodice`; non è una voce di `DESIGN.md` §8 |
 | Tasto di scatto · Banda dei comandi · Striscia dei fogli presi | `src/app/(app)/importa/Camera.tsx` (+ `.scatto`, `.guida-angolo` in `globals.css`), «Rivedi i fogli presi» in `src/app/(app)/importa/FogliPresi.tsx` | fatti nella fase 3 |
 | Stato vuoto · Campo di testo · Scheda · Etichetta di sezione · Messaggi | sparsi nelle pagine, in stile inline; la modalità ricerca del Campo di testo vive in `src/app/(app)/piatti/ElencoPiatti.tsx` | scelta del progetto, non una deriva (§6, prima riga) |
 | Foglio dal basso | `src/components/FoglioDalBasso.tsx` (con `TestataFoglio` e `TondoFoglio`); prima di lui, scritti a mano, `src/components/FoglioAzioniPasto.tsx` e `src/app/(app)/importa/FogliPresi.tsx` | componente dalla fase 4: i quattro fogli della Dispensa; gli altri due non sono stati migrati |
@@ -144,25 +146,30 @@ nuovo nasce già sulla scala.
    deve cambiare con `data-barra`**: una coda che cambia con la barra fa ritagliare `scrollTop`
    dal browser e lascia l'ultima voce dietro il Dock — il perché, misurato, sta nel commento in
    `globals.css`. La spec e il piano del 21/09 nominano ancora `--coda-dock-giu`: non esiste.
+   Una schermata che nasconde la barra non fa niente per il Dock: lo sposta `.dock-senza-barra`.
 
 ---
 
 ## 9. Cosa il codice non ha ancora
 
-Il conto aperto verso `DESIGN.md` v3, al 25/09/2026.
+Il conto aperto verso `DESIGN.md` v3, al 26/09/2026.
 
 - **La fase 2 (Lista e Piano) è chiusa** il 22/09 (PR #4). Le decisioni prese durante
   l'esecuzione, con il costo di ognuna, stanno in `docs/2026-09-22-fase2-decisioni-esecuzione.md`.
 - **La fase 3 (Piatti e fotocamera) è chiusa con la PR del ramo `redesign/piatti-fotocamera`**.
 - **La fase 4 (Dispensa) è chiusa con la PR del ramo `redesign/dispensa`**. Le decisioni prese
   durante l'esecuzione stanno in `docs/2026-09-25-fase4-decisioni-esecuzione.md`.
-- **La schermata non ancora ridisegnata**: Impostazioni a pannello (fase 5).
-- **55 token dichiarati nel design e assenti dal codice** [misurato il 25/09 con le funzioni del guardiano, a
-  fase 4 finita, e invariato dal 23/09: `tokens.css` ne dichiara 115, `src/app/globals.css` ne ha 62, 60 in comune, 0
-  divergenti; prima della fase 3 erano 54 nel codice e 52 in comune, il 21/09 48 e 45]. Sono soprattutto la scala tipografica
+- **La fase 5 (Impostazioni) è chiusa con la PR del ramo `fase5-impostazioni`**. Le decisioni prese
+  durante l'esecuzione, le misure nel browser e i gate di Andrea stanno in
+  `docs/2026-09-25-fase5-decisioni-esecuzione.md`. Con lei tutte le schermate di `DESIGN.md` v3 sono
+  ridisegnate.
+- **53 token dichiarati nel design e assenti dal codice** [misurato il 26/09 con le funzioni del guardiano, a
+  fase 5 finita: `tokens.css` ne dichiara 118, `src/app/globals.css` ne ha 67, 65 in comune, 0
+  divergenti (`npm run design:token`); il 25/09, a fase 4 finita, erano 115, 62 e 60, con 55 assenti; prima della
+  fase 3 erano 54 nel codice e 52 in comune, il 21/09 48 e 45]. Sono soprattutto la scala tipografica
   (`--testo-*`), le spaziature (`--spazio-*`), i raggi (`--raggio-*`) e il moto. Del Dock ne
   restano solo due, `--dock-altezza` e `--dock-pillola`: gli altri sono entrati con la fase 2.
-  I 55 il codice li ha scritti a mano dentro i componenti, e finché è così cambiare un raggio
+  I 53 il codice li ha scritti a mano dentro i componenti, e finché è così cambiare un raggio
   nel design vuol dire cercarlo nei file. Si portano dentro **una famiglia per volta, sulle
   schermate che si stanno già toccando**, non in un refactor a sé.
 - **Due token che il codice ha e il design non nomina**: `--coda` e `--fine` (il design li
@@ -171,5 +178,5 @@ Il conto aperto verso `DESIGN.md` v3, al 25/09/2026.
 
 Che `tokens.css` e `globals.css` non divergano in silenzio non è più affidato alla memoria:
 `npm test` fallisce se lo stesso token vale due cose diverse
-(`scripts/__tests__/token-check.test.ts`, da solo con `npm run design:token`). I 55 e i 2 qui
+(`scripts/__tests__/token-check.test.ts`, da solo con `npm run design:token`). I 53 e i 2 qui
 sopra il test li riporta come lavoro aperto, non come errore.

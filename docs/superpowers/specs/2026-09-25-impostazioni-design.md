@@ -136,8 +136,11 @@ legge `impostazioni` da `window.location.search`. Non usa `useSearchParams`, cos
 `cima` e gli otto `SottoSchermata`. Un valore sconosciuto vale `cima`.
 
 **Cosa fa quando lo trova:**
-1. toglie il parametro con `window.history.replaceState(null, '', pathname)`, **prima** di
-   aprire;
+1. toglie il parametro con `window.history.replaceState(window.history.state, '', pathname)`,
+   **prima** di aprire. Lo stato della voce si passa com'è, **mai** `null`: l'effetto del
+   provider gira prima che l'`AppRouter` di Next avvolga la History API, e con `null` la voce
+   perde lo stato di Next (`__NA`), che al primo indietro ricarica la pagina [misurato, sonda
+   del Task 2 del piano, misura B e variante B′; registro, decisione 14];
 2. apre il pannello su quella sotto-schermata;
 3. ripristina lo scorrimento del corpo, se in `sessionStorage` c'è un'altezza salvata per quella
    sotto-schermata (`spesa:pannello-scroll:{sotto}`), e subito dopo la cancella.
@@ -195,11 +198,16 @@ URL. Se il pannello si chiude e subito si fa `router.push`, il `go(-n)` dell'hoo
 corrono insieme.
 - **Regola:** prima si chiude il pannello, poi si naviga, al `popstate` che conclude il
   `go(-n)`. L'hook espone per questo `chiudiTuttoPoi(fn)`: consuma tutte le voci ed esegue `fn`
-  al `popstate` atteso, o subito se non ci sono voci.
-- **[ipotesi]** Funziona con Next 16 come il `go(-2)` misurato nella PR #7. Va **misurato nella
-  sonda** (§M.3) prima di costruirci sopra.
-- **Ripiego, se la misura lo smentisce:** `router.replace` al posto di `push`. Le voci orfane
-  restano, già accettate nella fase 3 (§K di quella spec).
+  **un giro dopo** (`setTimeout(fn, 0)`) il `popstate` atteso, o un giro dopo l'effetto se non
+  ci sono voci.
+- **Perché un giro dopo [misurato, sonda del Task 2 del piano].** L'ascoltatore `popstate`
+  dell'hook è registrato prima di quello di Next: una `router.push` fatta dentro il `popstate`
+  parte, e subito dopo la traversata di Next la scarta (la pagina nuova non arriva e la
+  cronologia resta con una voce in più). Con `fn` differita di un giro la pagina arriva, con una
+  sola voce dopo l'origine, e l'indietro torna all'origine col pannello chiuso, nello stesso
+  documento. Rimisurato sul pannello vero dal Task 15 (tessera Piatti da `/lista`): registro,
+  «Le misure nel browser».
+- Il ripiego che la spec del 25/09 prevedeva (`router.replace` al posto di `push`) non è servito.
 
 ---
 
@@ -445,7 +453,9 @@ In testa c'è la nota di oggi. Sotto, sei righe da 56, ognuna con quadratino, no
   che diventa `PERSONALIZZATO`, quando si torna.
 
 **Gli errori:**
-- `Non siamo riusciti a salvare l'ordine. Riprova.` sopra il piede;
+- `Non siamo riusciti a salvare l'ordine. Riprova.` **dentro** il piede fisso, sopra
+  `SALVA ORDINE`: il piede è fuori dallo scorrimento, e l'errore resta attaccato al tasto che lo
+  causa anche col corpo scorso (scelta del controller del 26/09, P3; registro, decisione 76);
 - se il caricamento fallisce, `Non riusciamo a caricare l'ordine delle aree. Riprova più
   tardi.`.
 
@@ -499,7 +509,9 @@ nel piede, che apre il dialogo `esci-casa` (§D). Dopo l'uscita il pannello rest
 nello stato «da solo», e la tessera dice `SOLO TU`.
 
 **Gli errori** sono i testi di oggi, in 12,5 `--errore`, sotto il controllo che li ha causati.
-Dall'errore di `entraInCasa` si mostra il messaggio del server, se c'è.
+Dall'errore di `entraInCasa` si mostra il messaggio del server, se c'è. L'errore di
+`creaInvito` (`Non siamo riusciti a creare il codice. Riprova.`) sta dentro il piede fisso,
+sopra `CREA UN CODICE`, come quelli di Ordine delle aree ed Esporta (registro, decisione 76).
 
 **Lettura fallita (26):** compare solo `Non riusciamo a leggere la casa. Riprova più tardi.`,
 senza RIPROVA. La tessera non mostra il valore.
@@ -509,8 +521,10 @@ senza RIPROVA. La tessera non mostra il valore.
 In testa c'è il testo (§I). Nel piede fisso, **un primario con quattro stati:**
 1. `PREPARA IL FILE`;
 2. `PREPARO IL FILE…`: opacità 0,5, `disabled`, `aria-busy`;
-3. pronto: sopra il piede compare `Il file è pronto: dispesa-{gg-mm-aaaa}.json.`, con
-   `role="status"`, e il tasto diventa `SALVA IL FILE`;
+3. pronto: dentro il piede fisso, sopra il tasto, compare `Il file è pronto:
+   dispesa-{gg-mm-aaaa}.json.`, con `role="status"`, e il tasto diventa `SALVA IL FILE`. Il
+   nome mostrato è quello del file preparato (scelta del controller del 26/09, P3; registro,
+   decisione 70);
 4. errore: `Non siamo riusciti a preparare il file. Riprova.` e il tasto diventa `RIPROVA`.
 
 **Non parte da solo.** Chiudendo la sotto-schermata il file preparato si perde.
@@ -584,6 +598,12 @@ uso.
 | `esci` | `Uscire da Dispesa?` | `I tuoi dati restano. Per rientrare ti mandiamo un link a {email}.` | `ESCI` | primario | `Non siamo riusciti a farti uscire. Riprova.` |
 
 `{data}` è il lunedì corrente in forma lunga, come nella nota della rotazione (`24 agosto`).
+
+**Senza utente letto** (`leggiUtente` non lancia: se la lettura fallisce torna nome ed email
+vuoti), il testo di `esci` è `I tuoi dati restano. Per rientrare ti mandiamo un link via
+email.`, invece di «… un link a .»; e con nome ed email entrambi vuoti la riga informativa del
+gruppo Account non c'è, resta solo Esci (scelte del controller del 26/09; registro, decisioni
+38 e 39, fra le domande per Andrea).
 
 **Dopo `cancella-dispensa`**, la nota della riga diventa `Cancellata il {gg/mm} alle {hh:mm}.`
 fino alla chiusura del pannello.
@@ -826,7 +846,14 @@ vista della fase 4, e ha un `ANNULLA` alto 40 (scelta del controller del 26/09).
 
 **Letto il codice:**
 1. chiede il formato a `/api/prodotto/[ean]`, come fa la fase 4 in Nuovo ingrediente;
-2. riempie `CONFEZIONE` e l'unità, se l'API li dà;
+2. su un ingrediente **nuovo** riempie `CONFEZIONE` e l'unità, se l'API li dà. Su un
+   ingrediente che **esiste** l'unità non cambia mai: il formato si riempie solo se l'unità del
+   catalogo è quella del modulo, altrimenti compare il messaggio della fase 4 (`Unità diversa
+   (ml contro g): scrivi il formato a mano.`) e formato e unità restano. Un'unità cambiata su
+   un ingrediente usato nei piatti rompe la generazione della lista (`convertiInUnitaBase`
+   lancia `UnitaIncompatibileError`, che `generaListe` non cattura): è la regola della fase 4
+   per il dettaglio della Dispensa (`esitoDaCatalogo`, `formatoProposto`) (registro, decisioni
+   88 e 93, scelta del controller del 26/09);
 3. tiene l'EAN nello stato del modulo;
 4. chiude il foglio.
 
@@ -1089,6 +1116,57 @@ impostazione, Matrice, Tab bar, Testata, Dialogo di conferma e Marchio (avvio) v
   prima di chiuderlo (§A.4).
 - **Avvio su una pagina diversa da `/lista`** (un link profondo): l'animazione non parte.
 
+**I limiti trovati durante l'esecuzione** (26/09; il dettaglio e le prove stanno nel registro
+`docs/2026-09-25-fase5-decisioni-esecuzione.md`, alla sezione del task):
+- **Una cottura pianificata per domani o dopo perde il suo lotto** con Cancella la dispensa:
+  dopo la cottura le porzioni non compaiono in Dispensa finché N non si cambia dal Piano (C3(a),
+  Task 4) [ipotesi, dal codice letto (`aggiornaSlot`, `porzioniUtilizzabili`), non provato su
+  dati veri].
+- **Cambiare N su un pasto che aveva il lotto prima della cancellazione lo ricrea intero**, non
+  solo con la differenza (C3(b), Task 4) [ipotesi, dal codice letto, non provato su dati veri].
+- **Con D1 = A, nelle settimane già confermate o chiuse il residuo dopo la spesa sovrastima di
+  una porzione cruda per ogni pasto «dai pronti» riportato a normale**: l'`update` della
+  funzione non scrive il ledger degli storni. Si corregge dalla Dispensa (Task 4, decisione di
+  Andrea) [ipotesi, dal codice letto, non provato su dati veri].
+- **Con D2 = A, le confezioni della lista aperta restano quelle calcolate sul residuo di prima**:
+  la Lista può chiedere meno del necessario, e lo mostra nei numeri (Task 4, decisione di
+  Andrea) [ipotesi, dal codice letto, non provato su dati veri].
+- **Piano e Lista aperti sotto il pannello non si rileggono dopo Cancella la dispensa**: solo la
+  Dispensa ascolta `spesa:dispensa-cambiata` (§E.2). Il Piano mostra `Porzione pronta` su un
+  pasto che non lo è più, la Lista «in casa …», finché non si riaprono; toccare quel pasto è
+  innocuo (Task 4) [misurato: chi ascolta l'evento; l'innocuità letta in `aggiornaSlot`].
+- **Lo stesso dopo aver tolto un pasto**: il Piano o la Lista sotto il pannello tengono le righe
+  del pasto tolto finché non si rileggono (Task 8) [ipotesi, non testato].
+- **Togliere un pasto con piatti cancella a cascata anche i lotti Pronti di quei piatti**
+  (`porzione_pronta.dish_id … on delete cascade`), e il dialogo `rimuovi-pasto` non lo dice
+  (Task 8) [misurato, `0009_meal_prepping.sql` riga 17].
+- **Togliere un pasto con un import a metà o con la lista della settimana aperta** lascia un id
+  orfano nella bozza dell'import e porta via gli storni della settimana aperta; era così anche
+  con la pagina di prima (Task 8) [ipotesi, non testato].
+- **`current_date` di `cancella_dispensa()` dipende dal fuso del database**: al gate si controlla
+  che sia UTC (`show timezone;`) (Task 4) [ipotesi, da misurare al gate].
+- **La rilettura silenziosa della Dispensa dopo l'evento, se fallisce, lascia a schermo i dati di
+  prima** senza segnale (Task 4) [dal codice del piano, non testato nel browser].
+- **Esporta legge a pagine solo `meal_slot`**: `leggiPronti`, `leggiIngredienti` e
+  `leggiDispensa` non sono paginate, e oltre il tetto di righe di PostgREST il file uscirebbe
+  troncato in silenzio. Oggi i volumi ne sono lontani (Task 5) [ipotesi sui volumi; il tetto del
+  progetto è da leggere al gate].
+- **Esporta contiene solo i piatti attivi**: un pasto del piano può citare un `dishId` che il file
+  non elenca (Task 5) [misurato, `leggiRepertorio()`; fra le domande per Andrea].
+- **La cadenza cambiata vale dalla lista della prossima settimana confermata**, mentre
+  l'etichetta `CONTROLLO OGNI …` della Riga di controllo segue subito l'impostazione (Task 3)
+  [misurato nel codice, `generaListe` e `leggiListe`].
+- **Lo scorrimento salvato degli Ingredienti si rimette per 3 s al più**: se la lista arriva dopo,
+  il ritorno riparte dall'alto (Task 6, decisione 24) [misurato nel browser il 26/09 con dati
+  finti: rimesso a 700 su 700, vedi il registro].
+- **La pillola di Piatti, su una navigazione dal pannello, può rendere per un istante l'etichetta
+  vecchia**: letta da `sessionStorage` prima che l'URL nuovo ci sia (Task 11, decisione 78)
+  [misurato nel DOM il 26/09: `LISTA` per 3 ms, poi `IMPOSTAZIONI`; se arrivi allo schermo non è
+  misurato].
+- **Cambiare a mano l'unità di un ingrediente usato nei piatti rompe la generazione della
+  lista**, come prima della fase 5: la scansione non lo fa più (§F.1), il segmento sì (Task 12)
+  [letto nel codice, non riprodotto su dati veri].
+
 ---
 
 ## M. Test
@@ -1184,6 +1262,20 @@ misura:
 | Piede fisso del pannello | padding `12 12 26` [misurato sul disegno, frame 13] | `12 16 26` (§B.1) | i 16 dai lati del Dock (§G.1), che il piede sostituisce dentro il pannello |
 | Righe pasto del Piano | gap 8 (log §6) | gap 9, come il codice di oggi | nessun task tocca `piano/page.tsx` per un pixel; scelta del controller del 26/09 (§H) |
 | Scansione nell'editor | «come nella Dispensa v2» (frame 12) | `LettoreCodice`, non `Scanner` | è la vista della fase 4; `Scanner` è della fase 2 e ha un tasto sotto 44 (§F.1) |
+
+**Dove l'esecuzione si è discostata dalla spec del 25/09** (26/09; ognuna è una decisione del
+registro, qui allineata nel testo della spec):
+
+| Punto | Spec del 25/09 | Adesso | Perché |
+|---|---|---|---|
+| `replaceState` di `?impostazioni=` (§A.3) | `replaceState(null, …)` | `replaceState(window.history.state, …)` | con `null` il primo indietro ricarica la pagina [misurato, Task 2]; decisione 14 |
+| `chiudiTuttoPoi` (§A.5) | `fn` al `popstate` atteso | `fn` un giro dopo | dentro il `popstate` Next scarta la push [misurato, Task 2]; decisione 27 |
+| Scansione su un ingrediente esistente (§F.1, punto 2) | riempie formato e unità | l'unità non cambia; il formato solo nella stessa unità | un'unità cambiata rompe la lista; decisioni 88 e 93 |
+| Errore dell'ordine, «Il file è pronto…», errore di `creaInvito` (§C.5, §C.8, §C.7) | «sopra il piede» | dentro il piede fisso, sopra il tasto | restano attaccati al tasto col corpo scorso; decisioni 70 e 76, P3 |
+| Esci senza email (§D) | `… un link a {email}.` | `… un link via email.` | senza email letta la frase diceva «a .»; decisione 38 |
+| Riga dell'Account senza utente (§B.4) | la riga c'è sempre | senza nome né email non c'è | una riga vuota da 56 non dice niente; decisione 39 |
+| `DialogoConferma` (§D) | `inVolo` ed `errore` fra le prop | `erroreTesto`, e lo stato in volo lo tiene il componente | è la forma di `DialogoElimina` della fase 4; decisione 10 |
+| `Testata.indietro` (§G.2) | `{ etichetta, onTorna }` | `{ etichetta, ariaLabel, onTorna }` | il nome accessibile dice dove porta, diverso dall'etichetta; decisione 81 |
 
 ---
 

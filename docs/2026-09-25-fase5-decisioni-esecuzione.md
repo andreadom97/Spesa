@@ -215,6 +215,134 @@ effetto gira prima che Next avvolga `history`. Con `null` la voce perde `__NA`, 
 indietro l'`onPopState` di Next ricarica la pagina (`app-router.js`, righe 284–292). Con lo stato
 conservato, B′ ha dato tutti gli attesi di B (numeri sopra).
 
+### Sonda del Task 15: pannello, tab bar, striscia, avvio (spec §M.3, punti 2–5)
+
+**Come** [misurato il 26/09]: una pagina temporanea `src/app/auth/sonda-fase5/page.tsx` (fuori
+dal proxy di sessione) col `Guscio` vero, una `Testata`, due `StrisciaGiorni` (sei e tre pasti)
+e `LivelloAvvio` a comando; `next dev` alla porta 3100 con `NEXT_PUBLIC_SUPABASE_URL` e
+`ANON_KEY` finte; i finti di Supabase installati al caricamento del modulo, come dice il piano.
+In più (vedi «Tre note operative»): un Supabase finto da riga di comando sulla porta 54321, per
+far passare il proxy sulle pagine vere (`/lista`, `/piatti`, l'editor), e le misure a–d fatte
+su `/lista`, non sulla sonda. Dati finti: sei pasti, 24 ingredienti, casa «da solo». Il browser
+è quello del pannello di Claude, **nascosto** per tutta la sonda: le transizioni avanzano solo
+quando si disegna un fotogramma (vedi le note). Pagina, `.next/dev` e `next-env.d.ts` ripuliti
+dopo; viewport rimessa a `desktop`. Nessun errore in console.
+
+**Esito: tutte le soglie passano. Nessuna correzione dopo la sonda.**
+
+**Punto 2a, la matrice a sei pasti** (`?impostazioni=pasti-a-casa`, 42 celle):
+
+| Finestra | Celle | Larghezza min | Altezza min | Destra max / limite | Sinistra min | Scorre di lato | Esito |
+|---|---|---|---|---|---|---|---|
+| 360 × 800 | 42 | 44,57 (max 44,58) | 44 | 348 / 348 | 12 | 0 | passa (attesa 44,6 [calcolo, §C.1]) |
+| 375 × 812 | 42 | 46,71 | 44 | 363 / 363 | 12 | 0 | passa |
+| 393 × 852 | 42 | 49,28 | 44 | 381 / 381 | 12 | 0 | passa |
+
+Lo scroller è `.pannello-corpo`; anche il documento non scorre di lato (0 a 360). Screenshot a
+360: le sei righe da sette casette, Pranzo con sabato e domenica fuori casa (bianche), il
+riepilogo `Di base sei a casa per 40 pasti su 42. …` in fondo.
+
+**Punto 2b, il piede fisso** (corpo scorso in fondo):
+
+| Finestra | Sotto-schermata | Cima del piede | Fondo del piede | Fondo del contenuto | Coperto | Primario | Esito |
+|---|---|---|---|---|---|---|---|
+| 360 × 800 | Ordine delle aree | 707 | 800 | 597,5 | no | 54 | passa |
+| 360 × 800 | Esporta | 707 | 800 | 241 | no | 54 | passa |
+| 360 × 800 | Casa (da solo) | 707 | 800 | 423,5 | no | 54 | passa |
+| 375 × 812 | Ordine delle aree · Esporta · Casa | 719 | 812 | 597,5 · 241 · 423,5 | no | 54 | passa |
+| 393 × 852 | Ordine delle aree · Esporta · Casa | 759 | 852 | 597,5 · 220 · 402,5 | no | 54 | passa |
+
+A queste tre altezze nessuno dei tre corpi scorre (`scrollHeight − clientHeight` = 0): la
+soglia «non copre» è vera ma non messa alla prova. **Misura in più, a 360 × 560**, dove il corpo
+scorre: Ordine delle aree scorre di 157 (portato a 156,5), il contenuto finisce a 441 (l'ultimo
+tondo a 424), il piede comincia a 467: **non coperto**, 26 px d'aria che sono il padding in
+fondo al corpo. Casa a 360 × 560 non scorre (contenuto a 423,5, piede a 467). Screenshot di
+Ordine delle aree a 360 × 800: sei righe, `SALVA ORDINE` spento nel piede, il filetto sopra il
+piede. Non misurati: il piede con l'errore di salvataggio o con «Il file è pronto…» dentro
+(il Supabase finto non fallisce, e il file non è stato preparato).
+
+**Punto 2c, la tastiera sul campo `PERS`: NON ESEGUITO** (il browser della sessione non apre
+una tastiera virtuale): resta al telefono, §M.4.
+
+**Punto 3, la tab bar a 360 × 800:**
+
+| Stato | Larghezza × altezza | Voci | Lato sinistro / destro | Dal fondo | Esito |
+|---|---|---|---|---|---|
+| grande | 304 × 84 | 3 × (96 × 72) | 28 / 28 | 22 | passa |
+| ridotta (scrollTop 300) | 244 × 66 | 3 × (76 × 54) | 58 / 58 | 22 | passa |
+| grande (di nuovo a 0) | 304 × 84 | 3 × (96 × 72) | 28 / 28 | 22 | passa |
+
+`transition-property`: `height, width` (0,2 s ciascuna), senza `left` né `right`: passa. Le
+animazioni della barra erano finite a ogni misura (nessuna attesa scaduta).
+
+**Punto 4, la striscia a sei pasti:**
+
+| Finestra | Giorno più stretto | Somma + 6 gap | Ultimo a destra | Griglia | Dentro | Più alta di tre pasti | Scorre | Esito |
+|---|---|---|---|---|---|---|---|---|
+| 360 | 44,28 | 328 | 344 | 21 × 13 | sì | 8 (73,5 contro 65,5) | 0 | passa (atteso 44,29) |
+| 375 | 46,42 | 343 | 359 | 21 | sì | 8 | 0 | numeri scritti, senza soglia |
+| 393 | 49 | 361 | 377 | 21 | sì | 8 | 0 | numeri scritti, senza soglia |
+
+A tre pasti la griglia è 21 × 5 (una riga), a sei 21 × 13 (due righe da 5 e il gap 3).
+
+**Punto 5, l'arrivo dell'avvio** (barra grande, sonda in cima):
+
+| Finestra | dx | dy | dLarghezza | dAltezza | Marchio in volo a fine volo | Marchio della barra | Sotto il centro | Esito |
+|---|---|---|---|---|---|---|---|---|
+| 360 × 800 | 0 | 0 | 0 | 0,5 | 64,5; 718,5; 35 × 22,5 | 64,5; 718,75; 35 × 22 | un `div` della sonda, non il livello | passa |
+| 393 × 852 | 0 | 0 | 0 | 0,5 | 81; 770,5; 35 × 22,5 | 81; 770,75; 35 × 22 | un `div` della sonda, non il livello | passa |
+
+`dAltezza` 0,5 è quella attesa (22,5 contro 22, §J), e non si giudica. Il livello ha
+`pointer-events: none`. **Come è stata presa la fine del volo:** col pannello del browser
+nascosto la transizione del `transform` (620 ms, confermata da `getTiming()`) resta a
+`currentTime` 0 finché non si disegna un fotogramma, e la sua promessa `finished` non si
+risolve. La misura chiama `finish()` sull'animazione del `transform` a 1250 ms dal tocco (la
+classe è già `anim-avvio-volo`) e legge i rettangoli: è il punto d'arrivo che il componente ha
+calcolato, non una posizione a metà. Un primo giro a 360 senza `finish()`, letto a 1965 ms con
+la classe `anim-avvio-volo anim-avvio-svanisce`, aveva dato gli stessi numeri. **Lo screenshot a
+metà volo non si è potuto prendere**: a 1,4 s dal tocco lo schermo mostrava il solo fondo, con le
+caselle ferme a scala 0 (il pop non avanza senza fotogrammi). Uno screenshot dell'avvio vero su
+`/lista` (una scheda nuova, quindi prima volta nella sessione) mostra il Marchio 3 × 2 composto
+al centro sul fondo, poi la Lista con la tab bar. La variante `reduce`: NON ESEGUITO nel browser
+(questo browser non la emula), coperta dal test `non parte … con reduce` del Task 14.
+
+**Misure in più chieste dalle review dei Task 2–14** (a 360 × 800, pagine vere su `/lista`):
+- **a. Il ritorno agli Ingredienti rimette l'altezza** (`scorrimentoDi`, decisione 53, e il
+  `MutationObserver` della decisione 24). Corpo degli Ingredienti portato a 700 su 1144, tocco
+  vero su `Apri Ingrediente di prova 3` (in cima alla vista a 236,4): `sessionStorage` salva
+  `700` e l'origine `{"pathname":"/lista","sotto":"ingredienti"}`; l'editor si apre su
+  `/piatti/nuovo/ingredienti/i-2?torna=impostazioni`. Tocco vero sulla freccia `Torna agli
+  ingredienti`: si torna su `/lista` col pannello aperto sugli Ingredienti, senza animazione
+  (`data-istantaneo`), `scrollTop` **700**, la stessa riga a **236,4**, e la chiave salvata
+  cancellata. **Passa.** Le voci dopo il ritorno: `/lista`, l'editor, `/lista` e le due voci
+  del pannello su una sotto-schermata (il limite noto di §A.4).
+- **b. La pillola di Piatti su una navigazione client dal pannello** (decisione 78). Con
+  `spesa:piatti-da` = `lista` in `sessionStorage`, tessera Piatti da `/lista`: un
+  `MutationObserver` ha visto la pillola nascere con **`LISTA`** e, **3 ms** dopo, diventare
+  **`IMPOSTAZIONI`** (5070 e 5073 ms dall'inizio del registro). La decisione 78 sottostimava: non
+  solo il ricaricamento pieno, anche la navigazione dal pannello rende un'etichetta vecchia per
+  un render. Se quel render arrivi allo schermo non è misurato (con il pannello nascosto i
+  fotogrammi non si contano); 3 ms stanno sotto un fotogramma a 60 Hz (16,7 ms) [ipotesi: non si
+  vede]. Senza `spesa:piatti-da` salvato il valore di ripiego è `IMPOSTAZIONI`, lo stesso
+  dell'URL, e non si vede niente. Dalla sonda sotto `/auth` (primo ingresso nel gruppo `(app)`)
+  la pillola nasce già giusta: `PrimoAvvio` monta la pagina dopo la navigazione. **Non
+  corretto** (vedi «Rimasto aperto»).
+- **c. Il velo copre il Menù utente** (review del Task 6). Col pannello aperto
+  `elementFromPoint` al centro del Menù (303,5; 50) è `.pannello-velo`: `rgba(20, 22, 58,
+  0.55)`, z 70, tutta la finestra. Il Menù ha `aria-expanded="true"` e l'ombra `--ombra-nav`, ma
+  sta sotto il velo; `.guscio-main` è `inert`. Un tocco vero sul Menù **chiude il pannello
+  tramite il velo**: `aria-expanded="false"`, `data-stato="chiuso"`, e il fuoco torna al Menù
+  (`#menu-utente`). Il gesto funziona come dice §A.2; l'ombra del Menù aperto si vede velata.
+- **d. `chiudiTuttoPoi` + `router.push` dal pannello vero** (tessera Piatti, il punto 1 del
+  Task 2 rifatto sul componente). Su `/lista` all'indice 1 (L0 = 2): il Menù apre il pannello
+  (L 3, indice 2, due voci `/lista`); tocco vero su Piatti: `go(-1)` a 4981 ms, `replaceState`
+  di Next a 4992, `popstate` a 4994, `pushState('/piatti?da=impostazioni')` a 5068. Alla fine
+  `/piatti?da=impostazioni`, **L0 + 1** (voci: sonda, `/lista`, `/piatti?da=impostazioni`),
+  pagina Piatti presente. `history.back()`: `/lista`, pannello **chiuso**, stesso documento, un
+  `popstate`. **Passa.** Un primo giro dalla sonda (scheda appena aperta) aveva dato gli stessi
+  indirizzi, ma `history.length` di partenza non tornava (2, con l'API Navigation che ne elencava
+  una sola prima): si è rifatto su `/lista` leggendo anche `navigation.entries()`.
+
 ## Migrazione dei test (spec §M.2)
 
 Nessun test delle vecchie Impostazioni si cancella senza un sostituto. **Una regola sola per le
@@ -240,7 +368,8 @@ dal task che li tocca.
 nome. I dodici test di `useIndietroFogli` si spostano senza cambiare (Task 2, decisione 7) e
 non stanno qui.
 
-**Nota d'esecuzione (Task 1, ruling P9 del controller):** la riga 53 riporta il titolo con il
+**Nota d'esecuzione (Task 1, riga 9 del preflight del controller; fino al Task 15 qui c'era
+scritto per errore «ruling P9», che è un'altra cosa: l'ombra `--ombra-tessera`):** la riga 53 riporta il titolo con il
 `describe` davanti (`Testata (spec §D) › …`), perché il test vive dentro quel blocco annidato e
 il titolo da solo non basta a identificarlo — la stessa convenzione che la regola sopra chiede
 per «Test nuovo». Le altre righe restano al titolo esatto dell'`it(...)`, come la regola dice.
@@ -363,6 +492,25 @@ Ogni task aggiunge qui quello che non ha potuto provare fuori dal telefono.
   movimento né la posizione vera. La misura del punto d'arrivo resta alla sonda del Task 15,
   punto 5; il lampo del Guscio prima dell'idratazione (decisione 102) al telefono, gate §M.4.
 
+- **NON ESEGUITO nella sonda del Task 15**, ognuno con la prova di §M.4 che lo copre:
+  - **la tastiera sul campo `PERS`** (il browser della sessione non apre una tastiera virtuale):
+    nessuna prova di §M.4 la nomina; la proposta è di farla dentro «aprire e chiudere il
+    pannello da Lista, Piano e Dispensa», scrivendo un numero nel campo e guardando che la
+    tastiera numerica non copra la riga;
+  - **la variante `reduce` dell'avvio e del pannello** (questo browser non emula
+    `prefers-reduced-motion`): «l'avvio all'apertura della PWA» e «aprire e chiudere il
+    pannello», rifatti col moto ridotto acceso nel sistema. In jsdom li coprono i test del
+    Task 14 (`non parte … con reduce`) e le classi del Task 6;
+  - **la fotocamera che legge un codice nell'editor**: «una scansione nell'editor»;
+  - **un tocco vero sul Menù utente, col dito**: nella sonda il tocco è un clic del mouse
+    (misura c); col dito, «aprire e chiudere il pannello da Lista, Piano e Dispensa»;
+  - **il movimento**: salita del pannello, riduzione della barra, volo del Marchio. Col pannello
+    del browser nascosto le transizioni non avanzano senza fotogrammi: la sonda ha misurato i
+    punti d'arrivo, non le curve né lo screenshot a metà volo. Al telefono, con le prove sopra;
+  - **il piede fisso con un messaggio dentro** (l'errore di `SALVA ORDINE`, «Il file è
+    pronto…», l'errore di `creaInvito`): il Supabase finto non fallisce e il file non è stato
+    preparato. «Esporta e SALVA IL FILE» e «Casa: creare un codice» lo mostrano al telefono.
+
 ## Rimasto aperto, di proposito
 
 Ogni task aggiunge qui i minor che la review lascia aperti, col motivo.
@@ -388,6 +536,33 @@ Ogni task aggiunge qui i minor che la review lascia aperti, col motivo.
   più [ipotesi, non testato: l'effetto sul numero dipende da quali ingredienti la chiusura
   sovrascrive]. Le settimane già chiuse non si ricalcolano: la riapplicazione ha la sua guardia
   di idempotenza [letto nel commento di `lista.ts`, non testato]. Era così anche con la pagina di prima.
+- **La ricerca in Ingredienti (decisione 13 della spec).** La sotto-schermata elenca gli
+  ingredienti per area, senza campo di ricerca: resta fuori da questa fase.
+- **L'import del file esportato (§E.3).** Esporta scrive un file con `formato: 1`; rileggerlo è
+  un'altra funzione, fuori da questa fase.
+- **La metà «ultimo salvataggio» del piede (§N).** Il piede dice solo `Versione {x}`: un
+  «ultimo salvataggio» non è un dato che esiste.
+- **La pillola di Piatti rende un'etichetta vecchia per un render** (misura b del Task 15,
+  decisione 78): `LISTA` per 3 ms prima di `IMPOSTAZIONI`, sotto un fotogramma [ipotesi: non si
+  vede]. Non corretto: il rimedio (leggere `da` dai `searchParams` della pagina invece che da
+  `window.location`) cambia il modo in cui Piatti legge l'indirizzo, per un difetto non visto a
+  schermo. Da riaprire se al telefono la pillola lampeggia.
+- **I test intermittenti visti durante l'esecuzione, preesistenti o senza nome.** Nessuno è
+  stato corretto; nessuno è in un file di questa fase tranne l'ultimo, che lo è solo per lo
+  spostamento dell'hook:
+  - un fallimento **senza nome** allo Step 9 del Task 2, nel gruppo DialogoConferma /
+    FoglioDalBasso / lotto / pagina della Dispensa: una volta, poi 0 su 16 giri [misurato dal
+    Task 2; il titolo del test non è stato registrato];
+  - `src/app/(app)/lista/__tests__/page.test.tsx` › «il marchio segna mancante…»: 1 su 5 anche
+    da solo, e 1 su 10 già prima del Task 6 [misurato dal Task 6]: preesistente;
+  - `src/app/(app)/dispensa/__tests__/widget-ai.test.tsx` (il fuoco del `role="status"` del
+    widget AI): una volta in suite intera, verde da solo e alla riesecuzione [misurato dal
+    Task 5];
+  - `src/app/(app)/dispensa/__tests__/page.test.tsx` › «Dispensa: il gesto indietro › ELIMINA
+    dal dialogo (2 → 0) chiama go(-2) una volta»: una volta su quattro in un gruppo di file,
+    verde da solo quattro volte su quattro [misurato dal Task 12].
+  Nella verifica finale del Task 15 la suite intera è verde (vedi «Chiusura»). La causa comune
+  più probabile sono tempi sotto carico con timer veri [ipotesi, non indagata].
 
 ## Domande per Andrea (in review)
 
@@ -447,17 +622,117 @@ proposta. Andrea le vede in review.
   spiegano un concetto che l'utente non conosce (le classi di residuo) e il peso indicativo al
   banco. Se preferisci la pagina asciutta del frame, si tolgono in due righe.
 
+Le domande qui sotto le avevano scritte le review dei Task 4, 8, 10 e 12 nel registro di lavoro
+del controller; il Task 15 le riporta qui, così stanno tutte in un posto.
+
+- **Il fuso di `cancella_dispensa()` (Task 4, review).** La funzione riporta a normali i pasti
+  «dai pronti» con `data >= current_date`, e `current_date` è il giorno nel fuso del database.
+  Al gate la prima query di «Da fare all'applicazione della 0015» lo controlla (`show timezone;`,
+  atteso UTC). **Proposta:** va bene così, col controllo al gate. L'alternativa è fissare UTC
+  dentro la SQL (`(now() at time zone 'utc')::date`): una riga, ma cambia la migrazione.
+- **`TOGLI` su un pasto che nel frattempo è sparito chiude il dialogo senza dire niente (Task 8,
+  decisione 50).** Succede solo se un salvataggio fallito, mentre il dialogo si apriva, ha
+  riportato i pasti a quelli del server. **Proposta:** va bene così (il pasto non c'è più, e
+  il dialogo chiuso lo mostra). Se vuoi una frase, serve un testo nuovo.
+- **Il conteggio dei piatti da 0 a 1 per mano di un altro telefono (Task 8, review).** §L copre
+  il conteggio vecchio di un piatto nel dialogo; non copre il caso in cui a schermo il pasto
+  valeva 0 piatti (si toglie al tocco, senza dialogo) e intanto un altro telefono ci ha messo
+  un piatto: quel piatto se ne va senza che nessuno l'abbia confermato. **Proposta:** va bene
+  così, com'era con la pagina di prima (e `salvaSlotDefs` cancella anche i pasti che il client
+  non ha, preesistente); rileggere il repertorio a ogni ✕ costerebbe una lettura per tocco.
+- **Il salvataggio del file che fallisce dice «preparare» (Task 10, decisione 69).** Se
+  `salvaFile` rigetta (raro: una condivisione fallita ripiega già sul download), compare
+  `Non siamo riusciti a preparare il file. Riprova.`. **Proposta:** un testo proprio, per
+  esempio `Non siamo riusciti a salvare il file. Riprova.` — da confermare, non l'ho scritto.
+- **Dal piatto, il codice di un altro ingrediente (Task 12, review).** Nell'editor aperto da un
+  piatto, scansionando il codice che è già di un altro ingrediente, `APRI {NOME}` apre
+  quell'ingrediente; tornando al piatto, l'ingrediente aperto non viene aggiunto al piatto.
+  **Proposta:** va bene così (`APRI` apre, non sostituisce); se vuoi che lo aggiunga, serve una
+  regola nuova per il ritorno al piatto.
+- **Il codice della casa letto come «immagine» (Task 10, decisione 74).** Lo screen reader
+  annuncia il ruolo `img` insieme a `Codice della casa: K 7 M …`. **Proposta:** va bene così;
+  l'alternativa è un testo nascosto compitato.
+
 ## I gate di Andrea, in ordine
 
-1. **L'ok alla migrazione `0015`** in produzione (`supabase/migrations/0015_cadenza_e_dispensa.sql`:
-   `settings.giorni_controllo` e `cancella_dispensa()`), **prima del merge**: Vercel pubblica da
-   solo al merge (spec §O).
-2. **La migrazione applicata**, con le query di controllo di «Task 4 › Da fare all'applicazione
-   della 0015».
-3. **Il merge della PR**, che va in produzione da solo.
-4. **Le prove dal telefono** della spec §M.4, più quelle della sezione «Non eseguiti»: il foglio
-   di condivisione di Esporta, e un logout (D3) verificato dallo stare dentro su un secondo
-   dispositivo.
+1. **L'ok alla migrazione `supabase/migrations/0015_cadenza_e_dispensa.sql`**: la colonna
+   `settings.giorni_controllo` e la funzione `cancella_dispensa()`.
+2. **La migrazione applicata in produzione prima del merge**, con le query di controllo di
+   «Task 4 › Da fare all'applicazione della 0015» (e il `max_rows` di PostgREST, «Non
+   eseguiti»). Vercel pubblica da solo al merge su `main`, e il codice nuovo legge
+   `giorni_controllo`. La migrazione è additiva: la colonna ha un default e la funzione è nuova,
+   quindi il codice di oggi continua a funzionare con la migrazione applicata (spec §O).
+3. **Il merge della PR**: va in produzione senza altri comandi.
+4. **Le prove dal telefono** della spec §M.4, una per una, più quelle della sezione «Non
+   eseguiti» (il foglio di condivisione di Esporta, un logout D3 verificato dallo stare dentro
+   su un secondo dispositivo, la tastiera sul campo `PERS`, il moto ridotto). **Cancella la
+   dispensa solo su un account di prova, o dopo un Esporta.**
+
+## Chiusura (Task 15)
+
+**La copertura dei test vecchi, chiusa.** I 52 test delle due pagine vecchie (`P` 47, `R` 5)
+hanno ognuno la sua coppia nella tabella «Migrazione dei test»: 52 test nuovi distinti, uno per
+riga [misurato il 26/09: 52 titoli diversi nella colonna «Test nuovo» delle righe 1–52]. Lo
+script dello Step 12 del Task 11, lanciato prima di cancellare i due file: `test vecchi: 52;
+senza coppia valida nel registro: 0`, uscita 0 (decisione 80). Le righe 53–57 (Testata e
+`utente.ts`) sono compilate. I test del pannello, oggi: 182 casi in `src/components/pannello`
+[misurato il 26/09 con `npx vitest list src/components/pannello`].
+
+**La verifica finale** [misurato il 26/09, a codice del Task 15 fermo]: `npx vitest run` 136 file
+verdi e 1 saltato, **2019 test verdi e 1 saltato**; `npx tsc --noEmit`, `npm run lint`,
+`npm run design:token` e `npm run build` puliti (i numeri precisi nel rapporto del Task 15).
+
+**Tre note operative per chi viene dopo** (dalla sonda del Task 15):
+1. **Le pagine vere dietro il proxy si provano con un Supabase finto da riga di comando.** Un
+   server `node:http` di poche righe sulla porta 54321 risponde a `GET /auth/v1/user` (il
+   `getUser` del proxy), alle letture di `/rest/v1/*` e alle RPC, con CORS aperto; nel browser
+   un cookie `sb-localhost-auth-token=base64-{sessione in base64url}` con `expires_at` lontano
+   fa passare il proxy su `/lista`, `/piatti` e l'editor. I finti dentro la pagina della sonda
+   (quelli del piano) valgono solo finché quel modulo è caricato: dopo un caricamento pieno di
+   un'altra pagina li sostituisce il server finto. Il server sta fuori dal repo.
+2. **`history.length` si ferma a 50** in una scheda usata a lungo: la misura d si fa in una
+   scheda nuova, e conviene leggere anche `navigation.entries()` e
+   `navigation.currentEntry.index`, che dicono le voci per indirizzo.
+3. **Col pannello del browser nascosto** le transizioni CSS restano a `currentTime` 0 e le
+   promesse `finished` non si risolvono; `requestAnimationFrame` non parte (uno script che lo
+   aspetta va in timeout). Per un punto d'arrivo: `animation.finish()` e poi i rettangoli; per
+   un'attesa: `setTimeout`. Il movimento vero resta al telefono.
+
+**Per la PR** (la apre chi coordina, dopo la review finale):
+
+```markdown
+## Fase 5 del ridisegno: le Impostazioni
+
+Le Impostazioni diventano un pannello a due livelli montato nel Guscio, sopra qualunque pagina:
+quattro tessere (Piatti, Importa un piano, Casa condivisa, Esporta i tuoi dati) e otto
+sotto-schermate (Pasti a casa, Gestione dei pasti, Rotazione del piano, Ingredienti, Ordine
+delle aree, Cadenza dei controlli, Casa, Esporta), con `?impostazioni=` e il gesto indietro.
+La tab bar passa a tre voci (Piatti esce), l'editor dell'ingrediente prende il frame 12 con la
+scansione, la striscia dei giorni regge sei pasti a 360, e all'apertura il Marchio vola
+sull'icona della Lista.
+
+Funzioni nuove: la cadenza dei controlli (30/60/90 giorni), Cancella la dispensa, Esporta i
+tuoi dati in JSON, Esci. Migrazione `0015_cadenza_e_dispensa.sql` (additiva): **va applicata
+in produzione prima del merge**.
+
+Decisioni, misure nel browser e limiti: `docs/2026-09-25-fase5-decisioni-esecuzione.md`.
+
+### Prove dal telefono (spec §M.4)
+- [ ] aprire e chiudere il pannello da Lista, Piano e Dispensa, anche col gesto indietro
+- [ ] Piatti dal pannello e ritorno
+- [ ] un ingrediente dagli Ingredienti, SALVA e ritorno alla stessa altezza
+- [ ] una scansione nell'editor
+- [ ] Casa: creare un codice, COPIA
+- [ ] Esporta e SALVA IL FILE (iOS e Android)
+- [ ] cambiare la cadenza e guardare la Riga di controllo
+- [ ] Cancella la dispensa: solo su un account di prova, o dopo un Esporta
+- [ ] Esci e rientro col link
+- [ ] il Piano a sei pasti su un Android da 360
+- [ ] l'avvio all'apertura della PWA
+- [ ] (dai «Non eseguiti») la tastiera sul campo PERS, e pannello e avvio col moto ridotto
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+```
 
 ## Task 3
 
