@@ -217,8 +217,10 @@ Il comportamento non cambia: al tocco aggiunge la riga e chiude. Va in un file a
   salvataggio sopra il Dock, fuori dalla pillola, su fondo bianco, con `role="alert"`.
 - **Spento finché il modulo non cambia** rispetto al piatto caricato. Su `/piatti/nuovo`, spento
   finché il modulo è vuoto.
-- **Validità.** Con un modulo cambiato ma non valido `SALVA` è acceso: il tocco mostra la ragione,
-  come oggi, e non scrive.
+- **Validità.** Com'è oggi: `SALVA` è spento anche quando il modulo non è valido, e la ragione resta
+  scritta dove sta oggi nel modulo (per esempio `TESTO_SENZA_INGREDIENTI`), non al tocco [letto nel
+  test «un piatto nuovo, senza ingredienti, ha il salvataggio bloccato»]. Il tasto dice `SALVA` (oggi
+  `SALVA PIATTO`), come nell'editor dell'ingrediente.
 - **In volo**: lo stato spento del sistema (`DESIGN.md` §13, 26/09, punto 6). **Nota:** l'editor
   dell'ingrediente in volo usa ancora `SALVATAGGIO…` a opacità 0,5 (frame 12). Qui si segue la regola
   del 26/09; l'allineamento dell'ingrediente è un punto aperto (§E).
@@ -285,8 +287,8 @@ Il comportamento non cambia: al tocco aggiunge la riga e chiude. Va in un file a
     - la Riga piatto nei due modi;
     - la ricerca in Scegli;
     - `SOSTITUISCI` nel Dock, spento senza cambiamenti;
-    - l'editor sempre modificabile, con `SALVA` spento senza cambiamenti, acceso e bloccato dalla
-      ragione di validità, che scrive e torna a `/piatti`;
+    - l’editor sempre modificabile, con `SALVA` spento senza cambiamenti o con un modulo non valido
+      (la ragione resta scritta nel modulo), che scrive e torna a `/piatti`;
     - `ELIMINA` dal dialogo;
     - il selettore in un `FoglioDalBasso`;
     - la testata condivisa.
