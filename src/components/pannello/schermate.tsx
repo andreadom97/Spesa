@@ -9,11 +9,8 @@ import { Rotazione } from './Rotazione';
 import { Ingredienti } from './Ingredienti';
 import { OrdineAree } from './OrdineAree';
 import { Cadenza } from './Cadenza';
-
-/** Il contenuto di una sotto-schermata prima del suo task: niente. I Task 9–10 lo sostituiscono. */
-function SottoSchermataVuota() {
-  return null;
-}
+import { Casa } from './Casa';
+import { Esporta } from './Esporta';
 
 /** Il contenuto della cima (spec §B.3, §B.4). */
 export const CIMA: ComponentType = Cima;
@@ -26,6 +23,6 @@ export const SCHERMATE: Record<SottoSchermata, { titolo: string; Componente: Com
   ingredienti: { titolo: 'Ingredienti', Componente: Ingredienti },
   aree: { titolo: 'Ordine delle aree', Componente: OrdineAree },
   cadenza: { titolo: 'Cadenza dei controlli', Componente: Cadenza },
-  casa: { titolo: 'Casa condivisa', Componente: SottoSchermataVuota },
-  esporta: { titolo: 'Esporta i tuoi dati', Componente: SottoSchermataVuota },
+  casa: { titolo: 'Casa condivisa', Componente: Casa },
+  esporta: { titolo: 'Esporta i tuoi dati', Componente: Esporta },
 };
