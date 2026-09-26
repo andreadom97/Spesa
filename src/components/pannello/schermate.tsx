@@ -6,6 +6,9 @@ import { Cima } from './Cima';
 import { PastiACasa } from './PastiACasa';
 import { GestionePasti } from './GestionePasti';
 import { Rotazione } from './Rotazione';
+import { Ingredienti } from './Ingredienti';
+import { OrdineAree } from './OrdineAree';
+import { Cadenza } from './Cadenza';
 
 /** Il contenuto di una sotto-schermata prima del suo task: niente. I Task 9–10 lo sostituiscono. */
 function SottoSchermataVuota() {
@@ -20,9 +23,9 @@ export const SCHERMATE: Record<SottoSchermata, { titolo: string; Componente: Com
   'pasti-a-casa': { titolo: 'Pasti a casa', Componente: PastiACasa },
   'gestione-pasti': { titolo: 'Gestione dei pasti', Componente: GestionePasti },
   rotazione: { titolo: 'Rotazione del piano', Componente: Rotazione },
-  ingredienti: { titolo: 'Ingredienti', Componente: SottoSchermataVuota },
-  aree: { titolo: 'Ordine delle aree', Componente: SottoSchermataVuota },
-  cadenza: { titolo: 'Cadenza dei controlli', Componente: SottoSchermataVuota },
+  ingredienti: { titolo: 'Ingredienti', Componente: Ingredienti },
+  aree: { titolo: 'Ordine delle aree', Componente: OrdineAree },
+  cadenza: { titolo: 'Cadenza dei controlli', Componente: Cadenza },
   casa: { titolo: 'Casa condivisa', Componente: SottoSchermataVuota },
   esporta: { titolo: 'Esporta i tuoi dati', Componente: SottoSchermataVuota },
 };

@@ -28,6 +28,9 @@ vi.mock('@/data/casa', async () => {
   return { statoCasa: vi.fn(), dimenticaIdCasa: vi.fn(), eRifiutoRls: reale.eRifiutoRls };
 });
 vi.mock('@/data/risparmio', () => ({ leggiRisparmioTotale: vi.fn() }));
+// Dal Task 9 'ingredienti' monta la vera Ingredienti, che legge da sé: senza questo mock una
+// lettura vera (non finta) fallirebbe in console a ogni apertura su quella sotto-schermata.
+vi.mock('@/data/repertorio', () => ({ leggiIngredienti: vi.fn(async () => []) }));
 
 // Una sotto-schermata col piede fisso, per provare PiedePannello: le vere arrivano coi Task 8–10.
 vi.mock('../schermate', async () => {
