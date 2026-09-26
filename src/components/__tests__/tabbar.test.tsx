@@ -55,6 +55,14 @@ describe('TabBar (spec §C)', () => {
     expect(lista.querySelector('[data-area="cereali"]')).toHaveAttribute('data-stato', 'pieno');
   });
 
+  it('il segno della Lista porta data-marchio-barra, ed è l\'unico: è dove atterra l\'avvio (spec fase 5 §J)', () => {
+    monta();
+    const segni = document.querySelectorAll('[data-marchio-barra]');
+    expect(segni).toHaveLength(1);
+    expect(screen.getByRole('link', { name: 'Lista' })).toContainElement(segni[0] as HTMLElement);
+    expect(segni[0].querySelectorAll('[data-area]')).toHaveLength(6);
+  });
+
   it('il nav si chiama Sezioni e le etichette restano nel DOM (a barra ridotta sono nascoste dal CSS, non tolte)', () => {
     monta();
     expect(screen.getByRole('navigation', { name: 'Sezioni' })).toBeInTheDocument();

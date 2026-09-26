@@ -9,6 +9,7 @@ import { SlotDockProvider } from './dock-slot';
 import { PannelloProvider, usePannello, usePannelloInterno } from './pannello/PannelloProvider';
 import { DatiPannelloProvider } from './pannello/DatiPannello';
 import { Pannello } from './pannello/Pannello';
+import { AvvioMarchio } from './AvvioMarchio';
 
 export type StatoBarra = 'grande' | 'ridotta';
 
@@ -101,6 +102,9 @@ function GuscioInterno({ children }: { children: ReactNode }) {
       <DatiPannelloProvider>
         <Pannello />
       </DatiPannelloProvider>
+      {/* L'avvio del Marchio (spec fase 5 §J): sopra tutto, non prende tocchi, si
+          smonta da sé. Fuori da <main>, così la scala dell'app sotto il pannello non lo tocca. */}
+      <AvvioMarchio />
     </div>
   );
 }

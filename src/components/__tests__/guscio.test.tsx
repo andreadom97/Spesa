@@ -128,4 +128,20 @@ describe('Guscio', () => {
     expect(main).not.toHaveAttribute('inert');
     expect(slot).not.toHaveAttribute('inert');
   });
+
+  it('monta l\'avvio del Marchio su /lista, una volta per sessione (spec fase 5 §J)', () => {
+    percorso.valore = '/lista';
+    sessionStorage.clear();
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+    try {
+      const { container, unmount } = render(<Guscio><p>x</p></Guscio>);
+      expect(container.querySelector('[data-avvio]')).not.toBeNull();
+      unmount();
+      const secondo = render(<Guscio><p>x</p></Guscio>);
+      expect(secondo.container.querySelector('[data-avvio]')).toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
+      sessionStorage.clear();
+    }
+  });
 });

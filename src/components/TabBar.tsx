@@ -60,7 +60,8 @@ export function TabBar({ inerte = false }: { inerte?: boolean }) {
             aria-current={attiva ? 'page' : undefined}
             className={`barra-voce anim-barra-voce${attiva ? ' attiva' : ''}`}
           >
-            <span className="barra-segno">
+            {/* data-marchio-barra: il bersaglio dell'avvio del Marchio (spec fase 5 §J). */}
+            <span className="barra-segno" data-marchio-barra={voce.icona ? undefined : ''}>
               {voce.icona ? ICONE[voce.icona](colore) : <Marchio aree={aree} lato={9} gap={4} />}
             </span>
             <span className="barra-etichetta anim-barra-etichetta">{voce.etichetta}</span>
