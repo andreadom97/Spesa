@@ -68,7 +68,7 @@ del file, è lì.
 | Riga pasto | `src/components/RigaPasto.tsx` | |
 | Riga piatto | `src/components/RigaPiatto.tsx` (spostata da `ElencoPiatti.tsx`) | fatta nella fase 3; modi `apri` e `scegli` dalla fase 7; con lei, condivisi fra Piatti e Scegli dalla fase 7, `CampoRicercaPiatti.tsx` e il vuoto di ricerca `VuotoRicercaPiatti.tsx` |
 | Striscia dei giorni | `src/components/StrisciaGiorni.tsx` | fase 5: pallini in griglia di tre colonne gap 3 (`posizionePallino`), sei pasti a 360 senza deroga |
-| Pannello impostazioni · Riga di impostazione | `src/components/pannello/`: `PannelloProvider.tsx`, `Pannello.tsx`, `Cima.tsx`, `TesserePannello.tsx`, `RigaImpostazione.tsx`, `CampoPersone.tsx`, `NotaRisparmio.tsx`, `PiedePannello.tsx`, `schermate.tsx`, i dati in `DatiPannello.tsx` | fatto nella fase 5: pannello a due livelli montato nel `Guscio`, otto sotto-schermate, `?impostazioni=` e gesto indietro con `src/components/useIndietroFogli.ts`; dalla fase 7 `RigaImpostazione` prende `etichetta` (l'`aria-label` della riga) e il valore sta al massimo a metà riga (la usa anche Scegli per i componenti) |
+| Pannello impostazioni · Riga di impostazione | `src/components/pannello/`: `PannelloProvider.tsx`, `Pannello.tsx`, `Cima.tsx`, `TesserePannello.tsx`, `RigaImpostazione.tsx`, `CampoPersone.tsx`, `NotaRisparmio.tsx`, `PiedePannello.tsx`, `schermate.tsx`, i dati in `DatiPannello.tsx` | fatto nella fase 5: pannello a due livelli montato nel `Guscio`, otto sotto-schermate, `?impostazioni=` e gesto indietro con `src/components/useIndietroFogli.ts`; dalla fase 7 `RigaImpostazione` prende `etichetta` (l'`aria-label` della riga) e il valore sta al massimo al 60% della riga (la usa anche Scegli per i componenti) |
 | Matrice dei pasti | `src/components/pannello/PastiACasa.tsx` | fatta nella fase 5: casetta al posto del pallino, 360 nel mandato |
 | Aggiungi tratteggiato | `src/components/AggiungiTratteggiato.tsx` dalla fase 7 (Piatti, Scegli, l'editor del Piatto) | fase 5: in fondo al blocco (Gestione dei pasti); `GestionePasti.tsx` ha ancora la sua copia |
 | Tessera di dispensa | `TesseraDispensa.tsx` | fatta nella fase 4: in casa con la tinta d'area al 26%, finita e mai comprata tratteggiate, una pillola di stato sola |
@@ -85,7 +85,7 @@ del file, è lì.
 | Editor dell'ingrediente | `src/app/(app)/piatti/[id]/ingredienti/[ingId]/page.tsx` | frame 12 della fase 5: SALVA nel Dock senza barra, scansione con `LettoreCodice`; non è una voce di `DESIGN.md` §8; la testata è `src/components/TestataModifica.tsx`, condivisa con l'editor del Piatto |
 | Editor del Piatto | `src/app/(app)/piatti/[id]/page.tsx`, `ComponentiPiatto.tsx`, `SelettoreIngrediente.tsx` | fatto nella fase 7: un modo solo, `TestataModifica`, `SALVA` nel Dock spento finché niente cambia o il modulo non è valido, `ELIMINA` nel Dialogo di conferma; non è una voce di `DESIGN.md` §8 |
 | Tasto di scatto · Banda dei comandi · Striscia dei fogli presi | `src/app/(app)/importa/Camera.tsx` (+ `.scatto`, `.guida-angolo` in `globals.css`), «Rivedi i fogli presi» in `src/app/(app)/importa/FogliPresi.tsx` | fatti nella fase 3 |
-| Stato vuoto · Campo di testo · Scheda · Etichetta di sezione · Messaggi | sparsi nelle pagine, in stile inline; la modalità ricerca del Campo di testo vive in `src/app/(app)/piatti/ElencoPiatti.tsx` | scelta del progetto, non una deriva (§6, prima riga) |
+| Stato vuoto · Campo di testo · Scheda · Etichetta di sezione · Messaggi | sparsi nelle pagine, in stile inline; la modalità ricerca del Campo di testo vive in `src/components/CampoRicercaPiatti.tsx` (dalla fase 7, condivisa fra Piatti e Scegli) | scelta del progetto, non una deriva (§6, prima riga) |
 | Foglio dal basso | `src/components/FoglioDalBasso.tsx` (con `TestataFoglio` e `TondoFoglio`); prima di lui, scritti a mano, `src/components/FoglioAzioniPasto.tsx` e `src/app/(app)/importa/FogliPresi.tsx` | componente dalla fase 4: i quattro fogli della Dispensa; gli altri due non sono stati migrati; anche il selettore degli ingredienti del piatto (`SelettoreIngrediente.tsx`) dalla fase 7 |
 | Porta | `src/components/Porta.tsx` | nata nello stato vuoto di Piatti, condivisa dalla fase 3 con Importa. Non è una voce di `DESIGN.md` §8 |
 | Icona ingrediente | `src/components/IconaIngrediente.tsx` (tracciati in `tracciati-ingredienti.ts`, catalogo in `src/domain/icone-ingredienti.ts`) | |
@@ -171,10 +171,10 @@ Il conto aperto verso `DESIGN.md` v3, al 26/09/2026.
   Le decisioni prese durante l'esecuzione stanno in `docs/2026-09-27-fase7-decisioni-esecuzione.md`.
   Restano fuori dal sistema la **fase 8** (i passi di Importa oltre le due porte e la fotocamera)
   e **Piatti veloce**, da ridisegnare come onboarding.
-- **Fuori dal sistema restano**, divisi in due fasi decise il 26/09: la **fase 7** (editor del
-  Piatto e Scegli; Piatti veloce è passata all'onboarding) e la **fase 8**
-  (i passi di Importa oltre le due porte e la fotocamera; probabilmente un selettore nuovo, quindi
-  un giro in Claude Design). L'audit del 26/09 li misura uno per uno.
+- **Fuori dal sistema resta** la **fase 8** (i passi di Importa oltre le due porte e la
+  fotocamera; probabilmente un selettore nuovo, quindi un giro in Claude Design), con Piatti veloce
+  passata all'onboarding. La fase 7 (editor del Piatto e Scegli), decisa insieme a lei il 26/09, è
+  chiusa (sopra). L'audit del 26/09 le misura una per una.
 - **53 token dichiarati nel design e assenti dal codice** [misurato il 26/09 con le funzioni del guardiano, dopo
   i sei `--tono-<area>` delle icone ingrediente: `tokens.css` ne dichiara 124, `src/app/globals.css` ne ha 73, 71
   in comune, 0 divergenti (`npm run design:token`); prima dei sei token del tono medio, a fase 5 finita, erano

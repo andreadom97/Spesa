@@ -755,9 +755,10 @@ RIPROVA: si rifà il gesto, e l'errore sparisce al gesto successivo.
 
 **Niente switch**, in nessuna forma.
 
-**Il valore** (dal 26/09, fase 7) sta al massimo a metà riga, poi va in ellissi: in Scegli il
-valore è il nome dell'opzione di un componente, che può essere lungo. Il testo intero resta nel
-nome accessibile della riga, se chi la monta lo passa (`etichetta`).
+**Il valore** (dal 26/09, fase 7) sta al massimo al 60% della riga, poi va in ellissi: in Scegli
+il valore è il nome dell'opzione di un componente, che può essere lungo. Il testo intero resta nel
+nome accessibile della riga, se chi la monta lo passa (`etichetta`). Il 60% e non la metà (review
+finale della fase 7): a 320 px metà riga è circa 127 px e «NESSUNO FUORI CASA» ne misura 133.
 
 ### Matrice dei pasti
 **Nuova il 19/09, riorientata il 20/09, ridisegnata il 25/09.** È la sotto-schermata `Pasti a
