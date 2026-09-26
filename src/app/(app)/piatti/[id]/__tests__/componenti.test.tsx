@@ -93,11 +93,19 @@ describe('ComponentiPiatto (spec fase 7 §B.3 punto 4)', () => {
 
   it('AGGIUNGI OPZIONE è un tasto secondario, senza il fondo 0,05', () => {
     const cb = rendi();
-    const opzione = screen.getByRole('button', { name: 'AGGIUNGI OPZIONE' });
+    const opzione = screen.getByRole('button', { name: 'Aggiungi opzione al componente 1' });
+    expect(opzione).toHaveTextContent('AGGIUNGI OPZIONE');
     expect(opzione.style.background).toBe('var(--superficie)');
     expect(opzione.style.height).toBe('54px');
     fireEvent.click(opzione);
     expect(cb.onAggiungiOpzione).toHaveBeenCalledWith('c-1');
+  });
+
+  it('con due componenti ogni AGGIUNGI OPZIONE ha il suo nome accessibile (review finale, M4)', () => {
+    const cb = rendi([PANE, { ...PANE, id: 'c-2', nome: 'Companatico' }]);
+    expect(screen.queryByRole('button', { name: 'AGGIUNGI OPZIONE' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Aggiungi opzione al componente 2' }));
+    expect(cb.onAggiungiOpzione).toHaveBeenCalledWith('c-2');
   });
 
   it('AGGIUNGI COMPONENTE è l’Aggiungi tratteggiato sotto i widget', () => {

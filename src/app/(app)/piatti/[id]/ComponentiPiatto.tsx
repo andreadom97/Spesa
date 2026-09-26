@@ -127,7 +127,11 @@ export function ComponentiPiatto({
             );
           })}
 
-          <TastoSecondario onClick={() => onAggiungiOpzione(componente.id)}>AGGIUNGI OPZIONE</TastoSecondario>
+          {/* Un nome per componente, come le altre etichette qui: con due componenti
+              «AGGIUNGI OPZIONE» da solo non dice quale (review finale, M4). */}
+          <TastoSecondario aria-label={`Aggiungi opzione al componente ${indiceComponente + 1}`} onClick={() => onAggiungiOpzione(componente.id)}>
+            AGGIUNGI OPZIONE
+          </TastoSecondario>
         </section>
       ))}
 
