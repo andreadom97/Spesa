@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import type { Dish, Ingredient, MealSlotDef } from '@/domain/types';
 import type { SettimanaCorrente } from '@/data/settimana';
 
@@ -479,6 +479,19 @@ describe('Piatto (editor)', () => {
     expect(screen.getByText(/Nessun ingrediente per "zafferano"/)).toBeInTheDocument();
     // Il modo per uscirne resta a portata di mano.
     expect(screen.getByRole('link', { name: /NUOVO\s*INGREDIENTE/ })).toBeInTheDocument();
+  });
+
+  it('il selettore degli ingredienti è un Foglio dal basso: la X lo chiude senza aggiungere niente', async () => {
+    render(<Piatto />);
+    await screen.findByPlaceholderText('Dai un nome al piatto');
+    fireEvent.click(screen.getByRole('button', { name: /AGGIUNGI\s*INGREDIENTE/ }));
+
+    const foglio = screen.getByRole('dialog', { name: 'Aggiungi ingrediente' });
+    expect(within(foglio).getByRole('button', { name: 'Yogurt greco' })).toBeInTheDocument();
+    fireEvent.click(within(foglio).getByRole('button', { name: 'Chiudi il foglio' }));
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByLabelText('Grammatura di Yogurt greco')).toBeNull();
   });
 
   it('un piatto caricato con componenti li mostra', async () => {

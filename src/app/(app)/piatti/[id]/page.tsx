@@ -8,10 +8,11 @@ import { salvaPiatto, leggiRepertorio, leggiIngredienti, eliminaPiatto } from '@
 import { leggiImpostazioni, leggiSlotDefs } from '@/data/impostazioni';
 import { leggiSettimanaCorrente } from '@/data/settimana';
 import { giorniDellaSettimana } from '@/domain/date';
-import { coloreArea, nomeArea } from '@/domain/aree';
+import { nomeArea } from '@/domain/aree';
 import { Segmento } from '@/components/Segmento';
 import { TesseraIngrediente } from '@/components/TesseraIngrediente';
 import { raccogliIngredienteCreato, riprendiBozza, salvaBozza, scartaBozza } from './bozza';
+import { SelettoreIngrediente } from './SelettoreIngrediente';
 
 const GIORNI_LABEL = ['LUN', 'MAR', 'MER', 'GIO', 'VEN', 'SAB', 'DOM'];
 const GIORNI_LUNGHI = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
@@ -85,19 +86,6 @@ function testoRiepilogo(nCasa: number, nFuori: number): string {
 }
 
 /**
- * Confronto tollerante agli accenti: chi cerca "caffe" deve trovare "Caffè",
- * perché sulla tastiera del telefono l'accento costa un tocco in più e
- * nessuno lo mette per cercare.
- */
-function normalizza(testo: string): string {
-  return testo
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim();
-}
-
-/**
  * Editor della ricetta: crea (`id === 'nuovo'`) o modifica un piatto del
  * repertorio. Il marchio non compare in questa schermata (niente Testata:
  * l'header qui è quello minimale degli artboard Piatto/VuotoPiatto, non il
@@ -142,7 +130,6 @@ export default function Piatto() {
   const [selettore, setSelettore] = useState<
     { tipo: 'principale' } | { tipo: 'opzione'; componenteId: string; opzioneId: string } | null
   >(null);
-  const [ricerca, setRicerca] = useState('');
   const [confermaEliminazione, setConfermaEliminazione] = useState(false);
   const [eliminando, setEliminando] = useState(false);
   const nomeRef = useRef<HTMLTextAreaElement>(null);
@@ -254,8 +241,9 @@ export default function Piatto() {
   /**
    * Unico punto in cui il selettore aggiunge davvero un ingrediente,
    * qualunque sia il target aperto: alla lista fissa `ingredienti` o alle
-   * righe di un'opzione. Stesso selettore, stesso comportamento di sempre
-   * (compreso l'azzeramento della ricerca), solo con una destinazione in più.
+   * righe di un'opzione. Chiuderlo smonta `SelettoreIngrediente` e con lui
+   * la ricerca: riaprendolo si riparte dall'elenco intero, perché la ricerca
+   * di prima non ha niente a che vedere con l'ingrediente successivo.
    */
   function aggiungiIngrediente(ing: Ingredient) {
     if (!selettore) return;
@@ -265,9 +253,6 @@ export default function Piatto() {
       aggiungiRigaOpzione(selettore.componenteId, selettore.opzioneId, ing);
     }
     setSelettore(null);
-    // Riaprendo il selettore si riparte dall'elenco intero: la ricerca di
-    // prima non ha niente a che vedere con l'ingrediente successivo.
-    setRicerca('');
   }
 
   function cambiaQuantita(ingredientId: string, quantita: number) {
@@ -582,11 +567,6 @@ export default function Piatto() {
           ?.righe ?? [])
       : ingredienti;
   const nonAncoraNelPiatto = catalogo.filter((i) => !righeTargetSelettore.some((r) => r.ingredientId === i.id));
-  // La ricerca cerca dentro il nome, non solo all'inizio: "pomo" trova sia
-  // "Pomodori" sia "Passata di pomodoro".
-  const disponibili = ricerca.trim()
-    ? nonAncoraNelPiatto.filter((i) => normalizza(i.nome).includes(normalizza(ricerca)))
-    : nonAncoraNelPiatto;
 
   const giorniSettimana = dataInizioSettimana ? giorniDellaSettimana(dataInizioSettimana) : [];
   const giorni = GIORNI_LABEL.map((label, i) => {
@@ -1077,90 +1057,13 @@ export default function Piatto() {
       </div>
 
       {selettore && (
-        <div
-          onClick={() => {
-            setSelettore(null);
-            setRicerca('');
-          }}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(20,22,58,0.35)', display: 'flex', alignItems: 'flex-end', zIndex: 50 }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="sc"
-            style={{
-              width: '100%',
-              maxHeight: '70vh',
-              overflowY: 'auto',
-              background: '#FFFFFF',
-              borderRadius: '22px 22px 0 0',
-              padding: '18px 16px 24px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 4,
-            }}
-          >
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--ink)', margin: '0 6px 8px' }}>
-              AGGIUNGI INGREDIENTE
-            </div>
-
-            {/* Niente autoFocus: su un telefono aprirebbe la tastiera addosso
-                alla lista, e chi vuole solo scorrere si troverebbe metà
-                schermo occupato senza averlo chiesto. Compare solo quando la
-                lista è abbastanza lunga da rendere lo scorrimento peggiore
-                della digitazione. */}
-            {nonAncoraNelPiatto.length > 8 && (
-              <input
-                type="search"
-                value={ricerca}
-                onChange={(e) => setRicerca(e.target.value)}
-                placeholder="Cerca"
-                aria-label="Cerca un ingrediente"
-                style={{
-                  height: 44, margin: '0 2px 10px', padding: '0 14px',
-                  borderRadius: 14, border: '1px solid var(--bordo)',
-                  background: 'var(--fondo)', color: 'var(--ink)',
-                  fontSize: 15, outline: 'none',
-                }}
-              />
-            )}
-
-            {disponibili.length === 0 && (
-              <div style={{ fontSize: 13, color: 'var(--sec)', padding: '8px 6px' }}>
-                {ricerca.trim()
-                  ? `Nessun ingrediente per "${ricerca.trim()}". Puoi crearlo qui sotto.`
-                  : 'Hai già aggiunto tutti gli ingredienti del repertorio.'}
-              </div>
-            )}
-            {disponibili.map((ing) => (
-              <button
-                key={ing.id}
-                type="button"
-                onClick={() => aggiungiIngrediente(ing)}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 6px', minHeight: 44, borderRadius: 12 }}
-              >
-                <span style={{ width: 8, height: 8, borderRadius: 2.6, flex: 'none', background: coloreArea(ing.area) }} />
-                <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>{ing.nome}</span>
-              </button>
-            ))}
-            {/* Disponibile anche aprendo il selettore da un'opzione: da qui in
-                avanti `riparaBozzaPrimaDiUscire` mette al riparo anche
-                `componenti` (vedi BozzaPiatto in bozza.ts), quindi il viaggio
-                verso la creazione dell'ingrediente e ritorno non perde più le
-                modifiche fatte ai componenti fino a quel momento. */}
-            <Link
-              href={`/piatti/${id}/ingredienti/nuovo`}
-              onClick={riparaBozzaPrimaDiUscire}
-              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 6px', minHeight: 44 }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path d="M12 5v14M5 12h14" stroke="#14163A" strokeWidth="2.1" strokeLinecap="round" />
-              </svg>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--ink)' }}>
-                NUOVO INGREDIENTE
-              </span>
-            </Link>
-          </div>
-        </div>
+        <SelettoreIngrediente
+          ingredienti={nonAncoraNelPiatto}
+          onScegli={aggiungiIngrediente}
+          onChiudi={() => setSelettore(null)}
+          hrefNuovo={`/piatti/${id}/ingredienti/nuovo`}
+          onPrimaDiCreare={riparaBozzaPrimaDiUscire}
+        />
       )}
 
       {confermaEliminazione && (
