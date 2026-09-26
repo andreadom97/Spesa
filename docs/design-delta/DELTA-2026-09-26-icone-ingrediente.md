@@ -98,3 +98,8 @@ foto, nessun avatar: le icone ingrediente sono icone, non illustrazioni».
 > **Le icone ingrediente sono un'eccezione dichiarata** (26/09): sono icone di tratto del sistema (§6), non illustrazioni. Niente pieni, ombre, prospettiva o scene, e nessun uso fuori dalle tessere ingrediente. Le illustrazioni restano fuori.
 
 **§2.3:** colonna del tono medio (i sei hex) come ulteriore uso del colore d'area.
+
+## Esito del gate (26/09)
+
+64 icone (non 68): tolte kiwi, affettato, mais. Mozzarella confluisce su formaggio. Decisioni di
+mappatura: latta → pomodoro, scatoletta → pesce.
