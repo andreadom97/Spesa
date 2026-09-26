@@ -21,7 +21,9 @@ export const DURATA_CODICE_MS = 60 * 60_000;
 const CONTROLLO_SCADENZA_MS = 60_000;
 const DURATA_COPIATO_MS = 2000;
 
-// I testi di oggi (impostazioni/page.tsx), col loro apostrofo tipografico.
+// I testi di oggi, col loro apostrofo tipografico: vengono da `src/app/(app)/impostazioni/page.tsx`
+// com'era prima della fase 5 (commit f983c43, righe 744–804); oggi quel file è solo un rimando
+// al pannello, e il testo di prima si legge nella storia di git.
 const TESTO_DA_SOLO = 'Chi entra nella tua casa usa i tuoi dati come fossero suoi: vede e cambia lista, piano, dispensa e piatti, e può anche cancellarli. Il suo piano resta da parte finché non esce. Dai il codice solo a chi vive con te.';
 const TESTO_MEMBRO = 'Vedi e cambi la sua lista, il suo piano e la sua dispensa, come fossero tuoi. I tuoi restano da parte.';
 const NOTA_PROPRIETARIO = 'Ognuno spunta dal suo telefono. La lista si aggiorna quando la riapri.';

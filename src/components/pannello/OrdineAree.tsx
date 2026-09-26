@@ -8,7 +8,9 @@ import { useDatiPannello } from './DatiPannello';
 import { PiedePannello } from './PiedePannello';
 import { AvvisoCasaCambiata, BloccoGruppo, Carico, ErroreCaricamento, IconaFreccia, Nota, TondoIcona } from './pezzi';
 
-// La nota di oggi (impostazioni/reparti/page.tsx:103-107), invariata.
+// La nota di oggi, invariata: viene da `src/app/(app)/impostazioni/reparti/page.tsx` com'era prima
+// della fase 5 (commit f983c43, righe 103–107); oggi quel file è solo un rimando al pannello, e il
+// testo di prima si legge nella storia di git.
 const NOTA_ORDINE = 'Mettili nell’ordine in cui li incontri camminando nel tuo supermercato. La lista della spesa comparirà in quest’ordine, così non torni indietro fra le corsie. Le sei aree sono fisse: si cambia solo la sequenza.';
 
 /** «LATTICINI, UOVA E SALUMI» → «Latticini, uova e salumi» (frame 13). */
