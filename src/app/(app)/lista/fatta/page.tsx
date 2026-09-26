@@ -184,7 +184,9 @@ export default function ListaFatta() {
         className="sc scroll-app con-dock"
         style={{
           flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 16px',
-          display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 12,
+          // 'safe center': a contenuto più alto dello spazio, la prima scheda parte dal
+          // bordo invece di uscire sopra e restare irraggiungibile scorrendo (rilievo I1).
+          display: 'flex', flexDirection: 'column', justifyContent: 'safe center', gap: 12,
         }}
       >
         <div style={{ padding: '26px 20px', borderRadius: 22, background: 'var(--superficie)', border: '1px solid var(--bordo)', textAlign: 'center' }}>

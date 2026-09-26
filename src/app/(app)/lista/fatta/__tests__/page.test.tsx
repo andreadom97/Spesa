@@ -93,6 +93,13 @@ function oltreLaGuardia() {
   orologio = 10_000;
 }
 
+/** Una lista a metà: una voce non spuntata, il traguardo non è raggiungibile. */
+function listaAMeta(): ListaSalvata {
+  const l = listaFinita();
+  l.base[0].voci[0].spuntato = false;
+  return l;
+}
+
 describe('Lista fatta — accesso', () => {
   it('a settimana chiusa rimanda a /piano senza leggere le liste', async () => {
     vi.mocked(leggiSettimanaCorrente).mockResolvedValue({ ...SETTIMANA, stato: 'chiusa' });
@@ -103,6 +110,27 @@ describe('Lista fatta — accesso', () => {
     expect(leggiListe).not.toHaveBeenCalled();
     expect(leggiRisparmioSettimana).not.toHaveBeenCalled();
     expect(screen.queryByText('Hai preso tutto')).not.toBeInTheDocument();
+  });
+
+  it('senza settimana rimanda a /lista senza leggere le liste, senza Dock', async () => {
+    vi.mocked(leggiSettimanaCorrente).mockResolvedValue(null);
+
+    monta();
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/lista'));
+    expect(leggiListe).not.toHaveBeenCalled();
+    expect(leggiRisparmioSettimana).not.toHaveBeenCalled();
+    expect(screen.queryByRole('region', { name: 'Azione principale' })).not.toBeInTheDocument();
+  });
+
+  it('con la lista non finita rimanda a /lista, senza Dock', async () => {
+    vi.mocked(leggiListe).mockResolvedValue(listaAMeta());
+
+    monta();
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/lista'));
+    expect(leggiRisparmioSettimana).not.toHaveBeenCalled();
+    expect(screen.queryByRole('region', { name: 'Azione principale' })).not.toBeInTheDocument();
   });
 });
 
@@ -328,5 +356,14 @@ describe('Lista fatta — Testata, Dock e guardia (spec fase 6 §A)', () => {
       expect((c as HTMLElement).style.width).toBe('20px');
     });
     expect(screen.getByText(/voci su 1, 6 aree finite/).style.color).toBe('var(--testo-2)');
+  });
+
+  it('lo scroller usa "safe center": a contenuto più alto dello spazio la prima scheda resta raggiungibile (rilievo I1)', async () => {
+    monta();
+
+    await screen.findByText('Hai preso tutto');
+    const scroller = document.querySelector('.scroll-app.con-dock') as HTMLElement | null;
+    expect(scroller).not.toBeNull();
+    expect(scroller?.style.justifyContent).toBe('safe center');
   });
 });
