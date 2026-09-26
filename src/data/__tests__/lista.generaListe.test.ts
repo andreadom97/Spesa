@@ -105,6 +105,7 @@ describe('generaListe — difesa in profondità (C4)', () => {
       ordineAree: ['ortofrutta', 'macelleria', 'latticini', 'cereali', 'dispensa', 'surgelati'],
       settimaneCiclo: 1,
       cicloOrigine: null,
+      giorniControllo: 90,
     });
 
     await generaListe('week-1');

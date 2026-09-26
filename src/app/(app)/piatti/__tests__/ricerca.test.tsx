@@ -44,6 +44,7 @@ function mockRepertorio() {
     ordineAree: [...ORDINE_AREE_TEST],
     settimaneCiclo: 1,
     cicloOrigine: null,
+    giorniControllo: 90,
   });
 }
 

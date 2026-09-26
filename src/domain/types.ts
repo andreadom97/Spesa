@@ -143,6 +143,13 @@ export interface LottoPronto {
   mealSlotId: string | null;
 }
 
+/**
+ * Ogni quanti giorni la Lista chiede di uno staple a stima (spec fase 5
+ * §E.1). Tre valori soli, come il check della colonna `giorni_controllo`
+ * (migrazione 0015) e il segmento delle Impostazioni.
+ */
+export type GiorniControllo = 30 | 60 | 90;
+
 export interface Impostazioni {
   moltiplicatorePorzioni: number;
   ordineAree: AreaId[];
@@ -150,4 +157,10 @@ export interface Impostazioni {
   settimaneCiclo: number;
   /** Il lunedì della settimana 1 del ciclo. null finché il ciclo non si usa. */
   cicloOrigine: string | null;
+  /**
+   * La cadenza dei controlli staple. Obbligatoria: un oggetto Impostazioni
+   * che la dimentica calcolerebbe i controlli con un valore a caso, e `tsc`
+   * deve dirlo. Chi legge dal database ha il default 90 (leggiImpostazioni).
+   */
+  giorniControllo: GiorniControllo;
 }

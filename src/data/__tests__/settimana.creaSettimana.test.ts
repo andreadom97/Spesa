@@ -25,7 +25,7 @@ beforeEach(() => {
 const ORDINE_AREE = ['ortofrutta', 'macelleria', 'latticini', 'cereali', 'dispensa', 'surgelati'] as const;
 
 function impostazioni(settimaneCiclo: number, cicloOrigine: string | null): Impostazioni {
-  return { moltiplicatorePorzioni: 1, ordineAree: [...ORDINE_AREE], settimaneCiclo, cicloOrigine };
+  return { moltiplicatorePorzioni: 1, ordineAree: [...ORDINE_AREE], settimaneCiclo, cicloOrigine, giorniControllo: 90 };
 }
 
 const CENA: MealSlotDef = {

@@ -82,6 +82,7 @@ export const IMPOSTAZIONI: Impostazioni = {
   ordineAree: ORDINE_AREE_DEFAULT,
   settimaneCiclo: 1,
   cicloOrigine: null,
+  giorniControllo: 90,
 };
 
 export function dispensaVuota(): PantryState[] {

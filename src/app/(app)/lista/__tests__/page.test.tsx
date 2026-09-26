@@ -148,6 +148,18 @@ describe('Lista', () => {
     expect(screen.getByText('serve 820 g · in casa 0 g')).toBeInTheDocument();
   });
 
+  it('la riga di controllo dice la cadenza delle Impostazioni (spec fase 5 §E.1)', async () => {
+    vi.mocked(leggiListe).mockResolvedValue({ ...buildLista(), giorniControllo: 30 });
+    rendi();
+    expect(await screen.findByText('CONTROLLO OGNI MESE')).toBeInTheDocument();
+  });
+
+  it('una lista senza cadenza (istantanea offline di prima della fase 5) dice ogni 3 mesi', async () => {
+    vi.mocked(leggiListe).mockResolvedValue(buildLista());
+    rendi();
+    expect(await screen.findByText('CONTROLLO OGNI 3 MESI')).toBeInTheDocument();
+  });
+
   // Corretto in sede di revisione finale (I10): prima un'area con solo un
   // controllo in sospeso risultava "piena" nel marchio, mentre tuttoFatto()
   // già richiedeva zero controlli oltre a ogni voce spuntata — l'utente

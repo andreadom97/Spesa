@@ -6,7 +6,7 @@ vi.mock('../casa', () => ({ idCasa: vi.fn() }));
 
 import { client } from '../supabase';
 import { idCasa } from '../casa';
-import { MAX_PORZIONI, MIN_PORZIONI, salvaImpostazioni, salvaSlotDefs } from '../impostazioni';
+import { MAX_PORZIONI, MIN_PORZIONI, leggiImpostazioni, salvaImpostazioni, salvaSlotDefs } from '../impostazioni';
 import { MAX_PASTI, MIN_PASTI } from '@/domain/pasti';
 
 // L'id che finisce in `user_id` non viene più da `auth.getUser` sul client
@@ -55,6 +55,7 @@ const BASE: Impostazioni = {
   ordineAree: ['ortofrutta', 'macelleria', 'latticini', 'cereali', 'dispensa', 'surgelati'],
   settimaneCiclo: 1,
   cicloOrigine: null,
+  giorniControllo: 90,
 };
 
 describe('salvaSlotDefs — quanti pasti si possono avere', () => {
@@ -142,6 +143,76 @@ describe('salvaImpostazioni — per quante persone', () => {
     await expect(salvaImpostazioni({ ...BASE, moltiplicatorePorzioni: persone })).rejects.toThrow('persone non valide');
     expect(upsert['settings']).toBeUndefined();
     // Il controllo viene prima di qualunque accesso al server.
+    expect(idCasa).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Un client finto per la sola lettura di settings: `select → eq →
+ * maybeSingle` risponde con la riga data, e registra la stringa della select.
+ */
+function clientConRiga(riga: Record<string, unknown> | null) {
+  const colonne: string[] = [];
+  const proxy: Record<string, unknown> = {
+    select: (c: string) => { colonne.push(c); return proxy; },
+    eq: () => proxy,
+    maybeSingle: () => Promise.resolve({ data: riga, error: null }),
+  };
+  return { sb: { from: () => proxy }, colonne };
+}
+
+const RIGA = {
+  moltiplicatore_porzioni: 2,
+  ordine_aree: ['ortofrutta', 'macelleria', 'latticini', 'cereali', 'dispensa', 'surgelati'],
+  settimane_ciclo: 1,
+  ciclo_origine: null,
+};
+
+describe('leggiImpostazioni — la cadenza dei controlli (spec fase 5 §E.1)', () => {
+  beforeEach(() => vi.mocked(client).mockReset());
+
+  it('chiede la colonna giorni_controllo', async () => {
+    const { sb, colonne } = clientConRiga({ ...RIGA, giorni_controllo: 60 });
+    vi.mocked(client).mockReturnValue(sb as never);
+    await leggiImpostazioni();
+    expect(colonne[0]).toContain('giorni_controllo');
+  });
+
+  it('legge la cadenza salvata', async () => {
+    const { sb } = clientConRiga({ ...RIGA, giorni_controllo: 30 });
+    vi.mocked(client).mockReturnValue(sb as never);
+    expect((await leggiImpostazioni()).giorniControllo).toBe(30);
+  });
+
+  it('senza riga settings vale il default, 90', async () => {
+    const { sb } = clientConRiga(null);
+    vi.mocked(client).mockReturnValue(sb as never);
+    expect((await leggiImpostazioni()).giorniControllo).toBe(90);
+  });
+
+  it.each([45, 0, null, undefined, '30'])('un valore fuori dalle tre cadenze (%s) vale il default', async (v) => {
+    const { sb } = clientConRiga({ ...RIGA, giorni_controllo: v });
+    vi.mocked(client).mockReturnValue(sb as never);
+    expect((await leggiImpostazioni()).giorniControllo).toBe(90);
+  });
+});
+
+describe('salvaImpostazioni — la cadenza dei controlli (spec fase 5 §E.1)', () => {
+  beforeEach(() => vi.mocked(client).mockReset());
+
+  it.each([30, 60, 90] as const)('scrive giorni_controllo = %i', async (g) => {
+    const { sb, upsert } = creaClientMock();
+    vi.mocked(client).mockReturnValue(sb as never);
+    await salvaImpostazioni({ ...BASE, giorniControllo: g });
+    expect((upsert['settings'][0] as Record<string, unknown>).giorni_controllo).toBe(g);
+  });
+
+  it.each([0, 45, 91, 30.5, NaN])('rifiuta %s senza scrivere niente', async (g) => {
+    const { sb, upsert } = creaClientMock();
+    vi.mocked(client).mockReturnValue(sb as never);
+    await expect(salvaImpostazioni({ ...BASE, giorniControllo: g as never })).rejects.toThrow('cadenza non valida');
+    expect(upsert['settings']).toBeUndefined();
+    // Come per le persone: il controllo viene prima di qualunque accesso al server.
     expect(idCasa).not.toHaveBeenCalled();
   });
 });

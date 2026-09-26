@@ -2,11 +2,13 @@
 
 import type { AreaId } from '@/domain/types';
 import { coloreArea } from '@/domain/aree';
-import { GIORNI_CONTROLLO_STAPLE } from '@/domain/pantry';
+import { testoCadenza, type GiorniControllo } from '@/domain/pantry';
 
 interface Props {
   nome: string;
   area: AreaId;
+  /** La cadenza delle Impostazioni: la sottoriga la dice a parole (spec fase 5 §E.1). */
+  giorniControllo: GiorniControllo;
   onSi: () => void;
   onNo: () => void;
   /** Disabilita i due pulsanti mentre la risposta precedente è ancora in volo. */
@@ -41,7 +43,7 @@ const ALTEZZA_BOTTONE = 44;
  * la lista dal server dopo, perché il formato della confezione non è mai
  * arrivato al client.
  */
-export function RigaControllo({ nome, area, onSi, onNo, disabilitato = false }: Props) {
+export function RigaControllo({ nome, area, giorniControllo, onSi, onNo, disabilitato = false }: Props) {
   const colore = coloreArea(area);
   const bottone = {
     minWidth: 52,
@@ -71,9 +73,10 @@ export function RigaControllo({ nome, area, onSi, onNo, disabilitato = false }: 
           {nome}: ne hai ancora?
         </div>
         {/* La riga esiste solo quando il controllo è scaduto: dirlo di nuovo era
-            ridondante. Il numero viene dalla costante del dominio, non riscritto qui. */}
+            ridondante. La cadenza viene dalle Impostazioni e il testo dal
+            dominio (testoCadenza), non riscritto qui. */}
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: 8.5, letterSpacing: '0.11em', color: 'var(--testo-2)', marginTop: 4 }}>
-          {`CONTROLLO OGNI ${GIORNI_CONTROLLO_STAPLE} GIORNI`}
+          {`CONTROLLO ${testoCadenza(giorniControllo)}`}
         </div>
       </div>
       <div style={{ display: 'flex', gap: 7 }}>

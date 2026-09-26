@@ -1,7 +1,8 @@
-import type { Impostazioni, MealSlotDef } from '@/domain/types';
+import type { GiorniControllo, Impostazioni, MealSlotDef } from '@/domain/types';
 import { ORDINE_AREE_DEFAULT } from '@/domain/aree';
 import { lunediDi } from '@/domain/date';
 import { MAX_PASTI, MIN_PASTI } from '@/domain/pasti';
+import { CADENZE, GIORNI_CONTROLLO_DEFAULT } from '@/domain/pantry';
 import { client } from './supabase';
 import { idCasa } from './casa';
 import { aSlotDef } from './mappers';
@@ -23,6 +24,15 @@ export const MAX_PORZIONI = 4;
 
 function personeValide(persone: number): boolean {
   return Number.isInteger(persone) && persone >= MIN_PORZIONI && persone <= MAX_PORZIONI;
+}
+
+/**
+ * Una delle tre cadenze (spec fase 5 §E.1). Solo un numero vero: la colonna
+ * è `int` con un check sugli stessi tre valori, quindi qualunque altra cosa
+ * è un dato che non viene dal database.
+ */
+function cadenzaValida(v: unknown): v is GiorniControllo {
+  return typeof v === 'number' && (CADENZE as readonly number[]).includes(v);
 }
 
 function oggiIso(): string {
@@ -64,7 +74,7 @@ export async function leggiImpostazioni(): Promise<Impostazioni> {
   const userId = await idCasa();
   const { data, error } = await sb
     .from('settings')
-    .select('moltiplicatore_porzioni, ordine_aree, settimane_ciclo, ciclo_origine')
+    .select('moltiplicatore_porzioni, ordine_aree, settimane_ciclo, ciclo_origine, giorni_controllo')
     .eq('user_id', userId)
     .maybeSingle();
   if (error) throw error;
@@ -74,6 +84,7 @@ export async function leggiImpostazioni(): Promise<Impostazioni> {
       ordineAree: [...ORDINE_AREE_DEFAULT],
       settimaneCiclo: SETTIMANE_CICLO_DEFAULT,
       cicloOrigine: null,
+      giorniControllo: GIORNI_CONTROLLO_DEFAULT,
     };
   }
   return {
@@ -81,12 +92,17 @@ export async function leggiImpostazioni(): Promise<Impostazioni> {
     ordineAree: data.ordine_aree as Impostazioni['ordineAree'],
     settimaneCiclo: Number(data.settimane_ciclo ?? SETTIMANE_CICLO_DEFAULT),
     cicloOrigine: data.ciclo_origine ? String(data.ciclo_origine).slice(0, 10) : null,
+    // Il check della colonna ammette solo 30, 60 e 90: qui un valore diverso
+    // vuol dire una riga non passata dal database (un mock, un dato a mano),
+    // e vale il default invece di un conto sbagliato nella regola 7.
+    giorniControllo: cadenzaValida(data.giorni_controllo) ? data.giorni_controllo : GIORNI_CONTROLLO_DEFAULT,
   };
 }
 
 export async function salvaImpostazioni(i: Impostazioni): Promise<void> {
   // Prima di qualunque accesso al server: una riga fuori tetto non si scrive.
   if (!personeValide(i.moltiplicatorePorzioni)) throw new Error('persone non valide');
+  if (!cadenzaValida(i.giorniControllo)) throw new Error('cadenza non valida');
   const sb = client();
   const userId = await idCasa();
   const { error } = await sb.from('settings').upsert({
@@ -94,6 +110,7 @@ export async function salvaImpostazioni(i: Impostazioni): Promise<void> {
     moltiplicatore_porzioni: i.moltiplicatorePorzioni,
     ordine_aree: i.ordineAree,
     settimane_ciclo: i.settimaneCiclo,
+    giorni_controllo: i.giorniControllo,
     // Un ciclo di più settimane senza origine non saprebbe da dove contare
     // le settimane: si àncora al lunedì di oggi, così chi accende la
     // rotazione comincia il giro da questa settimana. Tornando a un ciclo di

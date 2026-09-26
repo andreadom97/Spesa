@@ -18,7 +18,7 @@ import OrdineReparti from '../page';
 const ORDINE_DEFAULT = ['ortofrutta', 'macelleria', 'latticini', 'cereali', 'dispensa', 'surgelati'] as const;
 
 function mockDati(porzioni = 2) {
-  vi.mocked(leggiImpostazioni).mockResolvedValue({ moltiplicatorePorzioni: porzioni, ordineAree: [...ORDINE_DEFAULT], settimaneCiclo: 1, cicloOrigine: null });
+  vi.mocked(leggiImpostazioni).mockResolvedValue({ moltiplicatorePorzioni: porzioni, ordineAree: [...ORDINE_DEFAULT], settimaneCiclo: 1, cicloOrigine: null, giorniControllo: 90 });
   vi.mocked(salvaImpostazioni).mockResolvedValue(undefined);
 }
 
@@ -76,6 +76,7 @@ describe('Ordine dei reparti', () => {
       ordineAree: ['ortofrutta', 'macelleria', 'latticini', 'surgelati', 'cereali', 'dispensa'],
       settimaneCiclo: 1,
       cicloOrigine: null,
+      giorniControllo: 90,
     }));
     await waitFor(() => expect(push).toHaveBeenCalledWith('/impostazioni'));
   });

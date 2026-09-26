@@ -1,12 +1,7 @@
-import type { AreaId } from './types';
+import type { AreaId, GiorniControllo } from './types';
 import { giorniTra, sommaGiorni } from './date';
 
-/**
- * Intervallo fisso del controllo staple. In Fase 1 non si apprende nulla:
- * la decisione chiusa il 2026-08-26 sostituisce la soglia `giorni_stimati × 0.8`
- * della regola 7 di list-builder.
- */
-export const GIORNI_CONTROLLO_STAPLE = 90;
+export type { GiorniControllo } from './types';
 
 export interface NuovoResiduoInput {
   residuoPrecedente: number;
@@ -23,11 +18,69 @@ export function nuovoResiduo(i: NuovoResiduoInput): number {
   return Math.max(0, i.residuoPrecedente + i.acquistato - i.consumatoDaPiano);
 }
 
+/**
+ * Le tre cadenze dei controlli staple (spec fase 5 §E.1, §C.6), dalla più
+ * fitta: ogni mese, ogni 2 mesi, ogni 3 mesi. Sono i tre valori che il check
+ * della colonna `settings.giorni_controllo` ammette.
+ */
+export const CADENZE: readonly GiorniControllo[] = [30, 60, 90];
+
+/**
+ * La cadenza di chi non l'ha mai scelta: 90 giorni, cioè l'intervallo fisso
+ * che prima della fase 5 si chiamava GIORNI_CONTROLLO_STAPLE (decisione del
+ * 2026-08-26, che sostituiva la soglia `giorni_stimati × 0.8` della regola 7).
+ * Deve coincidere col default della colonna.
+ */
+export const GIORNI_CONTROLLO_DEFAULT: GiorniControllo = 90;
+
+/**
+ * Il testo della cadenza in mono maiuscolo: il valore della riga nel
+ * pannello e la sottoriga della Riga di controllo (`CONTROLLO {testo}`).
+ */
+export function testoCadenza(g: GiorniControllo): 'OGNI MESE' | 'OGNI 2 MESI' | 'OGNI 3 MESI' {
+  switch (g) {
+    case 30: return 'OGNI MESE';
+    case 60: return 'OGNI 2 MESI';
+    case 90: return 'OGNI 3 MESI';
+  }
+}
+
+/**
+ * La cadenza a inizio frase: la nota della classe «a stima» nell'editor
+ * dell'ingrediente («Ogni 3 mesi dall'ultimo acquisto…», Task 12). Prima della
+ * fase 5 quella nota diceva «Ogni 90 giorni» (decisione di Andrea del 26/09).
+ */
+export function ogniCadenza(g: GiorniControllo): 'Ogni mese' | 'Ogni 2 mesi' | 'Ogni 3 mesi' {
+  switch (g) {
+    case 30: return 'Ogni mese';
+    case 60: return 'Ogni 2 mesi';
+    case 90: return 'Ogni 3 mesi';
+  }
+}
+
+/**
+ * La cadenza in mezzo a una frase: `CHIUDENDO LA SPESA` in Lista fatta
+ * («Serve solo a ricordarti fra 3 mesi che l'olio…»). Prima diceva «fra 90
+ * giorni» (decisione di Andrea del 26/09).
+ */
+export function fraCadenza(g: GiorniControllo): 'fra un mese' | 'fra 2 mesi' | 'fra 3 mesi' {
+  switch (g) {
+    case 30: return 'fra un mese';
+    case 60: return 'fra 2 mesi';
+    case 90: return 'fra 3 mesi';
+  }
+}
+
 export interface ServeControlloInput {
   ultimoAcquisto: string | null;
   ultimoCheck: string | null;
   /** ISO yyyy-mm-dd */
   oggi: string;
+  /**
+   * La cadenza delle Impostazioni. Obbligatoria, non facoltativa: un
+   * chiamante che la dimentica tornerebbe in silenzio ai 90 giorni fissi.
+   */
+  giorniControllo: GiorniControllo;
 }
 
 /**
@@ -39,7 +92,7 @@ export function serveControllo(i: ServeControlloInput): boolean {
   if (!i.ultimoAcquisto) return false;
   const riferimento =
     i.ultimoCheck && i.ultimoCheck > i.ultimoAcquisto ? i.ultimoCheck : i.ultimoAcquisto;
-  return giorniTra(riferimento, i.oggi) >= GIORNI_CONTROLLO_STAPLE;
+  return giorniTra(riferimento, i.oggi) >= i.giorniControllo;
 }
 
 /**

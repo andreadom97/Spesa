@@ -61,6 +61,7 @@ function mockRepertorio(piatti: Dish[]) {
     ordineAree: [...ORDINE_AREE_TEST],
     settimaneCiclo: 1,
     cicloOrigine: null,
+    giorniControllo: 90,
   });
 }
 

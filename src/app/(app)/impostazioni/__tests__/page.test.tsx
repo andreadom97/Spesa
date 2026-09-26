@@ -65,6 +65,7 @@ function mockDati(overrides?: { porzioni?: number; pasti?: MealSlotDef[] }) {
     ordineAree: [...ORDINE_AREE_TEST],
     settimaneCiclo: 1,
     cicloOrigine: null,
+    giorniControllo: 90,
   });
   vi.mocked(leggiSlotDefs).mockResolvedValue(overrides?.pasti ?? [SLOT_COLAZIONE, SLOT_PRANZO, SLOT_CENA]);
   vi.mocked(salvaImpostazioni).mockResolvedValue(undefined);
@@ -125,6 +126,7 @@ describe('Impostazioni', () => {
         ordineAree: [...ORDINE_AREE_TEST],
         settimaneCiclo: 1,
         cicloOrigine: null,
+        giorniControllo: 90,
       });
       fireEvent.click(screen.getByLabelText('Aumenta porzioni'));
 
@@ -134,6 +136,7 @@ describe('Impostazioni', () => {
         ordineAree: [...ORDINE_AREE_TEST],
         settimaneCiclo: 1,
         cicloOrigine: null,
+        giorniControllo: 90,
       });
       await waitFor(() => expect(screen.getByLabelText('Porzioni')).toHaveTextContent('2'));
       expect(screen.getByText('La lista compra per 2. Le porzioni nel piatto restano quelle scritte.')).toBeInTheDocument();
@@ -164,6 +167,7 @@ describe('Impostazioni', () => {
         ordineAree: [...ORDINE_AREE_TEST],
         settimaneCiclo: 1,
         cicloOrigine: null,
+        giorniControllo: 90,
       });
       fireEvent.click(screen.getByLabelText('Diminuisci porzioni'));
 
@@ -183,6 +187,7 @@ describe('Impostazioni', () => {
 
       const impostazioni = (porzioni: number) => ({
         moltiplicatorePorzioni: porzioni, ordineAree: [...ORDINE_AREE_TEST], settimaneCiclo: 1, cicloOrigine: null,
+        giorniControllo: 90 as const,
       });
       const riletture: Array<(i: ReturnType<typeof impostazioni>) => void> = [];
       vi.mocked(leggiImpostazioni).mockImplementation(
@@ -223,6 +228,7 @@ describe('Impostazioni', () => {
       );
       vi.mocked(leggiImpostazioni).mockResolvedValue({
         moltiplicatorePorzioni: 3, ordineAree: [...ORDINE_AREE_TEST], settimaneCiclo: 1, cicloOrigine: null,
+        giorniControllo: 90,
       });
 
       fireEvent.click(screen.getByLabelText('Aumenta porzioni'));
@@ -262,6 +268,7 @@ describe('Impostazioni', () => {
       // Il server ha il valore del primo tap (2), da qui in poi.
       vi.mocked(leggiImpostazioni).mockResolvedValue({
         moltiplicatorePorzioni: 2, ordineAree: [...ORDINE_AREE_TEST], settimaneCiclo: 1, cicloOrigine: null,
+        giorniControllo: 90,
       });
 
       fireEvent.click(screen.getByLabelText('Aumenta porzioni'));
@@ -309,6 +316,7 @@ describe('Impostazioni', () => {
         .mockRejectedValueOnce(new Error('rete'));
       vi.mocked(leggiImpostazioni).mockImplementation(async () => ({
         moltiplicatorePorzioni: sulServer, ordineAree: [...ORDINE_AREE_TEST], settimaneCiclo: 1, cicloOrigine: null,
+        giorniControllo: 90,
       }));
 
       fireEvent.click(screen.getByLabelText('Aumenta porzioni'));
@@ -393,6 +401,7 @@ describe('Impostazioni', () => {
         ordineAree: [...ORDINE_AREE_TEST],
         settimaneCiclo: 1,
         cicloOrigine: null,
+        giorniControllo: 90,
       });
       vi.mocked(leggiSlotDefs).mockResolvedValue([
         SLOT_COLAZIONE,
@@ -628,6 +637,7 @@ describe('Impostazioni', () => {
       ordineAree: [...ORDINE_AREE_TEST],
       settimaneCiclo: 2,
       cicloOrigine: '2026-08-31',
+      giorniControllo: 90,
     });
     fireEvent.click(screen.getByRole('button', { name: '2 SETT.' }));
 
@@ -660,6 +670,7 @@ describe('Impostazioni', () => {
       ordineAree: [...ORDINE_AREE_TEST],
       settimaneCiclo: 2,
       cicloOrigine: '2099-03-09', // nel futuro rispetto a qualunque "oggi" reale
+      giorniControllo: 90,
     });
     render(<Impostazioni />);
 
@@ -673,6 +684,7 @@ describe('Impostazioni', () => {
       ordineAree: [...ORDINE_AREE_TEST],
       settimaneCiclo: 2,
       cicloOrigine: '2000-01-03', // nel passato rispetto a qualunque "oggi" reale
+      giorniControllo: 90,
     });
     render(<Impostazioni />);
 
@@ -686,6 +698,7 @@ describe('Impostazioni', () => {
       ordineAree: [...ORDINE_AREE_TEST],
       settimaneCiclo: 2,
       cicloOrigine: '2000-01-03', // lontano dal lunedì corrente: il bottone è attivo
+      giorniControllo: 90,
     });
     render(<Impostazioni />);
 
@@ -711,6 +724,7 @@ describe('Impostazioni', () => {
       ordineAree: [...ORDINE_AREE_TEST],
       settimaneCiclo: 2,
       cicloOrigine: '2000-01-03',
+      giorniControllo: 90,
     });
     render(<Impostazioni />);
 
@@ -730,6 +744,7 @@ describe('Impostazioni', () => {
       ordineAree: [...ORDINE_AREE_TEST],
       settimaneCiclo: 2,
       cicloOrigine: '2000-01-03',
+      giorniControllo: 90,
     });
     render(<Impostazioni />);
 
@@ -741,6 +756,7 @@ describe('Impostazioni', () => {
       ordineAree: [...ORDINE_AREE_TEST],
       settimaneCiclo: 3,
       cicloOrigine: '2000-01-03',
+      giorniControllo: 90,
     });
     fireEvent.click(screen.getByRole('button', { name: '3 SETT.' }));
 

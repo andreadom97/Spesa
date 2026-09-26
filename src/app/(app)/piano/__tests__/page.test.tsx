@@ -184,6 +184,7 @@ function mockCarico(settimana: SettimanaCorrente = SETTIMANA_BASE) {
     ordineAree: [...ORDINE_AREE_TEST],
     settimaneCiclo: 1,
     cicloOrigine: null,
+    giorniControllo: 90,
   });
   vi.mocked(leggiPronti).mockResolvedValue([]);
   vi.mocked(leggiDispensa).mockResolvedValue([]);
@@ -245,6 +246,7 @@ describe('Settimana (piano alimentare)', () => {
       ordineAree: [...ORDINE_AREE_TEST],
       settimaneCiclo: 1,
       cicloOrigine: null,
+      giorniControllo: 90,
     });
     vi.mocked(leggiPronti).mockResolvedValue([]);
 
@@ -356,6 +358,7 @@ describe('Settimana (piano alimentare)', () => {
       ordineAree: [...ORDINE_AREE_TEST],
       settimaneCiclo: 1,
       cicloOrigine: null,
+      giorniControllo: 90,
     });
     vi.mocked(leggiPronti).mockResolvedValue([]);
 
@@ -605,6 +608,7 @@ describe('spunta pasti', () => {
       ordineAree: [...ORDINE_AREE_TEST],
       settimaneCiclo: 1,
       cicloOrigine: null,
+      giorniControllo: 90,
     });
     vi.mocked(leggiPronti).mockResolvedValue([]);
 
@@ -631,6 +635,7 @@ describe('spunta pasti', () => {
       ordineAree: [...ORDINE_AREE_TEST],
       settimaneCiclo: 1,
       cicloOrigine: null,
+      giorniControllo: 90,
     });
     vi.mocked(leggiPronti).mockResolvedValue([]);
 
@@ -812,6 +817,7 @@ describe('settimana precedente', () => {
       ordineAree: [...ORDINE_AREE_TEST],
       settimaneCiclo: 1,
       cicloOrigine: null,
+      giorniControllo: 90,
     });
     vi.mocked(leggiPronti).mockResolvedValue([]);
 
@@ -840,6 +846,7 @@ describe('settimana precedente', () => {
       ordineAree: [...ORDINE_AREE_TEST],
       settimaneCiclo: 1,
       cicloOrigine: null,
+      giorniControllo: 90,
     });
     vi.mocked(leggiPronti).mockResolvedValue([]);
 
@@ -864,6 +871,7 @@ describe('settimana precedente', () => {
       ordineAree: [...ORDINE_AREE_TEST],
       settimaneCiclo: 1,
       cicloOrigine: null,
+      giorniControllo: 90,
     });
     vi.mocked(leggiPronti).mockResolvedValue([]);
 

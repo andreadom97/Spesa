@@ -97,7 +97,7 @@ function mockBase({
 }: { ingredienti?: Ingredient[]; dispensa?: PantryState[]; lotti?: LottoPronto[] } = {}) {
   vi.mocked(leggiIngredienti).mockResolvedValue(ingredienti);
   vi.mocked(leggiDispensa).mockResolvedValue(dispensa);
-  vi.mocked(leggiImpostazioni).mockResolvedValue({ moltiplicatorePorzioni: 1, ordineAree: [...ORDINE], settimaneCiclo: 1, cicloOrigine: null });
+  vi.mocked(leggiImpostazioni).mockResolvedValue({ moltiplicatorePorzioni: 1, ordineAree: [...ORDINE], settimaneCiclo: 1, cicloOrigine: null, giorniControllo: 90 });
   vi.mocked(leggiPronti).mockResolvedValue(lotti);
   vi.mocked(leggiRepertorio).mockResolvedValue([RAGU]);
   vi.mocked(leggiSettimanaCorrente).mockResolvedValue(null);

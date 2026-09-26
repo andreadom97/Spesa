@@ -196,3 +196,23 @@ describe('Lista fatta — NON RICOMPRATO QUESTA SETTIMANA', () => {
     errore.mockRestore();
   });
 });
+
+describe('Lista fatta — CHIUDENDO LA SPESA dice la cadenza (decisione di Andrea del 26/09)', () => {
+  it.each([
+    [30, 'fra un mese'],
+    [60, 'fra 2 mesi'],
+    [90, 'fra 3 mesi'],
+  ] as const)('con la cadenza a %i giorni dice «%s»', async (g, pezzo) => {
+    vi.mocked(leggiListe).mockResolvedValue({ ...listaFinita(), giorniControllo: g });
+    render(<ListaFatta />);
+    expect(await screen.findByText(
+      `L’app registra cosa hai comprato e quando. Serve solo a ricordarti ${pezzo} che l’olio sta per finire: non lo vedi da nessuna parte finché non serve.`,
+    )).toBeInTheDocument();
+  });
+
+  it('una lista senza cadenza (istantanea offline di prima della fase 5) dice fra 3 mesi', async () => {
+    render(<ListaFatta />);
+    expect(await screen.findByText(/ricordarti fra 3 mesi che l’olio/)).toBeInTheDocument();
+    expect(screen.queryByText(/90 giorni/)).not.toBeInTheDocument();
+  });
+});

@@ -78,6 +78,7 @@ function mockBase(repertorio: Dish[] = [], slotDefs: MealSlotDef[] = TRE_PASTI) 
     ordineAree: [...ORDINE_AREE_TEST],
     settimaneCiclo: 1,
     cicloOrigine: null,
+    giorniControllo: 90,
   });
 }
 

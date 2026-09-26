@@ -19,6 +19,7 @@ import { leggiIstantaneaLista, salvaIstantaneaLista, cancellaIstantaneaLista } f
 import { Testata } from '@/components/Testata';
 import { Tessera } from '@/components/Tessera';
 import { RigaControllo } from '@/components/RigaControllo';
+import { GIORNI_CONTROLLO_DEFAULT, type GiorniControllo } from '@/domain/pantry';
 import { Dock } from '@/components/Dock';
 import { useAreeMancanti } from '@/components/marchio-context';
 
@@ -558,6 +559,10 @@ export default function Lista() {
   // due righe `shopping_list` avviene qui, in lettura, e il database resta
   // com'è. Ogni voce porta il `listaId` della sua, che serve a `rispondi`.
   const sezioni = fondiSezioni(lista);
+  // La cadenza viaggia con la lista (leggiListe la legge insieme all'ordine
+  // delle aree): nessuna lettura in più. Un'istantanea offline di prima della
+  // fase 5 non ce l'ha, e vale il default.
+  const giorniControllo = lista.giorniControllo ?? GIORNI_CONTROLLO_DEFAULT;
   // Un solo booleano decide due cose che non possono divergere: se il Dock
   // c'è, e se lo scroller deve lasciargli la coda.
   const finito = tuttoFatto(lista);
@@ -592,6 +597,7 @@ export default function Lista() {
           <CartaSezione
             key={sezione.area}
             sezione={sezione}
+            giorniControllo={giorniControllo}
             rigaInVolo={rigaInVolo}
             onToggleVoce={toggleVoce}
             onSi={(c) => rispondi(c, true)}
@@ -630,9 +636,10 @@ function ordinaPerCarrello<T extends { spuntato: boolean }>(voci: T[]): T[] {
  * disegnavano più nessun confine.
  */
 function CartaSezione({
-  sezione, rigaInVolo, onToggleVoce, onSi, onNo,
+  sezione, giorniControllo, rigaInVolo, onToggleVoce, onSi, onNo,
 }: {
   sezione: SezioneFusa;
+  giorniControllo: GiorniControllo;
   rigaInVolo: string | null;
   onToggleVoce: (v: VoceFusa) => void;
   onSi: (c: VoceFusa) => void;
@@ -688,6 +695,7 @@ function CartaSezione({
           key={c.id}
           nome={c.nome}
           area={c.area}
+          giorniControllo={giorniControllo}
           onSi={() => onSi(c)}
           onNo={() => onNo(c)}
           disabilitato={rigaInVolo === c.id}

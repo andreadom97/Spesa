@@ -163,7 +163,7 @@ describe('aggiornaSlot e il ledger degli storni', () => {
     vi.mocked(leggiImpostazioni).mockResolvedValue({
       moltiplicatorePorzioni: 1,
       ordineAree: ['ortofrutta', 'macelleria', 'latticini', 'cereali', 'dispensa', 'surgelati'],
-      settimaneCiclo: 1, cicloOrigine: null,
+      settimaneCiclo: 1, cicloOrigine: null, giorniControllo: 90,
     });
     vi.mocked(leggiRepertorio).mockResolvedValue([DISH_POLLO, DISH_RISO]);
     vi.mocked(leggiIngredienti).mockResolvedValue([ING_POLLO, ING_RISO, ING_OLIO]);

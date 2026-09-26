@@ -192,6 +192,7 @@ function mockCarico() {
     ordineAree: [...ORDINE_AREE_TEST],
     settimaneCiclo: 1,
     cicloOrigine: null,
+    giorniControllo: 90,
   });
   vi.mocked(leggiDispensa).mockResolvedValue([]);
 }
@@ -207,6 +208,7 @@ function mockCaricoSaltato() {
     ordineAree: [...ORDINE_AREE_TEST],
     settimaneCiclo: 1,
     cicloOrigine: null,
+    giorniControllo: 90,
   });
   vi.mocked(leggiDispensa).mockResolvedValue([]);
 }
@@ -220,6 +222,7 @@ function mockCaricoSostituito() {
     ordineAree: [...ORDINE_AREE_TEST],
     settimaneCiclo: 1,
     cicloOrigine: null,
+    giorniControllo: 90,
   });
   vi.mocked(leggiDispensa).mockResolvedValue([]);
 }
@@ -236,6 +239,7 @@ function mockCaricoConComponenti() {
     ordineAree: [...ORDINE_AREE_TEST],
     settimaneCiclo: 1,
     cicloOrigine: null,
+    giorniControllo: 90,
   });
   vi.mocked(leggiDispensa).mockResolvedValue([PANTRY_RICOTTA_COPERTA]);
 }
@@ -251,6 +255,7 @@ function mockCaricoConDueComponenti() {
     ordineAree: [...ORDINE_AREE_TEST],
     settimaneCiclo: 1,
     cicloOrigine: null,
+    giorniControllo: 90,
   });
   vi.mocked(leggiDispensa).mockResolvedValue([PANTRY_RICOTTA_COPERTA]);
 }
@@ -590,6 +595,7 @@ function mockCaricoConflitto(stato: SettimanaCorrente['stato']) {
     ordineAree: [...ORDINE_AREE_TEST],
     settimaneCiclo: 1,
     cicloOrigine: null,
+    giorniControllo: 90,
   });
   vi.mocked(leggiDispensa).mockResolvedValue([PANTRY_YOGURT_100]);
   vi.mocked(leggiListe).mockResolvedValue(LISTA_YOGURT_500);

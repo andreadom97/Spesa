@@ -235,3 +235,43 @@ proposta. Andrea le vede in review.
 2. **La migrazione applicata.**
 3. **Il merge della PR**, che va in produzione da solo.
 4. **Le prove dal telefono** della spec §M.4, più quelle della sezione «Non eseguiti».
+
+## Task 3
+
+**Cadenza: la lista si congela, l'[ipotesi] di §E.1 è falsa [misurato 25/09, `src/data/lista.ts`
+e `piano/page.tsx`].** I controlli nascono solo in `generaListe`, che gira una volta per
+settimana, alla conferma del Piano. `leggiListe` rilegge le righe congelate, e `allineaTopUp` non
+aggiunge controlli. Quindi una cadenza cambiata vale dalla lista della prossima settimana
+confermata; quella già creata non cambia. Il testo della spec §C.6, «vale dalla prossima lista
+costruita», è vero alla lettera, e nessun testo dell'interfaccia promette altro. **Un effetto da
+sapere:** l'etichetta `CONTROLLO OGNI …` segue subito l'impostazione (arriva da `leggiListe`),
+mentre le righe di controllo già congelate sono state scelte con la cadenza di prima. Per
+esempio, si passa da 3 mesi a 1 mese a metà settimana: le righe di questa settimana restano
+quelle scelte a 90 giorni, ma dicono `CONTROLLO OGNI MESE`. Scelta accettata: l'etichetta dice la
+regola in vigore, e la differenza dura al più fino alla prossima conferma. Se la si volesse
+congelare, servirebbe una colonna in `shopping_list`: non vale una migrazione.
+
+Le quattro letture di codice dietro l'esito, tutte confermate rileggendo il codice del ramo
+`fase5-impostazioni` (non `feb4551`, ma nessuna delle quattro è cambiata dai Task 1-2):
+1. `generaListe` (`src/data/lista.ts`) chiama `costruisciLista` una volta sola e scrive le righe
+   in `shopping_list_item`, controlli compresi (`origine: 'controllo'`, `confezioni: 0`).
+2. `generaListe` ha un solo chiamante, `confermaEVaiLista` in `src/app/(app)/piano/page.tsx`, e
+   solo su una settimana in `bozza` (`CONFERMA E CREA LA LISTA`) [misurato:
+   `grep -rn "generaListe(" src --include="*.ts*" | grep -v __tests__`, due righe: la definizione
+   e questa sola chiamata].
+3. `leggiListe` ricostruisce le sezioni dalle righe congelate e non chiama `costruisciLista`.
+4. `allineaTopUp`, chiamata dalla Lista a ogni apertura, chiama `costruisciLista` ma aggiunge solo
+   voci del piano (`.flatMap((sezione) => sezione.voci)`), mai controlli.
+
+**Le altre due voci del task, dichiarate qui come da piano:**
+- **`src/data/lista.ts`:** `ListaSalvata.giorniControllo?` e il campo in `leggiListe`, per non
+  fare una lettura in più — `leggiListe` chiama già `leggiImpostazioni()` per `ordineAree`, e
+  `giorniControllo` viaggia accanto, facoltativo come lui (un'istantanea offline salvata prima
+  della fase 5 non ce l'ha). La Lista e Lista fatta la leggono da lì, con
+  `?? GIORNI_CONTROLLO_DEFAULT`.
+- **I due testi di oggi che dicevano «90 giorni»** [misurato: `grep -rn "90 giorni" src`, prima di
+  questo task] dicono la cadenza scelta (decisione di Andrea del 26/09): la frase di Lista fatta
+  in questo task (`fraCadenza`, `lista/fatta/page.tsx`), e la nota della classe «a stima»
+  nell'editor dell'ingrediente che il Task 12 renderà con `ogniCadenza` (fuori dallo scopo di
+  questo task: la funzione è pronta in `pantry.ts`, la nota resta «Ogni 90 giorni» finché il
+  Task 12 non la tocca).
