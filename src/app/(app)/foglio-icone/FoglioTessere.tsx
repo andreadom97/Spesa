@@ -26,8 +26,8 @@ export function FoglioTessere() {
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'flex-start' }}>
       <div style={griglia}>
         {NOMI.map(([n, a], i) => (
-          <Tessera key={n} nome={n} area={a} unita="g" fabbisogno={500} residuo={0} confezioni={1} quantitaTotale={500}
-            spuntato={i % 4 === 3} mostraDettaglio={false} protagonista={i === 0} onToggle={nulla} />
+          <Tessera key={n} nome={n} area={a} unita="g" confezioni={1} quantitaTotale={500}
+            spuntato={i % 4 === 3} protagonista={i === 0} onToggle={nulla} />
         ))}
       </div>
       <div style={griglia}>

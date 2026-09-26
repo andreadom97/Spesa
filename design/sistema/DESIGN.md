@@ -338,7 +338,9 @@ massimo tre segni interni (linee, archi, fori). **52 px** sulla tessera, **84 px
 protagonista, in basso a destra, tagliata dal bordo per il **20%**, sotto il nome e fuori dal
 layout (`position: absolute`, `aria-hidden`). Colore: tono medio dell'area (§2.3), bianco a 0,42
 sulla protagonista, `--off` a 0,5 su spuntata, finita e mai comprato. Il nome passa sopra con un
-alone di 2 px (3 px sulla protagonista) nel colore opaco del fondo della tessera. Sono le sole
+alone di 2 px (3 px sulla protagonista) nel colore opaco del fondo della tessera; **sulle
+tessere barrate (spuntata, finita) niente alone**, perché contornava di bianco la barra
+(26/09, Andrea): lì il nome torna a `rgba(20,22,58,0.34)`. Sono le sole
 icone sopra i 26 px; non si estendono ad altri componenti.
 
 **Mai emoji**, in nessun punto dell'interfaccia. Nessuna illustrazione, nessuna foto, nessun
@@ -591,8 +593,9 @@ Griglia a due colonne, gap 8, altezza minima 104. La **prima voce non spuntata d
 raggio 18, padding `13px 16px 14px`. Le altre: raggio 14, padding `12px 14px 13px`.
 
 Anatomia dall'alto: pillola delle confezioni (mono 10.5/700/0.07em, raggio 999, padding
-`5px 10px`) + quantità totale in mono 10, poi il nome 17/700/-0.032em, poi il dettaglio
-facoltativo "serve X · in casa Y" in mono 8.5.
+`5px 10px`) + quantità totale in mono 10, poi il nome 17/700/-0.032em. La quantità totale non
+compare quando ripeterebbe la pillola (a pezzi, `7 pz` accanto a `7 pz`). **Il dettaglio
+"serve X · in casa Y" è tolto** (26/09, Andrea): in Lista era spazio inutile.
 
 - **Accesa** (da prendere) — dentro un widget: fondo trasparente, bordo 1 px nel colore d'area
   al 45%. Fuori da un widget: fondo bianco con `--ombra-tessera`.

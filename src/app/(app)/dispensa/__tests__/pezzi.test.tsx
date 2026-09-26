@@ -71,12 +71,12 @@ describe('TesseraDispensa · icona ingrediente', () => {
     expect(t.style.overflow).toBe('hidden');
   });
 
-  it('finita: icona spenta, nome opaco #ADAEBA, alone bianco', () => {
+  it('finita: icona spenta, nome barrato senza alone (come la Lista spuntata)', () => {
     const { container } = render(<TesseraDispensa voce={voce({ residuo: 0 })} pillola={null} onApri={vi.fn()} />);
     expect(icona(container)).toHaveAttribute('stroke', '#9A9AA6');
     const nome = screen.getByText('Petto di pollo');
-    expect(nome).toHaveStyle({ color: '#ADAEBA' });
-    expect(nome.style.textShadow).toContain('#FFFFFF');
+    expect(nome).toHaveStyle({ color: 'rgba(20, 22, 58, 0.34)' });
+    expect(nome.style.textShadow).toBe('');
   });
 
   it('mai comprato: icona spenta', () => {

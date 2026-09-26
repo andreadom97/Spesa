@@ -677,12 +677,9 @@ function CartaSezione({
             nome={v.nome}
             area={v.area}
             unita={v.unita}
-            fabbisogno={v.fabbisogno}
-            residuo={v.residuo}
             confezioni={v.confezioni}
             quantitaTotale={v.quantitaTotale}
             spuntato={v.spuntato}
-            mostraDettaglio={v.mostraDettaglio}
             // Grande a piena larghezza solo se e' la prossima da prendere.
             // Una voce gia' nel carrello non merita il posto d'onore.
             protagonista={i === 0 && !v.spuntato}

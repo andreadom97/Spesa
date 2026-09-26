@@ -145,8 +145,8 @@ describe('Lista', () => {
     expect(await screen.findByText('Riso Carnaroli')).toBeInTheDocument();
     expect(screen.getByText('Pasta integrale')).toBeInTheDocument();
     expect(screen.getByText('Settimana del 24 agosto')).toBeInTheDocument();
-    // Solo la voce porzionabile (riso) mostra il sottotitolo.
-    expect(screen.getByText('serve 820 g · in casa 0 g')).toBeInTheDocument();
+    // Il sottotitolo "serve · in casa" non c'è più (Andrea, 26/09): era spazio inutile.
+    expect(screen.queryByText(/in casa/)).toBeNull();
   });
 
   it('la riga di controllo dice la cadenza delle Impostazioni (spec fase 5 §E.1)', async () => {

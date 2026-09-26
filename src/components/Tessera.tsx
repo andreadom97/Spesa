@@ -9,13 +9,9 @@ interface Props {
   nome: string;
   area: AreaId;
   unita: UnitaBase;
-  fabbisogno: number;
-  residuo: number;
   confezioni: number;
   quantitaTotale: number;
   spuntato: boolean;
-  /** Solo sulle voci porzionabili: mostra "serve X · in casa Y". */
-  mostraDettaglio: boolean;
   /** true sulla prima voce dell'area: due colonne, fondo pieno, nome a 25px. */
   protagonista: boolean;
   onToggle: () => void;
@@ -25,8 +21,6 @@ const INK = '#14163A';
 const MUT = '#8A8A96';
 const OFF_INK = 'rgba(20,22,58,0.34)';
 const OFF_MUT = 'rgba(20,22,58,0.24)';
-/** Il nome spento in colore opaco: con l'alone sotto, un testo trasparente lascerebbe trasparire l'alone (delta 26/09). Su #F7F7F8 vale quanto rgba(20,22,58,0.34). */
-const OFF_NOME = '#ABACB8';
 
 /** Stessa conversione usata in TesseraIngrediente ed in Piatto.dc.html — ogni file che ne ha bisogno la ridefinisce, per scelta del progetto. */
 function rgba(hex: string, alpha: number): string {
@@ -50,12 +44,11 @@ function rgba(hex: string, alpha: number): string {
  * visivo con meno stile da portare dietro.
  */
 export function Tessera({
-  nome, area, unita, fabbisogno, residuo, confezioni, quantitaTotale,
-  spuntato, mostraDettaglio, protagonista, onToggle,
+  nome, area, unita, confezioni, quantitaTotale,
+  spuntato, protagonista, onToggle,
 }: Props) {
   const colore = coloreArea(area);
   const acceso = !spuntato;
-  const mostraSottotitolo = mostraDettaglio && acceso;
 
   let background: string;
   let border: string;
@@ -73,7 +66,7 @@ export function Tessera({
     background = 'rgba(20,22,58,0.035)';
     border = '1px solid transparent';
     boxShadow = undefined;
-    nameColor = OFF_NOME; qtyColor = OFF_MUT;
+    nameColor = OFF_INK; qtyColor = OFF_MUT;
     pillBg = 'rgba(20,22,58,0.06)'; pillTxt = OFF_INK;
   } else if (protagonista) {
     background = colore;
@@ -94,12 +87,17 @@ export function Tessera({
 
   const confLabel = unita === 'pz' ? `${confezioni} pz` : `${confezioni} conf`;
   const qtyLabel = `${quantitaTotale} ${unita}`;
-  const subLabel = `serve ${Math.round(fabbisogno)} ${unita} · in casa ${Math.round(residuo)} ${unita}`;
-  const subColor = protagonista ? rgba(INK, 0.55) : '#A6A6B2';
+  // A pezzi con una confezione da un pezzo pillola e quantità dicono la stessa
+  // cosa ("7 pz 7 pz"): la seconda si toglie (Andrea, 26/09).
+  const mostraQuantita = qtyLabel !== confLabel;
 
   const chiave = trovaIcona(nome);
   const tonoIcona = !acceso ? 'spento' : protagonista ? 'hero' : 'area';
-  const coloreAlone = !acceso ? '#F7F7F8' : protagonista ? colore : '#FFFFFF';
+  const coloreAlone = protagonista ? colore : '#FFFFFF';
+  // Sulla tessera spenta niente alone: il text-shadow si applica anche alla
+  // barra del nome e la contornava di bianco (Andrea, 26/09). L'icona spenta
+  // è già abbastanza tenue da non disturbare il nome barrato.
+  const conAlone = chiave !== null && acceso;
 
   return (
     <button
@@ -133,11 +131,13 @@ export function Tessera({
         >
           {confLabel}
         </span>
-        <span
-          style={{ fontFamily: 'var(--font-mono)', fontWeight: 500, fontSize: 10, letterSpacing: '0.04em', color: qtyColor }}
-        >
-          {qtyLabel}
-        </span>
+        {mostraQuantita && (
+          <span
+            style={{ fontFamily: 'var(--font-mono)', fontWeight: 500, fontSize: 10, letterSpacing: '0.04em', color: qtyColor }}
+          >
+            {qtyLabel}
+          </span>
+        )}
       </div>
       <div style={{ minWidth: 0, marginTop: 10, position: 'relative' }}>
         <div
@@ -146,17 +146,12 @@ export function Tessera({
             color: nameColor,
             textDecoration: acceso ? 'none' : 'line-through',
             textDecorationThickness: acceso ? undefined : '1.6px',
-            textShadow: chiave ? alone(coloreAlone, protagonista ? 3 : 2) : undefined,
+            textShadow: conAlone ? alone(coloreAlone, protagonista ? 3 : 2) : undefined,
             overflowWrap: 'anywhere',
           }}
         >
           {nome}
         </div>
-        {mostraSottotitolo && (
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 8.5, letterSpacing: '0.02em', marginTop: 5, color: subColor }}>
-            {subLabel}
-          </div>
-        )}
       </div>
     </button>
   );
