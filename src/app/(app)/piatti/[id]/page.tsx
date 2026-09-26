@@ -13,6 +13,7 @@ import { Segmento } from '@/components/Segmento';
 import { TesseraIngrediente } from '@/components/TesseraIngrediente';
 import { raccogliIngredienteCreato, riprendiBozza, salvaBozza, scartaBozza } from './bozza';
 import { SelettoreIngrediente } from './SelettoreIngrediente';
+import { ComponentiPiatto } from './ComponentiPiatto';
 
 const GIORNI_LABEL = ['LUN', 'MAR', 'MER', 'GIO', 'VEN', 'SAB', 'DOM'];
 const GIORNI_LUNGHI = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
@@ -26,15 +27,6 @@ const TESTO_NON_IN_PROGRAMMA =
 
 const TESTO_ELIMINA =
   'Non comparirà più nel repertorio né nelle prossime settimane. Le settimane già passate restano invariate.';
-
-const TESTO_COMPONENTE_SENZA_NOME =
-  'Dai un nome a ogni componente: senza, non si distinguerebbe in Scegli.';
-
-const TESTO_OPZIONE_SENZA_RIGHE =
-  "Ogni opzione deve avere almeno un ingrediente: aggiungine uno o elimina l'opzione.";
-
-const TESTO_OPZIONE_QUANTITA =
-  'Manca la grammatura di uno o più ingredienti nelle opzioni: tocca il numero sulla tessera e scrivi quanto ne usi.';
 
 /**
  * Stesso vincolo di `check (quantita > 0)` che vale per `ingredienti`, esteso
@@ -583,15 +575,6 @@ export default function Piatto() {
   // il problema (I2). Il salvataggio resta disattivato finché non è > 0.
   const quantitaNonValide = new Set(ingredienti.filter((r) => r.quantita <= 0).map((r) => r.ingredientId));
 
-  // Le stesse tre condizioni di componentiNonValidi, separate qui per poter
-  // dire *cosa* manca invece di un unico messaggio generico — come già fa
-  // quantitaNonValide sopra per gli ingredienti fissi.
-  const componentiSenzaNome = componenti.filter((c) => c.nome.trim() === '');
-  const opzioniSenzaRighe = componenti.flatMap((c) => c.opzioni.filter((o) => o.righe.length === 0));
-  const quantitaNonValideOpzioni = new Set(
-    componenti.flatMap((c) => c.opzioni).flatMap((o) => o.righe.filter((r) => r.quantita <= 0).map((r) => `${o.id}|${r.ingredientId}`)),
-  );
-
   const salvataggioDisabilitato =
     senzaIngredienti || quantitaNonValide.size > 0 || componentiNonValidi(componenti);
 
@@ -771,168 +754,23 @@ export default function Piatto() {
           </div>
         )}
 
-        <div style={{ margin: '22px 4px 9px', fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--ink)' }}>
-          COMPONENTI A SCELTA
+        {/* I componenti a scelta (spec fase 7 §B.3 punto 4): le callback sono quelle di
+            sempre, lo stato resta qui. Il contenitore tiene il distacco di oggi finché la
+            pagina non passa ai Blocchi (Task 6). */}
+        <div style={{ marginTop: 22, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <ComponentiPiatto
+            componenti={componenti}
+            catalogoPerId={catalogoPerId}
+            onAggiungiComponente={aggiungiComponente}
+            onRimuoviComponente={rimuoviComponente}
+            onCambiaNomeComponente={cambiaNomeComponente}
+            onAggiungiOpzione={aggiungiOpzione}
+            onRimuoviOpzione={rimuoviOpzione}
+            onAggiungiIngrediente={(componenteId, opzioneId) => setSelettore({ tipo: 'opzione', componenteId, opzioneId })}
+            onCambiaQuantita={cambiaQuantitaOpzione}
+            onRimuoviRiga={rimuoviRigaOpzione}
+          />
         </div>
-
-        {componenti.map((componente, indiceComponente) => (
-          <div
-            key={componente.id}
-            style={{
-              background: 'var(--superficie)',
-              borderRadius: 18,
-              border: '1px solid var(--bordo)',
-              padding: '13px 14px 14px',
-              marginBottom: 10,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <input
-                type="text"
-                value={componente.nome}
-                onChange={(e) => cambiaNomeComponente(componente.id, e.target.value)}
-                placeholder="Nome del componente"
-                aria-label={`Nome del componente ${indiceComponente + 1}`}
-                style={{
-                  flex: 1,
-                  height: 40,
-                  padding: '0 12px',
-                  borderRadius: 12,
-                  border: '1px solid var(--bordo)',
-                  background: 'var(--fondo)',
-                  fontSize: 15,
-                  fontWeight: 600,
-                  color: 'var(--ink)',
-                  outline: 'none',
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => rimuoviComponente(componente.id)}
-                aria-label={`Elimina componente ${indiceComponente + 1}`}
-                style={{
-                  flex: 'none', width: 40, height: 40, display: 'flex',
-                  alignItems: 'center', justifyContent: 'center', background: 'transparent',
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                  <path d="M5 5l14 14M19 5 5 19" stroke="#8A8A96" strokeWidth="2.1" strokeLinecap="round" />
-                </svg>
-              </button>
-            </div>
-
-            {componente.opzioni.map((opzione, indiceOpzione) => {
-              const righeNonValideOpzione = new Set(
-                opzione.righe.filter((r) => r.quantita <= 0).map((r) => r.ingredientId),
-              );
-              return (
-                <div key={opzione.id} style={{ marginTop: 14 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0 2px 7px' }}>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8.5, letterSpacing: '0.11em', color: 'var(--ter)' }}>
-                      OPZIONE {indiceOpzione + 1}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => rimuoviOpzione(componente.id, opzione.id)}
-                      aria-label={`Elimina opzione ${indiceOpzione + 1} del componente ${indiceComponente + 1}`}
-                      style={{
-                        fontFamily: 'var(--font-mono)', fontSize: 8.5, fontWeight: 700, letterSpacing: '0.09em',
-                        color: 'var(--sec)', background: 'transparent', padding: '4px 2px',
-                      }}
-                    >
-                      ELIMINA
-                    </button>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
-                    {opzione.righe.map((riga) => {
-                      const ing = catalogoPerId.get(riga.ingredientId);
-                      if (!ing) return null;
-                      return (
-                        <TesseraIngrediente
-                          key={riga.ingredientId}
-                          nome={ing.nome}
-                          area={ing.area}
-                          quantita={riga.quantita}
-                          unita={riga.unita}
-                          onCambiaQuantita={(q) => cambiaQuantitaOpzione(componente.id, opzione.id, riga.ingredientId, q)}
-                          onRimuovi={() => rimuoviRigaOpzione(componente.id, opzione.id, riga.ingredientId)}
-                          quantitaValida={!righeNonValideOpzione.has(riga.ingredientId)}
-                        />
-                      );
-                    })}
-
-                    <button
-                      type="button"
-                      onClick={() => setSelettore({ tipo: 'opzione', componenteId: componente.id, opzioneId: opzione.id })}
-                      aria-label={`Aggiungi ingrediente all'opzione ${indiceOpzione + 1} del componente ${indiceComponente + 1}`}
-                      style={{
-                        minHeight: 108, display: 'flex', flexDirection: 'column',
-                        alignItems: 'center', justifyContent: 'center', gap: 9,
-                        padding: '13px 12px', borderRadius: 15, background: 'transparent',
-                        border: '1.5px dashed rgba(20,22,58,0.28)',
-                      }}
-                    >
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                        <path d="M12 5v14M5 12h14" stroke="#8A8A96" strokeWidth="2.1" strokeLinecap="round" />
-                      </svg>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 700, letterSpacing: '0.11em', color: 'var(--sec)', textAlign: 'center', lineHeight: 1.5 }}>
-                        AGGIUNGI
-                        <br />
-                        INGREDIENTE
-                      </span>
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-
-            <button
-              type="button"
-              onClick={() => aggiungiOpzione(componente.id)}
-              style={{
-                marginTop: 12, height: 40, width: '100%', borderRadius: 12,
-                fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.09em',
-                color: 'var(--sec)', background: 'rgba(20,22,58,0.05)',
-              }}
-            >
-              AGGIUNGI OPZIONE
-            </button>
-          </div>
-        ))}
-
-        <button
-          type="button"
-          onClick={aggiungiComponente}
-          style={{
-            width: '100%', minHeight: 54, borderRadius: 18, display: 'flex',
-            alignItems: 'center', justifyContent: 'center', gap: 9,
-            background: 'transparent', border: '1.5px dashed rgba(20,22,58,0.28)',
-          }}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <path d="M12 5v14M5 12h14" stroke="#8A8A96" strokeWidth="2.1" strokeLinecap="round" />
-          </svg>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.09em', color: 'var(--sec)' }}>
-            AGGIUNGI COMPONENTE
-          </span>
-        </button>
-
-        {componentiSenzaNome.length > 0 && (
-          <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', margin: '14px 6px 0' }}>
-            {TESTO_COMPONENTE_SENZA_NOME}
-          </div>
-        )}
-        {opzioniSenzaRighe.length > 0 && (
-          <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', margin: '14px 6px 0' }}>
-            {TESTO_OPZIONE_SENZA_RIGHE}
-          </div>
-        )}
-        {opzioniSenzaRighe.length === 0 && quantitaNonValideOpzioni.size > 0 && (
-          <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', margin: '14px 6px 0' }}>
-            {TESTO_OPZIONE_QUANTITA}
-          </div>
-        )}
 
         <div style={{ margin: '22px 4px 9px', fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--ink)' }}>
           COME SI FA
