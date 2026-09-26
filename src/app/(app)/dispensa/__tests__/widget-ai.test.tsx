@@ -439,6 +439,25 @@ describe('WidgetAI', () => {
       expect(esito).toHaveFocus();
     });
 
+    it('il fuoco è sul recap già nell\'istante in cui il recap compare, non un frame dopo', async () => {
+      // Il test sopra era intermittente (~1 giro su 9 della suite): il recap
+      // arriva da una promessa, e con il fuoco spostato in un useEffect React
+      // lo spostava in un task successivo al commit. In quel frattempo il
+      // campo era già smontato e il fuoco stava su <body>. Qui lo si legge
+      // nella microtask del MutationObserver, subito dopo il commit.
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(rispostaOk({ proposte: [FINITO_RISO], nonRiconosciuti: [] })));
+      let fuocoAllaComparsa: Element | null | undefined;
+      const osservatore = new MutationObserver(() => {
+        const esito = document.querySelector('[data-testid="esito-widget"]');
+        if (esito && fuocoAllaComparsa === undefined) fuocoAllaComparsa = document.activeElement;
+      });
+      osservatore.observe(document.body, { childList: true, subtree: true });
+      invia('ho finito il riso');
+      await screen.findByText('APPLICATE 1 DI 1');
+      osservatore.disconnect();
+      expect(fuocoAllaComparsa).toBe(screen.getByTestId('esito-widget'));
+    });
+
     it('un ingrediente fuori dal contesto: nome accessibile con l\'id, come il testo, senza doppio spazio', async () => {
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue(rispostaOk({
         proposte: [
