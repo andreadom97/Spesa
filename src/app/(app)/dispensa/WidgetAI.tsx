@@ -121,8 +121,11 @@ export function WidgetAI({ contesto, dettatura, bozza, onBozza, onDatiCambiati, 
   }, []);
 
   // All'esito il campo sparisce: il fuoco va al contenitore del recap, così
-  // lo screen reader non resta su `body`.
-  useEffect(() => {
+  // lo screen reader non resta su `body`. Layout effect, non useEffect: il
+  // recap arriva da una promessa, e un useEffect girerebbe in un task dopo il
+  // commit, lasciando un frame col campo già smontato e il fuoco su `body`
+  // (era anche la causa del test intermittente «il fuoco va al recap»).
+  useLayoutEffect(() => {
     if (esito) esitoRef.current?.focus();
   }, [esito]);
 
