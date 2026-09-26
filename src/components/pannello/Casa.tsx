@@ -91,6 +91,8 @@ export function Casa() {
   // Il timer che riporta COPIATO a COPIA: parte nel gestore del tocco, non in un effetto, così
   // c'è già quando COPIATO compare; si ferma se la sotto-schermata si smonta.
   const timerCopiato = useRef<number | undefined>(undefined);
+  // Falso dopo lo smontaggio: una copia ancora in volo, quando finisce, non crea più il timer.
+  const montato = useRef(false);
 
   // La scadenza del codice: ogni minuto e al ritorno in primo piano (§C.7, §L).
   useEffect(() => {
@@ -112,7 +114,13 @@ export function Casa() {
     };
   }, [codice]);
 
-  useEffect(() => () => window.clearTimeout(timerCopiato.current), []);
+  useEffect(() => {
+    montato.current = true;
+    return () => {
+      montato.current = false;
+      window.clearTimeout(timerCopiato.current);
+    };
+  }, []);
 
   if (stato.stato === 'carico') return <Carico />;
   if (stato.stato === 'errore' || stato.dati.casa === null) {
@@ -145,13 +153,15 @@ export function Casa() {
     try {
       // Senza `navigator.clipboard` (contesto non sicuro, browser vecchio) lancia: vale come un fallimento.
       await navigator.clipboard.writeText(testo);
+      // Smontata mentre `writeText` era in volo: il cleanup è già passato, nessun timer dopo.
+      if (!montato.current) return;
       // COPIATO per 2 s, poi di nuovo COPIA; un tocco nuovo riparte da 2 s.
       window.clearTimeout(timerCopiato.current);
       timerCopiato.current = window.setTimeout(() => setCopia('ferma'), DURATA_COPIATO_MS);
       setCopia('copiato');
     } catch (e) {
       console.error('pannello/casa: copia del codice fallita.', e);
-      setCopia('errore');
+      if (montato.current) setCopia('errore');
     }
   }
 
@@ -222,7 +232,11 @@ export function Casa() {
       {/* Etichetta dal disegno (frame 15), confermata da Andrea il 26/09. */}
       <div style={{ padding: '6px 4px 0' }}><Etichetta>CODICE DELLA CASA</Etichetta></div>
       <div style={{ height: 64, borderRadius: 14, background: 'rgba(20,22,58,0.04)', display: 'flex', alignItems: 'center', gap: 8, padding: '0 10px 0 16px' }}>
+        {/* `role="img"`: su un div senza ruolo (generic, ARIA 1.2) l'aria-label non vale e lo
+            screen reader leggerebbe «K7P3QX2M» come una parola; da immagine legge il nome
+            compitato (§C.7), e il testo visibile dentro resta presentazionale. */}
         <div
+          role="img"
           aria-label={`Codice della casa: ${codiceCompitato(codice.testo)}`}
           style={{ flex: 1, textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: 21, fontWeight: 700, letterSpacing: '0.16em', fontVariantNumeric: 'tabular-nums', color: 'var(--ink)' }}
         >

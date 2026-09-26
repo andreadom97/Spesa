@@ -71,7 +71,10 @@ describe('Casa condivisa', () => {
     vi.mocked(creaInvito).mockResolvedValue('K7P3QX2M');
     montaPannello('casa');
     fireEvent.click(await screen.findByRole('button', { name: 'CREA UN CODICE' }));
-    expect(await screen.findByLabelText('Codice della casa: K 7 P 3 Q X 2 M')).toHaveTextContent('K7P3QX2M');
+    // Come lo vede lo screen reader: un'immagine col nome compitato, non il testo «K7P3QX2M»
+    // (su un div senza ruolo l'aria-label non vale: il ruolo generic non ammette un nome).
+    const codice = await screen.findByRole('img', { name: 'Codice della casa: K 7 P 3 Q X 2 M' });
+    expect(codice).toHaveTextContent('K7P3QX2M');
     expect(creaInvito).toHaveBeenCalledTimes(1);
     // L'etichetta dal disegno (frame 15), confermata da Andrea il 26/09.
     expect(screen.getByText('CODICE DELLA CASA')).toBeInTheDocument();
@@ -123,6 +126,25 @@ describe('Casa condivisa', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'COPIA' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Non siamo riusciti a copiarlo. Dettalo a voce.');
     errore.mockRestore();
+  });
+
+  it('se Casa si smonta mentre la copia è in volo, nessun timer di COPIATO nasce dopo', async () => {
+    let finisci: () => void = () => {};
+    const writeText = vi.fn(() => new Promise<void>((r) => { finisci = r; }));
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    vi.mocked(creaInvito).mockResolvedValue('K7P3QX2M');
+    const { unmount } = montaPannello('casa');
+    fireEvent.click(await screen.findByRole('button', { name: 'CREA UN CODICE' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'COPIA' }));
+    expect(writeText).toHaveBeenCalledTimes(1);
+    unmount();
+    const timeout = vi.spyOn(window, 'setTimeout');
+    try {
+      await act(async () => { finisci(); });
+      expect(timeout.mock.calls.filter(([, ms]) => ms === 2000)).toHaveLength(0);
+    } finally {
+      timeout.mockRestore();
+    }
   });
 
   it('dopo un’ora il codice sparisce e torna CREA UN CODICE (controllo al minuto)', async () => {
@@ -225,7 +247,7 @@ describe('Casa condivisa', () => {
     vi.mocked(creaInvito).mockResolvedValue('K7P3QX2M');
     montaPannello('casa', { casa: PROPRIETARIO_DUE });
     fireEvent.click(await screen.findByRole('button', { name: 'CREA UN CODICE' }));
-    const codice = await screen.findByLabelText('Codice della casa: K 7 P 3 Q X 2 M');
+    const codice = await screen.findByRole('img', { name: 'Codice della casa: K 7 P 3 Q X 2 M' });
     const nota = screen.getByText('Ognuno spunta dal suo telefono. La lista si aggiorna quando la riapri.');
     expect(nota.compareDocumentPosition(codice) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByText('LA TUA CASA').closest('section')).toContainElement(codice);
