@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import type { Dish, Ingredient, MealSlot, MealSlotDef, PantryState } from '@/domain/types';
 import type { SettimanaCorrente } from '@/data/settimana';
 import type { ListaSalvata } from '@/data/lista';
@@ -41,6 +41,7 @@ import { leggiRepertorio, leggiIngredienti } from '@/data/repertorio';
 import { leggiSlotDefs, leggiImpostazioni } from '@/data/impostazioni';
 import { leggiDispensa } from '@/data/dispensa';
 import { leggiListe } from '@/data/lista';
+import { SlotDockProvider } from '@/components/dock-slot';
 import ScegliPiatto from '../page';
 
 const DATA = '2026-08-27';
@@ -260,6 +261,17 @@ function mockCaricoConDueComponenti() {
   vi.mocked(leggiDispensa).mockResolvedValue([PANTRY_RICOTTA_COPERTA]);
 }
 
+/**
+ * La pagina con uno slot vero per il Dock, come nel Guscio. Lo slot si attacca al body
+ * dopo il render: così nel documento viene dopo il corpo della pagina, come nell'app.
+ */
+function monta() {
+  const slot = document.createElement('div');
+  const esito = render(<SlotDockProvider slot={slot}><ScegliPiatto /></SlotDockProvider>);
+  document.body.appendChild(slot);
+  return esito;
+}
+
 describe('Scegli il piatto', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -271,7 +283,7 @@ describe('Scegli il piatto', () => {
 
   it('mostra solo i piatti attivi dello slot corrente, non quelli di altri pasti', async () => {
     mockCarico();
-    render(<ScegliPiatto />);
+    monta();
 
     expect(await screen.findByText('Pollo e riso')).toBeInTheDocument();
     expect(screen.getByText('Merluzzo e piselli')).toBeInTheDocument();
@@ -280,25 +292,26 @@ describe('Scegli il piatto', () => {
 
   it('header ed etichetta usano il giorno e il pasto reali', async () => {
     mockCarico();
-    render(<ScegliPiatto />);
+    monta();
     await screen.findByText('Pollo e riso');
 
-    expect(screen.getByText('GIOVEDÌ 27 · CENA')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Cosa mangi' })).toBeInTheDocument();
+    expect(screen.getByText('Giovedì 27 · Cena')).toBeInTheDocument();
   });
 
-  it('il piatto assegnato allo slot mostra il badge "ORA IN PROGRAMMA" ed è selezionato', async () => {
+  it('il piatto assegnato allo slot dice "ORA IN PROGRAMMA" ed è selezionato', async () => {
     mockCarico();
-    render(<ScegliPiatto />);
+    monta();
     await screen.findByText('Pollo e riso');
 
-    expect(screen.getByText('ORA IN PROGRAMMA')).toBeInTheDocument();
     const rigaPollo = screen.getByText('Pollo e riso').closest('button');
+    expect(rigaPollo).toHaveTextContent('ORA IN PROGRAMMA');
     expect(rigaPollo).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('la nota, senza selezione cambiata, spiega che vale solo per quel pasto e giorno', async () => {
     mockCarico();
-    render(<ScegliPiatto />);
+    monta();
     await screen.findByText('Pollo e riso');
 
     expect(
@@ -308,7 +321,7 @@ describe('Scegli il piatto', () => {
 
   it('i quadratini delle aree seguono l\'ordine dell\'utente (ordineAree), non l\'ordine fisso di default', async () => {
     mockCarico();
-    render(<ScegliPiatto />);
+    monta();
     const nomePiatto = await screen.findByText('Pollo e riso');
 
     // Pollo e riso tocca macelleria (i-1) e cereali (i-2). Con
@@ -321,7 +334,7 @@ describe('Scegli il piatto', () => {
 
   it('il pulsante di conferma è disattivato finché non si sceglie un piatto diverso da quello attuale', async () => {
     mockCarico();
-    render(<ScegliPiatto />);
+    monta();
     await screen.findByText('Pollo e riso');
 
     const bottone = screen.getByText('SOSTITUISCI');
@@ -335,7 +348,7 @@ describe('Scegli il piatto', () => {
   it('selezionare un altro piatto attiva conferma, cambia la nota, e la conferma scrive solo dishId sullo slot (slot "casa": nessun campo stato nel patch)', async () => {
     mockCarico();
     vi.mocked(aggiornaSlot).mockResolvedValue(undefined);
-    render(<ScegliPiatto />);
+    monta();
     await screen.findByText('Pollo e riso');
 
     fireEvent.click(screen.getByText('Merluzzo e piselli'));
@@ -363,7 +376,7 @@ describe('Scegli il piatto', () => {
   it('slot già "saltato": la conferma riporta lo stato a casa con fonte correzione', async () => {
     mockCaricoSaltato();
     vi.mocked(aggiornaSlot).mockResolvedValue(undefined);
-    render(<ScegliPiatto />);
+    monta();
     await screen.findByText('Pollo e riso');
 
     fireEvent.click(screen.getByText('Merluzzo e piselli'));
@@ -378,7 +391,7 @@ describe('Scegli il piatto', () => {
   it('slot già "sostituito": la conferma riporta lo stato a casa con fonte correzione', async () => {
     mockCaricoSostituito();
     vi.mocked(aggiornaSlot).mockResolvedValue(undefined);
-    render(<ScegliPiatto />);
+    monta();
     await screen.findByText('Pollo e riso');
 
     fireEvent.click(screen.getByText('Merluzzo e piselli'));
@@ -393,7 +406,7 @@ describe('Scegli il piatto', () => {
   it('errore di salvataggio: mostra un messaggio inline e la schermata resta in piedi', async () => {
     mockCarico();
     vi.mocked(aggiornaSlot).mockRejectedValue(new Error('rete assente'));
-    render(<ScegliPiatto />);
+    monta();
     await screen.findByText('Pollo e riso');
 
     fireEvent.click(screen.getByText('Merluzzo e piselli'));
@@ -408,33 +421,35 @@ describe('Scegli il piatto', () => {
   it('slot non trovato per data/slotDefId: mostra un errore invece di far crashare la schermata', async () => {
     paramsMock = { data: '2099-01-01', slotDefId: 'sd-3' };
     mockCarico();
-    render(<ScegliPiatto />);
+    monta();
 
     expect(await screen.findByText('Non troviamo questo pasto.')).toBeInTheDocument();
   });
 
-  it('il link "torna" e il bottone "annulla" puntano a /piano senza chiamare aggiornaSlot', async () => {
+  it('la pillola PIANO della Testata porta a /piano senza chiamare aggiornaSlot; ANNULLA non c\'è più', async () => {
     mockCarico();
-    render(<ScegliPiatto />);
+    monta();
     await screen.findByText('Pollo e riso');
 
-    expect(screen.getByLabelText('Torna al Piano')).toHaveAttribute('href', '/piano');
-    expect(screen.getByText('ANNULLA')).toHaveAttribute('href', '/piano');
+    fireEvent.click(screen.getByRole('button', { name: 'Torna al piano' }));
+    expect(push).toHaveBeenCalledWith('/piano');
     expect(aggiornaSlot).not.toHaveBeenCalled();
+    expect(screen.queryByText('ANNULLA')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Torna al Piano' })).not.toBeInTheDocument();
   });
 
   it('un piatto con componente a due opzioni mostra la riga del componente col nome dell\'opzione di default', async () => {
     mockCaricoConComponenti();
-    render(<ScegliPiatto />);
+    monta();
     await screen.findByText('Torta salata');
 
-    expect(screen.getByText('FARCITURA')).toBeInTheDocument();
+    expect(screen.getByText('Farcitura')).toBeInTheDocument();
     expect(screen.getByText('Ricotta')).toBeInTheDocument();
   });
 
   it('il tap sul componente cicla alla seconda opzione e abilita il bottone SOSTITUISCI', async () => {
     mockCaricoConComponenti();
-    render(<ScegliPiatto />);
+    monta();
     await screen.findByText('Torta salata');
 
     const bottone = screen.getByText('SOSTITUISCI');
@@ -448,7 +463,7 @@ describe('Scegli il piatto', () => {
 
   it('il chip IN CASA compare quando la dispensa mockata copre l\'opzione corrente, sparisce quando non la copre', async () => {
     mockCaricoConComponenti();
-    render(<ScegliPiatto />);
+    monta();
     await screen.findByText('Torta salata');
 
     expect(screen.getByText('IN CASA')).toBeInTheDocument();
@@ -460,7 +475,7 @@ describe('Scegli il piatto', () => {
   it('confermare dopo aver toccato un componente salva il dishId invariato e la scelta manuale del componente', async () => {
     mockCaricoConComponenti();
     vi.mocked(aggiornaSlot).mockResolvedValue(undefined);
-    render(<ScegliPiatto />);
+    monta();
     await screen.findByText('Torta salata');
 
     fireEvent.click(screen.getByText('Ricotta'));
@@ -479,7 +494,7 @@ describe('Scegli il piatto', () => {
   it('un ciclo andata-e-ritorno su un componente non lo manda come scelta manuale, un cambio vero su un altro sì', async () => {
     mockCaricoConDueComponenti();
     vi.mocked(aggiornaSlot).mockResolvedValue(undefined);
-    render(<ScegliPiatto />);
+    monta();
     await screen.findByText('Torta salata doppia');
 
     // Farcitura: Ricotta (default) -> Noci -> di nuovo Ricotta. Torna
@@ -505,7 +520,7 @@ describe('Scegli il piatto', () => {
 
   it('la riga del componente ha un aria-label che dice cosa cambia e qual è l\'opzione corrente', async () => {
     mockCaricoConComponenti();
-    render(<ScegliPiatto />);
+    monta();
     await screen.findByText('Torta salata');
 
     expect(screen.getByLabelText('Cambia Farcitura: ora Ricotta')).toBeInTheDocument();
@@ -612,7 +627,7 @@ describe('Conflitto di residuo', () => {
     // La dispensa dice 300 (uno storno già passato di lì): non conta, a
     // settimana confermata vale il residuo congelato nella riga di lista.
     vi.mocked(leggiDispensa).mockResolvedValue([{ ...PANTRY_YOGURT_100, residuo: 300 }]);
-    render(<ScegliPiatto />);
+    monta();
     await screen.findByText('Merluzzo al vapore');
 
     expect(screen.queryByText(/non basta/)).not.toBeInTheDocument();
@@ -629,7 +644,7 @@ describe('Conflitto di residuo', () => {
 
   it('settimana bozza: nessun conflitto, mai', async () => {
     mockCaricoConflitto('bozza');
-    render(<ScegliPiatto />);
+    monta();
     await screen.findByText('Merluzzo al vapore');
 
     fireEvent.click(screen.getByText('Pollo allo yogurt'));
@@ -639,7 +654,7 @@ describe('Conflitto di residuo', () => {
 
   it('col piatto originale selezionato non compare nessun conflitto', async () => {
     mockCaricoConflitto('confermata');
-    render(<ScegliPiatto />);
+    monta();
     await screen.findByText('Merluzzo al vapore');
 
     fireEvent.click(screen.getByText('Merluzzo al vapore'));
@@ -652,7 +667,7 @@ describe('Conflitto di residuo', () => {
     vi.mocked(leggiListe).mockRejectedValue(new Error('rete assente'));
     const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
     try {
-      render(<ScegliPiatto />);
+      monta();
       await screen.findByText('Merluzzo al vapore');
 
       fireEvent.click(screen.getByText('Pollo allo yogurt'));
@@ -673,7 +688,7 @@ describe('Conflitto di residuo', () => {
     });
     vi.mocked(leggiRepertorio).mockResolvedValue([DISH_YOGURT_200, DISH_YOGURT_400]);
     vi.mocked(leggiDispensa).mockResolvedValue([{ ...PANTRY_YOGURT_100, residuo: 50 }]);
-    render(<ScegliPiatto />);
+    monta();
     await screen.findByText('Yogurt e miele');
 
     fireEvent.click(screen.getByText('Pollo allo yogurt'));
@@ -682,5 +697,192 @@ describe('Conflitto di residuo', () => {
     // nella voce) + 200 (storno del piatto attuale) = 250; fabbisogno = 400
     // → mancano 150 g. Nessun altro slot: niente coda.
     expect(screen.getByText('Con questo piatto Yogurt greco non basta: ne mancano 150 g.')).toBeInTheDocument();
+  });
+
+  it('il conflitto è un Avviso in linea: 11,5 in --avviso, dentro una regione aria-live polite che c\'era già prima del tocco', async () => {
+    mockCaricoConflitto('confermata');
+    monta();
+    await screen.findByText('Merluzzo al vapore');
+    // La regione esiste prima che il conflitto compaia: così lo screen reader lo annuncia.
+    const regioniPrima = Array.from(document.querySelectorAll('[aria-live="polite"]'));
+    expect(regioniPrima.length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByText('Pollo allo yogurt'));
+
+    const avviso = screen.getByText(/^Con questo piatto Yogurt greco non basta/);
+    expect(avviso.style.color).toBe('var(--avviso)');
+    expect(avviso.style.fontSize).toBe('11.5px');
+    const regione = avviso.closest('[aria-live="polite"]');
+    expect(regione).not.toBeNull();
+    expect(regioniPrima).toContain(regione);
+  });
+});
+
+// ── Fase 7: Testata, ricerca, righe, componenti, Dock (spec 2026-09-26 §A) ──
+
+describe('Scegli — il ridisegno della fase 7', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    paramsMock = { data: DATA, slotDefId: 'sd-3' };
+    vi.mocked(leggiListe).mockResolvedValue(null);
+  });
+
+  it('in caricamento: la Testata con la pillola PIANO, CARICO… e niente Dock', async () => {
+    mockCarico();
+    vi.mocked(leggiRepertorio).mockReturnValue(new Promise(() => {}));
+    monta();
+
+    expect(await screen.findByText('CARICO…')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Cosa mangi' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Torna al piano' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Azione principale' })).not.toBeInTheDocument();
+  });
+
+  it('errore di caricamento: il messaggio in --errore, sotto la Testata, e niente Dock', async () => {
+    const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      mockCarico();
+      vi.mocked(leggiRepertorio).mockRejectedValue(new Error('rete assente'));
+      monta();
+
+      const msg = await screen.findByText('Non riusciamo a caricare i piatti. Riprova più tardi.');
+      expect(msg.style.color).toBe('var(--errore)');
+      expect(screen.getByRole('heading', { level: 1, name: 'Cosa mangi' })).toBeInTheDocument();
+      expect(screen.queryByRole('region', { name: 'Azione principale' })).not.toBeInTheDocument();
+    } finally {
+      errore.mockRestore();
+    }
+  });
+
+  it('la ricerca filtra per nome del piatto o di un ingrediente, mostra il vuoto di Piatti e non cambia la scelta', async () => {
+    mockCarico();
+    monta();
+    await screen.findByText('Pollo e riso');
+    const campo = screen.getByRole('searchbox', { name: 'Cerca un piatto o un ingrediente' });
+
+    fireEvent.change(campo, { target: { value: 'merluzzo' } });
+    expect(screen.queryByText('Pollo e riso')).not.toBeInTheDocument();
+    expect(screen.getByText('Merluzzo e piselli')).toBeInTheDocument();
+
+    // Per ingrediente: il Riso sta in tutti e due, nel Merluzzo solo come ingrediente.
+    fireEvent.change(campo, { target: { value: 'RISO' } });
+    expect(screen.getByText('Pollo e riso')).toBeInTheDocument();
+    expect(screen.getByText('Merluzzo e piselli')).toBeInTheDocument();
+
+    fireEvent.change(campo, { target: { value: 'zucca' } });
+    expect(screen.getByText('Nessun piatto qui')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Scegli / })).not.toBeInTheDocument();
+    // Filtrare non è scegliere: il piatto in programma resta scelto e SOSTITUISCI spento.
+    expect(screen.getByRole('button', { name: 'SOSTITUISCI' })).toBeDisabled();
+
+    fireEvent.change(campo, { target: { value: '' } });
+    expect(screen.getByRole('button', { name: 'Scegli Pollo e riso' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByText('Nessun piatto qui')).not.toBeInTheDocument();
+  });
+
+  it('la riga scelta: aria-pressed sul piatto in programma prima di un tocco, poi su quello toccato', async () => {
+    mockCarico();
+    monta();
+    const pollo = await screen.findByRole('button', { name: 'Scegli Pollo e riso' });
+    const merluzzo = screen.getByRole('button', { name: 'Scegli Merluzzo e piselli' });
+    expect(pollo).toHaveAttribute('aria-pressed', 'true');
+    expect(merluzzo).toHaveAttribute('aria-pressed', 'false');
+
+    fireEvent.click(merluzzo);
+
+    expect(merluzzo).toHaveAttribute('aria-pressed', 'true');
+    expect(pollo).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('ORA IN PROGRAMMA sta in testa alla sottoriga del piatto in programma, e non segue la scelta', async () => {
+    mockCarico();
+    monta();
+    const pollo = await screen.findByRole('button', { name: 'Scegli Pollo e riso' });
+    const merluzzo = screen.getByRole('button', { name: 'Scegli Merluzzo e piselli' });
+
+    expect(pollo).toHaveTextContent('ORA IN PROGRAMMA · 2 INGREDIENTI');
+    expect(merluzzo).toHaveTextContent('1 INGREDIENTE');
+    expect(merluzzo).not.toHaveTextContent('ORA IN PROGRAMMA');
+
+    fireEvent.click(merluzzo);
+    expect(pollo).toHaveTextContent('ORA IN PROGRAMMA');
+    expect(merluzzo).not.toHaveTextContent('ORA IN PROGRAMMA');
+  });
+
+  it('i componenti sono Righe di impostazione sotto COMPONENTI: nome, opzione come valore, IN CASA nella nota', async () => {
+    mockCaricoConComponenti();
+    monta();
+    await screen.findByText('Torta salata');
+
+    expect(screen.getByRole('heading', { level: 2, name: 'COMPONENTI' })).toBeInTheDocument();
+    const riga = screen.getByRole('button', { name: 'Cambia Farcitura: ora Ricotta' });
+    expect(within(riga).getByText('Farcitura')).toBeInTheDocument();
+    expect(within(riga).getByText('Ricotta')).toBeInTheDocument();
+    const inCasa = within(riga).getByText('IN CASA');
+    expect(inCasa.style.fontFamily).toBe('var(--font-mono)');
+    expect(inCasa.style.fontSize).toBe('10px');
+    // Fra i token non c'è un verde: IN CASA è in --ink (spec fase 7 §A.4).
+    expect(inCasa.style.color).toBe('var(--ink)');
+
+    fireEvent.click(riga);
+
+    const dopo = screen.getByRole('button', { name: 'Cambia Farcitura: ora Noci' });
+    expect(within(dopo).getByText('Noci')).toBeInTheDocument();
+    expect(within(dopo).queryByText('IN CASA')).not.toBeInTheDocument();
+  });
+
+  it('un piatto senza componenti non mostra la sezione COMPONENTI', async () => {
+    mockCarico();
+    monta();
+    await screen.findByText('Pollo e riso');
+
+    expect(screen.queryByRole('heading', { level: 2, name: 'COMPONENTI' })).not.toBeInTheDocument();
+  });
+
+  it('SOSTITUISCI sta nel Dock: spento senza cambiamenti, spento in volo col grigio del sistema, riacceso dopo un errore scritto sopra il Dock', async () => {
+    const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      mockCarico();
+      let rifiuta: (e: Error) => void = () => {};
+      vi.mocked(aggiornaSlot).mockReturnValueOnce(new Promise<void>((_, r) => { rifiuta = r; }));
+      monta();
+
+      const regione = await screen.findByRole('region', { name: 'Azione principale' });
+      const tasto = within(regione).getByRole('button', { name: 'SOSTITUISCI' });
+      expect(tasto).toHaveClass('dock-primario');
+      expect(tasto).toBeDisabled();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Scegli Merluzzo e piselli' }));
+      expect(tasto).not.toBeDisabled();
+
+      fireEvent.click(tasto);
+      await waitFor(() => expect(tasto).toBeDisabled());
+      // In volo è lo spento di `.dock-primario:disabled`, non un'opacità scritta sul tasto.
+      expect(tasto).not.toHaveAttribute('style');
+
+      rifiuta(new Error('rete assente'));
+      const msg = await within(regione).findByRole('alert');
+      expect(msg).toHaveTextContent('Non siamo riusciti a salvare la scelta. Riprova.');
+      expect(msg.style.color).toBe('var(--errore)');
+      expect(tasto).not.toBeDisabled();
+      expect(push).not.toHaveBeenCalled();
+    } finally {
+      errore.mockRestore();
+    }
+  });
+
+  it('CREA UN PIATTO NUOVO è l\'Aggiungi tratteggiato in fondo, dopo la nota, e porta a /piatti/nuovo', async () => {
+    mockCarico();
+    monta();
+    await screen.findByText('Pollo e riso');
+
+    const crea = screen.getByRole('link', { name: 'CREA UN PIATTO NUOVO' });
+    expect(crea).toHaveAttribute('href', '/piatti/nuovo');
+    expect(crea.style.height).toBe('56px');
+    expect(crea.style.borderRadius).toBe('14px');
+    const nota = screen.getByText(/^Tocca un piatto per sostituire/);
+    expect(nota.compareDocumentPosition(crea) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const ultimaRiga = screen.getByRole('button', { name: 'Scegli Merluzzo e piselli' });
+    expect(ultimaRiga.compareDocumentPosition(crea) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

@@ -14,6 +14,12 @@ interface Props {
   nota?: ReactNode;
   finale: Finale;
   errore?: string | null;
+  /**
+   * Il nome accessibile della riga, quando il testo visibile non basta a dire cosa fa il
+   * tocco (Scegli: `Cambia {componente}: ora {opzione}`, spec fase 7 §A.4). Vale solo dove
+   * la riga è un `button` (`valore`, `azione`); senza, il nome è il testo della riga.
+   */
+  etichetta?: string;
 }
 
 const STILE_RIGA = {
@@ -35,7 +41,7 @@ function Chevron() {
  * intera un `button`; `campo` e `niente` la lasciano un contenitore. L'errore
  * di salvataggio sta sotto la riga, dentro il blocco, con `role="alert"` (§B.5).
  */
-export function RigaImpostazione({ nome, nota, finale, errore }: Props) {
+export function RigaImpostazione({ nome, nota, finale, errore, etichetta }: Props) {
   const nomeInErrore = finale.tipo === 'azione' && finale.tono === 'errore';
   const testi = (
     <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -54,10 +60,16 @@ export function RigaImpostazione({ nome, nota, finale, errore }: Props) {
   switch (finale.tipo) {
     case 'valore':
       riga = (
-        <button type="button" onClick={finale.onApri} style={STILE_RIGA}>
+        <button type="button" aria-label={etichetta} onClick={finale.onApri} style={STILE_RIGA}>
           {testi}
           {finale.valore && (
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>
+            // Al massimo metà riga, poi ellissi: un valore lungo (le opzioni di Scegli,
+            // «Ricotta + Noci + …») non deve schiacciare il nome a zero. Il testo intero
+            // resta nell'etichetta, se chi monta la riga la passa. I valori corti del
+            // Pannello («2 PASTI», «OGNI 3 MESI», «NESSUNO FUORI CASA») stanno sotto la
+            // metà e non cambiano. Maiuscolo via CSS (DESIGN.md §8): chi passa «Ricotta»
+            // la vede RICOTTA, e nel DOM resta il testo.
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', whiteSpace: 'nowrap', maxWidth: '50%', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {finale.valore}
             </span>
           )}
@@ -66,7 +78,7 @@ export function RigaImpostazione({ nome, nota, finale, errore }: Props) {
       );
       break;
     case 'azione':
-      riga = <button type="button" onClick={finale.onAzione} style={STILE_RIGA}>{testi}</button>;
+      riga = <button type="button" aria-label={etichetta} onClick={finale.onAzione} style={STILE_RIGA}>{testi}</button>;
       break;
     case 'campo':
       riga = <div style={STILE_RIGA}>{testi}{finale.campo}</div>;

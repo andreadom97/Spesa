@@ -40,3 +40,23 @@ export function Dock({ children, sciolto = false }: { children: ReactNode; sciol
     slot,
   );
 }
+
+/**
+ * L'errore dell'azione del Dock (fase 7): sta sopra la pillola, fuori, su fondo
+ * bianco, perché sotto scorre la pagina. Si passa come figlio del `Dock`, prima
+ * del tasto: il messaggio si appoggia al bordo alto del contenitore `.dock`.
+ * `role="alert"`: compare dopo un tocco fallito e va annunciato. È il blocco di
+ * oggi dell'editor dell'ingrediente, pari pari, estratto perché lo usano anche
+ * Scegli e l'editor del Piatto: un disegno solo, non tre copie.
+ */
+export function ErroreSopraDock({ children }: { children: ReactNode }) {
+  return (
+    <p role="alert" style={{
+      position: 'absolute', left: 0, right: 0, bottom: 'calc(100% + 8px)', margin: 0, padding: '10px 14px',
+      borderRadius: 14, background: 'var(--superficie)', boxShadow: 'var(--ombra-pannello)',
+      fontSize: 12.5, lineHeight: 1.45, color: 'var(--errore)',
+    }}>
+      {children}
+    </p>
+  );
+}
