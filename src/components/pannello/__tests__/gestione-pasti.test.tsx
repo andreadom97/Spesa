@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { act, screen, fireEvent, waitFor, within } from '@testing-library/react';
 
 // Il blocco dei finti (Task 7, Step 1).
 vi.mock('next/navigation', async () => (await import('./finti')).modNavigazione());
@@ -149,6 +149,89 @@ describe('Gestione dei pasti', () => {
       { ...CENA, posizione: 2 },
     ]);
     await waitFor(() => expect(screen.queryByDisplayValue('Spuntino')).not.toBeInTheDocument());
+  });
+
+  // Review di correttezza, minor 1: due ✕ veloci mentre il conteggio manca. Senza guardia le due
+  // riletture finiscono insieme, e la seconda salva dai pasti di prima della prima rimozione:
+  // ricreerebbe vuoto il pasto appena cancellato (coi suoi piatti andati a cascata).
+  it('una seconda ✕ mentre la prima rimozione è in corso non parte', async () => {
+    const MERENDA: MealSlotDef = { id: 'sd-5', nome: 'Merenda', posizione: 4, assenzeAbituali: ASSENZE_VUOTE };
+    montaPannello('gestione-pasti', { pasti: [...QUATTRO, MERENDA], piatti: [] });
+    // Ogni lettura del repertorio resta in sospeso finché il test non risponde (anche quella al montaggio).
+    const risposte: ((piatti: Dish[]) => void)[] = [];
+    vi.mocked(leggiRepertorio).mockImplementation(() => new Promise((r) => { risposte.push(r); }));
+    await screen.findByDisplayValue('Merenda');
+    await waitFor(() => expect(leggiRepertorio).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByLabelText('Rimuovi Spuntino'));
+    fireEvent.click(screen.getByLabelText('Rimuovi Merenda'));
+    await waitFor(() => expect(risposte.length).toBeGreaterThanOrEqual(2));
+    // Nello stesso giro: tutte le riletture partite dai tocchi rispondono insieme.
+    for (const r of risposte.slice(1)) r([]);
+    await waitFor(() => expect(salvaSlotDefs).toHaveBeenCalled());
+    await waitFor(() => expect(screen.queryByDisplayValue('Spuntino')).not.toBeInTheDocument());
+    // Nessun salvataggio rimette Spuntino, appena cancellato.
+    for (const [salvati] of vi.mocked(salvaSlotDefs).mock.calls) expect(salvati.map((p) => p.id)).not.toContain('sd-4');
+    expect(salvaSlotDefs).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(salvaSlotDefs).mock.calls[0][0].map((p) => p.id)).toEqual(['sd-1', 'sd-2', 'sd-3', 'sd-5']);
+    expect(leggiRepertorio).toHaveBeenCalledTimes(2);
+    expect(screen.getByDisplayValue('Merenda')).toBeInTheDocument();
+    // Finita la prima, la ✕ riparte (col conteggio ormai letto, senza rilettura).
+    fireEvent.click(screen.getByLabelText('Rimuovi Merenda'));
+    await waitFor(() => expect(salvaSlotDefs).toHaveBeenCalledTimes(2));
+    expect(leggiRepertorio).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(salvaSlotDefs).mock.calls[1][0].map((p) => p.id)).toEqual(['sd-1', 'sd-2', 'sd-3']);
+  });
+
+  // Review di correttezza, minor 2: la lettura al montaggio che arriva dopo un rifiuto RLS è della
+  // casa di prima, e non deve rimettere il conteggio appena scartato.
+  it('la lettura del repertorio al montaggio che arriva dopo un rifiuto RLS non rimette il conteggio vecchio', async () => {
+    const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+    let rispondiMontaggio: (piatti: Dish[]) => void = () => {};
+    vi.mocked(leggiRepertorio).mockReturnValueOnce(new Promise((r) => { rispondiMontaggio = r; }));
+    montaPannello('gestione-pasti', { pasti: QUATTRO, piatti: [] });
+    const campo = await screen.findByDisplayValue('Colazione');
+    await waitFor(() => expect(leggiRepertorio).toHaveBeenCalledTimes(1));
+    const MERENDA: MealSlotDef = { id: 'sd-9', nome: 'Merenda', posizione: 3, assenzeAbituali: ASSENZE_VUOTE };
+    vi.mocked(leggiSlotDefs).mockResolvedValue([COLAZIONE, PRANZO, CENA, MERENDA]);
+    vi.mocked(leggiRepertorio).mockResolvedValue([piatto({ id: 'd-9', slotDefId: 'sd-9' })]);
+    vi.mocked(salvaSlotDefs).mockRejectedValueOnce({ code: '42501', message: 'new row violates row-level security policy' });
+    fireEvent.change(campo, { target: { value: 'Brunch' } });
+    fireEvent.blur(campo);
+    expect(await screen.findByText('La casa è cambiata: dati ricaricati. Riprova.')).toBeInTheDocument();
+    // Arriva ora la lettura partita al montaggio, con la casa di prima: nessun piatto.
+    await act(async () => { rispondiMontaggio([]); });
+    fireEvent.click(await screen.findByLabelText('Rimuovi Merenda'));
+    const dialogo = await screen.findByRole('alertdialog');
+    expect(within(dialogo).getByText('Se ne va anche il suo piatto, e il pasto sparisce dal piano. Non si può annullare.')).toBeInTheDocument();
+    expect(salvaSlotDefs).toHaveBeenCalledTimes(1);
+    errore.mockRestore();
+  });
+
+  // Lo stesso caso per la rilettura partita dalla ✕: se risponde dopo un rifiuto RLS è della casa di
+  // prima, e la rimozione che l'aspettava (su un pasto della casa di prima) non va avanti.
+  it('la rilettura della ✕ che arriva dopo un rifiuto RLS non rimette il conteggio vecchio', async () => {
+    const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+    let rispondiTocco: (piatti: Dish[]) => void = () => {};
+    vi.mocked(leggiRepertorio)
+      .mockReturnValueOnce(new Promise(() => {}))
+      .mockReturnValueOnce(new Promise((r) => { rispondiTocco = r; }));
+    montaPannello('gestione-pasti', { pasti: QUATTRO, piatti: [] });
+    const campo = await screen.findByDisplayValue('Colazione');
+    fireEvent.click(screen.getByLabelText('Rimuovi Spuntino'));
+    await waitFor(() => expect(leggiRepertorio).toHaveBeenCalledTimes(2));
+    const MERENDA: MealSlotDef = { id: 'sd-9', nome: 'Merenda', posizione: 3, assenzeAbituali: ASSENZE_VUOTE };
+    vi.mocked(leggiSlotDefs).mockResolvedValue([COLAZIONE, PRANZO, CENA, MERENDA]);
+    vi.mocked(leggiRepertorio).mockResolvedValue([piatto({ id: 'd-9', slotDefId: 'sd-9' })]);
+    vi.mocked(salvaSlotDefs).mockRejectedValueOnce({ code: '42501', message: 'new row violates row-level security policy' });
+    fireEvent.change(campo, { target: { value: 'Brunch' } });
+    fireEvent.blur(campo);
+    expect(await screen.findByText('La casa è cambiata: dati ricaricati. Riprova.')).toBeInTheDocument();
+    await act(async () => { rispondiTocco([]); });
+    fireEvent.click(await screen.findByLabelText('Rimuovi Merenda'));
+    const dialogo = await screen.findByRole('alertdialog');
+    expect(within(dialogo).getByText('Se ne va anche il suo piatto, e il pasto sparisce dal piano. Non si può annullare.')).toBeInTheDocument();
+    expect(salvaSlotDefs).toHaveBeenCalledTimes(1);
+    errore.mockRestore();
   });
 
   it('se anche la rilettura del repertorio fallisce non toglie niente e lo dice', async () => {

@@ -75,11 +75,22 @@ function ElencoPasti({ defs }: { defs: MealSlotDef[] }) {
     ultimi.current = defs;
   }, [defs]);
 
+  // La generazione della casa: sale quando `casaCambiata` diventa vero. Una lettura del
+  // repertorio partita prima (al montaggio, o dalla ✕) e arrivata dopo è della casa di prima:
+  // non rimette il conteggio appena scartato (review del Task 8, minor 2).
+  const generazione = useRef(0);
+  useEffect(() => {
+    if (casaCambiata) generazione.current += 1;
+  }, [casaCambiata]);
+  // Una rimozione alla volta (review del Task 8, minor 1): vedi `rimuovi`.
+  const rimozioneInCorso = useRef(false);
+
   useEffect(() => {
     let vivo = true;
+    const mia = generazione.current;
     leggiRepertorio()
       .then((r) => {
-        if (vivo) setPiatti(contaPerPasto(r));
+        if (vivo && generazione.current === mia) setPiatti(contaPerPasto(r));
       })
       .catch((e) => console.error('gestione pasti: lettura del repertorio fallita.', e));
     return () => {
@@ -126,15 +137,40 @@ function ElencoPasti({ defs }: { defs: MealSlotDef[] }) {
     if (nome !== d.nome) void salva(defs.map((p) => (p.id === d.id ? { ...p, nome } : p)), d.id);
   }
 
+  /**
+   * Una rimozione alla volta: una seconda ✕ mentre la prima non ha finito (rilettura del
+   * repertorio e salvataggio) si ignora. Con due riletture in volo le due continuazioni
+   * ripartono nello stesso giro, prima che React ridisegni: la seconda leggerebbe in `ultimi` i
+   * pasti di prima della prima rimozione e riscriverebbe il pasto appena cancellato, vuoto (i
+   * suoi piatti se ne sono andati a cascata). Un ref e non le ✕ spente: il ref chiude la
+   * finestra subito, senza aspettare un render, e le ✕ non lampeggiano in `--icona-spenta`, che
+   * nel disegno vuol dire «al minimo». Col dialogo la guardia si libera appena il dialogo è
+   * aperto: da lì il velo copre il pannello finché la conferma non ha finito o si annulla.
+   */
   async function rimuovi(d: MealSlotDef) {
-    if (alMinimo) return;
+    if (alMinimo || rimozioneInCorso.current) return;
+    rimozioneInCorso.current = true;
+    try {
+      await decidiRimozione(d);
+    } finally {
+      rimozioneInCorso.current = false;
+    }
+  }
+
+  async function decidiRimozione(d: MealSlotDef) {
     setErrore(false);
     let conta = piatti;
     if (conta === null) {
       // Senza sapere se il pasto ha piatti non si toglie niente: si rilegge ora.
       setInVolo(d.id);
+      const mia = generazione.current;
       try {
         conta = contaPerPasto(await leggiRepertorio());
+        if (generazione.current !== mia) {
+          // La casa è cambiata durante la lettura: il conteggio e il pasto sono della casa di prima.
+          setInVolo(null);
+          return;
+        }
         setPiatti(conta);
       } catch (e) {
         console.error('gestione pasti: lettura del repertorio fallita.', e);
