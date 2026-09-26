@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import type { ListaSalvata } from '@/data/lista';
 import type { VoceEvitata } from '@/domain/list-builder';
 
@@ -14,6 +14,10 @@ vi.mock('@/data/lista', () => ({
 vi.mock('@/data/risparmio', () => ({
   leggiRisparmioSettimana: vi.fn(),
 }));
+vi.mock('../guardia', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../guardia')>()),
+  adesso: vi.fn(),
+}));
 
 const replace = vi.fn();
 const push = vi.fn();
@@ -24,6 +28,8 @@ vi.mock('next/navigation', () => ({
 import { leggiSettimanaCorrente } from '@/data/settimana';
 import { leggiListe, chiudiSpesa } from '@/data/lista';
 import { leggiRisparmioSettimana } from '@/data/risparmio';
+import { SlotDockProvider } from '@/components/dock-slot';
+import { adesso } from '../guardia';
 import ListaFatta from '../page';
 
 const SETTIMANA = { id: 'week-1', dataInizio: '2026-08-24', stato: 'confermata' as const, slots: [] };
@@ -64,13 +70,34 @@ beforeEach(() => {
   vi.mocked(leggiListe).mockReset().mockResolvedValue(listaFinita());
   vi.mocked(chiudiSpesa).mockReset().mockResolvedValue(undefined);
   vi.mocked(leggiRisparmioSettimana).mockReset().mockResolvedValue([]);
+  orologio = 0;
+  vi.mocked(adesso).mockReset().mockImplementation(() => orologio);
 });
+
+/** L'orologio della guardia: fermo a 0 quando il tasto compare, poi lo si sposta a mano. */
+let orologio = 0;
+
+/**
+ * La pagina con uno slot vero per il Dock, come nel Guscio. Lo slot si attacca al body
+ * dopo il render: così nel documento viene dopo il corpo della pagina, come nell'app.
+ */
+function monta() {
+  const slot = document.createElement('div');
+  const esito = render(<SlotDockProvider slot={slot}><ListaFatta /></SlotDockProvider>);
+  document.body.appendChild(slot);
+  return esito;
+}
+
+/** Il primo tocco utile: la guardia è passata. */
+function oltreLaGuardia() {
+  orologio = 10_000;
+}
 
 describe('Lista fatta — accesso', () => {
   it('a settimana chiusa rimanda a /piano senza leggere le liste', async () => {
     vi.mocked(leggiSettimanaCorrente).mockResolvedValue({ ...SETTIMANA, stato: 'chiusa' });
 
-    render(<ListaFatta />);
+    monta();
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/piano'));
     expect(leggiListe).not.toHaveBeenCalled();
@@ -81,12 +108,13 @@ describe('Lista fatta — accesso', () => {
 
 describe('Lista fatta — CONFEZIONI DIVERSE? SCANSIONA', () => {
   it('il link alle confezioni sta prima di CHIUDI LA SPESA e porta a /lista/confezioni', async () => {
-    const { container } = render(<ListaFatta />);
+    monta();
 
     const link = await screen.findByRole('link', { name: 'CONFEZIONI DIVERSE? SCANSIONA' });
     expect(link).toHaveAttribute('href', '/lista/confezioni');
-    const testo = container.textContent ?? '';
-    expect(testo.indexOf('CONFEZIONI DIVERSE? SCANSIONA')).toBeLessThan(testo.indexOf('CHIUDI LA SPESA'));
+    const chiudi = screen.getByRole('button', { name: 'CHIUDI LA SPESA' });
+    expect(link.compareDocumentPosition(chiudi) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(link.style.minHeight).toBe('44px');
   });
 });
 
@@ -97,7 +125,7 @@ describe('Lista fatta — NON RICOMPRATO QUESTA SETTIMANA', () => {
       voce({ ingredientId: 'ing-pasta', nome: 'Pasta', confezioniEvitate: 1, quantitaEvitata: 400, prezzoConfezione: 5.4 }),
     ]);
 
-    render(<ListaFatta />);
+    monta();
 
     expect(await screen.findByText('NON RICOMPRATO QUESTA SETTIMANA')).toBeInTheDocument();
     expect(screen.getByText('3 confezioni · 1,4 kg · circa 11 €')).toBeInTheDocument();
@@ -109,7 +137,7 @@ describe('Lista fatta — NON RICOMPRATO QUESTA SETTIMANA', () => {
   it('la scheda sta sopra "CHIUDENDO LA SPESA"', async () => {
     vi.mocked(leggiRisparmioSettimana).mockResolvedValue([voce({ prezzoConfezione: 2 })]);
 
-    const { container } = render(<ListaFatta />);
+    const { container } = monta();
     await screen.findByText('NON RICOMPRATO QUESTA SETTIMANA');
 
     const testo = container.textContent ?? '';
@@ -125,7 +153,7 @@ describe('Lista fatta — NON RICOMPRATO QUESTA SETTIMANA', () => {
       voce({ ingredientId: 'ing-pasta', nome: 'Pasta', confezioniEvitate: 1, quantitaEvitata: 400 }),
     ]);
 
-    render(<ListaFatta />);
+    monta();
 
     expect(await screen.findByText('3 confezioni · 1,4 kg')).toBeInTheDocument();
     expect(screen.getByText('metti un prezzo agli ingredienti per vederlo in euro')).toBeInTheDocument();
@@ -139,7 +167,7 @@ describe('Lista fatta — NON RICOMPRATO QUESTA SETTIMANA', () => {
       voce({ ingredientId: 'ing-pasta', nome: 'Pasta', confezioniEvitate: 1, quantitaEvitata: 400 }),
     ]);
 
-    render(<ListaFatta />);
+    monta();
 
     expect(await screen.findByText('4 confezioni · 1,4 kg · 750 ml · circa 12 €')).toBeInTheDocument();
     expect(screen.getByText('su 2 ingredienti con prezzo')).toBeInTheDocument();
@@ -151,7 +179,7 @@ describe('Lista fatta — NON RICOMPRATO QUESTA SETTIMANA', () => {
       voce({ unita: 'pz', confezioniEvitate: 1, quantitaEvitata: 6, prezzoConfezione: 0.5 }),
     ]);
 
-    render(<ListaFatta />);
+    monta();
 
     expect(await screen.findByText('1 confezione · 6 pz · meno di 1 €')).toBeInTheDocument();
   });
@@ -161,7 +189,7 @@ describe('Lista fatta — NON RICOMPRATO QUESTA SETTIMANA', () => {
       voce({ confezioniIngenue: 1, confezioniReali: 1, confezioniEvitate: 0, quantitaEvitata: 0, prezzoConfezione: 3 }),
     ]);
 
-    render(<ListaFatta />);
+    monta();
 
     expect(await screen.findByText('NON RICOMPRATO QUESTA SETTIMANA')).toBeInTheDocument();
     expect(screen.getByText('Niente, questa settimana: il residuo si costruisce spesa dopo spesa')).toBeInTheDocument();
@@ -171,7 +199,7 @@ describe('Lista fatta — NON RICOMPRATO QUESTA SETTIMANA', () => {
   it('senza righe la scheda non compare', async () => {
     vi.mocked(leggiRisparmioSettimana).mockResolvedValue([]);
 
-    render(<ListaFatta />);
+    monta();
 
     expect(await screen.findByText('CHIUDENDO LA SPESA')).toBeInTheDocument();
     expect(screen.queryByText('NON RICOMPRATO QUESTA SETTIMANA')).not.toBeInTheDocument();
@@ -182,13 +210,14 @@ describe('Lista fatta — NON RICOMPRATO QUESTA SETTIMANA', () => {
     const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.mocked(leggiRisparmioSettimana).mockRejectedValue(new Error('rete'));
 
-    render(<ListaFatta />);
+    monta();
 
     expect(await screen.findByText('Hai preso tutto')).toBeInTheDocument();
     expect(screen.queryByText('NON RICOMPRATO QUESTA SETTIMANA')).not.toBeInTheDocument();
     expect(errore).toHaveBeenCalled();
     expect(replace).not.toHaveBeenCalled();
 
+    oltreLaGuardia();
     fireEvent.click(screen.getByRole('button', { name: 'CHIUDI LA SPESA' }));
     await waitFor(() => expect(chiudiSpesa).toHaveBeenCalledWith('week-1'));
     await waitFor(() => expect(push).toHaveBeenCalledWith('/piano'));
@@ -204,15 +233,100 @@ describe('Lista fatta — CHIUDENDO LA SPESA dice la cadenza (decisione di Andre
     [90, 'fra 3 mesi'],
   ] as const)('con la cadenza a %i giorni dice «%s»', async (g, pezzo) => {
     vi.mocked(leggiListe).mockResolvedValue({ ...listaFinita(), giorniControllo: g });
-    render(<ListaFatta />);
+    monta();
     expect(await screen.findByText(
       `L’app registra cosa hai comprato e quando. Serve solo a ricordarti ${pezzo} che l’olio sta per finire: non lo vedi da nessuna parte finché non serve.`,
     )).toBeInTheDocument();
   });
 
   it('una lista senza cadenza (istantanea offline di prima della fase 5) dice fra 3 mesi', async () => {
-    render(<ListaFatta />);
+    monta();
     expect(await screen.findByText(/ricordarti fra 3 mesi che l’olio/)).toBeInTheDocument();
     expect(screen.queryByText(/90 giorni/)).not.toBeInTheDocument();
+  });
+});
+
+describe('Lista fatta — Testata, Dock e guardia (spec fase 6 §A)', () => {
+  it('titolo Fine spesa, pillola Torna alla lista e pillola settimana', async () => {
+    monta();
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Fine spesa' })).toBeInTheDocument();
+    expect(screen.getByText('Settimana del 24 agosto')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Torna alla lista' }));
+    expect(push).toHaveBeenCalledWith('/lista');
+    expect(screen.queryByRole('link', { name: 'TORNA ALLA LISTA' })).not.toBeInTheDocument();
+  });
+
+  it('CHIUDI LA SPESA sta nel Dock, la regione Azione principale', async () => {
+    monta();
+
+    const regione = await screen.findByRole('region', { name: 'Azione principale' });
+    expect(within(regione).getByRole('button', { name: 'CHIUDI LA SPESA' })).toHaveClass('dock-primario');
+  });
+
+  it('in caricamento: CARICO… e niente Dock', async () => {
+    vi.mocked(leggiListe).mockReturnValue(new Promise(() => {}));
+    monta();
+
+    expect(await screen.findByText('CARICO…')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Azione principale' })).not.toBeInTheDocument();
+  });
+
+  it('errore di caricamento: il messaggio in --errore e niente Dock', async () => {
+    const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(leggiListe).mockRejectedValue(new Error('rete'));
+    monta();
+
+    const msg = await screen.findByText('Non riusciamo a caricare la spesa. Riprova più tardi.');
+    expect(msg.style.color).toBe('var(--errore)');
+    expect(screen.queryByRole('region', { name: 'Azione principale' })).not.toBeInTheDocument();
+    errore.mockRestore();
+  });
+
+  it('la guardia: un tocco entro 400 ms dalla comparsa si ignora, quello a 400 chiude', async () => {
+    monta();
+    const chiudi = await screen.findByRole('button', { name: 'CHIUDI LA SPESA' });
+
+    orologio = 399;
+    fireEvent.click(chiudi);
+    expect(chiudiSpesa).not.toHaveBeenCalled();
+
+    orologio = 400;
+    fireEvent.click(chiudi);
+    await waitFor(() => expect(chiudiSpesa).toHaveBeenCalledWith('week-1'));
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/piano'));
+  });
+
+  it('in volo il tasto è disabled; se la chiusura fallisce, il messaggio e si riprova', async () => {
+    const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+    let rifiuta: (e: Error) => void = () => {};
+    vi.mocked(chiudiSpesa).mockReturnValueOnce(new Promise((_, r) => { rifiuta = r; }));
+    monta();
+    const chiudi = await screen.findByRole('button', { name: 'CHIUDI LA SPESA' });
+    oltreLaGuardia();
+
+    fireEvent.click(chiudi);
+    await waitFor(() => expect(chiudi).toBeDisabled());
+    rifiuta(new Error('rete'));
+
+    const msg = await screen.findByRole('alert');
+    expect(msg).toHaveTextContent('Non siamo riusciti a chiudere la spesa. Riprova.');
+    expect(chiudi).not.toBeDisabled();
+    fireEvent.click(chiudi);
+    await waitFor(() => expect(chiudiSpesa).toHaveBeenCalledTimes(2));
+    errore.mockRestore();
+  });
+
+  it('il Marchio è pieno, lato 20, e il testo che informa è in --testo-2', async () => {
+    const { container } = monta();
+
+    await screen.findByText('Hai preso tutto');
+    const caselle = container.querySelectorAll('[data-area]');
+    expect(caselle).toHaveLength(6);
+    caselle.forEach((c) => {
+      expect(c).toHaveAttribute('data-stato', 'pieno');
+      expect((c as HTMLElement).style.width).toBe('20px');
+    });
+    expect(screen.getByText(/voci su 1, 6 aree finite/).style.color).toBe('var(--testo-2)');
   });
 });

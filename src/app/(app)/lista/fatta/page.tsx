@@ -1,41 +1,23 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ORDINE_MARCHIO, coloreArea } from '@/domain/aree';
+import { ORDINE_MARCHIO } from '@/domain/aree';
+import { listaFinita, contaVoci } from '@/domain/lista-finita';
 import { leggiSettimanaCorrente } from '@/data/settimana';
-import { leggiListe, chiudiSpesa, type ListaSalvata, type SezioneSalvata } from '@/data/lista';
+import { leggiListe, chiudiSpesa } from '@/data/lista';
 import { leggiRisparmioSettimana } from '@/data/risparmio';
 import type { VoceEvitata } from '@/domain/list-builder';
 import { riassumiEvitato, formattaQuantita, formattaEuro } from '@/domain/risparmio';
 import { etichettaSettimana } from '@/domain/settimana-label';
 import { GIORNI_CONTROLLO_DEFAULT, fraCadenza, type GiorniControllo } from '@/domain/pantry';
 import { Testata } from '@/components/Testata';
-
-/**
- * Solo la classe "voci" conta come in /lista: i controlli non si spuntano,
- * si rispondono. Una lista è davvero finita solo quando ogni voce è spuntata
- * *e* non resta nessun controllo in sospeso da rispondere.
- */
-function contaEControlli(sezioni: SezioneSalvata[]): { totale: number; fatte: number; controlliInSospeso: number } {
-  let totale = 0;
-  let fatte = 0;
-  let controlliInSospeso = 0;
-  for (const s of sezioni) {
-    for (const v of s.voci) {
-      totale += 1;
-      if (v.spuntato) fatte += 1;
-    }
-    controlliInSospeso += s.controlli.length;
-  }
-  return { totale, fatte, controlliInSospeso };
-}
-
-function tuttoFatto(lista: ListaSalvata): { fatto: boolean; totale: number } {
-  const c = contaEControlli([...lista.base, ...lista.topup]);
-  return { fatto: c.totale > 0 && c.fatte === c.totale && c.controlliInSospeso === 0, totale: c.totale };
-}
+import { Marchio } from '@/components/Marchio';
+import { Dock } from '@/components/Dock';
+import { MessaggioErrore } from '@/components/controlli';
+import { Carico } from '@/components/pannello/pezzi';
+import { GUARDIA_DOPPIO_TOCCO_MS, adesso } from './guardia';
 
 interface Stato {
   weekId: string;
@@ -84,15 +66,21 @@ function testoNonRicomprato(voci: VoceEvitata[]): { principale: string; secondar
   return { principale: segmenti.join(' · '), secondaria };
 }
 
+/** Il ritorno alla Lista: la pillola della Testata in modo indietro (spec fase 6 §A.2). */
+type Indietro = { etichetta: string; ariaLabel: string; onTorna: () => void };
+
 /**
- * "Hai preso tutto": l'unico momento in cui il residuo smette di essere
- * previsto e diventa reale. Senza questo tap la registrazione silenziosa non
- * ha un istante in cui avvenire — la settimana dopo la lista ricomprerebbe
- * tutto da capo.
+ * Il traguardo, «Fine spesa»: l'unico momento in cui il residuo smette di essere previsto
+ * e diventa reale. Senza CHIUDI LA SPESA la registrazione silenziosa non ha un istante in
+ * cui avvenire — la settimana dopo la lista ricomprerebbe tutto da capo.
  *
- * Raggiungibile solo a spesa davvero finita: un link diretto o una ricarica
- * a metà spunta non deve mai mostrare "tutto pieno" quando non lo è, quindi
- * si torna a /lista invece di inventare un traguardo.
+ * Raggiungibile solo a spesa davvero finita: un link diretto o una ricarica a metà spunta
+ * non deve mai mostrare "tutto pieno" quando non lo è, quindi si torna a /lista invece di
+ * inventare un traguardo.
+ *
+ * CHIUDI LA SPESA non chiede conferma (DESIGN.md §9, eccezione del 26/09): si arriva qui
+ * solo da HAI PRESO TUTTO, e questa pagina è il secondo passo. Sta nel Dock, dove era HAI
+ * PRESO TUTTO, e per questo ignora i tocchi per GUARDIA_DOPPIO_TOCCO_MS da quando compare.
  */
 export default function ListaFatta() {
   const router = useRouter();
@@ -100,6 +88,8 @@ export default function ListaFatta() {
   const [erroreCaricamento, setErroreCaricamento] = useState<string | null>(null);
   const [chiudendo, setChiudendo] = useState(false);
   const [erroreChiusura, setErroreChiusura] = useState<string | null>(null);
+  /** Quando è comparso CHIUDI LA SPESA: la guardia del doppio tocco conta da qui. */
+  const comparsoRef = useRef<number | null>(null);
 
   useEffect(() => {
     let vivo = true;
@@ -118,8 +108,7 @@ export default function ListaFatta() {
           return;
         }
         const lista = await leggiListe(settimana.id);
-        const esito = lista ? tuttoFatto(lista) : { fatto: false, totale: 0 };
-        if (!lista || !esito.fatto) {
+        if (!lista || !listaFinita(lista)) {
           router.replace('/lista');
           return;
         }
@@ -128,7 +117,7 @@ export default function ListaFatta() {
         setStato({
           weekId: settimana.id,
           settimanaLabel: etichettaSettimana(settimana.dataInizio),
-          totaleVoci: esito.totale,
+          totaleVoci: contaVoci(lista),
           evitato,
           giorniControllo: lista.giorniControllo ?? GIORNI_CONTROLLO_DEFAULT,
         });
@@ -144,8 +133,15 @@ export default function ListaFatta() {
     };
   }, [router]);
 
+  // Il Dock compare nel render in cui `stato` arriva: l'effetto dopo quel render segna l'istante.
+  useEffect(() => {
+    if (stato && comparsoRef.current === null) comparsoRef.current = adesso();
+  }, [stato]);
+
   async function onChiudi() {
     if (!stato || chiudendo) return;
+    // Il secondo tocco di un doppio tocco su HAI PRESO TUTTO, che stava qui: si ignora.
+    if (comparsoRef.current === null || adesso() - comparsoRef.current < GUARDIA_DOPPIO_TOCCO_MS) return;
     setChiudendo(true);
     setErroreChiusura(null);
     try {
@@ -158,40 +154,48 @@ export default function ListaFatta() {
     }
   }
 
+  const indietro: Indietro = { etichetta: 'LISTA', ariaLabel: 'Torna alla lista', onTorna: () => router.push('/lista') };
+
   if (erroreCaricamento) {
     return (
-      <Cornice>
-        <p style={{ margin: '20px 18px', color: 'var(--sec)' }}>{erroreCaricamento}</p>
+      <Cornice indietro={indietro}>
+        <div style={{ padding: '6px 16px' }}>
+          <MessaggioErrore>{erroreCaricamento}</MessaggioErrore>
+        </div>
       </Cornice>
     );
   }
 
   if (!stato) {
-    // Nessuno stato di caricamento nell'artboard: la testata basta finché i dati non arrivano.
-    return <Cornice />;
+    return (
+      <Cornice indietro={indietro}>
+        <div style={{ padding: '6px 16px' }}>
+          <Carico />
+        </div>
+      </Cornice>
+    );
   }
 
   const nonRicomprato = stato.evitato.length > 0 ? testoNonRicomprato(stato.evitato) : null;
 
   return (
-    <Cornice settimana={stato.settimanaLabel}>
+    <Cornice settimana={stato.settimanaLabel} indietro={indietro}>
       <div
-        className="sc scroll-app con-piede"
+        className="sc scroll-app con-dock"
         style={{
           flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 16px',
           display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 12,
         }}
       >
-        <div style={{ padding: '26px 20px', borderRadius: 22, background: '#FFFFFF', border: '1px solid rgba(20,22,58,0.07)', textAlign: 'center' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 22px)', gap: 6, justifyContent: 'center', marginBottom: 20 }}>
-            {ORDINE_MARCHIO.map((area) => (
-              <span key={area} style={{ width: 22, height: 22, borderRadius: 6, background: coloreArea(area), display: 'block' }} />
-            ))}
+        <div style={{ padding: '26px 20px', borderRadius: 22, background: 'var(--superficie)', border: '1px solid var(--bordo)', textAlign: 'center' }}>
+          {/* Il Marchio pieno nella resa grande (DESIGN.md §8 Marchio): decorativo, il testo sotto dice lo stesso. */}
+          <div aria-hidden="true" style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+            <Marchio aree={[]} lato={20} />
           </div>
           <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-0.035em', lineHeight: 1.2, color: 'var(--ink)', marginBottom: 8 }}>
             Hai preso tutto
           </div>
-          <div style={{ fontSize: 14, lineHeight: 1.5, color: '#8A8A96' }}>
+          <div style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--testo-2)' }}>
             {stato.totaleVoci} voci su {stato.totaleVoci}, {ORDINE_MARCHIO.length} aree finite. Il marchio in
             alto è tutto pieno: ogni area è a posto, non ti manca niente.
           </div>
@@ -201,81 +205,63 @@ export default function ListaFatta() {
             ha chiesto perché c'erano già. Assente senza righe (settimana
             senza piano): niente scheda vuota. */}
         {nonRicomprato && (
-          <div style={{ padding: '16px 18px', borderRadius: 20, background: 'rgba(20,22,58,0.045)' }}>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', color: '#8A8A96', marginBottom: 7 }}>
-              NON RICOMPRATO QUESTA SETTIMANA
-            </div>
-            <div style={{ fontSize: 13.5, lineHeight: 1.5, color: 'var(--ink)' }}>
-              {nonRicomprato.principale}
-            </div>
+          <Riquadro etichetta="NON RICOMPRATO QUESTA SETTIMANA">
+            <div style={{ fontSize: 13.5, lineHeight: 1.5, color: 'var(--ink)' }}>{nonRicomprato.principale}</div>
             {nonRicomprato.secondaria && (
-              <div style={{ fontSize: 12, lineHeight: 1.45, color: '#8A8A96', marginTop: 3 }}>
-                {nonRicomprato.secondaria}
-              </div>
+              <div style={{ fontSize: 12, lineHeight: 1.45, color: 'var(--testo-2)', marginTop: 3 }}>{nonRicomprato.secondaria}</div>
             )}
-          </div>
+          </Riquadro>
         )}
 
-        <div style={{ padding: '16px 18px', borderRadius: 20, background: 'rgba(20,22,58,0.045)' }}>
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', color: '#8A8A96', marginBottom: 7 }}>
-            CHIUDENDO LA SPESA
-          </div>
+        <Riquadro etichetta="CHIUDENDO LA SPESA">
           <div style={{ fontSize: 13.5, lineHeight: 1.5, color: 'var(--ink)' }}>
             {`L’app registra cosa hai comprato e quando. Serve solo a ricordarti ${fraCadenza(stato.giorniControllo)} che l’olio sta per finire: non lo vedi da nessuna parte finché non serve.`}
           </div>
-        </div>
-      </div>
+        </Riquadro>
 
-      {erroreChiusura && (
-        <p style={{ margin: '0 16px 4px', fontSize: 12.5, color: 'var(--sec)' }}>{erroreChiusura}</p>
-      )}
-      <div className="coda-barra" style={{ padding: '6px 16px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
         {/* Prima di chiudere: le confezioni vere (spec scan-confezione §1).
             Dopo la chiusura il residuo è già accreditato e la correzione non
             avrebbe più effetto, per questo il link sta qui e non altrove. */}
         <Link
           href="/lista/confezioni"
           style={{
-            alignSelf: 'center', padding: '4px 8px',
+            alignSelf: 'center', minHeight: 44, display: 'flex', alignItems: 'center', padding: '0 8px',
             fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.12em',
             color: 'var(--ink)', textDecoration: 'underline', textUnderlineOffset: 3,
           }}
         >
           CONFEZIONI DIVERSE? SCANSIONA
         </Link>
-        <button
-          type="button"
-          onClick={onChiudi}
-          disabled={chiudendo}
-          style={{
-            width: '100%', height: 54, borderRadius: 18, textAlign: 'center',
-            fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700, letterSpacing: '0.09em',
-            background: '#14163A', boxShadow: '0 3px 10px rgba(20,22,58,0.24)', color: '#FFFFFF',
-            opacity: chiudendo ? 0.7 : 1,
-          }}
-        >
+
+        {erroreChiusura && <MessaggioErrore ruolo="alert">{erroreChiusura}</MessaggioErrore>}
+      </div>
+
+      <Dock>
+        <button type="button" className="dock-primario" onClick={() => void onChiudi()} disabled={chiudendo}>
           CHIUDI LA SPESA
         </button>
-        <Link
-          href="/lista"
-          style={{
-            width: '100%', height: 52, borderRadius: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: 'var(--font-mono)', fontSize: 11.5, fontWeight: 700, letterSpacing: '0.09em',
-            background: 'transparent', border: '1.5px solid rgba(20,22,58,0.16)', color: 'var(--ink)',
-          }}
-        >
-          TORNA ALLA LISTA
-        </Link>
-      </div>
+      </Dock>
     </Cornice>
   );
 }
 
+/** Le schede secondarie del traguardo: fondo a 0,035 (§2.5), etichetta mono in --testo-2. */
+function Riquadro({ etichetta, children }: { etichetta: string; children: ReactNode }) {
+  return (
+    <div style={{ padding: '16px 18px', borderRadius: 20, background: 'rgba(20,22,58,0.035)' }}>
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', color: 'var(--testo-2)', marginBottom: 7 }}>
+        {etichetta}
+      </div>
+      {children}
+    </div>
+  );
+}
+
 /** Colonna a tutta altezza con la testata fissa in cima: solo il corpo passato come children scorre. */
-function Cornice({ settimana, children }: { settimana?: string; children?: ReactNode }) {
+function Cornice({ settimana, indietro, children }: { settimana?: string; indietro: Indietro; children?: ReactNode }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <Testata titolo="Lista" settimana={settimana} />
+      <Testata titolo="Fine spesa" settimana={settimana} indietro={indietro} />
       {children}
     </div>
   );
