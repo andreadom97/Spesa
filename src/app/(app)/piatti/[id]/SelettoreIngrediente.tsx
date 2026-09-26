@@ -26,7 +26,7 @@ const SOGLIA_RICERCA = 8;
 function normalizza(testo: string): string {
   return testo
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .trim();
 }
