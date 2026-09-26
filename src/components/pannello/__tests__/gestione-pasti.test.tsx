@@ -1,6 +1,14 @@
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { act, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { act, configure, screen, fireEvent, waitFor, within } from '@testing-library/react';
+
+// Alza il timeout di waitFor/findBy da 1s a 3s solo per questo file: le sue catene
+// asincrone sono le più lunghe del pannello (✕ → repertorio → salvaPasti → coda di
+// scrittura → salvaSlotDefs; o rifiuto RLS → ricarica con 4 letture → render del
+// Pannello intero) e sotto la suite intera possono superare 1s senza che ci sia un
+// bug. Vitest isola i moduli per file di test, quindi `configure` qui non tocca gli
+// altri file.
+configure({ asyncUtilTimeout: 3000 });
 
 // Il blocco dei finti (Task 7, Step 1).
 vi.mock('next/navigation', async () => (await import('./finti')).modNavigazione());

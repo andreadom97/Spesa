@@ -1131,3 +1131,30 @@ dopo un rifiuto RLS…», tutti e due a 1 s, il tempo di `waitFor`). Lo stesso f
 `d967bae` (1 volta su 4 sulla suite intera, «la lettura del repertorio al montaggio che arriva
 dopo un rifiuto RLS…»): non viene da questa ondata. Da solo sul ramo 1 volta su 50, a `d967bae` 0
 su 50. La causa non è indagata [ipotesi: tempi sotto carico, come i due di «Rimasto aperto»].
+
+**Correzione dell'intermittenza di `gestione-pasti.test.tsx` (26/09, dopo la review).** Due
+cause, non una sola [ipotesi]: (1) le catene asincrone più lunghe del file (✕ → lettura del
+repertorio → `salvaPasti` → coda di scrittura → `salvaSlotDefs`; o rifiuto RLS → ricarica con 4
+letture → render del `Pannello` intero) possono superare il secondo di `waitFor`/`findBy` sotto
+il carico della suite intera, senza che ci sia un difetto; (2) `azzera()` in `aiuti.tsx` puliva i
+finti con `vi.clearAllMocks()`, che in vitest 4 non svuota la coda dei
+`mockResolvedValueOnce`/`mockReturnValueOnce`: un `Once` messo da un test e mai consumato (una
+lettura tenuta apposta in sospeso) restava in coda e vinceva sulla prima chiamata del test dopo,
+anche se `preparaDati` aveva già rimesso i default. Corretto: `configure({ asyncUtilTimeout: 3000
+})` da `@testing-library/react` in cima a `gestione-pasti.test.tsx` (vitest isola i moduli per
+file, quindi non tocca gli altri); e in `azzera()` un `mockReset()` sugli otto finti che
+`preparaDati` reimposta comunque a ogni test (`leggiImpostazioni`, `salvaImpostazioni`,
+`leggiSlotDefs`, `salvaSlotDefs`, `statoCasa`, `leggiRisparmioTotale`, `leggiRepertorio`,
+`leggiIngredienti`), verificato sicuro perché `preparaDati` li sovrascrive comunque subito dopo
+dentro `montaPannello`. Gli altri finti condivisi (`cancellaDispensa`, `esci`, `auth.*`,
+`idCasa`, `creaInvito`, `preparaEsportazione`, `salvaFile`, …) restano fuori: non hanno un
+equivalente di `preparaDati` che li reimposti a ogni test, quindi un `mockReset()` lì rischiava
+di togliere il default cablato in `finti.ts` senza che nessuno lo rimettesse.
+[Misurato 26/09]: `gestione-pasti.test.tsx` da solo, 30 esecuzioni: 1 fallimento su 30 (era 1 su
+50 prima). L'unico caduto, «la rilettura della ✕ che arriva dopo un rifiuto RLS…», eseguito da
+solo (`-t`) 20 volte: 0 su 20 — conferma che dipende dal carico della suite, non da un difetto
+nuovo. `src/components/pannello` per intero, 1 esecuzione: 195 verdi. Suite intera
+(`npx vitest run`), 6 esecuzioni: **0 fallimenti su 6** (2045 verdi, 1 saltato, invariati, in
+ognuna). `npx tsc --noEmit` e `npm run lint` puliti. Il timeout a 3 s riduce la probabilità
+dell'intermittenza ma non la esclude per costruzione (resta un limite di tempo, non una garanzia):
+se dovesse ripresentarsi sotto carico più alto di questo, la causa resta quella di sopra.

@@ -111,9 +111,26 @@ export function montaPannello(dest: DestinazionePannello = 'cima', d?: DatiFinti
   );
 }
 
-/** In `beforeEach`. `clearAllMocks` tiene le implementazioni di `finti.ts`. */
+/**
+ * In `beforeEach`. `clearAllMocks` tiene le implementazioni di `finti.ts`, ma in
+ * vitest 4 non svuota la coda dei `mockResolvedValueOnce`/`mockReturnValueOnce`:
+ * un `Once` messo da un test e mai consumato (es. una lettura tenuta in sospeso
+ * apposta) resta in coda e vince sulla prima chiamata del test successivo, anche
+ * dopo che `preparaDati` ha rimesso i default. Per i finti che `preparaDati`
+ * reimposta comunque a ogni test, un `mockReset` qui è sicuro: svuota quella coda
+ * e torna all'implementazione di base di `finti.ts` (che `preparaDati` sovrascrive
+ * subito dopo, dentro `montaPannello`).
+ */
 export function azzera(): void {
   vi.clearAllMocks();
+  vi.mocked(leggiImpostazioni).mockReset();
+  vi.mocked(salvaImpostazioni).mockReset();
+  vi.mocked(leggiSlotDefs).mockReset();
+  vi.mocked(salvaSlotDefs).mockReset();
+  vi.mocked(statoCasa).mockReset();
+  vi.mocked(leggiRisparmioTotale).mockReset();
+  vi.mocked(leggiRepertorio).mockReset();
+  vi.mocked(leggiIngredienti).mockReset();
   percorso.valore = '/lista';
   sessionStorage.clear();
   window.history.replaceState(null, '', '/lista');
