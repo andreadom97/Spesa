@@ -76,4 +76,25 @@ describe('esci (spec fase 5 §E.4)', () => {
     await esci();
     expect(ordine).toEqual(['signOut', 'istantanea', 'coda', 'idCasa', 'iniziale', 'replace /entra']);
   });
+
+  it('se signOut fallisce e getSession stessa fallisce (token scaduto, refresh non riuscito per un motivo ritentabile): lancia, niente pulizia', async () => {
+    // auth-js non toglie la sessione dallo storage quando anche il refresh
+    // fallisce per un errore ritentabile (offline, 502/503/504): `getSession`
+    // torna `{ session: null, error }`, e un `session: null` da solo non basta
+    // a dire che l'uscita è avvenuta.
+    const errore = { message: 'rete', status: 500 };
+    signOut.mockImplementation(async () => { ordine.push('signOut'); return { error: errore }; });
+    getSession.mockResolvedValue({ data: { session: null }, error: { message: 'offline', status: 0 } });
+
+    await expect(esci()).rejects.toBe(errore);
+    expect(ordine).toEqual(['signOut']);
+  });
+
+  it('se la pulizia locale lancia (Minor 4): la sessione è già chiusa, e si naviga comunque a /entra', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(svuotaCoda).mockImplementation(() => { ordine.push('coda'); throw new Error('storage pieno'); });
+
+    await esci();
+    expect(ordine).toEqual(['signOut', 'istantanea', 'coda', 'replace /entra']);
+  });
 });

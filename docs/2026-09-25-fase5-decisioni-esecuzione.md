@@ -248,6 +248,13 @@ proposta. Andrea le vede in review.
   «in casa …», finché non si riaprono. Toccare quei pasti è innocuo (Task 4, limiti).
   **Proposta:** va bene così. Se li vuoi aggiornati subito, Piano e Lista ascoltano lo stesso
   evento con un contatore nelle dipendenze del loro caricamento: un task a parte.
+- **I piatti disattivati assenti dal file di Esporta, va bene? (Task 5, §E.3)** `preparaEsportazione`
+  legge i piatti con `leggiRepertorio()`, che è solo quelli attivi: un pasto del `piano` esportato
+  può citare un `dishId` che il file non elenca fra `piatti`, se quel piatto è stato disattivato
+  nel frattempo. **Proposta:** va bene così — il file dice quello che l'app mostra oggi (i piatti
+  attivi), non un archivio storico completo; chi lo rilegge un domani (un import, fuori da questa
+  fase) troverebbe comunque un `dishId` orfano. Se invece Esporta deve essere un archivio completo,
+  serve leggere anche i piatti disattivati: un cambio piccolo, ma cambia cosa promette il file.
 
 ## I gate di Andrea, in ordine
 
@@ -467,8 +474,15 @@ la stessa prova dal telefono su un account di prova dopo il merge (spec §M.4).
 - **I Pronti nel file** sono `LottoPronto[]` da `leggiPronti()` (misura 3), decaduti compresi:
   nessuna funzione nuova, la stessa che legge già la Dispensa. **I piatti** nel file sono invece
   solo quelli attivi (`leggiRepertorio()`): un pasto del piano esportato può citare un `dishId` di
-  un piatto disattivato che nel file non compare. Scelta accettata: il file dice quello che l'app
-  mostra oggi, non un archivio storico completo.
+  un piatto disattivato che nel file non compare. Domanda per Andrea più sotto: se questo va bene.
+- **`leggiPronti`, `leggiIngredienti` e `leggiDispensa` non sono paginate.** Solo
+  `leggiTutteLeSettimane` legge a pagine (`meal_slot` è la tabella che cresce nel tempo, una riga
+  per pasto per giorno). I lotti dei Pronti, gli ingredienti del repertorio e le righe di
+  `pantry_state` sono oggi lontani dal migliaio di righe per una casa qualunque **[ipotesi]**, ma
+  restano soggetti allo stesso tetto di PostgREST: se in futuro uno di questi volumi lo
+  avvicinasse, il file uscirebbe troncato in silenzio come `meal_slot` lo sarebbe stato senza
+  paginazione. Non paginate in questo task perché la spec non lo chiede e il volume di oggi non lo
+  giustifica; da riconsiderare se i volumi cambiano.
 - **Il nome del file usa il giorno locale di chi esporta**, non quello UTC del resto dei dati
   (`giornoLocale` in `src/data/esporta.ts`): a mezzanotte e mezza in Italia il file esportato è
   già del giorno dopo secondo l'orologio del telefono, e il nome deve dirlo a chi lo legge.
