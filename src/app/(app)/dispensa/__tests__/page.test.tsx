@@ -1008,6 +1008,38 @@ describe('la cancellazione dal pannello (spec fase 5 §E.2)', () => {
     expect(leggiPronti).toHaveBeenCalledTimes(2);
   });
 
+  it('l\'evento durante il primo caricamento: se la rilettura fallisce, la pagina va nel suo errore, non resta su CARICO…', async () => {
+    mockBase();
+    vi.mocked(leggiIngredienti).mockReturnValueOnce(mai());
+    monta();
+    expect(screen.getByRole('status', { name: 'Carico la dispensa' })).toBeInTheDocument();
+
+    vi.mocked(leggiDispensa).mockRejectedValue(new Error('rete'));
+    act(() => {
+      window.dispatchEvent(new Event('spesa:dispensa-cambiata'));
+    });
+
+    expect(await screen.findByText('Non riusciamo a caricare la dispensa. Riprova.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'RIPROVA' })).toBeInTheDocument();
+    expect(screen.queryByRole('status', { name: 'Carico la dispensa' })).not.toBeInTheDocument();
+  });
+
+  it('l\'evento durante il primo caricamento: se la rilettura non risponde, dopo 8 s l\'errore', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    mockBase();
+    vi.mocked(leggiIngredienti).mockReturnValue(mai());
+    monta();
+    act(() => { vi.advanceTimersByTime(5000); });
+
+    act(() => {
+      window.dispatchEvent(new Event('spesa:dispensa-cambiata'));
+    });
+    act(() => { vi.advanceTimersByTime(7999); });
+    expect(screen.getByRole('status', { name: 'Carico la dispensa' })).toBeInTheDocument();
+    act(() => { vi.advanceTimersByTime(1); });
+    expect(screen.getByText('Non riusciamo a caricare la dispensa. Riprova.')).toBeInTheDocument();
+  });
+
   it('smontata la pagina, l\'evento non rilegge più', async () => {
     mockBase();
     monta().unmount();

@@ -26,6 +26,8 @@ scritti nel piano sono indicativi.
 | 9 | Il timer di riserva di `chiudiTuttoPoi` è sempre `ATTESA_POPSTATE_MS` pieno, anche quando un `go()` precedente è già in volo (Task 2) | un'attesa sola, deterministica e testabile coi timer finti | nel caso raro fn parte fino a 1 s più tardi del necessario |
 | 10 | `DialogoConferma` ha `erroreTesto` e tiene da sé lo stato in volo e l'errore, invece delle prop `inVolo` ed `errore` della spec §D (Task 2, ruling P1 del controller) | è la forma di `DialogoElimina` della fase 4, già provata; chi lo usa passa solo `onConferma` che rifiuta se fallisce | nessuno: la firma è interna, il comportamento visibile è quello di §D |
 | 11 | Nei test di `chiudiTuttoPoi` il «giro dopo» avanza i timer finti di 1 ms, non di 0 (Task 2) | vitest mette a +1 ms un `setTimeout(…, 0)` creato dentro un altro timer (`clock.duringTick ? 1 : 0`), com'è quello della riserva [letto in `node_modules/vitest/dist/chunks/test.DNmyFkvJ.js`, riga 1613] | nessuno: nessun altro timer dell'hook scade entro 1 ms |
+| 12 | In `rispondiControllo` il «sì» resta un `update` di `ultimo_check` anche senza riga di dispensa, non un upsert (Task 4, C5) | senza riga l'update tocca zero righe senza errore; `ultimo_check` conta solo accanto a un `ultimo_acquisto`, e un upsert creerebbe una riga «mai comprato» identica all'assenza [misurato, `serveControllo`] | nessuno visibile: il «sì» dato dopo Cancella la dispensa non lascia traccia, ma nessuna lettura lo userebbe |
+| 13 | L'evento `spesa:dispensa-cambiata` con la pagina ancora senza dati ricarica con `leggi` (attesa e stato d'errore), non con la rilettura silenziosa; «ha dati» sta in un ref allineato da un effetto (Task 4) | la rilettura silenziosa scarta il caricamento in volo, e se fallisce la pagina resta su `CARICO…` | nessuno: con i dati in pagina il comportamento è quello del piano |
 
 ## Misure nel browser
 
@@ -238,16 +240,6 @@ proposta. Andrea le vede in review.
   «in casa …», finché non si riaprono. Toccare quei pasti è innocuo (Task 4, limiti).
   **Proposta:** va bene così. Se li vuoi aggiornati subito, Piano e Lista ascoltano lo stesso
   evento con un contatore nelle dipendenze del loro caricamento: un task a parte.
-- **Il «no» ai controlli della lista aperta dopo Cancella la dispensa (Task 4, C5).**
-  `rispondiControllo` (`src/data/dispensa.ts`) legge `pantry_state.residuo` con `.single()`:
-  dopo la cancellazione la riga non c'è più, e ogni «no» a un controllo già in lista fallisce con
-  «Non siamo riusciti a salvare la risposta. Riprova.». Due correzioni possibili:
-  (a) in `rispondiControllo`, `.maybeSingle()` e residuo 0 se la riga manca: una riga di codice e
-  un test, nessuna migrazione; (b) in `cancella_dispensa()`, cancellare anche le righe di
-  controllo in sospeso (`origine = 'controllo' and confezioni = 0`) delle liste non chiuse:
-  coerente con «mai comprato», ma un terzo ritocco alla SQL. **Proposta: (a)**, perché non tocca
-  la migrazione e rende `rispondiControllo` robusta anche a ogni altro modo in cui la riga di
-  dispensa può mancare. Il Task 4 non l'ha fatta: è fuori dai suoi file e dalle decisioni D1-D2.
 
 ## I gate di Andrea, in ordine
 
@@ -362,15 +354,31 @@ Il piano le aveva misurate il 25/09 su `feb4551`. Il Task 4 le ha rilette una pe
   riscrive in `pantry_state`: la dispensa cancellata risorge in parte. Esempio: riso congelato
   con 500 g in casa, servono 820, si compra 1000. Dopo la chiusura il residuo vale 680 (500 +
   1000 − 820), invece di 180 (0 + 1000 − 820).
-- **C5 (trovata dal Task 4, non nel piano)** [misurato, `src/data/dispensa.ts`
-  `rispondiControllo`]. Il «no» a un controllo legge `pantry_state.residuo` con `.single()`. Oggi
-  una riga di controllo ha sempre la sua riga di dispensa: `serveControllo` torna `false` senza
-  `ultimoAcquisto`, e l'acquisto passa da `pantry_state`. Dopo la cancellazione, le righe di
-  controllo della lista aperta restano, ma la riga di dispensa non c'è più: `.single()` con zero
-  righe torna errore, e la Lista mostra «Non siamo riusciti a salvare la risposta. Riprova.» a
-  ogni tentativo. Il «sì» invece riesce: l'`update` di `ultimo_check` tocca zero righe senza
-  errore, e la riga di controllo si cancella. È coerente con «mai comprato». Vedi «Domande per
-  Andrea».
+- **C5, trovata e corretta nel Task 4 (non era nel piano)** [misurato, `src/data/dispensa.ts`
+  `rispondiControllo`]. Il «no» a un controllo leggeva `pantry_state.residuo` con `.single()`.
+  Prima della fase 5 una riga di controllo aveva sempre la sua riga di dispensa: `serveControllo`
+  torna `false` senza `ultimoAcquisto`, e l'acquisto passa da `pantry_state`. Dopo la
+  cancellazione, le righe di controllo della lista aperta restano, ma la riga di dispensa non c'è
+  più: `.single()` con zero righe torna errore, e la Lista mostrava «Non siamo riusciti a salvare
+  la risposta. Riprova.» a ogni tentativo.
+  - **Correzione (decisione del controller):** la lettura passa a `.maybeSingle()`, e senza riga
+    il residuo vale 0, come lo legge la Dispensa.
+  - Il «no» non scrive su `pantry_state`: scrive solo l'upsert della voce in lista, che l'assenza
+    della riga non tocca. La riga la ricrea `chiudiSpesa` (upsert) se la voce viene comprata.
+  - **Il «sì» resta un `update` di `ultimo_check`:** senza riga tocca zero righe e non dà errore.
+    Un upsert creerebbe una riga «residuo 0, mai comprato» che non dice niente di più.
+    `ultimo_check` conta solo accanto a un `ultimo_acquisto` (`serveControllo` torna `false`
+    senza), e l'acquisto che ricrea la riga è più recente del «sì».
+  - Test: `src/data/__tests__/dispensa.test.ts` › `"no" riesce anche senza la riga di dispensa
+    (dopo Cancella la dispensa): il residuo vale 0`. Falliva prima della correzione con l'errore
+    PGRST116 di `.single()`.
+- **La Dispensa e l'evento durante il primo caricamento (corretta nel Task 4, decisione del
+  controller).** Nel codice del piano, l'evento chiamava sempre la rilettura silenziosa. Se
+  arrivava col primo caricamento in volo, quello si scartava; se poi la rilettura falliva o non
+  rispondeva, la pagina restava su `CARICO…` per sempre. Ora, finché la pagina non ha dati,
+  l'evento ricarica con `leggi`: si applicano la sua attesa di 8 s e il suo stato d'errore con
+  `RIPROVA`. Test: due `it` in `dispensa/__tests__/page.test.tsx` › «la cancellazione dal
+  pannello».
 
 ### Task 4, decisioni di Andrea
 
@@ -394,8 +402,6 @@ Il piano le aveva misurate il 25/09 su `feb4551`. Il Task 4 le ha rilette una pe
   pasto che non lo è più; con D2 la Lista mostra ancora «in casa …», finché non si riaprono.
   Toccare quel pasto dal Piano è innocuo: `aggiornaSlot` rilegge la riga (`attuale.daPronti` è
   già `false`), quindi niente restituzione e niente lotto fantasma.
-- **C5.** Il «no» ai controlli della lista aperta fallisce dopo la cancellazione (vedi
-  l'indagine), finché non si decide la correzione.
 
 ### Da fare all'applicazione della 0015
 

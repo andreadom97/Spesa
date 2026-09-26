@@ -37,6 +37,11 @@ export async function rispondiControllo(
   const userId = await idCasa();
 
   if (ancora) {
+    // update e non upsert, anche se la riga di dispensa può mancare (dopo
+    // Cancella la dispensa): senza riga l'update tocca zero righe e non dà
+    // errore. Non si perde niente: ultimo_check conta solo accanto a un
+    // ultimo_acquisto (serveControllo torna false senza), e l'acquisto che
+    // ricrea la riga è più recente di questo «sì».
     const oggi = new Date().toISOString().slice(0, 10);
     const [{ error: eUpd }, { error: eDel }] = await Promise.all([
       sb
@@ -63,25 +68,31 @@ export async function rispondiControllo(
       .eq('id', ingredientId)
       .eq('user_id', userId)
       .single(),
+    // maybeSingle, non single: la riga di dispensa può mancare. Succede dopo
+    // Cancella la dispensa (spec fase 5 §E.2), che cancella pantry_state ma
+    // lascia le righe di controllo della lista aperta. Senza riga
+    // l'ingrediente è «mai comprato»: residuo 0, come lo legge la Dispensa.
     sb
       .from('pantry_state')
       .select('residuo')
       .eq('ingredient_id', ingredientId)
       .eq('user_id', userId)
-      .single(),
+      .maybeSingle(),
   ]);
   if (eIng) throw eIng;
   if (eStato) throw eStato;
 
   // Upsert, non insert: rispondere "no" due volte allo stesso controllo non
   // deve creare due voci sulla stessa lista (vincolo di unicità shopping_list_id+ingredient_id).
+  // Il «no» non scrive su pantry_state: la riga mancante non serve crearla qui,
+  // la crea chiudiSpesa (upsert) se la voce viene comprata.
   const { error: eIns } = await sb.from('shopping_list_item').upsert(
     {
       user_id: userId,
       shopping_list_id: listaId,
       ingredient_id: ingredientId,
       fabbisogno: 0,
-      residuo: Number(stato.residuo),
+      residuo: Number(stato?.residuo ?? 0),
       confezioni: 1,
       quantita_totale: Number(ing.formato_confezione),
       unita: ing.unita_base,
