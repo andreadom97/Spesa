@@ -28,6 +28,7 @@ vi.mock('@/data/casa', async () => {
   return { statoCasa: vi.fn(), dimenticaIdCasa: vi.fn(), eRifiutoRls: reale.eRifiutoRls };
 });
 vi.mock('@/data/risparmio', () => ({ leggiRisparmioTotale: vi.fn() }));
+vi.mock('@/data/primo-avvio', () => ({ assicuraDatiIniziali: vi.fn() }));
 // Dal Task 9 'ingredienti' monta la vera Ingredienti, che legge da sé: senza questo mock una
 // lettura vera (non finta) fallirebbe in console a ogni apertura su quella sotto-schermata.
 vi.mock('@/data/repertorio', () => ({ leggiIngredienti: vi.fn(async () => []) }));
@@ -55,6 +56,8 @@ import { Testata } from '../../Testata';
 import { PannelloProvider, usePannello } from '../PannelloProvider';
 import { DatiPannelloProvider } from '../DatiPannello';
 import { Pannello } from '../Pannello';
+import { assicuraDatiIniziali } from '@/data/primo-avvio';
+import { PrimoAvvio } from '../../PrimoAvvio';
 
 const ASSENZE = [false, false, false, false, false, false, false];
 const PASTI: MealSlotDef[] = [
@@ -329,6 +332,53 @@ describe('Pannello: aprire da un indirizzo (spec §A.3, §A.4)', () => {
     await assesta();
     expect(replaceState).toHaveBeenCalledTimes(1);
     expect(replaceState).toHaveBeenCalledWith(statoNext, '', '/lista');
+  });
+
+  // Review finale M7: si toglie solo ?impostazioni=, gli altri parametri e l'ancora restano.
+  it('togliendo il parametro gli altri parametri dell\'indirizzo restano, con lo stato di Next', async () => {
+    const statoNext = { __NA: true };
+    window.history.replaceState(statoNext, '', '/lista?da=piatti&impostazioni=cima&x=1#sotto');
+    const replaceState = vi.spyOn(window.history, 'replaceState');
+    monta();
+    await assesta();
+    expect(pannello()).toHaveAttribute('data-stato', 'aperto');
+    expect(replaceState).toHaveBeenCalledWith(statoNext, '', '/lista?da=piatti&x=1#sotto');
+    expect(window.location.pathname + window.location.search + window.location.hash).toBe('/lista?da=piatti&x=1#sotto');
+  });
+
+  // Review finale M2: un utente nuovo che entra da un vecchio segnalibro /impostazioni non deve
+  // far seminare i pasti al pannello mentre il primo avvio li sta seminando (8 pasti, oltre 6).
+  it('nel Guscio, da indirizzo il pannello si apre solo quando il primo avvio ha finito', async () => {
+    let finisci: () => void = () => {};
+    vi.mocked(assicuraDatiIniziali).mockReturnValue(new Promise((r) => { finisci = () => r({ pasti: true, ingredienti: true }); }));
+    window.history.replaceState(null, '', '/lista?impostazioni=cadenza');
+    render(
+      <PannelloProvider attendiPrimoAvvio>
+        <DatiPannelloProvider><Pannello /></DatiPannelloProvider>
+        <PrimoAvvio><p>la pagina</p></PrimoAvvio>
+      </PannelloProvider>,
+    );
+    await assesta();
+    expect(pannello()).toHaveAttribute('data-stato', 'chiuso');
+    expect(leggiSlotDefs).not.toHaveBeenCalled();
+    // Il parametro resta finché il pannello non si apre.
+    expect(window.location.search).toBe('?impostazioni=cadenza');
+
+    await act(async () => { finisci(); });
+    await assesta();
+    expect(screen.getByText('la pagina')).toBeInTheDocument();
+    expect(pannello()).toHaveAttribute('data-stato', 'aperto');
+    expect(titolo()).toBe('Cadenza dei controlli');
+    expect(window.location.search).toBe('');
+    expect(leggiSlotDefs).toHaveBeenCalled();
+  });
+
+  it('senza PrimoAvvio (il pannello fuori dal Guscio) da indirizzo si apre subito, come prima', async () => {
+    window.history.replaceState(null, '', '/lista?impostazioni=cima');
+    monta();
+    await assesta();
+    expect(pannello()).toHaveAttribute('data-stato', 'aperto');
+    expect(assicuraDatiIniziali).not.toHaveBeenCalled();
   });
 
   it('il parametro si rilegge a ogni cambio di pathname', async () => {

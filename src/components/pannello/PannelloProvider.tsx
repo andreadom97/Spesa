@@ -30,6 +30,8 @@ export interface ContestoPannelloInterno {
   /** L'altezza del corpo da rimettere, letta da sessionStorage all'apertura da indirizzo. */
   scroll: number | null;
   scrollUsato(): void;
+  /** Lo chiama `PrimoAvvio` quando apre il suo cancello: da lì `?impostazioni=` può aprire. */
+  primoAvvioFinito(): void;
 }
 
 interface Stato {
@@ -50,7 +52,20 @@ const INERTE: ContestoPannello = {
   aperto: false, sotto: null,
   apri() {}, chiudi() {}, entra() {}, torna() {}, mostraDialogo() {}, chiudiDialogo() {}, vaiA() {},
 };
-const INERTE_INTERNO: ContestoPannelloInterno = { dialogo: null, istantaneo: false, scroll: null, scrollUsato() {} };
+const INERTE_INTERNO: ContestoPannelloInterno = {
+  dialogo: null, istantaneo: false, scroll: null, scrollUsato() {}, primoAvvioFinito() {},
+};
+
+/**
+ * L'indirizzo di oggi senza `?impostazioni=`: gli altri parametri e l'ancora restano (review
+ * finale M7). Un indirizzo con il solo parametro torna al solo percorso.
+ */
+function senzaParametroPannello(pathname: string): string {
+  const parametri = new URLSearchParams(window.location.search);
+  parametri.delete('impostazioni');
+  const resto = parametri.toString();
+  return `${pathname}${resto ? `?${resto}` : ''}${window.location.hash}`;
+}
 
 const Contesto = createContext<ContestoPannello>(INERTE);
 const ContestoInterno = createContext<ContestoPannelloInterno>(INERTE_INTERNO);
@@ -78,12 +93,21 @@ function profondita(s: Stato): number {
  * `replaceState` passa `window.history.state`, **mai** `null`: questo effetto gira prima che
  * l'`AppRouter` avvolga la History API, e con `null` la voce perderebbe lo stato di Next
  * (`__NA`), che al primo indietro ricaricherebbe la pagina (regola B′, misurata dalla sonda
- * del Task 2 della fase 5).
+ * del Task 2 della fase 5). Si toglie solo quel parametro: gli altri restano (review finale M7).
+ *
+ * `attendiPrimoAvvio` (il Guscio lo passa; review finale M2): il pannello vive fuori dal
+ * cancello di `PrimoAvvio`, e un utente nuovo che entra da un vecchio segnalibro `/impostazioni`
+ * aprirebbe il pannello mentre `assicuraDatiIniziali` semina i pasti. `leggiNucleo` troverebbe
+ * la tabella ancora vuota e seminerebbe i suoi quattro: otto pasti, oltre il massimo di sei, e
+ * ogni salvataggio dei pasti rifiutato. Con `attendiPrimoAvvio` l'indirizzo si legge solo dopo
+ * che `PrimoAvvio` ha aperto il suo cancello (`primoAvvioFinito`); fino ad allora il parametro
+ * resta nell'indirizzo. Senza (i test che montano il pannello da solo), si legge subito.
  */
-export function PannelloProvider({ children }: { children: ReactNode }) {
+export function PannelloProvider({ children, attendiPrimoAvvio = false }: { children: ReactNode; attendiPrimoAvvio?: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
   const [stato, setStato] = useState<Stato>(CHIUSO);
+  const [avvioFinito, setAvvioFinito] = useState(!attendiPrimoAvvio);
 
   const chiudiUltimo = useCallback(() => {
     setStato((s) => {
@@ -97,13 +121,16 @@ export function PannelloProvider({ children }: { children: ReactNode }) {
   const { chiudiTuttoPoi } = useIndietroFogli(profondita(stato), chiudiUltimo);
 
   useEffect(() => {
+    if (!avvioFinito) return;
     const dest = leggiDestinazione(window.location.search);
     if (dest === null) return;
-    window.history.replaceState(window.history.state, '', pathname);
+    window.history.replaceState(window.history.state, '', senzaParametroPannello(pathname));
     const scroll = prendiScrollPannello(dest);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setStato({ aperto: true, sotto: dest === 'cima' ? null : dest, dialogo: null, istantaneo: true, scroll });
-  }, [pathname]);
+  }, [pathname, avvioFinito]);
+
+  const primoAvvioFinito = useCallback(() => setAvvioFinito(true), []);
 
   const apri = useCallback((dest: DestinazionePannello = 'cima') => {
     setStato({ aperto: true, sotto: dest === 'cima' ? null : dest, dialogo: null, istantaneo: false, scroll: null });
@@ -152,8 +179,8 @@ export function PannelloProvider({ children }: { children: ReactNode }) {
   }), [stato.aperto, stato.sotto, apri, chiudi, entra, torna, mostraDialogo, chiudiDialogo, vaiA]);
 
   const interno = useMemo<ContestoPannelloInterno>(() => ({
-    dialogo: stato.dialogo, istantaneo: stato.istantaneo, scroll: stato.scroll, scrollUsato,
-  }), [stato.dialogo, stato.istantaneo, stato.scroll, scrollUsato]);
+    dialogo: stato.dialogo, istantaneo: stato.istantaneo, scroll: stato.scroll, scrollUsato, primoAvvioFinito,
+  }), [stato.dialogo, stato.istantaneo, stato.scroll, scrollUsato, primoAvvioFinito]);
 
   return (
     <Contesto.Provider value={valore}>

@@ -31,7 +31,9 @@ export function Guscio({ children }: { children: ReactNode }) {
   return (
     <MarchioProvider>
       <BarraProvider>
-        <PannelloProvider>
+        {/* `attendiPrimoAvvio`: aperto da un indirizzo, il pannello aspetta che PrimoAvvio
+            (nel layout, dentro il Guscio) abbia finito la semina (review finale M2). */}
+        <PannelloProvider attendiPrimoAvvio>
           <GuscioInterno>{children}</GuscioInterno>
         </PannelloProvider>
       </BarraProvider>

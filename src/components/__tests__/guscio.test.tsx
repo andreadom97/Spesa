@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi } from 'vitest';
-import { render, fireEvent, screen } from '@testing-library/react';
+import { act, render, fireEvent, screen } from '@testing-library/react';
 
 const percorso = vi.hoisted(() => ({ valore: '/lista' }));
 vi.mock('next/navigation', () => ({ usePathname: () => percorso.valore, useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
@@ -106,6 +106,19 @@ describe('Guscio', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Andrea: profilo e impostazioni' }));
     expect(guscio).toHaveAttribute('data-pannello', 'aperto');
     expect(guscio).not.toHaveAttribute('data-istantaneo');
+  });
+
+  // Review finale M2: nel Guscio l'apertura da indirizzo aspetta PrimoAvvio.
+  it('da ?impostazioni= il pannello aspetta PrimoAvvio: senza il suo segnale resta chiuso e il parametro resta', async () => {
+    window.history.replaceState(null, '', '/lista?impostazioni=cima');
+    try {
+      const { container } = render(<Guscio><Testata titolo="Lista" /></Guscio>);
+      await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+      expect(container.firstElementChild).not.toHaveAttribute('data-pannello');
+      expect(window.location.search).toBe('?impostazioni=cima');
+    } finally {
+      window.history.replaceState(null, '', '/lista');
+    }
   });
 
   // Review del Task 6 (minor b): aria-modal da solo non trattiene il Tab dentro il pannello.

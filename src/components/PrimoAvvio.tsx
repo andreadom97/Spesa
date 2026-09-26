@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { assicuraDatiIniziali } from '@/data/primo-avvio';
+import { usePannelloInterno } from './pannello/PannelloProvider';
 
 /**
  * Il cancello del primo avvio (spec 2026-09-06, §1): chiama
@@ -43,6 +44,12 @@ export const TIMEOUT_MS = 4000;
 export function PrimoAvvio({ children }: { children: ReactNode }) {
   const [pronto, setPronto] = useState(false);
   const avviato = useRef(false);
+  // Il pannello delle Impostazioni vive fuori da questo cancello: aperto da un indirizzo
+  // aspetta questo segnale (review finale della fase 5, M2). Fuori dal provider non fa niente.
+  const { primoAvvioFinito } = usePannelloInterno();
+  useEffect(() => {
+    if (pronto) primoAvvioFinito();
+  }, [pronto, primoAvvioFinito]);
 
   useEffect(() => {
     if (avviato.current) return;
