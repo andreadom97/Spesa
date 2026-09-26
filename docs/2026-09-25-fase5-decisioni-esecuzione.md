@@ -948,6 +948,20 @@ rollback;
 La terza prova lavora sulle righe visibili a quell'utente, cioè la RLS in azione. In alternativa,
 la stessa prova dal telefono su un account di prova dopo il merge (spec §M.4).
 
+**Applicata in produzione il 26/09, con l'ok di Andrea** (Supabase MCP, versione
+`20260926060439`). Esito delle prove [misurato 26/09]:
+1. `show timezone;` → `UTC`, prima di applicare.
+2. Policy `<tabella>_casa`, `ALL`, `user_id = (select casa_id())` su `meal_slot`,
+   `pantry_state`, `porzione_pronta`, `shopping_list_item` e `settings`, prima di applicare.
+3. Dopo: `settings.giorni_controllo` c'è, le 2 righe valgono 90; `cancella_dispensa()` è
+   `security invoker` con `search_path=public`, `execute` negato ad `anon` e concesso ad
+   `authenticated`.
+4. La funzione eseguita come l'account senza dati (`73da9997…`, 0 righe in dispensa) dentro
+   `begin … rollback`: gira senza errori, e nella stessa transazione le dispense delle altre
+   due case restano 92 e 76 righe. Dopo il rollback, conteggi identici. Non è stata provata
+   su una casa con dati (nessun account di prova ne ha): la prova vera resta quella dal
+   telefono su un account di prova (§M.4).
+
 ## Task 5
 
 ### Task 5, indagine
