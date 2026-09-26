@@ -179,6 +179,10 @@
   padding: var(--dock-padding); display: flex; gap: var(--dock-respiro);
 }
 .guscio[data-barra="ridotta"] .dock { bottom: var(--dock-fondo-giu); }
+/* Senza tab bar (l'editor dell'ingrediente, spec fase 5 §F): il Dock scende dove
+   starebbe la barra, a 22 dal fondo. Il selettore batte anche la regola ridotta:
+   `data-barra` continua a cambiare con lo scorrimento anche quando la barra non c'è. */
+.guscio[data-barra] .dock.dock-senza-barra { bottom: var(--barra-fondo); }
 
 /* La Dispensa (spec fase 4 §A): stessa posizione e stessa discesa con la barra, ma
    niente contenitore — i due controlli portano ognuno la propria ombra. */

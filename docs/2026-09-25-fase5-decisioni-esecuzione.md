@@ -97,6 +97,16 @@ scritti nel piano sono indicativi.
 | 80 | La coppia del test di Importa: «il secondo tocco di un doppio tocco sul tondo non esce dalla freccia della testata» → `importa/__tests__/page.test.tsx` › Importa: la scelta › il secondo tocco di un doppio tocco sul tondo non esce dalla pillola della testata. La freccia era un link a `/impostazioni`, ora è la pillola (un `button`): il test verifica anche che `push` non parta al tocco annullato e parta dopo. Lo script di copertura dello Step 12, lanciato prima di cancellare i due file vecchi: `test vecchi: 52; senza coppia valida nel registro: 0`, uscita 0 [misurato il 26/09; `grep -c` conferma 47 + 5]. La coppia della Testata sta nella riga 54 della «Migrazione dei test» (Task 11) | i test vecchi si cancellano solo con la coppia (Global Constraints) | nessuno |
 | 81 | `Testata.indietro` è `{ etichetta, ariaLabel, onTorna }`, non `{ etichetta, onTorna }` come scrive §G.2: `ariaLabel` è il nome accessibile per intero (`Torna alle impostazioni`, `alla lista`, `al piano`) (Task 11, ruling P2 del controller: scarto dalla spec). In modo indietro la Testata non disegna la pillola settimana: nessuna pagina passa entrambe | §G.2 vuole un `aria-label` che dice dove porta, diverso dall'etichetta visibile: serve il campo | nessuno; la firma di §G.2 va allineata quando si aggiornano gli scarti della spec (§N) |
 | 82 | Tre correzioni alle bozze dei test del piano (Task 11): i mock di `next/navigation` usano `vi.hoisted` per `push`/`replace` (come `vista.test.tsx`); il caso `da lista` di Piatti prende la pillola dopo lo stato vuoto (`Da dove partiamo?`), perché `VuotoPiatti` è un altro componente e rimonta la `Cornice`: la pillola del render di caricamento resta staccata dal DOM e il suo click non fa niente [misurato: rosso con la bozza, `push` chiamata 0 volte]; allo Step 3 anche i casi `/piatti` e `/piatti/d-1` di «nessuna voce è attiva» erano rossi prima del codice, non verdi come diceva il piano, perché la voce Piatti c'era ancora ed era attiva | la regola delle Global Constraints: la bozza si corregge sul codice vero | nessuno |
+| 83 | La vista di lettura dell'editor è `LettoreCodice` (`src/app/(app)/dispensa/LettoreCodice.tsx`), non `Scanner` come diceva la spec del 25/09, dentro un `FoglioDalBasso` con `TestataFoglio`: la X del foglio fa da annulla (Task 12, decisione del controller del 26/09, spec §F.1 aggiornata) | `LettoreCodice` è la vista della fase 4 (anteprima con la cornice guida, `DIGITA IL CODICE`, campo `Codice a barre`); `Scanner` è il componente di `/lista/confezioni` della fase 2, col tasto `ANNULLA` alto 40, sotto i 44 [misurato]. Stesso schema di `NuovoIngrediente.tsx` | nessuno per il comportamento; se Andrea volesse lo `Scanner`, è un cambio di componente dentro il foglio |
+| 84 | Il Dock senza tab bar: `Dock` legge `useBarraNascosta()` e si mette da sé la classe `.dock-senza-barra`; in `globals.css` la regola `.guscio[data-barra] .dock.dock-senza-barra { bottom: var(--barra-fondo); }`, subito dopo quella ridotta. Nessun token nuovo: `--barra-fondo` vale già 22 (Task 12) | spec §F «con la barra nascosta il Dock va a `bottom 22`». La specificità 0,4,0 batte lo 0,3,0 della regola ridotta: `data-barra` cambia con lo scorrimento anche quando la barra non c'è. Chi nasconde la barra lo chiede con `useNascondiBarra`, il Dock lo legge e basta: oggi l'unica altra pagina che la nasconde è la fotocamera di Importa, che non monta un Dock [misurato: `grep useNascondiBarra`, `Camera.tsx` riga 160; il `<Dock>` di Importa sta in `Acquisizione.tsx`, che non si monta insieme alla Camera] | la transizione di `bottom` (`.anim-dock`) resta quella di oggi: non provata nel browser (vedi «Non eseguiti») |
+| 85 | L'errore di salvataggio dell'editor sta sopra il Dock, in un riquadro bianco (`--superficie`, `--ombra-pannello`, raggio 14) agganciato alla pillola con `bottom: calc(100% + 8px)`, `role="alert"` (Task 12) | spec §F «l'errore compare sopra il Dock»: sotto il Dock scorre la pagina, e un testo senza fondo si leggerebbe sopra i campi | un riquadro che copre l'ultima riga visibile finché l'errore resta; sparisce al SALVA successivo |
+| 86 | `ELIMINA` in coda alla pagina è un `TastoSecondario` col testo in `--errore` e `aria-label="Elimina ingrediente"` (il nome di oggi del cestino); su un ingrediente nuovo non c'è (Task 12) | spec §F «`ELIMINA`, in coda, col suo dialogo di oggi reso con `DialogoConferma`». Oggi il cestino su un nuovo faceva da annulla: ora la freccia fa quel lavoro | il nome accessibile (`Elimina ingrediente`) diverso dal testo visibile (`ELIMINA`): tenuto per continuità con oggi e perché nel dialogo c'è un secondo `ELIMINA` |
+| 87 | Un errore generico dell'eliminazione resta nel `DialogoConferma` (`Non siamo riusciti a eliminare l’ingrediente. Riprova.`, sotto i tasti, dialogo aperto); `IngredienteInUsoError` chiude il dialogo e il motivo resta sotto `ELIMINA` in pagina, `role="alert"`, come oggi (Task 12) | prima entrambi chiudevano il dialogo e l'errore andava in pagina [misurato: `page.tsx` di prima, righe 269–277]. Il dialogo di conferma della fase 5 tiene da sé l'errore (§D); il motivo del blocco è una frase da leggere con calma a dialogo chiuso | nessuno |
+| 88 | La scansione nell'editor (Task 12, spec §F.1): un codice che è già di un altro ingrediente mostra `Questo codice è di {nome}.` con `NON È QUESTA` e `APRI {NOME}`, che apre il suo editor (con `?torna=impostazioni` se c'era) dopo `chiudiTuttoPoi`; un INTERO tiene formato 1 e PZ anche se il catalogo dà un peso; «trovato ma senza quantità» usa lo stesso messaggio dello sconosciuto (`Non conosciamo questo prodotto: scrivi tu la confezione.`); il catalogo irraggiungibile usa `MSG_CATALOGO` della fase 4 (`Non riusciamo a interrogare il catalogo. Riprova, o scrivi il formato a mano.`); in tutti e tre i casi l'EAN resta legato al SALVA. Il catalogo che dà la quantità riempie formato **e unità** (spec §F.1 punto 2), anche se l'unità era un'altra | è il comportamento della fase 4 in Nuovo ingrediente (§F.3 fase 4), che la spec chiede di applicare uguale; `MSG_CATALOGO` è un testo esistente, non nuovo. Senza l'elenco degli ingredienti (lettura fallita) il proprietario non si riconosce e si passa al catalogo | un'unità cambiata dal catalogo su un ingrediente già usato nei piatti (g → ml) cambia il senso delle quantità dei piatti, come oggi un cambio a mano del segmento: si vede prima di SALVA e non si scrive senza [ipotesi, non testato su un caso reale] |
+| 89 | I punti 5–8 della verifica dello Step 4 del piano (Task 12): (5) la nota del formato (`Quanto ne vendono in una confezione. …`) e le spiegazioni di `SPIEGA_CLASSE`, che il frame 12 non mostra, restano sotto i loro campi (decisione 3: nessuna funzione di oggi si perde; anche in «Domande per Andrea»); (6) la spiegazione «a stima» dice la cadenza, vedi 90; (7) il `Prezzo` passa dal campo a tutta larghezza alto 56 al campo 96 × 44 della `CONFEZIONE`, con `€` come unità in mono 10 `--ter`; etichetta e nota restano uguali; (8) la coda dello scroller è `con-dock`: senza barra il Dock finisce a 22 + 70 = 92 dal fondo, e sotto l'ultima voce restano circa 100 px d'aria in più. Si accetta per non aggiungere un'altra coda | la spec §F elenca i campi del disegno e dice che quelli di oggi restano; il campo 96 × 44 è quello di `CampoConSalva` | (8) un po' di vuoto sotto `ELIMINA`, da guardare sul telefono |
+| 90 | La spiegazione «a stima» dice la cadenza scelta: `spiegaClasse(classe, giorni)` con `ogniCadenza` del Task 3. L'editor legge `leggiImpostazioni()` in un effetto a sé, che non blocca il modulo; se la lettura fallisce vale `GIORNI_CONTROLLO_DEFAULT` (ogni 3 mesi) e l'errore va in console (Task 12, decisione di Andrea del 26/09, spec §I) | il resto della frase, apostrofo tipografico compreso, resta quello di oggi | una lettura in più delle impostazioni a ogni apertura dell'editor |
+| 91 | Altre scelte del codice del piano, oltre la spec (Task 12): il formato si legge con la virgola come il prezzo (`Number(testo.replace(',', '.'))`, campo `type="text"` con `inputMode="decimal"`; prima era `type="number"`) e `Number.isFinite` al posto di `Number.isNaN`; un caricamento fallito mostra solo il messaggio `Non riusciamo a caricare l’ingrediente. Riprova più tardi.` sotto la freccia, senza modulo né Dock (prima il modulo vuoto restava sotto l'errore); il segnaposto del nome passa da `#c4c4ce` a `var(--icona-spenta)`, che vale `#C4C4CE` [misurato: `globals.css` riga 20; lo `styled-jsx` di Next compila `var()` nel selettore `::placeholder`, misurato trasformando la regola con `styled-jsx/babel`]; la pillola d'area scelta è piena in `--ink` come nel frame 12, e `rgba()` sparisce | il campo di testo evita il `type="number"` che su iOS in italiano rifiuta la virgola (lo stesso motivo del prezzo); con un modulo vuoto sotto l'errore di caricamento, SALVA avrebbe creato un ingrediente nuovo al posto di quello non letto | nessuno |
+| 92 | Tre correzioni alla bozza dei test del piano (Task 12): `afterEach` usa `vi.restoreAllMocks()` invece di `mockRestore` sulla sola spia di `history.go`, così anche le spie di `console.error` dei test d'errore si tolgono (`vi.clearAllMocks` non le rimette a posto e la configurazione di Vitest non ha `restoreMocks`); il test della lettura fallita controlla anche che `console.error` sia chiamato; «le tre spiegazioni…» resta, col nuovo atteso per «a stima», accanto a quello della cadenza. Il censimento dei 20 test di prima sta in «Task 12, censimento dei test dell'editor» | la regola delle Global Constraints: la bozza si corregge sul codice vero | nessuno |
 
 ## Misure nel browser
 
@@ -325,6 +335,14 @@ Ogni task aggiunge qui quello che non ha potuto provare fuori dal telefono.
   foglio di condivisione di `SALVA IL FILE`. In jsdom i test controllano `writeText`,
   `location.assign` e `salvaFile` finti, non il sistema.
 
+- **L'editor dell'ingrediente sul telefono** (Task 12): il Dock che senza tab bar sta a 22 dal
+  fondo e ci resta anche quando `data-barra` passa a `ridotta` con lo scorrimento, la sua
+  transizione, l'aria sotto `ELIMINA` (decisione 89, punto 8), la fotocamera dentro il foglio
+  `Scansiona la confezione` con un codice vero e `/api/prodotto` vero, il gesto indietro che
+  chiude prima il foglio o il dialogo, e `APRI {NOME}` che apre l'altro editor con una voce sola
+  in più. In jsdom i test controllano la classe `dock-senza-barra`, `history.go` finto e `fetch`
+  finto, non il movimento né la fotocamera.
+
 ## Rimasto aperto, di proposito
 
 Ogni task aggiunge qui i minor che la review lascia aperti, col motivo.
@@ -400,6 +418,14 @@ proposta. Andrea le vede in review.
   serve un tocco in più [ipotesi, non provato nel browser]. **Proposta:** l'editor torna con
   `router.back()` quando la voce precedente è dell'app, oppure il Piano apre l'editor con un
   `?da=piano` che l'editor rispetta: un task a parte, perché tocca l'editor del piatto.
+
+- **Le due spiegazioni che il frame 12 non mostra (Task 12, decisione 89 punto 5).** Il frame 12
+  ha solo le etichette e i controlli; l'editor tiene sotto `CONFEZIONE` la nota di oggi sul
+  formato (`Quanto ne vendono in una confezione. …`) e sotto `COME SI CONSUMA` la spiegazione
+  della classe scelta (`src/app/(app)/piatti/[id]/ingredienti/[ingId]/page.tsx`, `STILE_NOTA`,
+  `spiegaClasse`), perché nessuna funzione di oggi si perde (decisione 3). **Proposta:** restano:
+  spiegano un concetto che l'utente non conosce (le classi di residuo) e il peso indicativo al
+  banco. Se preferisci la pagina asciutta del frame, si tolgono in due righe.
 
 ## I gate di Andrea, in ordine
 
@@ -662,3 +688,65 @@ della stessa suite, senza toccare codice, ha dato prima 1800/1 con un fallimento
 file non toccato da questo task, verde da solo e verde nella riesecuzione: flakiness preesistente,
 non di questo task]. `npx tsc --noEmit` e `npm run lint` puliti. Il test del nome del file passa
 sia con `TZ=Europe/Rome` sia in CI (`TZ=UTC` implicito).
+
+## Task 12
+
+### Task 12, censimento dei test dell'editor
+
+Il file è `src/app/(app)/piatti/[id]/ingredienti/[ingId]/__tests__/page.test.tsx`. Prima: 20
+test, tutti in `Ingrediente (editor)` (16) e `Ingrediente (editor) › prezzo di una confezione`
+(4). Dopo: **37 casi** (35 `it` più i due dell'`it.each` della cadenza), 37 verdi
+[misurato 26/09, `npx vitest run "src/app/(app)/piatti/[id]/ingredienti"`, stderr pulito].
+I describe nuovi sono `Ingrediente (editor): i campi`, `…: il ritorno (spec fase 5 §F)`,
+`…: la scansione (spec fase 5 §F.1)`, `…: ELIMINA (spec fase 5 §F)` e `…: prezzo di una
+confezione`. Tutti montano la pagina con `rendi()` (Dock nello slot, `BarraProvider`) e
+premono `SALVA` al posto di `SALVA INGREDIENTE`.
+
+| # | Test di prima | Test di dopo | Come |
+|---|---|---|---|
+| 1 | creazione: il salvataggio è bloccato finché mancano nome, area e formato | i campi › creazione: il salvataggio è bloccato finché mancano nome, area e formato | uguale, col tasto `SALVA` |
+| 2 | scegliendo INTERO l'unità passa a PZ e il formato si blocca a 1 | i campi › scegliendo INTERO l'unità passa a PZ e il formato si blocca a 1 | uguale |
+| 3 | con INTERO il segmento unità è disabilitato: cliccare G non lo riattiva, PZ resta l'unica scelta | i campi › con INTERO il segmento unità è disabilitato: cliccare G non lo riattiva, PZ resta l'unica scelta | uguale |
+| 4 | il segmento unità torna cliccabile appena la classe non è più INTERO | i campi › il segmento unità torna cliccabile appena la classe non è più INTERO | uguale |
+| 5 | il guardiano in salva() corregge unità e formato anche per un ingrediente caricato già con la classe INTERO e un'unità diversa da PZ | i campi › stesso titolo | riscritto: prima una modifica al nome, perché SALVA pulito è spento |
+| 6 | le tre spiegazioni della classe di residuo sono quelle di Ingrediente.dc.html | i campi › le tre spiegazioni della classe di residuo sono quelle di Ingrediente.dc.html, e «a stima» dice la cadenza | riscritto: «a stima» dice `Ogni 3 mesi`; più i nuovi «la spiegazione «a stima» dice la cadenza delle impostazioni, di default ogni 3 mesi», i due casi a 30 e 60 giorni e «se le impostazioni non si leggono la nota dice ogni 3 mesi, e l'editor funziona» |
+| 7 | l'etichetta sotto l'interruttore deperibile segue lo stato: quanto dura dipende dal reparto di default (deperibile), il residuo non scade quando disattivato | i campi › Fresco al posto di Deperibile: SÌ / NO, e la sottoriga segue lo stato | riscritto sul `NO` del gruppo `Fresco` |
+| 8 | salva chiama salvaIngrediente con i valori scelti (deperibile true di default) e torna al piatto | i campi › salva chiama salvaIngrediente con i valori scelti (fresco di default) e torna al piatto | uguale, col tasto `SALVA`, e senza la chiave `ean` |
+| 9 | modifica: carica le proprietà dell'ingrediente esistente | i campi › modifica: carica le proprietà, e SALVA resta spento finché niente cambia (§F) | riscritto: `SALVA` spento finché niente cambia, acceso a una modifica, di nuovo spento tornando al valore di prima |
+| 10 | un ingId sconosciuto mostra un messaggio invece di un modulo vuoto | i campi › un ingId sconosciuto mostra un messaggio invece di un modulo vuoto, e niente Dock | uguale, più: niente Dock |
+| 11 | il cestino su un ingrediente nuovo torna al piatto senza chiedere conferma né eliminare nulla | ELIMINA › su un ingrediente nuovo ELIMINA non c'è: la freccia fa quel lavoro | sostituito (§F); il ritorno al piatto della freccia sta in «il ritorno › senza torna la freccia si chiama Torna al piatto e porta al piatto» |
+| 12 | il cestino su un ingrediente esistente chiede conferma, poi elimina (hard delete) e torna al piatto | ELIMINA › ELIMINA in coda chiede conferma nel dialogo, poi elimina e torna al piatto | riscritto su `ELIMINA` in coda e sull'`alertdialog`; più: il velo non chiude |
+| 13 | un ingrediente con acquisti registrati avvisa che lo storico va perso, per via della on delete cascade su purchase | ELIMINA › stesso titolo | uguale, aperto da `Elimina ingrediente`, il testo dentro l'`alertdialog` |
+| 14 | se non si riesce a sapere se ci sono acquisti, il fail-safe assume di sì (Important 3): un errore di rete non fa sparire l'avviso | ELIMINA › stesso titolo | uguale, aperto da `Elimina ingrediente`, il testo dentro l'`alertdialog` |
+| 15 | ANNULLA nella conferma chiude il dialogo senza eliminare | ELIMINA › ANNULLA nella conferma chiude il dialogo senza eliminare | uguale, dentro l'`alertdialog` |
+| 16 | un ingrediente ancora in uso mostra il motivo del blocco, non un errore Postgres grezzo | ELIMINA › un ingrediente ancora in uso: il dialogo si chiude e il motivo resta sotto ELIMINA | uguale nella sostanza; più il nuovo «un errore qualunque resta nel dialogo, che non si chiude» (decisione 87) |
+| 17 | modifica: mostra il prezzo esistente con la virgola decimale (2.5 → "2,5") | prezzo di una confezione › stesso titolo | uguale |
+| 18 | campo vuoto: salva prezzoConfezione null, anche su un ingrediente che un prezzo ce l'aveva | prezzo di una confezione › stesso titolo | uguale, col tasto `SALVA` |
+| 19 | "2,5" con la virgola si salva come 2.5 | prezzo di una confezione › stesso titolo | uguale, col tasto `SALVA` |
+| 20 | un prezzo compilato ma non positivo ("0") o non numerico ("abc") blocca il salvataggio, come il formato non valido | prezzo di una confezione › stesso titolo | la prima attesa diventa `toBeDisabled()`: SALVA pulito è spento |
+
+I 17 casi nuovi, oltre a quelli già nominati nella tabella: «le etichette del frame 12 e la nota
+di oggi in fondo; ANNULLA non c'è più», «in volo SALVA dice SALVATAGGIO… a 0,5; se fallisce
+l'errore sta sopra il Dock e SALVA torna», «la tab bar è nascosta: il Dock ha dock-senza-barra»,
+i quattro del ritorno (freccia e SALVA con `torna=impostazioni`, la freccia senza `torna`, la
+freccia che perde le modifiche senza chiedere) e i cinque della scansione (il catalogo dà la
+confezione, prodotto sconosciuto, il codice di Tonno con `APRI TONNO`, `NON È QUESTA`, la
+sessione scaduta). Il test del difetto di oggi, «con torna=impostazioni la freccia torna al
+pannello sugli Ingredienti, non a /piatti/nuovo (il difetto di oggi)», era rosso prima del
+codice: `Unable to find an accessible element with the role "button" and name "Torna agli
+ingredienti"`, perché la freccia era un `<Link href="/piatti/nuovo">` senza nome [misurato 26/09].
+
+### Task 12, verifica
+
+- `npx vitest run src/components/__tests__/dock.test.tsx`: 6 verdi; il primo dei due nuovi
+  era rosso prima di `Dock.tsx` (`dock anim-dock` senza `dock-senza-barra`) [misurato 26/09].
+- `npx vitest run src/components/__tests__/dock.test.tsx "src/app/(app)/dispensa" "src/app/(app)/piatti"`:
+  346 verdi in tre esecuzioni su quattro. Nella prima è caduto una volta «Dispensa: il gesto
+  indietro › ELIMINA dal dialogo (2 → 0) chiama go(-2) una volta» di
+  `dispensa/__tests__/page.test.tsx`, file che questo task non tocca: verde da solo quattro
+  volte su quattro e verde nelle tre riesecuzioni [misurato 26/09]. La Dispensa non nasconde
+  la barra, quindi il suo `<Dock sciolto>` non prende `dock-senza-barra`. Flakiness di tempi
+  sotto carico, non di questo task [ipotesi].
+- `npx tsc --noEmit`, `npm run lint`, `npm run design:token` (11 verdi): puliti.
+- `npx vitest run` (suite intera, prima del commit): **1983 verdi, 1 saltato**, 135 file verdi e 1
+  saltato [misurato 26/09].

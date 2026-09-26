@@ -3,6 +3,7 @@
 import { createPortal } from 'react-dom';
 import type { ReactNode } from 'react';
 import { useSlotDock } from './dock-slot';
+import { useBarraNascosta } from './barra-context';
 
 /**
  * Il posto dell'azione principale: una pillola bianca a portata di pollice
@@ -18,17 +19,24 @@ import { useSlotDock } from './dock-slot';
  * Finché lo slot non c'è (primo render, prima che il ref si attacchi) non
  * renderizza: nessuna delle schermate mostra il Dock prima che i dati
  * arrivino, quindi non si vede nessun salto.
+ *
+ * Senza tab bar sta a 22 dal fondo (`.dock-senza-barra`).
  */
 // `sciolto`: la Dispensa, dove due controlli stanno allineati a destra senza
 // il contenitore bianco, spec fase 4 §A.
 export function Dock({ children, sciolto = false }: { children: ReactNode; sciolto?: boolean }) {
   const slot = useSlotDock();
+  // Senza tab bar (l'editor dell'ingrediente, spec fase 5 §F) il Dock scende dove
+  // starebbe lei: lo decide il CSS con `.dock-senza-barra`. Lo chiede chi nasconde la
+  // barra con `useNascondiBarra`, il Dock lo legge e basta.
+  const senzaBarra = useBarraNascosta();
   if (slot === null) return null;
+  const classi = `dock anim-dock${sciolto ? ' dock-sciolto' : ''}${senzaBarra ? ' dock-senza-barra' : ''}`;
   // Una regione con nome (spec fase 3 §H, DESIGN.md §8 Dock): chi naviga per
   // regioni con lo screen reader trova l'azione principale senza scorrere. Il
   // nome dice il posto, uguale per ogni Dock; l'azione ha il suo sul tasto.
   return createPortal(
-    <div className={`dock anim-dock${sciolto ? ' dock-sciolto' : ''}`} role="region" aria-label="Azione principale">{children}</div>,
+    <div className={classi} role="region" aria-label="Azione principale">{children}</div>,
     slot,
   );
 }
