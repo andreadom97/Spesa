@@ -463,7 +463,7 @@ describe('Lista', () => {
 
     expect(await screen.findByText('Prima servono i piatti')).toBeInTheDocument();
     expect(screen.getByText('La lista nasce dai piatti che mangi: dicci quali sono e da lì la settimana e la spesa si costruiscono da sole.')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'COMINCIA DAI PIATTI' })).toHaveAttribute('href', '/piatti');
+    expect(screen.getByRole('link', { name: 'COMINCIA DAI PIATTI' })).toHaveAttribute('href', '/piatti?da=lista');
     expect(screen.queryByText('La lista non c’è ancora')).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'VAI AL PIANO' })).not.toBeInTheDocument();
   });
@@ -474,7 +474,7 @@ describe('Lista', () => {
     rendi();
 
     expect(await screen.findByText('Prima servono i piatti')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'COMINCIA DAI PIATTI' })).toHaveAttribute('href', '/piatti');
+    expect(screen.getByRole('link', { name: 'COMINCIA DAI PIATTI' })).toHaveAttribute('href', '/piatti?da=lista');
   });
 
   it('senza settimana ma con almeno un piatto resta la scheda di sempre, verso il piano', async () => {

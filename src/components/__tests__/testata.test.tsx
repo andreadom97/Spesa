@@ -69,9 +69,34 @@ describe('Testata (spec §D)', () => {
     expect(screen.getByText('Settimana del 21 settembre').style.textTransform).toBe('uppercase');
   });
 
-  it('con indietro c\'è il link Indietro e non c\'è il Menù utente', () => {
-    render(<Testata titolo="Importa la dieta" indietro />);
-    expect(screen.getByRole('link', { name: 'Indietro' })).toHaveAttribute('href', '/impostazioni');
-    expect(screen.queryByRole('button', { name: /profilo e impostazioni/ })).not.toBeInTheDocument();
+  describe('modo indietro: la pillola (spec fase 5 §G.2)', () => {
+    it.each([
+      ['IMPOSTAZIONI', 'Torna alle impostazioni'],
+      ['LISTA', 'Torna alla lista'],
+      ['PIANO', 'Torna al piano'],
+    ])('la pillola dice %s e si chiama «%s»', (etichetta, ariaLabel) => {
+      const onTorna = vi.fn();
+      render(<Testata titolo="Piatti" indietro={{ etichetta, ariaLabel, onTorna }} />);
+      const pillola = screen.getByRole('button', { name: ariaLabel });
+      expect(pillola).toHaveTextContent(etichetta);
+      expect(pillola.style.height).toBe('44px');
+      fireEvent.click(pillola);
+      expect(onTorna).toHaveBeenCalledTimes(1);
+    });
+
+    it('con la pillola non c\'è il Menù utente, e il titolo resta a 52 sotto la pillola', () => {
+      render(<Testata titolo="Piatti" indietro={{ etichetta: 'IMPOSTAZIONI', ariaLabel: 'Torna alle impostazioni', onTorna: () => {} }} />);
+      expect(screen.queryByRole('button', { name: /profilo e impostazioni/ })).toBeNull();
+      const titolo = screen.getByRole('heading', { level: 1, name: 'Piatti' });
+      expect(titolo.style.fontSize).toBe('52px');
+      const pillola = screen.getByRole('button', { name: 'Torna alle impostazioni' });
+      // La pillola viene prima del titolo nell'ordine del documento, come nel frame 22.
+      expect(pillola.compareDocumentPosition(titolo) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('nessun link a /impostazioni resta nella Testata', () => {
+      const { container } = render(<Testata titolo="Importa la dieta" indietro={{ etichetta: 'IMPOSTAZIONI', ariaLabel: 'Torna alle impostazioni', onTorna: () => {} }} />);
+      expect(container.querySelector('a[href="/impostazioni"]')).toBeNull();
+    });
   });
 });

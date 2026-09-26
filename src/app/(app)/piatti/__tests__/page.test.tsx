@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import type { Dish, Ingredient } from '@/domain/types';
 
 vi.mock('@/data/repertorio', () => ({
@@ -11,10 +11,21 @@ vi.mock('@/data/impostazioni', () => ({
   leggiSlotDefs: vi.fn(),
   leggiImpostazioni: vi.fn(),
 }));
+// Piatti usa useRouter per la pillola indietro (spec fase 5 §G.2): fuori da un App Router
+// lancia. vi.hoisted: la stessa `push` a ogni chiamata di useRouter.
+const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push, replace: vi.fn(), back: vi.fn() }) }));
 
 import { leggiRepertorio, leggiIngredienti } from '@/data/repertorio';
 import { leggiSlotDefs, leggiImpostazioni } from '@/data/impostazioni';
+import { salvaOrigine } from '@/components/pannello/indirizzi';
 import Piatti from '../page';
+
+beforeEach(() => {
+  sessionStorage.clear();
+  window.history.replaceState(null, '', '/piatti');
+  push.mockClear();
+});
 
 const ING_LATTE: Ingredient = {
   id: 'i-1', nome: 'Latte', unitaBase: 'ml', area: 'latticini',
@@ -182,5 +193,58 @@ describe('Le due porte', () => {
     expect(screen.queryByText('Da dove partiamo?')).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'IMPORTA LA DIETA' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'SCRIVI I MIEI PIATTI' })).not.toBeInTheDocument();
+  });
+});
+
+describe('la pillola indietro (spec fase 5 §G.2)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('da impostazioni: IMPOSTAZIONI riapre il pannello sopra l\'origine', async () => {
+    mockRepertorio([PIATTO_PRANZO]);
+    window.history.replaceState(null, '', '/piatti?da=impostazioni');
+    salvaOrigine({ pathname: '/dispensa', sotto: 'cima' });
+    render(<Piatti />);
+    const pillola = await screen.findByRole('button', { name: 'Torna alle impostazioni' });
+    expect(pillola).toHaveTextContent('IMPOSTAZIONI');
+    fireEvent.click(pillola);
+    expect(push).toHaveBeenCalledWith('/dispensa?impostazioni=cima');
+  });
+
+  it('senza origine salvata IMPOSTAZIONI apre il pannello sopra la Lista', async () => {
+    mockRepertorio([PIATTO_PRANZO]);
+    render(<Piatti />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Torna alle impostazioni' }));
+    expect(push).toHaveBeenCalledWith('/lista?impostazioni=cima');
+  });
+
+  it('da lista: LISTA torna a /lista, e il valore resta per il ritorno dall\'editor', async () => {
+    mockRepertorio([]);
+    window.history.replaceState(null, '', '/piatti?da=lista');
+    render(<Piatti />);
+    // Lo stato vuoto rimonta la Cornice (VuotoPiatti è un altro componente): si prende la
+    // pillola dopo che è arrivato, non quella del render di caricamento.
+    await screen.findByText('Da dove partiamo?');
+    const pillola = screen.getByRole('button', { name: 'Torna alla lista' });
+    expect(pillola).toHaveTextContent('LISTA');
+    fireEvent.click(pillola);
+    expect(push).toHaveBeenCalledWith('/lista');
+    expect(sessionStorage.getItem('spesa:piatti-da')).toBe('lista');
+  });
+
+  it('dall\'editor del piatto (nessun parametro) la pillola è quella salvata: PIANO', async () => {
+    mockRepertorio([PIATTO_PRANZO]);
+    sessionStorage.setItem('spesa:piatti-da', 'piano');
+    render(<Piatti />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Torna al piano' }));
+    expect(push).toHaveBeenCalledWith('/piano');
+  });
+
+  it('niente Menù utente su Piatti', async () => {
+    mockRepertorio([PIATTO_PRANZO]);
+    render(<Piatti />);
+    await screen.findByRole('button', { name: 'Torna alle impostazioni' });
+    expect(screen.queryByRole('button', { name: /profilo e impostazioni/ })).toBeNull();
   });
 });

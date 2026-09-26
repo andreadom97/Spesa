@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Ingredient, MealSlotDef } from '@/domain/types';
 import type { PianoEstratto, StatoRevisione } from '@/domain/import/types';
@@ -13,6 +12,7 @@ import { proponiSlot, normalizza } from '@/domain/import/mapping';
 import { traduciBozza, BozzaIncompletaError, type ScrittureImport } from '@/domain/import/commit';
 import { client } from '@/data/supabase';
 import { Testata } from '@/components/Testata';
+import { indirizzoRitorno } from '@/components/pannello/indirizzi';
 import { Camera } from './Camera';
 import { Acquisizione } from './Acquisizione';
 import { Revisione } from './Revisione';
@@ -37,10 +37,10 @@ const MESSAGGIO_SENZA_SESSIONE = 'Serve l’accesso: riapri l’app ed entra di 
 
 /**
  * Per quanto tempo, dopo che la fotocamera si è chiusa, i tocchi sulla pagina si ignorano.
- * Il tondo indietro della fotocamera sta sopra la freccia indietro della testata (un link
- * a /impostazioni): il `popstate` arriva 16–33 ms dopo `history.back()` (misurato nel
- * browser il 23/09), e un doppio tocco umano dura circa 100–250 ms [ipotesi, non misurato],
- * quindi il secondo tocco cadrebbe sul link e uscirebbe da /importa perdendo i fogli presi.
+ * Il tondo indietro della fotocamera sta sopra la pillola indietro della testata: il
+ * `popstate` arriva 16–33 ms dopo `history.back()` (misurato nel browser il 23/09), e un
+ * doppio tocco umano dura circa 100–250 ms [ipotesi, non misurato], quindi il secondo tocco
+ * cadrebbe sulla pillola e uscirebbe da /importa perdendo i fogli presi.
  */
 const TOCCHI_IGNORATI_DOPO_CHIUSURA_MS = 400;
 
@@ -454,6 +454,7 @@ function SchermataRipresa({ onRiprendi, onRicomincia }: { onRiprendi: () => void
 }
 
 function SchermataRifiuto({ motivazione }: { motivazione: string }) {
+  const router = useRouter();
   return (
     <div style={{ margin: '20px 16px', padding: '18px 16px', borderRadius: 18, background: 'var(--superficie)', border: '1px solid var(--bordo)' }}>
       <div style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)', marginBottom: 10 }}>
@@ -461,16 +462,18 @@ function SchermataRifiuto({ motivazione }: { motivazione: string }) {
       </div>
       <div style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--ink)', marginBottom: 10 }}>{motivazione}</div>
       <div style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--sec)', marginBottom: 18 }}>{SPIEGAZIONE_RIFIUTO}</div>
-      <Link
-        href="/impostazioni"
+      {/* Lo stesso della pillola della testata: il pannello sopra la pagina d'origine (spec fase 5 §G.3). */}
+      <button
+        type="button"
+        onClick={() => router.push(indirizzoRitorno())}
         style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', height: 48, borderRadius: 14,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: 48, borderRadius: 14,
           fontFamily: 'var(--font-mono)', fontSize: 11.5, fontWeight: 700, letterSpacing: '0.08em',
-          border: '1px solid var(--bordo)', color: 'var(--ink)',
+          border: '1px solid var(--bordo)', color: 'var(--ink)', background: 'none',
         }}
       >
         TORNA A IMPOSTAZIONI
-      </Link>
+      </button>
     </div>
   );
 }
@@ -711,11 +714,16 @@ function Riepilogo({
   );
 }
 
-/** Colonna a tutta altezza con la testata fissa in cima, come le altre pagine dell'app. */
+/** Colonna a tutta altezza con la testata fissa in cima. La pillola riapre il pannello sopra la
+ *  pagina da cui si era partiti (spec fase 5 §G.3, §A.5). */
 function Cornice({ children }: { children?: ReactNode }) {
+  const router = useRouter();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <Testata titolo="Importa la dieta" indietro />
+      <Testata
+        titolo="Importa la dieta"
+        indietro={{ etichetta: 'IMPOSTAZIONI', ariaLabel: 'Torna alle impostazioni', onTorna: () => router.push(indirizzoRitorno()) }}
+      />
       {children}
     </div>
   );

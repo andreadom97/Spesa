@@ -559,7 +559,7 @@ export default function Settimana() {
               Le righe si riempiono da sole appena ce n’è qualcuno.
             </div>
             <Link
-              href="/piatti"
+              href="/piatti?da=piano"
               style={{
                 display: 'inline-flex', alignItems: 'center', minHeight: 44, marginTop: 2,
                 fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.11em', color: 'var(--ink)',

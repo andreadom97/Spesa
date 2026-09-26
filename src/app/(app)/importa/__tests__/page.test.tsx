@@ -17,12 +17,17 @@ const { getSessionMock } = vi.hoisted(() => ({ getSessionMock: vi.fn() }));
 vi.mock('@/data/supabase', () => ({
   client: () => ({ auth: { getSession: getSessionMock } }),
 }));
+// La Cornice usa useRouter per la pillola indietro (spec fase 5 §G.3): fuori da un App Router
+// lancia. vi.hoisted: la stessa `push` a ogni chiamata di useRouter.
+const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push, replace: vi.fn(), back: vi.fn() }) }));
 import { leggiBozzaImport, salvaBozzaImport, cancellaBozzaImport } from '@/data/importa';
 import { leggiSlotDefs } from '@/data/impostazioni';
 import { leggiIngredienti } from '@/data/repertorio';
 import { FIXTURE_MENU_SETTIMANALE, FIXTURE_RIFIUTO_MACRO } from '@/domain/import/fixtures';
 import type { PianoEstratto } from '@/domain/import/types';
 import { SlotDockProvider } from '@/components/dock-slot';
+import { salvaOrigine } from '@/components/pannello/indirizzi';
 import Importa from '../page';
 
 // `FIXTURE_MENU_SETTIMANALE.piano` esiste solo sul ramo `tipo: 'piano'` del tipo unione
@@ -46,6 +51,8 @@ function rendi(ui: ReactNode = <Importa />) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  push.mockClear();
+  sessionStorage.clear();
   slotDock = document.createElement('div');
   document.body.appendChild(slotDock);
   Object.defineProperty(navigator, 'mediaDevices', { value: undefined, configurable: true });
@@ -168,18 +175,29 @@ describe('Importa: la scelta', () => {
     expect(window.history.back).toHaveBeenCalledTimes(1);
   });
 
-  it('il secondo tocco di un doppio tocco sul tondo non esce dalla freccia della testata', async () => {
+  it('il secondo tocco di un doppio tocco sul tondo non esce dalla pillola della testata', async () => {
     rendi();
     await apriEPrendiUnFoglio();
     // `back` emette il `popstate` dentro la chiamata: la fotocamera si chiude e le
     // porte, con la testata, sono già a schermo al tocco successivo.
     fireEvent.click(screen.getByRole('button', { name: 'Indietro' }));
-    const freccia = screen.getByRole('link', { name: 'Indietro' });
+    const pillola = screen.getByRole('button', { name: 'Torna alle impostazioni' });
     // `fireEvent.click` restituisce false quando il click è stato annullato.
-    expect(fireEvent.click(freccia)).toBe(false);
-    // Passata la finestra, lo stesso click non è più annullato.
+    expect(fireEvent.click(pillola)).toBe(false);
+    expect(push).not.toHaveBeenCalled();
+    // Passata la finestra, lo stesso click non è più annullato ed esce.
     passaUnAttimo();
-    expect(fireEvent.click(freccia)).toBe(true);
+    expect(fireEvent.click(pillola)).toBe(true);
+    expect(push).toHaveBeenCalledWith('/lista?impostazioni=cima');
+  });
+
+  it('la pillola IMPOSTAZIONI riapre il pannello sopra la pagina d\'origine (spec fase 5 §G.3)', async () => {
+    salvaOrigine({ pathname: '/piano', sotto: 'cima' });
+    rendi();
+    const pillola = await screen.findByRole('button', { name: 'Torna alle impostazioni' });
+    expect(pillola).toHaveTextContent('IMPOSTAZIONI');
+    fireEvent.click(pillola);
+    expect(push).toHaveBeenCalledWith('/piano?impostazioni=cima');
   });
 
   it('i fogli presi con la fotocamera non accendono il Dock, senza un PDF', async () => {
@@ -265,6 +283,16 @@ describe('Importa: l\'invio', () => {
     await inviaUnaFoto();
     expect(await screen.findByText(/questa dieta non ha un menu/i)).toBeInTheDocument();
     expect(salvaBozzaImport).not.toHaveBeenCalled();
+  });
+
+  it('rifiuto macro: TORNA A IMPOSTAZIONI fa lo stesso della pillola', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => FIXTURE_RIFIUTO_MACRO });
+    salvaOrigine({ pathname: '/lista', sotto: 'cima' });
+    rendi();
+    await inviaUnaFoto();
+    passaUnAttimo();
+    fireEvent.click(await screen.findByRole('button', { name: 'TORNA A IMPOSTAZIONI' }));
+    expect(push).toHaveBeenCalledWith('/lista?impostazioni=cima');
   });
 
   it('503: estrazione non disponibile', async () => {

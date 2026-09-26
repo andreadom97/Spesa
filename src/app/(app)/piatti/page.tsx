@@ -1,13 +1,15 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { AreaId, Dish, Ingredient } from '@/domain/types';
 import { leggiIngredienti, leggiRepertorio } from '@/data/repertorio';
 import { leggiImpostazioni } from '@/data/impostazioni';
 import { Testata } from '@/components/Testata';
 import { Porta } from '@/components/Porta';
 import { ElencoPiatti } from './ElencoPiatti';
+import { PILLOLA_DA, destinazioneDa, leggiDaPiatti, type DaPiatti } from './da';
 
 interface Repertorio {
   piatti: Dish[];
@@ -15,13 +17,36 @@ interface Repertorio {
   ordineAree: AreaId[];
 }
 
+type Indietro = { etichetta: string; ariaLabel: string; onTorna: () => void };
+
+/** Nessun evento da ascoltare: `da` cambia solo con una navigazione, che rimonta la pagina. */
+const nessunaIscrizione = () => () => {};
+
+/**
+ * `da` esiste solo nel browser (URL e `sessionStorage`): sul server e durante
+ * l'idratazione vale `impostazioni`, poi React rifà il render col valore vero,
+ * senza mancata corrispondenza e senza un setState in un effetto.
+ */
+function useDaPiatti(): DaPiatti {
+  return useSyncExternalStore(
+    nessunaIscrizione,
+    () => leggiDaPiatti(window.location.search),
+    (): DaPiatti => 'impostazioni',
+  );
+}
+
 /**
  * Il repertorio: i piatti reali dell'utente in una lista sola (spec fase 3
  * §A). Niente filtro per pasto: un piatto non appartiene a un pasto, ci va a
  * finire quando lo metti nel piano. Questa pagina carica i dati e sceglie fra
  * errore, stato vuoto ed elenco; l'elenco sta in `ElencoPiatti.tsx`.
+ * Si apre dal pannello (§G.2) o dagli stati vuoti di Lista e Piano; la
+ * pillola della Testata dice dove torna (`da.ts`).
  */
 export default function Piatti() {
+  const router = useRouter();
+  const da = useDaPiatti();
+  const indietro: Indietro = { ...PILLOLA_DA[da], onTorna: () => router.push(destinazioneDa(da)) };
   const [repertorio, setRepertorio] = useState<Repertorio | null>(null);
   const [errore, setErrore] = useState<string | null>(null);
 
@@ -42,7 +67,7 @@ export default function Piatti() {
 
   if (errore) {
     return (
-      <Cornice>
+      <Cornice indietro={indietro}>
         <p style={{ margin: '20px 18px', color: 'var(--sec)' }}>{errore}</p>
       </Cornice>
     );
@@ -50,25 +75,26 @@ export default function Piatti() {
 
   if (!repertorio) {
     // Nessuno stato di caricamento è nell'artboard: la testata basta finché i dati non arrivano.
-    return <Cornice />;
+    return <Cornice indietro={indietro} />;
   }
 
   if (repertorio.piatti.length === 0) {
-    return <VuotoPiatti />;
+    return <VuotoPiatti indietro={indietro} />;
   }
 
   return (
-    <Cornice>
+    <Cornice indietro={indietro}>
       <ElencoPiatti piatti={repertorio.piatti} ingredienti={repertorio.ingredienti} ordineAree={repertorio.ordineAree} />
     </Cornice>
   );
 }
 
-/** Colonna a tutta altezza con la testata fissa in cima: solo il corpo passato come children scorre. */
-function Cornice({ children }: { children?: ReactNode }) {
+/** Colonna a tutta altezza con la testata fissa in cima: solo il corpo passato come children scorre.
+ *  Piatti non è più una voce della tab bar (spec fase 5 §G): la Testata è sempre in modo indietro. */
+function Cornice({ children, indietro }: { children?: ReactNode; indietro: Indietro }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <Testata titolo="Piatti" />
+      <Testata titolo="Piatti" indietro={indietro} />
       {children}
     </div>
   );
@@ -85,9 +111,9 @@ function Cornice({ children }: { children?: ReactNode }) {
  * sempre le stesse cose le scrive; l'editor completo resta a portata di link.
  * Nessuna affermazione di salute nel copy: l'app trascrive, non valuta.
  */
-function VuotoPiatti() {
+function VuotoPiatti({ indietro }: { indietro: Indietro }) {
   return (
-    <Cornice>
+    <Cornice indietro={indietro}>
       <div className="sc scroll-app" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 16px' }}>
         <div
           style={{

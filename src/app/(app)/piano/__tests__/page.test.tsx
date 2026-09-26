@@ -217,7 +217,7 @@ describe('Settimana (piano alimentare)', () => {
     expect(await screen.findByText('Nessun piatto ancora')).toBeInTheDocument();
     expect(screen.getByText('Le righe si riempiono da sole appena ce n’è qualcuno.')).toBeInTheDocument();
     const link = screen.getByRole('link', { name: 'COMINCIA DAI PIATTI ›' });
-    expect(link).toHaveAttribute('href', '/piatti');
+    expect(link).toHaveAttribute('href', '/piatti?da=piano');
     // Le righe del giorno restano sotto la scheda, non spariscono.
     const righe = document.querySelector('.anim-giorno')!;
     expect(righe).toBeInTheDocument();

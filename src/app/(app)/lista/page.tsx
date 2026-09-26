@@ -516,7 +516,7 @@ export default function Lista() {
       ? {
         titolo: 'Prima servono i piatti',
         testo: 'La lista nasce dai piatti che mangi: dicci quali sono e da lì la settimana e la spesa si costruiscono da sole.',
-        href: '/piatti',
+        href: '/piatti?da=lista',
         bottone: 'COMINCIA DAI PIATTI',
       }
       : {
