@@ -28,6 +28,20 @@ scritti nel piano sono indicativi.
 | 11 | Nei test di `chiudiTuttoPoi` il «giro dopo» avanza i timer finti di 1 ms, non di 0 (Task 2) | vitest mette a +1 ms un `setTimeout(…, 0)` creato dentro un altro timer (`clock.duringTick ? 1 : 0`), com'è quello della riserva [letto in `node_modules/vitest/dist/chunks/test.DNmyFkvJ.js`, riga 1613] | nessuno: nessun altro timer dell'hook scade entro 1 ms |
 | 12 | In `rispondiControllo` il «sì» resta un `update` di `ultimo_check` anche senza riga di dispensa, non un upsert (Task 4, C5) | senza riga l'update tocca zero righe senza errore; `ultimo_check` conta solo accanto a un `ultimo_acquisto`, e un upsert creerebbe una riga «mai comprato» identica all'assenza [misurato, `serveControllo`] | nessuno visibile: il «sì» dato dopo Cancella la dispensa non lascia traccia, ma nessuna lettura lo userebbe |
 | 13 | L'evento `spesa:dispensa-cambiata` con la pagina ancora senza dati ricarica con `leggi` (attesa e stato d'errore), non con la rilettura silenziosa; «ha dati» sta in un ref allineato da un effetto (Task 4) | la rilettura silenziosa scarta il caricamento in volo, e se fallisce la pagina resta su `CARICO…` | nessuno: con i dati in pagina il comportamento è quello del piano |
+| 14 | `?impostazioni=` si toglie con `window.history.replaceState(window.history.state, '', pathname)`, prima di aprire, e non con `router.replace` come diceva la spec §A.3 del 25/09 (aggiornata il 26/09), né con `null` come dice ancora il suo punto 1 (Task 6, regola B′) | l'hook mette le sue voci nello stesso giro di effetti: con `router.replace`, che è una transizione, le voci nascerebbero sull'indirizzo col parametro e un indietro lo ritroverebbe. Con `null` la voce perde `__NA` di Next e il primo indietro ricarica la pagina [misurato, sonda del Task 2, misura B e variante B′]. Un test di `pannello.test.tsx` controlla che la `replaceState` passi lo stato della voce | se Next non riallineasse il suo stato, `useSearchParams` vedrebbe il parametro vecchio: nessuno lo legge per `impostazioni` |
+| 15 | Il contesto del pannello ha un valore inerte fuori dal provider (Task 6) | la Testata sta in ogni pagina, e i test delle pagine la montano senza Guscio | nessuno |
+| 16 | Il pannello è sempre nel DOM: chiuso è `visibility: hidden`, `inert` e `aria-hidden` (Task 6) | la spec vuole la chiusura animata e il pannello montato dopo la prima apertura; montarlo sempre toglie il caso della prima apertura senza animazione | un nodo in più in ogni pagina |
+| 17 | Il contenuto della cima si monta alla prima apertura e resta; quello di una sotto-schermata si smonta 200 ms dopo la freccia (Task 6) | la chiusura scende col contenuto dentro; l'uscita verso destra ha bisogno della sotto-schermata a schermo | nessuno |
+| 18 | I dati del pannello si leggono all'apertura: la prima volta col `CARICO…`, poi in silenzio sopra quelli che ci sono (Task 6) | nessuna lettura per chi non apre il pannello, e nessun lampo di `CARICO…` alla seconda apertura | un dato cambiato da un altro telefono si vede con qualche istante di ritardo |
+| 19 | La coda serializzata e «solo l'ultima richiesta tocca lo schermo» valgono anche per i pasti, che riconoscono anche il rifiuto RLS (Task 6) | spec §L: due tocchi veloci su celle diverse non si pestano; la pagina di prima metteva in fila solo le impostazioni | nessuno: le scritture sono le stesse, in fila |
+| 20 | `salvaImpostazioni` e `salvaPasti` tornano `false` solo quando la riga deve mostrare l'errore; una richiesta superata e un rifiuto RLS tornano `true` (Task 6) | è il comportamento della pagina di prima: nessun errore per una richiesta superata, solo «La casa è cambiata…» sul rifiuto RLS | chi chiama deve sapere che `true` non vuol dire «scritto»; il valore a schermo è comunque quello giusto |
+| 21 | `ricaricaCasa(seFallisce?)`: se la rilettura fallisce, vale lo stato di riserva passato (Task 6) | il test vecchio 43 (dopo `TOGLI` la riga sparisce anche se la rilettura fallisce) ha bisogno di mettere uno stato locale | un parametro facoltativo in più rispetto all'ossatura |
+| 22 | Prima che l'utente sia letto, il nome accessibile del Menù è `Profilo e impostazioni` (Task 6) | la spec dà `{Nome}: profilo e impostazioni`, che senza nome comincerebbe con i due punti; deciso dal controller il 26/09, ed è in spec §I | nessuno: dura il tempo di `getUser` |
+| 23 | `useIniziale` e `leggiIniziale` escono; restano `leggiUtente`, `useUtente`, `inizialeDi` e `dimenticaIniziale` (Task 6) | l'iniziale è la prima lettera del nome, che il Menù legge comunque; una lettura sola | nessuno |
+| 24 | Lo scorrimento salvato si rimette con un `MutationObserver` sul corpo, per 3 s al più (Task 6) | Ingredienti legge i suoi dati dopo l'apertura: l'altezza giusta esiste solo quando la lista è a schermo | se la lista arriva dopo 3 s, il ritorno riparte dall'alto |
+| 25 | Se `salvaPasti` fallisce, i pasti si rileggono dal server; la copia locale solo se anche la rilettura fallisce (Task 6, decisione del controller del 26/09) | `salvaSlotDefs` non è atomico: prima il delete dei pasti tolti (a cascata i piatti), poi l'upsert. Tornare alla copia locale rimetterebbe a schermo un pasto già cancellato, che il salvataggio dopo riscriverebbe senza piatti | una lettura in più quando un salvataggio dei pasti fallisce |
+| 26 | `cancellataIl` sta nel provider dei dati, e si azzera alla chiusura del pannello (Task 6, decisione del controller del 26/09) | la nota `Cancellata il …` deve durare fino alla chiusura (spec §D) anche se la cima si smonta | nessuno |
+| 27 | `vaiA` usa il ramo A (`chiudiTuttoPoi` + `router.push`); il test del ramo B è cancellato, e quello del ramo A aspetta la `push` un giro dopo il `popstate` (Task 6) | esito finale della sonda del Task 2, «regge con `fn` differita»: l'hook fa partire `fn` con `setTimeout(fn, 0)`, quindi subito dopo il `popstate` la `push` non c'è ancora; il test lo controlla prima di aspettarla | nessuno: è il comportamento misurato nel browser |
 
 ## Misure nel browser
 
@@ -159,14 +173,14 @@ per «Test nuovo». Le altre righe restano al titolo esatto dell'`it(...)`, come
 | 3 | + salva subito le impostazioni intere con 2, mostra 2 e dice per quanti compra la lista | P | Task 7, campo `PERS` | | si scrive 2 e si esce dal campo |
 | 4 | a 4 il + è spento e non salva | P | Task 7, campo `PERS` | | diventa: 5 torna al valore di prima con `Scrivi un numero da 1 a 4.` |
 | 5 | − scende di uno e salva | P | Task 7, campo `PERS` | | si scrive il valore nuovo e si dà Invio |
-| 6 | due tap veloci: se la rilettura del primo arriva dopo quella del secondo, resta il valore del secondo | P | Task 9, Cadenza (la coda del provider) | | il campo `PERS` è spento in volo (frame 25), il segmento della Cadenza no |
-| 7 | due tap veloci: se il primo salvataggio fallisce, il secondo si scrive lo stesso e resta il suo valore senza errore | P | Task 9, Cadenza (la coda del provider) | | idem |
-| 8 | due tap veloci: se il primo riesce ma la sua rilettura non è l’ultima e il secondo fallisce, mostra il valore del server | P | Task 9, Cadenza (la coda del provider) | | idem |
-| 9 | due tap veloci: se la seconda scrittura fallisce mentre la prima è in volo, alla fine schermo e server dicono 2 | P | Task 9, Cadenza (la coda del provider) | | idem |
-| 10 | se il salvataggio fallisce e anche la rilettura fallisce, torna all’ultimo valore confermato e lo dice | P | Task 7, campo `PERS` | | |
-| 11 | se il salvataggio fallisce torna al valore del server e lo dice | P | Task 7, campo `PERS` | | |
-| 12 | se la RLS rifiuta il salvataggio (la casa è cambiata) scarta l’id della casa, ricarica tutto e lo dice | P | Task 7, campo `PERS` | | |
-| 13 | un rifiuto RLS riconosciuto dal solo messaggio (senza codice) ricarica allo stesso modo | P | Task 7, campo `PERS` | | |
+| 6 | due tap veloci: se la rilettura del primo arriva dopo quella del secondo, resta il valore del secondo | P | Task 9, Cadenza (la coda del provider) | | il campo `PERS` è spento in volo (frame 25), il segmento della Cadenza no; provato anche nel provider: `dati-pannello.test.tsx` |
+| 7 | due tap veloci: se il primo salvataggio fallisce, il secondo si scrive lo stesso e resta il suo valore senza errore | P | Task 9, Cadenza (la coda del provider) | | idem; provato anche nel provider: `dati-pannello.test.tsx` |
+| 8 | due tap veloci: se il primo riesce ma la sua rilettura non è l’ultima e il secondo fallisce, mostra il valore del server | P | Task 9, Cadenza (la coda del provider) | | idem; provato anche nel provider: `dati-pannello.test.tsx` |
+| 9 | due tap veloci: se la seconda scrittura fallisce mentre la prima è in volo, alla fine schermo e server dicono 2 | P | Task 9, Cadenza (la coda del provider) | | idem; provato anche nel provider: `dati-pannello.test.tsx` |
+| 10 | se il salvataggio fallisce e anche la rilettura fallisce, torna all’ultimo valore confermato e lo dice | P | Task 7, campo `PERS` | | provato anche nel provider: `dati-pannello.test.tsx` |
+| 11 | se il salvataggio fallisce torna al valore del server e lo dice | P | Task 7, campo `PERS` | | provato anche nel provider: `dati-pannello.test.tsx` |
+| 12 | se la RLS rifiuta il salvataggio (la casa è cambiata) scarta l’id della casa, ricarica tutto e lo dice | P | Task 7, campo `PERS` | | provato anche nel provider: `dati-pannello.test.tsx` |
+| 13 | un rifiuto RLS riconosciuto dal solo messaggio (senza codice) ricarica allo stesso modo | P | Task 7, campo `PERS` | | provato anche nel provider: `dati-pannello.test.tsx` |
 | 14 | porta all elenco degli ingredienti | P | Task 7, riga Ingredienti | | apre la sotto-schermata, non un link |
 | 15 | sotto il minimo di 3 pasti il pulsante di rimozione è disattivato | P | Task 8, Gestione dei pasti | | |
 | 16 | sopra il minimo la rimozione funziona e salva l’insieme aggiornato | P | Task 8, Gestione dei pasti | | senza piatti al tocco; con piatti il dialogo (spec §C.2) |
@@ -176,7 +190,7 @@ per «Test nuovo». Le altre righe restano al titolo esatto dell'`it(...)`, come
 | 20 | la pastiglia del giorno abitualmente fuori casa ha 44px di area di tap sopra una pillola di 36px | P | Task 8, Pasti a casa | | diventa la cella 44 della matrice |
 | 21 | accende una pastiglia del giorno e salva le assenze abituali aggiornate | P | Task 8, Pasti a casa | | |
 | 22 | rinominare un pasto salva il nuovo nome al blur, non a ogni carattere digitato | P | Task 8, Gestione dei pasti | | |
-| 23 | con leggiSlotDefs() vuoto semina i quattro pasti di default e li salva davvero sul server | P | Task 8, Gestione dei pasti | | la semina sta nel provider (Task 6) |
+| 23 | con leggiSlotDefs() vuoto semina i quattro pasti di default e li salva davvero sul server | P | Task 8, Gestione dei pasti | | la semina sta nel provider (Task 6); provato anche nel provider: `dati-pannello.test.tsx` |
 | 24 | il link ordine dei reparti mostra l’anteprima e il riepilogo nell’ordine reale, non un ordine fisso | P | Task 7, riga Ordine delle aree | | l'anteprima è tolta (spec §C.5): diventa `PERSONALIZZATO` / `DI BASE` |
 | 25 | con il ciclo spento la rotazione si può accendere e dice cosa cambia | P | Task 8, Rotazione del piano | | |
 | 26 | se il salvataggio del ciclo fallisce torna al valore di prima e lo dice | P | Task 8, Rotazione del piano | | |
@@ -200,17 +214,17 @@ per «Test nuovo». Le altre righe restano al titolo esatto dell'`it(...)`, come
 | 44 | da membro: ESCI DALLA CASA chiede conferma al primo tocco ed esce al secondo | P | Task 10, Casa condivisa | | diventa il dialogo `esci-casa` |
 | 45 | da membro: ESCI armato, un tap fuori disarma senza uscire | P | Task 10, Casa condivisa | | diventa: ANNULLA del dialogo non esce |
 | 46 | se uscire fallisce lo dice e resta nella casa | P | Task 10, Casa condivisa | | l'errore sta nel dialogo |
-| 47 | se statoCasa fallisce la sezione lo dice e il resto delle impostazioni resta usabile | P | Task 10, Casa condivisa | | `casa: null` nel provider (Task 6), il messaggio nella sotto-schermata |
+| 47 | se statoCasa fallisce la sezione lo dice e il resto delle impostazioni resta usabile | P | Task 10, Casa condivisa | | `casa: null` nel provider (Task 6), il messaggio nella sotto-schermata; provato anche nel provider: `dati-pannello.test.tsx` |
 | 48 | mostra le sei righe nell’ordine caricato, con le frecce ai limiti disattivate al 35% di opacità | R | Task 9, Ordine delle aree | | i limiti sono `--icona-spenta` + `disabled` |
 | 49 | riordinare con le frecce non salva finché non si preme SALVA ORDINE | R | Task 9, Ordine delle aree | | |
 | 50 | SALVA ORDINE persiste il nuovo ordine lasciando intatto tutto il resto, poi torna a Impostazioni | R | Task 9, Ordine delle aree | | diventa: resta sulla sotto-schermata (spec §C.5) |
 | 51 | se il salvataggio fallisce, mostra un errore e resta sulla pagina | R | Task 9, Ordine delle aree | | |
 | 52 | il link indietro torna alla pagina statica /impostazioni | R | Task 9, Ordine delle aree | | diventa: la freccia torna in cima al pannello |
-| 53 | Testata (spec §D) › il menù utente porta alle impostazioni, si chiama Impostazioni e mostra l'iniziale | `src/components/__tests__/testata.test.tsx` | Task 6, Testata | | il Menù è un `button` che apre il pannello |
-| 54 | con indietro c'è il link Indietro e non c'è Impostazioni | `src/components/__tests__/testata.test.tsx` | Task 11, Testata | | la pillola con le tre etichette |
-| 55 | usa il nome se c'è | `src/data/__tests__/utente.test.ts` | Task 6, `leggiUtente` | | |
-| 56 | altrimenti l'email | `src/data/__tests__/utente.test.ts` | Task 6, `leggiUtente` | | |
-| 57 | senza utente o con errore torna il puntino | `src/data/__tests__/utente.test.ts` | Task 6, `leggiUtente` e `inizialeDi` | | |
+| 53 | Testata (spec §D) › il menù utente porta alle impostazioni, si chiama Impostazioni e mostra l'iniziale | `src/components/__tests__/testata.test.tsx` | Task 6, Testata | `testata.test.tsx` › Testata (spec §D) › il Menù utente è un bottone col nome, che apre il pannello e mostra l'iniziale (spec fase 5 §A.2) | il Menù è un `button` che apre il pannello |
+| 54 | con indietro c'è il link Indietro e non c'è Impostazioni | `src/components/__tests__/testata.test.tsx` | Task 11, Testata | | la pillola con le tre etichette; fino al Task 11 il test si chiama «con indietro c'è il link Indietro e non c'è il Menù utente» |
+| 55 | usa il nome se c'è | `src/data/__tests__/utente.test.ts` | Task 6, `leggiUtente` | `utente.test.ts` › leggiUtente (spec fase 5 §A.2) › il nome del profilo se c'è, ripulito | |
+| 56 | altrimenti l'email | `src/data/__tests__/utente.test.ts` | Task 6, `leggiUtente` | `utente.test.ts` › leggiUtente (spec fase 5 §A.2) › altrimenti la parte dell'email prima della @ | |
+| 57 | senza utente o con errore torna il puntino | `src/data/__tests__/utente.test.ts` | Task 6, `leggiUtente` e `inizialeDi` | `utente.test.ts` › inizialeDi › senza nome il puntino | e `leggiUtente` › senza utente o con errore, nome ed email vuoti: non lancia |
 
 Per task: Task 6 = 4 (53, 55–57); Task 7 = 10 (2–5, 10–14, 24); Task 8 = 17 (1, 15–23,
 25–31); Task 9 = 9 (6–9, 48–52); Task 10 = 16 (32–47); Task 11 = 1 (54). Le righe 1–52 sono
@@ -232,6 +246,11 @@ Ogni task aggiunge qui quello che non ha potuto provare fuori dal telefono.
   `share`/download in jsdom, ma il foglio di condivisione del sistema (iOS/Android) e un vero
   logout su un secondo dispositivo con la stessa sessione (per verificare che resti dentro, D3)
   vanno provati dal telefono su un account di prova.
+- **Il pannello nel browser vero** (Task 6): salita, velo e scala dell'app dietro, la chiusura
+  con `visibility: hidden` alla fine, la variante `reduce`, l'apertura da `?impostazioni=` senza
+  animazione, il fuoco al Menù utente alla chiusura, lo scorrimento rimesso negli Ingredienti.
+  I test in jsdom controllano attributi e classi, non il movimento: restano alla sonda della
+  spec §M.3 punto 2 e al telefono.
 
 ## Rimasto aperto, di proposito
 

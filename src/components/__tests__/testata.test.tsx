@@ -1,17 +1,52 @@
 import '@testing-library/jest-dom/vitest';
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 
-vi.mock('@/data/utente', () => ({ useIniziale: () => 'A', leggiIniziale: vi.fn() }));
+const utente = vi.hoisted(() => ({ valore: { nome: 'Andrea', email: 'andrea@example.it' } as { nome: string; email: string } | null }));
+vi.mock('@/data/utente', () => ({
+  useUtente: () => utente.valore,
+  inizialeDi: (nome: string) => (nome.trim() ? nome.trim()[0].toLocaleUpperCase('it') : '·'),
+}));
+const pannello = vi.hoisted(() => ({ aperto: false, apri: vi.fn(), chiudi: vi.fn() }));
+vi.mock('../pannello/PannelloProvider', () => ({ usePannello: () => pannello }));
 
 import { Testata } from '../Testata';
 
+beforeEach(() => {
+  vi.clearAllMocks();
+  pannello.aperto = false;
+  utente.valore = { nome: 'Andrea', email: 'andrea@example.it' };
+});
+
 describe('Testata (spec §D)', () => {
-  it('il menù utente porta alle impostazioni, si chiama Impostazioni e mostra l\'iniziale', () => {
+  it('il Menù utente è un bottone col nome, che apre il pannello e mostra l\'iniziale (spec fase 5 §A.2)', () => {
     render(<Testata titolo="Lista" />);
-    const menu = screen.getByRole('link', { name: 'Impostazioni' });
-    expect(menu).toHaveAttribute('href', '/impostazioni');
+    const menu = screen.getByRole('button', { name: 'Andrea: profilo e impostazioni' });
+    expect(menu).toHaveAttribute('aria-expanded', 'false');
+    expect(menu).toHaveAttribute('aria-controls', 'pannello-impostazioni');
     expect(menu).toHaveTextContent('A');
+    expect(menu.style.boxShadow).toBe('none');
+    fireEvent.click(menu);
+    expect(pannello.apri).toHaveBeenCalledTimes(1);
+    expect(pannello.apri).toHaveBeenCalledWith();
+    expect(screen.queryByRole('link', { name: 'Impostazioni' })).not.toBeInTheDocument();
+  });
+
+  it('a pannello aperto il Menù dice aria-expanded, prende --ombra-nav, e un tocco lo chiude', () => {
+    pannello.aperto = true;
+    render(<Testata titolo="Lista" />);
+    const menu = screen.getByRole('button', { name: 'Andrea: profilo e impostazioni' });
+    expect(menu).toHaveAttribute('aria-expanded', 'true');
+    expect(menu.style.boxShadow).toBe('var(--ombra-nav)');
+    fireEvent.click(menu);
+    expect(pannello.chiudi).toHaveBeenCalledTimes(1);
+    expect(pannello.apri).not.toHaveBeenCalled();
+  });
+
+  it('finché l\'utente non è letto: il puntino, e il nome accessibile senza nome', () => {
+    utente.valore = null;
+    render(<Testata titolo="Lista" />);
+    expect(screen.getByRole('button', { name: 'Profilo e impostazioni' })).toHaveTextContent('·');
   });
 
   it('il titolo è in sentence case così come passato e non c\'è più il Marchio né il link Vai alla lista', () => {
@@ -34,9 +69,9 @@ describe('Testata (spec §D)', () => {
     expect(screen.getByText('Settimana del 21 settembre').style.textTransform).toBe('uppercase');
   });
 
-  it('con indietro c\'è il link Indietro e non c\'è Impostazioni', () => {
+  it('con indietro c\'è il link Indietro e non c\'è il Menù utente', () => {
     render(<Testata titolo="Importa la dieta" indietro />);
     expect(screen.getByRole('link', { name: 'Indietro' })).toHaveAttribute('href', '/impostazioni');
-    expect(screen.queryByRole('link', { name: 'Impostazioni' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /profilo e impostazioni/ })).not.toBeInTheDocument();
   });
 });

@@ -1,13 +1,19 @@
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi } from 'vitest';
-import { render, fireEvent } from '@testing-library/react';
+import { render, fireEvent, screen } from '@testing-library/react';
 
 const percorso = vi.hoisted(() => ({ valore: '/lista' }));
-vi.mock('next/navigation', () => ({ usePathname: () => percorso.valore }));
+vi.mock('next/navigation', () => ({ usePathname: () => percorso.valore, useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
 vi.mock('../TabBar', () => ({ TabBar: () => <nav aria-label="Sezioni" /> }));
+vi.mock('@/data/utente', () => ({ useUtente: () => ({ nome: 'Andrea', email: 'andrea@example.it' }), inizialeDi: () => 'A' }));
+vi.mock('../pannello/Pannello', () => ({ Pannello: () => <div data-testid="pannello" /> }));
+vi.mock('../pannello/DatiPannello', () => ({
+  DatiPannelloProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
 
 import { Guscio, calcolaStatoBarra } from '../Guscio';
 import { useNascondiBarra } from '../barra-context';
+import { Testata } from '../Testata';
 
 describe('calcolaStatoBarra (spec §B)', () => {
   it('si riduce scorrendo giù di almeno 6 oltre i 24 di scrollTop', () => {
@@ -90,5 +96,15 @@ describe('Guscio', () => {
     expect(container.querySelector('nav[aria-label="Sezioni"]')).not.toBeInTheDocument();
     rerender(<Guscio><p>porte</p></Guscio>);
     expect(container.querySelector('nav[aria-label="Sezioni"]')).toBeInTheDocument();
+  });
+
+  it('monta il pannello, e il Menù utente della pagina lo apre: data-pannello sul guscio (spec fase 5 §A.1, §B.2)', () => {
+    const { container } = render(<Guscio><Testata titolo="Lista" /></Guscio>);
+    const guscio = container.firstElementChild as HTMLElement;
+    expect(screen.getByTestId('pannello')).toBeInTheDocument();
+    expect(guscio).not.toHaveAttribute('data-pannello');
+    fireEvent.click(screen.getByRole('button', { name: 'Andrea: profilo e impostazioni' }));
+    expect(guscio).toHaveAttribute('data-pannello', 'aperto');
+    expect(guscio).not.toHaveAttribute('data-istantaneo');
   });
 });
