@@ -776,14 +776,14 @@ describe('Scegli — il ridisegno della fase 7', () => {
     expect(screen.getByRole('button', { name: 'SOSTITUISCI' })).toBeDisabled();
 
     fireEvent.change(campo, { target: { value: '' } });
-    expect(screen.getByRole('button', { name: 'Scegli Pollo e riso' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Scegli Pollo e riso, ora in programma' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.queryByText('Nessun piatto qui')).not.toBeInTheDocument();
   });
 
   it('la riga scelta: aria-pressed sul piatto in programma prima di un tocco, poi su quello toccato', async () => {
     mockCarico();
     monta();
-    const pollo = await screen.findByRole('button', { name: 'Scegli Pollo e riso' });
+    const pollo = await screen.findByRole('button', { name: 'Scegli Pollo e riso, ora in programma' });
     const merluzzo = screen.getByRole('button', { name: 'Scegli Merluzzo e piselli' });
     expect(pollo).toHaveAttribute('aria-pressed', 'true');
     expect(merluzzo).toHaveAttribute('aria-pressed', 'false');
@@ -797,7 +797,7 @@ describe('Scegli — il ridisegno della fase 7', () => {
   it('ORA IN PROGRAMMA sta in testa alla sottoriga del piatto in programma, e non segue la scelta', async () => {
     mockCarico();
     monta();
-    const pollo = await screen.findByRole('button', { name: 'Scegli Pollo e riso' });
+    const pollo = await screen.findByRole('button', { name: 'Scegli Pollo e riso, ora in programma' });
     const merluzzo = screen.getByRole('button', { name: 'Scegli Merluzzo e piselli' });
 
     expect(pollo).toHaveTextContent('ORA IN PROGRAMMA · 2 INGREDIENTI');

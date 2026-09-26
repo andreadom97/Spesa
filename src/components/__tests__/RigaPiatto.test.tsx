@@ -64,6 +64,12 @@ describe('RigaPiatto — modo scegli (spec fase 7 §A.3)', () => {
     expect(screen.getByText('ORA IN PROGRAMMA · 1 INGREDIENTE')).toBeInTheDocument();
   });
 
+  it('il nome accessibile del piatto in programma lo dice: «Scegli {nome}, ora in programma» (review finale, M1)', () => {
+    render(<RigaPiatto piatto={PIATTO} aree={[]} modo="scegli" scelto={false} corrente onScegli={() => {}} />);
+    expect(screen.getByRole('button', { name: 'Scegli Riso e pane, ora in programma' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Scegli Riso e pane' })).toBeNull();
+  });
+
   it('senza essere quello in programma la sottoriga non ha il prefisso', () => {
     render(<RigaPiatto piatto={PIATTO} aree={[]} modo="scegli" scelto={false} corrente={false} onScegli={() => {}} />);
     expect(screen.getByText('1 INGREDIENTE')).toBeInTheDocument();
@@ -103,7 +109,7 @@ describe('RigaPiatto — modo scegli (spec fase 7 §A.3)', () => {
 
   it('dentro il bottone solo span: niente div, che in un button non è HTML valido', () => {
     render(<RigaPiatto piatto={PIATTO} aree={['cereali']} modo="scegli" scelto corrente onScegli={() => {}} />);
-    const bottone = screen.getByRole('button', { name: 'Scegli Riso e pane' });
+    const bottone = screen.getByRole('button', { name: 'Scegli Riso e pane, ora in programma' });
     expect(bottone.querySelector('div')).toBeNull();
   });
 });

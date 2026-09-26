@@ -104,8 +104,16 @@ export function RigaPiatto(props: Props) {
     );
   }
 
+  // L'aria-label copre la sottoriga: senza il suffisso «ORA IN PROGRAMMA» non
+  // arriverebbe a chi usa un lettore di schermo (review finale, M1).
   return (
-    <button type="button" aria-pressed={scelto} aria-label={`Scegli ${piatto.nome}`} onClick={props.onScegli} style={stileRiga}>
+    <button
+      type="button"
+      aria-pressed={scelto}
+      aria-label={`Scegli ${piatto.nome}${inProgramma ? ', ora in programma' : ''}`}
+      onClick={props.onScegli}
+      style={stileRiga}
+    >
       {corpo}
     </button>
   );
