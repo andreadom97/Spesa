@@ -6,12 +6,14 @@ import type { Ingredient } from '@/domain/types';
 
 vi.mock('@/data/repertorio', () => {
   class IngredienteInUsoError extends Error {}
+  class UnitaInUsoError extends Error {}
   return {
     salvaIngrediente: vi.fn(),
     leggiIngredienti: vi.fn(),
     eliminaIngrediente: vi.fn(),
     haAcquistiRegistrati: vi.fn(),
     IngredienteInUsoError,
+    UnitaInUsoError,
   };
 });
 
@@ -37,7 +39,7 @@ vi.mock('@/components/useLettoreCodici', () => ({
   },
 }));
 
-import { salvaIngrediente, leggiIngredienti, eliminaIngrediente, haAcquistiRegistrati, IngredienteInUsoError } from '@/data/repertorio';
+import { salvaIngrediente, leggiIngredienti, eliminaIngrediente, haAcquistiRegistrati, IngredienteInUsoError, UnitaInUsoError } from '@/data/repertorio';
 import { leggiImpostazioni } from '@/data/impostazioni';
 import { ORDINE_AREE_DEFAULT } from '@/domain/aree';
 import { salvaOrigine } from '@/components/pannello/indirizzi';
@@ -311,6 +313,20 @@ describe('Ingrediente (editor): i campi', () => {
     rifiuta(new Error('rete'));
     const dock = screen.getByRole('region', { name: 'Azione principale' });
     expect(await within(dock).findByRole('alert')).toHaveTextContent('Non siamo riusciti a salvare l’ingrediente. Riprova.');
+    expect(within(dock).getByRole('button', { name: 'SALVA' })).toBeEnabled();
+  });
+
+  it('unità cambiata su un ingrediente in uso: il motivo del blocco sopra il Dock, non «Riprova» (difetto del 26/09)', async () => {
+    paramsIngId = 'i-1';
+    const motivo = 'Il piatto «Yogurt e avena» lo usa con le quantità in g: per passare a ml toglilo prima da lì, o crea un ingrediente nuovo in ml.';
+    vi.mocked(salvaIngrediente).mockRejectedValue(new UnitaInUsoError(motivo));
+    rendi();
+    await screen.findByDisplayValue('Yogurt greco');
+    fireEvent.click(screen.getByRole('button', { name: 'ML' }));
+    fireEvent.click(salva());
+    const dock = screen.getByRole('region', { name: 'Azione principale' });
+    expect(await within(dock).findByRole('alert')).toHaveTextContent(motivo);
+    expect(push).not.toHaveBeenCalled();
     expect(within(dock).getByRole('button', { name: 'SALVA' })).toBeEnabled();
   });
 
