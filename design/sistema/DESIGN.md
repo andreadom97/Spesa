@@ -417,11 +417,18 @@ piede del titolo. Il Marchio **non è più in testata**: è l'icona della Lista 
 lui è sparito il link "Vai alla lista" da ogni schermata. Sotto, facoltativa, la **pillola
 settimana**: alta 34, raggio 999, fondo `--ink`, mono 10.5/700/0.13em in bianco, testo
 informativo e non interattivo, senza freccetta (`Settimana del 21 settembre`). Padding
-`20px 18px 12px`, gap interno 15. **Modalità indietro** (dal 25/09), per le pagine piene aperte dal Pannello impostazioni o dagli stati vuoti: niente Menù utente; in cima una **pillola** alta 44 su `rgba(20,22,58,0.07)`,
+`20px 18px 12px`, gap interno 15. **Modalità indietro** (dal 25/09), per le pagine piene aperte dal Pannello impostazioni, dagli stati vuoti e dai passi della fine spesa: niente Menù utente; in cima una **pillola** alta 44 su `rgba(20,22,58,0.07)`,
 raggio 999, padding `0 16 0 10`, gap 6, con la freccia 20 (tratto 1,8) e un'etichetta mono
-11/700/0,08em che dice **dove porta**: `IMPOSTAZIONI`, `LISTA` o `PIANO`. L'`aria-label` lo dice
-per intero: `Torna alle impostazioni`, `Torna alla lista`, `Torna al piano`. Sotto, il titolo
-52, a 12 dalla pillola. La freccia sola con `aria-label="Indietro"` non c'è più.
+11/700/0,08em che dice **dove porta**: `IMPOSTAZIONI`, `LISTA`, `PIANO` o `FINE SPESA`. L'`aria-label` lo dice
+per intero: `Torna alle impostazioni`, `Torna alla lista`, `Torna al piano`, `Torna a fine spesa`.
+Sotto, il titolo 52, a 12 dalla pillola. Se la pagina ha una settimana (il traguardo), la
+pillola settimana sta sotto il titolo, a 12 (dal 26/09). La freccia sola con
+`aria-label="Indietro"` non c'è più.
+
+**Entra** (`/entra`) non ha Testata: è fuori dal Guscio, prima dell'accesso. Dall'alto, centrati
+in una colonna larga al massimo 360 sul fondo di §2.4: il Marchio pieno a 20, `Dispesa` 52/800,
+il Campo di testo con l'etichetta `EMAIL`, `ENTRA CON UN LINK` (Tasto primario). Dopo l'invio,
+l'indirizzo a cui è partito il link e `USA UN’ALTRA EMAIL` (secondario).
 
 ### Menù utente
 **Nuovo il 19/09.** Sostituisce l'ingranaggio: dice anche **di chi** è l'account, non solo che
@@ -469,8 +476,8 @@ casella sempre nel colore della sua area, bordo 2 px dello stesso colore: **pien
 quell'area non manca niente; **contornata** = manca qualcosa. Mai grigia.
 
 - In **tab bar**, come icona della Lista: lato **9**, gap 4, raggio **2,52**, bordo 2.
-- Nelle **rese grandi** (copertine, schede di sistema): lato 16 o 20, gap 4, raggio
-  `lato × 0,28`.
+- Nelle **rese grandi** (copertine, schede di sistema, la scheda di `Fine spesa`, Entra): lato
+  16 o 20, gap 4, raggio `lato × 0,28`.
 - Nell'**animazione d'avvio** (§7 `.anim-avvio`, dal 25/09): lato **40**, gap **10**, raggio
   **11,2** (§5, eccezione), bordo 2, `box-sizing: border-box`, tutte e sei le caselle piene.
   Atterra sul Marchio della tab bar; il rapporto fra gap e lato non è quello della barra (10/40
@@ -498,10 +505,10 @@ flottante: il tasto primario non ha più il suo posto in coda al contenuto. Il D
     999, mono 12/700/0,09em, `--ombra-tasto`.
   - **Due controlli affiancati** (Dispensa): pillole alte **56**, raggio 999, gap 8 —
     `Modifica con l'AI` (icona AI) e il vocale.
-- **Cosa ci vive:** `HAI PRESO TUTTO` (Lista), `CONFERMA E CREA LA LISTA` (Piano), `ESTRAI LA
-  DIETA` (Importa, solo con un PDF scelto), il primario di ogni stato vuoto, `Modifica con l'AI`
-  (icona AI) e il vocale (Dispensa). `HO FINITO` della fotocamera non sta qui: sopra l'anteprima lo porta
-  la Banda dei comandi.
+- **Cosa ci vive:** `HAI PRESO TUTTO` (Lista), `CHIUDI LA SPESA` (Fine spesa), `CONFERMA E CREA
+  LA LISTA` (Piano), `ESTRAI LA DIETA` (Importa, solo con un PDF scelto), il primario di ogni
+  stato vuoto, `Modifica con l'AI` (icona AI) e il vocale (Dispensa). `HO FINITO` della
+  fotocamera non sta qui: sopra l'anteprima lo porta la Banda dei comandi.
 - **Accesso:** il contenitore è una regione, `role="region"` con `aria-label="Azione
   principale"`, lo stesso nome per ogni Dock: chi naviga per regioni con lo screen reader trova
   l'azione principale senza scorrere la pagina. Il nome dice il posto, non l'azione, che ha già
@@ -766,6 +773,9 @@ a quattro angoli (30 × 30, tratto 3 bianco al 92%). Nessun tasto di scatto: la 
 continua. Sotto, la riga di stato e il tasto secondario `DIGITA IL CODICE`. L'esito sta su fondo
 0,04: `CODICE {ean}` mono 10, formato 15,5/700, stima 12,5; due tasti 54.
 
+Dal 26/09 la usa anche Confezioni diverse, in un foglio dal basso per voce: il vecchio scanner in
+linea non c'è più.
+
 ### Dialogo di conferma
 **Nuovo il 25/09 (fase 4), generalizzato il 25/09 (fase 5):** è il componente `DialogoConferma`.
 Secondo velo 0,35 sopra il foglio o il pannello, e un foglio piccolo ancorato in basso a tutta
@@ -917,6 +927,10 @@ dichiarate:
 - (25/09, fase 5) **togliere un pasto chiede il dialogo solo se il pasto ha piatti**: la
   rimozione cancella a cascata i suoi piatti e le sue righe nel piano. Senza piatti si toglie al
   tocco.
+- (26/09, fase 6) **`CHIUDI LA SPESA` non chiede il dialogo** pur essendo irreversibile: ci si
+  arriva solo da `HAI PRESO TUTTO`, e il traguardo (`Fine spesa`) è il secondo passo. Sta nel
+  Dock, nel punto dove era `HAI PRESO TUTTO`: per questo ignora i tocchi per **400 ms** da
+  quando compare, e un doppio tocco non chiude la spesa.
 
 **Feedback di scrittura.** Lo stato si mostra sul controllo (opacità 0,5 e `disabled` mentre è
 in volo) e la conferma è il cambio di stato del dato, non un messaggio. In caso di errore, un
@@ -1113,3 +1127,19 @@ Eccezioni dichiarate da questa fase: 360 per le schermate coi pasti (§4); `.ani
 la sua curva di chiusura e `.anim-avvio` (§7); raggio 11,2 (§5); mono 21 (§3); `--errore` sul
 nome di `Esci` (§2.2); il piede fisso col primario nel pannello (§8 Pannello impostazioni);
 `AGGIUNGI PASTO` in fondo (§8 Tasti); Esci che chiede conferma (§9).
+
+### Decisioni del 26/09/2026 (fase 6: Fine della spesa ed Entra)
+
+1. **`CHIUDI LA SPESA` resta a due passi**, senza dialogo: eccezione scritta in §9, con la guardia
+   di 400 ms contro il doppio tocco.
+2. **Il traguardo si chiama `Fine spesa`**, usa la Testata in modo indietro (`LISTA`) con la
+   pillola settimana, e porta `CHIUDI LA SPESA` nel Dock. `TORNA ALLA LISTA` sparisce.
+3. **Confezioni diverse scansiona in un foglio dal basso** con l'Anteprima di scansione, come la
+   Dispensa. Titolo `Confezioni`, pillola `FINE SPESA`.
+4. **Entra mostra Marchio e nome**, senza la frase di posizionamento, che resta alla landing.
+5. Restano fuori dal sistema, per le fasi 7 e 8: l'editor del Piatto, Piatti veloce, Scegli e i
+   passi di Importa diversi dalle due porte e dalla fotocamera.
+6. In volo i primari pieni (il Dock di `Fine spesa`, `AGGIORNA` in Confezioni, `ENTRA CON UN
+   LINK`) prendono lo stato spento del sistema invece dell'opacità 0,5: con l'opacità il testo
+   bianco scende sotto soglia (commento su `.dock-primario:disabled` in `globals.css`), e il Dock
+   del Piano faceva già così.

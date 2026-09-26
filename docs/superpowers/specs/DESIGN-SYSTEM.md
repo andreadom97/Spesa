@@ -54,11 +54,11 @@ del file, è lì.
 
 | Componente (`DESIGN.md` §8) | Dove vive nel codice | Stato |
 |---|---|---|
-| Testata | `src/components/Testata.tsx` | fase 5: modo indietro a pillola (`indietro: { etichetta, ariaLabel, onTorna }`) in Piatti e Importa |
+| Testata | `src/components/Testata.tsx` | fase 5: modo indietro a pillola (`indietro: { etichetta, ariaLabel, onTorna }`) in Piatti e Importa; fase 6: in modo indietro anche la pillola settimana; etichetta `FINE SPESA` in Confezioni |
 | Menù utente | dentro `Testata.tsx` | fase 5: un `button` che apre il pannello, `aria-expanded`, nome `{Nome}: profilo e impostazioni` |
 | Tab bar | `src/components/TabBar.tsx`, dentro `Guscio.tsx` | fase 5: tre voci (Lista · Piano · Dispensa), pillola 304 / 244 centrata, voci `flex` con un tetto di 96 / 76 (con tre voci sono esattamente quelle), anima `width`; `data-marchio-barra` sul segno della Lista |
-| Marchio | `src/components/Marchio.tsx` (+ `marchio-context.tsx`); l'avvio in `src/components/AvvioMarchio.tsx`, montato nel `Guscio` | 3 × 2, sei aree; dalla fase 5 l'avvio `.anim-avvio-*` con `@keyframes pb`, una volta per sessione su `/lista` |
-| Dock | `src/components/Dock.tsx`, montato con `createPortal` nello slot di `dock-slot.tsx`, reso da `Guscio.tsx` | fatto nella fase 2; dalla fase 3 è una regione di nome «Azione principale» (tutti i Dock), e porta anche ESTRAI LA DIETA in Importa col PDF scelto. In Lista `HAI PRESO TUTTO` e i primari dei due stati vuoti; nel Piano la sola conferma — lo stato vuoto del Piano resta una scheda con un link in linea, di proposito. Dalla fase 4 anche **sciolto** (`<Dock sciolto>`, classe `.dock-sciolto`): nella Dispensa `DockDispensa.tsx` mette `Modifica con l'AI` e il tondo del microfono, senza contenitore bianco. Dalla fase 5 `.dock-senza-barra` a `bottom 22` quando una schermata nasconde la barra (l'editor dell'ingrediente) |
+| Marchio | `src/components/Marchio.tsx` (+ `marchio-context.tsx`); l'avvio in `src/components/AvvioMarchio.tsx`, montato nel `Guscio` | 3 × 2, sei aree; dalla fase 5 l'avvio `.anim-avvio-*` con `@keyframes pb`, una volta per sessione su `/lista`; resa grande a 20 in `lista/fatta/page.tsx` ed `entra/page.tsx` |
+| Dock | `src/components/Dock.tsx`, montato con `createPortal` nello slot di `dock-slot.tsx`, reso da `Guscio.tsx` | fatto nella fase 2; dalla fase 3 è una regione di nome «Azione principale» (tutti i Dock), e porta anche ESTRAI LA DIETA in Importa col PDF scelto. In Lista `HAI PRESO TUTTO` e i primari dei due stati vuoti; nel Piano la sola conferma — lo stato vuoto del Piano resta una scheda con un link in linea, di proposito. Dalla fase 4 anche **sciolto** (`<Dock sciolto>`, classe `.dock-sciolto`): nella Dispensa `DockDispensa.tsx` mette `Modifica con l'AI` e il tondo del microfono, senza contenitore bianco. Dalla fase 5 `.dock-senza-barra` a `bottom 22` quando una schermata nasconde la barra (l'editor dell'ingrediente); dalla fase 6 anche `CHIUDI LA SPESA` in `lista/fatta/page.tsx`, con la guardia in `lista/fatta/guardia.ts` |
 | Tasti | nessun file: le tre basi sono copiate in otto punti | deriva dichiarata e accettata (§6) |
 | Pillole d'azione | `RigaControllo.tsx`, `Segmento.tsx` (variante pillola) | |
 | Segmento a blocco | `Segmento.tsx` (variante blocco) | |
@@ -80,7 +80,7 @@ del file, è lì.
 | Dettaglio di ingrediente | `DettaglioIngrediente.tsx` + `src/components/controlli.tsx` (Sì/No, campo con `SALVA`, tasti, blocchi; spostato dalla Dispensa nella fase 5); il lotto in `DettaglioLotto.tsx` | fatto nella fase 4 |
 | Riga di scadenza | `RigaScadenza.tsx` | fatta nella fase 4 |
 | Dialogo di conferma | `src/components/DialogoConferma.tsx`, dentro un `FoglioDalBasso` con `ruolo="alertdialog"`; `DialogoElimina.tsx` della Dispensa ne è un uso | generalizzato nella fase 5: tono `distruttivo` in `--errore` e `primario` in `--ink` (Esci) |
-| Anteprima di scansione | `LettoreCodice.tsx` + `src/components/useLettoreCodici.ts` (la lettura, condivisa con `Scanner.tsx`); l'esito in `ScansioneConfezione.tsx` | fatta nella fase 4 |
+| Anteprima di scansione | `LettoreCodice.tsx` + `src/components/useLettoreCodici.ts` (la lettura, condivisa con `Scanner.tsx`); l'esito in `ScansioneConfezione.tsx` | fatta nella fase 4; dalla fase 6 anche in `lista/confezioni/page.tsx`, in un `FoglioDalBasso`; `src/components/Scanner.tsx` è stato cancellato |
 | Nuovo ingrediente | `NuovoIngrediente.tsx` | fatto nella fase 4; non è una voce di `DESIGN.md` §8, lo descrive la spec della fase 4 §C |
 | Editor dell'ingrediente | `src/app/(app)/piatti/[id]/ingredienti/[ingId]/page.tsx` | frame 12 della fase 5: SALVA nel Dock senza barra, scansione con `LettoreCodice`; non è una voce di `DESIGN.md` §8 |
 | Tasto di scatto · Banda dei comandi · Striscia dei fogli presi | `src/app/(app)/importa/Camera.tsx` (+ `.scatto`, `.guida-angolo` in `globals.css`), «Rivedi i fogli presi» in `src/app/(app)/importa/FogliPresi.tsx` | fatti nella fase 3 |
@@ -162,7 +162,13 @@ Il conto aperto verso `DESIGN.md` v3, al 26/09/2026.
 - **La fase 5 (Impostazioni) è chiusa con la PR del ramo `fase5-impostazioni`**. Le decisioni prese
   durante l'esecuzione, le misure nel browser e i gate di Andrea stanno in
   `docs/2026-09-25-fase5-decisioni-esecuzione.md`. Con lei tutte le schermate di `DESIGN.md` v3 sono
-  ridisegnate.
+  ridisegnate; restano fuori le schermate che `DESIGN.md` non disegna, vedi sotto.
+- **La fase 6 (Fine della spesa ed Entra) è chiusa con la PR del ramo `fase6-fine-spesa`**. Le
+  decisioni prese durante l'esecuzione stanno in `docs/2026-09-26-fase6-decisioni-esecuzione.md`.
+- **Fuori dal sistema restano**, divisi in due fasi decise il 26/09: la **fase 7** (editor del
+  Piatto, Piatti veloce, Scegli; aspetta la decisione se Scegli riusa Piatti) e la **fase 8**
+  (i passi di Importa oltre le due porte e la fotocamera; probabilmente un selettore nuovo, quindi
+  un giro in Claude Design). L'audit del 26/09 li misura uno per uno.
 - **53 token dichiarati nel design e assenti dal codice** [misurato il 26/09 con le funzioni del guardiano, a
   fase 5 finita: `tokens.css` ne dichiara 118, `src/app/globals.css` ne ha 67, 65 in comune, 0
   divergenti (`npm run design:token`); il 25/09, a fase 4 finita, erano 115, 62 e 60, con 55 assenti; prima della
