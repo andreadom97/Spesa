@@ -1,16 +1,17 @@
 'use client';
 
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import type { AreaId, ClasseResiduo, Ingredient, UnitaBase } from '@/domain/types';
 import { salvaIngrediente, leggiIngredienti, eliminaIngrediente, IngredienteInUsoError, UnitaInUsoError, haAcquistiRegistrati } from '@/data/repertorio';
 import { leggiImpostazioni } from '@/data/impostazioni';
-import { AREE, coloreArea, nomeArea } from '@/domain/aree';
+import { AREE, coloreArea } from '@/domain/aree';
 import { GIORNI_CONTROLLO_DEFAULT, ogniCadenza, type GiorniControllo } from '@/domain/pantry';
 import { formatoProposto } from '@/domain/ean';
 import { MSG_CATALOGO, msgUnitaDiversa, proprietario } from '@/domain/scansione-dispensa';
 import { Segmento } from '@/components/Segmento';
 import { Dock } from '@/components/Dock';
+import { TestataModifica } from '@/components/TestataModifica';
 import { FoglioDalBasso, TestataFoglio } from '@/components/FoglioDalBasso';
 import { DialogoConferma } from '@/components/DialogoConferma';
 import { Etichetta, MessaggioErrore, STILE_PILLOLA, TastoPrimario, TastoSecondario } from '@/components/controlli';
@@ -471,22 +472,22 @@ export default function IngredienteEditor() {
 
   if (nonTrovato) {
     return (
-      <Cornice freccia={freccia}>
+      <TestataModifica freccia={freccia}>
         <p style={{ margin: '20px 18px', color: 'var(--testo-2)' }}>Ingrediente non trovato.</p>
-      </Cornice>
+      </TestataModifica>
     );
   }
   if (erroreCarica) {
     return (
-      <Cornice freccia={freccia}>
+      <TestataModifica freccia={freccia}>
         <p style={{ margin: '20px 18px', color: 'var(--testo-2)', fontSize: 13 }}>{erroreCarica}</p>
-      </Cornice>
+      </TestataModifica>
     );
   }
-  if (caricamento) return <Cornice freccia={freccia} />;
+  if (caricamento) return <TestataModifica freccia={freccia} />;
 
   return (
-    <Cornice
+    <TestataModifica
       freccia={freccia}
       area={area}
       nome={
@@ -687,43 +688,6 @@ export default function IngredienteEditor() {
           />
         </FoglioDalBasso>
       )}
-    </Cornice>
-  );
-}
-
-/**
- * La testata del frame 12: il tondo 44 con la freccia, sotto l'area in etichetta
- * mono col quadratino, poi il nome a 32/800 (è il campo di oggi). Non è Testata:
- * questa è una pagina di modifica, senza titolo di schermata.
- */
-function Cornice({ children, freccia, area = null, nome }: {
-  children?: ReactNode;
-  freccia: { etichetta: string; onTorna: () => void };
-  area?: AreaId | null;
-  nome?: ReactNode;
-}) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <div style={{ padding: '20px 18px 12px', display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'flex-start' }}>
-        <button
-          type="button"
-          aria-label={freccia.etichetta}
-          onClick={freccia.onTorna}
-          style={{ width: 44, height: 44, borderRadius: 999, background: 'var(--barra-attiva)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M15 5l-7 7 7 7" stroke="var(--ink)" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-        {area && (
-          <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--ink)' }}>
-            <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: 4, background: coloreArea(area) }} />
-            {nomeArea(area)}
-          </span>
-        )}
-        {nome && <div style={{ alignSelf: 'stretch' }}>{nome}</div>}
-      </div>
-      {children}
-    </div>
+    </TestataModifica>
   );
 }
