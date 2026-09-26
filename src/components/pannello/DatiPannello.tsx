@@ -10,8 +10,8 @@ import { dimenticaIdCasa, eRifiutoRls, statoCasa, type StatoCasa } from '@/data/
 import { leggiRisparmioTotale } from '@/data/risparmio';
 import { riassumiEvitato, type RiassuntoEvitato } from '@/domain/risparmio';
 import { leggiUtente } from '@/data/utente';
-import { MessaggioErrore, STILE_PILLOLA } from '@/components/controlli';
 import { usePannello } from './PannelloProvider';
+import { Carico, ErroreCaricamento, TESTO_ERRORE_IMPOSTAZIONI } from './pezzi';
 
 export interface DatiPannello {
   /**
@@ -308,36 +308,7 @@ export function useDatiPannello(): ValoreDati {
  */
 export function StatoDatiPannello({ children }: { children: (dati: DatiPannello) => ReactNode }) {
   const { stato, ricarica } = useDatiPannello();
-  if (stato.stato === 'carico') {
-    return (
-      <p
-        role="status"
-        style={{ margin: 0, padding: '8px 4px', fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--sec)' }}
-      >
-        CARICO…
-      </p>
-    );
-  }
-  if (stato.stato === 'errore') {
-    return (
-      <section
-        style={{
-          background: 'var(--superficie)', border: '1px solid var(--bordo)', borderRadius: 18,
-          padding: '16px 12px 12px', display: 'flex', flexDirection: 'column', gap: 12,
-        }}
-      >
-        <MessaggioErrore ruolo="alert">
-          Non riusciamo a caricare le impostazioni. Controlla la connessione e tocca RIPROVA.
-        </MessaggioErrore>
-        <button
-          type="button"
-          onClick={ricarica}
-          style={{ ...STILE_PILLOLA, alignSelf: 'flex-start', background: 'var(--superficie)', color: 'var(--ink)', border: '1px solid rgba(20,22,58,0.09)' }}
-        >
-          RIPROVA
-        </button>
-      </section>
-    );
-  }
+  if (stato.stato === 'carico') return <Carico />;
+  if (stato.stato === 'errore') return <ErroreCaricamento testo={TESTO_ERRORE_IMPOSTAZIONI} onRiprova={ricarica} />;
   return <>{children(stato.dati)}</>;
 }

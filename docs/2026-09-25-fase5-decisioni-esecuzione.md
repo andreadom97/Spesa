@@ -46,6 +46,12 @@ scritti nel piano sono indicativi.
 | 29 | Ogni lettura dei dati del pannello aspetta prima la fila delle scritture (Task 6, review, minor a) | una riapertura con una scrittura in volo rileggeva il valore di prima, e la sua lettura, più recente, lo rimetteva a schermo sopra quello del gesto | una riapertura con una scrittura lenta resta sui dati di prima finché la scrittura non arriva |
 | 30 | Col pannello aperto sono `inert` `.guscio-main`, lo slot del Dock e la tab bar, che per questo prende la prop `inerte` (Task 6, review, minor b) | `aria-modal` da solo non trattiene il Tab, che usciva verso la pagina e la barra sotto il velo. La review nominava pagina e Dock; la barra ha la stessa fuga, e l'ho aggiunta | nessuno sul telefono: sotto il velo niente è toccabile comunque. Il Menù utente, dentro la pagina, non riceve più il fuoco da tastiera a pannello aperto: si chiude con la X, il velo o il gesto indietro |
 | 31 | `useUtente` tiene in cache solo una lettura che ha trovato l'utente (con l'email); una fallita o vuota si scarta, e il montaggio dopo rilegge (Task 6, review, minor c) | una lettura fallita per la rete lasciava il puntino e `Profilo e impostazioni` per tutta la sessione | un `getUser` in più a ogni pagina finché la rete non torna |
+| 32 | I testi delle note dal disegno (frame 03, 04, 25), confermati da Andrea il 26/09 e in spec §I: `Il default con cui nasce ogni settimana nuova.` (Pasti a casa), `Ogni quanto ti chiedo se hai ancora olio, sale, farina.` (Cadenza), `L'ordine in cui compaiono in Lista: mettilo come gira il tuo supermercato.` (Ordine delle aree), `Svuota quello che hai in casa. I piatti e il piano restano.` (Cancella la dispensa), e l'aria del campo `Per quante persone cucini, da 1 a 4` (Task 7) | la spec §B.4 non dava le note; il disegno sì | nessuno: sono testi confermati |
+| 33 | Gli apostrofi: i testi nuovi della spec hanno l'apostrofo dritto `'`; i testi «di oggi» si copiano dal codice come sono, e lì l'apostrofo è tipografico `’` (Task 7) | la regola dei vincoli (copy carattere per carattere) vale in due direzioni: un testo nuovo non si «corregge» al tipografico, uno di oggi non si raddrizza. La nota delle porzioni, di oggi, non ne ha [misurato, `impostazioni/page.tsx` riga 538] | nessuno: un carattere per testo, se Andrea li vuole uniformi |
+| 34 | Il campo `PERS` in volo è a 0,5 e `disabled` (frame 25), e il testo scritto vive nel campo solo durante la modifica: finito il tentativo (riuscito, fallito, fuori range) il campo torna a leggere il provider, così il ritorno a prima si vede senza sincronizzazioni a mano (Task 7) | spec §B.5 e frame 25. Due scritture veloci dallo stesso campo non si possono fare: i quattro test della coda serializzata (righe 6–9 della migrazione) vanno sulla Cadenza (Task 9), dove il segmento resta toccabile | chi scrive subito un altro numero mentre il primo salva aspetta la risposta (una scrittura è di solito sotto il secondo) |
+| 35 | `StatoDatiPannello` disegna con `Carico` ed `ErroreCaricamento` di `pezzi.tsx` (Task 7) | un disegno solo per `CARICO…` e per l'errore di caricamento, nella cima e nelle sotto-schermate che leggono dati propri (Casa, Ingredienti, Aree) | nessuno: i test del Task 6 cercano `role="status"`, il testo dell'errore e `RIPROVA`, e restano verdi |
+| 36 | La nota `Cancellata il {gg/mm} alle {hh:mm}.` si legge da `cancellataIl` del provider dei dati, non da uno stato della cima; l'ora è quella locale del telefono (Task 7) | la cima si smonta entrando in una sotto-schermata: con uno stato locale la nota sparirebbe al ritorno, prima della chiusura del pannello (spec §D, decisione 26). Un test lo prova passando da Esporta | nessuno |
+| 37 | `montaPannello` resta sincrono (restituisce il `RenderResult`, come nel piano), e ogni test aspetta i dati con un `findBy…` prima di toccare le righe (Task 7) | la firma è quella che i Task 8–10 usano nel piano; i mock rispondono subito, e i `findBy`/`waitFor` lasciano arrivare le letture. I test della cima e delle persone girano senza avvisi `act(...)` [misurato: `npx vitest run src/components/pannello`, stderr vuoto, 5 volte di fila] | se un test dei Task 8–10 tocca prima che i dati arrivino e finisce senza aspettare, può uscire un avviso: si aggiunge un `findBy` |
 
 ## Misure nel browser
 
@@ -173,19 +179,19 @@ per «Test nuovo». Le altre righe restano al titolo esatto dell'`it(...)`, come
 | # | Test vecchio | File | Va a | Test nuovo | Nota |
 |---|---|---|---|---|---|
 | 1 | mostra i pasti reali letti da leggiSlotDefs, non i quattro cablati nel mock dell’artboard | P | Task 8, Gestione dei pasti | | |
-| 2 | sta nella sezione CASA, dichiara l’assunzione e parte da 1 con il − spento | P | Task 7, campo `PERS` | | lo stepper è tolto (spec §C.10); la riga sta in «Come calcolo la lista» |
-| 3 | + salva subito le impostazioni intere con 2, mostra 2 e dice per quanti compra la lista | P | Task 7, campo `PERS` | | si scrive 2 e si esce dal campo |
-| 4 | a 4 il + è spento e non salva | P | Task 7, campo `PERS` | | diventa: 5 torna al valore di prima con `Scrivi un numero da 1 a 4.` |
-| 5 | − scende di uno e salva | P | Task 7, campo `PERS` | | si scrive il valore nuovo e si dà Invio |
+| 2 | sta nella sezione CASA, dichiara l’assunzione e parte da 1 con il − spento | P | Task 7, campo `PERS` | `persone.test.tsx` › Per quante persone cucini › sta in Come calcolo la lista, dichiara l’assunzione e parte da 1 senza la seconda nota | lo stepper è tolto (spec §C.10): il − spento diventa «nessun tasto porzioni»; la riga sta in «Come calcolo la lista» |
+| 3 | + salva subito le impostazioni intere con 2, mostra 2 e dice per quanti compra la lista | P | Task 7, campo `PERS` | `persone.test.tsx` › Per quante persone cucini › scritto 2 e uscito dal campo salva le impostazioni intere, mostra 2 e dice per quanti compra la lista | il + diventa il campo: si scrive 2 e si esce dal campo |
+| 4 | a 4 il + è spento e non salva | P | Task 7, campo `PERS` | `persone.test.tsx` › Per quante persone cucini › 5, 0, 2,5 e abc non si salvano: torna al valore di prima e chiede un numero da 1 a 4 | il tetto è la validazione del campo: 5 torna al valore di prima con `Scrivi un numero da 1 a 4.` |
+| 5 | − scende di uno e salva | P | Task 7, campo `PERS` | `persone.test.tsx` › Per quante persone cucini › con Invio salva senza uscire dal campo: da 3 a 2 | si scrive il valore nuovo e si dà Invio |
 | 6 | due tap veloci: se la rilettura del primo arriva dopo quella del secondo, resta il valore del secondo | P | Task 9, Cadenza (la coda del provider) | | il campo `PERS` è spento in volo (frame 25), il segmento della Cadenza no; provato anche nel provider: `dati-pannello.test.tsx` |
 | 7 | due tap veloci: se il primo salvataggio fallisce, il secondo si scrive lo stesso e resta il suo valore senza errore | P | Task 9, Cadenza (la coda del provider) | | idem; provato anche nel provider: `dati-pannello.test.tsx` |
 | 8 | due tap veloci: se il primo riesce ma la sua rilettura non è l’ultima e il secondo fallisce, mostra il valore del server | P | Task 9, Cadenza (la coda del provider) | | idem; provato anche nel provider: `dati-pannello.test.tsx` |
 | 9 | due tap veloci: se la seconda scrittura fallisce mentre la prima è in volo, alla fine schermo e server dicono 2 | P | Task 9, Cadenza (la coda del provider) | | idem; provato anche nel provider: `dati-pannello.test.tsx` |
-| 10 | se il salvataggio fallisce e anche la rilettura fallisce, torna all’ultimo valore confermato e lo dice | P | Task 7, campo `PERS` | | provato anche nel provider: `dati-pannello.test.tsx` |
-| 11 | se il salvataggio fallisce torna al valore del server e lo dice | P | Task 7, campo `PERS` | | provato anche nel provider: `dati-pannello.test.tsx` |
-| 12 | se la RLS rifiuta il salvataggio (la casa è cambiata) scarta l’id della casa, ricarica tutto e lo dice | P | Task 7, campo `PERS` | | provato anche nel provider: `dati-pannello.test.tsx` |
-| 13 | un rifiuto RLS riconosciuto dal solo messaggio (senza codice) ricarica allo stesso modo | P | Task 7, campo `PERS` | | provato anche nel provider: `dati-pannello.test.tsx` |
-| 14 | porta all elenco degli ingredienti | P | Task 7, riga Ingredienti | | apre la sotto-schermata, non un link |
+| 10 | se il salvataggio fallisce e anche la rilettura fallisce, torna all’ultimo valore confermato e lo dice | P | Task 7, campo `PERS` | `persone.test.tsx` › Per quante persone cucini › se falliscono salvataggio e rilettura, torna all’ultimo valore confermato e lo dice | provato anche nel provider: `dati-pannello.test.tsx` |
+| 11 | se il salvataggio fallisce torna al valore del server e lo dice | P | Task 7, campo `PERS` | `persone.test.tsx` › Per quante persone cucini › se il salvataggio fallisce torna al valore del server e lo dice sotto la riga | provato anche nel provider: `dati-pannello.test.tsx` |
+| 12 | se la RLS rifiuta il salvataggio (la casa è cambiata) scarta l’id della casa, ricarica tutto e lo dice | P | Task 7, campo `PERS` | `persone.test.tsx` › Per quante persone cucini › se la RLS rifiuta (la casa è cambiata) scarta l’id, ricarica tutto e lo dice sopra i blocchi | «Fai la spesa con qualcuno?» diventa la tessera `SOLO TU`; `4 DI 6` diventa `4 PASTI`; provato anche nel provider: `dati-pannello.test.tsx` |
+| 13 | un rifiuto RLS riconosciuto dal solo messaggio (senza codice) ricarica allo stesso modo | P | Task 7, campo `PERS` | `persone.test.tsx` › Per quante persone cucini › un rifiuto RLS riconosciuto dal solo messaggio ricarica allo stesso modo | provato anche nel provider: `dati-pannello.test.tsx` |
+| 14 | porta all elenco degli ingredienti | P | Task 7, riga Ingredienti | `cima.test.tsx` › La cima del pannello › la riga Ingredienti apre la sotto-schermata degli ingredienti | il link diventa una riga che apre la sotto-schermata; l'elenco è del Task 9 |
 | 15 | sotto il minimo di 3 pasti il pulsante di rimozione è disattivato | P | Task 8, Gestione dei pasti | | |
 | 16 | sopra il minimo la rimozione funziona e salva l’insieme aggiornato | P | Task 8, Gestione dei pasti | | senza piatti al tocco; con piatti il dialogo (spec §C.2) |
 | 17 | al massimo di 6 pasti il pulsante di aggiunta è disattivato | P | Task 8, Gestione dei pasti | | diventa: a 6 `AGGIUNGI PASTO` non c'è e c'è `Sei pasti sono il massimo.` |
@@ -195,7 +201,7 @@ per «Test nuovo». Le altre righe restano al titolo esatto dell'`it(...)`, come
 | 21 | accende una pastiglia del giorno e salva le assenze abituali aggiornate | P | Task 8, Pasti a casa | | |
 | 22 | rinominare un pasto salva il nuovo nome al blur, non a ogni carattere digitato | P | Task 8, Gestione dei pasti | | |
 | 23 | con leggiSlotDefs() vuoto semina i quattro pasti di default e li salva davvero sul server | P | Task 8, Gestione dei pasti | | la semina sta nel provider (Task 6); provato anche nel provider: `dati-pannello.test.tsx` |
-| 24 | il link ordine dei reparti mostra l’anteprima e il riepilogo nell’ordine reale, non un ordine fisso | P | Task 7, riga Ordine delle aree | | l'anteprima è tolta (spec §C.5): diventa `PERSONALIZZATO` / `DI BASE` |
+| 24 | il link ordine dei reparti mostra l’anteprima e il riepilogo nell’ordine reale, non un ordine fisso | P | Task 7, riga Ordine delle aree | `cima.test.tsx` › La cima del pannello › la riga Ordine delle aree dice se l’ordine è di base e apre la sotto-schermata | anteprima e riepilogo tolti (spec §C.5, log §4.4, §I): li sostituisce il valore `PERSONALIZZATO` / `DI BASE` |
 | 25 | con il ciclo spento la rotazione si può accendere e dice cosa cambia | P | Task 8, Rotazione del piano | | |
 | 26 | se il salvataggio del ciclo fallisce torna al valore di prima e lo dice | P | Task 8, Rotazione del piano | | |
 | 27 | il copy del giro con origine futura dice "comincia" | P | Task 8, Rotazione del piano | | |
@@ -255,6 +261,11 @@ Ogni task aggiunge qui quello che non ha potuto provare fuori dal telefono.
   animazione, il fuoco al Menù utente alla chiusura, lo scorrimento rimesso negli Ingredienti.
   I test in jsdom controllano attributi e classi, non il movimento: restano alla sonda della
   spec §M.3 punto 2 e al telefono.
+- **La cima del pannello sul telefono** (Task 7): le tessere 2 × 2 a 360, il filetto del
+  separatore, i Blocchi con le righe da 56, il campo `PERS` con la tastiera numerica
+  (`inputMode="numeric"`) e il salvataggio con Invio sulla tastiera del telefono, il piede
+  `Versione {x}` coi 26 del corpo sotto. I test in jsdom controllano testi, ruoli e valori, non
+  il disegno.
 
 ## Rimasto aperto, di proposito
 
