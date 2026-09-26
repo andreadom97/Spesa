@@ -951,3 +951,80 @@ describe('Piatto (editor): un modo solo, SALVA nel Dock ed ELIMINA (spec fase 7 
     expect(mar.style.background).toBe('var(--spento)');
   });
 });
+
+describe('Piatto (editor): aperto dal Piano torna al Piano (review finale, I1)', () => {
+  const CHIAVE_RITORNO = 'spesa:piatto-ritorno:d-1';
+
+  beforeEach(() => {
+    paramsId = 'd-1';
+    vi.mocked(leggiRepertorio).mockResolvedValue([PIATTO_ESISTENTE]);
+    window.history.replaceState(null, '', '/piatti/d-1?da=piano');
+  });
+
+  afterEach(() => {
+    window.history.replaceState(null, '', '/');
+  });
+
+  it('con ?da=piano la freccia dice «Torna al piano» e porta a /piano, e il ritorno si dimentica', async () => {
+    rendi();
+    await screen.findByDisplayValue('Yogurt e avena');
+
+    expect(screen.queryByRole('button', { name: 'Torna ai piatti' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Torna al piano' }));
+
+    expect(push).toHaveBeenCalledWith('/piano');
+    expect(push).not.toHaveBeenCalledWith('/piatti');
+    expect(sessionStorage.getItem(CHIAVE_RITORNO)).toBeNull();
+  });
+
+  it('dopo il giro verso l’editor dell’ingrediente (rientro senza ?da) il ritorno è ancora /piano', async () => {
+    const { unmount } = rendi();
+    await screen.findByDisplayValue('Yogurt e avena');
+    fireEvent.click(screen.getByRole('link', { name: 'Modifica Yogurt greco' }));
+    unmount();
+
+    // L'editor dell'ingrediente torna a /piatti/{id} senza parametri.
+    window.history.replaceState(null, '', '/piatti/d-1');
+    rendi();
+    await screen.findByDisplayValue('Yogurt e avena');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Torna al piano' }));
+    expect(push).toHaveBeenCalledWith('/piano');
+  });
+
+  it('SALVA aperto dal Piano torna a /piano, e il ritorno si dimentica', async () => {
+    vi.mocked(salvaPiatto).mockResolvedValue('d-1');
+    rendi();
+    fireEvent.change(await screen.findByDisplayValue('Yogurt e avena'), { target: { value: 'Yogurt e avena bis' } });
+
+    fireEvent.click(salva());
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/piano'));
+    expect(push).not.toHaveBeenCalledWith('/piatti');
+    expect(sessionStorage.getItem(CHIAVE_RITORNO)).toBeNull();
+  });
+
+  it('ELIMINA riuscito aperto dal Piano torna a /piano, e il ritorno si dimentica', async () => {
+    vi.mocked(eliminaPiatto).mockResolvedValue(undefined);
+    rendi();
+    await screen.findByDisplayValue('Yogurt e avena');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Elimina piatto' }));
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'ELIMINA' }));
+
+    await waitFor(() => expect(eliminaPiatto).toHaveBeenCalledWith('d-1'));
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/piano'));
+    expect(push).not.toHaveBeenCalledWith('/piatti');
+    expect(sessionStorage.getItem(CHIAVE_RITORNO)).toBeNull();
+  });
+
+  it('senza ?da e senza ritorno memorizzato resta tutto com’era: «Torna ai piatti» e /piatti', async () => {
+    window.history.replaceState(null, '', '/piatti/d-1');
+    rendi();
+    await screen.findByDisplayValue('Yogurt e avena');
+
+    expect(screen.queryByRole('button', { name: 'Torna al piano' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Torna ai piatti' }));
+    expect(push).toHaveBeenCalledWith('/piatti');
+  });
+});

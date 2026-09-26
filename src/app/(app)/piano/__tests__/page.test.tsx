@@ -385,7 +385,8 @@ describe('Settimana (piano alimentare)', () => {
 
     fireEvent.click(nome);
 
-    expect(push).toHaveBeenCalledWith('/piatti/d-1');
+    // `?da=piano`: l'editor del piatto torna al Piano, non a /piatti (review finale, I1).
+    expect(push).toHaveBeenCalledWith('/piatti/d-1?da=piano');
     // Tap sul corpo non deve aver toccato lo stato.
     expect(aggiornaSlot).not.toHaveBeenCalled();
   });

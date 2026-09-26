@@ -18,6 +18,7 @@ import { useNascondiBarra } from '@/components/barra-context';
 import { AggiungiTratteggiato } from '@/components/AggiungiTratteggiato';
 import { Carico, Nota } from '@/components/pannello/pezzi';
 import { raccogliIngredienteCreato, riprendiBozza, salvaBozza, scartaBozza, type BozzaPiatto } from './bozza';
+import { dimenticaRitorno, leggiRitornoAlPiano } from './ritorno';
 import { SelettoreIngrediente } from './SelettoreIngrediente';
 import { ComponentiPiatto } from './ComponentiPiatto';
 
@@ -129,7 +130,7 @@ function moduloDaPiatto(p: Dish): ModuloPiatto {
  * Editor della ricetta: crea (`id === 'nuovo'`) o modifica un piatto del
  * repertorio. Dalla fase 7 ha un modo solo, come l'editor dell'ingrediente
  * (spec §B.2): si apre sempre modificabile, con la testata di modifica (la
- * freccia verso /piatti e il nome come campo), senza tab bar, e SALVA nel Dock
+ * freccia verso /piatti, o /piano se si è partiti da lì, e il nome come campo), senza tab bar, e SALVA nel Dock
  * spento finché niente cambia o finché il modulo non è valido. Aprire un
  * piatto per guardarlo non scrive niente: si scrive solo con SALVA.
  */
@@ -173,6 +174,27 @@ export default function Piatto() {
   >(null);
   const [confermaEliminazione, setConfermaEliminazione] = useState(false);
   const nomeRef = useRef<HTMLTextAreaElement>(null);
+
+  // Da dove si è arrivati, e quindi dove tornare (review finale, I1): il Piano apre
+  // con `?da=piano`, e `ritorno.ts` lo tiene per id attraverso il giro verso l'editor
+  // dell'ingrediente. Letto da window.location e non da useSearchParams, come
+  // `?torna=` nell'editor dell'ingrediente: niente confine <Suspense>.
+  const [dalPiano, setDalPiano] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDalPiano(leggiRitornoAlPiano(id, window.location.search));
+  }, [id]);
+
+  /** Freccia, SALVA ed ELIMINA riuscito vanno qui: il Piano se si è partiti da lì, altrimenti Piatti. */
+  function ritorno(): string {
+    return dalPiano ? '/piano' : '/piatti';
+  }
+
+  /** L'uscita vera e propria: il ritorno memorizzato non serve più. */
+  function vaiAlRitorno() {
+    dimenticaRitorno(id);
+    router.push(ritorno());
+  }
 
   // Il titolo va a capo su più righe come nell'artboard (che lo scrive con un
   // <br>): un <input> a riga singola l'avrebbe semplicemente tagliato fuori
@@ -405,7 +427,8 @@ export default function Piatto() {
   }
 
   /**
-   * La freccia (spec fase 7 §B.2): esce verso /piatti senza chiedere, e le
+   * La freccia (spec fase 7 §B.2): esce verso `ritorno()` (/piatti, o /piano se
+   * si è partiti da lì) senza chiedere, e le
    * modifiche non salvate si perdono, come con ANNULLA prima della fase 7. La
    * bozza si tratta come la trattava ANNULLA: su un piatto esistente si scarta,
    * perché un giro completo (uscita e rientro) non risusciti modifiche appena
@@ -416,13 +439,13 @@ export default function Piatto() {
    */
   function esci() {
     if (!nuovo && piattoOriginale) scartaBozza(id);
-    router.push('/piatti');
+    vaiAlRitorno();
   }
 
   /**
    * La conferma del Dialogo (spec fase 7 §B.3 punto 7). Se l'eliminazione
    * fallisce l'errore si rilancia: il Dialogo lo mostra sotto i tasti e resta
-   * aperto. Se riesce, come prima: via la bozza e ritorno a /piatti.
+   * aperto. Se riesce, come prima: via la bozza, poi `ritorno()`.
    */
   async function confermaElimina(): Promise<void> {
     if (!piattoOriginale) return;
@@ -434,7 +457,7 @@ export default function Piatto() {
     }
     scartaBozza(id);
     setConfermaEliminazione(false);
-    router.push('/piatti');
+    vaiAlRitorno();
   }
 
   const catalogoPerId = new Map(catalogo.map((i) => [i.id, i]));
@@ -506,10 +529,10 @@ export default function Piatto() {
         componenti: componentiEffettivi,
       });
       scartaBozza(id);
-      // SALVA torna a /piatti anche su un piatto esistente (spec fase 7 §B.5): la
-      // vista a cui tornava prima non c'è più. `salvando` resta vero: la pagina si
-      // smonta, e un secondo tocco nel frattempo non riscrive.
-      router.push('/piatti');
+      // SALVA torna a `ritorno()` anche su un piatto esistente (spec fase 7 §B.5,
+      // review finale I1): la vista a cui tornava prima non c'è più. `salvando`
+      // resta vero: la pagina si smonta, e un secondo tocco nel frattempo non riscrive.
+      vaiAlRitorno();
     } catch (errore) {
       console.error('piatto: salvataggio fallito.', errore);
       setErroreSalva('Non siamo riusciti a salvare il piatto. Riprova.');
@@ -517,7 +540,7 @@ export default function Piatto() {
     }
   }
 
-  const freccia = { etichetta: 'Torna ai piatti', onTorna: esci };
+  const freccia = { etichetta: dalPiano ? 'Torna al piano' : 'Torna ai piatti', onTorna: esci };
 
   if (erroreCarica) {
     // Niente Dock e niente ELIMINA: su un piatto che non si è letto non c'è niente da salvare né da eliminare.
