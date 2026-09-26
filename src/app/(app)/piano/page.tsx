@@ -23,6 +23,7 @@ import { StrisciaGiorni } from '@/components/StrisciaGiorni';
 import { RigaPasto } from '@/components/RigaPasto';
 import { FoglioAzioniPasto } from '@/components/FoglioAzioniPasto';
 import { Dock } from '@/components/Dock';
+import { useRileggiDopoImpostazioni } from '@/components/pannello/eventi';
 
 const LUNGHI = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
 
@@ -112,10 +113,26 @@ export default function Settimana() {
     setVista(v);
   }
 
+  // Il caricamento dichiarato nell'effetto qui sotto, pubblicato per la
+  // rilettura dopo un salvataggio nel pannello delle Impostazioni.
+  const ricaricaRef = useRef<() => Promise<void>>(async () => {});
+  // Quante volte l'utente ha cambiato il piano a schermo (check-in, spunte,
+  // porzioni). Una rilettura partita prima di un tocco e arrivata dopo
+  // descrive un piano più vecchio di quello a schermo, e si scarta.
+  const versioneTocchi = useRef(0);
+
   useEffect(() => {
     let vivo = true;
 
-    async function carica() {
+    /**
+     * `silenziosa` è la rilettura dopo un salvataggio nel pannello delle
+     * Impostazioni (review finale della fase 5, I2): il pannello sta sopra il
+     * Piano, che non si rimonta. Non cambia il giorno selezionato, non mostra
+     * l'errore di caricamento (il piano a schermo resta), e si scarta se nel
+     * frattempo l'utente ha toccato il piano.
+     */
+    async function carica(silenziosa = false) {
+      const versione = versioneTocchi.current;
       try {
         let corrente: Awaited<ReturnType<typeof leggiSettimanaCorrente>> = null;
         if (vista === 'precedente') {
@@ -174,6 +191,7 @@ export default function Settimana() {
           leggiDispensaSenzaBloccare(),
         ]);
         if (!vivo) return;
+        if (silenziosa && versioneTocchi.current !== versione) return;
 
         setDati({
           settimana: { id: corrente.id, dataInizio: corrente.dataInizio, stato: corrente.stato, slots: corrente.slots },
@@ -184,6 +202,7 @@ export default function Settimana() {
           ordineAree: impostazioni.ordineAree,
         });
         setLotti(lottiCaricati);
+        if (silenziosa) return;
 
         const giorni = giorniDellaSettimana(corrente.dataInizio);
         if (vista === 'precedente') {
@@ -194,16 +213,23 @@ export default function Settimana() {
           setSelezionato(indiceOggi >= 0 ? indiceOggi : 0);
         }
       } catch (errore) {
+        if (silenziosa) {
+          console.error('settimana: rilettura dopo le impostazioni fallita.', errore);
+          return;
+        }
         console.error('settimana: caricamento fallito.', errore);
         if (vivo) setErroreCaricamento('Non riusciamo a caricare la settimana. Riprova più tardi.');
       }
     }
 
+    ricaricaRef.current = () => carica(true);
     carica();
     return () => {
       vivo = false;
     };
   }, [vista]);
+
+  useRileggiDopoImpostazioni(ricaricaRef);
 
   if (erroreCaricamento) {
     return (
@@ -303,6 +329,7 @@ export default function Settimana() {
   }
 
   function aggiornaSlotLocale(slotAggiornato: MealSlot) {
+    versioneTocchi.current += 1;
     setDati((prev) => {
       if (!prev) return prev;
       return {
@@ -559,7 +586,7 @@ export default function Settimana() {
               Le righe si riempiono da sole appena ce n’è qualcuno.
             </div>
             <Link
-              href="/piatti"
+              href="/piatti?da=piano"
               style={{
                 display: 'inline-flex', alignItems: 'center', minHeight: 44, marginTop: 2,
                 fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.11em', color: 'var(--ink)',

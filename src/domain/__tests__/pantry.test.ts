@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  nuovoResiduo, serveControllo, GIORNI_CONTROLLO_STAPLE, residuoUtilizzabile,
-  effettoCorrezione, scadenzaResiduo, scadenzaStimata,
+  nuovoResiduo, serveControllo, GIORNI_CONTROLLO_DEFAULT, CADENZE, testoCadenza, ogniCadenza, fraCadenza,
+  residuoUtilizzabile, effettoCorrezione, scadenzaResiduo, scadenzaStimata,
 } from '../pantry';
 
 describe('nuovoResiduo', () => {
@@ -32,31 +32,83 @@ describe('serveControllo', () => {
   const oggi = '2026-08-26';
 
   it('non chiede niente senza almeno un acquisto a storico', () => {
-    expect(serveControllo({ ultimoAcquisto: null, ultimoCheck: null, oggi })).toBe(false);
+    expect(serveControllo({ ultimoAcquisto: null, ultimoCheck: null, oggi, giorniControllo: 90 })).toBe(false);
   });
 
   it('non chiede niente prima dei 90 giorni', () => {
-    expect(serveControllo({ ultimoAcquisto: '2026-06-01', ultimoCheck: null, oggi })).toBe(false);
+    expect(serveControllo({ ultimoAcquisto: '2026-06-01', ultimoCheck: null, oggi, giorniControllo: 90 })).toBe(false);
   });
 
   it('chiede esattamente al novantesimo giorno', () => {
-    expect(serveControllo({ ultimoAcquisto: '2026-05-28', ultimoCheck: null, oggi })).toBe(true);
+    expect(serveControllo({ ultimoAcquisto: '2026-05-28', ultimoCheck: null, oggi, giorniControllo: 90 })).toBe(true);
   });
 
   it('chiede dopo il novantesimo giorno', () => {
-    expect(serveControllo({ ultimoAcquisto: '2026-01-10', ultimoCheck: null, oggi })).toBe(true);
+    expect(serveControllo({ ultimoAcquisto: '2026-01-10', ultimoCheck: null, oggi, giorniControllo: 90 })).toBe(true);
   });
 
   it('un "sì" recente fa ripartire il conto e zittisce il controllo', () => {
-    expect(serveControllo({ ultimoAcquisto: '2026-01-10', ultimoCheck: '2026-08-01', oggi })).toBe(false);
+    expect(serveControllo({ ultimoAcquisto: '2026-01-10', ultimoCheck: '2026-08-01', oggi, giorniControllo: 90 })).toBe(false);
   });
 
   it('torna a chiedere quando anche il "sì" ha novanta giorni', () => {
-    expect(serveControllo({ ultimoAcquisto: '2026-01-10', ultimoCheck: '2026-05-01', oggi })).toBe(true);
+    expect(serveControllo({ ultimoAcquisto: '2026-01-10', ultimoCheck: '2026-05-01', oggi, giorniControllo: 90 })).toBe(true);
   });
 
-  it('usa la costante dichiarata, non un numero magico', () => {
-    expect(GIORNI_CONTROLLO_STAPLE).toBe(90);
+  it('il default è 90, la cadenza fissa di prima: a parità di dati la lista non cambia', () => {
+    expect(GIORNI_CONTROLLO_DEFAULT).toBe(90);
+  });
+});
+
+describe('serveControllo con la cadenza delle Impostazioni (spec fase 5 §E.1)', () => {
+  const oggi = '2026-08-26';
+
+  it('ogni mese: chiede dal trentesimo giorno', () => {
+    expect(serveControllo({ ultimoAcquisto: '2026-07-28', ultimoCheck: null, oggi, giorniControllo: 30 })).toBe(false); // 29 giorni
+    expect(serveControllo({ ultimoAcquisto: '2026-07-27', ultimoCheck: null, oggi, giorniControllo: 30 })).toBe(true); // 30 giorni
+  });
+
+  it('ogni 2 mesi: chiede dal sessantesimo giorno', () => {
+    expect(serveControllo({ ultimoAcquisto: '2026-06-28', ultimoCheck: null, oggi, giorniControllo: 60 })).toBe(false); // 59
+    expect(serveControllo({ ultimoAcquisto: '2026-06-27', ultimoCheck: null, oggi, giorniControllo: 60 })).toBe(true); // 60
+  });
+
+  it('ogni 3 mesi: il comportamento di prima', () => {
+    expect(serveControllo({ ultimoAcquisto: '2026-05-29', ultimoCheck: null, oggi, giorniControllo: 90 })).toBe(false); // 89
+    expect(serveControllo({ ultimoAcquisto: '2026-05-28', ultimoCheck: null, oggi, giorniControllo: 90 })).toBe(true); // 90
+  });
+
+  it('un «sì» recente zittisce il controllo con qualunque cadenza', () => {
+    for (const g of CADENZE) {
+      expect(serveControllo({ ultimoAcquisto: '2026-01-10', ultimoCheck: '2026-08-20', oggi, giorniControllo: g })).toBe(false);
+    }
+  });
+
+  it('senza un acquisto a storico non chiede niente, con qualunque cadenza', () => {
+    for (const g of CADENZE) {
+      expect(serveControllo({ ultimoAcquisto: null, ultimoCheck: null, oggi, giorniControllo: g })).toBe(false);
+    }
+  });
+});
+
+describe('le cadenze e il loro testo (spec fase 5 §C.6, §I)', () => {
+  it('tre cadenze, dalla più fitta', () => {
+    expect(CADENZE).toEqual([30, 60, 90]);
+  });
+
+  it('il testo della riga e del segmento', () => {
+    expect(testoCadenza(30)).toBe('OGNI MESE');
+    expect(testoCadenza(60)).toBe('OGNI 2 MESI');
+    expect(testoCadenza(90)).toBe('OGNI 3 MESI');
+  });
+
+  // Decisione di Andrea del 26/09: i due testi di oggi che dicevano «90 giorni» dicono la cadenza.
+  it('a inizio frase: Ogni mese, Ogni 2 mesi, Ogni 3 mesi', () => {
+    expect(CADENZE.map(ogniCadenza)).toEqual(['Ogni mese', 'Ogni 2 mesi', 'Ogni 3 mesi']);
+  });
+
+  it('in mezzo a una frase: fra un mese, fra 2 mesi, fra 3 mesi', () => {
+    expect(CADENZE.map(fraCadenza)).toEqual(['fra un mese', 'fra 2 mesi', 'fra 3 mesi']);
   });
 });
 

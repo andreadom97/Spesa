@@ -1,27 +1,50 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
-import Link from 'next/link';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import type { AreaId, ClasseResiduo, UnitaBase } from '@/domain/types';
+import type { AreaId, ClasseResiduo, Ingredient, UnitaBase } from '@/domain/types';
 import { salvaIngrediente, leggiIngredienti, eliminaIngrediente, IngredienteInUsoError, haAcquistiRegistrati } from '@/data/repertorio';
-import { AREE } from '@/domain/aree';
+import { leggiImpostazioni } from '@/data/impostazioni';
+import { AREE, coloreArea, nomeArea } from '@/domain/aree';
+import { GIORNI_CONTROLLO_DEFAULT, ogniCadenza, type GiorniControllo } from '@/domain/pantry';
+import { formatoProposto } from '@/domain/ean';
+import { MSG_CATALOGO, msgUnitaDiversa, proprietario } from '@/domain/scansione-dispensa';
 import { Segmento } from '@/components/Segmento';
+import { Dock } from '@/components/Dock';
+import { FoglioDalBasso, TestataFoglio } from '@/components/FoglioDalBasso';
+import { DialogoConferma } from '@/components/DialogoConferma';
+import { Etichetta, MessaggioErrore, STILE_PILLOLA, TastoPrimario, TastoSecondario } from '@/components/controlli';
+import { useNascondiBarra } from '@/components/barra-context';
+import { useIndietroFogli } from '@/components/useIndietroFogli';
+import { indirizzoRitorno } from '@/components/pannello/indirizzi';
+import { LettoreCodice, cercaProdotto } from '@/app/(app)/dispensa/LettoreCodice';
+import { IconaScansione } from '@/app/(app)/dispensa/icone';
 import { segnalaIngredienteCreato } from '../../bozza';
 
 /**
  * Le tre spiegazioni sono copiate alla lettera da Ingrediente.dc.html,
  * apostrofi tipografici compresi: spiegano all'utente un concetto che non
  * conosce (le classi di residuo) ed è testo pensato e discusso, non da
- * riformulare.
+ * riformulare. Quella della classe «a stima» sta in `spiegaClasse`, perché
+ * dice la cadenza scelta nelle impostazioni.
  */
-const SPIEGA_CLASSE: Record<ClasseResiduo, string> = {
+const SPIEGA_CLASSE: Record<Exclude<ClasseResiduo, 'stima'>, string> = {
   porzionabile:
     'La confezione copre più pasti. L’app calcola quanto ne resta dopo ogni porzione e lo riporta alla settimana dopo.',
   intero: 'Si conta a pezzi e non lascia resti frazionari: sei uova sono sei uova.',
-  stima:
-    'Non vale la pena contarlo a grammi. Ogni 90 giorni dall’ultimo acquisto la lista ti chiede se ne hai ancora.',
 };
+
+/**
+ * La spiegazione della classe di residuo (Ingrediente.dc.html, testi di oggi). Quella della
+ * classe «a stima» dice la cadenza scelta nelle impostazioni: prima della fase 5 diceva
+ * «Ogni 90 giorni» (decisione di Andrea del 26/09). Apostrofo tipografico, come oggi.
+ */
+function spiegaClasse(classe: ClasseResiduo, giorni: GiorniControllo): string {
+  if (classe === 'stima') {
+    return `Non vale la pena contarlo a grammi. ${ogniCadenza(giorni)} dall’ultimo acquisto la lista ti chiede se ne hai ancora.`;
+  }
+  return SPIEGA_CLASSE[classe];
+}
 
 /**
  * La frase sullo storico acquisti compare solo se ce n'è uno da perdere
@@ -41,7 +64,7 @@ function testoElimina(haAcquisti: boolean): string {
   return base + storico + blocco;
 }
 
-const OPZIONI_UNITA = [
+const OPZIONI_UNITA: { id: UnitaBase; label: string }[] = [
   { id: 'g', label: 'G' },
   { id: 'ml', label: 'ML' },
   { id: 'pz', label: 'PZ' },
@@ -71,14 +94,50 @@ function prezzoInTesto(prezzo: number | null): string {
   return prezzo === null ? '' : String(prezzo).replace('.', ',');
 }
 
-/** Stessa conversione hex->rgba duplicata in TesseraIngrediente.tsx: qui serve
- * per lo sfondo al 22% della cella d'area selezionata. */
-function rgba(hex: string, alpha: number): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+/** Spec fase 5 §F.1, testo nuovo. */
+const MSG_SCONOSCIUTO = 'Non conosciamo questo prodotto: scrivi tu la confezione.';
+/** La nota di oggi degli Ingredienti (spec §F punto 6, frame 12). */
+const NOTA_INGREDIENTI =
+  'Area, formato della confezione e classe decidono cosa finisce in lista e quanto: cambiarli qui cambia le liste da qui in avanti, non quelle già create.';
+
+const STILE_NOTA: CSSProperties = { margin: '0 4px', fontSize: 12.5, lineHeight: 1.45, color: 'var(--testo-2)' };
+/** Il campo 96 × 44 del frame 12 (lo stesso di `CampoConSalva`): formato e prezzo. */
+const STILE_CAMPO_96: CSSProperties = {
+  width: 96, height: 44, boxSizing: 'border-box', borderRadius: 14, padding: '0 12px', textAlign: 'right',
+  border: '1px solid var(--bordo)', background: 'var(--superficie)', boxShadow: 'var(--ombra-pannello)',
+  fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--ink)',
+};
+
+/** Pillola d'azione con stato (DESIGN.md §8): piena in --ink quando è la scelta. */
+function pillola(attiva: boolean): CSSProperties {
+  return {
+    ...STILE_PILLOLA,
+    background: attiva ? 'var(--ink)' : 'var(--superficie)',
+    color: attiva ? 'var(--superficie)' : 'var(--sec)',
+    border: attiva ? '1px solid var(--ink)' : '1px solid rgba(20,22,58,0.09)',
+  };
 }
+
+interface Modulo {
+  nome: string;
+  area: AreaId | null;
+  unitaBase: UnitaBase;
+  classeResiduo: ClasseResiduo;
+  deperibile: boolean;
+  formatoTesto: string;
+  prezzoTesto: string;
+  ean: string | null;
+}
+
+/** Il confronto «è cambiato qualcosa?» (§F: SALVA spento finché niente cambia). */
+function firma(m: Modulo): string {
+  return JSON.stringify(m);
+}
+
+/** Un ingrediente nuovo parte da qui: deperibile true come in Ingrediente.dc.html (vedi sotto). */
+const FIRMA_NUOVO = firma({
+  nome: '', area: null, unitaBase: 'g', classeResiduo: 'porzionabile', deperibile: true, formatoTesto: '', prezzoTesto: '', ean: null,
+});
 
 /**
  * Editor delle proprietà di un ingrediente: crea (`ingId === 'nuovo'`) o
@@ -86,23 +145,44 @@ function rgba(hex: string, alpha: number): string {
  * l'aritmetica del residuo (`residuo = residuo precedente + comprato -
  * consumato dal piano`): formato confezione e classe di residuo, più area e
  * deperibilità che decidono dove l'ingrediente finisce nella lista.
+ *
+ * Dalla fase 5 è il frame 12 (spec §F): pagina piena senza tab bar, SALVA nel
+ * Dock, la freccia che segue `torna`. Gli ingressi sono due, dal piatto e dal
+ * pannello delle impostazioni (`?torna=impostazioni`): le modifiche valgono per
+ * entrambi, cambia solo dove si torna.
  */
 export default function IngredienteEditor() {
   const { id, ingId } = useParams<{ id: string; ingId: string }>();
   const router = useRouter();
   const nuovo = ingId === 'nuovo';
+  // Pagina piena, senza tab bar (spec §F): il Dock scende a 22 da sé.
+  useNascondiBarra(true);
 
   const [caricamento, setCaricamento] = useState(true);
-  const [errore, setErrore] = useState<string | null>(null);
+  const [erroreCarica, setErroreCarica] = useState<string | null>(null);
+  const [erroreSalva, setErroreSalva] = useState<string | null>(null);
+  const [erroreElimina, setErroreElimina] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [nonTrovato, setNonTrovato] = useState(false);
   const [confermaEliminazione, setConfermaEliminazione] = useState(false);
-  const [eliminando, setEliminando] = useState(false);
   const [haAcquisti, setHaAcquisti] = useState(false);
+  const [firmaIniziale, setFirmaIniziale] = useState<string | null>(null);
+  // La cadenza serve solo alla spiegazione «a stima»: se non si legge vale il default, e
+  // l'editor funziona lo stesso.
+  const [giorniControllo, setGiorniControllo] = useState<GiorniControllo>(GIORNI_CONTROLLO_DEFAULT);
+  useEffect(() => {
+    let vivo = true;
+    leggiImpostazioni()
+      .then((i) => { if (vivo) setGiorniControllo(i.giorniControllo); })
+      .catch((e) => console.error('ingrediente: lettura della cadenza fallita.', e));
+    return () => {
+      vivo = false;
+    };
+  }, []);
 
   // Da dove si è arrivati, e quindi dove tornare. L'editor nasce dentro un
-  // piatto, ma l'elenco in Impostazioni riusa questa stessa schermata: senza
-  // saperlo, salvare da lì scaricherebbe l'utente su un piatto nuovo vuoto.
+  // piatto, ma gli Ingredienti del pannello riusano questa stessa schermata:
+  // senza saperlo, salvare da lì scaricherebbe l'utente su un piatto nuovo vuoto.
   // Letto da window.location e non da useSearchParams per non imporre un
   // confine <Suspense> a tutta la pagina, come già fatto in /entra.
   const [tornaAImpostazioni, setTornaAImpostazioni] = useState(false);
@@ -111,7 +191,15 @@ export default function IngredienteEditor() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (p === 'impostazioni') setTornaAImpostazioni(true);
   }, []);
-  const destinazioneRitorno = tornaAImpostazioni ? '/impostazioni/ingredienti' : `/piatti/${id}`;
+  /**
+   * Freccia e SALVA vanno nello stesso posto (spec §F). Con `torna=impostazioni` è il
+   * pannello sugli Ingredienti sopra la pagina d'origine: `indirizzoRitorno()` legge
+   * l'origine che il pannello ha salvato, e il pannello rimette lo scorrimento. Si
+   * legge al tocco, non al render. Prima della fase 5 la freccia andava sempre a
+   * `/piatti/{id}`, e con `id = nuovo` finiva nell'editor di un piatto nuovo
+   * [misurato]: corretto qui.
+   */
+  const ritorno = () => (tornaAImpostazioni ? indirizzoRitorno() : `/piatti/${id}`);
 
   const [nome, setNome] = useState('');
   const [area, setArea] = useState<AreaId | null>(null);
@@ -128,6 +216,33 @@ export default function IngredienteEditor() {
   // scrive sempre la colonna, anche null: un salvataggio da questa scheda
   // non deve cancellare in silenzio un prezzo già messo.
   const [prezzoTesto, setPrezzoTesto] = useState('');
+  // Il codice letto in questa visita. null = nessuna scansione: SALVA non manda la
+  // chiave, e l'ultimo codice salvato resta com'è (repertorio.ts, docstring di salvaIngrediente).
+  const [ean, setEan] = useState<string | null>(null);
+  const [messaggioScan, setMessaggioScan] = useState<string | null>(null);
+  const [scansione, setScansione] = useState(false);
+  const [altro, setAltro] = useState<Ingredient | null>(null);
+  // La generazione del foglio di scansione: sale a ogni apertura e a ogni chiusura. Una
+  // lettura in volo (elenco o catalogo) che arriva con un'altra generazione è di un foglio
+  // che non c'è più, e si scarta tutta: niente formato, EAN, messaggio o «codice di un altro».
+  const generazioneScan = useRef(0);
+
+  function apriScansione() {
+    generazioneScan.current += 1;
+    setScansione(true);
+  }
+
+  function chiudiScansione() {
+    generazioneScan.current += 1;
+    setScansione(false);
+    setAltro(null);
+  }
+
+  // Il gesto indietro chiude prima il dialogo o il foglio, poi esce (spec §A.4, §F.1).
+  const { chiudiTuttoPoi } = useIndietroFogli(
+    (scansione ? 1 : 0) + (confermaEliminazione ? 1 : 0),
+    () => (confermaEliminazione ? setConfermaEliminazione(false) : chiudiScansione()),
+  );
 
   useEffect(() => {
     let vivo = true;
@@ -143,13 +258,22 @@ export default function IngredienteEditor() {
         if (!trovato) {
           setNonTrovato(true);
         } else {
-          setNome(trovato.nome);
-          setArea(trovato.area);
-          setUnitaBase(trovato.unitaBase);
-          setClasseResiduo(trovato.classeResiduo);
-          setDeperibile(trovato.deperibile);
-          setFormatoTesto(String(trovato.formatoConfezione));
-          setPrezzoTesto(prezzoInTesto(trovato.prezzoConfezione));
+          const iniziale: Modulo = {
+            nome: trovato.nome, area: trovato.area, unitaBase: trovato.unitaBase, classeResiduo: trovato.classeResiduo,
+            deperibile: trovato.deperibile, formatoTesto: String(trovato.formatoConfezione),
+            prezzoTesto: prezzoInTesto(trovato.prezzoConfezione), ean: null,
+          };
+          setNome(iniziale.nome);
+          setArea(iniziale.area);
+          setUnitaBase(iniziale.unitaBase);
+          setClasseResiduo(iniziale.classeResiduo);
+          setDeperibile(iniziale.deperibile);
+          setFormatoTesto(iniziale.formatoTesto);
+          setPrezzoTesto(iniziale.prezzoTesto);
+          // APRI {altro} arriva qui con la pagina forse non rimontata: niente scansione vecchia.
+          setEan(null);
+          setMessaggioScan(null);
+          setFirmaIniziale(firma(iniziale));
           // Non blocca il caricamento della scheda se fallisce: al peggio la
           // conferma di eliminazione mostra o no la frase sullo storico.
           // Fail-safe invertito di proposito: se non sappiamo se ci sono
@@ -166,7 +290,7 @@ export default function IngredienteEditor() {
         }
       } catch (errore) {
         console.error('ingrediente: caricamento fallito.', errore);
-        if (vivo) setErrore('Non riusciamo a caricare l’ingrediente. Riprova più tardi.');
+        if (vivo) setErroreCarica('Non riusciamo a caricare l’ingrediente. Riprova più tardi.');
       } finally {
         if (vivo) setCaricamento(false);
       }
@@ -194,35 +318,33 @@ export default function IngredienteEditor() {
     }
   }
 
-  const formatoConfezione = Number(formatoTesto);
+  const intero = classeResiduo === 'intero';
+  const formatoConfezione = Number(formatoTesto.trim().replace(',', '.'));
   // Il prezzo è facoltativo, ma se c'è dev'essere un numero positivo: un
   // "0" o un "abc" bloccano il salvataggio come un formato non valido,
   // invece di finire in tabella (che ha comunque un check > 0).
   const prezzoConfezione = analizzaPrezzo(prezzoTesto);
-  const prezzoNonValido =
-    prezzoConfezione !== null && (!Number.isFinite(prezzoConfezione) || prezzoConfezione <= 0);
+  const prezzoNonValido = prezzoConfezione !== null && (!Number.isFinite(prezzoConfezione) || prezzoConfezione <= 0);
   const nonValido =
-    !nome.trim() ||
-    area === null ||
-    !formatoTesto.trim() ||
-    Number.isNaN(formatoConfezione) ||
-    formatoConfezione <= 0 ||
-    prezzoNonValido;
+    !nome.trim() || area === null || !formatoTesto.trim() || !Number.isFinite(formatoConfezione) || formatoConfezione <= 0 || prezzoNonValido;
+  const modulo: Modulo = { nome, area, unitaBase, classeResiduo, deperibile, formatoTesto, prezzoTesto, ean };
+  const cambiato = firma(modulo) !== (nuovo ? FIRMA_NUOVO : firmaIniziale);
+  const spento = nonValido || !cambiato;
 
   async function salva() {
-    if (nonValido || salvando || area === null) return;
+    if (spento || salvando || area === null) return;
     setSalvando(true);
-    setErrore(null);
+    setErroreSalva(null);
     try {
       // Guardiano di integrità: l'interfaccia blocca già la scelta
-      // dell'unità quando la classe è 'intero' (il Segmento sopra è
+      // dell'unità quando la classe è 'intero' (il segmento Unità è
       // disabilitato), ma il salvataggio non deve fidarsi solo di quello.
       // list-builder forza formato=1 per 'intero' presupponendo che si
       // contino pezzi: un 'intero' salvato con unità diversa da 'pz'
       // farebbe divergere l'aritmetica della lista dalla realtà, senza dare
       // alcun segnale. Qui si ricalcola, non solo si ricontrolla.
-      const unitaEffettiva = classeResiduo === 'intero' ? 'pz' : unitaBase;
-      const formatoEffettivo = classeResiduo === 'intero' ? 1 : formatoConfezione;
+      const unitaEffettiva = intero ? 'pz' : unitaBase;
+      const formatoEffettivo = intero ? 1 : formatoConfezione;
       const idSalvato = await salvaIngrediente({
         id: nuovo ? undefined : ingId,
         nome: nome.trim(),
@@ -232,65 +354,136 @@ export default function IngredienteEditor() {
         deperibile,
         formatoConfezione: formatoEffettivo,
         prezzoConfezione,
+        // Solo se questa visita ha letto un codice (§F.1): «niente si scrive fino a SALVA».
+        ...(ean !== null ? { ean } : {}),
       });
       // Solo su un ingrediente nuovo: chi apre questa scheda per correggere
       // un ingrediente già nel piatto non vuole vederselo aggiungere due volte.
-      // Solo tornando a un piatto: da Impostazioni non c'è nessun piatto in
+      // Solo tornando a un piatto: dal pannello non c'è nessun piatto in
       // attesa di questo ingrediente.
       if (nuovo && !tornaAImpostazioni) segnalaIngredienteCreato(id, idSalvato);
-      router.push(destinazioneRitorno);
+      router.push(ritorno());
     } catch (errore) {
       console.error('ingrediente: salvataggio fallito.', errore);
-      setErrore('Non siamo riusciti a salvare l’ingrediente. Riprova.');
+      setErroreSalva('Non siamo riusciti a salvare l’ingrediente. Riprova.');
       setSalvando(false);
     }
   }
 
   /**
-   * Su un ingrediente nuovo (mai salvato) non c'è niente da eliminare:
-   * equivale ad annullare, senza chiedere conferma — stessa scelta già fatta
-   * per il piatto in piatti/[id]/page.tsx. Su un ingrediente esistente apre
-   * la conferma: qui l'eliminazione è definitiva (hard delete), non va fatta
-   * con un tap solo.
+   * La lettura (spec §F.1, e §F.3 della fase 4 per il codice di un altro): prima si
+   * guarda se il codice è già di un altro ingrediente, senza rete; poi il catalogo.
+   * Niente si scrive: formato, unità ed EAN restano nel modulo fino a SALVA. Qui non
+   * si usa `aggiornaFormatoDaScansione`, che tocca le righe della lista.
+   *
+   * L'unità di un ingrediente che esiste non la cambia il catalogo (review del Task 12,
+   * scarto da §F.1 punto 2): le quantità dei suoi piatti sono scritte in quell'unità,
+   * `salvaIngrediente` non le converte, e `convertiInUnitaBase` lancerebbe
+   * `UnitaIncompatibileError` generando la lista (`src/domain/unita.ts`, `src/data/lista.ts`).
+   * Vale la regola della fase 4 (`formatoProposto`, `esitoDaCatalogo`): il formato si
+   * riempie solo nella stessa unità, altrimenti `msgUnitaDiversa`, e l'EAN si lega lo stesso.
+   * Un ingrediente nuovo non è in nessun piatto: prende formato e unità, come oggi.
+   *
+   * Se il foglio si chiude (o si riapre) mentre la lettura è in volo, l'esito si scarta.
    */
-  function tapCestino() {
-    if (nuovo) {
-      router.push(destinazioneRitorno);
+  async function letto(codice: string) {
+    const generazione = generazioneScan.current;
+    const superata = () => generazioneScan.current !== generazione;
+    let catalogo: Ingredient[] = [];
+    try {
+      catalogo = await leggiIngredienti();
+    } catch {
+      // Senza elenco non si riconosce il proprietario: si passa al catalogo.
+    }
+    if (superata()) return;
+    const suo = proprietario(codice, catalogo, nuovo ? undefined : ingId);
+    if (suo) {
+      setAltro(suo);
       return;
     }
-    setConfermaEliminazione(true);
+    const risposta = await cercaProdotto(codice);
+    if (superata()) return;
+    if (risposta === 'sessione') {
+      router.replace('/entra');
+      return;
+    }
+    setEan(codice);
+    if (risposta === 'errore') {
+      setMessaggioScan(MSG_CATALOGO);
+    } else if (!risposta.trovato || !risposta.quantita) {
+      setMessaggioScan(MSG_SCONOSCIUTO);
+    } else if (intero) {
+      // Un INTERO si conta a pezzi con formato 1 (list-builder): il peso del catalogo non vale.
+      setMessaggioScan(null);
+    } else if (nuovo) {
+      setMessaggioScan(null);
+      setFormatoTesto(String(risposta.quantita.valore));
+      setUnitaBase(risposta.quantita.unita);
+    } else {
+      // L'unità confrontata è quella del modulo, cioè quella che SALVA scriverà.
+      const formato = formatoProposto(risposta.quantita, unitaBase);
+      if (formato === null) {
+        setMessaggioScan(msgUnitaDiversa(risposta.quantita.unita, unitaBase));
+      } else {
+        setMessaggioScan(null);
+        setFormatoTesto(String(formato));
+      }
+    }
+    chiudiScansione();
   }
 
-  async function confermaElimina() {
-    setEliminando(true);
+  /** APRI {altro}: il codice resta suo (fase 4 §F.2). Le modifiche di qui si perdono, come con la freccia. */
+  function apriAltro(a: Ingredient) {
+    const dest = `/piatti/${id}/ingredienti/${a.id}${tornaAImpostazioni ? '?torna=impostazioni' : ''}`;
+    // Il foglio ha una voce di cronologia aperta: la push parte dopo il go(-1) (spec §A.5).
+    chiudiTuttoPoi(() => router.push(dest));
+    chiudiScansione();
+  }
+
+  async function confermaElimina(): Promise<void> {
     try {
       await eliminaIngrediente(ingId);
-      router.push(destinazioneRitorno);
     } catch (e) {
+      if (e instanceof IngredienteInUsoError) {
+        // Il motivo del blocco è una frase da leggere con calma: resta sotto ELIMINA, a dialogo chiuso.
+        setConfermaEliminazione(false);
+        setErroreElimina(e.message);
+        return;
+      }
       console.error('ingrediente: eliminazione fallita.', e);
-      setErrore(
-        e instanceof IngredienteInUsoError
-          ? e.message
-          : 'Non siamo riusciti a eliminare l’ingrediente. Riprova.',
-      );
-      setEliminando(false);
-      setConfermaEliminazione(false);
+      throw e; // DialogoConferma mostra il suo errore e resta aperto
     }
+    // Il dialogo ha una voce di cronologia aperta: la push parte dopo il go(-1) che la
+    // consuma, così la voce non resta orfana (spec §A.5). Se il gesto indietro ha già
+    // chiuso il dialogo mentre l'eliminazione era in volo, non c'è voce da consumare e
+    // la push parte nell'effetto dell'hook: una volta sola, senza altri go.
+    chiudiTuttoPoi(() => router.push(ritorno()));
+    setConfermaEliminazione(false);
   }
+
+  const freccia = { etichetta: tornaAImpostazioni ? 'Torna agli ingredienti' : 'Torna al piatto', onTorna: () => router.push(ritorno()) };
 
   if (nonTrovato) {
     return (
-      <Cornice dishId={id} cestinoAttivo={false}>
-        <p style={{ margin: '20px 18px', color: 'var(--sec)' }}>Ingrediente non trovato.</p>
+      <Cornice freccia={freccia}>
+        <p style={{ margin: '20px 18px', color: 'var(--testo-2)' }}>Ingrediente non trovato.</p>
       </Cornice>
     );
   }
-
-  if (caricamento) return <Cornice dishId={id} />;
+  if (erroreCarica) {
+    return (
+      <Cornice freccia={freccia}>
+        <p style={{ margin: '20px 18px', color: 'var(--testo-2)', fontSize: 13 }}>{erroreCarica}</p>
+      </Cornice>
+    );
+  }
+  if (caricamento) return <Cornice freccia={freccia} />;
 
   return (
-    <Cornice dishId={id} onCestino={tapCestino}>
-      <div className="sc scroll-app con-piede" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 16px' }}>
+    <Cornice
+      freccia={freccia}
+      area={area}
+      nome={
         <input
           type="text"
           value={nome}
@@ -298,436 +491,231 @@ export default function IngredienteEditor() {
           placeholder="Dai un nome all'ingrediente"
           className="nome-ingrediente"
           style={{
-            display: 'block',
-            width: '100%',
-            fontFamily: 'inherit',
-            fontSize: 32,
-            fontWeight: 800,
-            letterSpacing: '-0.045em',
-            lineHeight: 1.05,
-            color: 'var(--ink)',
-            padding: '0 2px 8px',
-            border: 'none',
-            borderBottom: '1.5px solid rgba(20,22,58,0.14)',
-            background: 'transparent',
-            outline: 'none',
+            display: 'block', width: '100%', fontFamily: 'inherit', fontSize: 32, fontWeight: 800, letterSpacing: '-0.045em',
+            lineHeight: 1.05, color: 'var(--ink)', padding: '0 2px 8px', border: 'none',
+            borderBottom: '1.5px solid rgba(20,22,58,0.14)', background: 'transparent', outline: 'none',
           }}
         />
-        <style jsx>{`
-          .nome-ingrediente::placeholder {
-            color: #c4c4ce;
-          }
-        `}</style>
-
-        <Etichetta margine="22px 4px 10px">AREA DEL SUPERMERCATO</Etichetta>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
-          {AREE.map((a) => {
-            const selezionata = area === a.id;
-            return (
-              <button
-                key={a.id}
-                type="button"
-                onClick={() => setArea(a.id)}
-                aria-pressed={selezionata}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 9,
-                  minHeight: 52,
-                  padding: '11px 12px',
-                  borderRadius: 15,
-                  background: selezionata ? rgba(a.colore, 0.22) : '#FFFFFF',
-                  border: selezionata ? `1.5px solid ${a.colore}` : '1px solid rgba(20,22,58,0.09)',
-                }}
-              >
-                <span style={{ width: 11, height: 11, borderRadius: 3.5, flex: 'none', background: a.colore }} />
-                <span
-                  style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 8.5,
-                    fontWeight: 700,
-                    letterSpacing: '0.09em',
-                    lineHeight: 1.45,
-                    color: selezionata ? 'var(--ink)' : 'var(--sec)',
-                  }}
-                >
+      }
+    >
+      <style jsx>{`
+        .nome-ingrediente::placeholder { color: var(--icona-spenta); }
+      `}</style>
+      <div className="sc scroll-app con-dock" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '8px 16px 0', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <Etichetta>AREA</Etichetta>
+          <div role="group" aria-label="Area" style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+            {AREE.map((a) => {
+              const scelta = area === a.id;
+              return (
+                <button key={a.id} type="button" aria-pressed={scelta} onClick={() => setArea(a.id)} style={{ ...pillola(scelta), color: scelta ? 'var(--superficie)' : 'var(--ink)', display: 'flex', alignItems: 'center', gap: 8, padding: '0 14px' }}>
+                  <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: 4, flex: 'none', background: coloreArea(a.id) }} />
                   {a.nome}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Sotto l'area, non in fondo alla schermata: area e deperibilità
-            decidono insieme dove finisce la voce, e soprattutto qui il campo
-            si vede senza scorrere. In fondo restava sotto la piega mentre
-            SALVA INGREDIENTE era già visibile e attivo: si salvava senza aver
-            mai incontrato il controllo, e su mobile il divario è maggiore.
-            L'ordine diverge da Ingrediente.dc.html; il default (true) no. */}
-        <Etichetta margine="24px 4px 10px">DEPERIBILE</Etichetta>
-        <button
-          type="button"
-          onClick={() => setDeperibile((v) => !v)}
-          aria-pressed={deperibile}
-          style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 14,
-            padding: '15px 16px',
-            borderRadius: 18,
-            background: '#FFFFFF',
-            border: '1px solid rgba(20,22,58,0.09)',
-          }}
-        >
-          <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-            <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)' }}>
-              {deperibile ? 'Sì, va comprato fresco' : 'No, si conserva a lungo'}
-            </div>
-            <div
-              style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: 9,
-                letterSpacing: '0.1em',
-                color: 'var(--sec)',
-                marginTop: 5,
-              }}
-            >
-              {/* Con una lista sola il flag non decide più in quale lista finisce (decisione
-                  del 20/09): decide se il residuo può decadere (pantry.ts).
-                  La sottoriga dice DOVE la scelta ha effetto, non quanto dura: "non arriva
-                  alla settimana dopo" era falso in tre casi su `residuoUtilizzabile` —
-                  `GIORNI_FRESCO.surgelati` è null e il residuo non decade mai, con
-                  `congelato` la soglia è `GIORNI_CONGELATO` = 90 giorni, e il confronto è
-                  `>` stretto, quindi a esattamente sette giorni il residuo sopravvive.
-                  Il ramo non deperibile è l'unico che si può promettere: `residuoUtilizzabile`
-                  esce subito col residuo intero e `scadenzaResiduo` ritorna null. */}
-              {deperibile ? 'QUANTO DURA IL RESIDUO DIPENDE DAL REPARTO' : 'IL RESIDUO NON SCADE'}
-            </div>
+                </button>
+              );
+            })}
           </div>
-          <span
-            style={{
-              width: 52,
-              height: 31,
-              borderRadius: 999,
-              flex: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              padding: 3,
-              background: deperibile ? 'var(--ink)' : 'rgba(20,22,58,0.14)',
-              justifyContent: deperibile ? 'flex-end' : 'flex-start',
-            }}
-          >
-            <span
-              style={{
-                width: 25,
-                height: 25,
-                borderRadius: 999,
-                background: '#FFFFFF',
-                boxShadow: '0 1px 3px rgba(20,22,58,0.28)',
-              }}
-            />
-          </span>
-        </button>
-
-        <Etichetta margine="24px 4px 10px">UNITÀ DI MISURA</Etichetta>
-        <Segmento
-          opzioni={OPZIONI_UNITA}
-          valore={unitaBase}
-          onCambia={(u) => setUnitaBase(u as UnitaBase)}
-          variante="blocco"
-          disabilitato={classeResiduo === 'intero'}
-        />
-
-        <Etichetta margine="24px 4px 10px">FORMATO DELLA CONFEZIONE</Etichetta>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div
-            style={{
-              flex: 1,
-              height: 56,
-              borderRadius: 16,
-              background: '#FFFFFF',
-              border: '1px solid rgba(20,22,58,0.12)',
-              display: 'flex',
-              alignItems: 'center',
-              padding: '0 16px',
-            }}
-          >
-            <input
-              type="number"
-              inputMode="decimal"
-              min={0}
-              value={formatoTesto}
-              disabled={classeResiduo === 'intero'}
-              onChange={(e) => setFormatoTesto(e.target.value)}
-              aria-label="Formato della confezione"
-              className="formato-input"
-              style={{
-                width: '100%',
-                border: 'none',
-                outline: 'none',
-                background: 'transparent',
-                fontFamily: 'var(--font-mono)',
-                fontSize: 22,
-                fontWeight: 700,
-                color: 'var(--ink)',
-              }}
-            />
-          </div>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 16, fontWeight: 700, color: 'var(--sec)', width: 34 }}>
-            {unitaBase}
-          </span>
-        </div>
-        <style jsx>{`
-          .formato-input::-webkit-outer-spin-button,
-          .formato-input::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-          }
-          .formato-input {
-            -moz-appearance: textfield;
-            appearance: textfield;
-          }
-        `}</style>
-        {/* La prima frase è quella di Ingrediente.dc.html. La seconda è
-            aggiunta: al banco il peso non è mai quello dichiarato — una
-            vaschetta di pollo è 297 g, non 300 — e senza dirlo si cerca una
-            precisione che non esiste, o peggio ci si blocca. Il numero serve
-            a decidere quante confezioni prendere, e lo scarto lo assorbe la
-            Dispensa, che è fatta per questo. */}
-        <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', marginTop: 8 }}>
-          Quanto ne vendono in una confezione. Serve a sapere quante confezioni comprare, non quanti grammi.
-          Dove il peso varia — carne, pesce, formaggio al banco — basta un valore indicativo: lo scarto lo
-          correggi dalla Dispensa quando il conto non torna.
         </div>
 
-        {/* Sotto il formato, perché è il prezzo di QUELLA confezione: serve
-            solo al contatore del non ricomprato (spec §4), non alla lista. */}
-        <Etichetta margine="24px 4px 10px">PREZZO DI UNA CONFEZIONE</Etichetta>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div
-            style={{
-              flex: 1,
-              height: 56,
-              borderRadius: 16,
-              background: '#FFFFFF',
-              border: '1px solid rgba(20,22,58,0.12)',
-              display: 'flex',
-              alignItems: 'center',
-              padding: '0 16px',
-            }}
-          >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <Etichetta>CONFEZIONE</Etichetta>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <input
               type="text"
               inputMode="decimal"
-              value={prezzoTesto}
-              onChange={(e) => setPrezzoTesto(e.target.value)}
-              aria-label="Prezzo di una confezione"
-              style={{
-                width: '100%',
-                border: 'none',
-                outline: 'none',
-                background: 'transparent',
-                fontFamily: 'var(--font-mono)',
-                fontSize: 22,
-                fontWeight: 700,
-                color: 'var(--ink)',
-              }}
+              aria-label="Formato della confezione"
+              value={formatoTesto}
+              disabled={intero}
+              onChange={(e) => setFormatoTesto(e.target.value)}
+              style={{ ...STILE_CAMPO_96, opacity: intero ? 0.5 : 1 }}
             />
+            <div role="group" aria-label="Unità" style={{ display: 'flex', alignItems: 'center', gap: 4, height: 44, padding: '0 3px', borderRadius: 999, background: 'var(--barra-attiva)', opacity: intero ? 0.5 : 1 }}>
+              {OPZIONI_UNITA.map((o) => {
+                const scelta = unitaBase === o.id;
+                return (
+                  // Il bottone è l'area di tocco da 44, la pillola visibile è 38 (frame 12), come in Segmento.
+                  <button key={o.id} type="button" aria-pressed={scelta} disabled={intero} onClick={() => setUnitaBase(o.id)} style={{ height: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{
+                      height: 38, minWidth: 44, padding: '0 10px', borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: scelta ? 'var(--superficie)' : 'none', boxShadow: scelta ? 'var(--ombra-tessera)' : 'none',
+                      color: scelta ? 'var(--ink)' : 'var(--testo-2)', fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
+                    }}>
+                      {o.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 16, fontWeight: 700, color: 'var(--sec)', width: 34 }}>
-            €
-          </span>
-        </div>
-        <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', marginTop: 8 }}>
-          Facoltativo, in euro: serve solo a contare quanto non ricompri
+          <TastoSecondario onClick={apriScansione} style={{ marginTop: 4 }}>
+            <IconaScansione />
+            SCANSIONA LA CONFEZIONE
+          </TastoSecondario>
+          {messaggioScan && <p role="status" style={STILE_NOTA}>{messaggioScan}</p>}
+          {/* La nota di oggi sul formato: resta (decisione 3 della spec), anche se il frame 12
+              non la mostra. La prima frase è quella di Ingrediente.dc.html. La seconda è
+              aggiunta: al banco il peso non è mai quello dichiarato — una vaschetta di pollo
+              è 297 g, non 300 — e senza dirlo si cerca una precisione che non esiste, o
+              peggio ci si blocca. Il numero serve a decidere quante confezioni prendere, e
+              lo scarto lo assorbe la Dispensa, che è fatta per questo. */}
+          <p style={STILE_NOTA}>
+            Quanto ne vendono in una confezione. Serve a sapere quante confezioni comprare, non quanti grammi.
+            Dove il peso varia — carne, pesce, formaggio al banco — basta un valore indicativo: lo scarto lo
+            correggi dalla Dispensa quando il conto non torna.
+          </p>
         </div>
 
-        <Etichetta margine="24px 4px 10px">COME SI CONSUMA</Etichetta>
-        <Segmento opzioni={OPZIONI_CLASSE} valore={classeResiduo} onCambia={scegliClasse} variante="blocco" />
-        <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', marginTop: 8 }}>
-          {SPIEGA_CLASSE[classeResiduo]}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <Etichetta>COME SI CONSUMA</Etichetta>
+          <Segmento opzioni={OPZIONI_CLASSE} valore={classeResiduo} onCambia={scegliClasse} variante="blocco" />
+          <p style={STILE_NOTA}>{spiegaClasse(classeResiduo, giorniControllo)}</p>
         </div>
 
-        {errore && <p style={{ margin: '14px 6px 0', color: 'var(--sec)', fontSize: 13 }}>{errore}</p>}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingTop: 14, borderTop: '1px solid var(--bordo)' }}>
+          <div role="group" aria-label="Fresco" style={{ display: 'flex', alignItems: 'center', gap: 7, minHeight: 44, padding: '0 4px' }}>
+            <span style={{ flex: 1, fontSize: 15, fontWeight: 700, letterSpacing: '-0.024em', color: 'var(--ink)' }}>Fresco</span>
+            <button type="button" aria-pressed={deperibile} onClick={() => setDeperibile(true)} style={{ ...pillola(deperibile), minWidth: 52 }}>SÌ</button>
+            <button type="button" aria-pressed={!deperibile} onClick={() => setDeperibile(false)} style={{ ...pillola(!deperibile), minWidth: 52 }}>NO</button>
+          </div>
+          <p style={{ margin: '0 4px', fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.1em', color: 'var(--testo-2)' }}>
+            {/* Con una lista sola il flag non decide più in quale lista finisce (decisione
+                del 20/09): decide se il residuo può decadere (pantry.ts).
+                La sottoriga dice DOVE la scelta ha effetto, non quanto dura: "non arriva
+                alla settimana dopo" era falso in tre casi su `residuoUtilizzabile` —
+                `GIORNI_FRESCO.surgelati` è null e il residuo non decade mai, con
+                `congelato` la soglia è `GIORNI_CONGELATO` = 90 giorni, e il confronto è
+                `>` stretto, quindi a esattamente sette giorni il residuo sopravvive.
+                Il ramo non deperibile è l'unico che si può promettere: `residuoUtilizzabile`
+                esce subito col residuo intero e `scadenzaResiduo` ritorna null. */}
+            {deperibile ? 'QUANTO DURA IL RESIDUO DIPENDE DAL REPARTO' : 'IL RESIDUO NON SCADE'}
+          </p>
+        </div>
+
+        {/* Il prezzo dopo Fresco (spec §F): è il prezzo di QUELLA confezione, e serve
+            solo al contatore del non ricomprato (spec §4 della fase 1), non alla lista. */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <Etichetta>PREZZO DI UNA CONFEZIONE</Etichetta>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input type="text" inputMode="decimal" aria-label="Prezzo di una confezione" value={prezzoTesto} onChange={(e) => setPrezzoTesto(e.target.value)} style={STILE_CAMPO_96} />
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ter)' }}>€</span>
+          </div>
+          <p style={STILE_NOTA}>Facoltativo, in euro: serve solo a contare quanto non ricompri</p>
+        </div>
+
+        <p style={STILE_NOTA}>{NOTA_INGREDIENTI}</p>
+
+        {/* ELIMINA in coda (spec §F), solo su un ingrediente che esiste: su uno nuovo
+            non c'è niente da eliminare, e la freccia fa quel lavoro. Qui l'eliminazione è
+            definitiva (hard delete, vedi eliminaIngrediente in src/data/repertorio.ts):
+            passa sempre dal dialogo, mai con un tocco solo. */}
+        {!nuovo && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <TastoSecondario aria-label="Elimina ingrediente" onClick={() => setConfermaEliminazione(true)} style={{ color: 'var(--errore)' }}>
+              ELIMINA
+            </TastoSecondario>
+            {erroreElimina && <MessaggioErrore ruolo="alert">{erroreElimina}</MessaggioErrore>}
+          </div>
+        )}
       </div>
 
-      <div className="coda-barra" style={{ padding: '8px 16px 22px', display: 'flex', gap: 9 }}>
-        <Link
-          href={destinazioneRitorno}
-          style={{
-            flex: 'none',
-            width: 104,
-            height: 54,
-            borderRadius: 18,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontFamily: 'var(--font-mono)',
-            fontSize: 11.5,
-            fontWeight: 700,
-            letterSpacing: '0.09em',
-            color: 'var(--sec)',
-            background: 'rgba(20,22,58,0.05)',
-          }}
-        >
-          ANNULLA
-        </Link>
+      <Dock>
+        {erroreSalva && (
+          // Sopra il Dock (§F): fuori dalla pillola, su fondo bianco, perché sotto scorre la pagina.
+          <p role="alert" style={{
+            position: 'absolute', left: 0, right: 0, bottom: 'calc(100% + 8px)', margin: 0, padding: '10px 14px',
+            borderRadius: 14, background: 'var(--superficie)', boxShadow: 'var(--ombra-pannello)',
+            fontSize: 12.5, lineHeight: 1.45, color: 'var(--errore)',
+          }}>
+            {erroreSalva}
+          </p>
+        )}
         <button
           type="button"
-          onClick={salva}
-          disabled={nonValido || salvando}
-          style={{
-            flex: 1,
-            height: 54,
-            borderRadius: 18,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontFamily: 'var(--font-mono)',
-            fontSize: 12,
-            fontWeight: 700,
-            letterSpacing: '0.09em',
-            background: nonValido ? 'rgba(20,22,58,0.10)' : 'var(--ink)',
-            color: nonValido ? 'var(--ter)' : '#FFFFFF',
-            boxShadow: nonValido ? 'none' : '0 3px 10px rgba(20,22,58,0.24)',
-          }}
+          className="dock-primario"
+          onClick={() => void salva()}
+          disabled={spento || salvando}
+          aria-busy={salvando || undefined}
+          // In volo è il primario a 0,5, non lo spento grigio di `.dock-primario:disabled`.
+          style={salvando ? { background: 'var(--ink)', color: 'var(--superficie)', opacity: 0.5 } : undefined}
         >
-          SALVA INGREDIENTE
+          {salvando ? 'SALVATAGGIO…' : 'SALVA'}
         </button>
-      </div>
+      </Dock>
+
+      {scansione && (
+        <FoglioDalBasso etichetta="Scansiona la confezione" onChiudi={chiudiScansione}>
+          <TestataFoglio onChiudi={chiudiScansione} />
+          <div className="sc corpo-foglio" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 16px 26px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {altro ? (
+              <>
+                <p style={{ margin: 0, fontSize: 15.5, fontWeight: 700, color: 'var(--ink)' }}>{`Questo codice è di ${altro.nome}.`}</p>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <TastoSecondario onClick={() => setAltro(null)} style={{ flex: 1 }}>NON È QUESTA</TastoSecondario>
+                  <TastoPrimario onClick={() => apriAltro(altro)} style={{ flex: 1 }}>{`APRI ${altro.nome.toUpperCase()}`}</TastoPrimario>
+                </div>
+              </>
+            ) : (
+              <LettoreCodice onCodice={(c) => void letto(c)} />
+            )}
+          </div>
+        </FoglioDalBasso>
+      )}
 
       {confermaEliminazione && (
-        <div
-          onClick={() => !eliminando && setConfermaEliminazione(false)}
-          style={{
-            position: 'fixed', inset: 0, background: 'rgba(20,22,58,0.35)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: '0 24px',
-          }}
+        <FoglioDalBasso
+          etichetta="Eliminare questo ingrediente?"
+          onChiudi={() => setConfermaEliminazione(false)}
+          altezza="contenuto"
+          ruolo="alertdialog"
+          chiudiDalVelo={false}
+          livello={2}
         >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{ width: '100%', maxWidth: 320, background: '#FFFFFF', borderRadius: 22, padding: '22px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}
-          >
-            <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)' }}>
-              Eliminare questo ingrediente?
-            </div>
-            <div style={{ fontSize: 13.5, lineHeight: 1.5, color: 'var(--sec)' }}>{testoElimina(haAcquisti)}</div>
-            <div style={{ display: 'flex', gap: 9, marginTop: 4 }}>
-              <button
-                type="button"
-                onClick={() => setConfermaEliminazione(false)}
-                disabled={eliminando}
-                style={{
-                  flex: 1, height: 48, borderRadius: 14, fontFamily: 'var(--font-mono)', fontSize: 11,
-                  fontWeight: 700, letterSpacing: '0.08em', color: 'var(--sec)', background: 'rgba(20,22,58,0.05)',
-                }}
-              >
-                ANNULLA
-              </button>
-              <button
-                type="button"
-                onClick={confermaElimina}
-                disabled={eliminando}
-                style={{
-                  flex: 1, height: 48, borderRadius: 14, fontFamily: 'var(--font-mono)', fontSize: 11,
-                  fontWeight: 700, letterSpacing: '0.08em', color: '#FFFFFF', background: 'var(--ink)',
-                }}
-              >
-                ELIMINA
-              </button>
-            </div>
-          </div>
-        </div>
+          <DialogoConferma
+            titolo="Eliminare questo ingrediente?"
+            testo={testoElimina(haAcquisti)}
+            azione="ELIMINA"
+            tono="distruttivo"
+            erroreTesto="Non siamo riusciti a eliminare l’ingrediente. Riprova."
+            onConferma={confermaElimina}
+            onAnnulla={() => setConfermaEliminazione(false)}
+          />
+        </FoglioDalBasso>
       )}
     </Cornice>
   );
 }
 
-/** Etichetta mono di sezione, ripetuta identica per ogni blocco della scheda. */
-function Etichetta({ children, margine }: { children: ReactNode; margine: string }) {
-  return (
-    <div
-      style={{
-        margin: margine,
-        fontFamily: 'var(--font-mono)',
-        fontSize: 10,
-        fontWeight: 700,
-        letterSpacing: '0.16em',
-        color: 'var(--ink)',
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
 /**
- * Header minimale come in piatti/[id]/page.tsx: freccia indietro, etichetta
- * centrale, icona a destra. Non è Testata (quella porta il marchio e il
- * titolo a 52px delle schermate di casa): l'artboard di questa scheda ha lo
- * stesso header ridotto delle altre pagine di editing, non quello.
- *
- * L'icona a destra è lo stesso cestino di Piatto.dc.html (stesso path SVG) e
- * qui fa sul serio: elimina davvero l'ingrediente (hard delete, non soft
- * come per il piatto — vedi eliminaIngrediente in src/data/repertorio.ts).
- * Un bottone che sembra fare qualcosa senza fare niente è peggio di uno
- * assente, quindi resta disattivato solo quando non c'è ancora niente su cui
- * agire (`onCestino` assente: caricamento in corso) o quando agire non avrebbe
- * senso (`cestinoAttivo={false}`: ingrediente non trovato).
+ * La testata del frame 12: il tondo 44 con la freccia, sotto l'area in etichetta
+ * mono col quadratino, poi il nome a 32/800 (è il campo di oggi). Non è Testata:
+ * questa è una pagina di modifica, senza titolo di schermata.
  */
-function Cornice({
-  children,
-  dishId,
-  onCestino,
-  cestinoAttivo = true,
-}: {
+function Cornice({ children, freccia, area = null, nome }: {
   children?: ReactNode;
-  dishId: string;
-  onCestino?: () => void;
-  cestinoAttivo?: boolean;
+  freccia: { etichetta: string; onTorna: () => void };
+  area?: AreaId | null;
+  nome?: ReactNode;
 }) {
-  const attivo = cestinoAttivo && !!onCestino;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <div style={{ padding: '18px 16px 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Link
-          href={`/piatti/${dishId}`}
-          style={{ width: 44, height: 44, margin: '0 0 0 -10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <svg width="23" height="23" viewBox="0 0 24 24" fill="none">
-            <path d="M14.5 5 7.8 12l6.7 7" stroke="var(--ink)" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </Link>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--sec)' }}>
-          INGREDIENTE
-        </span>
+      <div style={{ padding: '20px 18px 12px', display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'flex-start' }}>
         <button
           type="button"
-          onClick={onCestino}
-          disabled={!attivo}
-          aria-label="Elimina ingrediente"
-          style={{
-            width: 44,
-            height: 44,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 -10px 0 0',
-            background: 'transparent',
-            opacity: attivo ? 1 : 0.35,
-          }}
+          aria-label={freccia.etichetta}
+          onClick={freccia.onTorna}
+          style={{ width: 44, height: 44, borderRadius: 999, background: 'var(--barra-attiva)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}
         >
-          <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M4.6 6.6h14.8M9.6 6.6V4.4h4.8v2.2M6.6 6.6l.9 12.2a1.4 1.4 0 0 0 1.4 1.3h6.2a1.4 1.4 0 0 0 1.4-1.3l.9-12.2"
-              stroke="var(--ink)"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M15 5l-7 7 7 7" stroke="var(--ink)" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
+        {area && (
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--ink)' }}>
+            <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: 4, background: coloreArea(area) }} />
+            {nomeArea(area)}
+          </span>
+        )}
+        {nome && <div style={{ alignSelf: 'stretch' }}>{nome}</div>}
       </div>
       {children}
     </div>

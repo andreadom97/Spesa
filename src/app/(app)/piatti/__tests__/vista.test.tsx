@@ -96,6 +96,7 @@ function mockBase(settimaneCiclo = 2) {
     ordineAree: ['ortofrutta', 'macelleria', 'latticini', 'cereali', 'dispensa', 'surgelati'],
     settimaneCiclo,
     cicloOrigine: '2026-08-24',
+    giorniControllo: 90,
   });
   vi.mocked(leggiSettimanaCorrente).mockResolvedValue(null);
 }

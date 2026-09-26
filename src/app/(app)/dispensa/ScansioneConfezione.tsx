@@ -7,7 +7,7 @@ import { dataCorta, etichettaQuantita, stimaNuovaConfezione } from '@/domain/dis
 import { esitoDaCatalogo, esitoLocale, type EsitoCodice } from '@/domain/scansione-dispensa';
 import { FORMATO_MAX, FORMATO_MIN } from '@/data/confezioni';
 import { TestataFoglio } from '@/components/FoglioDalBasso';
-import { MessaggioErrore, TastoPrimario, TastoSecondario } from './controlli';
+import { MessaggioErrore, TastoPrimario, TastoSecondario } from '@/components/controlli';
 import { LettoreCodice, cercaProdotto } from './LettoreCodice';
 
 interface Props {

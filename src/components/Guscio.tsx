@@ -6,6 +6,10 @@ import { TabBar } from './TabBar';
 import { MarchioProvider } from './marchio-context';
 import { BarraProvider, useBarraNascosta } from './barra-context';
 import { SlotDockProvider } from './dock-slot';
+import { PannelloProvider, usePannello, usePannelloInterno } from './pannello/PannelloProvider';
+import { DatiPannelloProvider } from './pannello/DatiPannello';
+import { Pannello } from './pannello/Pannello';
+import { AvvioMarchio } from './AvvioMarchio';
 
 export type StatoBarra = 'grande' | 'ridotta';
 
@@ -18,13 +22,35 @@ export function calcolaStatoBarra(prec: StatoBarra, scrollTop: number, delta: nu
 }
 
 /**
- * Il guscio dell'app: fondo a gradiente, contenuto, tab bar flottante sopra.
- * Gli eventi `scroll` non risalgono ma si catturano: un solo ascoltatore sul
- * documento vede tutti gli scroller delle pagine, senza che le pagine sappiano
- * nulla. Lo stato è esposto come `data-barra`: il CSS decide --fine e misure.
+ * Il guscio dell'app: fondo a gradiente, contenuto, tab bar flottante sopra, e il Pannello
+ * impostazioni sopra tutto (spec fase 5 §A.1). Il provider del pannello sta fuori dal `div`
+ * del guscio perché il guscio legge lo stato del pannello (`data-pannello`, per la scala
+ * dell'app dietro).
  */
 export function Guscio({ children }: { children: ReactNode }) {
+  return (
+    <MarchioProvider>
+      <BarraProvider>
+        {/* `attendiPrimoAvvio`: aperto da un indirizzo, il pannello aspetta che PrimoAvvio
+            (nel layout, dentro il Guscio) abbia finito la semina (review finale M2). */}
+        <PannelloProvider attendiPrimoAvvio>
+          <GuscioInterno>{children}</GuscioInterno>
+        </PannelloProvider>
+      </BarraProvider>
+    </MarchioProvider>
+  );
+}
+
+/**
+ * Gli eventi `scroll` non risalgono ma si catturano: un solo ascoltatore sul documento vede
+ * tutti gli scroller delle pagine, senza che le pagine sappiano nulla. Lo stato è esposto come
+ * `data-barra`: il CSS decide --fine e misure. `data-pannello` e `data-istantaneo` dicono al CSS
+ * se scalare l'app dietro il pannello, e se farlo senza animazione.
+ */
+function GuscioInterno({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const { aperto } = usePannello();
+  const { istantaneo } = usePannelloInterno();
   const [stato, setStato] = useState<{ barra: StatoBarra; percorso: string | null }>({ barra: 'grande', percorso: pathname });
   // Inizializzazione pigra: una WeakMap allocata una volta sola, non a ogni render.
   const ultimo = useRef<WeakMap<Element, number> | null>(null);
@@ -59,20 +85,29 @@ export function Guscio({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <MarchioProvider>
-      <BarraProvider>
-        <div className="guscio" data-barra={barra}>
-          <SlotDockProvider slot={slotDock}>
-            <main className="guscio-main">{children}</main>
-          </SlotDockProvider>
-          {/* Lo slot copre la cornice ma non intercetta niente: `pointer-events: none`
-              sul contenitore, `auto` su quello che il Dock ci mette dentro. Senza,
-              un velo invisibile mangerebbe lo scorrimento di tutta l'app. */}
-          <div className="dock-slot" ref={setSlotDock} />
-          <TabBarSeVisibile />
-        </div>
-      </BarraProvider>
-    </MarchioProvider>
+    <div
+      className="guscio"
+      data-barra={barra}
+      data-pannello={aperto ? 'aperto' : undefined}
+      data-istantaneo={istantaneo ? '' : undefined}
+    >
+      {/* Col pannello aperto l'app dietro è `inert`: `aria-modal` da solo non trattiene il
+          Tab, che uscirebbe verso la pagina, il Dock e la barra sotto il velo. */}
+      <SlotDockProvider slot={slotDock}>
+        <main className="guscio-main" inert={aperto}>{children}</main>
+      </SlotDockProvider>
+      {/* Lo slot copre la cornice ma non intercetta niente: `pointer-events: none`
+          sul contenitore, `auto` su quello che il Dock ci mette dentro. Senza,
+          un velo invisibile mangerebbe lo scorrimento di tutta l'app. */}
+      <div className="dock-slot" ref={setSlotDock} inert={aperto} />
+      <TabBarSeVisibile inerte={aperto} />
+      <DatiPannelloProvider>
+        <Pannello />
+      </DatiPannelloProvider>
+      {/* L'avvio del Marchio (spec fase 5 §J): sopra tutto, non prende tocchi, si
+          smonta da sé. Fuori da <main>, così la scala dell'app sotto il pannello non lo tocca. */}
+      <AvvioMarchio />
+    </div>
   );
 }
 
@@ -82,6 +117,6 @@ export function Guscio({ children }: { children: ReactNode }) {
  * una barra invisibile resterebbe raggiungibile da tastiera e da screen reader.
  * Un componente a sé perché il Guscio rende il provider e non può leggerlo.
  */
-function TabBarSeVisibile() {
-  return useBarraNascosta() ? null : <TabBar />;
+function TabBarSeVisibile({ inerte }: { inerte: boolean }) {
+  return useBarraNascosta() ? null : <TabBar inerte={inerte} />;
 }

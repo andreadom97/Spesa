@@ -4,7 +4,7 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import type { Ingredient } from '@/domain/types';
 import type { VoceDispensa } from '@/domain/dispensa-vista';
 import { DettaglioIngrediente } from '../DettaglioIngrediente';
-import { CampoConSalva } from '../controlli';
+import { CampoConSalva } from '@/components/controlli';
 
 const OGGI = '2026-09-25';
 

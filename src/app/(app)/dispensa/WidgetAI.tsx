@@ -7,7 +7,7 @@ import { correggiResiduo, impostaCongelato } from '@/data/dispensa';
 import { client } from '@/data/supabase';
 import { TondoFoglio } from '@/components/FoglioDalBasso';
 import { IconaAI, IconaMicrofono, IconaX } from './icone';
-import { Etichetta, MessaggioErrore, STILE_PILLOLA, TastoPrimario } from './controlli';
+import { Etichetta, MessaggioErrore, STILE_PILLOLA, TastoPrimario } from '@/components/controlli';
 import { useAltezzaTastiera } from './useAltezzaTastiera';
 import type { Dettatura } from './useDettatura';
 

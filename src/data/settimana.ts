@@ -651,6 +651,24 @@ export async function confermaSettimana(weekId: string): Promise<void> {
   if (error) throw error;
 }
 
+/**
+ * Una riga di meal_slot con le sue scelte (`meal_slot_choice` annidata) nella
+ * forma del dominio. Una sola mappatura per leggiSlotSettimana e
+ * leggiTutteLeSettimane: il file esportato e la settimana a schermo devono
+ * dire le stesse cose.
+ */
+function aMealSlotConScelte(r: Record<string, unknown>): MealSlot {
+  return {
+    ...aMealSlot(r),
+    scelte: Object.fromEntries(
+      ((r.meal_slot_choice ?? []) as Record<string, unknown>[]).map((c) => [
+        String(c.componente_id),
+        { opzioneId: String(c.option_id), fonte: c.fonte as Scelta['fonte'] },
+      ]),
+    ),
+  };
+}
+
 /** Usata da generaListe nel Task 14. */
 export async function leggiSlotSettimana(weekId: string): Promise<MealSlot[]> {
   const { data, error } = await client()
@@ -659,13 +677,72 @@ export async function leggiSlotSettimana(weekId: string): Promise<MealSlot[]> {
     .eq('week_id', weekId)
     .order('data');
   if (error) throw error;
-  return data.map((r) => ({
-    ...aMealSlot(r),
-    scelte: Object.fromEntries(
-      ((r.meal_slot_choice ?? []) as Record<string, unknown>[]).map((c) => [
-        String(c.componente_id),
-        { opzioneId: String(c.option_id), fonte: c.fonte as Scelta['fonte'] },
-      ]),
-    ),
+  return data.map(aMealSlotConScelte);
+}
+
+/**
+ * Quante righe di meal_slot chiedere per volta. PostgREST su Supabase taglia
+ * ogni risposta a un massimo di righe (1000 di default; il valore di questo
+ * progetto non è misurato), e un piano vero le supera in circa sei mesi: sei
+ * pasti per sette giorni sono 42 righe a settimana.
+ */
+const PAGINA_SLOT = 1000;
+
+/** Una cintura contro un ciclo senza fine: 200 pagine sono 200.000 pasti, novant'anni di piano. */
+const MAX_PAGINE_SLOT = 200;
+
+/**
+ * Tutte le settimane della casa con i loro pasti, per l'esportazione (spec
+ * fase 5 §E.3). Oggi le settimane si leggono solo una alla volta, per weekId.
+ *
+ * Due tabelle: `week` in una query, `meal_slot` a pagine (`range`), finché una
+ * pagina torna vuota. Una query secca si fermerebbe al tetto di PostgREST e il
+ * file uscirebbe troncato in silenzio. Si va avanti di quante righe arrivano,
+ * non di quante se ne sono chieste, così regge anche un tetto più basso della
+ * pagina. L'ordine (data, id) è totale: le pagine non si sovrappongono.
+ *
+ * Settimane per lunedì crescente; i pasti di una settimana per data. Una
+ * settimana senza pasti c'è lo stesso, con `pasti: []`.
+ */
+export async function leggiTutteLeSettimane(): Promise<{ lunedi: string; stato: string; pasti: MealSlot[] }[]> {
+  const sb = client();
+  const userId = await idCasa();
+
+  const { data: settimane, error } = await sb
+    .from('week')
+    .select('id, data_inizio, stato')
+    .eq('user_id', userId)
+    .order('data_inizio');
+  if (error) throw error;
+
+  const righe: Record<string, unknown>[] = [];
+  let da = 0;
+  for (let pagina = 0; ; pagina++) {
+    if (pagina >= MAX_PAGINE_SLOT) throw new Error('Il piano è troppo lungo da esportare.');
+    const { data, error: eSlot } = await sb
+      .from('meal_slot')
+      .select('*, meal_slot_choice(componente_id, option_id, fonte)')
+      .eq('user_id', userId)
+      .order('data')
+      .order('id')
+      .range(da, da + PAGINA_SLOT - 1);
+    if (eSlot) throw eSlot;
+    if (!data || data.length === 0) break;
+    righe.push(...(data as Record<string, unknown>[]));
+    da += data.length;
+  }
+
+  const perSettimana = new Map<string, MealSlot[]>();
+  for (const r of righe) {
+    const weekId = String(r.week_id);
+    const pasti = perSettimana.get(weekId) ?? [];
+    pasti.push(aMealSlotConScelte(r));
+    perSettimana.set(weekId, pasti);
+  }
+
+  return (settimane ?? []).map((w) => ({
+    lunedi: String(w.data_inizio).slice(0, 10),
+    stato: String(w.stato),
+    pasti: perSettimana.get(String(w.id)) ?? [],
   }));
 }

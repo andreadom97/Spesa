@@ -106,7 +106,8 @@ export interface ListaInput {
 /**
  * Funzione pura: niente rete, niente LLM, niente DB.
  * Segue alla lettera le nove regole della sezione "Regole di list-builder"
- * della spec, con la regola 7 sostituita dai 90 giorni fissi.
+ * della spec, con la regola 7 sostituita dalla cadenza delle Impostazioni
+ * (30, 60 o 90 giorni; spec fase 5 §E.1).
  */
 export function costruisciLista(input: ListaInput): ListaRisultato {
   const { slots, dishes, ingredients, pantry, impostazioni, oggi } = input;
@@ -190,7 +191,12 @@ export function costruisciLista(input: ListaInput): ListaRisultato {
     if (ing.classeResiduo !== 'stima') continue;
     const p = dispensaPerId.get(ing.id);
     if (!p) continue;
-    if (!serveControllo({ ultimoAcquisto: p.ultimoAcquisto, ultimoCheck: p.ultimoCheck, oggi })) {
+    if (!serveControllo({
+      ultimoAcquisto: p.ultimoAcquisto,
+      ultimoCheck: p.ultimoCheck,
+      oggi,
+      giorniControllo: impostazioni.giorniControllo,
+    })) {
       continue;
     }
     controlli.push({

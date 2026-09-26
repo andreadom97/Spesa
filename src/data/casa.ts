@@ -155,7 +155,7 @@ export async function statoCasa(): Promise<StatoCasa> {
   return { ruolo: data.ruolo, email: [...data.email], id: [...data.id] };
 }
 
-/** Un codice di sei caratteri valido 24 ore; sostituisce l'invito precedente del proprietario. */
+/** Un codice di otto caratteri valido un'ora; sostituisce l'invito precedente del proprietario. */
 export async function creaInvito(): Promise<string> {
   const { data, error } = await client().rpc('crea_invito');
   if (error) throw error;

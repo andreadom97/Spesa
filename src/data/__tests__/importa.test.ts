@@ -46,7 +46,7 @@ describe('eseguiScritture', () => {
     vi.mocked(salvaIngrediente).mockResolvedValue('i-pasta-nuovo');
     vi.mocked(salvaPiatto).mockResolvedValue('d-nuovo');
     vi.mocked(eliminaPiatto).mockResolvedValue();
-    vi.mocked(leggiImpostazioni).mockResolvedValue({ moltiplicatorePorzioni: 1, ordineAree: ['ortofrutta', 'macelleria', 'latticini', 'cereali', 'dispensa', 'surgelati'], settimaneCiclo: 1, cicloOrigine: null });
+    vi.mocked(leggiImpostazioni).mockResolvedValue({ moltiplicatorePorzioni: 1, ordineAree: ['ortofrutta', 'macelleria', 'latticini', 'cereali', 'dispensa', 'surgelati'], settimaneCiclo: 1, cicloOrigine: null, giorniControllo: 90 });
     vi.mocked(salvaImpostazioni).mockResolvedValue();
   });
 

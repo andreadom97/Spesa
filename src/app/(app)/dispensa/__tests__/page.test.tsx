@@ -14,6 +14,7 @@ vi.mock('@/data/dispensa', () => ({
   impostaCongelato: vi.fn(),
   impostaScadenza: vi.fn(),
   aggiungiConfezione: vi.fn(),
+  EVENTO_DISPENSA_CAMBIATA: 'spesa:dispensa-cambiata',
 }));
 vi.mock('@/data/impostazioni', () => ({ leggiImpostazioni: vi.fn() }));
 vi.mock('@/data/pronti', () => ({
@@ -97,7 +98,7 @@ function mockBase({
 }: { ingredienti?: Ingredient[]; dispensa?: PantryState[]; lotti?: LottoPronto[] } = {}) {
   vi.mocked(leggiIngredienti).mockResolvedValue(ingredienti);
   vi.mocked(leggiDispensa).mockResolvedValue(dispensa);
-  vi.mocked(leggiImpostazioni).mockResolvedValue({ moltiplicatorePorzioni: 1, ordineAree: [...ORDINE], settimaneCiclo: 1, cicloOrigine: null });
+  vi.mocked(leggiImpostazioni).mockResolvedValue({ moltiplicatorePorzioni: 1, ordineAree: [...ORDINE], settimaneCiclo: 1, cicloOrigine: null, giorniControllo: 90 });
   vi.mocked(leggiPronti).mockResolvedValue(lotti);
   vi.mocked(leggiRepertorio).mockResolvedValue([RAGU]);
   vi.mocked(leggiSettimanaCorrente).mockResolvedValue(null);
@@ -983,5 +984,69 @@ describe('Dispensa: il Dock e Modifica con l\'AI', () => {
       expect(screen.getByRole('textbox', { name: "Nota per l'AI" })).toHaveValue("ho finito il riso l'olio è a metà");
       expect(screen.queryByText('TOCCA PER FERMARE')).not.toBeInTheDocument();
     });
+  });
+});
+
+describe('la cancellazione dal pannello (spec fase 5 §E.2)', () => {
+  it('all\'evento spesa:dispensa-cambiata la pagina rilegge e mostra la dispensa vuota', async () => {
+    mockBase();
+    await montaCaricata();
+    expect(screen.getByRole('button', { name: 'Apri il lotto di Ragù di lenticchie' })).toBeInTheDocument();
+    expect(leggiDispensa).toHaveBeenCalledTimes(1);
+
+    // Il database dopo cancella_dispensa: nessuna riga di dispensa, nessun lotto.
+    vi.mocked(leggiDispensa).mockResolvedValue([]);
+    vi.mocked(leggiPronti).mockResolvedValue([]);
+    act(() => {
+      window.dispatchEvent(new Event('spesa:dispensa-cambiata'));
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Apri il lotto di Ragù di lenticchie' })).not.toBeInTheDocument();
+    });
+    expect(leggiDispensa).toHaveBeenCalledTimes(2);
+    expect(leggiPronti).toHaveBeenCalledTimes(2);
+  });
+
+  it('l\'evento durante il primo caricamento: se la rilettura fallisce, la pagina va nel suo errore, non resta su CARICO…', async () => {
+    mockBase();
+    vi.mocked(leggiIngredienti).mockReturnValueOnce(mai());
+    monta();
+    expect(screen.getByRole('status', { name: 'Carico la dispensa' })).toBeInTheDocument();
+
+    vi.mocked(leggiDispensa).mockRejectedValue(new Error('rete'));
+    act(() => {
+      window.dispatchEvent(new Event('spesa:dispensa-cambiata'));
+    });
+
+    expect(await screen.findByText('Non riusciamo a caricare la dispensa. Riprova.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'RIPROVA' })).toBeInTheDocument();
+    expect(screen.queryByRole('status', { name: 'Carico la dispensa' })).not.toBeInTheDocument();
+  });
+
+  it('l\'evento durante il primo caricamento: se la rilettura non risponde, dopo 8 s l\'errore', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    mockBase();
+    vi.mocked(leggiIngredienti).mockReturnValue(mai());
+    monta();
+    act(() => { vi.advanceTimersByTime(5000); });
+
+    act(() => {
+      window.dispatchEvent(new Event('spesa:dispensa-cambiata'));
+    });
+    act(() => { vi.advanceTimersByTime(7999); });
+    expect(screen.getByRole('status', { name: 'Carico la dispensa' })).toBeInTheDocument();
+    act(() => { vi.advanceTimersByTime(1); });
+    expect(screen.getByText('Non riusciamo a caricare la dispensa. Riprova.')).toBeInTheDocument();
+  });
+
+  it('smontata la pagina, l\'evento non rilegge più', async () => {
+    mockBase();
+    monta().unmount();
+    await waitFor(() => expect(leggiDispensa).toHaveBeenCalledTimes(1));
+    act(() => {
+      window.dispatchEvent(new Event('spesa:dispensa-cambiata'));
+    });
+    expect(leggiDispensa).toHaveBeenCalledTimes(1);
   });
 });

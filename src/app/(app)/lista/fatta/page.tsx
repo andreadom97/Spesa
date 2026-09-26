@@ -10,6 +10,7 @@ import { leggiRisparmioSettimana } from '@/data/risparmio';
 import type { VoceEvitata } from '@/domain/list-builder';
 import { riassumiEvitato, formattaQuantita, formattaEuro } from '@/domain/risparmio';
 import { etichettaSettimana } from '@/domain/settimana-label';
+import { GIORNI_CONTROLLO_DEFAULT, fraCadenza, type GiorniControllo } from '@/domain/pantry';
 import { Testata } from '@/components/Testata';
 
 /**
@@ -42,6 +43,8 @@ interface Stato {
   totaleVoci: number;
   /** Il non ricomprato fissato alla generazione della lista; vuoto se la settimana non ha piano o la lettura è fallita. */
   evitato: VoceEvitata[];
+  /** La cadenza dei controlli, per la frase di CHIUDENDO LA SPESA: viaggia con la lista (leggiListe). */
+  giorniControllo: GiorniControllo;
 }
 
 /**
@@ -127,6 +130,7 @@ export default function ListaFatta() {
           settimanaLabel: etichettaSettimana(settimana.dataInizio),
           totaleVoci: esito.totale,
           evitato,
+          giorniControllo: lista.giorniControllo ?? GIORNI_CONTROLLO_DEFAULT,
         });
       } catch (errore) {
         console.error('lista/fatta: caricamento fallito.', errore);
@@ -217,8 +221,7 @@ export default function ListaFatta() {
             CHIUDENDO LA SPESA
           </div>
           <div style={{ fontSize: 13.5, lineHeight: 1.5, color: 'var(--ink)' }}>
-            L’app registra cosa hai comprato e quando. Serve solo a ricordarti fra 90 giorni che l’olio sta per
-            finire: non lo vedi da nessuna parte finché non serve.
+            {`L’app registra cosa hai comprato e quando. Serve solo a ricordarti ${fraCadenza(stato.giorniControllo)} che l’olio sta per finire: non lo vedi da nessuna parte finché non serve.`}
           </div>
         </div>
       </div>

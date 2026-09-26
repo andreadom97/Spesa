@@ -11,10 +11,15 @@ interface Props {
   ruolo?: 'dialog' | 'alertdialog';
   /** Il dialogo di conferma non si chiude dal velo: si esce da ANNULLA. */
   chiudiDalVelo?: boolean;
-  /** 2 = sopra un altro foglio (il dialogo di eliminazione sopra il lotto). */
-  livello?: 1 | 2;
+  /**
+   * 2 = sopra un altro foglio (il dialogo di eliminazione sopra il lotto); 3 = il Dialogo di
+   * conferma sopra il Pannello impostazioni, che sta a 70 (spec fase 5 §A.2).
+   */
+  livello?: 1 | 2 | 3;
   children: ReactNode;
 }
+
+const Z_LIVELLO = { 1: 50, 2: 60, 3: 80 } as const;
 
 /**
  * Velo e foglio ancorato in basso (DESIGN.md §8), con `position: fixed` e uno
@@ -37,7 +42,7 @@ export function FoglioDalBasso({
     <div
       data-testid="velo-foglio"
       onClick={chiudiDalVelo ? onChiudi : undefined}
-      style={{ position: 'fixed', inset: 0, zIndex: livello === 2 ? 60 : 50, background: 'var(--overlay-foglio)' }}
+      style={{ position: 'fixed', inset: 0, zIndex: Z_LIVELLO[livello], background: 'var(--overlay-foglio)' }}
     >
       <div
         ref={foglioRef}

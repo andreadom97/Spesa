@@ -18,6 +18,7 @@ const ORDINE_AREE = ['ortofrutta', 'macelleria', 'latticini', 'cereali', 'dispen
 
 const IMPOSTAZIONI: Impostazioni = {
   moltiplicatorePorzioni: 1, ordineAree: [...ORDINE_AREE], settimaneCiclo: 1, cicloOrigine: null,
+  giorniControllo: 90,
 };
 
 function piatto(id: string, slotDefId: string, componenti: Dish['componenti'] = []): Dish {

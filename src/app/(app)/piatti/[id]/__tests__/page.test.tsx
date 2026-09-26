@@ -93,6 +93,7 @@ function mockBase(settimaneCiclo = 1) {
     ordineAree: ['ortofrutta', 'macelleria', 'latticini', 'cereali', 'dispensa', 'surgelati'],
     settimaneCiclo,
     cicloOrigine: settimaneCiclo > 1 ? '2026-08-31' : null,
+    giorniControllo: 90,
   });
 }
 

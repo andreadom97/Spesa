@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import type { ListaSalvata } from '@/data/lista';
 import type { Dish } from '@/domain/types';
@@ -54,6 +54,7 @@ import { accodaSpunta, leggiCoda } from '@/offline/coda';
 import { leggiIstantaneaLista, salvaIstantaneaLista } from '@/offline/lista-cache';
 import { MarchioProvider, useAreeMancantiCorrenti } from '@/components/marchio-context';
 import { SlotDockProvider } from '@/components/dock-slot';
+import { EVENTO_IMPOSTAZIONI_CAMBIATE } from '@/components/pannello/eventi';
 import Lista from '../page';
 
 // Il marchio non vive più nella Testata (redesign 19/09): la Lista lo
@@ -148,6 +149,18 @@ describe('Lista', () => {
     expect(screen.getByText('serve 820 g · in casa 0 g')).toBeInTheDocument();
   });
 
+  it('la riga di controllo dice la cadenza delle Impostazioni (spec fase 5 §E.1)', async () => {
+    vi.mocked(leggiListe).mockResolvedValue({ ...buildLista(), giorniControllo: 30 });
+    rendi();
+    expect(await screen.findByText('CONTROLLO OGNI MESE')).toBeInTheDocument();
+  });
+
+  it('una lista senza cadenza (istantanea offline di prima della fase 5) dice ogni 3 mesi', async () => {
+    vi.mocked(leggiListe).mockResolvedValue(buildLista());
+    rendi();
+    expect(await screen.findByText('CONTROLLO OGNI 3 MESI')).toBeInTheDocument();
+  });
+
   // Corretto in sede di revisione finale (I10): prima un'area con solo un
   // controllo in sospeso risultava "piena" nel marchio, mentre tuttoFatto()
   // già richiedeva zero controlli oltre a ogni voce spuntata — l'utente
@@ -164,12 +177,17 @@ describe('Lista', () => {
     );
     await screen.findByText('Riso Carnaroli');
 
-    const aree = screen.getByTestId('aree-mancanti').textContent!.split(',').filter(Boolean);
-    // cereali ha due voci non spuntate: manca qualcosa.
-    expect(aree).toContain('cereali');
-    // dispensa ha zero voci ma un controllo ancora in sospeso: manca
-    // qualcosa anche lì, quindi il marchio non deve segnarla piena.
-    expect(aree).toContain('dispensa');
+    // Il marchio si pubblica in un effetto, dopo il render che mostra la
+    // lista: letto subito dopo findByText può essere ancora vuoto (test
+    // intermittente, review finale della fase 5). Si aspetta.
+    const aree = () => screen.getByTestId('aree-mancanti').textContent!.split(',').filter(Boolean);
+    await waitFor(() => {
+      // cereali ha due voci non spuntate: manca qualcosa.
+      expect(aree()).toContain('cereali');
+      // dispensa ha zero voci ma un controllo ancora in sospeso: manca
+      // qualcosa anche lì, quindi il marchio non deve segnarla piena.
+      expect(aree()).toContain('dispensa');
+    });
   });
 
   it('il tap spunta subito in locale, accoda offline, e sincronizza se il server risponde', async () => {
@@ -451,7 +469,7 @@ describe('Lista', () => {
 
     expect(await screen.findByText('Prima servono i piatti')).toBeInTheDocument();
     expect(screen.getByText('La lista nasce dai piatti che mangi: dicci quali sono e da lì la settimana e la spesa si costruiscono da sole.')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'COMINCIA DAI PIATTI' })).toHaveAttribute('href', '/piatti');
+    expect(screen.getByRole('link', { name: 'COMINCIA DAI PIATTI' })).toHaveAttribute('href', '/piatti?da=lista');
     expect(screen.queryByText('La lista non c’è ancora')).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'VAI AL PIANO' })).not.toBeInTheDocument();
   });
@@ -462,7 +480,7 @@ describe('Lista', () => {
     rendi();
 
     expect(await screen.findByText('Prima servono i piatti')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'COMINCIA DAI PIATTI' })).toHaveAttribute('href', '/piatti');
+    expect(screen.getByRole('link', { name: 'COMINCIA DAI PIATTI' })).toHaveAttribute('href', '/piatti?da=lista');
   });
 
   it('senza settimana ma con almeno un piatto resta la scheda di sempre, verso il piano', async () => {
@@ -522,6 +540,52 @@ describe('Lista', () => {
   // La lista in due (spec casa-condivisa §5): due telefoni sulla stessa
   // lista non si vedono finché non ricaricano. Al ritorno in primo piano la
   // pagina rilegge le liste, con la coda offline applicata sopra.
+  // Il pannello delle Impostazioni sta sopra la Lista, che non si rimonta
+  // (review finale della fase 5, I2): quando il pannello salva davvero, la
+  // Lista rifà il caricamento intero, come quando tornare dalla vecchia
+  // pagina Impostazioni la rimontava.
+  describe('dopo un salvataggio nel pannello delle Impostazioni', () => {
+    it('rilegge in silenzio: la cadenza nuova compare, e l\'allineamento del top-up gira di nuovo', async () => {
+      vi.mocked(leggiListe).mockResolvedValue(buildLista());
+      rendi();
+      expect(await screen.findByText('CONTROLLO OGNI 3 MESI')).toBeInTheDocument();
+      vi.mocked(leggiListe).mockResolvedValue({ ...buildLista(), giorniControllo: 30 });
+
+      act(() => { window.dispatchEvent(new Event(EVENTO_IMPOSTAZIONI_CAMBIATE)); });
+
+      expect(await screen.findByText('CONTROLLO OGNI MESE')).toBeInTheDocument();
+      // In silenzio: la lista non è mai sparita.
+      expect(screen.getByText('Riso Carnaroli')).toBeInTheDocument();
+      expect(allineaTopUp).toHaveBeenCalledTimes(2);
+    });
+
+    it('tre salvataggi di fila fanno due caricamenti, non tre in parallelo', async () => {
+      vi.mocked(leggiListe).mockResolvedValue(buildLista());
+      rendi();
+      await screen.findByText('Riso Carnaroli');
+      expect(leggiSettimanaCorrente).toHaveBeenCalledTimes(1);
+
+      act(() => {
+        for (let k = 0; k < 3; k++) window.dispatchEvent(new Event(EVENTO_IMPOSTAZIONI_CAMBIATE));
+      });
+
+      await waitFor(() => expect(allineaTopUp).toHaveBeenCalledTimes(3));
+      await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+      expect(leggiSettimanaCorrente).toHaveBeenCalledTimes(3);
+    });
+
+    it('smontata, non ascolta più', async () => {
+      vi.mocked(leggiListe).mockResolvedValue(buildLista());
+      const { unmount } = rendi();
+      await screen.findByText('Riso Carnaroli');
+      unmount();
+      vi.mocked(leggiSettimanaCorrente).mockClear();
+      window.dispatchEvent(new Event(EVENTO_IMPOSTAZIONI_CAMBIATE));
+      await new Promise((r) => setTimeout(r, 0));
+      expect(leggiSettimanaCorrente).not.toHaveBeenCalled();
+    });
+  });
+
   describe('ritorno in primo piano', () => {
     const VOCE_UOVA = {
       id: 'item-uova', ingredientId: 'ing-uova', nome: 'Uova', area: 'latticini' as const,

@@ -11,6 +11,8 @@ vi.mock('@/data/impostazioni', () => ({
   leggiSlotDefs: vi.fn(),
   leggiImpostazioni: vi.fn(),
 }));
+// Piatti usa useRouter per la pillola indietro (spec fase 5 §G.2): fuori da un App Router lancia.
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() }) }));
 
 import { leggiRepertorio, leggiIngredienti } from '@/data/repertorio';
 import { leggiImpostazioni } from '@/data/impostazioni';
@@ -44,6 +46,7 @@ function mockRepertorio() {
     ordineAree: [...ORDINE_AREE_TEST],
     settimaneCiclo: 1,
     cicloOrigine: null,
+    giorniControllo: 90,
   });
 }
 

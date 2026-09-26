@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { AreaId, Ingredient, LottoPronto } from '@/domain/types';
 import type { VoceContesto } from '@/domain/dispensa-ai';
 import { leggiIngredienti, leggiRepertorio, salvaIngrediente } from '@/data/repertorio';
-import { aggiungiConfezione, correggiResiduo, impostaCongelato, impostaScadenza, leggiDispensa } from '@/data/dispensa';
+import { EVENTO_DISPENSA_CAMBIATA, aggiungiConfezione, correggiResiduo, impostaCongelato, impostaScadenza, leggiDispensa } from '@/data/dispensa';
 import { leggiImpostazioni } from '@/data/impostazioni';
 import { correggiLotto, eliminaLotto, impostaCongelatoLotto, leggiPronti } from '@/data/pronti';
 import { leggiSettimanaCorrente } from '@/data/settimana';
@@ -30,9 +30,9 @@ import { ScansioneConfezione } from './ScansioneConfezione';
 import { NuovoIngrediente, type DatiNuovoIngrediente } from './NuovoIngrediente';
 import { WidgetAI } from './WidgetAI';
 import { useDettatura } from './useDettatura';
-import { useIndietroFogli } from './useIndietroFogli';
+import { useIndietroFogli } from '@/components/useIndietroFogli';
 import { IconaBarattolo } from './icone';
-import { MessaggioErrore, STILE_PILLOLA, TastoPrimario } from './controlli';
+import { MessaggioErrore, STILE_PILLOLA, TastoPrimario } from '@/components/controlli';
 
 /** Oltre questa attesa il caricamento diventa errore, e la risposta che arriva dopo si scarta (spec §A). */
 const ATTESA_MAX_MS = 8000;
@@ -200,12 +200,31 @@ export default function Dispensa() {
    * server senza dire alla pagina cosa ha applicato, quindi si rilegge tutto.
    * I dati di prima restano in pagina finché arrivano i nuovi.
    */
-  function ricarica() {
+  const ricarica = useCallback(() => {
     const mia = ++generazione.current;
     leggiTutto()
       .then((d) => { if (generazione.current === mia) setDati(d); })
       .catch((e) => console.error('dispensa: rilettura fallita.', e));
-  }
+  }, []);
+
+  // Se in pagina ci sono già dati: lo legge l'ascolto qui sotto, fuori dal render.
+  const conDati = useRef(false);
+  useEffect(() => { conDati.current = dati !== null; }, [dati]);
+
+  // Cancella la dispensa, dal pannello delle Impostazioni aperto sopra questa
+  // pagina (spec fase 5 §E.2): si rilegge in silenzio, come dopo la nota AI.
+  // I dati di prima restano a schermo finché arrivano i nuovi. Se i dati non
+  // ci sono ancora (primo caricamento in volo), si ricarica con `leggi`, con
+  // la sua attesa massima e il suo errore: la rilettura silenziosa scarterebbe
+  // il caricamento in volo, e se fallisse la pagina resterebbe su CARICO….
+  useEffect(() => {
+    const alCambio = () => {
+      if (conDati.current) ricarica();
+      else leggi();
+    };
+    window.addEventListener(EVENTO_DISPENSA_CAMBIATA, alCambio);
+    return () => window.removeEventListener(EVENTO_DISPENSA_CAMBIATA, alCambio);
+  }, [leggi, ricarica]);
 
   function cambiaVoce(id: string, patch: Partial<VoceDispensa>) {
     setDati((d) => d && { ...d, voci: d.voci.map((v) => (v.ingrediente.id === id ? { ...v, ...patch } : v)) });

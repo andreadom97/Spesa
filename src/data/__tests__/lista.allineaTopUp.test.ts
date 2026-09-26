@@ -86,6 +86,7 @@ const IMPOSTAZIONI = {
   ordineAree: ['ortofrutta', 'macelleria', 'latticini', 'cereali', 'dispensa', 'surgelati'] as const,
   settimaneCiclo: 1,
   cicloOrigine: null,
+  giorniControllo: 90 as const,
 };
 
 function preparaPiano() {

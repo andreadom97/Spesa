@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 import { StrictMode, type ReactNode } from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import type { Dish, Ingredient, MealSlot, MealSlotDef } from '@/domain/types';
 import type { SettimanaCorrente } from '@/data/settimana';
 import { lunediDi, giorniDellaSettimana } from '@/domain/date';
@@ -54,6 +54,7 @@ import { sommaGiorni } from '@/domain/date';
 import { etichettaScadenza } from '@/domain/scadenza';
 import { etichettaSettimana } from '@/domain/settimana-label';
 import { SlotDockProvider } from '@/components/dock-slot';
+import { EVENTO_IMPOSTAZIONI_CAMBIATE } from '@/components/pannello/eventi';
 import Settimana from '../page';
 
 // "Oggi" reale: evita di mockare l'orologio di sistema, che confligge con i
@@ -184,6 +185,7 @@ function mockCarico(settimana: SettimanaCorrente = SETTIMANA_BASE) {
     ordineAree: [...ORDINE_AREE_TEST],
     settimaneCiclo: 1,
     cicloOrigine: null,
+    giorniControllo: 90,
   });
   vi.mocked(leggiPronti).mockResolvedValue([]);
   vi.mocked(leggiDispensa).mockResolvedValue([]);
@@ -216,7 +218,7 @@ describe('Settimana (piano alimentare)', () => {
     expect(await screen.findByText('Nessun piatto ancora')).toBeInTheDocument();
     expect(screen.getByText('Le righe si riempiono da sole appena ce n’è qualcuno.')).toBeInTheDocument();
     const link = screen.getByRole('link', { name: 'COMINCIA DAI PIATTI ›' });
-    expect(link).toHaveAttribute('href', '/piatti');
+    expect(link).toHaveAttribute('href', '/piatti?da=piano');
     // Le righe del giorno restano sotto la scheda, non spariscono.
     const righe = document.querySelector('.anim-giorno')!;
     expect(righe).toBeInTheDocument();
@@ -245,6 +247,7 @@ describe('Settimana (piano alimentare)', () => {
       ordineAree: [...ORDINE_AREE_TEST],
       settimaneCiclo: 1,
       cicloOrigine: null,
+      giorniControllo: 90,
     });
     vi.mocked(leggiPronti).mockResolvedValue([]);
 
@@ -356,6 +359,7 @@ describe('Settimana (piano alimentare)', () => {
       ordineAree: [...ORDINE_AREE_TEST],
       settimaneCiclo: 1,
       cicloOrigine: null,
+      giorniControllo: 90,
     });
     vi.mocked(leggiPronti).mockResolvedValue([]);
 
@@ -605,6 +609,7 @@ describe('spunta pasti', () => {
       ordineAree: [...ORDINE_AREE_TEST],
       settimaneCiclo: 1,
       cicloOrigine: null,
+      giorniControllo: 90,
     });
     vi.mocked(leggiPronti).mockResolvedValue([]);
 
@@ -631,6 +636,7 @@ describe('spunta pasti', () => {
       ordineAree: [...ORDINE_AREE_TEST],
       settimaneCiclo: 1,
       cicloOrigine: null,
+      giorniControllo: 90,
     });
     vi.mocked(leggiPronti).mockResolvedValue([]);
 
@@ -812,6 +818,7 @@ describe('settimana precedente', () => {
       ordineAree: [...ORDINE_AREE_TEST],
       settimaneCiclo: 1,
       cicloOrigine: null,
+      giorniControllo: 90,
     });
     vi.mocked(leggiPronti).mockResolvedValue([]);
 
@@ -840,6 +847,7 @@ describe('settimana precedente', () => {
       ordineAree: [...ORDINE_AREE_TEST],
       settimaneCiclo: 1,
       cicloOrigine: null,
+      giorniControllo: 90,
     });
     vi.mocked(leggiPronti).mockResolvedValue([]);
 
@@ -864,6 +872,7 @@ describe('settimana precedente', () => {
       ordineAree: [...ORDINE_AREE_TEST],
       settimaneCiclo: 1,
       cicloOrigine: null,
+      giorniControllo: 90,
     });
     vi.mocked(leggiPronti).mockResolvedValue([]);
 
@@ -1082,5 +1091,80 @@ describe('completamento delle assegnazioni (settimana bozza con righe vuote)', (
     expect(screen.getAllByText('Nessun piatto assegnato').length).toBeGreaterThan(0);
     expect(consoleError).toHaveBeenCalled();
     consoleError.mockRestore();
+  });
+});
+
+// Il pannello delle Impostazioni sta sopra il Piano, che non si rimonta
+// (review finale della fase 5, I2): dopo un salvataggio riuscito il Piano si
+// rilegge in silenzio.
+describe('Settimana: dopo un salvataggio nel pannello delle Impostazioni', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Un mockImplementationOnce non consumato non deve passare al test dopo.
+    vi.mocked(leggiSlotDefs).mockReset();
+  });
+
+  const annuncia = () => act(() => { window.dispatchEvent(new Event(EVENTO_IMPOSTAZIONI_CAMBIATE)); });
+
+  it('rilegge i pasti in silenzio e tiene il giorno selezionato', async () => {
+    mockCarico();
+    const { container } = rendi();
+    await screen.findByText('Yogurt e frutta');
+    const altraData = GIORNI[(INDICE_OGGI + 1) % 7];
+    fireEvent.click(container.querySelector(`[data-giorno="${altraData}"]`) as HTMLElement);
+    await waitFor(() => expect(container.querySelector(`[data-giorno="${altraData}"]`)!.getAttribute('aria-pressed')).toBe('true'));
+    vi.mocked(leggiSlotDefs).mockResolvedValue([{ ...SD_COLAZIONE, nome: 'Merenda' }, SD_PRANZO, SD_CENA]);
+
+    annuncia();
+
+    expect(await screen.findByLabelText('Merenda: a casa, tocca per segnare fuori')).toBeInTheDocument();
+    expect(leggiSlotDefs).toHaveBeenCalledTimes(2);
+    expect(container.querySelector(`[data-giorno="${altraData}"]`)!.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('se la rilettura fallisce il piano resta com\'è, senza errore a schermo', async () => {
+    mockCarico();
+    rendi();
+    await screen.findByText('Yogurt e frutta');
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(leggiSlotDefs).mockRejectedValue(new Error('rete'));
+
+    annuncia();
+
+    await waitFor(() => expect(leggiSlotDefs).toHaveBeenCalledTimes(2));
+    await act(async () => {});
+    expect(screen.getByText('Yogurt e frutta')).toBeInTheDocument();
+    expect(screen.queryByText('Non riusciamo a caricare la settimana. Riprova più tardi.')).not.toBeInTheDocument();
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+
+  it('un check-in arrivato mentre la rilettura è in volo non viene disfatto', async () => {
+    mockCarico();
+    vi.mocked(aggiornaSlot).mockResolvedValue(undefined);
+    rendi();
+    await screen.findByText('Yogurt e frutta');
+    let rispondi: (d: MealSlotDef[]) => void = () => {};
+    vi.mocked(leggiSlotDefs).mockImplementationOnce(() => new Promise((r) => { rispondi = r; }));
+
+    annuncia();
+    await waitFor(() => expect(leggiSlotDefs).toHaveBeenCalledTimes(2));
+    fireEvent.click(screen.getByLabelText('Colazione: a casa, tocca per segnare fuori'));
+    expect(await screen.findByLabelText('Colazione: fuori casa, tocca per segnare a casa')).toBeInTheDocument();
+
+    // La rilettura porta la settimana letta prima del tocco: si scarta.
+    await act(async () => { rispondi(SLOT_DEFS); });
+    expect(screen.getByLabelText('Colazione: fuori casa, tocca per segnare a casa')).toBeInTheDocument();
+  });
+
+  it('smontato, non ascolta più', async () => {
+    mockCarico();
+    const { unmount } = rendi();
+    await screen.findByText('Yogurt e frutta');
+    unmount();
+    vi.mocked(leggiSlotDefs).mockClear();
+    window.dispatchEvent(new Event(EVENTO_IMPOSTAZIONI_CAMBIATE));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(leggiSlotDefs).not.toHaveBeenCalled();
   });
 });

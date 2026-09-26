@@ -9,7 +9,7 @@ import { nomeGiaUsato, predefinitiNuovo } from '@/domain/ricerca-dispensa';
 import { esitoNuovoDaCatalogo, esitoNuovoLocale } from '@/domain/scansione-dispensa';
 import { TestataFoglio } from '@/components/FoglioDalBasso';
 import { IconaScansione } from './icone';
-import { Etichetta, MessaggioErrore, STILE_PILLOLA, TastoPrimario, TastoSecondario } from './controlli';
+import { Etichetta, MessaggioErrore, STILE_PILLOLA, TastoPrimario, TastoSecondario } from '@/components/controlli';
 import { LettoreCodice, cercaProdotto } from './LettoreCodice';
 
 export interface DatiNuovoIngrediente {

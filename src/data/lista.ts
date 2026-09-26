@@ -1,4 +1,4 @@
-import type { AreaId, UnitaBase } from '@/domain/types';
+import type { AreaId, GiorniControllo, UnitaBase } from '@/domain/types';
 import { ORDINE_AREE_DEFAULT } from '@/domain/aree';
 import { costruisciLista } from '@/domain/list-builder';
 import { calcolaChiusura, type VoceChiusura } from '@/domain/chiusura';
@@ -50,6 +50,14 @@ export interface ListaSalvata {
    * della fase 2 non lo ha, e il tipo deve dire la verità su quel dato.
    */
   ordineAree?: AreaId[];
+  /**
+   * La cadenza dei controlli (spec fase 5 §E.1), letta da `leggiListe` con la
+   * stessa `leggiImpostazioni` di `ordineAree`: la Riga di controllo la dice
+   * a parole. **Facoltativa per lo stesso motivo di `ordineAree`**:
+   * un'istantanea offline salvata prima della fase 5 non ce l'ha, e chi la
+   * mostra usa GIORNI_CONTROLLO_DEFAULT.
+   */
+  giorniControllo?: GiorniControllo;
 }
 
 /**
@@ -199,8 +207,8 @@ export async function allineaTopUp(weekId: string): Promise<number> {
     oggi: new Date().toISOString().slice(0, 10),
   });
 
-  // Solo le voci del piano: i controlli staple nascono dal ciclo dei 90
-  // giorni, non da un cambio di piano, e farli comparire qui sarebbe rumore.
+  // Solo le voci del piano: i controlli staple nascono dalla cadenza dei
+  // controlli, non da un cambio di piano, e farli comparire qui sarebbe rumore.
   const righe = (['base', 'topup'] as const)
     .flatMap((tipo) => risultato[tipo])
     .flatMap((sezione) => sezione.voci)
@@ -406,6 +414,7 @@ export async function leggiListe(weekId: string): Promise<ListaSalvata | null> {
     base: perTipo('base'), topup: perTipo('topup'),
     baseListaId: idPerTipo('base'), topupListaId: idPerTipo('topup'),
     ordineAree: impostazioni.ordineAree,
+    giorniControllo: impostazioni.giorniControllo,
   };
 }
 

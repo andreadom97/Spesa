@@ -31,13 +31,15 @@
   --sfondo-schermata: linear-gradient(180deg, #EDECEA 0%, #F2F1EF 34%, #F8F8F7 70%, #FCFCFB 100%);
 
   /* La tab bar flottante (versione B) e il suo movimento. */
-  --barra-lato: 16px;
-  --barra-lato-giu: 46px;
+  --barra-larga: 304px;
+  --barra-larga-giu: 244px;
   --barra-fondo: 22px;
   --barra-alta: 84px;
   --barra-bassa: 66px;
   --barra-voce: 72px;
   --barra-voce-giu: 54px;
+  --barra-voce-larga: 96px;
+  --barra-voce-larga-giu: 76px;
   --barra-padding: 6px;
   --barra-gap: 2px;
   --barra-icona: 26px;
@@ -80,6 +82,11 @@
   --moto-scatto: 180ms;
   --banda-fondo: rgba(20, 22, 58, 0.72);
   --banda-bordo: rgba(255, 255, 255, 0.62);
+
+  /* Il Pannello impostazioni (spec fase 5 §B.1): copiati da design/sistema/tokens.css, stessi valori. */
+  --pannello-alto: 76px;
+  --pannello-velo: rgba(20, 22, 58, 0.55);
+  --z-pannello: 70;
 
   --area-ortofrutta: #A8D96A;
   --area-macelleria: #F29B9B;
@@ -172,6 +179,10 @@
   padding: var(--dock-padding); display: flex; gap: var(--dock-respiro);
 }
 .guscio[data-barra="ridotta"] .dock { bottom: var(--dock-fondo-giu); }
+/* Senza tab bar (l'editor dell'ingrediente, spec fase 5 §F): il Dock scende dove
+   starebbe la barra, a 22 dal fondo. Il selettore batte anche la regola ridotta:
+   `data-barra` continua a cambiare con lo scorrimento anche quando la barra non c'è. */
+.guscio[data-barra] .dock.dock-senza-barra { bottom: var(--barra-fondo); }
 
 /* La Dispensa (spec fase 4 §A): stessa posizione e stessa discesa con la barra, ma
    niente contenitore — i due controlli portano ognuno la propria ombra. */
@@ -235,20 +246,23 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .anim-barra { transition: height var(--moto-barra) var(--curva-barra), left var(--moto-barra) var(--curva-barra), right var(--moto-barra) var(--curva-barra); }
+  .anim-barra { transition: height var(--moto-barra) var(--curva-barra), width var(--moto-barra) var(--curva-barra); }
   .anim-barra-voce { transition: height var(--moto-barra) var(--curva-barra), gap var(--moto-barra) var(--curva-barra); }
   .anim-barra-etichetta { transition: max-height var(--moto-barra) var(--curva-barra), opacity 150ms linear; }
 }
 
 /* ---------- tab bar versione B (spec 20/09 §C) ---------- */
-.barra { position: absolute; left: var(--barra-lato); right: var(--barra-lato); bottom: var(--barra-fondo); height: var(--barra-alta); border-radius: 999px; display: flex; align-items: center; gap: var(--barra-gap); padding: var(--barra-padding); background: var(--superficie); box-shadow: var(--ombra-nav); z-index: 20; }
-.barra-voce { flex: 1; height: var(--barra-voce); border-radius: 999px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; overflow: hidden; text-decoration: none; }
+/* Dal 25/09 (spec fase 5 §G.1) la pillola è centrata e ha una larghezza sua. Le voci restano
+   flex con un tetto: con tre voci sono esattamente 96 e 76, e la barra a quattro voci resta in
+   piedi finché TabBar.tsx non passa a tre (voci da 71,5 e 56,5). */
+.barra { position: absolute; left: 0; right: 0; margin: 0 auto; width: var(--barra-larga); bottom: var(--barra-fondo); height: var(--barra-alta); border-radius: 999px; display: flex; align-items: center; gap: var(--barra-gap); padding: var(--barra-padding); background: var(--superficie); box-shadow: var(--ombra-nav); z-index: 20; }
+.barra-voce { flex: 1 1 0; min-width: 0; max-width: var(--barra-voce-larga); height: var(--barra-voce); border-radius: 999px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; overflow: hidden; text-decoration: none; }
 .barra-voce.attiva { background: var(--barra-attiva); }
 .barra-segno { display: flex; align-items: center; justify-content: center; flex: none; height: var(--barra-segno); }
 .barra-etichetta { font-family: var(--font-mono); font-size: 8.5px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--off); white-space: nowrap; max-height: 12px; opacity: 1; line-height: 1; }
 .barra-voce.attiva .barra-etichetta { color: var(--ink); font-weight: 700; }
-.guscio[data-barra="ridotta"] .barra { height: var(--barra-bassa); left: var(--barra-lato-giu); right: var(--barra-lato-giu); }
-.guscio[data-barra="ridotta"] .barra-voce { height: var(--barra-voce-giu); gap: 0; }
+.guscio[data-barra="ridotta"] .barra { height: var(--barra-bassa); width: var(--barra-larga-giu); }
+.guscio[data-barra="ridotta"] .barra-voce { height: var(--barra-voce-giu); max-width: var(--barra-voce-larga-giu); gap: 0; }
 .guscio[data-barra="ridotta"] .barra-etichetta { max-height: 0; opacity: 0; }
 
 /* ---------- Dispensa (spec fase 4 §H.5, DESIGN.md §7) ---------- */
@@ -279,3 +293,87 @@
   @keyframes onda { from { height: 6px; } to { height: 26px; } }
 }
 .onda-barra { display: block; width: 3px; height: 13px; border-radius: 2px; background: var(--superficie); }
+
+/* ---------- Pannello impostazioni (spec fase 5 §A.2, §B.1, §B.2) ---------- */
+/* Sopra tab bar (20), slot del Dock (19) e fogli di livello 1 e 2 (50, 60). Il Dialogo di
+   conferma del pannello sta sopra, a 80 (FoglioDalBasso livello 3). Il pannello è sempre nel
+   DOM: chiuso è `visibility: hidden`, e la transizione di visibility aspetta la fine della
+   discesa. */
+.pannello-velo { position: fixed; inset: 0; z-index: var(--z-pannello); background: var(--pannello-velo); opacity: 0; visibility: hidden; }
+.pannello-velo[data-stato="aperto"] { opacity: 1; visibility: visible; }
+.pannello {
+  position: fixed; top: var(--pannello-alto); left: 0; right: 0; bottom: 0; z-index: var(--z-pannello);
+  display: flex; flex-direction: column; overflow: hidden; outline: none;
+  background: var(--fondo); border-radius: 22px 22px 0 0; box-shadow: var(--ombra-alta);
+  visibility: hidden;
+}
+.pannello[data-stato="aperto"] { visibility: visible; }
+.pannello-testata { flex: none; display: flex; align-items: center; gap: 10px; padding: 16px 16px 12px; }
+/* L'unico che scorre. La maschera sfuma solo gli ultimi 26 px, il padding in fondo: la barra è
+   coperta e --fine non serve (spec §B.1); a fine scorrimento niente resta sfumato. */
+.pannello-corpo {
+  flex: 1; min-height: 0; overflow-y: auto; padding: 0 12px 26px;
+  display: flex; flex-direction: column; gap: 12px;
+  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 26px), rgba(0, 0, 0, 0) 100%);
+  mask-image: linear-gradient(180deg, #000 calc(100% - 26px), rgba(0, 0, 0, 0) 100%);
+}
+.pannello-corpo > * { flex-shrink: 0; }
+/* Il piede fisso col primario (Ordine delle aree, Esporta, Casa): esiste solo se qualcuno ci
+   monta dentro un portale (PiedePannello). */
+.pannello-piede { flex: none; display: flex; flex-direction: column; gap: 8px; padding: 12px 16px 26px; border-top: 1px solid var(--bordo); }
+.pannello-piede:empty { display: none; }
+
+/* L'app dietro prende la scala solo a pannello aperto: un transform fisso su .guscio-main farebbe
+   da contenitore ai position: fixed delle pagine (fogli, dialoghi, widget AI). */
+@media (prefers-reduced-motion: no-preference) {
+  .pannello { transform: translateY(100%); transition: transform 200ms cubic-bezier(.4, 0, 1, 1), visibility 0s linear 200ms; }
+  .pannello[data-stato="aperto"] { transform: none; transition: transform 250ms var(--curva-barra), visibility 0s; }
+  .pannello-velo { transition: opacity 180ms linear, visibility 0s linear 180ms; }
+  .pannello-velo[data-stato="aperto"] { transition: opacity 200ms linear, visibility 0s; }
+  .guscio-main { transform-origin: 50% 0; transition: transform 200ms cubic-bezier(.4, 0, 1, 1); }
+  .guscio[data-pannello="aperto"] .guscio-main { transform: scale(.96); transition: transform 250ms var(--curva-barra); }
+  .anim-sotto-entra { animation: sotto-entra 200ms var(--curva-barra); }
+  .anim-sotto-esce { animation: sotto-esce 200ms var(--curva-barra) forwards; }
+  @keyframes sotto-entra { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes sotto-esce { from { transform: none; opacity: 1; } to { transform: translateX(24px); opacity: 0; } }
+}
+/* Con reduce: solo opacità in 120 ms, e l'app dietro non si scala (spec §B.2). */
+@media (prefers-reduced-motion: reduce) {
+  .pannello { opacity: 0; transition: opacity 120ms linear, visibility 0s linear 120ms; }
+  .pannello[data-stato="aperto"] { opacity: 1; transition: opacity 120ms linear, visibility 0s; }
+  .pannello-velo { transition: opacity 120ms linear, visibility 0s linear 120ms; }
+  .pannello-velo[data-stato="aperto"] { transition: opacity 120ms linear, visibility 0s; }
+  .anim-sotto-entra { animation: sotto-appare 120ms linear; }
+  .anim-sotto-esce { animation: sotto-sparisce 120ms linear forwards; }
+  @keyframes sotto-appare { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes sotto-sparisce { from { opacity: 1; } to { opacity: 0; } }
+}
+/* Aperto da un indirizzo (?impostazioni=, spec §A.3): compare già aperto. L'attributo si toglie
+   alla chiusura, nello stesso render, quindi la chiusura si anima. */
+.pannello[data-istantaneo], .pannello-velo[data-istantaneo], .guscio[data-istantaneo] .guscio-main { transition: none !important; }
+
+/* ---------- Avvio del Marchio (spec fase 5 §J, DESIGN.md §7 .anim-avvio) ---------- */
+/* Il livello (position fixed, z 100, pointer-events none) e il volo (translate + scale) li
+   scrive AvvioMarchio.tsx inline (Task 14): qui ci sono solo stati, durate e curve. Gli stati
+   d'arrivo stanno fuori dal media: sono dove le cose finiscono, non movimenti. */
+.anim-avvio-fondo-via, .anim-avvio-dissolto, .anim-avvio-svanisce, .anim-avvio-nascosto { opacity: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .anim-avvio-casella { animation: pb 620ms linear both; }
+  .anim-avvio-fondo-via, .anim-avvio-dissolto { transition: opacity 420ms linear; }
+  /* Una sola `transition` per il Marchio in volo: se `svanisce` ne dichiarasse un'altra,
+     a 1700 cancellerebbe quella del transform ancora in corsa, che finisce a 1820. */
+  .anim-avvio-volo { transition: transform 620ms var(--curva-barra), opacity 120ms linear; }
+  .anim-avvio-rivela { transition: opacity 120ms linear; }
+  @keyframes pb {
+    0% { transform: scale(0); opacity: 0; }
+    40% { transform: scale(1.32); opacity: 1; }
+    62% { transform: scale(.93); }
+    80% { transform: scale(1.05); }
+    92% { transform: scale(.99); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+}
+/* Con reduce l'avvio non parte (lo decide il componente): qui è la cintura. */
+@media (prefers-reduced-motion: reduce) {
+  [data-avvio] { display: none; }
+}

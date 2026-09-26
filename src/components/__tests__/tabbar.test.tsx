@@ -12,11 +12,31 @@ function Pubblica({ aree }: { aree: 'ortofrutta'[] }) { useAreeMancanti(aree); r
 const monta = (extra?: React.ReactNode) => render(<MarchioProvider>{extra}<TabBar /></MarchioProvider>);
 
 describe('TabBar (spec §C)', () => {
-  it('ha quattro voci nell\'ordine Lista, Piano, Piatti, Dispensa con gli href giusti', () => {
+  it('ha tre voci nell\'ordine Lista, Piano, Dispensa con gli href giusti: Piatti non c\'è più (spec fase 5 §G.1)', () => {
     monta();
     const voci = screen.getAllByRole('link');
-    expect(voci.map((v) => v.textContent)).toEqual(['Lista', 'Piano', 'Piatti', 'Dispensa']);
-    expect(voci.map((v) => v.getAttribute('href'))).toEqual(['/lista', '/piano', '/piatti', '/dispensa']);
+    expect(voci.map((v) => v.textContent)).toEqual(['Lista', 'Piano', 'Dispensa']);
+    expect(voci.map((v) => v.getAttribute('href'))).toEqual(['/lista', '/piano', '/dispensa']);
+    expect(screen.queryByRole('link', { name: 'Piatti' })).toBeNull();
+  });
+
+  it.each(['/piatti', '/piatti/d-1', '/importa', '/piatti/nuovo/ingredienti/i-1'])(
+    'su %s nessuna voce è attiva (spec fase 5 §G.1)',
+    (p) => {
+      percorso.valore = p;
+      monta();
+      for (const voce of screen.getAllByRole('link')) {
+        expect(voce).not.toHaveAttribute('aria-current');
+        expect(voce).not.toHaveClass('attiva');
+      }
+      percorso.valore = '/lista';
+    },
+  );
+
+  it('le voci hanno la classe barra-voce e la barra le classi barra e anim-barra (le misure stanno in globals.css)', () => {
+    monta();
+    for (const voce of screen.getAllByRole('link')) expect(voce).toHaveClass('barra-voce');
+    expect(screen.getByRole('navigation', { name: 'Sezioni' })).toHaveClass('barra', 'anim-barra');
   });
 
   it('la voce attiva è quella il cui href è prefisso del percorso, con aria-current', () => {
@@ -33,6 +53,14 @@ describe('TabBar (spec §C)', () => {
     expect(lista.querySelectorAll('[data-area]')).toHaveLength(6);
     expect(lista.querySelector('[data-area="ortofrutta"]')).toHaveAttribute('data-stato', 'vuoto');
     expect(lista.querySelector('[data-area="cereali"]')).toHaveAttribute('data-stato', 'pieno');
+  });
+
+  it('il segno della Lista porta data-marchio-barra, ed è l\'unico: è dove atterra l\'avvio (spec fase 5 §J)', () => {
+    monta();
+    const segni = document.querySelectorAll('[data-marchio-barra]');
+    expect(segni).toHaveLength(1);
+    expect(screen.getByRole('link', { name: 'Lista' })).toContainElement(segni[0] as HTMLElement);
+    expect(segni[0].querySelectorAll('[data-area]')).toHaveLength(6);
   });
 
   it('il nav si chiama Sezioni e le etichette restano nel DOM (a barra ridotta sono nascoste dal CSS, non tolte)', () => {

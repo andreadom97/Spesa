@@ -3,36 +3,71 @@
 import { useEffect, useState } from 'react';
 import { client } from '@/data/supabase';
 
-/** L'iniziale per il menù utente: nome se c'è, altrimenti email; '·' se manca tutto. Solo lettura. */
-export async function leggiIniziale(): Promise<string> {
+export interface Utente {
+  /** `user_metadata.nome` se c'è, altrimenti la parte dell'email prima della @; '' senza utente. */
+  nome: string;
+  email: string;
+}
+
+const NESSUNO: Utente = { nome: '', email: '' };
+
+/**
+ * Chi è loggato: il nome per il Menù utente (`{Nome}: profilo e impostazioni`, spec fase 5
+ * §A.2) e nome ed email per il gruppo Account del pannello. Solo lettura; non lancia.
+ */
+export async function leggiUtente(): Promise<Utente> {
   try {
     const { data } = await client().auth.getUser();
     const u = data.user;
-    if (!u) return '·';
-    const nome = typeof u.user_metadata?.nome === 'string' ? u.user_metadata.nome.trim() : '';
-    const base = nome || u.email || '';
-    return base ? base[0].toLocaleUpperCase('it') : '·';
+    if (!u) return NESSUNO;
+    const email = u.email ?? '';
+    const dalProfilo = typeof u.user_metadata?.nome === 'string' ? u.user_metadata.nome.trim() : '';
+    return { nome: dalProfilo || email.split('@')[0], email };
   } catch {
-    return '·';
+    return NESSUNO;
   }
 }
 
-// La Testata monta a ogni pagina: senza cache, ogni montaggio richiamerebbe
-// `getUser` da capo per la stessa sessione. Una sola promessa condivisa a
-// livello di modulo, azzerabile dai test con `dimenticaIniziale`.
-let promessa: Promise<string> | null = null;
-
-export function useIniziale(): string {
-  const [iniziale, setIniziale] = useState('·');
-  useEffect(() => {
-    let vivo = true;
-    (promessa ??= leggiIniziale()).then((i) => { if (vivo) setIniziale(i); });
-    return () => { vivo = false; };
-  }, []);
-  return iniziale;
+/** L'iniziale del Menù utente: la prima lettera del nome, maiuscola; '·' se il nome non c'è. */
+export function inizialeDi(nome: string): string {
+  const pulito = nome.trim();
+  return pulito ? pulito[0].toLocaleUpperCase('it') : '·';
 }
 
-/** Solo per i test: azzera la promessa condivisa così il prossimo `useIniziale` rilegge. */
+// La Testata monta a ogni pagina: senza cache, ogni montaggio richiamerebbe `getUser` da capo
+// per la stessa sessione. Una sola promessa condivisa a livello di modulo.
+let promessa: Promise<Utente> | null = null;
+
+/**
+ * La promessa condivisa, che si tiene solo se ha trovato l'utente: una lettura fallita (rete) o
+ * senza utente si scarta appena arriva, così il montaggio dopo rilegge invece di mostrare il
+ * puntino per tutta la sessione.
+ */
+function utenteCondiviso(): Promise<Utente> {
+  if (promessa) return promessa;
+  const questa = leggiUtente().then((u) => {
+    if (!u.email && promessa === questa) promessa = null;
+    return u;
+  });
+  promessa = questa;
+  return questa;
+}
+
+/** null finché `getUser` non risponde. */
+export function useUtente(): Utente | null {
+  const [utente, setUtente] = useState<Utente | null>(null);
+  useEffect(() => {
+    let vivo = true;
+    utenteCondiviso().then((u) => { if (vivo) setUtente(u); });
+    return () => { vivo = false; };
+  }, []);
+  return utente;
+}
+
+/**
+ * Azzera la promessa condivisa: il prossimo `useUtente` rilegge. Il nome è quello di prima
+ * della fase 5 (lo chiamano `esci()` e i test).
+ */
 export function dimenticaIniziale(): void {
   promessa = null;
 }

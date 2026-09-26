@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { dataCorta, dataScadenzaValida, maxScadenza, scadeVicino } from '@/domain/dispensa-vista';
-import { Etichetta, MessaggioErrore, STILE_PILLOLA } from './controlli';
+import { Etichetta, MessaggioErrore, STILE_PILLOLA } from '@/components/controlli';
 
 interface Props {
   nome: string;

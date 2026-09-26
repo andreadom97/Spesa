@@ -38,8 +38,10 @@ function creaClientMock(risolvi: (tabella: string, chiamate: Chiamata[]) => { da
       update: registra('update'),
       upsert: registra('upsert'),
       delete: registra('delete'),
-      single: () => proxy,
-      maybeSingle: () => proxy,
+      // Registrati anche loro: con zero righe supabase-js risponde in modo
+      // diverso (`.single()` errore PGRST116, `.maybeSingle()` data null).
+      single: registra('single'),
+      maybeSingle: registra('maybeSingle'),
       then(onFulfilled: (v: unknown) => unknown, onRejected?: (e: unknown) => unknown) {
         (scritture[tabella] ??= []).push(chiamate);
         return Promise.resolve(risolvi(tabella, chiamate)).then(onFulfilled, onRejected);
@@ -128,6 +130,32 @@ describe('rispondiControllo', () => {
     expect(scritteItem).toHaveLength(1);
     expect(scritteItem[0].some((c) => c.metodo === 'upsert')).toBe(true);
     expect(scritteItem[0].some((c) => c.metodo === 'delete')).toBe(false);
+  });
+
+  it('"no" riesce anche senza la riga di dispensa (dopo Cancella la dispensa): il residuo vale 0', async () => {
+    // Come risponde PostgREST a zero righe: `.single()` è un errore, `.maybeSingle()` no.
+    const { sb, scritture } = creaClientMock((tabella, chiamate) => {
+      if (tabella === 'ingredient') {
+        return { data: { area: 'dispensa', unita_base: 'ml', formato_confezione: 1000 }, error: null };
+      }
+      if (tabella === 'pantry_state') {
+        return chiamate.some((c) => c.metodo === 'single')
+          ? { data: null, error: { code: 'PGRST116', message: 'JSON object requested, multiple (or no) rows returned' } }
+          : { data: null, error: null };
+      }
+      return RISOLVI_OK();
+    });
+    vi.mocked(client).mockReturnValue(sb as never);
+
+    await rispondiControllo('ing-olio', 'lista-base-1', false);
+
+    // Nessuna scrittura su pantry_state: il «no» scrive solo la voce in lista.
+    expect((scritture['pantry_state'] ?? []).flat().some((c) => ['update', 'upsert', 'delete'].includes(c.metodo))).toBe(false);
+    const upsert = scritture['shopping_list_item']?.[0]?.find((c) => c.metodo === 'upsert');
+    expect(upsert?.args[0]).toMatchObject({
+      ingredient_id: 'ing-olio', shopping_list_id: 'lista-base-1', residuo: 0,
+      confezioni: 1, quantita_totale: 1000, origine: 'controllo',
+    });
   });
 });
 

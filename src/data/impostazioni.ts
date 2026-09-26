@@ -1,7 +1,8 @@
-import type { Impostazioni, MealSlotDef } from '@/domain/types';
+import type { GiorniControllo, Impostazioni, MealSlotDef } from '@/domain/types';
 import { ORDINE_AREE_DEFAULT } from '@/domain/aree';
 import { lunediDi } from '@/domain/date';
 import { MAX_PASTI, MIN_PASTI } from '@/domain/pasti';
+import { CADENZE, GIORNI_CONTROLLO_DEFAULT } from '@/domain/pantry';
 import { client } from './supabase';
 import { idCasa } from './casa';
 import { aSlotDef } from './mappers';
@@ -23,6 +24,15 @@ export const MAX_PORZIONI = 4;
 
 function personeValide(persone: number): boolean {
   return Number.isInteger(persone) && persone >= MIN_PORZIONI && persone <= MAX_PORZIONI;
+}
+
+/**
+ * Una delle tre cadenze (spec fase 5 §E.1). Solo un numero vero: la colonna
+ * è `int` con un check sugli stessi tre valori, quindi qualunque altra cosa
+ * è un dato che non viene dal database.
+ */
+function cadenzaValida(v: unknown): v is GiorniControllo {
+  return typeof v === 'number' && (CADENZE as readonly number[]).includes(v);
 }
 
 function oggiIso(): string {
@@ -64,7 +74,7 @@ export async function leggiImpostazioni(): Promise<Impostazioni> {
   const userId = await idCasa();
   const { data, error } = await sb
     .from('settings')
-    .select('moltiplicatore_porzioni, ordine_aree, settimane_ciclo, ciclo_origine')
+    .select('moltiplicatore_porzioni, ordine_aree, settimane_ciclo, ciclo_origine, giorni_controllo')
     .eq('user_id', userId)
     .maybeSingle();
   if (error) throw error;
@@ -74,6 +84,7 @@ export async function leggiImpostazioni(): Promise<Impostazioni> {
       ordineAree: [...ORDINE_AREE_DEFAULT],
       settimaneCiclo: SETTIMANE_CICLO_DEFAULT,
       cicloOrigine: null,
+      giorniControllo: GIORNI_CONTROLLO_DEFAULT,
     };
   }
   return {
@@ -81,12 +92,17 @@ export async function leggiImpostazioni(): Promise<Impostazioni> {
     ordineAree: data.ordine_aree as Impostazioni['ordineAree'],
     settimaneCiclo: Number(data.settimane_ciclo ?? SETTIMANE_CICLO_DEFAULT),
     cicloOrigine: data.ciclo_origine ? String(data.ciclo_origine).slice(0, 10) : null,
+    // Il check della colonna ammette solo 30, 60 e 90: qui un valore diverso
+    // vuol dire una riga non passata dal database (un mock, un dato a mano),
+    // e vale il default invece di un conto sbagliato nella regola 7.
+    giorniControllo: cadenzaValida(data.giorni_controllo) ? data.giorni_controllo : GIORNI_CONTROLLO_DEFAULT,
   };
 }
 
 export async function salvaImpostazioni(i: Impostazioni): Promise<void> {
   // Prima di qualunque accesso al server: una riga fuori tetto non si scrive.
   if (!personeValide(i.moltiplicatorePorzioni)) throw new Error('persone non valide');
+  if (!cadenzaValida(i.giorniControllo)) throw new Error('cadenza non valida');
   const sb = client();
   const userId = await idCasa();
   const { error } = await sb.from('settings').upsert({
@@ -94,6 +110,7 @@ export async function salvaImpostazioni(i: Impostazioni): Promise<void> {
     moltiplicatore_porzioni: i.moltiplicatorePorzioni,
     ordine_aree: i.ordineAree,
     settimane_ciclo: i.settimaneCiclo,
+    giorni_controllo: i.giorniControllo,
     // Un ciclo di più settimane senza origine non saprebbe da dove contare
     // le settimane: si àncora al lunedì di oggi, così chi accende la
     // rotazione comincia il giro da questa settimana. Tornando a un ciclo di
@@ -125,8 +142,17 @@ export async function leggiSlotDefs(): Promise<MealSlotDef[]> {
  * su quei soli pasti è voluta, un piatto appartiene a un pasto — e si fa
  * upsert delle altre. **Non "semplificare" tornando a un delete totale**: a
  * ogni salvataggio delle Impostazioni distruggerebbe il repertorio.
+ *
+ * **`soloTolti`** (review finale della fase 5, I4): senza, si cancella ogni
+ * pasto del server che non è nell'elenco — la semantica di sempre, che serve
+ * alla semina del primo avvio e di `leggiNucleo`. Con, si cancellano solo
+ * quegli id (e solo se non sono tornati nell'elenco), senza leggere il
+ * server: è la strada del pannello, dove l'elenco è quello che il client ha
+ * a schermo. In una casa condivisa l'altro membro può aver aggiunto un pasto
+ * dopo che il pannello si è aperto: con la semantica di sempre quel pasto
+ * sparirebbe, e a cascata i suoi piatti e le sue righe del piano.
  */
-export async function salvaSlotDefs(defs: MealSlotDef[]): Promise<void> {
+export async function salvaSlotDefs(defs: MealSlotDef[], opzioni: { soloTolti?: readonly string[] } = {}): Promise<void> {
   // Il vincolo sul numero di pasti si controlla per primo e prima di qualunque scrittura:
   // rifiutare a metà lavoro (dopo un delete già eseguito) lascerebbe i dati
   // in uno stato peggiore di quello di partenza.
@@ -137,15 +163,19 @@ export async function salvaSlotDefs(defs: MealSlotDef[]): Promise<void> {
   const userId = await idCasa();
 
   const idAttuali = new Set(defs.map((d) => d.id));
-  const { data: esistenti, error: eSel } = await sb
-    .from('meal_slot_def')
-    .select('id')
-    .eq('user_id', userId);
-  if (eSel) throw eSel;
+  let candidati: string[];
+  if (opzioni.soloTolti) {
+    candidati = [...opzioni.soloTolti];
+  } else {
+    const { data: esistenti, error: eSel } = await sb
+      .from('meal_slot_def')
+      .select('id')
+      .eq('user_id', userId);
+    if (eSel) throw eSel;
+    candidati = (esistenti ?? []).map((r) => String(r.id));
+  }
 
-  const daRimuovere = (esistenti ?? [])
-    .map((r) => String(r.id))
-    .filter((id) => !idAttuali.has(id));
+  const daRimuovere = candidati.filter((id) => !idAttuali.has(id));
   if (daRimuovere.length > 0) {
     const { error: eDel } = await sb
       .from('meal_slot_def')

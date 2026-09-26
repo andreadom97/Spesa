@@ -1,13 +1,19 @@
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi } from 'vitest';
-import { render, fireEvent } from '@testing-library/react';
+import { act, render, fireEvent, screen } from '@testing-library/react';
 
 const percorso = vi.hoisted(() => ({ valore: '/lista' }));
-vi.mock('next/navigation', () => ({ usePathname: () => percorso.valore }));
-vi.mock('../TabBar', () => ({ TabBar: () => <nav aria-label="Sezioni" /> }));
+vi.mock('next/navigation', () => ({ usePathname: () => percorso.valore, useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
+vi.mock('../TabBar', () => ({ TabBar: ({ inerte }: { inerte?: boolean }) => <nav aria-label="Sezioni" inert={inerte} /> }));
+vi.mock('@/data/utente', () => ({ useUtente: () => ({ nome: 'Andrea', email: 'andrea@example.it' }), inizialeDi: () => 'A' }));
+vi.mock('../pannello/Pannello', () => ({ Pannello: () => <div data-testid="pannello" /> }));
+vi.mock('../pannello/DatiPannello', () => ({
+  DatiPannelloProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
 
 import { Guscio, calcolaStatoBarra } from '../Guscio';
 import { useNascondiBarra } from '../barra-context';
+import { Testata } from '../Testata';
 
 describe('calcolaStatoBarra (spec §B)', () => {
   it('si riduce scorrendo giù di almeno 6 oltre i 24 di scrollTop', () => {
@@ -90,5 +96,65 @@ describe('Guscio', () => {
     expect(container.querySelector('nav[aria-label="Sezioni"]')).not.toBeInTheDocument();
     rerender(<Guscio><p>porte</p></Guscio>);
     expect(container.querySelector('nav[aria-label="Sezioni"]')).toBeInTheDocument();
+  });
+
+  it('monta il pannello, e il Menù utente della pagina lo apre: data-pannello sul guscio (spec fase 5 §A.1, §B.2)', () => {
+    const { container } = render(<Guscio><Testata titolo="Lista" /></Guscio>);
+    const guscio = container.firstElementChild as HTMLElement;
+    expect(screen.getByTestId('pannello')).toBeInTheDocument();
+    expect(guscio).not.toHaveAttribute('data-pannello');
+    fireEvent.click(screen.getByRole('button', { name: 'Andrea: profilo e impostazioni' }));
+    expect(guscio).toHaveAttribute('data-pannello', 'aperto');
+    expect(guscio).not.toHaveAttribute('data-istantaneo');
+  });
+
+  // Review finale M2: nel Guscio l'apertura da indirizzo aspetta PrimoAvvio.
+  it('da ?impostazioni= il pannello aspetta PrimoAvvio: senza il suo segnale resta chiuso e il parametro resta', async () => {
+    window.history.replaceState(null, '', '/lista?impostazioni=cima');
+    try {
+      const { container } = render(<Guscio><Testata titolo="Lista" /></Guscio>);
+      await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+      expect(container.firstElementChild).not.toHaveAttribute('data-pannello');
+      expect(window.location.search).toBe('?impostazioni=cima');
+    } finally {
+      window.history.replaceState(null, '', '/lista');
+    }
+  });
+
+  // Review del Task 6 (minor b): aria-modal da solo non trattiene il Tab dentro il pannello.
+  it('a pannello aperto l\'app dietro, lo slot del Dock e la tab bar sono inert; chiuso, no', () => {
+    const { container } = render(<Guscio><Testata titolo="Lista" /></Guscio>);
+    const main = container.querySelector('main.guscio-main')!;
+    const slot = container.querySelector('.dock-slot')!;
+    const barra = () => container.querySelector('nav[aria-label="Sezioni"]')!;
+    expect(main).not.toHaveAttribute('inert');
+    expect(slot).not.toHaveAttribute('inert');
+    expect(barra()).not.toHaveAttribute('inert');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Andrea: profilo e impostazioni' }));
+    expect(main).toHaveAttribute('inert');
+    expect(slot).toHaveAttribute('inert');
+    expect(barra()).toHaveAttribute('inert');
+
+    // Nel telefono il Menù è sotto il velo, che chiude; qui il tocco arriva al bottone.
+    fireEvent.click(screen.getByRole('button', { name: 'Andrea: profilo e impostazioni' }));
+    expect(main).not.toHaveAttribute('inert');
+    expect(slot).not.toHaveAttribute('inert');
+  });
+
+  it('monta l\'avvio del Marchio su /lista, una volta per sessione (spec fase 5 §J)', () => {
+    percorso.valore = '/lista';
+    sessionStorage.clear();
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+    try {
+      const { container, unmount } = render(<Guscio><p>x</p></Guscio>);
+      expect(container.querySelector('[data-avvio]')).not.toBeNull();
+      unmount();
+      const secondo = render(<Guscio><p>x</p></Guscio>);
+      expect(secondo.container.querySelector('[data-avvio]')).toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
+      sessionStorage.clear();
+    }
   });
 });

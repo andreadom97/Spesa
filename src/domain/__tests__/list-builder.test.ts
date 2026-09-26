@@ -429,3 +429,30 @@ describe('costruisciLista — evitato (il non ricomprato)', () => {
     expect(r.evitato.map((v) => v.ingredientId)).toEqual(['avena', 'yogurt']);
   });
 });
+
+describe('costruisciLista — la cadenza dei controlli (spec fase 5 §E.1)', () => {
+  // Olio comprato il 20/07: al 30/08 (OGGI) sono passati 41 giorni.
+  const pantry = () => dispensaVuota().map((p) =>
+    p.ingredientId === 'olio' ? { ...p, ultimoAcquisto: '2026-07-20' } : p);
+  const controlli = (giorniControllo: 30 | 60 | 90) =>
+    base({ pantry: pantry(), impostazioni: { ...IMPOSTAZIONI, giorniControllo } })
+      .base.flatMap((s) => s.controlli)
+      .map((c) => c.ingredientId);
+
+  it('ogni mese: dopo 41 giorni chiede dell\'olio', () => {
+    expect(controlli(30)).toEqual(['olio']);
+  });
+
+  it('ogni 2 mesi e ogni 3 mesi: dopo 41 giorni non ancora', () => {
+    expect(controlli(60)).toEqual([]);
+    expect(controlli(90)).toEqual([]);
+  });
+
+  it('la cadenza cambia solo i controlli: voci e non ricomprato restano identici', () => {
+    const a = base({ pantry: pantry(), impostazioni: { ...IMPOSTAZIONI, giorniControllo: 30 } });
+    const b = base({ pantry: pantry(), impostazioni: { ...IMPOSTAZIONI, giorniControllo: 90 } });
+    const voci = (r: typeof a) => [...r.base, ...r.topup].flatMap((s) => s.voci);
+    expect(voci(a)).toEqual(voci(b));
+    expect(a.evitato).toEqual(b.evitato);
+  });
+});

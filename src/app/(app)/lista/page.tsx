@@ -19,8 +19,10 @@ import { leggiIstantaneaLista, salvaIstantaneaLista, cancellaIstantaneaLista } f
 import { Testata } from '@/components/Testata';
 import { Tessera } from '@/components/Tessera';
 import { RigaControllo } from '@/components/RigaControllo';
+import { GIORNI_CONTROLLO_DEFAULT, type GiorniControllo } from '@/domain/pantry';
 import { Dock } from '@/components/Dock';
 import { useAreeMancanti } from '@/components/marchio-context';
+import { useRileggiDopoImpostazioni } from '@/components/pannello/eventi';
 
 const INK = '#14163A';
 const MUT = '#8A8A96';
@@ -451,6 +453,17 @@ export default function Lista() {
     };
   }, []);
 
+  // Il pannello delle Impostazioni sta sopra la Lista, che non si rimonta
+  // (review finale della fase 5, I2). Prima della fase 5 tornare dalla
+  // pagina Impostazioni rimontava la Lista, e il caricamento intero rileggeva
+  // ordine delle aree e cadenza e riallineava il top-up a pasti, persone e
+  // rotazione nuovi. Qui si rifà lo stesso caricamento, in silenzio: la lista
+  // a schermo resta finché arriva quella nuova (`carica` non azzera niente
+  // prima di leggere, e scarta la risposta se nel frattempo c'è stato un
+  // tocco). Due salvataggi di fila fanno un caricamento dopo l'altro, non
+  // due in parallelo (vedi l'hook).
+  useRileggiDopoImpostazioni(caricaRef);
+
   function toggleVoce(voce: VoceSalvata) {
     const nuovo = !voce.spuntato;
     versioneTocchi.current += 1;
@@ -515,7 +528,7 @@ export default function Lista() {
       ? {
         titolo: 'Prima servono i piatti',
         testo: 'La lista nasce dai piatti che mangi: dicci quali sono e da lì la settimana e la spesa si costruiscono da sole.',
-        href: '/piatti',
+        href: '/piatti?da=lista',
         bottone: 'COMINCIA DAI PIATTI',
       }
       : {
@@ -558,6 +571,10 @@ export default function Lista() {
   // due righe `shopping_list` avviene qui, in lettura, e il database resta
   // com'è. Ogni voce porta il `listaId` della sua, che serve a `rispondi`.
   const sezioni = fondiSezioni(lista);
+  // La cadenza viaggia con la lista (leggiListe la legge insieme all'ordine
+  // delle aree): nessuna lettura in più. Un'istantanea offline di prima della
+  // fase 5 non ce l'ha, e vale il default.
+  const giorniControllo = lista.giorniControllo ?? GIORNI_CONTROLLO_DEFAULT;
   // Un solo booleano decide due cose che non possono divergere: se il Dock
   // c'è, e se lo scroller deve lasciargli la coda.
   const finito = tuttoFatto(lista);
@@ -592,6 +609,7 @@ export default function Lista() {
           <CartaSezione
             key={sezione.area}
             sezione={sezione}
+            giorniControllo={giorniControllo}
             rigaInVolo={rigaInVolo}
             onToggleVoce={toggleVoce}
             onSi={(c) => rispondi(c, true)}
@@ -630,9 +648,10 @@ function ordinaPerCarrello<T extends { spuntato: boolean }>(voci: T[]): T[] {
  * disegnavano più nessun confine.
  */
 function CartaSezione({
-  sezione, rigaInVolo, onToggleVoce, onSi, onNo,
+  sezione, giorniControllo, rigaInVolo, onToggleVoce, onSi, onNo,
 }: {
   sezione: SezioneFusa;
+  giorniControllo: GiorniControllo;
   rigaInVolo: string | null;
   onToggleVoce: (v: VoceFusa) => void;
   onSi: (c: VoceFusa) => void;
@@ -688,6 +707,7 @@ function CartaSezione({
           key={c.id}
           nome={c.nome}
           area={c.area}
+          giorniControllo={giorniControllo}
           onSi={() => onSi(c)}
           onNo={() => onNo(c)}
           disabilitato={rigaInVolo === c.id}
