@@ -63,13 +63,15 @@ export function RigaImpostazione({ nome, nota, finale, errore, etichetta }: Prop
         <button type="button" aria-label={etichetta} onClick={finale.onApri} style={STILE_RIGA}>
           {testi}
           {finale.valore && (
-            // Al massimo metà riga, poi ellissi: un valore lungo (le opzioni di Scegli,
-            // «Ricotta + Noci + …») non deve schiacciare il nome a zero. Il testo intero
-            // resta nell'etichetta, se chi monta la riga la passa. I valori corti del
-            // Pannello («2 PASTI», «OGNI 3 MESI», «NESSUNO FUORI CASA») stanno sotto la
-            // metà e non cambiano. Maiuscolo via CSS (DESIGN.md §8): chi passa «Ricotta»
+            // Al massimo il 60% della riga, poi ellissi: un valore lungo (le opzioni di
+            // Scegli, «Ricotta + Noci + …») non deve schiacciare il nome a zero. Il testo
+            // intero resta nell'etichetta, se chi monta la riga la passa. I valori corti
+            // del Pannello («2 PASTI», «OGNI 3 MESI», «NESSUNO FUORI CASA») stanno sotto
+            // il tetto e non cambiano: 60 e non 50 perché a 320 metà riga è ≈ 127 px e
+            // «NESSUNO FUORI CASA» ne misura 133 (review finale, M2); al 60% sono ≈ 152
+            // a 320 e ≈ 176 a 360. Maiuscolo via CSS (DESIGN.md §8): chi passa «Ricotta»
             // la vede RICOTTA, e nel DOM resta il testo.
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', whiteSpace: 'nowrap', maxWidth: '50%', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', whiteSpace: 'nowrap', maxWidth: '60%', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {finale.valore}
             </span>
           )}

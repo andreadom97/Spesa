@@ -38,7 +38,9 @@ describe('RigaImpostazione — etichetta', () => {
     expect(screen.getByRole('button', { name: "Esci dall'account" })).toBeInTheDocument();
   });
 
-  it('un valore lungo non sfonda la riga: al massimo metà, poi ellissi', () => {
+  // 60 e non 50 (review finale, M2): a 320 metà riga è ≈ 127 px e «NESSUNO FUORI CASA»
+  // (133) si sarebbe tagliato; al 60% sono ≈ 152 a 320 e ≈ 176 a 360.
+  it('un valore lungo non sfonda la riga: al massimo il 60%, poi ellissi', () => {
     render(
       <RigaImpostazione
         nome="Farcitura"
@@ -46,7 +48,7 @@ describe('RigaImpostazione — etichetta', () => {
       />,
     );
     const valore = screen.getByText('Ricotta + Noci + Prezzemolo');
-    expect(valore.style.maxWidth).toBe('50%');
+    expect(valore.style.maxWidth).toBe('60%');
     expect(valore.style.overflow).toBe('hidden');
     expect(valore.style.textOverflow).toBe('ellipsis');
   });
