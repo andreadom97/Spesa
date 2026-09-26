@@ -224,6 +224,14 @@ Ogni task aggiunge qui quello che non ha potuto provare fuori dal telefono.
   controllata solo a mano. Le tre query di «Task 4 › Da fare all'applicazione della 0015» vanno
   lanciate quando si applica la migrazione, oppure si prova Cancella la dispensa dal telefono su
   un account di prova (spec §M.4), con un pasto «dai pronti» di oggi o dopo e una lista aperta.
+- **Il `max_rows` di PostgREST (Task 5): NON MISURATO.** `leggiTutteLeSettimane` regge qualunque
+  valore (pagina a 1000, e va avanti di quante righe arrivano davvero, non di quante ne ha
+  chieste), ma il tetto vero di questo progetto Supabase non è stato letto. Da controllare al
+  gate: Dashboard → Settings → API, o `select current_setting('pgrst.db_max_rows', true);`.
+- **`salvaFile` e `esci()` (Task 5): la prova vera è dal telefono.** I test coprono `canShare`/
+  `share`/download in jsdom, ma il foglio di condivisione del sistema (iOS/Android) e un vero
+  logout su un secondo dispositivo con la stessa sessione (per verificare che resti dentro, D3)
+  vanno provati dal telefono su un account di prova.
 
 ## Rimasto aperto, di proposito
 
@@ -249,7 +257,9 @@ proposta. Andrea le vede in review.
 2. **La migrazione applicata**, con le query di controllo di «Task 4 › Da fare all'applicazione
    della 0015».
 3. **Il merge della PR**, che va in produzione da solo.
-4. **Le prove dal telefono** della spec §M.4, più quelle della sezione «Non eseguiti».
+4. **Le prove dal telefono** della spec §M.4, più quelle della sezione «Non eseguiti»: il foglio
+   di condivisione di Esporta, e un logout (D3) verificato dallo stare dentro su un secondo
+   dispositivo.
 
 ## Task 3
 
@@ -437,3 +447,59 @@ rollback;
 
 La terza prova lavora sulle righe visibili a quell'utente, cioè la RLS in azione. In alternativa,
 la stessa prova dal telefono su un account di prova dopo il merge (spec §M.4).
+
+## Task 5
+
+### Task 5, indagine
+
+- **Il tetto di PostgREST e le pagine.** `leggiTutteLeSettimane` (`src/data/settimana.ts`) legge
+  `week` in una query e `meal_slot` a pagine con `.range()`, finché una pagina torna vuota: 2 + N
+  query invece di 2. PostgREST su Supabase taglia ogni risposta a un massimo di righe (1000 di
+  default **[ipotesi: il valore di questo progetto non è misurato]**), e `meal_slot` cresce di
+  21-42 righe a settimana (3-6 pasti per 7 giorni): con 6 pasti, 1000 righe sono 24 settimane. Due
+  query secche darebbero un file **troncato in silenzio** dopo sei mesi d'uso. La funzione va
+  avanti di quante righe riceve davvero (non di quante ne ha chieste), e regge quindi anche un
+  `max_rows` più basso della pagina — provato nei test con un tetto finto a 500. **Da verificare
+  al gate:** il `max_rows` vero del progetto (Dashboard → Settings → API, o
+  `select current_setting('pgrst.db_max_rows', true);`), riportato sopra fra i «Non eseguiti».
+- **Esci (misura 2, D3 e D4).** Le righe di decisione sono qui sotto, in «Task 5, decisioni di
+  Andrea». La spec §E.4 le riporta già (aggiornata il 26/09).
+- **I Pronti nel file** sono `LottoPronto[]` da `leggiPronti()` (misura 3), decaduti compresi:
+  nessuna funzione nuova, la stessa che legge già la Dispensa. **I piatti** nel file sono invece
+  solo quelli attivi (`leggiRepertorio()`): un pasto del piano esportato può citare un `dishId` di
+  un piatto disattivato che nel file non compare. Scelta accettata: il file dice quello che l'app
+  mostra oggi, non un archivio storico completo.
+- **Il nome del file usa il giorno locale di chi esporta**, non quello UTC del resto dei dati
+  (`giornoLocale` in `src/data/esporta.ts`): a mezzanotte e mezza in Italia il file esportato è
+  già del giorno dopo secondo l'orologio del telefono, e il nome deve dirlo a chi lo legge.
+  Provato con `TZ=Europe/Rome npx vitest run src/data/__tests__/esporta.test.ts` (5 verdi), oltre
+  che in CI (UTC), dove il test non distingue i due fusi ma non fallisce.
+- **La revoca dell'URL dopo 40 s** in `salvaFile`/`scarica` (`src/components/salva-file.ts`)
+  **[ipotesi sul valore]**: il margine usato dalle librerie di download (FileSaver.js) per non
+  interrompere il download in alcuni browser se si revoca subito. Il file di Esporta pesa meno di
+  un megabyte: tenerlo vivo 40 s in memoria non costa.
+- **La versione (misura 4).** `next.config.ts` importa `package.json` e scrive
+  `env: { NEXT_PUBLIC_VERSIONE: pacchetto.version }`; `src/components/pannello/versione.ts` legge
+  `process.env.NEXT_PUBLIC_VERSIONE ?? '0.0.0'`. Misurato il 25/09 con una build di prova in una
+  copia del repo: il bundle client porta il valore letterale (`"Versione 0.1.0"`), non la
+  variabile. Il Task 11 lo riconferma dopo che il Task 7 monta il piede
+  (`grep -rho 'Versione [0-9.]*' .next/static | head -1`).
+
+### Task 5, decisioni di Andrea
+
+> **D3 = A (Andrea, 26/09).** `esci()` chiama `signOut({ scope: 'local' })`: esce da questo
+> telefono, non dagli altri dispositivi dell'account. Lancia solo se dopo l'errore la sessione c'è
+> ancora: `signOut` di auth-js 2.112.4 cancella la sessione locale anche quando il server fallisce
+> [misurato in `GoTrueClient._signOut`, righe 3412-3443].
+
+> **D4 (confermata da Andrea, 26/09).** Se la condivisione del file fallisce per un motivo diverso
+> dall'annullo, `salvaFile` scarica il file.
+
+### Task 5, verifica
+
+`npx vitest run` (suite intera): **1801 verdi, 1 saltato** [misurato 26/09; una seconda esecuzione
+della stessa suite, senza toccare codice, ha dato prima 1800/1 con un fallimento isolato in
+`src/app/(app)/dispensa/__tests__/widget-ai.test.tsx` (focus del `role="status"` del widget AI) —
+file non toccato da questo task, verde da solo e verde nella riesecuzione: flakiness preesistente,
+non di questo task]. `npx tsc --noEmit` e `npm run lint` puliti. Il test del nome del file passa
+sia con `TZ=Europe/Rome` sia in CI (`TZ=UTC` implicito).

@@ -32,7 +32,7 @@ export function useIniziale(): string {
   return iniziale;
 }
 
-/** Solo per i test: azzera la promessa condivisa così il prossimo `useIniziale` rilegge. */
+/** Azzera la promessa condivisa, così il prossimo `useIniziale` rilegge: nei test, e in `esci()` (sessione.ts). */
 export function dimenticaIniziale(): void {
   promessa = null;
 }
