@@ -1,6 +1,6 @@
 # Icone ingrediente — catalogo (bozza da rivedere)
 
-71 icone, ~135 nomi coperti. **Fonte** di ogni nome:
+70 icone, ~135 nomi coperti. Rivista da Andrea il 26/09: tenute tutte le aggiunte, tofu con ricotta. **Fonte** di ogni nome:
 **P** = in produzione e usato in almeno un piatto o una lista (query del 26/09/2026),
 **B** = `INGREDIENTI_BASE`, **F** = `formati-tipici`, **D** = estrazioni delle diete,
 **A** = aggiunta mia (spesa italiana comune, nessun dato a supporto).
@@ -52,7 +52,7 @@
 | 34 | affettato (fetta) | prosciutto crudo, prosciutto cotto, bresaola, speck | B F · A | sì |
 | 35 | pancetta | guanciale, pancetta | P · A | sì |
 
-## Latticini e uova (8)
+## Latticini e uova (7)
 
 | # | Icona | Nomi coperti | Fonte | Fam. |
 |---|---|---|---|---|
@@ -61,9 +61,8 @@
 | 38 | yogurt (vasetto) | yogurt greco, yogurt bianco, yogurt, skyr | P B F D | sì |
 | 39 | formaggio ★ (spicchio) | parmigiano, pecorino, grana, feta | P B F | sì |
 | 40 | mozzarella | mozzarella, burrata | P B F D · A | |
-| 41 | formaggio fresco (vaschetta) | ricotta, philadelphia | P B F | sì |
+| 41 | formaggio fresco (vaschetta) | ricotta, philadelphia, tofu | P B F | sì |
 | 42 | burro (panetto) | burro | B | |
-| 43 | tofu | tofu | P | |
 
 ## Cereali e forno (9)
 
@@ -108,10 +107,11 @@
 | 70 | minestra (ciotola fumante) | minestrone surgelato, brodo vegetale | P B | sì |
 | 71 | acqua (bottiglia) | acqua | A | |
 
-## Da decidere in revisione
+## Decisioni della revisione (26/09)
 
-- **Senza dati a supporto (solo A):** fragola, kiwi, salsiccia, acqua. Tenere o togliere?
-- **Surgelati:** nessuna icona propria. Spinaci, piselli, merluzzo e gamberi surgelati usano
-  l'icona dell'ingrediente; il colore viola dell'area già dice "surgelato".
-- **Tofu:** icona propria (cubetto) o dentro "formaggio fresco"?
-- **Esclusi di proposito:** "frutta fresca", "verdura", "condimenti" (categorie, non ingredienti).
+- Tenute le aggiunte senza dati (fragola, kiwi, salsiccia, acqua).
+- Surgelati senza icona propria: usano l'icona dell'ingrediente, il viola dell'area dice "surgelato".
+- Tofu dentro "formaggio fresco".
+- Esclusi di proposito: "frutta fresca", "verdura", "condimenti" (categorie, non ingredienti).
+
+La numerazione salta il 43 (tofu, confluito nel 41).

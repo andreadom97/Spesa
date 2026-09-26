@@ -11,7 +11,7 @@ Decisioni prese con Andrea il 26/09/2026 in brainstorming.
 - **Tre tessere:** Lista (`src/components/Tessera.tsx`, compresa la protagonista/hero),
   Dispensa (`src/app/(app)/dispensa/TesseraDispensa.tsx`), ingredienti del piatto
   (`src/components/TesseraIngrediente.tsx`). `TesseraLotto` resta fuori.
-- **Catalogo:** 71 icone che coprono ~135 nomi, in
+- **Catalogo:** 70 icone che coprono ~135 nomi, in
   [`2026-09-26-icone-ingredienti-lista.md`](2026-09-26-icone-ingredienti-lista.md).
   "I 100 più usati" non si ricava dai dati: in produzione ci sono 2 utenti e ~95 nomi distinti,
   quasi tutti dal seed (query del 26/09). La lista unisce produzione, `INGREDIENTI_BASE`,
@@ -19,6 +19,8 @@ Decisioni prese con Andrea il 26/09/2026 in brainstorming.
 - **Icone di famiglia ammesse** dove la differenza non si vede (tonno e salmone → pesce;
   ceci, fagioli, lenticchie → legumi). **Icone proprie** dove si vede (manzo → bistecca,
   pollo → cosciotto, piselli → baccello).
+- **Tessera ingrediente del piatto:** la matita sta in basso a destra (area di tocco 44×44,
+  `TesseraIngrediente.tsx`), la X in alto a destra. Il pilota decide dove va l'icona lì.
 - **Fuori catalogo: nessuna icona.** Niente segnaposto generico; la tessera resta com'è oggi.
 
 ## 2. Processo
@@ -64,7 +66,7 @@ caso di famiglia (legumi) e il caso più a rischio di confusione (legumi vs pise
   l'alone al nome. Le tessere diventano `position: relative; overflow: hidden` se non lo sono.
 - **Niente migrazioni:** il collegamento è sul nome, a runtime. Rinominare un ingrediente cambia
   l'icona di conseguenza.
-- **Peso:** i tracciati inline di ~71 icone sono stimati in qualche decina di KB (non misurato).
+- **Peso:** i tracciati inline di ~70 icone sono stimati in qualche decina di KB (non misurato).
   Si misura sul build; se pesano troppo si caricano a parte.
 
 ## 5. Design system
