@@ -488,6 +488,14 @@ export default function Settimana() {
    * righe purchase e sottrarrebbe di nuovo il fabbisogno dal residuo (C4).
    * Il pulsante qui sotto diventa un semplice "VAI ALLA LISTA": naviga e
    * basta, non tocca mai il server.
+   *
+   * Per questo la lista si genera PRIMA di confermare: se generaListe fallisce
+   * (rete, un'unità incompatibile) la settimana resta in bozza e il tasto resta
+   * "CONFERMA E CREA LA LISTA", che al tocco successivo riprova tutto. Con
+   * l'ordine inverso la settimana restava confermata senza lista, e da lì non
+   * si tornava indietro. Se invece fallisce confermaSettimana, la lista c'è ma
+   * la settimana è ancora in bozza: il nuovo tocco la rigenera, e nessuno l'ha
+   * ancora aperta, quindi non c'è una spunta da perdere.
    */
   async function confermaEVaiLista() {
     if (confermando) return;
@@ -498,8 +506,8 @@ export default function Settimana() {
     setConfermando(true);
     setErroreConferma(null);
     try {
-      await confermaSettimana(settimana.id);
       await generaListe(settimana.id);
+      await confermaSettimana(settimana.id);
       router.push('/lista');
     } catch (errore) {
       console.error('settimana: conferma o generazione della lista fallita.', errore);
