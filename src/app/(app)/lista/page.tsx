@@ -22,6 +22,7 @@ import { RigaControllo } from '@/components/RigaControllo';
 import { GIORNI_CONTROLLO_DEFAULT, type GiorniControllo } from '@/domain/pantry';
 import { Dock } from '@/components/Dock';
 import { useAreeMancanti } from '@/components/marchio-context';
+import { useRileggiDopoImpostazioni } from '@/components/pannello/eventi';
 
 const INK = '#14163A';
 const MUT = '#8A8A96';
@@ -451,6 +452,17 @@ export default function Lista() {
       window.removeEventListener('online', alRitornoOnline);
     };
   }, []);
+
+  // Il pannello delle Impostazioni sta sopra la Lista, che non si rimonta
+  // (review finale della fase 5, I2). Prima della fase 5 tornare dalla
+  // pagina Impostazioni rimontava la Lista, e il caricamento intero rileggeva
+  // ordine delle aree e cadenza e riallineava il top-up a pasti, persone e
+  // rotazione nuovi. Qui si rifà lo stesso caricamento, in silenzio: la lista
+  // a schermo resta finché arriva quella nuova (`carica` non azzera niente
+  // prima di leggere, e scarta la risposta se nel frattempo c'è stato un
+  // tocco). Due salvataggi di fila fanno un caricamento dopo l'altro, non
+  // due in parallelo (vedi l'hook).
+  useRileggiDopoImpostazioni(caricaRef);
 
   function toggleVoce(voce: VoceSalvata) {
     const nuovo = !voce.spuntato;
