@@ -676,6 +676,49 @@ describe('Confezioni — scansione', () => {
     expect(screen.queryByText(/La confezione è/)).not.toBeInTheDocument();
     expect(aggiornaFormatoDaScansione).toHaveBeenCalledTimes(1);
   });
+
+  it('la risposta in ritardo di un codice vecchio con formato uguale non scrive', async () => {
+    const E1 = '1111111111111';
+    const E2 = '2222222222222';
+    let rispondiE1: (r: Response) => void = () => {};
+    fetchMock
+      // Prima lettura (E1) sulla Pasta: resta in sospeso. Quando arriverà,
+      // il formato sarà uguale a quello in lista (1000 g) → ramo "confermo",
+      // che scriverebbe da solo se non fosse per la guardia sul codice.
+      .mockReturnValueOnce(new Promise<Response>((r) => { rispondiE1 = r; }))
+      // Seconda lettura (E2), sempre sulla Pasta: risponde subito con un
+      // formato diverso (500 g) → è una proposta, non scrive da sola.
+      .mockResolvedValueOnce(rispostaJson(OFF_500G));
+
+    render(<Confezioni />);
+    // Prima lettura (E1) sulla Pasta: la fetch resta in sospeso.
+    fireEvent.click(await screen.findByRole('button', { name: 'Scansiona Pasta' }));
+    fireEvent.change(await screen.findByLabelText('Codice a barre'), { target: { value: E1 } });
+    fireEvent.click(screen.getByRole('button', { name: 'CERCA IL CODICE' }));
+    expect(await screen.findByText('Cerco nel catalogo…')).toBeInTheDocument();
+
+    // Si chiude (✕) e si riapre la stessa voce.
+    fireEvent.click(screen.getByRole('button', { name: 'Chiudi la scansione' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Scansiona Pasta' }));
+
+    // Seconda lettura (E2): torna subito, formato diverso → proposta, in attesa di AGGIORNA.
+    fireEvent.change(await screen.findByLabelText('Codice a barre'), { target: { value: E2 } });
+    fireEvent.click(screen.getByRole('button', { name: 'CERCA IL CODICE' }));
+
+    expect(await screen.findByText(`CODICE ${E2}`)).toBeInTheDocument();
+    expect(await screen.findByText('Barilla · Spaghetti n. 5 · 500 g')).toBeInTheDocument();
+
+    // Ora arriva la risposta lenta di E1, con formato uguale (1000 g): non deve
+    // scrivere da sola sopra la proposta di E2 ancora in sospeso.
+    rispondiE1(rispostaJson({ trovato: true, nome: 'Pasta', marca: 'X', quantita: { valore: 1000, unita: 'g' } }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(screen.getByText(`CODICE ${E2}`)).toBeInTheDocument();
+    expect(screen.getByText('Barilla · Spaghetti n. 5 · 500 g')).toBeInTheDocument();
+    expect(screen.queryByText(/Formato confermato/)).not.toBeInTheDocument();
+    expect(aggiornaFormatoDaScansione).not.toHaveBeenCalled();
+  });
 });
 
 describe('Confezioni — il foglio (spec fase 6 §B.4)', () => {
