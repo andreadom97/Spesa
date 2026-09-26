@@ -155,7 +155,7 @@ scritto:
 | `0,09` su `--ink` | bordo delle pillole d'azione, della Riga piatto, della Riga pasto, della foto in «Rivedi i fogli presi» |
 | `0,10` su `--ink` | alone del microfono tenuto premuto; fondo delle pillole e dei tasti spenti |
 | `0,12` su `--ink` | Menù utente premuto |
-| `0,14` su `--ink` | righe finte della miniatura nella Striscia dei fogli presi |
+| `0,14` su `--ink` | righe finte della miniatura nella Striscia dei fogli presi; dal 26/09 anche il filetto sotto il nome della testata di modifica (il campo del nome nell'editor dell'ingrediente e in quello del Piatto) |
 | `0,26` su un colore d'area | tinta della riga di controllo e della Tessera di dispensa |
 | `0,32` su un colore d'area | pillola delle confezioni dentro una tessera accesa |
 | `0,34` su `--ink` | nome barrato di una tessera spenta |
@@ -166,6 +166,7 @@ scritto:
 | `0,62` su bianco | bordo del tasto secondario sopra l'anteprima fotocamera |
 | `0,62` su bianco | tempo di registrazione nello stato "Registro" |
 | `0,62` su bianco | contorno del pallino vuoto della Striscia dei giorni sul giorno selezionato |
+| `0,62` su bianco | sottoriga della Riga piatto scelta, in Scegli (dal 26/09) |
 | `0,85` su bianco | fascia della luce che attraversa i widget vuoti |
 | `0,92` su bianco | angoli della cornice guida sopra l'anteprima fotocamera |
 
@@ -460,6 +461,11 @@ in una colonna larga al massimo 360 sul fondo di §2.4: il Marchio pieno a 20, `
 il Campo di testo con l'etichetta `EMAIL`, `ENTRA CON UN LINK` (Tasto primario). Dopo l'invio,
 l'indirizzo a cui è partito il link e `USA UN’ALTRA EMAIL` (secondario).
 
+**Gli editor** (l'ingrediente dal 25/09, il piatto dal 26/09) non hanno la Testata: hanno la
+**testata di modifica** (frame 12, `TestataModifica`): il tondo 44 su `--barra-attiva` con la
+freccia, sotto, facoltativa, l'area in etichetta mono col quadratino, poi il nome come campo a
+32/800. Sono pagine di modifica, senza titolo di schermata e senza tab bar; `SALVA` nel Dock.
+
 ### Menù utente
 **Nuovo il 19/09.** Sostituisce l'ingranaggio: dice anche **di chi** è l'account, non solo che
 esistono preferenze.
@@ -535,7 +541,8 @@ flottante: il tasto primario non ha più il suo posto in coda al contenuto. Il D
     999, mono 12/700/0,09em, `--ombra-tasto`.
   - **Due controlli affiancati** (Dispensa): pillole alte **56**, raggio 999, gap 8 —
     `Modifica con l'AI` (icona AI) e il vocale.
-- **Cosa ci vive:** `HAI PRESO TUTTO` (Lista), `CHIUDI LA SPESA` (Fine spesa), `CONFERMA E CREA
+- **Cosa ci vive:** `HAI PRESO TUTTO` (Lista), `CHIUDI LA SPESA` (Fine spesa), `SOSTITUISCI`
+  (Scegli), `SALVA` (l'editor del Piatto e quello dell'ingrediente), `CONFERMA E CREA
   LA LISTA` (Piano), `ESTRAI LA DIETA` (Importa, solo con un PDF scelto), il primario di ogni
   stato vuoto, `Modifica con l'AI` (icona AI) e il vocale (Dispensa). `HO FINITO` della
   fotocamera non sta qui: sopra l'anteprima lo porta la Banda dei comandi.
@@ -648,6 +655,21 @@ Raggio 18, fondo bianco con bordo 1 px `rgba(20,22,58,0.09)` a casa, fondo
 - **Non porta il pasto**: un piatto non appartiene a un pasto. Della fonte dice solo `dalla
   dieta`, sui piatti che vengono dall'import; sui piatti propri non dice niente.
 
+**Due modi** (dal 26/09, fase 7). In Piatti la riga **apre** il piatto (`Apri {nome}`, chevron).
+In Scegli la riga **sceglie** (`Scegli {nome}`, `aria-pressed`): la riga scelta è **piena**, fondo
+`--ink`, nome in `--superficie`, sottoriga a `rgba(255,255,255,0.62)`, pallini d'area nel loro
+colore, e al posto del chevron un tondo 24 in `--superficie` con la spunta `--ink` — la regola
+«pieno = scelto» della Striscia dei giorni. Il piatto in programma dice `ORA IN PROGRAMMA · ` in
+testa alla sottoriga: sulla riga non ci sono badge.
+
+### Scegli
+La schermata che cambia il piatto di un pasto, aperta dal chevron della riga pasto. Testata in
+modo indietro (`PIANO`), titolo `Cosa mangi`, sotto la pillola col giorno e il pasto. La ricerca
+di Piatti, ferma in alto; le righe piatto in modo **scegli**; sotto, solo se il piatto scelto ne
+ha, i **componenti** come Righe di impostazione (il tocco passa all'opzione dopo; `IN CASA` nella
+nota), i **conflitti** come Avvisi in linea, la **nota** su cosa cambia; in fondo l'Aggiungi
+tratteggiato `CREA UN PIATTO NUOVO`. `SOSTITUISCI` nel Dock, spento finché niente cambia.
+
 ### Striscia dei giorni
 Sette riquadri `flex: 1`, gap 3, raggio 14, padding `9px 0 10px`, `--ombra-pannello`. Dentro:
 sigla del giorno mono 8.5/700/0.08em in `--ter`, numero 15/800, e sotto **un pallino da
@@ -732,6 +754,10 @@ compare `Non siamo riusciti a salvare. Riprova.` in 12,5 `--errore`, con `role="
 RIPROVA: si rifà il gesto, e l'errore sparisce al gesto successivo.
 
 **Niente switch**, in nessuna forma.
+
+**Il valore** (dal 26/09, fase 7) sta al massimo a metà riga, poi va in ellissi: in Scegli il
+valore è il nome dell'opzione di un componente, che può essere lungo. Il testo intero resta nel
+nome accessibile della riga, se chi la monta lo passa (`etichetta`).
 
 ### Matrice dei pasti
 **Nuova il 19/09, riorientata il 20/09, ridisegnata il 25/09.** È la sotto-schermata `Pasti a
@@ -1190,3 +1216,12 @@ nome di `Esci` (§2.2); il piede fisso col primario nel pannello (§8 Pannello i
 | # | Tema | Decisione | Dove |
 |---|---|---|---|
 | 29 | Icone ingrediente | 64 icone di tratto, tono medio d'area, alone sul nome | §2.3, §6, §12 |
+
+### Decisioni del 26/09/2026 (fase 7: Scegli e l'editor del Piatto)
+
+1. **Scegli resta una schermata sua** e prende da Piatti la ricerca e la Riga piatto, con lo stato
+   «scelto» (§8 Riga piatto). Conflitti, componenti e nota restano solo in Scegli.
+2. **L'editor del Piatto ha un modo solo**, come quello dell'ingrediente: sempre modificabile, la
+   testata di modifica, `SALVA` nel Dock spento finché niente cambia o finché il modulo non è
+   valido, e dopo il salvataggio si torna a `/piatti`. `ELIMINA` passa dal Dialogo di conferma.
+3. **Piatti veloce resta com'è**: si ridisegna più avanti come onboarding «più pronto».

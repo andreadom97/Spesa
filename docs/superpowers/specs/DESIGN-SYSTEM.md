@@ -58,7 +58,7 @@ del file, è lì.
 | Menù utente | dentro `Testata.tsx` | fase 5: un `button` che apre il pannello, `aria-expanded`, nome `{Nome}: profilo e impostazioni` |
 | Tab bar | `src/components/TabBar.tsx`, dentro `Guscio.tsx` | fase 5: tre voci (Lista · Piano · Dispensa), pillola 304 / 244 centrata, voci `flex` con un tetto di 96 / 76 (con tre voci sono esattamente quelle), anima `width`; `data-marchio-barra` sul segno della Lista |
 | Marchio | `src/components/Marchio.tsx` (+ `marchio-context.tsx`); l'avvio in `src/components/AvvioMarchio.tsx`, montato nel `Guscio` | 3 × 2, sei aree; dalla fase 5 l'avvio `.anim-avvio-*` con `@keyframes pb`, una volta per sessione su `/lista`; resa grande a 20 in `lista/fatta/page.tsx` ed `entra/page.tsx` |
-| Dock | `src/components/Dock.tsx`, montato con `createPortal` nello slot di `dock-slot.tsx`, reso da `Guscio.tsx` | fatto nella fase 2; dalla fase 3 è una regione di nome «Azione principale» (tutti i Dock), e porta anche ESTRAI LA DIETA in Importa col PDF scelto. In Lista `HAI PRESO TUTTO` e i primari dei due stati vuoti; nel Piano la sola conferma — lo stato vuoto del Piano resta una scheda con un link in linea, di proposito. Dalla fase 4 anche **sciolto** (`<Dock sciolto>`, classe `.dock-sciolto`): nella Dispensa `DockDispensa.tsx` mette `Modifica con l'AI` e il tondo del microfono, senza contenitore bianco. Dalla fase 5 `.dock-senza-barra` a `bottom 22` quando una schermata nasconde la barra (l'editor dell'ingrediente); dalla fase 6 anche `CHIUDI LA SPESA` in `lista/fatta/page.tsx`, con la guardia in `lista/fatta/guardia.ts` |
+| Dock | `src/components/Dock.tsx`, montato con `createPortal` nello slot di `dock-slot.tsx`, reso da `Guscio.tsx` | fatto nella fase 2; dalla fase 3 è una regione di nome «Azione principale» (tutti i Dock), e porta anche ESTRAI LA DIETA in Importa col PDF scelto. In Lista `HAI PRESO TUTTO` e i primari dei due stati vuoti; nel Piano la sola conferma — lo stato vuoto del Piano resta una scheda con un link in linea, di proposito. Dalla fase 4 anche **sciolto** (`<Dock sciolto>`, classe `.dock-sciolto`): nella Dispensa `DockDispensa.tsx` mette `Modifica con l'AI` e il tondo del microfono, senza contenitore bianco. Dalla fase 5 `.dock-senza-barra` a `bottom 22` quando una schermata nasconde la barra (l'editor dell'ingrediente); dalla fase 6 anche `CHIUDI LA SPESA` in `lista/fatta/page.tsx`, con la guardia in `lista/fatta/guardia.ts`; dalla fase 7 anche `SOSTITUISCI` in Scegli e `SALVA` nell'editor del Piatto, e `ErroreSopraDock` in `Dock.tsx`, l'errore sopra la pillola (Scegli, editor del Piatto; l'editor dell'ingrediente ha ancora la sua copia) |
 | Tasti | nessun file: le tre basi sono copiate in otto punti | deriva dichiarata e accettata (§6) |
 | Pillole d'azione | `RigaControllo.tsx`, `Segmento.tsx` (variante pillola) | |
 | Segmento a blocco | `Segmento.tsx` (variante blocco) | |
@@ -66,11 +66,11 @@ del file, è lì.
 | Tessera della Lista | `src/components/Tessera.tsx` | allineata nella fase 2: l'accesa non protagonista perde fondo e ombra dentro il widget |
 | Riga di controllo | `src/components/RigaControllo.tsx` | fase 5: la cadenza viene dalle impostazioni (`giorniControllo`, `testoCadenza`) |
 | Riga pasto | `src/components/RigaPasto.tsx` | |
-| Riga piatto | `src/app/(app)/piatti/ElencoPiatti.tsx` (`RigaPiatto`) | fatta nella fase 3 |
+| Riga piatto | `src/components/RigaPiatto.tsx` (spostata da `ElencoPiatti.tsx`) | fatta nella fase 3; modi `apri` e `scegli` dalla fase 7; con lei, condivisi fra Piatti e Scegli dalla fase 7, `CampoRicercaPiatti.tsx` e il vuoto di ricerca `VuotoRicercaPiatti.tsx` |
 | Striscia dei giorni | `src/components/StrisciaGiorni.tsx` | fase 5: pallini in griglia di tre colonne gap 3 (`posizionePallino`), sei pasti a 360 senza deroga |
-| Pannello impostazioni · Riga di impostazione | `src/components/pannello/`: `PannelloProvider.tsx`, `Pannello.tsx`, `Cima.tsx`, `TesserePannello.tsx`, `RigaImpostazione.tsx`, `CampoPersone.tsx`, `NotaRisparmio.tsx`, `PiedePannello.tsx`, `schermate.tsx`, i dati in `DatiPannello.tsx` | fatto nella fase 5: pannello a due livelli montato nel `Guscio`, otto sotto-schermate, `?impostazioni=` e gesto indietro con `src/components/useIndietroFogli.ts` |
+| Pannello impostazioni · Riga di impostazione | `src/components/pannello/`: `PannelloProvider.tsx`, `Pannello.tsx`, `Cima.tsx`, `TesserePannello.tsx`, `RigaImpostazione.tsx`, `CampoPersone.tsx`, `NotaRisparmio.tsx`, `PiedePannello.tsx`, `schermate.tsx`, i dati in `DatiPannello.tsx` | fatto nella fase 5: pannello a due livelli montato nel `Guscio`, otto sotto-schermate, `?impostazioni=` e gesto indietro con `src/components/useIndietroFogli.ts`; dalla fase 7 `RigaImpostazione` prende `etichetta` (l'`aria-label` della riga) e il valore sta al massimo a metà riga (la usa anche Scegli per i componenti) |
 | Matrice dei pasti | `src/components/pannello/PastiACasa.tsx` | fatta nella fase 5: casetta al posto del pallino, 360 nel mandato |
-| Aggiungi tratteggiato (in Gestione dei pasti) | `src/components/pannello/GestionePasti.tsx` | fase 5: in fondo al blocco |
+| Aggiungi tratteggiato | `src/components/AggiungiTratteggiato.tsx` dalla fase 7 (Piatti, Scegli, l'editor del Piatto) | fase 5: in fondo al blocco (Gestione dei pasti); `GestionePasti.tsx` ha ancora la sua copia |
 | Tessera di dispensa | `TesseraDispensa.tsx` | fatta nella fase 4: in casa con la tinta d'area al 26%, finita e mai comprata tratteggiate, una pillola di stato sola |
 | Tessera del lotto (dentro Tessera di dispensa) | `TesseraLotto.tsx` | fatta nella fase 4, nel widget Pronti |
 | Widget d'area (la Tessera widget di sezione della Dispensa) | `WidgetArea.tsx` | fatto nella fase 4: un widget per area più Pronti |
@@ -79,13 +79,14 @@ del file, è lì.
 | Stato "Registro" | nessun file: `NotaDispensa.tsx` è stato cancellato nella fase 4 | la voce resta in `DESIGN.md` §8 senza codice; la dettatura della Dispensa usa l'Onda di dettatura |
 | Dettaglio di ingrediente | `DettaglioIngrediente.tsx` + `src/components/controlli.tsx` (Sì/No, campo con `SALVA`, tasti, blocchi; spostato dalla Dispensa nella fase 5); il lotto in `DettaglioLotto.tsx` | fatto nella fase 4 |
 | Riga di scadenza | `RigaScadenza.tsx` | fatta nella fase 4 |
-| Dialogo di conferma | `src/components/DialogoConferma.tsx`, dentro un `FoglioDalBasso` con `ruolo="alertdialog"`; `DialogoElimina.tsx` della Dispensa ne è un uso | generalizzato nella fase 5: tono `distruttivo` in `--errore` e `primario` in `--ink` (Esci) |
+| Dialogo di conferma | `src/components/DialogoConferma.tsx`, dentro un `FoglioDalBasso` con `ruolo="alertdialog"`; `DialogoElimina.tsx` della Dispensa ne è un uso | generalizzato nella fase 5: tono `distruttivo` in `--errore` e `primario` in `--ink` (Esci); anche l'eliminazione del piatto dalla fase 7 |
 | Anteprima di scansione | `LettoreCodice.tsx` + `src/components/useLettoreCodici.ts` (la lettura); l'esito in `ScansioneConfezione.tsx` | fatta nella fase 4; dalla fase 6 anche in `lista/confezioni/page.tsx`, in un `FoglioDalBasso`; `src/components/Scanner.tsx` è stato cancellato |
 | Nuovo ingrediente | `NuovoIngrediente.tsx` | fatto nella fase 4; non è una voce di `DESIGN.md` §8, lo descrive la spec della fase 4 §C |
-| Editor dell'ingrediente | `src/app/(app)/piatti/[id]/ingredienti/[ingId]/page.tsx` | frame 12 della fase 5: SALVA nel Dock senza barra, scansione con `LettoreCodice`; non è una voce di `DESIGN.md` §8 |
+| Editor dell'ingrediente | `src/app/(app)/piatti/[id]/ingredienti/[ingId]/page.tsx` | frame 12 della fase 5: SALVA nel Dock senza barra, scansione con `LettoreCodice`; non è una voce di `DESIGN.md` §8; la testata è `src/components/TestataModifica.tsx`, condivisa con l'editor del Piatto |
+| Editor del Piatto | `src/app/(app)/piatti/[id]/page.tsx`, `ComponentiPiatto.tsx`, `SelettoreIngrediente.tsx` | fatto nella fase 7: un modo solo, `TestataModifica`, `SALVA` nel Dock spento finché niente cambia o il modulo non è valido, `ELIMINA` nel Dialogo di conferma; non è una voce di `DESIGN.md` §8 |
 | Tasto di scatto · Banda dei comandi · Striscia dei fogli presi | `src/app/(app)/importa/Camera.tsx` (+ `.scatto`, `.guida-angolo` in `globals.css`), «Rivedi i fogli presi» in `src/app/(app)/importa/FogliPresi.tsx` | fatti nella fase 3 |
 | Stato vuoto · Campo di testo · Scheda · Etichetta di sezione · Messaggi | sparsi nelle pagine, in stile inline; la modalità ricerca del Campo di testo vive in `src/app/(app)/piatti/ElencoPiatti.tsx` | scelta del progetto, non una deriva (§6, prima riga) |
-| Foglio dal basso | `src/components/FoglioDalBasso.tsx` (con `TestataFoglio` e `TondoFoglio`); prima di lui, scritti a mano, `src/components/FoglioAzioniPasto.tsx` e `src/app/(app)/importa/FogliPresi.tsx` | componente dalla fase 4: i quattro fogli della Dispensa; gli altri due non sono stati migrati |
+| Foglio dal basso | `src/components/FoglioDalBasso.tsx` (con `TestataFoglio` e `TondoFoglio`); prima di lui, scritti a mano, `src/components/FoglioAzioniPasto.tsx` e `src/app/(app)/importa/FogliPresi.tsx` | componente dalla fase 4: i quattro fogli della Dispensa; gli altri due non sono stati migrati; anche il selettore degli ingredienti del piatto (`SelettoreIngrediente.tsx`) dalla fase 7 |
 | Porta | `src/components/Porta.tsx` | nata nello stato vuoto di Piatti, condivisa dalla fase 3 con Importa. Non è una voce di `DESIGN.md` §8 |
 | Icona ingrediente | `src/components/IconaIngrediente.tsx` (tracciati in `tracciati-ingredienti.ts`, catalogo in `src/domain/icone-ingredienti.ts`) | |
 
@@ -166,8 +167,12 @@ Il conto aperto verso `DESIGN.md` v3, al 26/09/2026.
   ridisegnate; restano fuori le schermate che `DESIGN.md` non disegna, vedi sotto.
 - **La fase 6 (Fine della spesa ed Entra) è chiusa con la PR del ramo `fase6-fine-spesa`**. Le
   decisioni prese durante l'esecuzione stanno in `docs/2026-09-26-fase6-decisioni-esecuzione.md`.
+- **La fase 7 (Scegli e l'editor del Piatto) è chiusa con la PR del ramo `fase7-scegli-piatto`**.
+  Le decisioni prese durante l'esecuzione stanno in `docs/2026-09-27-fase7-decisioni-esecuzione.md`.
+  Restano fuori dal sistema la **fase 8** (i passi di Importa oltre le due porte e la fotocamera)
+  e **Piatti veloce**, da ridisegnare come onboarding.
 - **Fuori dal sistema restano**, divisi in due fasi decise il 26/09: la **fase 7** (editor del
-  Piatto, Piatti veloce, Scegli; aspetta la decisione se Scegli riusa Piatti) e la **fase 8**
+  Piatto e Scegli; Piatti veloce è passata all'onboarding) e la **fase 8**
   (i passi di Importa oltre le due porte e la fotocamera; probabilmente un selettore nuovo, quindi
   un giro in Claude Design). L'audit del 26/09 li misura uno per uno.
 - **53 token dichiarati nel design e assenti dal codice** [misurato il 26/09 con le funzioni del guardiano, dopo
