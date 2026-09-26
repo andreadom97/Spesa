@@ -58,10 +58,11 @@ export function TesseraDispensa({ voce, pillola, onApri }: { voce: VoceDispensa;
       <span
         style={{
           fontSize: 17, fontWeight: 700, letterSpacing: '-0.032em', lineHeight: 1.1, marginTop: 'auto', paddingTop: 12,
-          color: stato === 'inCasa' ? 'var(--ink)' : stato === 'finita' ? '#ADAEBA' : 'var(--testo-2)',
+          color: stato === 'inCasa' ? 'var(--ink)' : stato === 'finita' ? 'rgba(20,22,58,0.34)' : 'var(--testo-2)',
           textDecoration: stato === 'finita' ? 'line-through' : 'none', textDecorationThickness: 1.6,
           position: 'relative',
-          textShadow: chiave ? alone(inCasa ? tintaOpacaArea(area) : '#FFFFFF', 2) : undefined,
+          // Finita è barrata: niente alone, contornerebbe la barra (come la Lista spuntata).
+          textShadow: chiave && stato !== 'finita' ? alone(inCasa ? tintaOpacaArea(area) : '#FFFFFF', 2) : undefined,
           overflowWrap: 'anywhere',
         }}
       >

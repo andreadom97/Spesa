@@ -5,8 +5,8 @@ import { Tessera } from '../Tessera';
 
 const base = {
   nome: 'Zucchine', area: 'ortofrutta' as const, unita: 'g' as const,
-  fabbisogno: 540, residuo: 0, confezioni: 1, quantitaTotale: 600,
-  mostraDettaglio: true, onToggle: vi.fn(),
+  confezioni: 1, quantitaTotale: 600,
+  onToggle: vi.fn(),
 };
 
 describe('Tessera', () => {
@@ -28,6 +28,29 @@ describe('Tessera', () => {
     const t = screen.getByRole('button');
     expect(t.style.background).toBe('rgba(20, 22, 58, 0.035)');
     expect(screen.getByText('Zucchine')).toHaveStyle({ textDecoration: 'line-through' });
+  });
+
+  it('niente dettaglio "serve · in casa": in Lista è spazio inutile (Andrea 26/09)', () => {
+    render(<Tessera {...base} spuntato={false} protagonista={false} />);
+    expect(screen.queryByText(/in casa/)).toBeNull();
+    expect(screen.queryByText(/serve/)).toBeNull();
+  });
+
+  it('a pezzi la quantità accanto alla pillola non ripete la pillola', () => {
+    render(<Tessera {...base} unita="pz" confezioni={7} quantitaTotale={7} spuntato={false} protagonista={false} />);
+    expect(screen.getAllByText('7 pz')).toHaveLength(1);
+  });
+
+  it('a pezzi, se confezioni e pezzi differiscono, restano entrambi', () => {
+    render(<Tessera {...base} unita="pz" confezioni={1} quantitaTotale={6} spuntato={false} protagonista={false} />);
+    expect(screen.getByText('1 pz')).toBeInTheDocument();
+    expect(screen.getByText('6 pz')).toBeInTheDocument();
+  });
+
+  it('a peso la quantità totale resta accanto alle confezioni', () => {
+    render(<Tessera {...base} spuntato={false} protagonista={false} />);
+    expect(screen.getByText('1 conf')).toBeInTheDocument();
+    expect(screen.getByText('600 g')).toBeInTheDocument();
   });
 });
 
@@ -56,12 +79,12 @@ describe('Tessera · icona ingrediente', () => {
     expect(screen.getByText('Carote').style.textShadow).toContain('0 0 4px #A8D96A');
   });
 
-  it('spenta: icona spenta, nome opaco #ABACB8 con alone #F7F7F8', () => {
+  it('spenta: icona spenta, barra del nome senza alone (Andrea 26/09: l\'alone contornava la barra)', () => {
     const { container } = render(<Tessera {...base} nome="Carote" spuntato protagonista={false} />);
     expect(icona(container)).toHaveAttribute('stroke', '#9A9AA6');
     const nome = screen.getByText('Carote');
-    expect(nome).toHaveStyle({ color: '#ABACB8' });
-    expect(nome.style.textShadow).toContain('#F7F7F8');
+    expect(nome).toHaveStyle({ color: 'rgba(20, 22, 58, 0.34)' });
+    expect(nome.style.textShadow).toBe('');
   });
 
   it('fuori catalogo: nessuna icona e nessun alone', () => {

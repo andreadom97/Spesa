@@ -145,8 +145,8 @@ describe('Lista', () => {
     expect(await screen.findByText('Riso Carnaroli')).toBeInTheDocument();
     expect(screen.getByText('Pasta integrale')).toBeInTheDocument();
     expect(screen.getByText('Settimana del 24 agosto')).toBeInTheDocument();
-    // Solo la voce porzionabile (riso) mostra il sottotitolo.
-    expect(screen.getByText('serve 820 g · in casa 0 g')).toBeInTheDocument();
+    // Il sottotitolo "serve · in casa" non c'è più (Andrea, 26/09): era spazio inutile.
+    expect(screen.queryByText(/in casa/)).toBeNull();
   });
 
   it('la riga di controllo dice la cadenza delle Impostazioni (spec fase 5 §E.1)', async () => {
@@ -282,21 +282,37 @@ describe('Lista', () => {
     // Una sola etichetta di reparto per i cereali, e il suo contatore dice
     // tre: due voci della base più quella del top-up, nella stessa tessera.
     expect(screen.getAllByText('PASTA, RISO E CEREALI')).toHaveLength(1);
-    expect(screen.getByText('3 VOCI')).toBeInTheDocument();
+    expect(screen.getByText('0/3')).toBeInTheDocument();
     expect(screen.getByText('Couscous')).toBeInTheDocument();
     expect(screen.getByText('Pasta integrale')).toBeInTheDocument();
   });
 
-  it('il conteggio delle voci è singolare con una sola voce, plurale altrimenti', async () => {
+  it('il contatore del reparto dice le voci prese sul totale (Andrea, 26/09)', async () => {
     const lista = buildLista();
-    lista.base[0].voci = [VOCE_RISO]; // cereali: una sola voce
-    // dispensa (buildLista) ha zero voci: resta plurale, "0 VOCI".
+    lista.base[0].voci = [{ ...VOCE_RISO, spuntato: true }, VOCE_PASTA];
+    // dispensa (buildLista) ha solo un controllo: niente voci, niente contatore.
     vi.mocked(leggiListe).mockResolvedValue(lista);
     rendi();
     await screen.findByText('Riso Carnaroli');
 
-    expect(screen.getByText('1 VOCE')).toBeInTheDocument();
-    expect(screen.getByText('0 VOCI')).toBeInTheDocument();
+    expect(screen.getByText('1/2')).toBeInTheDocument();
+    expect(screen.getByLabelText('1 su 2 prese')).toBeInTheDocument();
+    expect(screen.queryByText('0/0')).toBeNull();
+    expect(screen.queryByText(/VOC[EI]/)).toBeNull();
+  });
+
+  it('un reparto finito scende in fondo e sale il prossimo', async () => {
+    const lista = buildLista();
+    lista.base = [
+      { area: 'cereali', voci: [{ ...VOCE_RISO, spuntato: true }, { ...VOCE_PASTA, spuntato: true }], controlli: [] },
+      { area: 'dispensa', voci: [], controlli: [CONTROLLO_OLIO] },
+    ];
+    vi.mocked(leggiListe).mockResolvedValue(lista);
+    rendi();
+    await screen.findByText('Riso Carnaroli');
+
+    const reparti = screen.getAllByText(/^(PASTA, RISO E CEREALI|DISPENSA E CONSERVE)$/).map((el) => el.textContent);
+    expect(reparti).toEqual(['DISPENSA E CONSERVE', 'PASTA, RISO E CEREALI']);
   });
 
   it('non mostra più il selettore né le righe di spiegazione della vista', async () => {
