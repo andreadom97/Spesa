@@ -780,6 +780,26 @@ describe('Scegli — il ridisegno della fase 7', () => {
     expect(screen.queryByText('Nessun piatto qui')).not.toBeInTheDocument();
   });
 
+  it('un piatto scelto e poi nascosto dalla ricerca: SOSTITUISCI scrive quello', async () => {
+    mockCarico();
+    vi.mocked(aggiornaSlot).mockResolvedValue(undefined);
+    monta();
+    await screen.findByText('Pollo e riso');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Scegli Merluzzo e piselli' }));
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Cerca un piatto o un ingrediente' }), { target: { value: 'pollo' } });
+    expect(screen.queryByText('Merluzzo e piselli')).not.toBeInTheDocument();
+
+    const tasto = screen.getByRole('button', { name: 'SOSTITUISCI' });
+    expect(tasto).toBeEnabled();
+    fireEvent.click(tasto);
+
+    await waitFor(() =>
+      expect(aggiornaSlot).toHaveBeenCalledWith('slot-cena', { dishId: 'd-2' }, 'correzione'),
+    );
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/piano'));
+  });
+
   it('la riga scelta: aria-pressed sul piatto in programma prima di un tocco, poi su quello toccato', async () => {
     mockCarico();
     monta();
