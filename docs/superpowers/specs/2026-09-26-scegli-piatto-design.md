@@ -23,7 +23,7 @@ Ha funzionato se:
 indietro» per l'editor del Piatto. Ma l'editor dell'ingrediente, che è il modello scelto nella
 decisione 2, non usa la `Testata`: usa la testata del frame 12, cioè il tondo 44 con la freccia e
 sotto il nome a 32/800, che è anche il campo del nome. Per fare davvero «come l'ingrediente», il
-Piatto prende quella testata (§B.2). **[Da confermare in revisione.]**
+Piatto prende quella testata (§B.2). Confermato da Andrea in revisione il 26/09.
 
 **Fuori perimetro, esplicitamente:**
 - Piatti veloce (decisione 3);
@@ -174,8 +174,11 @@ Come in Fine spesa: la Testata e sotto `Carico` (`CARICO…`); l'errore di caric
 - **La freccia porta a `/piatti`**, come oggi per l'uscita dall'editor; `aria-label` «Torna ai
   piatti». Da `/piatti/nuovo` aperto da Scegli si torna comunque a `/piatti`, come oggi (limite, §E).
 - **Uscire senza salvare** butta le modifiche senza chiedere, come nell'editor dell'ingrediente e
-  come oggi `ANNULLA`. La bozza si tratta come oggi all'uscita [da verificare nel piano: dove oggi
-  si chiama `scartaBozza`].
+  come oggi `ANNULLA`. La bozza si tratta come oggi all'uscita. Oggi `scartaBozza(id)` si chiama
+  in tre punti: dopo un salvataggio riuscito, dopo un'eliminazione riuscita e in `ANNULLA`, solo su
+  un piatto esistente. La freccia prende il posto di `ANNULLA`, quindi su un piatto esistente
+  scarta la bozza e poi va a `/piatti`, su un piatto nuovo va solo a `/piatti` (verificato nel
+  codice, piano Task 6).
 - **La tab bar si nasconde** (`useNascondiBarra(true)`), come nell'editor dell'ingrediente.
 
 ### B.3 Il corpo

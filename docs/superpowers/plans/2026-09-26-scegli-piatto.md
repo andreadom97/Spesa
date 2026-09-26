@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-26-scegli-piatto-design.md` (approvata da Andrea il 26/09, compresi i tre punti confermati in revisione: la testata del frame 12, la riga scelta piena, SALVA che torna a `/piatti`).
 
-**Quando si esegue:** dopo il merge del ramo `icone-ingredienti` su main (tocca `TesseraIngrediente`, `Tessera`, `aree.ts`). Prima di eseguire: rebase di questo ramo su `origin/main`, `npm install`, `npx next typegen`, e un controllo che le firme usate qui (`TesseraIngrediente`, `coloreArea`) non siano cambiate; se sono cambiate, il controllore lo scrive nel ledger come ruling prima del Task 1.
+**Quando si esegue:** dopo il merge del ramo `icone-ingredienti` su main (tocca `TesseraIngrediente`, `Tessera`, `aree.ts`). Prima di eseguire (spec e piano sono già committati, 49aafc7, quindi il worktree è pulito): rebase di questo ramo su `origin/main`, `npm install`, `npx next typegen`, e un controllo che le firme usate qui (`TesseraIngrediente`, `coloreArea`) non siano cambiate; se sono cambiate, il controllore lo scrive nel ledger come ruling prima del Task 1.
 
 ## Global Constraints
 
@@ -19,7 +19,7 @@
 - **Il database non cambia.** `aggiornaSlot`, `salvaPiatto`, `eliminaPiatto`, `leggi*` e le funzioni di `bozza.ts` si chiamano con gli stessi argomenti di oggi. Nessun file in `src/data/` o `supabase/` cambia.
 - **La logica di dominio di Scegli non cambia:** `conflittiSostituzione`, `opzioneCorrente`, `opzioneSuccessiva`, `opzioneInCasa`, `ilPiattoOLeScelteSonoCambiate`, `scelteManualiDaMandare`, `testoNota`, `testoConflitto`. Si spostano, se serve, ma restano identiche.
 - **I testi «di oggi» restano parola per parola**, apostrofi tipografici compresi (`TESTO_ELIMINA`, `TESTO_COMPONENTE_SENZA_NOME`, `TESTO_SENZA_INGREDIENTI`, `TESTO_OPZIONE_*`, `TESTO_NON_IN_PROGRAMMA`, `testoRiepilogo`, `testoNota`, `testoConflitto`, i messaggi di errore).
-- **Colori solo come token** `var(--…)`: nei file toccati non restano `#FFFFFF`, `#14163A`, `#8A8A96`, `#C4C4CE`, l'alfa `0.05`, né `rgba(20,22,58,0.12)` / `0.16` nei bordi. Alfe ammesse su `--ink` qui: `0.035`, `0.04`, `0.07` (tondi), `0.09` (il bordo della Riga piatto, com'è oggi in Piatti, e quello delle pillole spente di `NEL PIANO`), `0.14` (il filetto sotto il nome del piatto, come sotto quello dell'ingrediente), tutte nella tabella di `DESIGN.md` §2.5; e `rgba(255,255,255,0.62)` per la sottoriga della riga scelta.
+- **Colori solo come token** `var(--…)`: nei file toccati non restano `#FFFFFF`, `#14163A`, `#8A8A96`, `#C4C4CE`, l'alfa `0.05`, né `rgba(20,22,58,0.12)` / `0.16` nei bordi. Alfe ammesse qui: su `--ink` `0.035`, `0.04`, `0.07` (tondi) e `0.09` (il bordo della Riga piatto, com'è oggi in Piatti, e quello delle pillole spente di `NEL PIANO`), già nella tabella di `DESIGN.md` §2.5 per questi usi; e due usi nuovi che la tabella oggi **non** ha e che il Task 7 (Step 4c) vi dichiara: `0.14` su `--ink` per il filetto sotto il nome della testata di modifica (il campo del nome del piatto, come quello dell'ingrediente) e `rgba(255,255,255,0.62)` per la sottoriga della Riga piatto scelta. Nessun'altra alfa.
 - **Niente Tailwind** nei file toccati (`className` solo per le classi di `globals.css`).
 - **Bersagli toccabili alti almeno 44.**
 - **In volo** i primari pieni sono `disabled` con lo stato spento del sistema (`.dock-primario:disabled`, `TastoPrimario` con `disabled`), non un'opacità (`DESIGN.md` §13, 26/09, punto 6).
@@ -37,7 +37,9 @@
 | `src/components/RigaPiatto.tsx` (nuovo) | 1 | la Riga piatto di §8, modi `apri` e `scegli` |
 | `src/components/CampoRicercaPiatti.tsx` (nuovo) | 1 | il campo in modalità ricerca di Piatti |
 | `src/components/AggiungiTratteggiato.tsx` (nuovo) | 1 | l'Aggiungi tratteggiato di §8 (il «Nuovo piatto» di oggi), link o bottone; lo usano i Task 1, 3, 5 e 6 |
-| `src/app/(app)/piatti/ElencoPiatti.tsx` | 1 | usa i tre componenti; aspetto e comportamento invariati |
+| `src/components/VuotoRicercaPiatti.tsx` (nuovo) | 1 | il vuoto di ricerca di Piatti («Nessun piatto qui»), markup e testi di oggi; lo usano i Task 1 e 3 |
+| `src/app/(app)/piatti/ElencoPiatti.tsx` | 1 | usa i quattro pezzi condivisi; aspetto e comportamento invariati |
+| `src/components/Dock.tsx` | 3 | + `ErroreSopraDock`, l'errore sopra la pillola di oggi dell'editor dell'ingrediente; lo usano i Task 3 e 6 |
 | `src/components/TestataModifica.tsx` (nuovo) | 2 | la testata del frame 12 (tondo 44 con freccia, area, nome), con il corpo come `children` |
 | `src/app/(app)/piatti/[id]/ingredienti/[ingId]/page.tsx` | 2 | usa `TestataModifica` al posto della sua `Cornice`; aspetto invariato |
 | `src/components/pannello/RigaImpostazione.tsx` | 3 | + prop `etichetta` (l'`aria-label` della riga); il valore al massimo metà riga, poi ellissi, e maiuscolo via CSS |
@@ -67,6 +69,8 @@ export function RigaPiatto(props: { piatto: Dish; aree: AreaId[] } & ModoRigaPia
 //             al posto del chevron un tondo 24 var(--superficie) con la spunta var(--ink): la
 //             geometria della spunta di oggi di Scegli (svg 13 in viewBox 0 0 20 20,
 //             path "M4.5 10.5 8.2 14 15.5 6.4", strokeWidth 3.2, estremi e giunti tondi).
+//   In tutti e due i modi dentro la riga ci sono solo <span> (con display flex dove serve):
+//   un <div> dentro un <button> non è HTML valido.
 
 // src/components/CampoRicercaPiatti.tsx (Task 1)
 export function CampoRicercaPiatti(props: { valore: string; onCambia: (testo: string) => void }): JSX.Element;
@@ -85,6 +89,21 @@ export function AggiungiTratteggiato(
 //   ComponentiPiatto (Task 5, «AGGIUNGI INGREDIENTE» delle opzioni e «AGGIUNGI COMPONENTE»),
 //   l'editor del Piatto (Task 6, «AGGIUNGI INGREDIENTE»). GestionePasti.tsx non si tocca.
 
+// src/components/VuotoRicercaPiatti.tsx (Task 1)
+export function VuotoRicercaPiatti(): JSX.Element;
+//   il blocco di oggi di ElencoPiatti.tsx (righe 86-93), pari pari: contenitore padding
+//   '44px 20px' centrato, «Nessun piatto qui» 17/700 in --ink, sotto «Prova un'altra parola,
+//   oppure aggiungine uno.» 14 in --testo-2. Nessuna prop: chi lo usa decide quando mostrarlo.
+//   Lo usano: Piatti (Task 1) e Scegli (Task 3).
+
+// src/components/Dock.tsx (Task 3) — accanto a `Dock`, che non cambia
+export function ErroreSopraDock(props: { children: ReactNode }): JSX.Element;
+//   il blocco di oggi dell'editor dell'ingrediente (righe 628-637), pari pari: <p role="alert">
+//   assoluto, bottom calc(100% + 8px), fuori dalla pillola, su fondo var(--superficie), raggio 14,
+//   ombra --ombra-pannello, 12,5 in --errore. Si passa come figlio del `Dock`, prima del tasto.
+//   Lo usano: Scegli (Task 3) e l'editor del Piatto (Task 6). L'editor dell'ingrediente tiene
+//   la sua copia: in questa fase non si tocca.
+
 // src/components/TestataModifica.tsx (Task 2)
 export function TestataModifica(props: {
   freccia: { etichetta: string; onTorna: () => void };   // etichetta = aria-label del tondo
@@ -95,7 +114,7 @@ export function TestataModifica(props: {
 //   stessa colonna a tutta altezza e stesso markup della `Cornice` di oggi dell'editor dell'ingrediente.
 ```
 
-Le interfacce di `SelettoreIngrediente` e `ComponentiPiatto` le fissano i Task 4 e 5 nei loro blocchi **Produces**; il Task 6 le consuma da lì. La prop `etichetta` di `RigaImpostazione` la fissa il Task 3, che è anche l'unico a usarla.
+Le interfacce di `SelettoreIngrediente` e `ComponentiPiatto` le fissano i Task 4 e 5 nei loro blocchi **Produces**; il Task 6 le consuma da lì. La prop `etichetta` di `RigaImpostazione` la fissa il Task 3, che è anche l'unico a usarla. `ErroreSopraDock` lo crea il Task 3 (primo che ne ha bisogno) e il Task 6 lo consuma così com'è.
 
 ---
 
@@ -108,9 +127,11 @@ Le interfacce di `SelettoreIngrediente` e `ComponentiPiatto` le fissano i Task 4
 - Create: `src/components/__tests__/CampoRicercaPiatti.test.tsx`
 - Create: `src/components/AggiungiTratteggiato.tsx` (il markup di oggi del «Nuovo piatto» di `ElencoPiatti.tsx`, righe 62-76)
 - Create: `src/components/__tests__/AggiungiTratteggiato.test.tsx`
+- Create: `src/components/VuotoRicercaPiatti.tsx` (il vuoto di ricerca di oggi di `ElencoPiatti.tsx`, righe 86-93)
+- Create: `src/components/__tests__/VuotoRicercaPiatti.test.tsx`
 - Modify: `src/domain/ricerca-piatti.ts` (+ `areeDelPiatto`, spostata da `ElencoPiatti.tsx`, righe 99-111 di oggi)
 - Modify: `src/domain/__tests__/ricerca-piatti.test.ts` (helper `ingrediente` con area facoltativa, + un `describe('areeDelPiatto', …)`)
-- Modify (riscrittura): `src/app/(app)/piatti/ElencoPiatti.tsx` (usa i tre pezzi condivisi; aspetto e comportamento invariati)
+- Modify (riscrittura): `src/app/(app)/piatti/ElencoPiatti.tsx` (usa i quattro pezzi condivisi; aspetto e comportamento invariati)
 
 **Interfaces:**
 - Consumes: niente (primo task del piano).
@@ -132,8 +153,11 @@ Le interfacce di `SelettoreIngrediente` e `ComponentiPiatto` le fissano i Task 4
   export function AggiungiTratteggiato(
     props: { etichetta: string; ariaLabel?: string } & ({ href: string } | { onClick: () => void }),
   ): JSX.Element;
+
+  // src/components/VuotoRicercaPiatti.tsx
+  export function VuotoRicercaPiatti(): JSX.Element;
   ```
-  `areeDelPiatto`, `RigaPiatto` e `CampoRicercaPiatti` li usa il Task 3 (Scegli). `AggiungiTratteggiato` lo usano il Task 3 (`CREA UN PIATTO NUOVO`, con `href`), il Task 5 (`AGGIUNGI INGREDIENTE` delle opzioni e `AGGIUNGI COMPONENTE`, con `onClick`) e il Task 6 (`AGGIUNGI INGREDIENTE` del piatto, con `onClick`). `GestionePasti.tsx` ha una sua copia e in questa fase non si tocca.
+  `areeDelPiatto`, `RigaPiatto`, `CampoRicercaPiatti` e `VuotoRicercaPiatti` li usa il Task 3 (Scegli). `AggiungiTratteggiato` lo usano il Task 3 (`CREA UN PIATTO NUOVO`, con `href`), il Task 5 (`AGGIUNGI INGREDIENTE` delle opzioni e `AGGIUNGI COMPONENTE`, con `onClick`) e il Task 6 (`AGGIUNGI INGREDIENTE` del piatto, con `onClick`). `GestionePasti.tsx` ha una sua copia e in questa fase non si tocca.
 
 ---
 
@@ -284,6 +308,12 @@ describe('RigaPiatto — modo scegli (spec fase 7 §A.3)', () => {
     expect(tondo.style.width).toBe('24px');
     expect(tondo.style.background).toBe('var(--superficie)');
   });
+
+  it('dentro il bottone solo span: niente div, che in un button non è HTML valido', () => {
+    render(<RigaPiatto piatto={PIATTO} aree={['cereali']} modo="scegli" scelto corrente onScegli={() => {}} />);
+    const bottone = screen.getByRole('button', { name: 'Scegli Riso e pane' });
+    expect(bottone.querySelector('div')).toBeNull();
+  });
 });
 ```
 
@@ -362,13 +392,37 @@ describe('AggiungiTratteggiato (DESIGN.md §8 Tasti, condiviso dalla fase 7)', (
 });
 ```
 
+**1e. `src/components/__tests__/VuotoRicercaPiatti.test.tsx`** (nuovo):
+
+```tsx
+import '@testing-library/jest-dom/vitest';
+import { describe, it, expect } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { VuotoRicercaPiatti } from '../VuotoRicercaPiatti';
+
+describe('VuotoRicercaPiatti (Piatti, spec fase 3; condiviso dalla fase 7 §A.3)', () => {
+  it('dice che la ricerca non ha trovato niente e cosa fare, coi testi e i colori di oggi di Piatti', () => {
+    render(<VuotoRicercaPiatti />);
+    const titolo = screen.getByText('Nessun piatto qui');
+    expect(titolo.style.fontSize).toBe('17px');
+    expect(titolo.style.color).toBe('var(--ink)');
+    const sotto = screen.getByText("Prova un'altra parola, oppure aggiungine uno.");
+    expect(sotto.style.fontSize).toBe('14px');
+    expect(sotto.style.color).toBe('var(--testo-2)');
+    const contenitore = titolo.parentElement as HTMLElement;
+    expect(contenitore.style.padding).toBe('44px 20px');
+    expect(contenitore.style.textAlign).toBe('center');
+  });
+});
+```
+
 - [ ] **Step 2: verifica che falliscano**
 
 Run: `npx vitest run src/domain/__tests__/ricerca-piatti.test.ts`
 Expected: FAIL — `areeDelPiatto` non è esportata da `../ricerca-piatti`.
 
-Run: `npx vitest run src/components/__tests__/RigaPiatto.test.tsx src/components/__tests__/CampoRicercaPiatti.test.tsx src/components/__tests__/AggiungiTratteggiato.test.tsx`
-Expected: FAIL — `Failed to resolve import "../RigaPiatto"` / `"../CampoRicercaPiatti"` / `"../AggiungiTratteggiato"` (i file non esistono ancora).
+Run: `npx vitest run src/components/__tests__/RigaPiatto.test.tsx src/components/__tests__/CampoRicercaPiatti.test.tsx src/components/__tests__/AggiungiTratteggiato.test.tsx src/components/__tests__/VuotoRicercaPiatti.test.tsx`
+Expected: FAIL — `Failed to resolve import "../RigaPiatto"` / `"../CampoRicercaPiatti"` / `"../AggiungiTratteggiato"` / `"../VuotoRicercaPiatti"` (i file non esistono ancora).
 
 - [ ] **Step 3: l'implementazione**
 
@@ -452,9 +506,11 @@ export function RigaPiatto(props: Props) {
     boxShadow: 'var(--ombra-pannello)', textDecoration: 'none', color: 'inherit',
   };
 
+  // Solo <span> dentro la riga, anche dove serve un blocco (display flex): in modo
+  // 'scegli' la riga è un <button>, e un <div> dentro un bottone non è HTML valido.
   const corpo = (
     <>
-      <div style={{ flex: 1, minWidth: 0, padding: '12px 8px 12px 14px', display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <span style={{ flex: 1, minWidth: 0, padding: '12px 8px 12px 14px', display: 'flex', flexDirection: 'column', gap: 3 }}>
         <span
           style={{
             fontSize: 17, fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.2,
@@ -473,7 +529,7 @@ export function RigaPiatto(props: Props) {
           {sottoriga}
         </span>
         {aree.length > 0 && (
-          <div style={{ display: 'flex', gap: 4, marginTop: 2 }}>
+          <span style={{ display: 'flex', gap: 4, marginTop: 2 }}>
             {aree.map((a) => (
               <span
                 key={a}
@@ -481,9 +537,9 @@ export function RigaPiatto(props: Props) {
                 style={{ width: 8, height: 8, borderRadius: 2.6, display: 'inline-block', background: coloreArea(a) }}
               />
             ))}
-          </div>
+          </span>
         )}
-      </div>
+      </span>
       <span aria-hidden="true" style={{ width: 44, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {scelto ? (
           // La spunta di oggi di Scegli (stessa geometria, stesso 13 in viewBox 20), in --ink
@@ -614,6 +670,27 @@ export function AggiungiTratteggiato(props: Props) {
 }
 ```
 
+**`src/components/VuotoRicercaPiatti.tsx`** (nuovo — il blocco del vuoto di ricerca di oggi di `ElencoPiatti.tsx`, righe 86-93, pari pari, testi compresi):
+
+```tsx
+/**
+ * Il vuoto di ricerca di Piatti (spec fase 3): la ricerca non ha trovato
+ * niente, e sotto si dice cosa fare. Estratto dalla fase 7 (§A.3) perché lo
+ * mostra anche Scegli, con la stessa ricerca: un testo solo, non due copie
+ * che col tempo divergono. Nessuna prop: quando mostrarlo lo decide chi lo usa.
+ */
+export function VuotoRicercaPiatti() {
+  return (
+    <div style={{ flexShrink: 0, padding: '44px 20px', textAlign: 'center' }}>
+      <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--ink)', marginBottom: 6 }}>
+        Nessun piatto qui
+      </div>
+      <div style={{ fontSize: 14, color: 'var(--testo-2)' }}>Prova un&apos;altra parola, oppure aggiungine uno.</div>
+    </div>
+  );
+}
+```
+
 **`src/app/(app)/piatti/ElencoPiatti.tsx`** — riscrittura completa:
 
 ```tsx
@@ -625,6 +702,7 @@ import { areeDelPiatto, cercaPiatti } from '@/domain/ricerca-piatti';
 import { AggiungiTratteggiato } from '@/components/AggiungiTratteggiato';
 import { CampoRicercaPiatti } from '@/components/CampoRicercaPiatti';
 import { RigaPiatto } from '@/components/RigaPiatto';
+import { VuotoRicercaPiatti } from '@/components/VuotoRicercaPiatti';
 
 interface Props {
   piatti: Dish[];
@@ -639,9 +717,10 @@ interface Props {
  * ricerca. Niente dati: li carica la pagina. Un file a sé, e non dentro
  * `page.tsx`, perché la sonda del browser lo possa montare con dati finti.
  *
- * Dalla fase 7 (§A.3) il campo, la riga e l'aggiungi sono pezzi condivisi con
- * Scegli (`CampoRicercaPiatti`, `RigaPiatto`, `AggiungiTratteggiato`): qui
- * `RigaPiatto` è in modo 'apri', e tutto è identico a prima della condivisione.
+ * Dalla fase 7 (§A.3) il campo, la riga, l'aggiungi e il vuoto di ricerca sono
+ * pezzi condivisi con Scegli (`CampoRicercaPiatti`, `RigaPiatto`,
+ * `AggiungiTratteggiato`, `VuotoRicercaPiatti`): qui `RigaPiatto` è in modo
+ * 'apri', e la resa è identica a prima della condivisione.
  */
 export function ElencoPiatti({ piatti, ingredienti, ordineAree }: Props) {
   const [ricerca, setRicerca] = useState('');
@@ -673,25 +752,18 @@ export function ElencoPiatti({ piatti, ingredienti, ordineAree }: Props) {
           />
         ))}
 
-        {mostrati.length === 0 && (
-          <div style={{ flexShrink: 0, padding: '44px 20px', textAlign: 'center' }}>
-            <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--ink)', marginBottom: 6 }}>
-              Nessun piatto qui
-            </div>
-            <div style={{ fontSize: 14, color: 'var(--testo-2)' }}>Prova un&apos;altra parola, oppure aggiungine uno.</div>
-          </div>
-        )}
+        {mostrati.length === 0 && <VuotoRicercaPiatti />}
       </div>
     </>
   );
 }
 ```
 
-Parti identiche a oggi, copiate pari pari nel file sopra: il blocco del vuoto di ricerca `{mostrati.length === 0 && (…)}` (righe 86-93 di oggi). Il `Link` «Nuovo piatto» (righe 62-76 di oggi) diventa `<AggiungiTratteggiato etichetta="Nuovo piatto" href="/piatti/nuovo" />`: stesso stile, stesso «+», stesso nome accessibile (`Nuovo piatto`), quindi i test di Piatti che lo cercano per `getByRole('link', { name: 'Nuovo piatto' })` non cambiano. Spariscono la funzione locale `areeDelPiatto` (righe 99-111 di oggi) e la funzione locale `RigaPiatto` (righe 113-162 di oggi): il loro codice è, rispettivamente, in `ricerca-piatti.ts` e in `RigaPiatto.tsx` sopra. Spariscono anche gli import di `Link` (lo usa ora `AggiungiTratteggiato`), di `coloreArea` (usato solo dalla vecchia `RigaPiatto` locale) e di `ingredientiDelPiatto` (usato solo dalle due funzioni locali sparite).
+Il blocco del vuoto di ricerca (righe 86-93 di oggi) diventa `{mostrati.length === 0 && <VuotoRicercaPiatti />}`: stessa condizione, e il markup è quello di `VuotoRicercaPiatti.tsx` sopra, pari pari. Il `Link` «Nuovo piatto» (righe 62-76 di oggi) diventa `<AggiungiTratteggiato etichetta="Nuovo piatto" href="/piatti/nuovo" />`: stesso stile, stesso «+», stesso nome accessibile (`Nuovo piatto`), quindi i test di Piatti che lo cercano per `getByRole('link', { name: 'Nuovo piatto' })` non cambiano. Spariscono la funzione locale `areeDelPiatto` (righe 99-111 di oggi) e la funzione locale `RigaPiatto` (righe 113-162 di oggi): il loro codice è, rispettivamente, in `ricerca-piatti.ts` e in `RigaPiatto.tsx` sopra. Rispetto alla `RigaPiatto` locale di oggi cambia solo il tag dei due contenitori (la colonna dei testi e la fila dei pallini): da `div` a `span` con gli stessi stili, `display: 'flex'` compreso, perché in modo 'scegli' la riga è un `button`. Dentro un `Link` flex la resa è la stessa. Spariscono anche gli import di `Link` (lo usa ora `AggiungiTratteggiato`), di `coloreArea` (usato solo dalla vecchia `RigaPiatto` locale) e di `ingredientiDelPiatto` (usato solo dalle due funzioni locali sparite).
 
 - [ ] **Step 4: verifica che passino**
 
-Run: `npx vitest run src/domain/__tests__/ricerca-piatti.test.ts src/components/__tests__/RigaPiatto.test.tsx src/components/__tests__/CampoRicercaPiatti.test.tsx src/components/__tests__/AggiungiTratteggiato.test.tsx`
+Run: `npx vitest run src/domain/__tests__/ricerca-piatti.test.ts src/components/__tests__/RigaPiatto.test.tsx src/components/__tests__/CampoRicercaPiatti.test.tsx src/components/__tests__/AggiungiTratteggiato.test.tsx src/components/__tests__/VuotoRicercaPiatti.test.tsx`
 Expected: PASS, tutti.
 
 Run: `npx vitest run "src/app/(app)/piatti/__tests__"`
@@ -700,22 +772,27 @@ Expected: PASS, tutti (`page.test.tsx`, `ricerca.test.tsx`, `vista.test.tsx`, `d
 - [ ] **Step 5: controlli**
 
 ```bash
-grep -nE "#[0-9A-Fa-f]{6}|rgba\(20,22,58,0\.(05|12|16)\)" src/domain/ricerca-piatti.ts src/components/RigaPiatto.tsx src/components/CampoRicercaPiatti.tsx src/components/AggiungiTratteggiato.tsx "src/app/(app)/piatti/ElencoPiatti.tsx"
+grep -nE "#[0-9A-Fa-f]{6}|rgba\(20,22,58,0\.(05|12|16)\)" src/domain/ricerca-piatti.ts src/components/RigaPiatto.tsx src/components/CampoRicercaPiatti.tsx src/components/AggiungiTratteggiato.tsx src/components/VuotoRicercaPiatti.tsx "src/app/(app)/piatti/ElencoPiatti.tsx"
 ```
-Expected: nessuna riga (il `rgba(20,22,58,0.09)` del bordo della Riga piatto è il valore di Piatti di oggi ed è nella tabella delle alfe di §2.5; lo `0.62` della sottoriga scelta è ammesso dai Global Constraints).
+Expected: nessuna riga (il `rgba(20,22,58,0.09)` del bordo della Riga piatto è il valore di Piatti di oggi ed è nella tabella delle alfe di §2.5; lo `0.62` della sottoriga scelta è ammesso dai Global Constraints e il Task 7 lo dichiara in §2.5).
 
 ```bash
-grep -rn $'\xc3\x83' src/domain/ricerca-piatti.ts src/domain/__tests__/ricerca-piatti.test.ts src/components/RigaPiatto.tsx src/components/CampoRicercaPiatti.tsx src/components/AggiungiTratteggiato.tsx src/components/__tests__/RigaPiatto.test.tsx src/components/__tests__/CampoRicercaPiatti.test.tsx src/components/__tests__/AggiungiTratteggiato.test.tsx "src/app/(app)/piatti/ElencoPiatti.tsx"
+grep -rn $'\xc3\x83' src/domain/ricerca-piatti.ts src/domain/__tests__/ricerca-piatti.test.ts src/components/RigaPiatto.tsx src/components/CampoRicercaPiatti.tsx src/components/AggiungiTratteggiato.tsx src/components/VuotoRicercaPiatti.tsx src/components/__tests__/RigaPiatto.test.tsx src/components/__tests__/CampoRicercaPiatti.test.tsx src/components/__tests__/AggiungiTratteggiato.test.tsx src/components/__tests__/VuotoRicercaPiatti.test.tsx "src/app/(app)/piatti/ElencoPiatti.tsx"
 ```
 Expected: vuoto.
+
+```bash
+grep -n "<div" src/components/RigaPiatto.tsx
+```
+Expected: vuoto (dentro la riga solo `span`).
 
 Poi: `npm test`, `npx tsc --noEmit`, `npm run lint`. Tutti verdi.
 
 - [ ] **Step 6: commit**
 
 ```bash
-git add src/domain/ricerca-piatti.ts src/domain/__tests__/ricerca-piatti.test.ts src/components/RigaPiatto.tsx src/components/__tests__/RigaPiatto.test.tsx src/components/CampoRicercaPiatti.tsx src/components/__tests__/CampoRicercaPiatti.test.tsx src/components/AggiungiTratteggiato.tsx src/components/__tests__/AggiungiTratteggiato.test.tsx "src/app/(app)/piatti/ElencoPiatti.tsx"
-git commit -m "refactor: la Riga piatto, la ricerca e l'Aggiungi tratteggiato condivisi fra Piatti e Scegli, coi due modi apri/scegli
+git add src/domain/ricerca-piatti.ts src/domain/__tests__/ricerca-piatti.test.ts src/components/RigaPiatto.tsx src/components/__tests__/RigaPiatto.test.tsx src/components/CampoRicercaPiatti.tsx src/components/__tests__/CampoRicercaPiatti.test.tsx src/components/AggiungiTratteggiato.tsx src/components/__tests__/AggiungiTratteggiato.test.tsx src/components/VuotoRicercaPiatti.tsx src/components/__tests__/VuotoRicercaPiatti.test.tsx "src/app/(app)/piatti/ElencoPiatti.tsx"
+git commit -m "refactor: la Riga piatto, la ricerca col suo vuoto e l'Aggiungi tratteggiato condivisi fra Piatti e Scegli, coi due modi apri/scegli
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -723,7 +800,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 **Test esistenti toccati (Task 1)**
 
 - `src/domain/__tests__/ricerca-piatti.test.ts`: l'helper `ingrediente(id, nome)` guadagna un terzo parametro opzionale `area` (default `'dispensa'`); tutte le chiamate esistenti restano invariate. Nessun `it()` esistente cambia; si aggiunge solo il `describe('areeDelPiatto', …)`.
-- Non cambia nessun altro file di test: `src/app/(app)/piatti/__tests__/{page,ricerca,vista}.test.tsx` e `da.test.ts` restano verdi senza modifiche, perché l'aspetto e il comportamento di `ElencoPiatti` non cambiano (il `Link` «Nuovo piatto» diventa `AggiungiTratteggiato` con lo stesso nome accessibile).
+- Non cambia nessun altro file di test: `src/app/(app)/piatti/__tests__/{page,ricerca,vista}.test.tsx` e `da.test.ts` restano verdi senza modifiche, perché l'aspetto e il comportamento di `ElencoPiatti` non cambiano (il `Link` «Nuovo piatto» diventa `AggiungiTratteggiato` con lo stesso nome accessibile; il vuoto di ricerca diventa `VuotoRicercaPiatti` con gli stessi testi).
 
 ---
 
@@ -920,7 +997,9 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 **Files:**
 - Modify (riscrittura del render): `src/app/(app)/piano/[data]/[slotDefId]/scegli/page.tsx` (757 righe oggi; restano identiche le righe 23–174 meno `areeDelPiatto` e le righe 192–446, cambiano gli import 1–19, spariscono le righe 176–190 e 448–757, che diventano il render nuovo)
 - Modify: `src/components/pannello/RigaImpostazione.tsx` (prop `etichetta`, righe 12–17, 56–70; il valore non sfonda ed è maiuscolo via CSS, riga 60)
+- Modify: `src/components/Dock.tsx` (+ `ErroreSopraDock`, accanto a `Dock`, che non cambia)
 - Test (modifica): `src/app/(app)/piano/[data]/[slotDefId]/scegli/__tests__/page.test.tsx`
+- Test (modifica): `src/components/__tests__/dock.test.tsx` (+ un test per `ErroreSopraDock`)
 - Test (nuovo): `src/components/pannello/__tests__/riga-impostazione.test.tsx`
 
 **Interfaces:**
@@ -928,9 +1007,11 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
   - `areeDelPiatto(piatto: Dish, areaPerIngrediente: Map<string, AreaId>, ordineAree: AreaId[]): AreaId[]` e `cercaPiatti(piatti: Dish[], ingredienti: Ingredient[], testo: string): Dish[]` da `@/domain/ricerca-piatti`;
   - `RigaPiatto(props: { piatto: Dish; aree: AreaId[] } & ModoRigaPiatto)` da `@/components/RigaPiatto`, nel modo `{ modo: 'scegli'; scelto: boolean; corrente: boolean; onScegli: () => void }` (`button`, `aria-pressed={scelto}`, `aria-label="Scegli {nome}"`, sottoriga con `ORA IN PROGRAMMA · ` in testa se `corrente`, pallini con `data-area`);
   - `CampoRicercaPiatti(props: { valore: string; onCambia: (testo: string) => void })` da `@/components/CampoRicercaPiatti` (`input type="search"`, `aria-label="Cerca un piatto o un ingrediente"`);
-  - `AggiungiTratteggiato(props: { etichetta: string; ariaLabel?: string } & ({ href: string } | { onClick: () => void }))` da `@/components/AggiungiTratteggiato`, qui con `href` (un `Link` alto 56, raggio 14, il cui nome accessibile è l'etichetta).
+  - `AggiungiTratteggiato(props: { etichetta: string; ariaLabel?: string } & ({ href: string } | { onClick: () => void }))` da `@/components/AggiungiTratteggiato`, qui con `href` (un `Link` alto 56, raggio 14, il cui nome accessibile è l'etichetta);
+  - `VuotoRicercaPiatti()` da `@/components/VuotoRicercaPiatti` (il vuoto di ricerca di Piatti, «Nessun piatto qui», senza prop).
 - Consumes (esistenti): `Testata` (`@/components/Testata`, `{ titolo, settimana?, indietro?: { etichetta, ariaLabel, onTorna } }`); `Dock` (`@/components/Dock`); `SlotDockProvider` (`@/components/dock-slot`, solo nei test); `RigaImpostazione` (`@/components/pannello/RigaImpostazione`); `Carico`, `Nota` (`@/components/pannello/pezzi`); `MessaggioErrore` (`@/components/controlli`).
-- Produces: `RigaImpostazione` accetta `etichetta?: string`, l'`aria-label` della riga quando è un `button` (finali `valore` e `azione`); senza, il nome accessibile resta il testo della riga. Il valore è al massimo metà riga, poi ellissi, ed è maiuscolo via CSS (DESIGN.md §8: mono 11/700 maiuscolo); i valori del Pannello di oggi sono già maiuscoli e corti, quindi non cambiano. Nessun altro task la usa.
+- Produces: `RigaImpostazione` accetta `etichetta?: string`, l'`aria-label` della riga quando è un `button` (finali `valore` e `azione`); senza, il nome accessibile resta il testo della riga. Il valore è al massimo metà riga, poi ellissi, ed è maiuscolo via CSS (DESIGN.md §8: mono 11/700 maiuscolo); i valori del Pannello di oggi sono già maiuscoli e corti, quindi non dovrebbero cambiare; la prova vera che non si taglino è la sonda nel browser (Dopo i task, punto 1), perché jsdom non fa layout. Nessun altro task la usa.
+- Produces: `ErroreSopraDock({ children }: { children: ReactNode })`, esportato da `@/components/Dock` accanto a `Dock` (Interfacce vincolanti): il `<p role="alert">` di oggi dell'editor dell'ingrediente, assoluto sopra la pillola, su `var(--superficie)`, 12,5 in `--errore`. Lo usa Scegli qui e l'editor del Piatto nel Task 6. **L'editor dell'ingrediente non si tocca**: la sua copia del blocco (righe 628-637 di oggi) resta, perché passarlo a `ErroreSopraDock` è fuori dal perimetro della fase (va nei Limiti noti).
 
 **Le funzioni pure di Scegli non si spostano.** Nessun test nuovo le importa: i test nuovi sono tutti di resa e passano dalla pagina. Restano in `page.tsx`, identiche, e `page.tsx` continua a esportare solo il default. `areeDelPiatto` è l'unica che sparisce dal file: arriva da `@/domain/ricerca-piatti` (Task 1).
 
@@ -1001,17 +1082,16 @@ describe('RigaImpostazione — etichetta', () => {
     expect(valore.textContent).toBe('Ricotta');
   });
 
-  // Il valore più lungo del Pannello di oggi è «NESSUNO FUORI CASA» (Cima, Pasti a casa).
-  // jsdom non fa layout: qui si fissa che il valore corto arriva intero, su una riga, e che il
-  // limite è relativo alla riga (50 %), non un taglio a caratteri. Che a 360 non si tagli lo
-  // misura la sonda nel browser (Dopo i task, punto 1).
-  it('un valore corto del Pannello resta com\'era: intero, su una riga, col limite a metà riga e non a caratteri', () => {
+  // jsdom non fa layout: che «NESSUNO FUORI CASA» (il valore più lungo del Pannello di oggi,
+  // Cima, Pasti a casa) non si tagli a 360 lo prova solo la sonda nel browser (Dopo i task,
+  // punto 1). Qui si fissa soltanto che il limite e l'ellissi stanno sul contenitore del
+  // valore e su nessun altro elemento della riga: il nome non ne prende.
+  it('il limite a metà riga e l\'ellissi stanno solo sul contenitore del valore', () => {
     render(<RigaImpostazione nome="Pasti a casa" finale={{ tipo: 'valore', valore: 'NESSUNO FUORI CASA', onApri: () => {} }} />);
     const valore = screen.getByText('NESSUNO FUORI CASA');
-    expect(valore.textContent).toBe('NESSUNO FUORI CASA');
-    expect(valore.style.whiteSpace).toBe('nowrap');
-    expect(valore.style.maxWidth).toBe('50%');
-    expect(screen.getByRole('button')).toHaveAccessibleName(/NESSUNO FUORI CASA/);
+    const conLimite = Array.from(screen.getByRole('button').querySelectorAll<HTMLElement>('*'))
+      .filter((el) => el.style.maxWidth !== '' || el.style.textOverflow !== '');
+    expect(conLimite).toEqual([valore]);
   });
 });
 ```
@@ -1260,11 +1340,37 @@ describe('Scegli — il ridisegno della fase 7', () => {
 });
 ```
 
+**1c. `src/components/__tests__/dock.test.tsx` (modifica).** L'import `import { Dock } from '../Dock';` diventa `import { Dock, ErroreSopraDock } from '../Dock';`. In fondo al `describe('Dock', …)`, dopo l'ultimo `it`, aggiungi:
+
+```tsx
+  it('ErroreSopraDock: un alert dentro la regione del Dock, sopra la pillola e fuori, su fondo bianco, in --errore (fase 7)', () => {
+    const slot = document.createElement('div');
+    document.body.appendChild(slot);
+    render(
+      <SlotDockProvider slot={slot}>
+        <Dock>
+          <ErroreSopraDock>Non siamo riusciti a salvare. Riprova.</ErroreSopraDock>
+          <button type="button">SALVA</button>
+        </Dock>
+      </SlotDockProvider>,
+    );
+    const regione = screen.getByRole('region', { name: 'Azione principale' });
+    const msg = screen.getByRole('alert');
+    expect(regione).toContainElement(msg);
+    expect(msg).toHaveTextContent('Non siamo riusciti a salvare. Riprova.');
+    expect(msg.style.position).toBe('absolute');
+    expect(msg.style.bottom).toBe('calc(100% + 8px)');
+    expect(msg.style.background).toBe('var(--superficie)');
+    expect(msg.style.color).toBe('var(--errore)');
+    slot.remove();
+  });
+```
+
 - [ ] **Step 2: verifica che falliscano**
 
-Run: `npx vitest run "src/app/(app)/piano/[data]/[slotDefId]/scegli/__tests__/page.test.tsx" src/components/pannello/__tests__/riga-impostazione.test.tsx`
+Run: `npx vitest run "src/app/(app)/piano/[data]/[slotDefId]/scegli/__tests__/page.test.tsx" src/components/pannello/__tests__/riga-impostazione.test.tsx src/components/__tests__/dock.test.tsx`
 
-Expected: FAIL. In `riga-impostazione`: il test con etichetta, quello ad azione, quello del valore lungo, quello del maiuscolo e quello del valore corto (la prop non esiste, il valore non ha né `maxWidth` né `textTransform`); passa solo il primo. In Scegli: *header ed etichetta* (oggi `GIOVEDÌ 27 · CENA` è testo, niente `h1`), *un piatto con componente…* (oggi `FARCITURA` è scritto maiuscolo), *la pillola PIANO…* (oggi c'è una freccia `Torna al Piano`), il test nuovo del conflitto e tutti quelli del blocco nuovo tranne *un piatto senza componenti* (niente ricerca, niente `Scegli {nome}`, niente Dock, `CARICO…` assente, errore in `--sec`, Aggiungi alto 52). Gli altri test esistenti passano già con `monta()`.
+Expected: FAIL. In `riga-impostazione`: il test con etichetta, quello ad azione, quello del valore lungo, quello del maiuscolo e quello del limite solo sul valore (la prop non esiste, il valore non ha né `maxWidth` né `textTransform`, quindi l'elenco degli elementi col limite è vuoto); passa solo il primo. In `dock.test.tsx`: il test nuovo di `ErroreSopraDock` (l'export non esiste). In Scegli: *header ed etichetta* (oggi `GIOVEDÌ 27 · CENA` è testo, niente `h1`), *un piatto con componente…* (oggi `FARCITURA` è scritto maiuscolo), *la pillola PIANO…* (oggi c'è una freccia `Torna al Piano`), il test nuovo del conflitto e tutti quelli del blocco nuovo tranne *un piatto senza componenti* (niente ricerca, niente `Scegli {nome}`, niente Dock, `CARICO…` assente, errore in `--sec`, Aggiungi alto 52). Gli altri test esistenti passano già con `monta()`.
 
 - [ ] **Step 3: l'implementazione**
 
@@ -1312,9 +1418,35 @@ La firma diventa `export function RigaImpostazione({ nome, nota, finale, errore,
       break;
 ```
 
-Il resto del file resta identico. `aria-label={undefined}` non scrive l'attributo: le righe del Pannello non cambiano nome accessibile. Il `maxWidth: '50%'` non cambia l'aspetto delle righe del Pannello di oggi: il valore più lungo è «NESSUNO FUORI CASA», 18 caratteri mono 11 [ipotesi, non misurata: circa 133 px contro circa 148 di metà riga a 360]; la misura vera la fa la sonda (Dopo i task, punto 1). Se la sonda lo trova tagliato, si alza il limite, non si tolgono i test.
+Il resto del file resta identico. `aria-label={undefined}` non scrive l'attributo: le righe del Pannello non cambiano nome accessibile. Il `maxWidth: '50%'` non cambia l'aspetto delle righe del Pannello di oggi: il valore più lungo è «NESSUNO FUORI CASA», 18 caratteri mono 11 [ipotesi, non misurata: circa 133 px contro circa 148 di metà riga a 360]. **La prova vera del taglio è la sonda nel browser** (Dopo i task, punto 1): jsdom non fa layout, quindi nessun test di questo task può dire se un valore si taglia; `riga-impostazione.test.tsx` fissa solo dove stanno il limite e l'ellissi (sul contenitore del valore e basta). Se la sonda trova `NESSUNO FUORI CASA` tagliato, si alza il limite prima del merge.
 
-**3b. `src/app/(app)/piano/[data]/[slotDefId]/scegli/page.tsx`.** Il file nuovo, dall'alto in basso. Dove c'è scritto «identiche a oggi», copia le righe indicate dal file attuale, commenti compresi, senza toccarle.
+**3b. `src/components/Dock.tsx`.** `Dock` resta identico; in fondo al file aggiungi:
+
+```tsx
+/**
+ * L'errore dell'azione del Dock (fase 7): sta sopra la pillola, fuori, su fondo
+ * bianco, perché sotto scorre la pagina. Si passa come figlio del `Dock`, prima
+ * del tasto: il messaggio si appoggia al bordo alto del contenitore `.dock`.
+ * `role="alert"`: compare dopo un tocco fallito e va annunciato. È il blocco di
+ * oggi dell'editor dell'ingrediente, pari pari, estratto perché lo usano anche
+ * Scegli e l'editor del Piatto: un disegno solo, non tre copie.
+ */
+export function ErroreSopraDock({ children }: { children: ReactNode }) {
+  return (
+    <p role="alert" style={{
+      position: 'absolute', left: 0, right: 0, bottom: 'calc(100% + 8px)', margin: 0, padding: '10px 14px',
+      borderRadius: 14, background: 'var(--superficie)', boxShadow: 'var(--ombra-pannello)',
+      fontSize: 12.5, lineHeight: 1.45, color: 'var(--errore)',
+    }}>
+      {children}
+    </p>
+  );
+}
+```
+
+`ReactNode` è già importato in testa al file (`import type { ReactNode } from 'react';`). L'editor dell'ingrediente (`src/app/(app)/piatti/[id]/ingredienti/[ingId]/page.tsx`, righe 628-637) **non si tocca**: tiene la sua copia del blocco, identica, perché cambiarlo è fuori dal perimetro di questa fase (Limiti noti).
+
+**3c. `src/app/(app)/piano/[data]/[slotDefId]/scegli/page.tsx`.** Il file nuovo, dall'alto in basso. Dove c'è scritto «identiche a oggi», copia le righe indicate dal file attuale, commenti compresi, senza toccarle.
 
 ```tsx
 'use client';
@@ -1336,9 +1468,10 @@ import { etichettaScadenza } from '@/domain/scadenza';
 import { formattaQuantita } from '@/domain/risparmio';
 import { areeDelPiatto, cercaPiatti } from '@/domain/ricerca-piatti';
 import { Testata } from '@/components/Testata';
-import { Dock } from '@/components/Dock';
+import { Dock, ErroreSopraDock } from '@/components/Dock';
 import { RigaPiatto } from '@/components/RigaPiatto';
 import { CampoRicercaPiatti } from '@/components/CampoRicercaPiatti';
+import { VuotoRicercaPiatti } from '@/components/VuotoRicercaPiatti';
 import { AggiungiTratteggiato } from '@/components/AggiungiTratteggiato';
 import { MessaggioErrore } from '@/components/controlli';
 import { RigaImpostazione } from '@/components/pannello/RigaImpostazione';
@@ -1474,16 +1607,10 @@ export default function ScegliPiatto() {
           />
         ))}
 
-        {/* Il vuoto di ricerca di Piatti. Solo se il pasto ha dei piatti: senza, il vuoto
-            non è della ricerca, e sotto c'è già CREA UN PIATTO NUOVO, come oggi. */}
-        {mostrati.length === 0 && dati.piatti.length > 0 && (
-          <div style={{ flexShrink: 0, padding: '44px 20px', textAlign: 'center' }}>
-            <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--ink)', marginBottom: 6 }}>
-              Nessun piatto qui
-            </div>
-            <div style={{ fontSize: 14, color: 'var(--testo-2)' }}>Prova un&apos;altra parola, oppure aggiungine uno.</div>
-          </div>
-        )}
+        {/* Il vuoto di ricerca di Piatti, lo stesso pezzo (Task 1). Solo se il pasto ha dei
+            piatti: senza, il vuoto non è della ricerca, e sotto c'è già CREA UN PIATTO NUOVO,
+            come oggi. */}
+        {mostrati.length === 0 && dati.piatti.length > 0 && <VuotoRicercaPiatti />}
 
         {/* Sotto l'elenco (spec §A.4): componenti, conflitti e nota. Distacchi a margine e
             non a gap, perché la regione dei conflitti c'è anche vuota. */}
@@ -1538,17 +1665,9 @@ export default function ScegliPiatto() {
       </div>
 
       <Dock>
-        {erroreSalva && (
-          // Sopra il Dock, come nell'editor dell'ingrediente: fuori dalla pillola, su fondo
-          // bianco, perché sotto scorre la pagina.
-          <p role="alert" style={{
-            position: 'absolute', left: 0, right: 0, bottom: 'calc(100% + 8px)', margin: 0, padding: '10px 14px',
-            borderRadius: 14, background: 'var(--superficie)', boxShadow: 'var(--ombra-pannello)',
-            fontSize: 12.5, lineHeight: 1.45, color: 'var(--errore)',
-          }}>
-            {erroreSalva}
-          </p>
-        )}
+        {/* Sopra il Dock, come nell'editor dell'ingrediente: fuori dalla pillola, su fondo
+            bianco, perché sotto scorre la pagina. */}
+        {erroreSalva && <ErroreSopraDock>{erroreSalva}</ErroreSopraDock>}
         {/* Spento finché niente cambia e in volo: lo spento di `.dock-primario:disabled`
             (DESIGN.md §13, 26/09, punto 6), nessuna opacità. */}
         <button type="button" className="dock-primario" onClick={() => void confermaScelta()} disabled={!cambiato || salvando}>
@@ -1577,12 +1696,16 @@ function Cornice({ settimana, indietro, children }: { settimana?: string; indiet
 
 Cosa sparisce dal file, per esteso: gli import di `coloreArea` e di `Link` (il link a `/piatti/nuovo` lo fa ora `AggiungiTratteggiato`); `areeDelPiatto` locale (176–190); l'etichetta `DAL TUO REPERTORIO`; il `button` di riga scritto a mano con il badge e il tondo di selezione (497–586); i `button` dei componenti con il chip pieno (589–640); il riquadro dei conflitti in `--ink-2` (642–650); il link tratteggiato a 52 (652–673); l'errore di salvataggio in `--sec` (679); il piede `coda-barra` con `ANNULLA` e `SOSTITUISCI` (682–726); la `Cornice` con la freccia `Torna al Piano` (731–757); la classe `con-piede`.
 
-Deviazioni di resa da oggi, volute: sparisce l'etichetta `DAL TUO REPERTORIO` (la spec non la nomina e Piatti non ce l'ha); la nota passa **prima** dell'Aggiungi (spec §A.4); l'errore di caricamento passa da `--sec` a `--errore` (`MessaggioErrore`); l'`aria-label` della pillola è «Torna al piano» (spec §A.2; la freccia di oggi diceva «Torna al Piano»); il vuoto di ricerca, copia del markup di `ElencoPiatti`, compare solo se il pasto ha dei piatti; la regione `aria-live` dei conflitti c'è sempre, anche vuota, così il primo conflitto che compare viene annunciato.
+Deviazioni di resa da oggi, volute: sparisce l'etichetta `DAL TUO REPERTORIO` (la spec non la nomina e Piatti non ce l'ha); la nota passa **prima** dell'Aggiungi (spec §A.4); l'errore di caricamento passa da `--sec` a `--errore` (`MessaggioErrore`); l'`aria-label` della pillola è «Torna al piano» (spec §A.2; la freccia di oggi diceva «Torna al Piano»); il vuoto di ricerca, `VuotoRicercaPiatti` condiviso con Piatti (Task 1), compare solo se il pasto ha dei piatti; l'errore di salvataggio è `ErroreSopraDock` (3b), lo stesso blocco dell'editor dell'ingrediente; la regione `aria-live` dei conflitti c'è sempre, anche vuota, così il primo conflitto che compare viene annunciato.
 
 - [ ] **Step 4: verifica che passino**
 
-Run: `npx vitest run "src/app/(app)/piano/[data]/[slotDefId]/scegli/__tests__/page.test.tsx" src/components/pannello/__tests__/riga-impostazione.test.tsx`
-Expected: PASS, tutti (23 esistenti + 1 nuovo nel conflitto + 9 nel blocco nuovo; 6 in `riga-impostazione`).
+Run: `npx vitest run "src/app/(app)/piano/[data]/[slotDefId]/scegli/__tests__/page.test.tsx" src/components/pannello/__tests__/riga-impostazione.test.tsx src/components/__tests__/dock.test.tsx`
+Expected: PASS, tutti (23 esistenti + 1 nuovo nel conflitto + 9 nel blocco nuovo; 6 in `riga-impostazione`; in `dock.test.tsx` quelli di oggi più 1 nuovo).
+
+Poi i test dell'editor dell'ingrediente, che non si tocca e deve restare verde:
+Run: `npx vitest run "src/app/(app)/piatti/[id]/ingredienti"`
+Expected: PASS.
 
 Poi i test di chi usa già `RigaImpostazione`, che non devono cambiare:
 Run: `npx vitest run src/components/pannello/__tests__/`
@@ -1596,11 +1719,12 @@ grep -nE "#[0-9A-Fa-f]{3,8}\b|rgba\(" "src/app/(app)/piano/[data]/[slotDefId]/sc
 Expected: nessuna riga (nessun colore scritto a mano, nessuna alfa).
 
 ```bash
-grep -nE "#[0-9A-Fa-f]{3,8}\b|rgba\(" src/components/pannello/RigaImpostazione.tsx
-grep -n $'\xc3\x83' "src/app/(app)/piano/[data]/[slotDefId]/scegli/page.tsx" "src/app/(app)/piano/[data]/[slotDefId]/scegli/__tests__/page.test.tsx" src/components/pannello/RigaImpostazione.tsx src/components/pannello/__tests__/riga-impostazione.test.tsx
-grep -nE "ANNULLA|con-piede|coda-barra|Torna al Piano|coloreArea|DAL TUO REPERTORIO|next/link" "src/app/(app)/piano/[data]/[slotDefId]/scegli/page.tsx"
+grep -nE "#[0-9A-Fa-f]{3,8}\b|rgba\(" src/components/pannello/RigaImpostazione.tsx src/components/Dock.tsx
+grep -n $'\xc3\x83' "src/app/(app)/piano/[data]/[slotDefId]/scegli/page.tsx" "src/app/(app)/piano/[data]/[slotDefId]/scegli/__tests__/page.test.tsx" src/components/pannello/RigaImpostazione.tsx src/components/pannello/__tests__/riga-impostazione.test.tsx src/components/Dock.tsx src/components/__tests__/dock.test.tsx
+grep -nE "ANNULLA|con-piede|coda-barra|Torna al Piano|coloreArea|DAL TUO REPERTORIO|next/link|Nessun piatto qui|role=\"alert\"" "src/app/(app)/piano/[data]/[slotDefId]/scegli/page.tsx"
+git diff --stat -- "src/app/(app)/piatti/[id]/ingredienti"
 ```
-Expected: tutte e tre vuote.
+Expected: tutte e quattro vuote (l'ultima dice che l'editor dell'ingrediente non è stato toccato).
 
 Poi `npm test`, `npx tsc --noEmit`, `npm run lint`: tutti verdi.
 
@@ -1611,12 +1735,14 @@ git add "src/app/(app)/piano/[data]/[slotDefId]/scegli/page.tsx"
 git add "src/app/(app)/piano/[data]/[slotDefId]/scegli/__tests__/page.test.tsx"
 git add src/components/pannello/RigaImpostazione.tsx
 git add src/components/pannello/__tests__/riga-impostazione.test.tsx
+git add src/components/Dock.tsx
+git add src/components/__tests__/dock.test.tsx
 git commit -m "feat(scegli): la schermata nel sistema, con la ricerca e le righe di Piatti e SOSTITUISCI nel Dock
 
 La Testata in modo indietro con la pillola del giorno e del pasto; la Riga piatto
 in modo scegli; i componenti come Righe di impostazione (RigaImpostazione prende
-un'etichetta); i conflitti come Avviso in linea. Caricamento, scelta e patch di
-aggiornaSlot invariati.
+un'etichetta); i conflitti come Avviso in linea; l'errore sopra il Dock diventa
+ErroreSopraDock, condiviso. Caricamento, scelta e patch di aggiornaSlot invariati.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -1629,6 +1755,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 - *un piatto con componente a due opzioni mostra la riga del componente…*: `FARCITURA` diventa `Farcitura`.
 - *il link "torna" e il bottone "annulla" puntano a /piano…*: riscritto come *la pillola PIANO della Testata porta a /piano…*, con il clic sulla pillola, `push('/piano')`, nessun `aggiornaSlot` e `ANNULLA` assente.
 - Nessun test esistente di `src/components/pannello/__tests__/` cambia; `riga-impostazione.test.tsx` è nuovo.
+- `src/components/__tests__/dock.test.tsx`: cambia l'import (`Dock, ErroreSopraDock`) e si aggiunge un `it`; i test di oggi restano identici.
 - I test esistenti che leggono i valori dei componenti (`getByText('Ricotta')`, `'Noci'`, `'Prezzemolo'`, `'Basilico'`) non cambiano: il maiuscolo del valore è solo CSS, nel DOM resta il testo.
 
 ---
@@ -1660,7 +1787,7 @@ export function SelettoreIngrediente(props: PropsSelettoreIngrediente): JSX.Elem
 //   il componente: la pagina lo monta solo quando è aperto, quindi chiuderlo la azzera.
 ```
 
-**Il comportamento non cambia.** Restano identici: la ricerca solo con più di 8 ingredienti (`nonAncoraNelPiatto.length > 8`), niente `autoFocus`, il filtro dentro il nome senza accenti né maiuscole (`normalizza`, spostata identica), i due testi del vuoto (`Nessun ingrediente per "…". Puoi crearlo qui sotto.` / `Hai già aggiunto tutti gli ingredienti del repertorio.`), il link `NUOVO INGREDIENTE` a `/piatti/{id}/ingredienti/nuovo` con `riparaBozzaPrimaDiUscire` sul click, il tocco che aggiunge e chiude, la chiusura dal velo. In questo task la pagina resta a due modi (vista e modifica).
+**Il comportamento non cambia.** Restano identici: la ricerca solo con più di 8 ingredienti (`nonAncoraNelPiatto.length > 8`), niente `autoFocus`, il filtro dentro il nome senza accenti né maiuscole (`normalizza`, spostata identica; resta locale e non si importa da `@/domain/import/mapping`, perché quella non è identica: comprime anche gli spazi interni, `\s+` in uno spazio, e cambierebbe il filtro su una ricerca con due spazi), i due testi del vuoto (`Nessun ingrediente per "…". Puoi crearlo qui sotto.` / `Hai già aggiunto tutti gli ingredienti del repertorio.`), il link `NUOVO INGREDIENTE` a `/piatti/{id}/ingredienti/nuovo` con `riparaBozzaPrimaDiUscire` sul click, il tocco che aggiunge e chiude, la chiusura dal velo. In questo task la pagina resta a due modi (vista e modifica).
 
 - [ ] **Step 1: i test, prima**
 
@@ -1831,7 +1958,9 @@ const SOGLIA_RICERCA = 8;
 /**
  * Confronto tollerante agli accenti: chi cerca "caffe" deve trovare "Caffè",
  * perché sulla tastiera del telefono l'accento costa un tocco in più e
- * nessuno lo mette per cercare.
+ * nessuno lo mette per cercare. Non è la `normalizza` di
+ * `@/domain/import/mapping`, che comprime anche gli spazi interni: questa è
+ * quella di oggi dell'editor, spostata identica.
  */
 function normalizza(testo: string): string {
   return testo
@@ -2420,6 +2549,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
   - `SelettoreIngrediente` (Task 4, **Produces**): `{ ingredienti, onScegli, onChiudi, hrefNuovo, onPrimaDiCreare }`.
   - `ComponentiPiatto` (Task 5, **Produces**): `{ componenti, catalogoPerId, onAggiungiComponente, onRimuoviComponente, onCambiaNomeComponente, onAggiungiOpzione, onRimuoviOpzione, onAggiungiIngrediente, onCambiaQuantita, onRimuoviRiga }`, da `./ComponentiPiatto`.
   - `AggiungiTratteggiato` (Task 1, Interfacce vincolanti): `{ etichetta, ariaLabel?, onClick }`, da `@/components/AggiungiTratteggiato`.
+  - `ErroreSopraDock` (Task 3, Interfacce vincolanti): `ErroreSopraDock({ children })`, da `@/components/Dock`, come figlio del `Dock` prima di SALVA.
   - Di oggi: `Dock` da `@/components/Dock`; `FoglioDalBasso` da `@/components/FoglioDalBasso`; `DialogoConferma({ titolo, testo, azione, tono, erroreTesto, onConferma: () => Promise<void>, onAnnulla })` da `@/components/DialogoConferma`; `Blocco({ children, primo? })`, `Etichetta`, `MessaggioErrore({ children, ruolo? })`, `TastoSecondario` da `@/components/controlli`; `useNascondiBarra` da `@/components/barra-context`; `Carico` e `Nota({ children, ruolo? })` da `@/components/pannello/pezzi`; `type BozzaPiatto` da `./bozza`. Nei test: `SlotDockProvider` da `@/components/dock-slot`, `BarraProvider` da `@/components/barra-context`.
 - Produces: niente per altri task.
 
@@ -2430,7 +2560,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 - la testata è `TestataModifica` con la freccia `Torna ai piatti` → `/piatti` e il nome come campo a 32;
 - `useNascondiBarra(true)`;
 - i blocchi sono `Blocco` / `Etichetta`; i messaggi che nascono da un dato scritto male (grammature mancanti, componente senza nome, opzione senza righe) in `--errore`; `TESTO_SENZA_INGREDIENTI` invece è una **Nota** (12,5 in `--testo-2`): spiega perché SALVA è spento, e su un piatto nuovo non deve essere rosso dalla prima apertura (DESIGN.md §8 Messaggi);
-- `SALVA` nel Dock: spento finché niente cambia **o** il modulo non è valido; in volo `disabled` con lo stato spento di `.dock-primario:disabled`; l'errore sopra il Dock con `role="alert"`; dopo il salvataggio si torna a `/piatti` anche su un piatto esistente;
+- `SALVA` nel Dock: spento finché niente cambia **o** il modulo non è valido; in volo `disabled` con lo stato spento di `.dock-primario:disabled`; l'errore sopra il Dock è `ErroreSopraDock` (Task 3, `role="alert"`); dopo il salvataggio si torna a `/piatti` anche su un piatto esistente;
 - `ELIMINA` in coda, solo su un piatto esistente → `DialogoConferma` distruttivo in un `FoglioDalBasso` con `TESTO_ELIMINA`.
 - tre comportamenti diversi da oggi, voluti (spec §B.7): se l'eliminazione fallisce l'errore sta dentro il dialogo, che resta aperto; un caricamento fallito su `/piatti/nuovo` mostra solo l'errore, senza Dock (oggi si poteva salvare con `slot_def_id ''`); aprire e salvare senza toccare nulla non si può più (SALVA spento), quindi non si riscrive una `settimanaCiclo` fuori ciclo finché non si salva un cambiamento vero.
 
@@ -3079,6 +3209,34 @@ describe('Piatto (editor): un modo solo, SALVA nel Dock ed ELIMINA (spec fase 7 
     expect(screen.queryByRole('region', { name: 'Azione principale' })).toBeNull();
   });
 
+  // Il cambio voluto di §B.7: prima della fase 7 su /piatti/nuovo l'editor si mostrava lo
+  // stesso anche a caricamento fallito, e SALVA poteva scrivere un piatto con slot_def_id ''.
+  it('un caricamento fallito su /piatti/nuovo: solo il messaggio e la freccia, niente modulo, niente Dock né SALVA', async () => {
+    paramsId = 'nuovo';
+    vi.mocked(leggiIngredienti).mockRejectedValue(new Error('rete'));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    rendi();
+
+    const messaggio = await screen.findByRole('alert');
+    expect(messaggio).toHaveTextContent('Non riusciamo a caricare il piatto. Riprova più tardi.');
+    expect(screen.getByRole('button', { name: 'Torna ai piatti' })).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('Dai un nome al piatto')).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Azione principale' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'SALVA' })).toBeNull();
+    expect(salvaPiatto).not.toHaveBeenCalled();
+  });
+
+  it('le pillole di una cifra della settimana del giro sono larghe almeno 44, come il bersaglio', async () => {
+    mockBase(2);
+    rendi();
+    await screen.findByPlaceholderText('Dai un nome al piatto');
+
+    const uno = screen.getByRole('button', { name: 'Settimana del giro: Settimana 1 del giro' });
+    expect(uno.style.height).toBe('44px');
+    const pillola = within(uno).getByText('1');
+    expect(pillola.style.minWidth).toBe('44px');
+  });
+
   it('in caricamento: la testata e CARICO…, niente Dock', async () => {
     vi.mocked(leggiSlotDefs).mockReturnValue(new Promise(() => {}));
     rendi();
@@ -3130,7 +3288,7 @@ import { giorniDellaSettimana } from '@/domain/date';
 import { Segmento } from '@/components/Segmento';
 import { TesseraIngrediente } from '@/components/TesseraIngrediente';
 import { TestataModifica } from '@/components/TestataModifica';
-import { Dock } from '@/components/Dock';
+import { Dock, ErroreSopraDock } from '@/components/Dock';
 import { FoglioDalBasso } from '@/components/FoglioDalBasso';
 import { DialogoConferma } from '@/components/DialogoConferma';
 import { Blocco, Etichetta, MessaggioErrore, TastoSecondario } from '@/components/controlli';
@@ -3888,16 +4046,9 @@ export default function Piatto() {
       </div>
 
       <Dock>
-        {erroreSalva && (
-          // Sopra il Dock, come nell'editor dell'ingrediente: fuori dalla pillola, su fondo bianco, perché sotto scorre la pagina.
-          <p role="alert" style={{
-            position: 'absolute', left: 0, right: 0, bottom: 'calc(100% + 8px)', margin: 0, padding: '10px 14px',
-            borderRadius: 14, background: 'var(--superficie)', boxShadow: 'var(--ombra-pannello)',
-            fontSize: 12.5, lineHeight: 1.45, color: 'var(--errore)',
-          }}>
-            {erroreSalva}
-          </p>
-        )}
+        {/* Sopra il Dock, come in Scegli e nell'editor dell'ingrediente: fuori dalla pillola,
+            su fondo bianco, perché sotto scorre la pagina. */}
+        {erroreSalva && <ErroreSopraDock>{erroreSalva}</ErroreSopraDock>}
         {/* In volo lo stato spento del sistema (`.dock-primario:disabled`, DESIGN.md §13,
             26/09, punto 6), non l'opacità: con l'opacità il testo bianco scende sotto soglia. */}
         <button
@@ -3958,8 +4109,11 @@ interface OpzionePillola {
  *
  * L'area di tap è 44px anche se la pillola disegnata è più bassa, come in
  * Segmento: la regola dei bersagli vale ovunque, non solo dove il disegno è
- * già abbastanza alto. Dalla fase 7 la pillola spenta è bianca (DESIGN.md §8
- * Pillole d'azione): il riquadro bianco che la conteneva non c'è più.
+ * già abbastanza alto. Dalla fase 7 la pillola è anche larga almeno 44
+ * (`minWidth`, prima 42): il bottone è largo quanto lei, e le pillole di una
+ * cifra della settimana del giro (`1`, `2`) davano un bersaglio di 42. Dalla
+ * fase 7 la pillola spenta è bianca (DESIGN.md §8 Pillole d'azione): il
+ * riquadro bianco che la conteneva non c'è più.
  */
 function Pillole({ opzioni, valore, onCambia, gruppo, aCapo = false }: {
   opzioni: OpzionePillola[];
@@ -3991,7 +4145,7 @@ function Pillole({ opzioni, valore, onCambia, gruppo, aCapo = false }: {
               <span
                 style={{
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  minWidth: 42, height: 36, padding: '0 12px', borderRadius: 999,
+                  minWidth: 44, height: 36, padding: '0 12px', borderRadius: 999,
                   fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: attivo ? 700 : 500,
                   letterSpacing: '0.09em',
                   color: attivo ? 'var(--superficie)' : 'var(--sec)',
@@ -4021,7 +4175,7 @@ Expected: PASS, tutti (`page.test.tsx`, `apertura.test.tsx`, `selettore.test.tsx
 
 - `grep -nE "#[0-9A-Fa-f]{6}|#[0-9A-Fa-f]{3}\b|rgba\(20, ?22, ?58, ?0?\.(05|045|10|12|16|28|35)\)" "src/app/(app)/piatti/[id]/page.tsx"` → nessuna riga.
 - `grep -n "rgba(" "src/app/(app)/piatti/[id]/page.tsx"` → due righe sole: `rgba(20,22,58,0.14)` sotto il nome (identica al campo del nome dell'editor dell'ingrediente) e `rgba(20,22,58,0.09)` sul bordo della pillola spenta (§2.5, pillole d'azione).
-- `grep -nE "VistaPiatto|modalita|MODIFICA|EtichettaCampo|Cornice|coda-barra|con-piede|Annulla modifiche|SALVA PIATTO|fontSize: 34" "src/app/(app)/piatti/[id]/page.tsx"` → nessuna riga.
+- `grep -nE "VistaPiatto|modalita|MODIFICA|EtichettaCampo|Cornice|coda-barra|con-piede|Annulla modifiche|SALVA PIATTO|fontSize: 34|<p role=\"alert\"|minWidth: 42" "src/app/(app)/piatti/[id]/page.tsx"` → nessuna riga (l'errore sopra il Dock è `ErroreSopraDock`, le pillole sono a 44).
 - `grep -rn "vista.test" src` → nessuna riga.
 - `grep -n $'\xc3\x83' "src/app/(app)/piatti/[id]/page.tsx" "src/app/(app)/piatti/[id]/__tests__/page.test.tsx" "src/app/(app)/piatti/__tests__/apertura.test.tsx"` → vuoto.
 - `npm test`, `npx tsc --noEmit`, `npm run lint`: verdi.
@@ -4037,7 +4191,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 (il `git mv` di `vista.test.tsx` è già nell'indice.)
 
-Scelte di resa di questo task, accettate: il filetto `0,14` sotto il nome (lo stesso del campo del nome dell'editor dell'ingrediente) e il bordo `0,09` delle pillole spente, che passano da `--fondo` a `--superficie` (il riquadro bianco di `NEL PIANO` non c'è più); il selettore ad `altezza="alto"` (top 88, come i fogli della Dispensa) invece di «alto quanto serve fino al 70 vh»; né il selettore né il dialogo mettono una voce nella cronologia (niente `useIndietroFogli`, come Confezioni in fase 6). Il nome si confronta grezzo, come nell'ingrediente: uno spazio in coda accende SALVA, che poi scrive il nome ripulito.
+Scelte di resa di questo task, accettate: il filetto `0,14` sotto il nome (lo stesso del campo del nome dell'editor dell'ingrediente; il Task 7 lo dichiara in §2.5) e il bordo `0,09` delle pillole spente, che passano da `--fondo` a `--superficie` (il riquadro bianco di `NEL PIANO` non c'è più); le pillole larghe almeno 44 invece di 42 (cambiano solo quelle di una cifra della settimana del giro, 2 px più larghe); il selettore ad `altezza="alto"` (top 88, come i fogli della Dispensa) invece di «alto quanto serve fino al 70 vh»; né il selettore né il dialogo mettono una voce nella cronologia (niente `useIndietroFogli`, come Confezioni in fase 6). Il nome si confronta grezzo, come nell'ingrediente: uno spazio in coda accende SALVA, che poi scrive il nome ripulito.
 
 **Test esistenti toccati (Task 6)**
 
@@ -4045,7 +4199,7 @@ Scelte di resa di questo task, accettate: il filetto `0,14` sotto il nome (lo st
 - Solo selettori (`rendi()`, `salva()`, via `entraInModifica`, `within(alertdialog)`): *creazione: gli slot vengono dai meal_slot_def reali…*; *un piatto nuovo, senza ingredienti, ha il salvataggio bloccato…*; *aggiungere un ingrediente dal selettore NON sblocca il salvataggio…*; *la striscia dei sette giorni riflette la settimana reale…*; *un piatto assegnato ma sempre fuori casa…*; *salva chiama salvaPiatto con la grammatura non moltiplicata…*; *riprende il piatto lasciato a metà…*; *la bozza vince sui dati del server…*; *mette al riparo la bozza quando si esce a creare un ingrediente*; *ogni ingrediente del piatto ha un accesso al proprio editor*; *il selettore ha un campo di ricerca solo quando la lista e lunga*; *la ricerca filtra per nome…*; *senza risultati suggerisce di crearlo…*; *il selettore degli ingredienti è un Foglio dal basso…* (Task 4); *un piatto caricato con componenti li mostra*; *aggiungere un componente con un'opzione e salvare…*; *un'opzione senza righe blocca il salva*; *conserva un componente attraverso il giro bozza…*; *i chip GIORNO FISSO vanno a capo…*.
 - Anche nelle attese: *rimuovere l'ultimo ingrediente ridisattiva il salvataggio* (prima si cambia il nome); *modifica: carica nome, pasto e ingredienti…* (SALVA spento); *il cestino su un piatto nuovo…* → *su un piatto nuovo ELIMINA non c'è: la freccia…*; *il cestino su un piatto esistente chiede conferma…* → *ELIMINA su un piatto esistente chiede conferma…*; *ANNULLA nella conferma chiude il dialogo…*; *salvare il piatto scarta la bozza…* (si cambia il nome, si torna a `/piatti`); *aprire un piatto con componenti e salvare senza toccare nulla…* → *…cambiare solo il nome e salvare conserva gli id originali*.
 
-- Nuovi, in fondo al file: il blocco *Piatto (editor): un modo solo, SALVA nel Dock ed ELIMINA*, compresi i due test su `TESTO_SENZA_INGREDIENTI` come Nota e quello sulla grammatura mancante in `--errore`.
+- Nuovi, in fondo al file: il blocco *Piatto (editor): un modo solo, SALVA nel Dock ed ELIMINA*, compresi i due test su `TESTO_SENZA_INGREDIENTI` come Nota, quello sulla grammatura mancante in `--errore`, quello del caricamento fallito su `/piatti/nuovo` (il cambio voluto di §B.7) e quello delle pillole di una cifra larghe 44.
 
 **`src/app/(app)/piatti/__tests__/vista.test.tsx` → `apertura.test.tsx`**
 - Restano, riscritti: *apre in vista: niente input, niente SALVA…* → *aprire un piatto esistente mostra il modulo, non emette scritture…*; *la vista mostra nome, pasto, settimana e giorno…* → *il modulo mostra pasto, settimana del giro e giorno fisso…*; *la vista compone le righe…* → *il modulo mostra gli ingredienti fissi e i componenti…*; *un piatto nuovo apre direttamente in modifica…* → *un piatto nuovo apre il modulo vuoto…*; *una bozza pendente … apre direttamente in modifica* → *una bozza pendente vince … e SALVA si accende*; *un salvataggio fallito non lascia un errore fantasma…* e *SALVA→MODIFICA→SALVA…* → *un salvataggio fallito: l'errore sopra il Dock, e il secondo SALVA riparte…*; *ANNULLA dopo MODIFICA ripristina…* → *la freccia torna a /piatti … e scarta la bozza come ANNULLA* (più *su un piatto nuovo la freccia … senza toccare la bozza*).
@@ -4105,6 +4259,14 @@ valore è il nome dell'opzione di un componente, che può essere lungo. Il testo
 nome accessibile della riga, se chi la monta lo passa (`etichetta`).
 ```
 
+- [ ] **Step 4c: `DESIGN.md` §2.5, la tabella delle alfe** — due usi nuovi della fase 7, che la tabella oggi non ha (la tabella dice che un'alfa vale «solo dove è scritto»):
+  - nella riga `` `0,14` su `--ink` ``, dopo «righe finte della miniatura nella Striscia dei fogli presi», aggiungi: `; dal 26/09 anche il filetto sotto il nome della testata di modifica (il campo del nome nell'editor dell'ingrediente e in quello del Piatto)`;
+  - dopo l'ultima riga `` `0,62` su bianco `` (quella del pallino vuoto della Striscia dei giorni) aggiungi la riga:
+
+```markdown
+| `0,62` su bianco | sottoriga della Riga piatto scelta, in Scegli (dal 26/09) |
+```
+
 - [ ] **Step 5: `DESIGN.md` §13** — in fondo al file:
 
 ```markdown
@@ -4119,12 +4281,12 @@ nome accessibile della riga, se chi la monta lo passa (`etichetta`).
 ```
 
 - [ ] **Step 6: `DESIGN-SYSTEM.md`** — nella tabella del ponte:
-  - riga **Riga piatto**: `src/components/RigaPiatto.tsx` (spostata da `ElencoPiatti.tsx`), modi `apri` e `scegli` dalla fase 7;
-  - riga **Dock**: `SOSTITUISCI` in Scegli e `SALVA` nell'editor del Piatto dalla fase 7;
+  - riga **Riga piatto**: `src/components/RigaPiatto.tsx` (spostata da `ElencoPiatti.tsx`), modi `apri` e `scegli` dalla fase 7; con lei, condivisi fra Piatti e Scegli dalla fase 7, `CampoRicercaPiatti.tsx` e il vuoto di ricerca `VuotoRicercaPiatti.tsx`;
+  - riga **Dock**: `SOSTITUISCI` in Scegli e `SALVA` nell'editor del Piatto dalla fase 7; dalla fase 7 anche `ErroreSopraDock` in `Dock.tsx`, l'errore sopra la pillola (Scegli, editor del Piatto; l'editor dell'ingrediente ha ancora la sua copia);
   - riga **Dialogo di conferma**: anche l'eliminazione del piatto dalla fase 7;
   - riga **Foglio dal basso**: anche il selettore degli ingredienti del piatto (`SelettoreIngrediente.tsx`) dalla fase 7;
   - riga **Editor dell'ingrediente**: la testata è `src/components/TestataModifica.tsx`, condivisa con l'editor del Piatto;
-  - riga **Aggiungi tratteggiato**: `src/components/AggiungiTratteggiato.tsx` dalla fase 7 (Piatti, Scegli, l'editor del Piatto); `GestionePasti.tsx` ha ancora la sua copia;
+  - la riga che oggi si chiama **Aggiungi tratteggiato (in Gestione dei pasti)** e punta a `src/components/pannello/GestionePasti.tsx`: **non** se ne crea una seconda. Quella riga diventa **Aggiungi tratteggiato**, con file `src/components/AggiungiTratteggiato.tsx` dalla fase 7 (Piatti, Scegli, l'editor del Piatto); nell'ultima colonna resta «fase 5: in fondo al blocco» per Gestione dei pasti, e si aggiunge che `GestionePasti.tsx` ha ancora la sua copia;
   - riga **Pannello impostazioni · Riga di impostazione**: `RigaImpostazione` prende `etichetta` (l'`aria-label` della riga) e il valore sta al massimo a metà riga, dalla fase 7 (la usa anche Scegli per i componenti);
   - una riga nuova per l'editor del Piatto (`src/app/(app)/piatti/[id]/page.tsx`, `ComponentiPiatto.tsx`, `SelettoreIngrediente.tsx`).
 
@@ -4139,7 +4301,7 @@ nome accessibile della riga, se chi la monta lo passa (`etichetta`).
 
   (`<data>` è la data del registro che scrive il controllore: chiedila nel report se non la trovi in `docs/`.) Nel punto della fase 6, la frase su «fase 7 (editor del Piatto, Piatti veloce, Scegli…)» diventa: *la **fase 7** (editor del Piatto e Scegli; Piatti veloce è passata all'onboarding)*.
 
-- [ ] **Step 7: controlli** — `npm run design:token`; `npm test -- scripts/__tests__/token-check.test.ts`; `grep -n $'\xc3\x83' design/sistema/DESIGN.md docs/superpowers/specs/DESIGN-SYSTEM.md` vuoto.
+- [ ] **Step 7: controlli** — `npm run design:token`; `npm test -- scripts/__tests__/token-check.test.ts`; `grep -n $'\xc3\x83' design/sistema/DESIGN.md docs/superpowers/specs/DESIGN-SYSTEM.md` vuoto; `grep -n "filetto sotto il nome della testata di modifica\|sottoriga della Riga piatto scelta" design/sistema/DESIGN.md` → due righe, tutte e due in §2.5; `grep -n "^| Aggiungi tratteggiato" docs/superpowers/specs/DESIGN-SYSTEM.md` → una riga sola.
 
 - [ ] **Step 8: commit**
 
@@ -4149,6 +4311,19 @@ git commit -m "docs: DESIGN.md e il ponte con la fase 7, la Riga piatto a due mo
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
+
+---
+
+### Limiti noti (non si correggono in questa fase)
+
+Li ha trovati la scansione preliminare del piano; il controllore li riporta nel registro (Dopo i task, punto 2).
+
+- **`DialogoConferma` in volo usa ancora l'opacità** (Task 6). Mentre elimina, il Dialogo di conferma mette `ELIMINA` e `ANNULLA` a 0,5 (`DialogoConferma.tsx` e `TastoSecondario`), contro il Global Constraint «In volo» per il primario distruttivo. È un componente condiviso, di oggi e usato anche altrove: cambiarlo è fuori perimetro.
+- **`COMPONENTI` e il suo widget sono scritti a mano** (Task 3). Il titolo ripete lo stile di `Etichetta`, il widget ricalca `BloccoGruppo` con il raggio 22 della spec invece del 18 di `BloccoGruppo`. Accettato così.
+- **I campi del modulo si mappano tre volte** (Task 6): i sette campi passano da `moduloDaPiatto`, dall'applicazione del piatto letto dal server e da quella della bozza. Una `applicaModulo(m: ModuloPiatto)` li ridurrebbe a uno, ma toccherebbe `carica()`, che il Task 6 tiene identica a oggi.
+- **Il nome della riga del ponte** (Task 7). La scansione segnalava che il Task 7 chiamava «Aggiungi tratteggiato» una riga che in `DESIGN-SYSTEM.md` si chiama «Aggiungi tratteggiato (in Gestione dei pasti)», con il rischio di crearne una seconda. Non bastava: lo Step 6 ora nomina la riga col suo nome di oggi, dice di trasformare quella, e lo Step 7 controlla che la riga resti una sola.
+- **Una terza `areeDelPiatto` nel Piano**: `src/app/(app)/piano/page.tsx`, riga 322 di oggi, locale e solo sugli ingredienti fissi. Dopo questa fase i pallini del Piano diranno cose diverse da quelli di Piatti e di Scegli sui piatti con componenti. Il Piano è fuori perimetro.
+- **L'editor dell'ingrediente tiene la sua copia dell'errore sopra il Dock** (Task 3): `ErroreSopraDock` nasce dal suo blocco, identico, ma l'editor dell'ingrediente in questa fase non si tocca.
 
 ---
 
