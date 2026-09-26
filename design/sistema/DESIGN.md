@@ -101,7 +101,20 @@ Il colore d'area si usa in **sei modi**, e nessun altro:
    **solo** lì.
 6. **luce sul testo** mentre l'AI prepara le modifiche (§7) — uso aggiunto il 25/09: `#B9AEF5`
    (surgelati) e `#9CC7F2` (latticini) passano sulle lettere. Lì non dicono un'area: sono luce.
-   Nessun altro uso dei colori d'area fuori da questi sei.
+
+Il **tono medio dell'area** — uso aggiunto il 26/09 per le icone ingrediente (§6): stessa tinta
+OKLCH del colore d'area, luminosità portata a 2,8:1 su bianco.
+
+| Area | Token | Hex |
+|---|---|---|
+| Ortofrutta | `--tono-ortofrutta` | `#7AA838` |
+| Macelleria e pescheria | `--tono-macelleria` | `#D88384` |
+| Latticini, uova e salumi | `--tono-latticini` | `#759EC8` |
+| Pasta, riso e cereali | `--tono-cereali` | `#BB9609` |
+| Dispensa e conserve | `--tono-dispensa` | `#D48949` |
+| Surgelati | `--tono-surgelati` | `#9D91D6` |
+
+Nessun altro uso dei colori d'area fuori da questi sei più il tono medio.
 
 Mai come colore di testo. Mai come fondo di un tasto, con l'unica deroga della protagonista
 della Lista e della Tessera di dispensa, che sono tessere-interruttore e non tasti.
@@ -299,7 +312,7 @@ sul contenitore se l'icona è sola.
 
 **Due spessori di tratto:** `1.8` per navigazione e testata, `2.1` per le icone d'azione
 piccole (X, +, chevron). Taglie: **26 px in tab bar**, 20–24 px in testata, 13–18 px dentro le
-righe e le tessere.
+righe e le tessere, salvo le icone ingrediente (sotto).
 
 **Le icone di tratto del sistema:** lista (tre righe), settimana/piano (calendario), piatti
 (forchetta e coltello), dispensa (barattolo), chevron, X, più, lente, **matita** (aggiunta il
@@ -318,8 +331,19 @@ mezzo ai nomi, il tratto si perdeva. Dal 25/09 la barra ha tre voci: le icone pi
 e Dispensa, accanto al Marchio della Lista. La regola "solo tratto" vale ancora
 fuori dalla tab bar.
 
+**Icone ingrediente (eccezione dichiarata, 26/09).** Sulle tessere ingrediente (Lista, Dispensa,
+ingrediente del piatto) un'icona di tratto fa riconoscere l'ingrediente. Griglia 24, due
+spessori: `2` per la sagoma, `1.25` per i segni interni; estremità e giunti arrotondati, al
+massimo tre segni interni (linee, archi, fori). **52 px** sulla tessera, **84 px** sulla
+protagonista, in basso a destra, tagliata dal bordo per il **20%**, sotto il nome e fuori dal
+layout (`position: absolute`, `aria-hidden`). Colore: tono medio dell'area (§2.3), bianco a 0,42
+sulla protagonista, `--off` a 0,5 su spuntata, finita e mai comprato. Il nome passa sopra con un
+alone di 2 px (3 px sulla protagonista) nel colore opaco del fondo della tessera. Sono le sole
+icone sopra i 26 px; non si estendono ad altri componenti.
+
 **Mai emoji**, in nessun punto dell'interfaccia. Nessuna illustrazione, nessuna foto, nessun
-avatar — l'iniziale del Menù utente è testo, non un avatar.
+avatar: le icone ingrediente sono icone, non illustrazioni — l'iniziale del Menù utente è testo,
+non un avatar.
 
 ---
 
@@ -1008,6 +1032,10 @@ lettere e in movimento (§7).
 miniature di «Rivedi i fogli presi» mostrano il contenuto del dispositivo, non un'illustrazione.
 Altrove le foto restano fuori.
 
+**Le icone ingrediente sono un'eccezione dichiarata** (26/09): sono icone di tratto del sistema
+(§6), non illustrazioni. Niente pieni, ombre, prospettiva o scene, e nessun uso fuori dalle
+tessere ingrediente. Le illustrazioni restano fuori.
+
 ---
 
 ## 13. Le decisioni
@@ -1144,3 +1172,9 @@ nome di `Esci` (§2.2); il piede fisso col primario nel pannello (§8 Pannello i
    LINK`) prendono lo stato spento del sistema invece dell'opacità 0,5: con l'opacità il testo
    bianco scende sotto soglia (commento su `.dock-primario:disabled` in `globals.css`), e il Dock
    del Piano faceva già così.
+
+### Decisioni del 26/09/2026 (icone ingrediente)
+
+| # | Tema | Decisione | Dove |
+|---|---|---|---|
+| 29 | Icone ingrediente | 64 icone di tratto, tono medio d'area, alone sul nome | §2.3, §6, §12 |

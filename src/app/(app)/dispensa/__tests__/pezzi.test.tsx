@@ -58,6 +58,33 @@ describe('TesseraDispensa', () => {
   });
 });
 
+describe('TesseraDispensa · icona ingrediente', () => {
+  const icona = (c: HTMLElement) => c.querySelector('svg[data-icona]');
+
+  it('in casa: icona nel tono medio, alone nella tinta opaca d\'area', () => {
+    const { container } = render(<TesseraDispensa voce={voce()} pillola={null} onApri={vi.fn()} />);
+    expect(icona(container)).toHaveAttribute('data-icona', 'cosciotto');
+    expect(icona(container)).toHaveAttribute('stroke', '#D88384');
+    expect(screen.getByText('Petto di pollo').style.textShadow).toContain('#FCE5E5');
+    const t = screen.getByRole('button');
+    expect(t.style.position).toBe('relative');
+    expect(t.style.overflow).toBe('hidden');
+  });
+
+  it('finita: icona spenta, nome opaco #ADAEBA, alone bianco', () => {
+    const { container } = render(<TesseraDispensa voce={voce({ residuo: 0 })} pillola={null} onApri={vi.fn()} />);
+    expect(icona(container)).toHaveAttribute('stroke', '#9A9AA6');
+    const nome = screen.getByText('Petto di pollo');
+    expect(nome).toHaveStyle({ color: '#ADAEBA' });
+    expect(nome.style.textShadow).toContain('#FFFFFF');
+  });
+
+  it('mai comprato: icona spenta', () => {
+    const { container } = render(<TesseraDispensa voce={voce({ residuo: 0, ultimoAcquisto: null })} pillola={null} onApri={vi.fn()} />);
+    expect(icona(container)).toHaveAttribute('stroke', '#9A9AA6');
+  });
+});
+
 describe('TesseraLotto', () => {
   it('nome accessibile, testo delle porzioni, Congelato solo se congelato', () => {
     const onApri = vi.fn();

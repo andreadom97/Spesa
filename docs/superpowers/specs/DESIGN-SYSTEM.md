@@ -87,6 +87,7 @@ del file, è lì.
 | Stato vuoto · Campo di testo · Scheda · Etichetta di sezione · Messaggi | sparsi nelle pagine, in stile inline; la modalità ricerca del Campo di testo vive in `src/app/(app)/piatti/ElencoPiatti.tsx` | scelta del progetto, non una deriva (§6, prima riga) |
 | Foglio dal basso | `src/components/FoglioDalBasso.tsx` (con `TestataFoglio` e `TondoFoglio`); prima di lui, scritti a mano, `src/components/FoglioAzioniPasto.tsx` e `src/app/(app)/importa/FogliPresi.tsx` | componente dalla fase 4: i quattro fogli della Dispensa; gli altri due non sono stati migrati |
 | Porta | `src/components/Porta.tsx` | nata nello stato vuoto di Piatti, condivisa dalla fase 3 con Importa. Non è una voce di `DESIGN.md` §8 |
+| Icona ingrediente | `src/components/IconaIngrediente.tsx` (tracciati in `tracciati-ingredienti.ts`, catalogo in `src/domain/icone-ingredienti.ts`) | |
 
 Fuori dal sistema, perché è infrastruttura e non disegno: `Guscio.tsx` (il guscio comune della
 fase 1: stato della barra, maschera di scorrimento, reset di route), `PrimoAvvio.tsx`,
@@ -169,9 +170,10 @@ Il conto aperto verso `DESIGN.md` v3, al 26/09/2026.
   Piatto, Piatti veloce, Scegli; aspetta la decisione se Scegli riusa Piatti) e la **fase 8**
   (i passi di Importa oltre le due porte e la fotocamera; probabilmente un selettore nuovo, quindi
   un giro in Claude Design). L'audit del 26/09 li misura uno per uno.
-- **53 token dichiarati nel design e assenti dal codice** [misurato il 26/09 con le funzioni del guardiano, a
-  fase 5 finita: `tokens.css` ne dichiara 118, `src/app/globals.css` ne ha 67, 65 in comune, 0
-  divergenti (`npm run design:token`); il 25/09, a fase 4 finita, erano 115, 62 e 60, con 55 assenti; prima della
+- **53 token dichiarati nel design e assenti dal codice** [misurato il 26/09 con le funzioni del guardiano, dopo
+  i sei `--tono-<area>` delle icone ingrediente: `tokens.css` ne dichiara 124, `src/app/globals.css` ne ha 73, 71
+  in comune, 0 divergenti (`npm run design:token`); prima dei sei token del tono medio, a fase 5 finita, erano
+  118, 67 e 65; il 25/09, a fase 4 finita, erano 115, 62 e 60, con 55 assenti; prima della
   fase 3 erano 54 nel codice e 52 in comune, il 21/09 48 e 45]. Sono soprattutto la scala tipografica
   (`--testo-*`), le spaziature (`--spazio-*`), i raggi (`--raggio-*`) e il moto. Del Dock ne
   restano solo due, `--dock-altezza` e `--dock-pillola`: gli altri sono entrati con la fase 2.

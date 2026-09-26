@@ -1,7 +1,9 @@
 'use client';
 
-import { coloreArea } from '@/domain/aree';
+import { coloreArea, tintaOpacaArea } from '@/domain/aree';
 import { etichettaQuantita, statoTessera, type PillolaStato, type VoceDispensa } from '@/domain/dispensa-vista';
+import { trovaIcona } from '@/domain/icone-ingredienti';
+import { IconaIngrediente, alone } from '@/components/IconaIngrediente';
 
 function rgba(hex: string, alpha: number): string {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -27,6 +29,8 @@ export function TesseraDispensa({ voce, pillola, onApri }: { voce: VoceDispensa;
   const testoQuantita = inCasa
     ? etichettaQuantita(voce.residuo, voce.ingrediente.unitaBase)
     : stato === 'finita' ? 'Finito' : 'Mai comprato';
+  const { nome, area } = voce.ingrediente;
+  const chiave = trovaIcona(nome);
   return (
     <button
       type="button"
@@ -37,13 +41,16 @@ export function TesseraDispensa({ voce, pillola, onApri }: { voce: VoceDispensa;
         display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left',
         background: inCasa ? rgba(coloreArea(voce.ingrediente.area), 0.26) : 'none',
         border: inCasa ? 'none' : '2px dashed var(--bordo-tratteggio)',
+        position: 'relative', overflow: 'hidden',
       }}
     >
+      {chiave && <IconaIngrediente chiave={chiave} area={area} tono={inCasa ? 'area' : 'spento'} taglia={52} />}
       <span
         style={{
           ...PILLOLA,
           background: inCasa ? 'var(--superficie)' : 'rgba(20,22,58,0.06)',
           color: inCasa ? 'var(--ink)' : 'var(--testo-2)',
+          position: 'relative',
         }}
       >
         {testoQuantita}
@@ -51,8 +58,11 @@ export function TesseraDispensa({ voce, pillola, onApri }: { voce: VoceDispensa;
       <span
         style={{
           fontSize: 17, fontWeight: 700, letterSpacing: '-0.032em', lineHeight: 1.1, marginTop: 'auto', paddingTop: 12,
-          color: stato === 'inCasa' ? 'var(--ink)' : stato === 'finita' ? 'rgba(20,22,58,0.34)' : 'var(--testo-2)',
+          color: stato === 'inCasa' ? 'var(--ink)' : stato === 'finita' ? '#ADAEBA' : 'var(--testo-2)',
           textDecoration: stato === 'finita' ? 'line-through' : 'none', textDecorationThickness: 1.6,
+          position: 'relative',
+          textShadow: chiave ? alone(inCasa ? tintaOpacaArea(area) : '#FFFFFF', 2) : undefined,
+          overflowWrap: 'anywhere',
         }}
       >
         {voce.ingrediente.nome}
@@ -63,6 +73,7 @@ export function TesseraDispensa({ voce, pillola, onApri }: { voce: VoceDispensa;
             marginTop: 8, background: 'var(--superficie)', borderRadius: 999, padding: '4px 9px',
             fontFamily: 'var(--font-mono)', fontSize: 8.5, fontWeight: 700, letterSpacing: '0.06em',
             color: pillola.tono === 'avviso' ? 'var(--avviso)' : 'var(--freddo)',
+            position: 'relative',
           }}
         >
           {pillola.testo}

@@ -4,16 +4,20 @@ export interface Area {
   id: AreaId;
   nome: string;
   colore: string;
+  /** Tono medio (26/09): stessa tinta OKLCH, luminosità abbassata fino a 2,8:1 su bianco. Solo icone ingrediente. */
+  tonoMedio: string;
+  /** Il colore al 26% della Dispensa steso sul bianco: colore opaco dell'alone sul nome. */
+  tintaOpaca: string;
 }
 
 /** Fisse. Aggiungerne o toglierne rompe il marchio a griglia 3×2. */
 export const AREE: readonly Area[] = [
-  { id: 'ortofrutta', nome: 'ORTOFRUTTA', colore: '#A8D96A' },
-  { id: 'macelleria', nome: 'MACELLERIA E PESCHERIA', colore: '#F29B9B' },
-  { id: 'latticini', nome: 'LATTICINI, UOVA E SALUMI', colore: '#9CC7F2' },
-  { id: 'cereali', nome: 'PASTA, RISO E CEREALI', colore: '#F5CE5B' },
-  { id: 'dispensa', nome: 'DISPENSA E CONSERVE', colore: '#F2A465' },
-  { id: 'surgelati', nome: 'SURGELATI', colore: '#B9AEF5' },
+  { id: 'ortofrutta', nome: 'ORTOFRUTTA', colore: '#A8D96A', tonoMedio: '#7AA838', tintaOpaca: '#E8F5D8' },
+  { id: 'macelleria', nome: 'MACELLERIA E PESCHERIA', colore: '#F29B9B', tonoMedio: '#D88384', tintaOpaca: '#FCE5E5' },
+  { id: 'latticini', nome: 'LATTICINI, UOVA E SALUMI', colore: '#9CC7F2', tonoMedio: '#759EC8', tintaOpaca: '#E5F0FC' },
+  { id: 'cereali', nome: 'PASTA, RISO E CEREALI', colore: '#F5CE5B', tonoMedio: '#BB9609', tintaOpaca: '#FCF2D4' },
+  { id: 'dispensa', nome: 'DISPENSA E CONSERVE', colore: '#F2A465', tonoMedio: '#D48949', tintaOpaca: '#FCE7D7' },
+  { id: 'surgelati', nome: 'SURGELATI', colore: '#B9AEF5', tonoMedio: '#9D91D6', tintaOpaca: '#EDEAFC' },
 ] as const;
 
 export const ORDINE_AREE_DEFAULT: AreaId[] = AREE.map((a) => a.id);
@@ -30,6 +34,18 @@ export function nomeArea(id: AreaId): string {
   const a = PER_ID.get(id);
   if (!a) throw new Error(`Area sconosciuta: ${id}`);
   return a.nome;
+}
+
+export function tonoMedioArea(id: AreaId): string {
+  const a = PER_ID.get(id);
+  if (!a) throw new Error(`Area sconosciuta: ${id}`);
+  return a.tonoMedio;
+}
+
+export function tintaOpacaArea(id: AreaId): string {
+  const a = PER_ID.get(id);
+  if (!a) throw new Error(`Area sconosciuta: ${id}`);
+  return a.tintaOpaca;
 }
 
 /**

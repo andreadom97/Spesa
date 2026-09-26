@@ -33,6 +33,12 @@
   --area-cereali: #F5CE5B;            /* area 4, pasta, riso e cereali — ink sopra: 11,5:1 */
   --area-dispensa: #F2A465;           /* area 5, dispensa e conserve — ink sopra: 8,5:1 */
   --area-surgelati: #B9AEF5;          /* area 6 — ink sopra: 8,7:1 */
+  --tono-ortofrutta: #7AA838;         /* tono medio (26/09): icone ingrediente — 2,8:1 su bianco */
+  --tono-macelleria: #D88384;
+  --tono-latticini: #759EC8;
+  --tono-cereali: #BB9609;
+  --tono-dispensa: #D48949;
+  --tono-surgelati: #9D91D6;
 
   /* ---------- Famiglie ---------- */
   --font-testo: 'Plus Jakarta Sans', 'Helvetica Neue', Arial, sans-serif;  /* pesi 400/500/600/700/800, mai maiuscolo */

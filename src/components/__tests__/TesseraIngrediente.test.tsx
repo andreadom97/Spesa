@@ -50,3 +50,43 @@ describe('TesseraIngrediente', () => {
     expect(onRimuovi).toHaveBeenCalledOnce();
   });
 });
+
+describe('TesseraIngrediente · icona ingrediente', () => {
+  it('icona in basso a destra nel tono medio, alone bianco su nome ed etichetta d\'area', () => {
+    const { container } = rendi({ nome: 'Uova', area: 'latticini' });
+    const s = container.querySelector('svg[data-icona]');
+    expect(s).toHaveAttribute('data-icona', 'uovo');
+    expect(s).toHaveAttribute('stroke', '#759EC8');
+    expect(screen.getByText('Uova').style.textShadow).toContain('#FFFFFF');
+    expect(screen.getByText('LATTICINI, UOVA E SALUMI').style.textShadow).toContain('#FFFFFF');
+  });
+
+  it('la matita sale in alto, accanto alla X: l\'angolo in basso a destra è dell\'icona', () => {
+    rendi({ hrefModifica: '/piatti/p1/ingredienti/olio-1' });
+    const matita = screen.getByRole('link', { name: 'Modifica Olio di semi' });
+    expect(matita.style.top).toBe('0px');
+    expect(matita.style.right).toBe('44px');
+    expect(matita.style.bottom).toBe('');
+    const x = screen.getByRole('button', { name: 'Rimuovi Olio di semi' });
+    expect(x.style.right).toBe('0px');
+  });
+
+  it('la matita e la X stanno sopra il <label> della quantità, che dipinge dopo nel DOM', () => {
+    // Il <label> ora è position: relative (per l'icona sotto): senza uno
+    // zIndex più alto sulla matita/X, un tocco nella striscia x≈95-105 apre
+    // la tastiera invece della modifica.
+    rendi({ hrefModifica: '/piatti/p1/ingredienti/olio-1' });
+    const matita = screen.getByRole('link', { name: 'Modifica Olio di semi' });
+    const x = screen.getByRole('button', { name: 'Rimuovi Olio di semi' });
+    expect(matita.style.zIndex).toBe('1');
+    expect(x.style.zIndex).toBe('1');
+  });
+
+  it('gli anelli di focus non sono tagliati dall\'overflow: hidden della tessera', () => {
+    rendi({ hrefModifica: '/piatti/p1/ingredienti/olio-1' });
+    const matita = screen.getByRole('link', { name: 'Modifica Olio di semi' });
+    const x = screen.getByRole('button', { name: 'Rimuovi Olio di semi' });
+    expect(matita.style.outlineOffset).toBe('-2px');
+    expect(x.style.outlineOffset).toBe('-2px');
+  });
+});
