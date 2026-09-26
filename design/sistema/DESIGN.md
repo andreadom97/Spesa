@@ -934,7 +934,8 @@ dichiarate:
 
 **Feedback di scrittura.** Lo stato si mostra sul controllo (opacità 0,5 e `disabled` mentre è
 in volo) e la conferma è il cambio di stato del dato, non un messaggio. In caso di errore, un
-messaggio in `--errore` e un RIPROVA.
+messaggio in `--errore` e un RIPROVA. Eccezione: i primari pieni (Dock, `TastoPrimario`) in volo
+prendono lo stato spento del sistema invece dell'opacità (§13, decisioni del 26/09, punto 6).
 
 **Caricamento.** Riga mono `CARICO…` in `--sec`. Niente spinner, niente scheletro. Eccezione
 (25/09): la Dispensa carica mostrando i suoi widget vuoti attraversati dalla luce (§7); dopo 8 s
