@@ -3,8 +3,11 @@
 import type { ComponentType } from 'react';
 import type { SottoSchermata } from './tipi';
 import { Cima } from './Cima';
+import { PastiACasa } from './PastiACasa';
+import { GestionePasti } from './GestionePasti';
+import { Rotazione } from './Rotazione';
 
-/** Il contenuto di una sotto-schermata prima del suo task: niente. I Task 8–10 lo sostituiscono. */
+/** Il contenuto di una sotto-schermata prima del suo task: niente. I Task 9–10 lo sostituiscono. */
 function SottoSchermataVuota() {
   return null;
 }
@@ -14,9 +17,9 @@ export const CIMA: ComponentType = Cima;
 
 /** Titolo (spec §C, §I) e contenuto di ogni sotto-schermata. */
 export const SCHERMATE: Record<SottoSchermata, { titolo: string; Componente: ComponentType }> = {
-  'pasti-a-casa': { titolo: 'Pasti a casa', Componente: SottoSchermataVuota },
-  'gestione-pasti': { titolo: 'Gestione dei pasti', Componente: SottoSchermataVuota },
-  rotazione: { titolo: 'Rotazione del piano', Componente: SottoSchermataVuota },
+  'pasti-a-casa': { titolo: 'Pasti a casa', Componente: PastiACasa },
+  'gestione-pasti': { titolo: 'Gestione dei pasti', Componente: GestionePasti },
+  rotazione: { titolo: 'Rotazione del piano', Componente: Rotazione },
   ingredienti: { titolo: 'Ingredienti', Componente: SottoSchermataVuota },
   aree: { titolo: 'Ordine delle aree', Componente: SottoSchermataVuota },
   cadenza: { titolo: 'Cadenza dei controlli', Componente: SottoSchermataVuota },

@@ -54,6 +54,17 @@ scritti nel piano sono indicativi.
 | 37 | `montaPannello` resta sincrono (restituisce il `RenderResult`, come nel piano), e ogni test aspetta i dati con un `findBy…` prima di toccare le righe (Task 7) | la firma è quella che i Task 8–10 usano nel piano; i mock rispondono subito, e i `findBy`/`waitFor` lasciano arrivare le letture. I test della cima e delle persone girano senza avvisi `act(...)` [misurato: `npx vitest run src/components/pannello`, stderr vuoto, 5 volte di fila] | se un test dei Task 8–10 tocca prima che i dati arrivino e finisce senza aspettare, può uscire un avviso: si aggiunge un `findBy` |
 | 38 | Senza email letta, il testo del dialogo di Esci è `I tuoi dati restano. Per rientrare ti mandiamo un link via email.`; con l'email resta quello di §D (Task 7, review, decisione del controller del 26/09) | `leggiUtente` non lancia: se fallisce torna nome ed email vuoti, e il testo di §D diventava «ti mandiamo un link a .». Testo nuovo, fuori dalla spec: è fra le domande per Andrea | nessuno: un testo, da cambiare se Andrea ne vuole un altro |
 | 39 | Con nome ed email entrambi vuoti, la riga informativa dell'Account non c'è; la riga Esci resta (Task 7, review, decisione del controller del 26/09) | una riga con nome e nota vuoti è un rettangolo bianco da 56 senza senso; Esci serve comunque. La condizione è un booleano, così `BloccoGruppo` non tiene la stringa vuota come figlio col suo filetto | il blocco Account con una riga sola; da rivedere se Andrea preferisce un segnaposto |
+| 40 | Le tre sotto-schermate (Pasti a casa, Gestione dei pasti, Rotazione) passano da `StatoDatiPannello`: il componente esportato avvolge un componente interno che riceve i dati pronti, e gli hook stanno lì (Task 8) | `CARICO…` e l'errore con `RIPROVA` sono quelli del pannello, e nell'interno non ci sono `return` anticipati prima degli hook | nessuno |
+| 41 | Gestione dei pasti legge il conteggio dei piatti con `leggiRepertorio()` al montaggio. Se al tocco sulla ✕ il conteggio non c'è (lettura in corso o fallita), la ✕ rilegge il repertorio in quel momento, con la riga a 0,5; se anche questa lettura fallisce non si toglie niente e sotto il blocco compare `Non siamo riusciti a salvare. Riprova.` (Task 8, decisione del controller del 26/09) | il testo del dialogo `rimuovi-pasto` ha bisogno di `{n}` (§D): un dialogo «alla cieca» senza numero non è nella spec. Senza rete il salvataggio fallirebbe comunque, quindi l'errore dice il vero | un tocco sulla ✕ prima che la lettura arrivi aspetta una lettura in più |
+| 42 | Se il salvataggio della rimozione fallisce dopo che la cancellazione è avvenuta (`salvaSlotDefs` non è atomico), lo schermo segue il server: il provider rilegge i pasti (decisione 25) e la riga mostra l'errore; un pasto già cancellato non torna a schermo (Task 8) | tornare alla copia locale rimetterebbe un pasto senza più i suoi piatti, che il salvataggio dopo riscriverebbe vuoto. Test: «se il salvataggio fallisce dopo che il pasto è stato cancellato…» | nessuno oltre alla decisione 25 |
+| 43 | Il nome del pasto vive in una bozza locale e si salva all'uscita dal campo, come oggi; vuoto (anche solo spazi) vale `Pasto`; un nome uguale a quello salvato non salva (Task 8) | spec §C.2; nessuna scrittura a ogni carattere | nessuno |
+| 44 | Il pasto nuovo va a fuoco (con il testo selezionato) appena la sua riga compare, con un ref a callback (Task 8) | nessun effetto che rincorre il fuoco a ogni cambio dei dati; la selezione fa scrivere il nome sopra `Nuovo pasto` | se il salvataggio fallisce la riga sparisce col fuoco: il fuoco torna al documento |
+| 45 | Il segmento della rotazione resta toccabile mentre salva, come oggi; il tocco sul segmento già premuto non salva (oggi salvava lo stesso valore) (Task 8) | la coda serializzata del provider (decisione 19) regge i tocchi veloci; riscrivere lo stesso valore è una scrittura inutile | nessuno |
+| 46 | L'`aria-label` delle celle della matrice usa il nome lungo del giorno e il nome del pasto com'è scritto: `Lunedì Colazione: di base a casa, tocca per mettere fuori casa` (Task 8) | spec §C.1 dà `{Giorno} {pasto}`; la sigla `L` letta da sola non dice il giorno (e le `M` sono due) | nessuno |
+| 47 | `{data}` del dialogo `riparti` è il lunedì **corrente** in forma lunga (`Da lunedì 21 settembre …` il 25/09), non il lunedì successivo del frame 10 (Task 8, decisione del controller del 26/09; spec §D e §N) | la conferma scrive `cicloOrigine = lunedì corrente`, come il codice di oggi: il testo deve dire la data che si scrive | se Andrea vuole ripartire dal lunedì dopo, cambiano insieme il testo e la scrittura |
+| 48 | I testi del riepilogo della matrice, confermati da Andrea il 26/09 (spec §I): `Di base sei a casa per {a} pasti su {t}. La Lista conta solo quelli: i {f} fuori casa non entrano nella spesa.`; a zero fuori casa `Di base sei a casa per tutti i {t} pasti.`; a uno fuori casa `… La Lista conta solo quelli: l'unico fuori casa non entra nella spesa.`; a un pasto a casa `Di base sei a casa per 1 pasto su {t}. …` (Task 8) | frame 05 e varianti del piano | nessuno: sono testi confermati |
+| 49 | Dopo un rifiuto RLS (la casa è cambiata), Gestione dei pasti scarta il conteggio dei piatti letto al montaggio, e la ✕ lo rilegge al tocco (Task 8, self-review, oltre il piano) | dopo il rifiuto il provider rilegge i pasti in silenzio senza smontare la sotto-schermata: i pasti a schermo sono dell'altra casa, i loro id non sono nel conteggio e valevano 0, quindi un pasto con piatti si toglieva al tocco senza dialogo [misurato: senza la correzione il test «dopo un rifiuto RLS (la casa è cambiata) la ✕ rilegge il repertorio e chiede il dialogo» fallisce con `Unable to find role="alertdialog"`] | una lettura del repertorio in più al primo tocco sulla ✕ dopo il rifiuto |
+| 50 | La rimozione che aspetta (la rilettura del repertorio, o il dialogo) calcola i pasti da salvare dagli ultimi a schermo, non da quelli del momento del tocco; se il pasto non c'è più, o toglierlo scenderebbe sotto tre, non salva niente (il dialogo si chiude) (Task 8, self-review, oltre il piano: il piano calcolava `nuovi` al tocco) | durante la rilettura le altre righe restano toccabili: un riordino fatto nel frattempo veniva riscritto dalla rimozione [misurato: senza la correzione il test «un riordino fatto mentre la ✕ rilegge il repertorio non si perde» fallisce]. Per il dialogo copre il ritorno ai dati del server di un salvataggio fallito mentre il dialogo si apriva | un `TOGLI` su un pasto che nel frattempo è sparito chiude il dialogo senza dire niente: caso raro (solo dopo un salvataggio fallito) |
 
 ## Misure nel browser
 
@@ -180,7 +191,7 @@ per «Test nuovo». Le altre righe restano al titolo esatto dell'`it(...)`, come
 
 | # | Test vecchio | File | Va a | Test nuovo | Nota |
 |---|---|---|---|---|---|
-| 1 | mostra i pasti reali letti da leggiSlotDefs, non i quattro cablati nel mock dell’artboard | P | Task 8, Gestione dei pasti | | |
+| 1 | mostra i pasti reali letti da leggiSlotDefs, non i quattro cablati nel mock dell’artboard | P | Task 8, Gestione dei pasti | `gestione-pasti.test.tsx` › Gestione dei pasti › mostra i pasti letti da leggiSlotDefs e il contatore | |
 | 2 | sta nella sezione CASA, dichiara l’assunzione e parte da 1 con il − spento | P | Task 7, campo `PERS` | `persone.test.tsx` › Per quante persone cucini › sta in Come calcolo la lista, dichiara l’assunzione e parte da 1 senza la seconda nota | lo stepper è tolto (spec §C.10): il − spento diventa «nessun tasto porzioni»; la riga sta in «Come calcolo la lista» |
 | 3 | + salva subito le impostazioni intere con 2, mostra 2 e dice per quanti compra la lista | P | Task 7, campo `PERS` | `persone.test.tsx` › Per quante persone cucini › scritto 2 e uscito dal campo salva le impostazioni intere, mostra 2 e dice per quanti compra la lista | il + diventa il campo: si scrive 2 e si esce dal campo |
 | 4 | a 4 il + è spento e non salva | P | Task 7, campo `PERS` | `persone.test.tsx` › Per quante persone cucini › 5, 0, 2,5 e abc non si salvano: torna al valore di prima e chiede un numero da 1 a 4 | il tetto è la validazione del campo: 5 torna al valore di prima con `Scrivi un numero da 1 a 4.` |
@@ -194,23 +205,23 @@ per «Test nuovo». Le altre righe restano al titolo esatto dell'`it(...)`, come
 | 12 | se la RLS rifiuta il salvataggio (la casa è cambiata) scarta l’id della casa, ricarica tutto e lo dice | P | Task 7, campo `PERS` | `persone.test.tsx` › Per quante persone cucini › se la RLS rifiuta (la casa è cambiata) scarta l’id, ricarica tutto e lo dice sopra i blocchi | «Fai la spesa con qualcuno?» diventa la tessera `SOLO TU`; `4 DI 6` diventa `4 PASTI`; provato anche nel provider: `dati-pannello.test.tsx` |
 | 13 | un rifiuto RLS riconosciuto dal solo messaggio (senza codice) ricarica allo stesso modo | P | Task 7, campo `PERS` | `persone.test.tsx` › Per quante persone cucini › un rifiuto RLS riconosciuto dal solo messaggio ricarica allo stesso modo | provato anche nel provider: `dati-pannello.test.tsx` |
 | 14 | porta all elenco degli ingredienti | P | Task 7, riga Ingredienti | `cima.test.tsx` › La cima del pannello › la riga Ingredienti apre la sotto-schermata degli ingredienti | il link diventa una riga che apre la sotto-schermata; l'elenco è del Task 9 |
-| 15 | sotto il minimo di 3 pasti il pulsante di rimozione è disattivato | P | Task 8, Gestione dei pasti | | |
-| 16 | sopra il minimo la rimozione funziona e salva l’insieme aggiornato | P | Task 8, Gestione dei pasti | | senza piatti al tocco; con piatti il dialogo (spec §C.2) |
-| 17 | al massimo di 6 pasti il pulsante di aggiunta è disattivato | P | Task 8, Gestione dei pasti | | diventa: a 6 `AGGIUNGI PASTO` non c'è e c'è `Sei pasti sono il massimo.` |
-| 18 | aggiunge un pasto sotto il massimo e lo salva con un id generato | P | Task 8, Gestione dei pasti | | |
-| 19 | la prima riga non può salire e l’ultima non può scendere; riordinare aggiorna le posizioni e salva | P | Task 8, Gestione dei pasti | | |
-| 20 | la pastiglia del giorno abitualmente fuori casa ha 44px di area di tap sopra una pillola di 36px | P | Task 8, Pasti a casa | | diventa la cella 44 della matrice |
-| 21 | accende una pastiglia del giorno e salva le assenze abituali aggiornate | P | Task 8, Pasti a casa | | |
-| 22 | rinominare un pasto salva il nuovo nome al blur, non a ogni carattere digitato | P | Task 8, Gestione dei pasti | | |
-| 23 | con leggiSlotDefs() vuoto semina i quattro pasti di default e li salva davvero sul server | P | Task 8, Gestione dei pasti | | la semina sta nel provider (Task 6); provato anche nel provider: `dati-pannello.test.tsx` |
+| 15 | sotto il minimo di 3 pasti il pulsante di rimozione è disattivato | P | Task 8, Gestione dei pasti | `gestione-pasti.test.tsx` › Gestione dei pasti › a tre pasti le ✕ sono spente e la nota dice il minimo | più la nota nuova `Tre pasti sono il minimo.` |
+| 16 | sopra il minimo la rimozione funziona e salva l’insieme aggiornato | P | Task 8, Gestione dei pasti | `gestione-pasti.test.tsx` › Gestione dei pasti › un pasto senza piatti si toglie al tocco e salva l’insieme aggiornato | decisione 12: al tocco solo senza piatti; con piatti i test del dialogo («un pasto con piatti chiede il dialogo…», «TOGLI nel dialogo…», «se TOGLI non riesce…») |
+| 17 | al massimo di 6 pasti il pulsante di aggiunta è disattivato | P | Task 8, Gestione dei pasti | `gestione-pasti.test.tsx` › Gestione dei pasti › a sei pasti AGGIUNGI PASTO non c’è e la nota dice il massimo | spento → assente (frame 07): a 6 `AGGIUNGI PASTO` non c'è e c'è `Sei pasti sono il massimo.` |
+| 18 | aggiunge un pasto sotto il massimo e lo salva con un id generato | P | Task 8, Gestione dei pasti | `gestione-pasti.test.tsx` › Gestione dei pasti › AGGIUNGI PASTO crea Nuovo pasto in fondo, a casa tutti i giorni, col campo a fuoco | |
+| 19 | la prima riga non può salire e l’ultima non può scendere; riordinare aggiorna le posizioni e salva | P | Task 8, Gestione dei pasti | `gestione-pasti.test.tsx` › Gestione dei pasti › su spento sul primo, giù spento sull’ultimo; riordinare aggiorna le posizioni e salva | l'opacità 0,35 diventa `disabled` con l'icona in `--icona-spenta` |
+| 20 | la pastiglia del giorno abitualmente fuori casa ha 44px di area di tap sopra una pillola di 36px | P | Task 8, Pasti a casa | `pasti-a-casa.test.tsx` › Pasti a casa › ogni cella è alta 44 e divide la larghezza con le altre (flex: 1) | la pillola da 36 sparisce: la cella della matrice è 44 piena |
+| 21 | accende una pastiglia del giorno e salva le assenze abituali aggiornate | P | Task 8, Pasti a casa | `pasti-a-casa.test.tsx` › Pasti a casa › un tocco mette Colazione fuori casa il lunedì e salva le assenze aggiornate | |
+| 22 | rinominare un pasto salva il nuovo nome al blur, non a ogni carattere digitato | P | Task 8, Gestione dei pasti | `gestione-pasti.test.tsx` › Gestione dei pasti › il nome si salva all’uscita dal campo, non a ogni carattere | |
+| 23 | con leggiSlotDefs() vuoto semina i quattro pasti di default e li salva davvero sul server | P | Task 8, Gestione dei pasti | `gestione-pasti.test.tsx` › Gestione dei pasti › con leggiSlotDefs() vuoto semina i quattro pasti di default e li salva sul server | la semina è del provider (Task 6); provata anche nel provider: `dati-pannello.test.tsx` |
 | 24 | il link ordine dei reparti mostra l’anteprima e il riepilogo nell’ordine reale, non un ordine fisso | P | Task 7, riga Ordine delle aree | `cima.test.tsx` › La cima del pannello › la riga Ordine delle aree dice se l’ordine è di base e apre la sotto-schermata | anteprima e riepilogo tolti (spec §C.5, log §4.4, §I): li sostituisce il valore `PERSONALIZZATO` / `DI BASE` |
-| 25 | con il ciclo spento la rotazione si può accendere e dice cosa cambia | P | Task 8, Rotazione del piano | | |
-| 26 | se il salvataggio del ciclo fallisce torna al valore di prima e lo dice | P | Task 8, Rotazione del piano | | |
-| 27 | il copy del giro con origine futura dice "comincia" | P | Task 8, Rotazione del piano | | |
-| 28 | il copy del giro con origine passata (o oggi) dice "è cominciato" | P | Task 8, Rotazione del piano | | |
-| 29 | RIPARTI da lunedì richiede due tocchi: il primo arma senza salvare, il secondo salva davvero | P | Task 8, Rotazione del piano | | diventa il dialogo `riparti`: ANNULLA non salva, `RIPARTI DA LUNEDÌ` salva |
-| 30 | RIPARTI armato: un tap fuori dal bottone annulla senza salvare | P | Task 8, Rotazione del piano | | diventa: il velo del dialogo non chiude e non salva |
-| 31 | RIPARTI armato: un cambio di stato altrove (la rotazione) lo disarma | P | Task 8, Rotazione del piano | | diventa: `RIPARTI` spento quando l'origine è già il lunedì corrente |
+| 25 | con il ciclo spento la rotazione si può accendere e dice cosa cambia | P | Task 8, Rotazione del piano | `rotazione.test.tsx` › Rotazione del piano › con NESSUNA dice la nota di oggi; 2 SETT. salva le impostazioni intere e compare il contatore | `ORA SEI ALLA` → `SETTIMANA {k} DI {n}` |
+| 26 | se il salvataggio del ciclo fallisce torna al valore di prima e lo dice | P | Task 8, Rotazione del piano | `rotazione.test.tsx` › Rotazione del piano › se il salvataggio fallisce il segmento torna a NESSUNA e sotto c’è l’errore | |
+| 27 | il copy del giro con origine futura dice "comincia" | P | Task 8, Rotazione del piano | `rotazione.test.tsx` › Rotazione del piano › con l’origine futura la nota dice «comincia» | |
+| 28 | il copy del giro con origine passata (o oggi) dice "è cominciato" | P | Task 8, Rotazione del piano | `rotazione.test.tsx` › Rotazione del piano › con l’origine passata la nota dice «è cominciato» | |
+| 29 | RIPARTI da lunedì richiede due tocchi: il primo arma senza salvare, il secondo salva davvero | P | Task 8, Rotazione del piano | `rotazione.test.tsx` › Rotazione del piano › RIPARTI apre il dialogo, e RIPARTI DA LUNEDÌ salva l’origine al lunedì corrente | `SICURO?` tolto (decisione 8): diventa il dialogo `riparti`; ANNULLA non salva, `RIPARTI DA LUNEDÌ` salva |
+| 30 | RIPARTI armato: un tap fuori dal bottone annulla senza salvare | P | Task 8, Rotazione del piano | `rotazione.test.tsx` › Rotazione del piano › ANNULLA chiude il dialogo senza salvare; il velo non chiude | il tocco fuori diventa ANNULLA; il velo del dialogo non chiude e non salva (spec §N) |
+| 31 | RIPARTI armato: un cambio di stato altrove (la rotazione) lo disarma | P | Task 8, Rotazione del piano | `rotazione.test.tsx` › Rotazione del piano › RIPARTI è spento se l’origine è già il lunedì corrente | senza armamento il caso non esiste; protegge la regola di oggi non disegnata: `RIPARTI` spento quando l'origine è già il lunedì corrente |
 | 32 | da solo: invita a fare la spesa con qualcuno, offre il codice e il campo per entrare | P | Task 10, Casa condivisa | | |
 | 33 | CREA UN CODICE chiama creaInvito e mostra il codice grande con la sua durata | P | Task 10, Casa condivisa | | |
 | 34 | se creaInvito fallisce lo dice senza rompere la scheda | P | Task 10, Casa condivisa | | |
@@ -268,10 +279,38 @@ Ogni task aggiunge qui quello che non ha potuto provare fuori dal telefono.
   (`inputMode="numeric"`) e il salvataggio con Invio sulla tastiera del telefono, il piede
   `Versione {x}` coi 26 del corpo sotto. I test in jsdom controllano testi, ruoli e valori, non
   il disegno.
+- **La settimana di base sul telefono** (Task 8): la matrice a 360 × 800 con sei pasti (celle
+  da 44,6 [calcolo, spec §C.1], non misurate), le sigle dei giorni ferme mentre il corpo scorre
+  (`position: sticky` dentro il corpo del pannello), il campo del pasto nuovo a fuoco con la
+  tastiera che sale, il segmento a blocco della rotazione. In jsdom i test controllano
+  `flex: 1`, `height: 44px`, `position: sticky` e il fuoco, non le misure: restano alla sonda
+  della spec §M.3 punto 2.
 
 ## Rimasto aperto, di proposito
 
 Ogni task aggiunge qui i minor che la review lascia aperti, col motivo.
+
+- **Togliere un pasto con piatti cancella a cascata anche i lotti Pronti di quei piatti (Task 8,
+  decisione del controller del 26/09).** `porzione_pronta.dish_id … on delete cascade`
+  [misurato, `0009_meal_prepping.sql` riga 17]: i pronti di quei piatti spariscono dalla
+  Dispensa. Il dialogo `rimuovi-pasto` non lo dice (il testo è quello di §D e non cambia).
+  Limite noto.
+- **Una bozza di import in corso può puntare a un pasto tolto (Task 8, review di correttezza,
+  punto 5; comportamento di prima della fase 5).** `import_draft.stato_revisione.mappaturaPasti`
+  tiene gli id dei pasti [misurato: `src/domain/import/commit.ts` riga 211,
+  `src/app/(app)/importa/page.tsx` riga 296], e la revisione considera mappato un pasto se l'id
+  c'è, senza controllare che esista ancora [misurato: `Revisione.tsx` riga 219]. Togliere un
+  pasto con un import a metà lascia un id orfano: al commit l'insert del piatto fallirebbe sulla
+  chiave esterna di `dish.slot_def_id` [ipotesi, non testato]. Era così anche con la pagina di
+  prima.
+- **Gli storni della settimana aperta di un pasto tolto (Task 8, review di correttezza, punto
+  1; comportamento di prima della fase 5).** La chiusura della lista rilegge i
+  `meal_slot_storno` della sua settimana per riapplicarli al residuo [misurato:
+  `src/data/lista.ts` righe 515–530]. Togliere un pasto con la lista della settimana aperta
+  porta via a cascata i suoi `meal_slot` e i loro storni, che alla chiusura non si riapplicano
+  più [ipotesi, non testato: l'effetto sul numero dipende da quali ingredienti la chiusura
+  sovrascrive]. Le settimane già chiuse non si ricalcolano: la riapplicazione ha la sua guardia
+  di idempotenza [letto nel commento di `lista.ts`, non testato]. Era così anche con la pagina di prima.
 
 ## Domande per Andrea (in review)
 
@@ -298,6 +337,21 @@ proposta. Andrea le vede in review.
   (`src/components/pannello/Cima.tsx`, `testoEsci` e il blocco Account). **Proposta:** va
   bene così — è un caso raro (rete assente all'apertura) e la frase resta vera. Se preferisci
   un altro testo, o un segnaposto al posto della riga, è una riga di codice.
+- **La nota di Gestione dei pasti è diventata imprecisa (Task 8, spec §I).** Dice ancora `Da tre a
+  sei pasti, nell’ordine in cui li fai. I giorni segnati qui vengono già spenti quando si apre una
+  settimana nuova: nel Piano correggi solo le eccezioni — le settimane già create non cambiano.`,
+  ma i giorni ora si segnano in Pasti a casa, non in Gestione dei pasti
+  (`src/components/pannello/GestionePasti.tsx`, `NOTA_GESTIONE`). Resta com'è in §I (il testo di
+  oggi con «nel Piano») finché non dai il testo. **Proposta:** `Da tre a sei pasti, nell’ordine in
+  cui li fai. I giorni a casa si segnano in Pasti a casa.` — da confermare, non l'ho scritta.
+- **Il Piano aperto sotto il pannello dopo aver tolto un pasto (Task 8, review di correttezza,
+  punto 4).** Il Piano (o la Lista) sotto il pannello tiene in memoria le righe del pasto tolto
+  finché non si rilegge; con la pagina piena delle Impostazioni il problema non c'era, perché si
+  tornava al Piano ricaricandolo. La spec non lo dice. **Proposta:** un evento come
+  `spesa:dispensa-cambiata` (per esempio `spesa:pasti-cambiati`) che il Piano e la Lista
+  ascoltano, in un task a parte; oppure va bene la rilettura al ritorno, se toccare la riga di un
+  pasto che non c'è più resta innocuo [ipotesi, non testato: non ho provato cosa fa il Piano su
+  un `meal_slot` cancellato].
 
 ## I gate di Andrea, in ordine
 
