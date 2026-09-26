@@ -99,4 +99,23 @@ describe('Testata (spec §D)', () => {
       expect(container.querySelector('a[href="/impostazioni"]')).toBeNull();
     });
   });
+
+  describe('Testata in modo indietro con la settimana (spec fase 6 §D.2)', () => {
+    const indietro = { etichetta: 'LISTA', ariaLabel: 'Torna alla lista', onTorna: vi.fn() };
+
+    it('mostra la pillola settimana sotto il titolo, e niente Menù utente', () => {
+      render(<Testata titolo="Fine spesa" settimana="Settimana del 21 settembre" indietro={indietro} />);
+      const titolo = screen.getByRole('heading', { level: 1, name: 'Fine spesa' });
+      const pillola = screen.getByText('Settimana del 21 settembre');
+      expect(titolo.compareDocumentPosition(pillola) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(pillola.style.textTransform).toBe('uppercase');
+      expect(screen.queryByRole('button', { name: /profilo e impostazioni/ })).not.toBeInTheDocument();
+    });
+
+    it('senza settimana la pillola non c\'è', () => {
+      render(<Testata titolo="Confezioni" indietro={indietro} />);
+      expect(screen.getByRole('button', { name: 'Torna alla lista' })).toBeInTheDocument();
+      expect(screen.queryByText(/Settimana del/)).not.toBeInTheDocument();
+    });
+  });
 });
