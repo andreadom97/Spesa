@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
 import { IconaIngrediente, alone } from '../IconaIngrediente';
 import { TRACCIATI } from '../tracciati-ingredienti';
+import { CHIAVI_ICONE } from '@/domain/icone-ingredienti';
 
 const PILOTA = ['bistecca', 'cosciotto', 'pesce', 'carota', 'pomodoro', 'uovo', 'latte', 'formaggio', 'pasta', 'pane', 'legumi', 'piselli'] as const;
 
@@ -47,8 +48,19 @@ describe('IconaIngrediente', () => {
     expect(svg(container).querySelector('path')).toHaveAttribute('transform', 'rotate(-28 12 12)');
   });
 
+  it('ogni chiave del catalogo ha il tracciato', () => {
+    expect(CHIAVI_ICONE.filter((k) => !TRACCIATI[k])).toEqual([]);
+  });
+
+  it('ogni tracciato ha sagoma e dettagli', () => {
+    const vuoti = CHIAVI_ICONE.filter((k) => !TRACCIATI[k]?.d || !TRACCIATI[k]?.dd);
+    expect(vuoti).toEqual([]);
+  });
+
   it('chiave senza tracciato: nulla', () => {
-    const { container } = render(<IconaIngrediente chiave="acqua" area="dispensa" tono="area" taglia={52} />);
+    const { container } = render(
+      <IconaIngrediente chiave={'inesistente' as never} area="dispensa" tono="area" taglia={52} />,
+    );
     expect(svg(container)).toBeNull();
   });
 
