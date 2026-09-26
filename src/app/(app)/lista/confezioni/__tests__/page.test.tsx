@@ -485,7 +485,8 @@ describe('Confezioni — scansione', () => {
     await scansiona();
     fireEvent.click(await screen.findByRole('button', { name: 'AGGIORNA' }));
 
-    expect(await screen.findByText('Non siamo riusciti ad aggiornare. Riprova.')).toBeInTheDocument();
+    const messaggio = await screen.findByRole('alert');
+    expect(messaggio).toHaveTextContent('Non siamo riusciti ad aggiornare. Riprova.');
     expect(screen.getByRole('button', { name: 'AGGIORNA' })).toBeEnabled();
     expect(screen.getByText('1 × 1000 g')).toBeInTheDocument();
     expect(replace).not.toHaveBeenCalled();
@@ -632,6 +633,48 @@ describe('Confezioni — scansione', () => {
     expect(screen.queryByText(/La confezione è/)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'AGGIORNA' })).not.toBeInTheDocument();
     expect(aggiornaFormatoDaScansione).not.toHaveBeenCalled();
+  });
+
+  it('due letture sulla stessa voce, la prima in ritardo: la risposta vecchia non copre il foglio della seconda né scrive (rilievo I2)', async () => {
+    const E1 = '1111111111111';
+    const E2 = '2222222222222';
+    let rispondiE1: (r: Response) => void = () => {};
+    fetchMock
+      .mockReturnValueOnce(new Promise<Response>((r) => { rispondiE1 = r; }))
+      // Formato uguale (1000 g come in lista): il ramo "confermo" scrive subito.
+      .mockResolvedValueOnce(rispostaJson({ trovato: true, nome: 'Pasta', marca: 'X', quantita: { valore: 1000, unita: 'g' } }));
+
+    render(<Confezioni />);
+    // Prima lettura (E1) sulla Pasta: la fetch resta in sospeso.
+    fireEvent.click(await screen.findByRole('button', { name: 'Scansiona Pasta' }));
+    fireEvent.change(await screen.findByLabelText('Codice a barre'), { target: { value: E1 } });
+    fireEvent.click(screen.getByRole('button', { name: 'CERCA IL CODICE' }));
+    expect(await screen.findByText('Cerco nel catalogo…')).toBeInTheDocument();
+
+    // Si chiude (✕) e si riapre la stessa voce.
+    fireEvent.click(screen.getByRole('button', { name: 'Chiudi la scansione' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Scansiona Pasta' }));
+
+    // Seconda lettura (E2), sempre sulla Pasta: torna subito, formato uguale → si conferma e si scrive.
+    fireEvent.change(await screen.findByLabelText('Codice a barre'), { target: { value: E2 } });
+    fireEvent.click(screen.getByRole('button', { name: 'CERCA IL CODICE' }));
+
+    expect(await screen.findByText(`CODICE ${E2}`)).toBeInTheDocument();
+    expect(await screen.findByText('Formato confermato: 1000 g.')).toBeInTheDocument();
+    expect(aggiornaFormatoDaScansione).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(aggiornaFormatoDaScansione).mock.calls[0][0]).toEqual({
+      ingredientId: 'ing-pasta', weekId: 'week-1', formato: 1000, ean: E2, confezioni: 1,
+    });
+
+    // Ora arriva la risposta lenta di E1 (formato diverso, 500 g): non deve coprire il foglio di E2 né scrivere.
+    rispondiE1(rispostaJson(OFF_500G));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(screen.getByText(`CODICE ${E2}`)).toBeInTheDocument();
+    expect(screen.queryByText('Barilla · Spaghetti n. 5 · 500 g')).not.toBeInTheDocument();
+    expect(screen.queryByText(/La confezione è/)).not.toBeInTheDocument();
+    expect(aggiornaFormatoDaScansione).toHaveBeenCalledTimes(1);
   });
 });
 

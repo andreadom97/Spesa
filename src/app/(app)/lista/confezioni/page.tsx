@@ -134,6 +134,10 @@ export default function Confezioni() {
   // La voce aperta, leggibile in modo sincrono da chi torna da una fetch:
   // lo stato React arriva solo al render dopo.
   const attivaRef = useRef<string | null>(null);
+  // Il codice della lettura in corso su quella voce, accanto ad attivaRef per
+  // lo stesso motivo: chi si riapre sulla stessa voce con un altro codice deve
+  // poter distinguere la risposta buona da quella di una lettura precedente.
+  const codiceRef = useRef<string | null>(null);
   const [aggiornati, setAggiornati] = useState<Set<string>>(() => new Set());
   const [manuale, setManuale] = useState('');
   /** Il campo "quante ne hai comprate": null finché non lo tocca, e vale il proposto. */
@@ -186,6 +190,7 @@ export default function Confezioni() {
 
   function apri(a: Attiva | null) {
     attivaRef.current = a?.itemId ?? null;
+    codiceRef.current = a?.codice ?? null;
     setAttiva(a);
     setManuale('');
     setComprate(null);
@@ -201,12 +206,13 @@ export default function Confezioni() {
   }
 
   /**
-   * Un esito arrivato da una fetch: vale solo se la voce è ancora quella aperta. Se
-   * intanto si è chiuso il foglio e aperto un'altra voce, la risposta in ritardo non
-   * deve coprire la sua lettura.
+   * Un esito arrivato da una fetch: vale solo se la voce è ancora quella aperta *con
+   * quel codice*. Se intanto si è chiuso il foglio e riaperta la stessa voce con
+   * un'altra lettura, la risposta in ritardo della lettura precedente non deve
+   * coprire quella nuova (itemId da solo non basta: la voce è la stessa).
    */
-  function seAncoraAperta(voce: VoceComprata, esito: Esito) {
-    setAttiva((a) => (a?.itemId === voce.itemId ? { ...a, esito } : a));
+  function seAncoraAperta(voce: VoceComprata, ean: string | null, esito: Esito) {
+    setAttiva((a) => (a && a.itemId === voce.itemId && a.codice === ean ? { ...a, esito } : a));
   }
 
   /**
@@ -253,7 +259,7 @@ export default function Confezioni() {
       if (poi === 'chiudi') {
         if (attivaRef.current === voce.itemId) chiudi();
       } else {
-        seAncoraAperta(voce, { tipo: 'confermato', formato });
+        seAncoraAperta(voce, ean, { tipo: 'confermato', formato });
       }
     } catch (errore) {
       if (errore instanceof Error && errore.message === 'spesa già chiusa') {
@@ -276,7 +282,7 @@ export default function Confezioni() {
       return;
     }
     if (risposta === 'errore') {
-      seAncoraAperta(voce, {
+      seAncoraAperta(voce, ean, {
         tipo: 'manuale',
         messaggio: 'Non riusciamo a interrogare il catalogo. Riprova, o scrivi il formato a mano.',
         marca: '', nome: '', ean: null,
@@ -284,7 +290,7 @@ export default function Confezioni() {
       return;
     }
     if (!risposta.trovato || !risposta.quantita) {
-      seAncoraAperta(voce, {
+      seAncoraAperta(voce, ean, {
         tipo: 'manuale',
         messaggio: 'Prodotto non trovato: puoi scrivere il formato a mano.',
         marca: risposta.trovato ? risposta.marca : '',
@@ -296,19 +302,21 @@ export default function Confezioni() {
 
     const proposta = formatoProposto(risposta.quantita, voce.unita);
     if (proposta === null) {
-      seAncoraAperta(voce, { tipo: 'unita-diversa', unitaOff: risposta.quantita.unita });
+      seAncoraAperta(voce, ean, { tipo: 'unita-diversa', unitaOff: risposta.quantita.unita });
       return;
     }
     if (proposta === voce.formato) {
       // Il formato non cambia e nemmeno le confezioni: niente da chiedere.
       // Ma il codice sì: si memorizza, così la prossima volta l'ingrediente
       // ha il suo ean. "Confermato" si dice solo dopo che la scrittura è andata.
-      if (attivaRef.current !== voce.itemId) return;
-      seAncoraAperta(voce, { tipo: 'confermo', formato: proposta, ean });
+      // Il confronto è su voce *e* codice: attivaRef da solo non basta se nel
+      // frattempo si è riaperta la stessa voce con un'altra lettura (rilievo I2).
+      if (attivaRef.current !== voce.itemId || codiceRef.current !== ean) return;
+      seAncoraAperta(voce, ean, { tipo: 'confermo', formato: proposta, ean });
       void scrivi(voce, proposta, ean, voce.confezioni, 'confermato');
       return;
     }
-    seAncoraAperta(voce, { tipo: 'proposta', marca: risposta.marca, nome: risposta.nome, formato: proposta, ean });
+    seAncoraAperta(voce, ean, { tipo: 'proposta', marca: risposta.marca, nome: risposta.nome, formato: proposta, ean });
   }
 
   const indietro = { etichetta: 'FINE SPESA', ariaLabel: 'Torna a fine spesa', onTorna: () => router.push('/lista/fatta') };
@@ -396,7 +404,7 @@ export default function Confezioni() {
           )}
         </div>
 
-        {erroreScrittura && <MessaggioErrore>{erroreScrittura}</MessaggioErrore>}
+        {erroreScrittura && <MessaggioErrore ruolo="alert">{erroreScrittura}</MessaggioErrore>}
 
         {(esito.tipo === 'unita-diversa' || esito.tipo === 'confermato') && (
           <TastoSecondario onClick={chiudi}>CHIUDI</TastoSecondario>
@@ -470,8 +478,10 @@ export default function Confezioni() {
         ))}
       </div>
 
+      {/* La key rimonta il LettoreCodice quando si apre un'altra voce (anche da tastiera,
+          senza passare dal ✕): niente stato di una lettura precedente sotto un'altra scheda. */}
       {attiva && voceAperta && (
-        <FoglioDalBasso etichetta={`Confezione di ${voceAperta.nome}`} onChiudi={chiudi}>
+        <FoglioDalBasso key={attiva.itemId} etichetta={`Confezione di ${voceAperta.nome}`} onChiudi={chiudi}>
           <TestataFoglio onChiudi={chiudi} etichettaChiudi="Chiudi la scansione">
             <span style={{ fontSize: 15.5, fontWeight: 700, color: 'var(--ink)' }}>{voceAperta.nome}</span>
           </TestataFoglio>
