@@ -93,8 +93,11 @@ La ricerca e le righe vengono da Piatti. **`ElencoPiatti.tsx` si divide in pezzi
   un tocco è anche quello scelto, come oggi.
 - **Nessun risultato**: lo stesso vuoto di ricerca di Piatti («Nessun piatto qui»).
 - **`CREA UN PIATTO NUOVO`** diventa l'Aggiungi tratteggiato (§8): alto 56, bordo 2 tratteggiato
-  `--bordo-tratteggio`, raggio 14, mono 11. Sta **in fondo** all'elenco, perché qui si sceglie; in
-  Piatti invece sta in cima, dove si crea. Porta a `/piatti/nuovo`, come oggi.
+  `--bordo-tratteggio`, raggio 14, mono 11. È il componente condiviso
+  `src/components/AggiungiTratteggiato.tsx`, estratto dal «Nuovo piatto» di `ElencoPiatti.tsx` insieme
+  a `CampoRicercaPiatti` e `RigaPiatto`; lo usa anche l'editor del Piatto (§B.6). Sta **in fondo**
+  all'elenco, perché qui si sceglie; in Piatti invece sta in cima, dove si crea. Porta a
+  `/piatti/nuovo`, come oggi.
 
 ### A.4 Sotto la riga scelta
 
@@ -104,11 +107,14 @@ Tutto questo sta dopo l'elenco, prima dell'Aggiungi tratteggiato, come oggi.
   **Riga di impostazione** per componente, dentro un widget bianco (raggio 22):
   - `nome` è il nome del componente;
   - `finale: { tipo: 'valore', valore: nomeOpzione(...), onApri: () => toccaComponente(c) }`;
-  - `IN CASA` sta nella `nota`, in mono 10 `--ok`, solo quando `opzioneInCasa` è vero;
+  - `IN CASA` sta nella `nota`, in mono 10 `--ink`, solo quando `opzioneInCasa` è vero. Fra i token
+    non c'è un verde (`--ok` non esiste) e §C non vuole famiglie nuove: un verde, se servirà,
+    passa prima da un token in `DESIGN.md`;
   - `aria-label` resta quello di oggi: `Cambia {componente}: ora {opzione}`.
 
-  Il tocco cicla all'opzione successiva, senza foglio, come oggi. [Da verificare nel piano che
-  `RigaImpostazione` accetti un `aria-label` diverso dal testo; se no, si aggiunge una prop.]
+  Il tocco cicla all'opzione successiva, senza foglio, come oggi. `RigaImpostazione` non accettava
+  un `aria-label` diverso dal testo: il piano (Task 3) le aggiunge la prop `etichetta` sui finali
+  `valore` e `azione`.
 - **Conflitti**: un **Avviso in linea** per conflitto (§8 Messaggi: 11,5 in `--avviso`,
   `aria-live="polite"`). Oggi è un riquadro scritto a mano.
 - **La nota** (`testoNota`): una **Nota**, 12,5 in `--testo-2`.
@@ -198,8 +204,12 @@ Colonna che scorre (`sc scroll-app con-dock`), padding `6px 16px`. I blocchi son
    `FoglioDalBasso` (`ruolo="alertdialog"`) con `TESTO_ELIMINA`. Sparisce il cestino in testata.
    Sparisce anche il dialogo scritto a mano, che era centrato, con tasti da 48 ed `ELIMINA` in `--ink`.
 
-I messaggi di validità di oggi restano dove sono, in `--errore`. Oggi alcuni sono in `--sec`: il piano
-li elenca.
+I messaggi di validità di oggi restano dove sono. Quelli che nascono da un dato scritto male
+dall'utente (componente senza nome, opzione senza righe, grammatura mancante) e gli errori di
+scrittura vanno in `--errore`; oggi alcuni sono in `--sec`, e il piano li elenca.
+`TESTO_SENZA_INGREDIENTI` invece è una **Nota** (12,5 in `--testo-2`), non un errore: spiega
+perché `SALVA` è spento (`DESIGN.md` §8 Messaggi), e su un piatto nuovo non deve essere rosso dalla
+prima apertura.
 
 ### B.4 Il selettore degli ingredienti
 
@@ -235,7 +245,20 @@ Il comportamento non cambia: al tocco aggiunge la riga e chiude. Va in un file a
 | `src/app/(app)/piatti/[id]/ComponentiPiatto.tsx` (nuovo) | il blocco 4 |
 | `src/app/(app)/piatti/[id]/SelettoreIngrediente.tsx` (nuovo) | il foglio del §B.4 |
 | `src/components/TestataModifica.tsx` (nuovo) | la testata del frame 12, usata dai due editor |
+| `src/components/AggiungiTratteggiato.tsx` (nuovo) | l'Aggiungi tratteggiato di §8, condiviso da Piatti, Scegli e l'editor del Piatto (`AGGIUNGI INGREDIENTE`, `AGGIUNGI COMPONENTE`) |
 | `src/app/(app)/piatti/[id]/ingredienti/[ingId]/page.tsx` | usa `TestataModifica` al posto della sua `Cornice` |
+
+### B.7 Cambi voluti rispetto a oggi
+
+Tre comportamenti cambiano di proposito, e i test li fissano:
+- **Eliminazione fallita.** L'errore compare dentro il Dialogo di conferma, sotto i tasti, e il
+  dialogo resta aperto. Oggi il dialogo si chiudeva e l'errore finiva in fondo al modulo.
+- **Caricamento fallito su `/piatti/nuovo`.** Si vede solo il messaggio d'errore, senza Dock, come per
+  un piatto esistente. Oggi l'editor si mostrava lo stesso, senza pasti, e salvare scriveva
+  `slot_def_id ''`.
+- **Aprire e salvare senza toccare nulla non si può più**, perché `SALVA` è spento finché niente
+  cambia. Quindi un piatto con una `settimanaCiclo` fuori dal ciclo non viene riscritto a `null` a
+  ogni apertura, ma solo al primo salvataggio di un cambiamento vero.
 
 ---
 
