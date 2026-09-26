@@ -84,6 +84,36 @@ export type ChiaveIcona = keyof typeof CATALOGO_ICONE;
 export const CHIAVI_ICONE = Object.keys(CATALOGO_ICONE) as ChiaveIcona[];
 
 /**
+ * Espressioni che partecipano alla ricerca come i sinonimi (stesse radici,
+ * stessa regola di precedenza) ma che, se vincono, fanno restituire `null` a
+ * `trovaIcona` invece di una chiave: meglio nessuna icona che un'icona
+ * sbagliata.
+ *
+ * - `pesca`: stessa radice di `pesce` (pesc) — senza il blocco, "Pesca" o
+ *   "Succo di pesca" prenderebbero l'icona del pesce.
+ * - `pesche noci`: la pesca noce ha la stessa ambiguità della pesca; non
+ *   basta bloccare `pesca` perché "pesche" da sola ha una radice diversa
+ *   (pesch) da "pesca" (pesc).
+ * - `grano`: stessa radice di `grana` (gran) — senza il blocco, "Grano
+ *   saraceno" prenderebbe l'icona del formaggio.
+ * - `semola`: la semola è un derivato del grano, stessa cautela.
+ * - `pasta sfoglia`, `pasta frolla`, `pasta brisee`, `pasta per pizza`,
+ *   `pasta di acciughe`: impasti o creme, non pasta secca — non devono
+ *   prendere l'icona di `pasta`.
+ */
+export const BLOCCHI: readonly string[] = [
+  'pesca',
+  'pesche noci',
+  'grano',
+  'semola',
+  'pasta sfoglia',
+  'pasta frolla',
+  'pasta brisee',
+  'pasta per pizza',
+  'pasta di acciughe',
+];
+
+/**
  * Radice di una parola: toglie la vocale finale e poi una `i` rimasta
  * (pomodori/pomodoro → pomodor, arance/arancia → aranc, finocchi/finocchio →
  * finocch). Le parole fino a tre lettere restano intere.
@@ -95,16 +125,26 @@ function radice(parola: string): string {
   return r;
 }
 
+/**
+ * Spezza sulla punteggiatura oltre che sugli spazi (dopo `normalizza`), così
+ * l'apostrofo in "Fiocchi d'avena" o "Burro d'arachidi" separa "d" da
+ * "avena"/"arachidi" invece di incollarli in una sola parola che non
+ * combina con nessuna radice del catalogo. Le parti vuote (punteggiatura a
+ * inizio/fine o doppia) sono scartate.
+ */
 function radici(s: string): string[] {
   const n = normalizza(s);
-  return n === '' ? [] : n.split(' ').map(radice);
+  return n === '' ? [] : n.split(/[^a-z0-9]+/).filter((p) => p !== '').map(radice);
 }
 
-interface Voce { chiave: ChiaveIcona; radici: string[]; lunghezza: number }
+interface Voce { chiave: ChiaveIcona | null; radici: string[]; lunghezza: number; blocco: boolean }
 
-const VOCI: Voce[] = CHIAVI_ICONE.flatMap((chiave) =>
-  CATALOGO_ICONE[chiave].map((s) => ({ chiave, radici: radici(s), lunghezza: normalizza(s).length })),
-);
+const VOCI: Voce[] = [
+  ...CHIAVI_ICONE.flatMap((chiave) =>
+    CATALOGO_ICONE[chiave].map((s) => ({ chiave, radici: radici(s), lunghezza: normalizza(s).length, blocco: false })),
+  ),
+  ...BLOCCHI.map((s) => ({ chiave: null, radici: radici(s), lunghezza: normalizza(s).length, blocco: true })),
+];
 
 function posizione(nome: string[], cerca: string[]): number {
   for (let i = 0; i + cerca.length <= nome.length; i++) {
@@ -114,17 +154,26 @@ function posizione(nome: string[], cerca: string[]): number {
 }
 
 /**
- * La chiave d'icona per un nome libero, o null se fuori catalogo. Vince il
- * sinonimo più lungo che compare intero nel nome; a parità, il primo.
+ * La chiave d'icona per un nome libero, o null se fuori catalogo (o se
+ * l'espressione vincente è un blocco). Vince il sinonimo che compare prima
+ * nel nome ("prima parola significativa"); a parità di posizione, il più
+ * lungo; a parità di posizione e lunghezza, un blocco vince su un sinonimo
+ * (pesca/pesce, grano/grana condividono la radice ed è il blocco a
+ * risolvere l'ambiguità).
  */
 export function trovaIcona(nome: string): ChiaveIcona | null {
   const n = radici(nome);
-  let migliore: { chiave: ChiaveIcona; lunghezza: number; pos: number } | null = null;
+  let migliore: { chiave: ChiaveIcona | null; lunghezza: number; pos: number; blocco: boolean } | null = null;
   for (const v of VOCI) {
     const pos = posizione(n, v.radici);
     if (pos < 0) continue;
-    if (!migliore || v.lunghezza > migliore.lunghezza || (v.lunghezza === migliore.lunghezza && pos < migliore.pos)) {
-      migliore = { chiave: v.chiave, lunghezza: v.lunghezza, pos };
+    if (
+      !migliore ||
+      pos < migliore.pos ||
+      (pos === migliore.pos &&
+        (v.lunghezza > migliore.lunghezza || (v.lunghezza === migliore.lunghezza && v.blocco && !migliore.blocco)))
+    ) {
+      migliore = { chiave: v.chiave, lunghezza: v.lunghezza, pos, blocco: v.blocco };
     }
   }
   return migliore?.chiave ?? null;

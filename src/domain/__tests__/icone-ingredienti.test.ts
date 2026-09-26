@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CATALOGO_ICONE, CHIAVI_ICONE, trovaIcona } from '../icone-ingredienti';
+import { BLOCCHI, CATALOGO_ICONE, CHIAVI_ICONE, trovaIcona } from '../icone-ingredienti';
 import { normalizza } from '../import/mapping';
 import { INGREDIENTI_BASE } from '../ingredienti-base';
 
@@ -54,6 +54,23 @@ describe('trovaIcona', () => {
     expect(trovaIcona(nome)).toBe(chiave);
   });
 
+  it.each([
+    // criterio "prima la posizione, poi la lunghezza" (spec §4): vince il
+    // primo sinonimo che compare nel nome, non il più lungo ovunque sia.
+    ['Yogurt alla fragola', 'yogurt'],
+    ['Yogurt ai frutti di bosco', 'yogurt'],
+    ['Pane al latte', 'pane'],
+    ['Riso al latte', 'riso'],
+    ['Biscotti al cioccolato', 'biscotto'],
+    ['Latte di mandorla', 'latte'],
+    ['Farina di mandorle', 'farina'],
+    ['Pasta al pomodoro', 'pasta'],
+    ['Olio di semi di arachide', 'olio'],
+    ['Brodo di pollo', 'minestra'],
+  ])('%s → %s (posizione prima della lunghezza)', (nome, chiave) => {
+    expect(trovaIcona(nome)).toBe(chiave);
+  });
+
   it('ignora maiuscole, accenti e spazi doppi', () => {
     expect(trovaIcona('  PETTO  di   Pollo ')).toBe('cosciotto');
     expect(trovaIcona('caffe')).toBe('caffe');
@@ -82,6 +99,39 @@ describe('trovaIcona', () => {
     const scoperti = INGREDIENTI_BASE.map((i) => i.nome).filter((n) => trovaIcona(n) === null);
     expect(scoperti).toEqual(ESCLUSI_DI_PROPOSITO);
   });
+
+  it.each([
+    // BLOCCHI: stessa radice di un sinonimo vero (pesca~pesce, grano~grana) o
+    // impasti/creme che non sono pasta secca — meglio nessuna icona che una
+    // sbagliata.
+    'Pesca',
+    'Succo di pesca',
+    'Tè alla pesca',
+    'Pesche noci',
+    'Grano saraceno',
+    'Semola di grano duro',
+    'Semola rimacinata di grano duro',
+    'Pasta sfoglia',
+    'Pasta frolla',
+    'Pasta brisée',
+    'Pasta per pizza',
+    'Pasta di acciughe',
+  ])('%s → null (blocco)', (nome) => {
+    expect(trovaIcona(nome)).toBeNull();
+  });
+
+  it.each([
+    // punteggiatura: radici() spezza su /[^a-z0-9]+/ dopo normalizza, scarta
+    // le parti vuote ("d'avena" → "d", "avena"). NB: "Burro d'arachidi" (dal
+    // brief) NON è testato qui — vedi NEEDS_CONTEXT nel report finale: con la
+    // posizione-prima la contrazione rompe il sinonimo composto "burro di
+    // arachidi" (tokenizza "di" ≠ "d") e vince "burro" (pos 0) invece di
+    // "arachide" (pos 2). Il seed reale usa solo "Burro di arachidi" (senza
+    // apostrofo), che resta verde: vedi il test con "di" per esteso sopra.
+    ["Fiocchi d'avena", 'avena'],
+  ])('%s → %s (punteggiatura)', (nome, chiave) => {
+    expect(trovaIcona(nome)).toBe(chiave);
+  });
 });
 
 describe('CATALOGO_ICONE', () => {
@@ -99,6 +149,15 @@ describe('CATALOGO_ICONE', () => {
         visti.set(n, k);
       }
     }
+    expect(doppi).toEqual([]);
+  });
+
+  it('nessun sinonimo coincide con un blocco', () => {
+    const sinonimi = new Set<string>();
+    for (const k of CHIAVI_ICONE) {
+      for (const s of CATALOGO_ICONE[k]) sinonimi.add(normalizza(s));
+    }
+    const doppi = BLOCCHI.filter((b) => sinonimi.has(normalizza(b)));
     expect(doppi).toEqual([]);
   });
 });
