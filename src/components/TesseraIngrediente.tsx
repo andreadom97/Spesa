@@ -4,6 +4,8 @@ import { useId, useState } from 'react';
 import Link from 'next/link';
 import type { AreaId, UnitaMisura } from '@/domain/types';
 import { coloreArea, nomeArea } from '@/domain/aree';
+import { trovaIcona } from '@/domain/icone-ingredienti';
+import { IconaIngrediente, alone } from './IconaIngrediente';
 
 interface Props {
   nome: string;
@@ -89,6 +91,7 @@ export function TesseraIngrediente({
   const coloreBordo = quantitaValida ? colore : COLORE_NON_VALIDA;
   const [testoQuantita, setTestoQuantita] = useState(String(quantita));
   const idQuantita = useId();
+  const chiave = trovaIcona(nome);
 
   function cambiaTesto(valore: string) {
     setTestoQuantita(valore);
@@ -111,8 +114,10 @@ export function TesseraIngrediente({
         background: '#FFFFFF',
         border: quantitaValida ? `1px solid ${rgba(coloreBordo, 0.45)}` : `1.5px solid ${coloreBordo}`,
         boxShadow: '0 1px 2px rgba(20,22,58,0.05)',
+        overflow: 'hidden',
       }}
     >
+      {chiave && <IconaIngrediente chiave={chiave} area={area} tono="area" taglia={52} />}
       <button
         type="button"
         onClick={onRimuovi}
@@ -134,10 +139,8 @@ export function TesseraIngrediente({
         </svg>
       </button>
 
-      {/* Speculare al ✕ in alto a destra, stessa area di tap da 44px. L'artboard
-          non prevede questo controllo perché non prevede affatto di riaprire un
-          ingrediente: qualunque soluzione diverge, e questa è quella che non
-          tocca né il testo né l'altezza della tessera. */}
+      {/* Accanto alla ✕, stessa area di tap da 44px: l'angolo in basso a destra è
+          dell'icona ingrediente (delta 26/09). X all'esterno, matita all'interno. */}
       {hrefModifica && (
         <Link
           href={hrefModifica}
@@ -145,8 +148,8 @@ export function TesseraIngrediente({
           aria-label={`Modifica ${nome}`}
           style={{
             position: 'absolute',
-            bottom: 0,
-            right: 0,
+            top: 0,
+            right: 44,
             width: 44,
             height: 44,
             display: 'flex',
@@ -169,6 +172,7 @@ export function TesseraIngrediente({
       <label
         htmlFor={idQuantita}
         style={{
+          position: 'relative',
           display: 'flex',
           alignItems: 'flex-start',
           minHeight: ALTEZZA_TAP_QUANTITA,
@@ -227,17 +231,29 @@ export function TesseraIngrediente({
         }
       `}</style>
 
-      <span style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.12, color: 'var(--ink)' }}>
+      <span
+        style={{
+          position: 'relative',
+          fontSize: 17,
+          fontWeight: 700,
+          letterSpacing: '-0.03em',
+          lineHeight: 1.12,
+          color: 'var(--ink)',
+          textShadow: chiave ? alone('#FFFFFF', 2) : undefined,
+        }}
+      >
         {nome}
       </span>
       <span
         style={{
+          position: 'relative',
           fontFamily: 'var(--font-mono)',
           fontSize: 8,
           letterSpacing: '0.09em',
           lineHeight: 1.4,
           color: 'var(--ter)',
           marginTop: 'auto',
+          textShadow: chiave ? alone('#FFFFFF', 2) : undefined,
         }}
       >
         {nomeArea(area)}

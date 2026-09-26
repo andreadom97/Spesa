@@ -50,3 +50,24 @@ describe('TesseraIngrediente', () => {
     expect(onRimuovi).toHaveBeenCalledOnce();
   });
 });
+
+describe('TesseraIngrediente · icona ingrediente', () => {
+  it('icona in basso a destra nel tono medio, alone bianco su nome ed etichetta d\'area', () => {
+    const { container } = rendi({ nome: 'Uova', area: 'latticini' });
+    const s = container.querySelector('svg[data-icona]');
+    expect(s).toHaveAttribute('data-icona', 'uovo');
+    expect(s).toHaveAttribute('stroke', '#759EC8');
+    expect(screen.getByText('Uova').style.textShadow).toContain('#FFFFFF');
+    expect(screen.getByText('LATTICINI, UOVA E SALUMI').style.textShadow).toContain('#FFFFFF');
+  });
+
+  it('la matita sale in alto, accanto alla X: l\'angolo in basso a destra è dell\'icona', () => {
+    rendi({ hrefModifica: '/piatti/p1/ingredienti/olio-1' });
+    const matita = screen.getByRole('link', { name: 'Modifica Olio di semi' });
+    expect(matita.style.top).toBe('0px');
+    expect(matita.style.right).toBe('44px');
+    expect(matita.style.bottom).toBe('');
+    const x = screen.getByRole('button', { name: 'Rimuovi Olio di semi' });
+    expect(x.style.right).toBe('0px');
+  });
+});
