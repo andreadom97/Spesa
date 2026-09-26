@@ -147,6 +147,7 @@ export function Tessera({
             textDecoration: acceso ? 'none' : 'line-through',
             textDecorationThickness: acceso ? undefined : '1.6px',
             textShadow: chiave ? alone(coloreAlone, protagonista ? 3 : 2) : undefined,
+            overflowWrap: 'anywhere',
           }}
         >
           {nome}

@@ -70,4 +70,23 @@ describe('TesseraIngrediente · icona ingrediente', () => {
     const x = screen.getByRole('button', { name: 'Rimuovi Olio di semi' });
     expect(x.style.right).toBe('0px');
   });
+
+  it('la matita e la X stanno sopra il <label> della quantità, che dipinge dopo nel DOM', () => {
+    // Il <label> ora è position: relative (per l'icona sotto): senza uno
+    // zIndex più alto sulla matita/X, un tocco nella striscia x≈95-105 apre
+    // la tastiera invece della modifica.
+    rendi({ hrefModifica: '/piatti/p1/ingredienti/olio-1' });
+    const matita = screen.getByRole('link', { name: 'Modifica Olio di semi' });
+    const x = screen.getByRole('button', { name: 'Rimuovi Olio di semi' });
+    expect(matita.style.zIndex).toBe('1');
+    expect(x.style.zIndex).toBe('1');
+  });
+
+  it('gli anelli di focus non sono tagliati dall\'overflow: hidden della tessera', () => {
+    rendi({ hrefModifica: '/piatti/p1/ingredienti/olio-1' });
+    const matita = screen.getByRole('link', { name: 'Modifica Olio di semi' });
+    const x = screen.getByRole('button', { name: 'Rimuovi Olio di semi' });
+    expect(matita.style.outlineOffset).toBe('-2px');
+    expect(x.style.outlineOffset).toBe('-2px');
+  });
 });

@@ -132,6 +132,8 @@ export function TesseraIngrediente({
           alignItems: 'center',
           justifyContent: 'center',
           background: 'transparent',
+          zIndex: 1,
+          outlineOffset: -2,
         }}
       >
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
@@ -155,6 +157,8 @@ export function TesseraIngrediente({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            zIndex: 1,
+            outlineOffset: -2,
           }}
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
@@ -240,6 +244,7 @@ export function TesseraIngrediente({
           lineHeight: 1.12,
           color: 'var(--ink)',
           textShadow: chiave ? alone('#FFFFFF', 2) : undefined,
+          overflowWrap: 'anywhere',
         }}
       >
         {nome}

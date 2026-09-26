@@ -62,6 +62,7 @@ export function TesseraDispensa({ voce, pillola, onApri }: { voce: VoceDispensa;
           textDecoration: stato === 'finita' ? 'line-through' : 'none', textDecorationThickness: 1.6,
           position: 'relative',
           textShadow: chiave ? alone(inCasa ? tintaOpacaArea(area) : '#FFFFFF', 2) : undefined,
+          overflowWrap: 'anywhere',
         }}
       >
         {voce.ingrediente.nome}

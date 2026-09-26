@@ -35,7 +35,7 @@ export default function FoglioIcone() {
 function Cella({ chiave, area, sfondo, bordo, tono }: { chiave: ChiaveIcona; area: AreaId; sfondo: string; bordo: string; tono: 'area' | 'hero' }) {
   return (
     <td>
-      <div style={{ position: 'relative', width: 64, height: 64, borderRadius: 12, background: sfondo, border: `1px solid ${bordo}` }}>
+      <div style={{ position: 'relative', width: 64, height: 64, borderRadius: 12, background: sfondo, border: `1px solid ${bordo}`, overflow: 'hidden' }}>
         <div style={{ position: 'absolute', inset: 6 }}>
           <IconaIngrediente chiave={chiave} area={area} tono={tono} taglia={52} />
         </div>
