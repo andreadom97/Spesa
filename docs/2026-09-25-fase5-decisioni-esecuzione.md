@@ -218,6 +218,11 @@ i 52 test di `P` e `R`: 10 + 17 + 9 + 16 = 52.
 
 Ogni task aggiunge qui quello che non ha potuto provare fuori dal telefono.
 
+- **`cancella_dispensa()` (Task 4): la SQL NON ESEGUITA.** Nessun runtime SQL su questa macchina;
+  controllata solo a mano. Le tre query di «Task 4 › Da fare all'applicazione della 0015» vanno
+  lanciate quando si applica la migrazione, oppure si prova Cancella la dispensa dal telefono su
+  un account di prova (spec §M.4), con un pasto «dai pronti» di oggi o dopo e una lista aperta.
+
 ## Rimasto aperto, di proposito
 
 Ogni task aggiunge qui i minor che la review lascia aperti, col motivo.
@@ -227,12 +232,30 @@ Ogni task aggiunge qui i minor che la review lascia aperti, col motivo.
 Le domande che l'esecuzione trova e non decide: ognuna col punto del codice o della spec, e la
 proposta. Andrea le vede in review.
 
+- **Piano e Lista si rileggono dopo Cancella la dispensa? (Task 4)** Oggi no: solo la Dispensa
+  ascolta `spesa:dispensa-cambiata`, come dice la spec §E.2. Con D1 il Piano aperto sotto il
+  pannello mostra `Porzione pronta` su pasti che non lo sono più, con D2 la Lista mostra ancora
+  «in casa …», finché non si riaprono. Toccare quei pasti è innocuo (Task 4, limiti).
+  **Proposta:** va bene così. Se li vuoi aggiornati subito, Piano e Lista ascoltano lo stesso
+  evento con un contatore nelle dipendenze del loro caricamento: un task a parte.
+- **Il «no» ai controlli della lista aperta dopo Cancella la dispensa (Task 4, C5).**
+  `rispondiControllo` (`src/data/dispensa.ts`) legge `pantry_state.residuo` con `.single()`:
+  dopo la cancellazione la riga non c'è più, e ogni «no» a un controllo già in lista fallisce con
+  «Non siamo riusciti a salvare la risposta. Riprova.». Due correzioni possibili:
+  (a) in `rispondiControllo`, `.maybeSingle()` e residuo 0 se la riga manca: una riga di codice e
+  un test, nessuna migrazione; (b) in `cancella_dispensa()`, cancellare anche le righe di
+  controllo in sospeso (`origine = 'controllo' and confezioni = 0`) delle liste non chiuse:
+  coerente con «mai comprato», ma un terzo ritocco alla SQL. **Proposta: (a)**, perché non tocca
+  la migrazione e rende `rispondiControllo` robusta anche a ogni altro modo in cui la riga di
+  dispensa può mancare. Il Task 4 non l'ha fatta: è fuori dai suoi file e dalle decisioni D1-D2.
+
 ## I gate di Andrea, in ordine
 
 1. **L'ok alla migrazione `0015`** in produzione (`supabase/migrations/0015_cadenza_e_dispensa.sql`:
    `settings.giorni_controllo` e `cancella_dispensa()`), **prima del merge**: Vercel pubblica da
    solo al merge (spec §O).
-2. **La migrazione applicata.**
+2. **La migrazione applicata**, con le query di controllo di «Task 4 › Da fare all'applicazione
+   della 0015».
 3. **Il merge della PR**, che va in produzione da solo.
 4. **Le prove dal telefono** della spec §M.4, più quelle della sezione «Non eseguiti».
 
@@ -275,3 +298,136 @@ Le quattro letture di codice dietro l'esito, tutte confermate rileggendo il codi
   nell'editor dell'ingrediente che il Task 12 renderà con `ogniCadenza` (fuori dallo scopo di
   questo task: la funzione è pronta in `pantry.ts`, la nota resta «Ogni 90 giorni» finché il
   Task 12 non la tocca).
+
+## Task 4
+
+### Task 4, indagine
+
+Il piano le aveva misurate il 25/09 su `feb4551`. Il Task 4 le ha rilette una per una sul ramo
+`fase5-impostazioni` (`6287b4e`), prima di scrivere la SQL: reggono tutte e nove.
+
+- **M1. Nessun pasto punta a un lotto** [misurato, `supabase/migrations/0009_meal_prepping.sql`].
+  Il legame va dal lotto al pasto: `porzione_pronta.meal_slot_id references meal_slot(id) on
+  delete set null`, `unique (meal_slot_id)`. `meal_slot` non ha colonne verso `porzione_pronta`
+  (la 0009 le aggiunge solo `porzioni_preparate` e `da_pronti`). Cancellare i lotti non rompe
+  nessun vincolo di `meal_slot`.
+- **M2. `da_pronti = true` vuol dire «la porzione è già stata presa»** [misurato,
+  `src/data/settimana.ts` `aggiornaSlot`; `src/domain/pronti.ts` `fattoreConsumo`]. Quando si
+  accende, il gate FIFO trova il lotto utilizzabile più vecchio dello stesso piatto, e dopo le
+  scritture sul pasto lo scala (`porzioni - 1`, o delete a 1). Il pasto non ricorda da quale
+  lotto. `fattoreConsumo` dà 0 crudo (`stato === 'casa' && !daPronti ? 1 : 0`): la lista non
+  compra niente per lui.
+- **M3. Spegnere `da_pronti` restituisce la porzione** [misurato, `aggiornaSlot`, blocco «daPronti
+  che si spegne»]. Va al lotto utilizzabile più recente del piatto; se non ce n'è nessuno,
+  `insert` di un lotto nuovo da 1, `preparata_il` = la data del pasto, `meal_slot_id` null.
+- **M4. `porzioni_preparate = N > 0` produce un lotto, non lo consuma** [misurato, `aggiornaSlot`,
+  blocco «I Pronti»]. Crea o aggiorna il lotto legato (`meal_slot_id` = il pasto, `preparata_il`
+  = `attuale.data`, `porzioni = N`). Se N cambia e il lotto legato non c'è più, lo ricrea intero
+  (`insert … porzioni: porzioniPreparateDopo`). `fattoreConsumo` somma N qualunque sia lo stato.
+- **M5. Un lotto con `preparata_il` futura è una cottura pianificata** [misurato,
+  `porzioniUtilizzabili`: `if (lotto.preparataIl > oggi) return lotto.porzioni`]. La Dispensa li
+  legge tutti con `leggiPronti` e li mostra fra i Pronti.
+- **M6. `week.stato = 'chiusa'` non vuol dire «settimana passata»** [misurato, `src/data/lista.ts`
+  `chiudiSpesa`: guarda solo `week.stato`, mai la data]. Chiude la settimana quando si tocca
+  `HAI PRESO TUTTO`; che succeda di solito il lunedì è [ipotesi dall'uso]. Il filtro giusto per i
+  pasti che devono ancora succedere è la data del pasto.
+- **M7. Il ledger degli storni** [misurato, `aggiornaSlot`, blocco «Il ledger degli storni»]. Da
+  `confermata` in poi (`if (week.stato === 'bozza') return`), ogni `aggiornaSlot` che cambia il
+  consumo scrive `deltaStorno(prima, dopo)` in `meal_slot_storno` e lo applica a `pantry_state`.
+  Un `update` SQL su `meal_slot` non passa da lì.
+- **M8. `chiudiSpesa` scrive il residuo in assoluto, dai numeri congelati** [misurato,
+  `chiudiSpesa` e `src/domain/chiusura.ts` `calcolaChiusura`]. `residuo = nuovoResiduo(residuo
+  di shopping_list_item, comprato, fabbisogno) + storni della settimana`, in upsert su
+  `pantry_state`. Il residuo congelato è quello di `leggiDispensa()` al momento di `generaListe`
+  (e di `allineaTopUp` per le voci che aggiunge).
+- **M9. Le policy di casa** [misurato, `supabase/migrations/0012_casa.sql`]. Il ciclo su
+  `information_schema.columns` cancella tutte le policy di ogni tabella con `user_id` e crea
+  `<tabella>_casa for all to authenticated using (user_id = (select casa_id())) with check (…)`.
+  Vale per `pantry_state`, `porzione_pronta` (la sua policy della 0009 cade), `meal_slot`,
+  `shopping_list_item`, `shopping_list` e `week`. `casa_id()` è `stable security definer`, e dà
+  il proprietario a un membro e sé stesso agli altri. Nessuna migrazione revoca `update`/`delete`
+  su queste tabelle ad `authenticated` [misurato: `grep -n "revoke\|grant" supabase/migrations/*.sql`,
+  le sole revoche toccano `import_uso`, `casa_membro`, `casa_invito` e le funzioni].
+
+**Le conseguenze per la spec:**
+- **C1.** Con i soli due `delete`, un pasto di oggi o dopo con `da_pronti = true` resta «dai
+  pronti» senza porzione (M2): la lista non lo compra. Spegnerlo dal Piano creerebbe un lotto
+  fantasma da 1 (M3). Serve un `update` di `meal_slot`.
+- **C2.** Un pasto passato con `da_pronti = true` è una porzione già mangiata: riportarlo a
+  normale falserebbe il ledger (M7). Segnarlo poi `fuori` calcolerebbe `prima` = 1 porzione cruda
+  e accrediterebbe ingredienti mai consumati. I pasti passati non si toccano.
+- **C3.** `porzioni_preparate` è il piano, non dipende dai lotti (M4): non si tocca. Restano due
+  effetti, fra i limiti qui sotto.
+- **C4.** Le liste già create e non chiuse tengono il residuo di prima (M8), e `chiudiSpesa` lo
+  riscrive in `pantry_state`: la dispensa cancellata risorge in parte. Esempio: riso congelato
+  con 500 g in casa, servono 820, si compra 1000. Dopo la chiusura il residuo vale 680 (500 +
+  1000 − 820), invece di 180 (0 + 1000 − 820).
+- **C5 (trovata dal Task 4, non nel piano)** [misurato, `src/data/dispensa.ts`
+  `rispondiControllo`]. Il «no» a un controllo legge `pantry_state.residuo` con `.single()`. Oggi
+  una riga di controllo ha sempre la sua riga di dispensa: `serveControllo` torna `false` senza
+  `ultimoAcquisto`, e l'acquisto passa da `pantry_state`. Dopo la cancellazione, le righe di
+  controllo della lista aperta restano, ma la riga di dispensa non c'è più: `.single()` con zero
+  righe torna errore, e la Lista mostra «Non siamo riusciti a salvare la risposta. Riprova.» a
+  ogni tentativo. Il «sì» invece riesce: l'`update` di `ultimo_check` tocca zero righe senza
+  errore, e la riga di controllo si cancella. È coerente con «mai comprato». Vedi «Domande per
+  Andrea».
+
+### Task 4, decisioni di Andrea
+
+> **D1 = A (Andrea, 26/09).** `cancella_dispensa()` riporta a pasti normali quelli «dai pronti» di oggi e dei giorni dopo (`data >= current_date`); i pasti passati restano come sono. Conseguenza accettata: nelle settimane già confermate l'`update` non passa dal ledger degli storni, e dopo la spesa il residuo sovrastima di una porzione cruda per pasto ritoccato. Si corregge dalla Dispensa.
+
+> **D2 = A (Andrea, 26/09).** `cancella_dispensa()` azzera `shopping_list_item.residuo` nelle liste delle settimane non chiuse: `shopping_list_item.residuo` tiene una copia congelata della dispensa, e senza l'azzeramento `chiudiSpesa` la riscriverebbe in `pantry_state`. Conseguenza accettata: le confezioni della lista aperta restano quelle calcolate sul residuo di prima; gli ingredienti che il residuo copriva del tutto li aggiunge `allineaTopUp` alla prossima apertura della Lista.
+
+### Task 4, limiti noti (da portare in spec §L col Task 15)
+
+- **C3(a).** Una cottura pianificata per domani o dopo perde il suo lotto: dopo la cottura le
+  porzioni non compaiono in Dispensa finché N non si cambia dal Piano.
+- **C3(b).** Cambiare N su un pasto che aveva il lotto prima della cancellazione lo ricrea intero
+  (M4), non solo con la differenza.
+- **D1-A.** Nelle settimane già `confermata`/`chiusa`, il residuo dopo la spesa sovrastima di una
+  porzione cruda per pasto ritoccato: l'`update` non scrive il ledger (M7). Si corregge dalla
+  Dispensa.
+- **D2-A.** Le confezioni della lista aperta restano quelle calcolate sul residuo di prima: la
+  Lista può chiedere meno del necessario, e lo mostra nei numeri («in casa 0»).
+- **Piano e Lista aperti sotto il pannello non si rileggono.** Solo la Dispensa ascolta
+  `spesa:dispensa-cambiata`, come dice la spec. Con D1 il Piano mostra `Porzione pronta` su un
+  pasto che non lo è più; con D2 la Lista mostra ancora «in casa …», finché non si riaprono.
+  Toccare quel pasto dal Piano è innocuo: `aggiornaSlot` rilegge la riga (`attuale.daPronti` è
+  già `false`), quindi niente restituzione e niente lotto fantasma.
+- **C5.** Il «no» ai controlli della lista aperta fallisce dopo la cancellazione (vedi
+  l'indagine), finché non si decide la correzione.
+
+### Da fare all'applicazione della 0015
+
+La SQL di `cancella_dispensa()` **non è stata eseguita** [misurato 26/09: su questa macchina non ci
+sono `psql`, `postgres`, `supabase` CLI né `docker`]. Il controllo fatto è a mano (rapporto del
+Task 4). Chi applica la migrazione lancia queste query, e scrive qui quale prova ha fatto e il suo
+esito:
+
+```sql
+-- 1. Il fuso del database: current_date deve essere il giorno UTC dell'app (D1).
+show timezone;  -- atteso: UTC
+
+-- 2. Le policy di casa sulle quattro tabelle che la funzione tocca (M9).
+select tablename, policyname, cmd, qual
+  from pg_policies
+ where schemaname = 'public'
+   and tablename in ('pantry_state', 'porzione_pronta', 'meal_slot', 'shopping_list_item')
+ order by tablename;
+-- atteso: una riga per tabella, <tabella>_casa, cmd ALL, qual (user_id = ( SELECT casa_id() AS casa_id))
+
+-- 3. La funzione, provata come un utente vero e annullata: nessun dato cambia.
+--    <id> è l'id di un ACCOUNT DI PROVA (spec §M.4), non quello di Andrea.
+begin;
+  select set_config('request.jwt.claims', '{"sub":"<id>","role":"authenticated"}', true);
+  set local role authenticated;
+  select public.cancella_dispensa();
+  select count(*) as dispensa from pantry_state;                         -- atteso: 0
+  select count(*) as pronti from porzione_pronta;                        -- atteso: 0
+  select count(*) as dai_pronti from meal_slot
+   where da_pronti and data >= current_date;                             -- atteso: 0
+rollback;
+```
+
+La terza prova lavora sulle righe visibili a quell'utente, cioè la RLS in azione. In alternativa,
+la stessa prova dal telefono su un account di prova dopo il merge (spec §M.4).

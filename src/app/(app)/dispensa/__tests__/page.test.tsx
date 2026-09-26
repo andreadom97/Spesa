@@ -14,6 +14,7 @@ vi.mock('@/data/dispensa', () => ({
   impostaCongelato: vi.fn(),
   impostaScadenza: vi.fn(),
   aggiungiConfezione: vi.fn(),
+  EVENTO_DISPENSA_CAMBIATA: 'spesa:dispensa-cambiata',
 }));
 vi.mock('@/data/impostazioni', () => ({ leggiImpostazioni: vi.fn() }));
 vi.mock('@/data/pronti', () => ({
@@ -983,5 +984,37 @@ describe('Dispensa: il Dock e Modifica con l\'AI', () => {
       expect(screen.getByRole('textbox', { name: "Nota per l'AI" })).toHaveValue("ho finito il riso l'olio è a metà");
       expect(screen.queryByText('TOCCA PER FERMARE')).not.toBeInTheDocument();
     });
+  });
+});
+
+describe('la cancellazione dal pannello (spec fase 5 §E.2)', () => {
+  it('all\'evento spesa:dispensa-cambiata la pagina rilegge e mostra la dispensa vuota', async () => {
+    mockBase();
+    await montaCaricata();
+    expect(screen.getByRole('button', { name: 'Apri il lotto di Ragù di lenticchie' })).toBeInTheDocument();
+    expect(leggiDispensa).toHaveBeenCalledTimes(1);
+
+    // Il database dopo cancella_dispensa: nessuna riga di dispensa, nessun lotto.
+    vi.mocked(leggiDispensa).mockResolvedValue([]);
+    vi.mocked(leggiPronti).mockResolvedValue([]);
+    act(() => {
+      window.dispatchEvent(new Event('spesa:dispensa-cambiata'));
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Apri il lotto di Ragù di lenticchie' })).not.toBeInTheDocument();
+    });
+    expect(leggiDispensa).toHaveBeenCalledTimes(2);
+    expect(leggiPronti).toHaveBeenCalledTimes(2);
+  });
+
+  it('smontata la pagina, l\'evento non rilegge più', async () => {
+    mockBase();
+    monta().unmount();
+    await waitFor(() => expect(leggiDispensa).toHaveBeenCalledTimes(1));
+    act(() => {
+      window.dispatchEvent(new Event('spesa:dispensa-cambiata'));
+    });
+    expect(leggiDispensa).toHaveBeenCalledTimes(1);
   });
 });

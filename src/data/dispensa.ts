@@ -221,3 +221,28 @@ export async function aggiungiConfezione(i: {
   );
   if (error) throw error;
 }
+
+/**
+ * L'evento che la pagina Dispensa ascolta per rileggersi quando la dispensa
+ * cambia da fuori (spec fase 5 §E.2): il pannello delle Impostazioni lo
+ * pubblica sul `window` dopo una `cancellaDispensa` riuscita. Una costante
+ * sola per chi pubblica e chi ascolta.
+ */
+export const EVENTO_DISPENSA_CAMBIATA = 'spesa:dispensa-cambiata';
+
+/**
+ * «Cancella la dispensa» (spec fase 5 §E.2): la funzione SQL
+ * `cancella_dispensa()` della migrazione 0015, una transazione sola. Nessun id
+ * da passare: la casa la trova `casa_id()` nel database, quindi vale anche con
+ * la memoria di `idCasa` vecchia di un minuto. Oltre a `pantry_state` e
+ * `porzione_pronta`, riporta a normali i pasti di oggi e dopo «dai pronti», e
+ * azzera il residuo congelato delle liste non chiuse (piano fase 5, Task 4,
+ * D1 e D2).
+ *
+ * Lancia l'errore della RPC. Non pubblica EVENTO_DISPENSA_CAMBIATA: lo fa chi
+ * chiama, se riesce, così un test o un altro chiamante decide da sé.
+ */
+export async function cancellaDispensa(): Promise<void> {
+  const { error } = await client().rpc('cancella_dispensa');
+  if (error) throw error;
+}

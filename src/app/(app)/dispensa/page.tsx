@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { AreaId, Ingredient, LottoPronto } from '@/domain/types';
 import type { VoceContesto } from '@/domain/dispensa-ai';
 import { leggiIngredienti, leggiRepertorio, salvaIngrediente } from '@/data/repertorio';
-import { aggiungiConfezione, correggiResiduo, impostaCongelato, impostaScadenza, leggiDispensa } from '@/data/dispensa';
+import { EVENTO_DISPENSA_CAMBIATA, aggiungiConfezione, correggiResiduo, impostaCongelato, impostaScadenza, leggiDispensa } from '@/data/dispensa';
 import { leggiImpostazioni } from '@/data/impostazioni';
 import { correggiLotto, eliminaLotto, impostaCongelatoLotto, leggiPronti } from '@/data/pronti';
 import { leggiSettimanaCorrente } from '@/data/settimana';
@@ -200,12 +200,20 @@ export default function Dispensa() {
    * server senza dire alla pagina cosa ha applicato, quindi si rilegge tutto.
    * I dati di prima restano in pagina finché arrivano i nuovi.
    */
-  function ricarica() {
+  const ricarica = useCallback(() => {
     const mia = ++generazione.current;
     leggiTutto()
       .then((d) => { if (generazione.current === mia) setDati(d); })
       .catch((e) => console.error('dispensa: rilettura fallita.', e));
-  }
+  }, []);
+
+  // Cancella la dispensa, dal pannello delle Impostazioni aperto sopra questa
+  // pagina (spec fase 5 §E.2): si rilegge in silenzio, come dopo la nota AI.
+  // I dati di prima restano a schermo finché arrivano i nuovi.
+  useEffect(() => {
+    window.addEventListener(EVENTO_DISPENSA_CAMBIATA, ricarica);
+    return () => window.removeEventListener(EVENTO_DISPENSA_CAMBIATA, ricarica);
+  }, [ricarica]);
 
   function cambiaVoce(id: string, patch: Partial<VoceDispensa>) {
     setDati((d) => d && { ...d, voci: d.voci.map((v) => (v.ingrediente.id === id ? { ...v, ...patch } : v)) });
