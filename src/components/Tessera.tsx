@@ -2,6 +2,8 @@
 
 import type { AreaId, UnitaBase } from '@/domain/types';
 import { coloreArea } from '@/domain/aree';
+import { trovaIcona } from '@/domain/icone-ingredienti';
+import { IconaIngrediente, alone } from './IconaIngrediente';
 
 interface Props {
   nome: string;
@@ -23,6 +25,8 @@ const INK = '#14163A';
 const MUT = '#8A8A96';
 const OFF_INK = 'rgba(20,22,58,0.34)';
 const OFF_MUT = 'rgba(20,22,58,0.24)';
+/** Il nome spento in colore opaco: con l'alone sotto, un testo trasparente lascerebbe trasparire l'alone (delta 26/09). Su #F7F7F8 vale quanto rgba(20,22,58,0.34). */
+const OFF_NOME = '#ABACB8';
 
 /** Stessa conversione usata in TesseraIngrediente ed in Piatto.dc.html — ogni file che ne ha bisogno la ridefinisce, per scelta del progetto. */
 function rgba(hex: string, alpha: number): string {
@@ -69,7 +73,7 @@ export function Tessera({
     background = 'rgba(20,22,58,0.035)';
     border = '1px solid transparent';
     boxShadow = undefined;
-    nameColor = OFF_INK; qtyColor = OFF_MUT;
+    nameColor = OFF_NOME; qtyColor = OFF_MUT;
     pillBg = 'rgba(20,22,58,0.06)'; pillTxt = OFF_INK;
   } else if (protagonista) {
     background = colore;
@@ -93,6 +97,10 @@ export function Tessera({
   const subLabel = `serve ${Math.round(fabbisogno)} ${unita} · in casa ${Math.round(residuo)} ${unita}`;
   const subColor = protagonista ? rgba(INK, 0.55) : '#A6A6B2';
 
+  const chiave = trovaIcona(nome);
+  const tonoIcona = !acceso ? 'spento' : protagonista ? 'hero' : 'area';
+  const coloreAlone = !acceso ? '#F7F7F8' : protagonista ? colore : '#FFFFFF';
+
   return (
     <button
       type="button"
@@ -111,9 +119,12 @@ export function Tessera({
         border,
         boxShadow,
         textAlign: 'left',
+        position: 'relative',
+        overflow: 'hidden',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 'none' }}>
+      {chiave && <IconaIngrediente chiave={chiave} area={area} tono={tonoIcona} taglia={protagonista ? 84 : 52} />}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 'none', position: 'relative' }}>
         <span
           style={{
             fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 10.5, letterSpacing: '0.07em',
@@ -128,13 +139,14 @@ export function Tessera({
           {qtyLabel}
         </span>
       </div>
-      <div style={{ minWidth: 0, marginTop: 10 }}>
+      <div style={{ minWidth: 0, marginTop: 10, position: 'relative' }}>
         <div
           style={{
             fontSize: protagonista ? 25 : 17, fontWeight: 700, letterSpacing: '-0.032em', lineHeight: 1.1,
             color: nameColor,
             textDecoration: acceso ? 'none' : 'line-through',
             textDecorationThickness: acceso ? undefined : '1.6px',
+            textShadow: chiave ? alone(coloreAlone, protagonista ? 3 : 2) : undefined,
           }}
         >
           {nome}
