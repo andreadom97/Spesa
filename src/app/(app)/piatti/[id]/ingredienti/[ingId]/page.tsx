@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import type { AreaId, ClasseResiduo, Ingredient, UnitaBase } from '@/domain/types';
-import { salvaIngrediente, leggiIngredienti, eliminaIngrediente, IngredienteInUsoError, haAcquistiRegistrati } from '@/data/repertorio';
+import { salvaIngrediente, leggiIngredienti, eliminaIngrediente, IngredienteInUsoError, UnitaInUsoError, haAcquistiRegistrati } from '@/data/repertorio';
 import { leggiImpostazioni } from '@/data/impostazioni';
 import { AREE, coloreArea, nomeArea } from '@/domain/aree';
 import { GIORNI_CONTROLLO_DEFAULT, ogniCadenza, type GiorniControllo } from '@/domain/pantry';
@@ -364,8 +364,14 @@ export default function IngredienteEditor() {
       if (nuovo && !tornaAImpostazioni) segnalaIngredienteCreato(id, idSalvato);
       router.push(ritorno());
     } catch (errore) {
-      console.error('ingrediente: salvataggio fallito.', errore);
-      setErroreSalva('Non siamo riusciti a salvare l’ingrediente. Riprova.');
+      // Unità cambiata su un ingrediente in uso (anche via INTERO, che la forza a PZ):
+      // riprovare non serve, serve sapere cosa togliere. La frase viene da motivoBloccoUnita.
+      if (errore instanceof UnitaInUsoError) {
+        setErroreSalva(errore.message);
+      } else {
+        console.error('ingrediente: salvataggio fallito.', errore);
+        setErroreSalva('Non siamo riusciti a salvare l’ingrediente. Riprova.');
+      }
       setSalvando(false);
     }
   }

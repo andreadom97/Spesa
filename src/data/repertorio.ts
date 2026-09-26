@@ -1,4 +1,5 @@
-import type { Dish, Ingredient } from '@/domain/types';
+import type { Dish, Ingredient, UnitaBase } from '@/domain/types';
+import { motivoBloccoUnita } from '@/domain/unita';
 import { client } from './supabase';
 import { idCasa } from './casa';
 import { aComponenti, aDishIngredient, aIngrediente } from './mappers';
@@ -168,12 +169,17 @@ export async function eliminaPiatto(id: string): Promise<void> {
  * così com'è, null compreso (per cancellarlo); chi non lo passa — la scheda
  * ingrediente, l'import — lascia in piedi l'ultimo codice scansionato invece
  * di azzerarlo a ogni modifica del formato o del prezzo.
+ *
+ * Su un ingrediente esistente l'unità base cambia solo se niente dipende da
+ * quella vecchia: altrimenti `UnitaInUsoError`, prima di scrivere. Vedi
+ * `motivoBloccoUnita` in unita.ts.
  */
 export async function salvaIngrediente(
   ing: Omit<Ingredient, 'id' | 'ean'> & { id?: string; ean?: string | null },
 ): Promise<string> {
   const sb = client();
   const userId = await idCasa();
+  if (ing.id) await verificaCambioUnita(ing.id, ing.unitaBase, userId);
   const { data, error } = await sb
     .from('ingredient')
     .upsert({
@@ -204,6 +210,56 @@ export async function salvaIngrediente(
   );
   if (ePantry) throw ePantry;
   return String(data.id);
+}
+
+/**
+ * L'unità base di un ingrediente in uso non si cambia: le righe dei piatti e
+ * il residuo in dispensa sono scritti in quella vecchia (difetto del 26/09:
+ * cambiarla faceva fallire la generazione della lista). Il messaggio è già
+ * la frase da mostrare, come per `IngredienteInUsoError`.
+ */
+export class UnitaInUsoError extends Error {}
+
+/**
+ * Lancia `UnitaInUsoError` se l'ingrediente `id` passerebbe a `nuova` con
+ * piatti attivi o residuo che dipendono dall'unità attuale. A unità
+ * invariata legge una riga sola. Controllo e scrittura non sono atomici: la
+ * finestra è quella di una stessa casa che modifica lo stesso ingrediente
+ * mentre lo aggiunge a un piatto, accettata.
+ */
+async function verificaCambioUnita(id: string, nuova: UnitaBase, userId: string): Promise<void> {
+  const sb = client();
+  const { data: attuale, error } = await sb
+    .from('ingredient')
+    .select('unita_base')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) throw error;
+  // Nessuna riga: l'upsert lo creerà, non c'è niente che dipenda da lui.
+  if (!attuale || attuale.unita_base === nuova) return;
+
+  const [righe, dispensa] = await Promise.all([
+    // Solo i piatti attivi, gli stessi di leggiRepertorio: quelli eliminati
+    // (soft delete) non li legge più nessuno.
+    sb.from('dish_ingredient')
+      .select('dish!inner(nome)')
+      .eq('ingredient_id', id)
+      .eq('dish.attivo', true)
+      // Molti-a-uno: PostgREST rende `dish` come oggetto, non come array.
+      .returns<Array<{ dish: { nome: unknown } | null }>>(),
+    sb.from('pantry_state').select('residuo').eq('ingredient_id', id).maybeSingle(),
+  ]);
+  if (righe.error) throw righe.error;
+  if (dispensa.error) throw dispensa.error;
+
+  const motivo = motivoBloccoUnita({
+    da: attuale.unita_base as UnitaBase,
+    a: nuova,
+    piatti: (righe.data ?? []).map((r) => String(r.dish?.nome ?? '')),
+    residuo: Number(dispensa.data?.residuo ?? 0),
+  });
+  if (motivo) throw new UnitaInUsoError(motivo);
 }
 
 /**
