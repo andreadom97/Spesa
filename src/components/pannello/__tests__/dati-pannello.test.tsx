@@ -36,6 +36,7 @@ import { statoCasa, dimenticaIdCasa } from '@/data/casa';
 import { leggiRisparmioTotale } from '@/data/risparmio';
 import { leggiUtente } from '@/data/utente';
 import { DatiPannelloProvider, useDatiPannello } from '../DatiPannello';
+import { EVENTO_IMPOSTAZIONI_CAMBIATE } from '../eventi';
 
 const ASSENZE = [false, false, false, false, false, false, false];
 const SLOT_COLAZIONE: MealSlotDef = { id: 'sd-1', nome: 'Colazione', posizione: 0, assenzeAbituali: ASSENZE };
@@ -92,6 +93,7 @@ function Consumatore() {
       >
         rinomina
       </button>
+      <button type="button" onClick={async () => setErrore(!(await salvaPasti(slotDefs.slice(0, -1))))}>togli l&apos;ultimo</button>
       <button type="button" onClick={() => void ricaricaCasa({ ruolo: 'solo', email: [], id: [] })}>rileggi la casa</button>
       <button type="button" onClick={() => segnaCancellata(new Date(2026, 8, 25, 10, 14))}>segna la cancellazione</button>
       <p>{`Cancellata: ${cancellataIl ? 'sì' : 'no'}`}</p>
@@ -151,6 +153,8 @@ describe('DatiPannello: lettura (spec §B.5, §C.11)', () => {
     expect(vi.mocked(salvaSlotDefs).mock.calls[0][0].map((p) => p.id)).toEqual([
       'default-colazione', 'default-spuntino', 'default-pranzo', 'default-cena',
     ]);
+    // La semina tiene la semantica di sempre (review finale I4): niente soloTolti.
+    expect(vi.mocked(salvaSlotDefs).mock.calls[0]).toHaveLength(1);
   });
 
   it('se statoCasa fallisce la casa è null e il resto è pronto', async () => {
@@ -546,5 +550,161 @@ describe('DatiPannello: pasti e casa (spec §C.1, §C.2, §L)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'rileggi la casa' }));
     expect(await screen.findByText('Casa: solo')).toBeInTheDocument();
     errore.mockRestore();
+  });
+});
+
+describe('DatiPannello: la casa condivisa e la pagina sotto (review finale I2, I4, M1)', () => {
+  /** Conta gli EVENTO_IMPOSTAZIONI_CAMBIATE pubblicati sul window finché il test gira. */
+  function contaEventi() {
+    const ascolta = vi.fn();
+    window.addEventListener(EVENTO_IMPOSTAZIONI_CAMBIATE, ascolta);
+    return { ascolta, smetti: () => window.removeEventListener(EVENTO_IMPOSTAZIONI_CAMBIATE, ascolta) };
+  }
+
+  it('la costante è quella che Lista e Piano ascoltano', () => {
+    expect(EVENTO_IMPOSTAZIONI_CAMBIATE).toBe('spesa:impostazioni-cambiate');
+  });
+
+  it('un salvataggio delle impostazioni riuscito pubblica l\'evento, una volta, dopo la rilettura', async () => {
+    mockDati({ porzioni: 1 });
+    render(albero());
+    await screen.findByText('Porzioni: 1');
+    const { ascolta, smetti } = contaEventi();
+    vi.mocked(leggiImpostazioni).mockResolvedValue(impostazioni(2));
+    piu();
+    await waitFor(() => expect(ascolta).toHaveBeenCalledTimes(1));
+    expect(leggiImpostazioni).toHaveBeenCalledTimes(2);
+    smetti();
+  });
+
+  it('un salvataggio delle impostazioni fallito (rollback) non pubblica l\'evento', async () => {
+    mockDati({ porzioni: 1 });
+    render(albero());
+    await screen.findByText('Porzioni: 1');
+    const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { ascolta, smetti } = contaEventi();
+    vi.mocked(salvaImpostazioni).mockRejectedValueOnce(new Error('rete'));
+    piu();
+    expect(await screen.findByText('Non siamo riusciti a salvare. Riprova.')).toBeInTheDocument();
+    await act(async () => {});
+    expect(ascolta).not.toHaveBeenCalled();
+    smetti();
+    errore.mockRestore();
+  });
+
+  it('due gesti veloci: la richiesta superata non pubblica, l\'ultima sì', async () => {
+    mockDati({ porzioni: 1 });
+    render(albero());
+    await screen.findByText('Porzioni: 1');
+    const { ascolta, smetti } = contaEventi();
+    const riletture: Array<(i: Impostazioni) => void> = [];
+    vi.mocked(leggiImpostazioni).mockImplementation(() => new Promise((resolve) => { riletture.push(resolve); }));
+    piu();
+    await waitFor(() => expect(salvaImpostazioni).toHaveBeenCalledTimes(1));
+    piu();
+    await waitFor(() => expect(riletture).toHaveLength(2));
+    riletture[0](impostazioni(2));
+    await act(async () => {});
+    expect(ascolta).not.toHaveBeenCalled();
+    riletture[1](impostazioni(3));
+    await waitFor(() => expect(ascolta).toHaveBeenCalledTimes(1));
+    smetti();
+  });
+
+  it('un rifiuto RLS non pubblica l\'evento', async () => {
+    mockDati({ porzioni: 1 });
+    render(albero());
+    await screen.findByText('Porzioni: 1');
+    const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { ascolta, smetti } = contaEventi();
+    vi.mocked(salvaImpostazioni).mockRejectedValueOnce({ code: '42501', message: 'new row violates row-level security policy for table "settings"' });
+    piu();
+    expect(await screen.findByText('La casa è cambiata: dati ricaricati. Riprova.')).toBeInTheDocument();
+    expect(ascolta).not.toHaveBeenCalled();
+    smetti();
+    errore.mockRestore();
+  });
+
+  it('i pasti salvati pubblicano l\'evento; un salvataggio dei pasti fallito no', async () => {
+    mockDati();
+    render(albero());
+    await screen.findByText('Porzioni: 1');
+    const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { ascolta, smetti } = contaEventi();
+    fireEvent.click(screen.getByRole('button', { name: 'rinomina' }));
+    await waitFor(() => expect(ascolta).toHaveBeenCalledTimes(1));
+    vi.mocked(salvaSlotDefs).mockRejectedValueOnce(new Error('rete'));
+    fireEvent.click(screen.getByRole('button', { name: 'rinomina' }));
+    expect(await screen.findByText('Non siamo riusciti a salvare. Riprova.')).toBeInTheDocument();
+    await act(async () => {});
+    expect(ascolta).toHaveBeenCalledTimes(1);
+    smetti();
+    errore.mockRestore();
+  });
+
+  it('salvaPasti chiede di cancellare solo i pasti tolti a schermo, non quelli che il client non conosce', async () => {
+    const MERENDA: MealSlotDef = { id: 'sd-4', nome: 'Merenda', posizione: 3, assenzeAbituali: ASSENZE };
+    mockDati({ pasti: [SLOT_COLAZIONE, SLOT_PRANZO, SLOT_CENA, MERENDA] });
+    render(albero());
+    await screen.findByText('Pasti: Colazione, Pranzo, Cena, Merenda');
+
+    fireEvent.click(screen.getByRole('button', { name: 'rinomina' }));
+    await waitFor(() => expect(salvaSlotDefs).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(salvaSlotDefs).mock.calls[0][1]).toEqual({ soloTolti: [] });
+
+    fireEvent.click(screen.getByRole('button', { name: 'togli l\'ultimo' }));
+    await waitFor(() => expect(salvaSlotDefs).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(salvaSlotDefs).mock.calls[1][0].map((p) => p.id)).toEqual(['sd-1', 'sd-2', 'sd-3']);
+    expect(vi.mocked(salvaSlotDefs).mock.calls[1][1]).toEqual({ soloTolti: ['sd-4'] });
+  });
+
+  it('un pasto tolto da una scrittura fallita mentre la successiva era in fila lo toglie la successiva', async () => {
+    const MERENDA: MealSlotDef = { id: 'sd-4', nome: 'Merenda', posizione: 3, assenzeAbituali: ASSENZE };
+    mockDati({ pasti: [SLOT_COLAZIONE, SLOT_PRANZO, SLOT_CENA, MERENDA] });
+    render(albero());
+    await screen.findByText('Pasti: Colazione, Pranzo, Cena, Merenda');
+    const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+    let rifiuta: (e: Error) => void = () => {};
+    vi.mocked(salvaSlotDefs).mockReturnValueOnce(new Promise<void>((_, r) => { rifiuta = r; }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'togli l\'ultimo' }));
+    await waitFor(() => expect(salvaSlotDefs).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole('button', { name: 'rinomina' }));
+    rifiuta(new Error('rete'));
+    await waitFor(() => expect(salvaSlotDefs).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(salvaSlotDefs).mock.calls[1][0].map((p) => p.id)).toEqual(['sd-1', 'sd-2', 'sd-3']);
+    expect(vi.mocked(salvaSlotDefs).mock.calls[1][1]).toEqual({ soloTolti: ['sd-4'] });
+    errore.mockRestore();
+  });
+
+  it('una rilettura silenziosa partita prima di una scrittura non la copre coi valori di prima', async () => {
+    mockDati({ porzioni: 1 });
+    const { rerender } = render(albero());
+    await screen.findByText('Porzioni: 1');
+
+    // La riapertura rilegge in silenzio; la sua lettura resta in volo.
+    let rispondiRiapertura: (i: Impostazioni) => void = () => {};
+    vi.mocked(leggiImpostazioni).mockImplementationOnce(() => new Promise((r) => { rispondiRiapertura = r; }));
+    pannello.aperto = false;
+    rerender(albero());
+    pannello.aperto = true;
+    rerender(albero());
+    await waitFor(() => expect(leggiImpostazioni).toHaveBeenCalledTimes(2));
+
+    // Intanto l'utente salva 2: scrittura e rilettura arrivano.
+    vi.mocked(leggiImpostazioni).mockResolvedValue(impostazioni(2));
+    piu();
+    await waitFor(() => expect(leggiImpostazioni).toHaveBeenCalledTimes(3));
+    expect(await screen.findByText('Porzioni: 2')).toBeInTheDocument();
+
+    // La lettura della riapertura arriva adesso, col valore di prima della scrittura.
+    rispondiRiapertura(impostazioni(1));
+    await act(async () => {});
+    expect(screen.getByText('Porzioni: 2')).toBeInTheDocument();
+
+    // E il gesto dopo riparte da 2, non riscrive la riga coi valori vecchi.
+    piu();
+    await waitFor(() => expect(salvaImpostazioni).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(salvaImpostazioni).mock.calls[1][0].moltiplicatorePorzioni).toBe(3);
   });
 });

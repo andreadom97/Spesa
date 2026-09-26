@@ -41,7 +41,8 @@ export function testoRimuoviPasto(n: number): string {
 /**
  * Gestione dei pasti (§C.2, frame 06–07): nome, ordine, aggiunta e rimozione,
  * da MIN_PASTI a MAX_PASTI. Ogni gesto salva l'insieme intero con `salvaPasti`
- * (che riscrive con `salvaSlotDefs`). Togliere un pasto cancella a cascata i
+ * (che riscrive con `salvaSlotDefs`, cancellando solo i pasti tolti a schermo:
+ * review finale I4). Togliere un pasto cancella a cascata i
  * suoi piatti e le sue righe del piano (0001_schema.sql): con piatti chiede il
  * dialogo, senza si toglie al tocco (decisione 12).
  */

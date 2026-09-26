@@ -56,7 +56,7 @@ describe('Pasti a casa', () => {
       { ...COLAZIONE, assenzeAbituali: [true, false, false, false, false, false, false] },
       PRANZO,
       CENA,
-    ]));
+    ], { soloTolti: [] }));
     expect(await screen.findByLabelText('Lunedì Colazione: di base fuori casa, tocca per mettere a casa')).toHaveAttribute('aria-pressed', 'false');
   });
 

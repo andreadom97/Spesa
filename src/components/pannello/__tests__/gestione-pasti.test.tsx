@@ -52,11 +52,12 @@ describe('Gestione dei pasti', () => {
     fireEvent.click(screen.getByLabelText('Rimuovi Spuntino'));
     await waitFor(() => expect(screen.queryByDisplayValue('Spuntino')).not.toBeInTheDocument());
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    // Dal pannello si cancella solo il pasto tolto (review finale I4).
     expect(salvaSlotDefs).toHaveBeenCalledWith([
       { ...COLAZIONE, posizione: 0 },
       { ...PRANZO, posizione: 1 },
       { ...CENA, posizione: 2 },
-    ]);
+    ], { soloTolti: ['sd-4'] });
   });
 
   it('un pasto con piatti chiede il dialogo; ANNULLA non tocca niente', async () => {
@@ -290,7 +291,7 @@ describe('Gestione dei pasti', () => {
       { ...PRANZO, posizione: 0 },
       { ...COLAZIONE, posizione: 1 },
       { ...CENA, posizione: 2 },
-    ]));
+    ], { soloTolti: [] }));
   });
 
   // Migra «rinominare un pasto salva il nuovo nome al blur, non a ogni carattere digitato».
@@ -300,7 +301,7 @@ describe('Gestione dei pasti', () => {
     fireEvent.change(campo, { target: { value: 'Brunch' } });
     expect(salvaSlotDefs).not.toHaveBeenCalled();
     fireEvent.blur(campo);
-    await waitFor(() => expect(salvaSlotDefs).toHaveBeenCalledWith([{ ...COLAZIONE, nome: 'Brunch' }, PRANZO, CENA]));
+    await waitFor(() => expect(salvaSlotDefs).toHaveBeenCalledWith([{ ...COLAZIONE, nome: 'Brunch' }, PRANZO, CENA], { soloTolti: [] }));
   });
 
   it('un nome vuoto diventa Pasto', async () => {
@@ -308,7 +309,7 @@ describe('Gestione dei pasti', () => {
     const campo = await screen.findByDisplayValue('Colazione');
     fireEvent.change(campo, { target: { value: '   ' } });
     fireEvent.blur(campo);
-    await waitFor(() => expect(salvaSlotDefs).toHaveBeenCalledWith([{ ...COLAZIONE, nome: 'Pasto' }, PRANZO, CENA]));
+    await waitFor(() => expect(salvaSlotDefs).toHaveBeenCalledWith([{ ...COLAZIONE, nome: 'Pasto' }, PRANZO, CENA], { soloTolti: [] }));
   });
 
   it('mentre salva la riga è a 0,5', async () => {

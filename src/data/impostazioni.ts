@@ -142,8 +142,17 @@ export async function leggiSlotDefs(): Promise<MealSlotDef[]> {
  * su quei soli pasti è voluta, un piatto appartiene a un pasto — e si fa
  * upsert delle altre. **Non "semplificare" tornando a un delete totale**: a
  * ogni salvataggio delle Impostazioni distruggerebbe il repertorio.
+ *
+ * **`soloTolti`** (review finale della fase 5, I4): senza, si cancella ogni
+ * pasto del server che non è nell'elenco — la semantica di sempre, che serve
+ * alla semina del primo avvio e di `leggiNucleo`. Con, si cancellano solo
+ * quegli id (e solo se non sono tornati nell'elenco), senza leggere il
+ * server: è la strada del pannello, dove l'elenco è quello che il client ha
+ * a schermo. In una casa condivisa l'altro membro può aver aggiunto un pasto
+ * dopo che il pannello si è aperto: con la semantica di sempre quel pasto
+ * sparirebbe, e a cascata i suoi piatti e le sue righe del piano.
  */
-export async function salvaSlotDefs(defs: MealSlotDef[]): Promise<void> {
+export async function salvaSlotDefs(defs: MealSlotDef[], opzioni: { soloTolti?: readonly string[] } = {}): Promise<void> {
   // Il vincolo sul numero di pasti si controlla per primo e prima di qualunque scrittura:
   // rifiutare a metà lavoro (dopo un delete già eseguito) lascerebbe i dati
   // in uno stato peggiore di quello di partenza.
@@ -154,15 +163,19 @@ export async function salvaSlotDefs(defs: MealSlotDef[]): Promise<void> {
   const userId = await idCasa();
 
   const idAttuali = new Set(defs.map((d) => d.id));
-  const { data: esistenti, error: eSel } = await sb
-    .from('meal_slot_def')
-    .select('id')
-    .eq('user_id', userId);
-  if (eSel) throw eSel;
+  let candidati: string[];
+  if (opzioni.soloTolti) {
+    candidati = [...opzioni.soloTolti];
+  } else {
+    const { data: esistenti, error: eSel } = await sb
+      .from('meal_slot_def')
+      .select('id')
+      .eq('user_id', userId);
+    if (eSel) throw eSel;
+    candidati = (esistenti ?? []).map((r) => String(r.id));
+  }
 
-  const daRimuovere = (esistenti ?? [])
-    .map((r) => String(r.id))
-    .filter((id) => !idAttuali.has(id));
+  const daRimuovere = candidati.filter((id) => !idAttuali.has(id));
   if (daRimuovere.length > 0) {
     const { error: eDel } = await sb
       .from('meal_slot_def')

@@ -89,6 +89,75 @@ describe('salvaSlotDefs — quanti pasti si possono avere', () => {
   });
 });
 
+/**
+ * Un client finto che ricorda le cancellazioni: `select` risponde con le
+ * righe della casa sul server (`esistenti`), `delete().in(...)` registra gli
+ * id cancellati.
+ */
+function creaClientConServer(esistenti: string[]) {
+  const cancellati: string[][] = [];
+  const letture: string[] = [];
+  const upsert: unknown[] = [];
+  function from(tabella: string) {
+    let cancella = false;
+    const proxy: Record<string, unknown> = {
+      select: () => { letture.push(tabella); return proxy; },
+      eq: () => proxy,
+      in: (_colonna: string, ids: string[]) => { if (cancella) cancellati.push(ids); return proxy; },
+      delete: () => { cancella = true; return proxy; },
+      upsert: (payload: unknown) => { upsert.push(payload); return proxy; },
+      then(onFulfilled: (v: unknown) => unknown) {
+        return Promise.resolve({ data: esistenti.map((id) => ({ id })), error: null }).then(onFulfilled);
+      },
+    };
+    return proxy;
+  }
+  return { sb: { from }, cancellati, letture, upsert };
+}
+
+describe('salvaSlotDefs — cosa si cancella (review finale I4)', () => {
+  beforeEach(() => vi.mocked(client).mockReset());
+
+  it('senza soloTolti cancella ogni pasto del server che non è nell\'elenco, come prima', async () => {
+    const finto = creaClientConServer(['p-0', 'p-1', 'p-2', 'dell-altro']);
+    vi.mocked(client).mockReturnValue(finto.sb as never);
+    await salvaSlotDefs(pasti(3));
+    expect(finto.cancellati).toEqual([['dell-altro']]);
+  });
+
+  it('con soloTolti un pasto del server che il client non conosce sopravvive', async () => {
+    const finto = creaClientConServer(['p-0', 'p-1', 'p-2', 'dell-altro']);
+    vi.mocked(client).mockReturnValue(finto.sb as never);
+    await salvaSlotDefs(pasti(3), { soloTolti: [] });
+    expect(finto.cancellati).toEqual([]);
+    expect(finto.letture).toEqual([]);
+    expect(finto.upsert).toHaveLength(1);
+  });
+
+  it('con soloTolti si cancella solo il pasto tolto esplicitamente', async () => {
+    const finto = creaClientConServer(['p-0', 'p-1', 'p-2', 'p-3', 'dell-altro']);
+    vi.mocked(client).mockReturnValue(finto.sb as never);
+    await salvaSlotDefs(pasti(3), { soloTolti: ['p-3'] });
+    expect(finto.cancellati).toEqual([['p-3']]);
+  });
+
+  it('con soloTolti un id che è ancora nell\'elenco non si cancella', async () => {
+    const finto = creaClientConServer(['p-0', 'p-1', 'p-2']);
+    vi.mocked(client).mockReturnValue(finto.sb as never);
+    await salvaSlotDefs(pasti(3), { soloTolti: ['p-1'] });
+    expect(finto.cancellati).toEqual([]);
+  });
+
+  it('con soloTolti il vincolo da 3 a 6 si controlla comunque per primo', async () => {
+    const finto = creaClientConServer(['p-0', 'p-1', 'p-2', 'p-3']);
+    vi.mocked(client).mockReturnValue(finto.sb as never);
+    await expect(salvaSlotDefs(pasti(2), { soloTolti: ['p-2', 'p-3'] })).rejects.toThrow(/da 3 a 6/);
+    await expect(salvaSlotDefs(pasti(7), { soloTolti: [] })).rejects.toThrow(/da 3 a 6/);
+    expect(finto.cancellati).toEqual([]);
+    expect(finto.upsert).toEqual([]);
+  });
+});
+
 describe('salvaImpostazioni — l\'origine del ciclo', () => {
   beforeEach(() => vi.mocked(client).mockReset());
 

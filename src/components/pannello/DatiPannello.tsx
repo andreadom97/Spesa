@@ -11,6 +11,7 @@ import { leggiRisparmioTotale } from '@/data/risparmio';
 import { riassumiEvitato, type RiassuntoEvitato } from '@/domain/risparmio';
 import { leggiUtente } from '@/data/utente';
 import { usePannello } from './PannelloProvider';
+import { EVENTO_IMPOSTAZIONI_CAMBIATE } from './eventi';
 import { Carico, ErroreCaricamento, TESTO_ERRORE_IMPOSTAZIONI } from './pezzi';
 
 export interface DatiPannello {
@@ -57,6 +58,11 @@ async function leggiNucleo(): Promise<Pick<DatiPannello, 'impostazioni' | 'slotD
   return { impostazioni, slotDefs };
 }
 
+/** Lista e Piano sotto il pannello si rileggono (review finale I2): vedi `eventi.ts`. */
+function annunciaCambio(): void {
+  window.dispatchEvent(new Event(EVENTO_IMPOSTAZIONI_CAMBIATE));
+}
+
 /** La casa e il risparmio a parte: se falliscono, il resto del pannello resta usabile. */
 async function leggiTutto(): Promise<DatiPannello> {
   const [nucleo, casa, risparmio, utente] = await Promise.all([
@@ -92,7 +98,12 @@ async function leggiTutto(): Promise<DatiPannello> {
  *   la ricarica fallisce, il pannello va in errore di caricamento (con `RIPROVA`), senza
  *   `casaCambiata`. La scrittura non si riprova da sola: era un gesto su dati che l'utente deve
  *   prima rivedere;
- * - **le letture aspettano la fila**: una riapertura rilegge dopo le scritture in volo.
+ * - **le letture aspettano la fila**: una riapertura rilegge dopo le scritture in volo, e una
+ *   lettura che vede partire una scrittura mentre è in volo si scarta (review finale M1);
+ * - **dal pannello si cancellano solo i pasti tolti** (`soloTolti`, review finale I4): in una
+ *   casa condivisa un pasto aggiunto dall'altro membro non si porta via i suoi piatti;
+ * - **la pagina sotto si rilegge**: una scrittura riuscita e ultima pubblica
+ *   `EVENTO_IMPOSTAZIONI_CAMBIATE` (review finale I2), che Lista e Piano ascoltano.
  *
  * `salvaImpostazioni` e `salvaPasti` tornano `false` solo quando la riga deve mostrare
  * `Non siamo riusciti a salvare. Riprova.`; una richiesta superata o un rifiuto RLS tornano
@@ -127,6 +138,9 @@ export function DatiPannelloProvider({ children }: { children: ReactNode }) {
   const coda = useRef<Promise<void>>(Promise.resolve());
   // Ogni lettura ha un numero: una lettura superata non tocca lo schermo.
   const lettura = useRef(0);
+  // Quante scritture sono partite. Una lettura che ne vede partire una mentre è in volo descrive
+  // i dati di prima di quella scrittura, e si scarta (review finale M1).
+  const scritture = useRef(0);
 
   const metti = useCallback((d: DatiPannello) => {
     dati.current = d;
@@ -140,15 +154,19 @@ export function DatiPannelloProvider({ children }: { children: ReactNode }) {
   /**
    * Legge tutto. Prima aspetta la fila delle scritture: una riapertura con una scrittura in volo
    * rileggerebbe il valore di prima, e la sua lettura, più recente, lo rimetterebbe a schermo.
-   * Dice com'è andata: `superata` se nel frattempo è partita una lettura più recente.
+   * Dice com'è andata: `superata` se nel frattempo è partita una lettura più recente, o una
+   * scrittura. La fila da sola non basta: una scrittura partita dopo l'attesa della fila corre
+   * insieme alla lettura, che può tornare dopo coi valori di prima; messi a schermo e presi come
+   * confermati, il gesto dopo riscriverebbe la riga intera con quei valori (review finale M1).
    */
   const carica = useCallback(async (silenziosa: boolean): Promise<'riuscita' | 'fallita' | 'superata'> => {
     const n = ++lettura.current;
+    const scrittureAllaPartenza = scritture.current;
     if (!silenziosa) setStato({ stato: 'carico' });
     try {
       await coda.current;
       const letti = await leggiTutto();
-      if (n !== lettura.current) return 'superata';
+      if (n !== lettura.current || scrittureAllaPartenza !== scritture.current) return 'superata';
       impostazioniSalvate.current = letti.impostazioni;
       pastiSalvati.current = letti.slotDefs;
       metti(letti);
@@ -191,6 +209,7 @@ export function DatiPannelloProvider({ children }: { children: ReactNode }) {
     const attuali = dati.current;
     if (!attuali) return false;
     setCasaCambiata(false);
+    scritture.current += 1;
     const n = ++richiestaImpostazioni.current;
     const eUltima = () => n === richiestaImpostazioni.current;
     const nuove = { ...attuali.impostazioni, ...parziale };
@@ -204,6 +223,7 @@ export function DatiPannelloProvider({ children }: { children: ReactNode }) {
       if (!eUltima()) return true;
       impostazioniSalvate.current = rilette;
       aggiorna((d) => ({ ...d, impostazioni: rilette }));
+      annunciaCambio();
       return true;
     } catch (errore) {
       console.error('impostazioni: salvataggio delle impostazioni fallito.', errore);
@@ -235,14 +255,25 @@ export function DatiPannelloProvider({ children }: { children: ReactNode }) {
   const salvaPasti = useCallback(async (nuovi: MealSlotDef[]): Promise<boolean> => {
     if (!dati.current) return false;
     setCasaCambiata(false);
+    scritture.current += 1;
     const n = ++richiestaPasti.current;
     const eUltima = () => n === richiestaPasti.current;
+    // Si cancellano solo i pasti che il client conosceva e nel nuovo elenco non ci sono più: un
+    // pasto che l'altro membro della casa ha aggiunto dopo la lettura non è né a schermo né fra
+    // i confermati, e resta, coi suoi piatti (review finale I4). Lo schermo, perché un pasto
+    // aggiunto e tolto prima che la sua scrittura arrivi va tolto lo stesso (la fila lo toglie
+    // dopo averlo scritto); l'ultimo confermato, perché un pasto tolto da una scrittura fallita
+    // mentre questa era già in fila è ancora sul server, e va tolto da questa.
+    const idNuovi = new Set(nuovi.map((p) => p.id));
+    const conosciuti = new Set([...dati.current.slotDefs, ...pastiSalvati.current].map((p) => p.id));
+    const soloTolti = [...conosciuti].filter((id) => !idNuovi.has(id));
     aggiorna((d) => ({ ...d, slotDefs: nuovi }));
-    const scrittura = coda.current.then(() => salvaSlotDefs(nuovi));
+    const scrittura = coda.current.then(() => salvaSlotDefs(nuovi, { soloTolti }));
     coda.current = scrittura.then(() => undefined, () => undefined);
     try {
       await scrittura;
       pastiSalvati.current = nuovi;
+      if (eUltima()) annunciaCambio();
       return true;
     } catch (errore) {
       console.error('impostazioni: salvataggio dei pasti fallito.', errore);
