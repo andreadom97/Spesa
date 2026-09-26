@@ -822,6 +822,38 @@ describe('Piatto (editor): un modo solo, SALVA nel Dock ed ELIMINA (spec fase 7 
     expect(push).not.toHaveBeenCalled();
   });
 
+  it('il dialogo di eliminazione sta al livello 1 (z 50): sotto non c’è un altro foglio (review finale, M7)', async () => {
+    paramsId = 'd-1';
+    vi.mocked(leggiRepertorio).mockResolvedValue([PIATTO_ESISTENTE]);
+    rendi();
+    await screen.findByDisplayValue('Yogurt e avena');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Elimina piatto' }));
+
+    const veli = screen.getAllByTestId('velo-foglio');
+    expect(veli).toHaveLength(1);
+    expect(veli[0].style.zIndex).toBe('50');
+  });
+
+  it('con SALVA in volo ELIMINA è spento: l’upsert di SALVA resusciterebbe il piatto eliminato (review finale)', async () => {
+    paramsId = 'd-1';
+    vi.mocked(leggiRepertorio).mockResolvedValue([PIATTO_ESISTENTE]);
+    let risolvi!: (v: string) => void;
+    vi.mocked(salvaPiatto).mockReturnValue(new Promise((r) => { risolvi = r; }));
+    rendi();
+    fireEvent.change(await screen.findByDisplayValue('Yogurt e avena'), { target: { value: 'Yogurt e avena bis' } });
+    expect(screen.getByRole('button', { name: 'Elimina piatto' })).toBeEnabled();
+
+    fireEvent.click(salva());
+
+    await waitFor(() => expect(salva()).toBeDisabled());
+    const elimina = screen.getByRole('button', { name: 'Elimina piatto' });
+    expect(elimina).toBeDisabled();
+    fireEvent.click(elimina);
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    await act(async () => { risolvi('d-1'); });
+  });
+
   it('ELIMINA è un tasto secondario in --errore, in coda', async () => {
     paramsId = 'd-1';
     vi.mocked(leggiRepertorio).mockResolvedValue([PIATTO_ESISTENTE]);

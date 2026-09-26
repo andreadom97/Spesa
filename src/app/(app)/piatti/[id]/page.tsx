@@ -783,10 +783,16 @@ export default function Piatto() {
         {/* ELIMINA in coda (spec fase 7 §B.3 punto 7), solo su un piatto che esiste:
             su uno nuovo non c'è niente da eliminare, e la freccia fa quel lavoro.
             Passa sempre dal Dialogo di conferma, mai con un tocco solo. Il nome
-            accessibile è quello del cestino di prima. */}
+            accessibile è quello del cestino di prima. Spento con SALVA in volo: l'upsert di
+            salvaPiatto scrive attivo:true e resusciterebbe il piatto appena eliminato (review finale). */}
         {!nuovo && (
           <Blocco>
-            <TastoSecondario aria-label="Elimina piatto" onClick={() => setConfermaEliminazione(true)} style={{ color: 'var(--errore)' }}>
+            <TastoSecondario
+              aria-label="Elimina piatto"
+              onClick={() => setConfermaEliminazione(true)}
+              disabled={salvando}
+              style={{ color: 'var(--errore)' }}
+            >
               ELIMINA
             </TastoSecondario>
           </Blocco>
@@ -827,7 +833,6 @@ export default function Piatto() {
           altezza="contenuto"
           ruolo="alertdialog"
           chiudiDalVelo={false}
-          livello={2}
         >
           <DialogoConferma
             titolo="Eliminare questo piatto?"
