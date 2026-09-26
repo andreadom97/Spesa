@@ -27,11 +27,12 @@ describe('trovaIcona', () => {
     ['Burro di arachidi', 'arachide'],
     ['Burro', 'burro'],
     ['Amido di mais', 'farina'],
-    ['Mais', 'mais'],
     ['Pepe', 'spezie'],
     ['Peperoni', 'peperone'],
     ['Sale', 'sale'],
     ['Yogurt greco', 'yogurt'],
+    ['Mozzarella', 'formaggio'],
+    ['Burrata', 'formaggio'],
     ['Philadelphia', 'formaggio-fresco'],
     ['Tofu', 'formaggio-fresco'],
     ['Gocce di Cioccolato', 'cioccolato'],
@@ -63,15 +64,29 @@ describe('trovaIcona', () => {
     expect(trovaIcona('')).toBeNull();
   });
 
-  it('copre tutti gli INGREDIENTI_BASE', () => {
+  it.each([
+    // esito del gate del 26/09: nessuna icona per kiwi, affettati e mais
+    'Kiwi',
+    'Prosciutto crudo',
+    'Bresaola',
+    'Mais',
+  ])('%s → null (gate 26/09)', (nome) => {
+    expect(trovaIcona(nome)).toBeNull();
+  });
+
+  // Esclusi di proposito dal catalogo icone al gate del 26/09: restano senza
+  // icona per decisione di Andrea, non per un buco nel catalogo.
+  const ESCLUSI_DI_PROPOSITO = ['Prosciutto crudo', 'Prosciutto cotto', 'Bresaola', 'Mais'];
+
+  it('copre tutti gli INGREDIENTI_BASE, salvo gli esclusi di proposito', () => {
     const scoperti = INGREDIENTI_BASE.map((i) => i.nome).filter((n) => trovaIcona(n) === null);
-    expect(scoperti).toEqual([]);
+    expect(scoperti).toEqual(ESCLUSI_DI_PROPOSITO);
   });
 });
 
 describe('CATALOGO_ICONE', () => {
-  it('68 icone', () => {
-    expect(CHIAVI_ICONE).toHaveLength(68);
+  it('64 icone', () => {
+    expect(CHIAVI_ICONE).toHaveLength(64);
   });
 
   it('ogni sinonimo appartiene a una sola chiave', () => {

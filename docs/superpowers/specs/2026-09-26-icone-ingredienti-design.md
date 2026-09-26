@@ -11,7 +11,8 @@ Decisioni prese con Andrea il 26/09/2026 in brainstorming.
 - **Tre tessere:** Lista (`src/components/Tessera.tsx`, compresa la protagonista/hero),
   Dispensa (`src/app/(app)/dispensa/TesseraDispensa.tsx`), ingredienti del piatto
   (`src/components/TesseraIngrediente.tsx`). `TesseraLotto` resta fuori.
-- **Catalogo:** 70 icone che coprono ~135 nomi, in
+- **Catalogo:** 64 icone (70 meno le 4 uscite al gate di Andrea del 26/09: kiwi, affettato e mais
+  tolte, mozzarella confluita in formaggio) che coprono ~135 nomi, in
   [`2026-09-26-icone-ingredienti-lista.md`](2026-09-26-icone-ingredienti-lista.md).
   "I 100 più usati" non si ricava dai dati: in produzione ci sono 2 utenti e ~95 nomi distinti,
   quasi tutti dal seed (query del 26/09). La lista unisce produzione, `INGREDIENTI_BASE`,

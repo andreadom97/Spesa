@@ -1,6 +1,6 @@
 # Icone ingrediente — catalogo (bozza da rivedere)
 
-70 icone, ~135 nomi coperti. Rivista da Andrea il 26/09: tenute tutte le aggiunte, tofu con ricotta. **Fonte** di ogni nome:
+64 icone (70 meno le 4 uscite al gate del 26/09: kiwi, affettato, mais tolte; mozzarella confluita in formaggio), ~135 nomi coperti. Rivista da Andrea il 26/09: tenute tutte le aggiunte, tofu con ricotta. **Fonte** di ogni nome:
 **P** = in produzione e usato in almeno un piatto o una lista (query del 26/09/2026),
 **B** = `INGREDIENTI_BASE`, **F** = `formati-tipici`, **D** = estrazioni delle diete,
 **A** = aggiunta mia (spesa italiana comune, nessun dato a supporto).
@@ -37,7 +37,7 @@
 | 24 | uva | uva | P | |
 | 25 | fragola | fragole, frutti di bosco | A | sì |
 | 26 | cetriolo | cetrioli | D | |
-| 27 | kiwi | kiwi | A | |
+| 27 | ~~kiwi~~ (tolta al gate del 26/09) | kiwi | A | |
 | 28 | erbe (rametto) | basilico, prezzemolo, menta, rosmarino | P D · A | sì |
 
 ## Carne e pesce (7)
@@ -49,7 +49,7 @@
 | 31 | salsiccia | salsiccia, würstel | A | sì |
 | 32 | pesce ★ | salmone (fresco/surgelato), merluzzo (filetto/surgelato), branzino, orata | P B F D | sì |
 | 33 | gambero | gamberi surgelati, gamberetti | B · A | |
-| 34 | affettato (fetta) | prosciutto crudo, prosciutto cotto, bresaola, speck | B F · A | sì |
+| 34 | ~~affettato~~ (fetta) (tolta al gate del 26/09) | prosciutto crudo, prosciutto cotto, bresaola, speck | B F · A | sì |
 | 35 | pancetta | guanciale, pancetta | P · A | sì |
 
 ## Latticini e uova (7)
@@ -60,7 +60,7 @@
 | 37 | latte ★ (brik) | latte | P B F | |
 | 38 | yogurt (vasetto) | yogurt greco, yogurt bianco, yogurt, skyr | P B F D | sì |
 | 39 | formaggio ★ (spicchio) | parmigiano, pecorino, grana, feta | P B F | sì |
-| 40 | mozzarella | mozzarella, burrata | P B F D · A | |
+| 40 | ~~mozzarella~~ (confluita in formaggio al gate del 26/09) | mozzarella, burrata | P B F D · A | |
 | 41 | formaggio fresco (vaschetta) | ricotta, philadelphia, tofu | P B F | sì |
 | 42 | burro (panetto) | burro | B | |
 
@@ -92,7 +92,7 @@
 | 60 | caffè (moka) | caffè | B | |
 | 61 | latta pomodoro | passata di pomodoro, pelati | P B F | sì |
 | 62 | scatoletta | tonno in scatola, tonno al naturale, sgombro | P B F · A | sì |
-| 63 | mais (pannocchia) | mais | B | |
+| 63 | ~~mais~~ (pannocchia) (tolta al gate del 26/09) | mais | B | |
 | 64 | legumi ★ | ceci lessati, fagioli lessati, cannellini, borlotti, lenticchie (secche/lessate) | P B F | sì |
 | 65 | piselli ★ (baccello) | piselli surgelati, edamame | P B F D | |
 | 66 | noce | noci, frutta secca | P B F D | |
@@ -115,3 +115,12 @@
 - Esclusi di proposito: "frutta fresca", "verdura", "condimenti" (categorie, non ingredienti).
 
 La numerazione salta il 43 (tofu, confluito nel 41).
+
+## Esito del gate di Andrea (26/09, dopo la revisione)
+
+- **kiwi**: via dal catalogo (nessuna icona per kiwi).
+- **affettato**: via dal catalogo (prosciutto, bresaola, speck, mortadella, salame, affettato → nessuna icona).
+- **mais**: via dal catalogo (mais → nessuna icona). "Amido di mais" resta su `farina`, è un sinonimo di farina.
+- **mozzarella**: la chiave sparisce; i suoi sinonimi (mozzarella, burrata, stracciatella, fiordilatte) passano alla chiave `formaggio`.
+- Tutto il resto resta com'è.
+- Il catalogo passa da 68 a **64** chiavi.

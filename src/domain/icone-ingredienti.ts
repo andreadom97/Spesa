@@ -35,7 +35,6 @@ export const CATALOGO_ICONE = {
   uva: ['uva'],
   fragola: ['fragola', 'frutti di bosco', 'mirtillo', 'lampone'],
   cetriolo: ['cetriolo'],
-  kiwi: ['kiwi'],
   erbe: ['basilico', 'prezzemolo', 'menta', 'rosmarino', 'salvia', 'erba cipollina'],
   // carne e pesce
   bistecca: ['manzo', 'macinato', 'vitello', 'carne', 'bistecca', 'hamburger'],
@@ -43,14 +42,12 @@ export const CATALOGO_ICONE = {
   salsiccia: ['salsiccia', 'wurstel'],
   pesce: ['pesce', 'salmone', 'merluzzo', 'branzino', 'spigola', 'orata', 'tonno', 'sgombro', 'platessa', 'nasello', 'pesce spada'],
   gambero: ['gambero', 'gamberetto', 'mazzancolla'],
-  affettato: ['prosciutto', 'bresaola', 'speck', 'mortadella', 'salame', 'affettato'],
   pancetta: ['pancetta', 'guanciale'],
   // latticini e uova
   uovo: ['uovo'],
   latte: ['latte'],
   yogurt: ['yogurt', 'skyr', 'kefir'],
-  formaggio: ['formaggio', 'parmigiano', 'grana', 'pecorino', 'feta', 'emmental', 'provola', 'scamorza'],
-  mozzarella: ['mozzarella', 'burrata', 'stracciatella', 'fiordilatte'],
+  formaggio: ['formaggio', 'parmigiano', 'grana', 'pecorino', 'feta', 'emmental', 'provola', 'scamorza', 'mozzarella', 'burrata', 'stracciatella', 'fiordilatte'],
   'formaggio-fresco': ['ricotta', 'philadelphia', 'formaggio spalmabile', 'stracchino', 'fiocchi di latte', 'tofu'],
   burro: ['burro'],
   // cereali e forno
@@ -72,7 +69,6 @@ export const CATALOGO_ICONE = {
   miele: ['miele'],
   marmellata: ['marmellata', 'confettura'],
   caffe: ['caffe'],
-  mais: ['mais'],
   legumi: ['legumi', 'ceci', 'cece', 'fagioli', 'cannellini', 'borlotti', 'lenticchie'],
   piselli: ['pisello', 'edamame'],
   noce: ['noce', 'frutta secca'],
