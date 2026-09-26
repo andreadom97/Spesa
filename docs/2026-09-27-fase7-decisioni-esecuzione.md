@@ -36,7 +36,7 @@ prima dell'esecuzione. Dei minori, 5 sono stati corretti e 4 sono rimasti come l
 | # | Decisione | Perché | Costo se è sbagliata |
 |---|---|---|---|
 | 1 | `IN CASA` in mono 10 `--ink`, non `--ok` come diceva la spec | `--ok` non esiste nel sistema: non c'è un token verde | se Andrea vuole un verde, prima serve un token in `DESIGN.md`, poi una riga |
-| 2 | `RigaImpostazione` prende la prop `etichetta` (aria-label), e il valore ha `maxWidth: 50%` con ellissi | il nome accessibile dei componenti di Scegli («Cambia Farcitura: ora Ricotta») è diverso dal testo; un'opzione con tre ingredienti schiacciava il nome a 360 | vale anche per il Pannello: «NESSUNO FUORI CASA» non si taglia [misurato, 133 px]; un valore lungo del Pannello si taglierebbe con l'ellissi |
+| 2 | `RigaImpostazione` prende la prop `etichetta` (aria-label), e il valore ha `maxWidth: 60%` con ellissi (era 50%, portato a 60% dopo la review finale, M2) | il nome accessibile dei componenti di Scegli («Cambia Farcitura: ora Ricotta») è diverso dal testo; un'opzione con tre ingredienti schiacciava il nome a 360 | vale anche per il Pannello: «NESSUNO FUORI CASA» (133 px [misurato]) non si taglia; al 50% si sarebbe tagliato a 320, dove metà riga è circa 127 px [fonte: review finale]; un valore lungo del Pannello si taglierebbe con l'ellissi |
 | 3 | Scegli usa l'`areeDelPiatto` di Piatti, che conta anche gli ingredienti delle opzioni | una regola sola per i pallini d'area | sui piatti con componenti cambiano i pallini e la sottoriga (`N INGR.` → `N INGREDIENTI`). Le scritture no |
 | 4 | Pezzi condivisi in `src/components/`: `RigaPiatto`, `CampoRicercaPiatti`, `AggiungiTratteggiato`, `VuotoRicercaPiatti`, `TestataModifica`, `ErroreSopraDock` | erano copiati in due o tre file | nessuno: Piatti e l'editor dell'ingrediente non cambiano aspetto, e i loro test sono rimasti invariati |
 | 5 | L'editor dell'ingrediente tiene la sua copia dell'errore sopra il Dock | toccarlo era fuori perimetro | una terza copia, da togliere in un passaggio a parte |
@@ -59,23 +59,58 @@ pagina sonda, poi cancellata. Le pagine vere leggono Supabase all'apertura.
   - il modo `apri` è identico a Piatti;
   - niente scorrimento orizzontale.
 - **Riga di impostazione con il taglio** [misurato]: «NESSUNO FUORI CASA» è largo 133 e non si taglia;
-  un'opzione lunga di Scegli si taglia con l'ellissi. [ipotesi] La nota a sinistra può andare a capo
-  prima di prima; la sonda non ha misurato la riga del Pannello com'era.
-- **Testata di modifica** [misurato]: tondo 44 × 44 «Torna ai piatti», nome a 32.
+  un'opzione lunga di Scegli si taglia con l'ellissi. L'ipotesi che la nota a sinistra potesse andare
+  a capo prima di prima è chiusa [fonte: review finale]: il testo ha `flex: 1` con base 0, quindi
+  finché il valore sta sotto il tetto il layout è identico a prima.
+- **Testata di modifica** [misurato]: tondo 44 × 44 «Torna ai piatti», nome a 32. Dopo la review
+  finale, aperta dal Piano, la freccia si chiama «Torna al piano» [non misurato nel browser, coperto
+  dai test].
 - **Dialogo di eliminazione** [misurato]: ancorato in basso, `ANNULLA` 54 su bianco, `ELIMINA` 54 in
   `--errore`.
+
+## Dopo la review finale
+
+La review finale del ramo ha trovato un problema importante e otto minori, corretti in un'ondata sola
+(commit da `ea6b2b7` a `a189e1e`). Nessuna scrittura cambia: `salvaPiatto`, `eliminaPiatto` e la bozza
+restano identici.
+
+- **I1, dal Piano l'editor del Piatto tornava a Piatti.** Il Piano apriva il piatto con
+  `router.push('/piatti/{id}')` e l'editor usciva sempre su `/piatti`; nella PWA su iOS non c'è un
+  indietro di sistema. Ora il Piano apre `/piatti/{id}?da=piano`; l'editor lo legge al montaggio e
+  lo tiene per id in `sessionStorage` (`spesa:piatto-ritorno:{id}`, in `piatti/[id]/ritorno.ts`), così
+  resiste al giro verso l'editor dell'ingrediente, che rientra senza parametri. Freccia, `SALVA` ed
+  `ELIMINA` riuscito vanno al Piano, la freccia si chiama «Torna al piano», e all'uscita la chiave si
+  cancella. Senza `da` tutto resta com'era. Piatti e Scegli non cambiano [misurato: 5 test nuovi
+  nell'editor, 1 aggiornato nel Piano].
+- **M1.** In Scegli il nome accessibile del piatto in programma dice «Scegli {nome}, ora in
+  programma»: prima l'`aria-label` copriva la sottoriga `ORA IN PROGRAMMA`.
+- **M2.** Il valore della Riga di impostazione arriva al 60% della riga (vedi la decisione 2).
+- **M3.** `DESIGN-SYSTEM.md` non mette più la fase 7 «fuori dal sistema», e colloca la ricerca dei
+  piatti in `CampoRicercaPiatti.tsx`.
+- **M4.** `AGGIUNGI OPZIONE` ha un nome per componente: «Aggiungi opzione al componente N».
+- **M7.** Il dialogo di eliminazione del piatto sta al livello 1: sotto non c'è un altro foglio.
+- **Regex.** `normalizza` di `SelettoreIngrediente.tsx` usa gli escape `\u0300-\u036f` al posto dei
+  caratteri combinanti crudi. Stesso comportamento.
+- **Eliminare mentre si salva.** Con `SALVA` in volo `ELIMINA` è spento: l'upsert di `salvaPiatto` con
+  `attivo: true` avrebbe resuscitato il piatto eliminato.
+- **Test.** Scegli ha il test «un piatto scelto e poi nascosto dalla ricerca: `SOSTITUISCI` scrive
+  quello».
 
 ## Rimasto aperto, di proposito
 
 - **Scegli, piatto scelto nascosto dalla ricerca.** Con la ricerca attiva, il piatto scelto può
   sparire dall'elenco, e `SOSTITUISCI` lo scrive senza che si veda quale. Il dato è giusto e il
   comportamento è voluto dalla spec §A.3, ma può confondere. Proposta: una riga che dica il piatto
-  scelto, oppure svuotare la ricerca al tocco. Manca anche il test del caso.
+  scelto, oppure svuotare la ricerca al tocco.
 - **Scegli, slot senza piatti attivi.** Si vede solo `CREA UN PIATTO NUOVO`, e nessun test lo copre.
-- **`SelettoreIngrediente.tsx:29`.** La regex ha i caratteri combinanti scritti crudi al posto degli
-  escape `̀-ͯ`. Il comportamento è identico; è un problema di leggibilità.
-- **Eliminare mentre si salva** (preesistente, fuori perimetro). Si può confermare `ELIMINA` mentre un
-  `SALVA` è in volo. Se l'upsert arriva dopo, il piatto eliminato torna attivo [ipotesi, corsa non
+- **M5, un ingrediente creato dal selettore di un'opzione entra negli ingredienti fissi**
+  (preesistente, `piatti/[id]/page.tsx:280`, `raccogliIngredienteCreato`). Chi esce a creare un
+  ingrediente dall'`AGGIUNGI INGREDIENTE` di un'opzione se lo ritrova nella lista fissa del piatto.
+- **M6, un piatto creato da Scegli senza toccare il pasto va sul primo pasto** (preesistente,
+  `piatti/[id]/page.tsx:507`, il ripiego `slotDefs[0]`), non sul pasto da cui si era partiti.
+- **Il ritorno al Piano resta in `sessionStorage` se si esce dall'editor senza freccia, `SALVA` o
+  `ELIMINA`** (per esempio chiudendo l'app a metà del giro verso l'editor dell'ingrediente): riaprendo
+  lo stesso piatto da Piatti nella stessa sessione, la freccia porterebbe al Piano [ipotesi, non
   testata].
 - **Nessun test nomina il terzo cambio voluto di §B.7** (una settimana fuori ciclo non si riscrive
   all'apertura). È coperto solo per costruzione.
@@ -105,3 +140,5 @@ Da fare dopo il merge, in produzione:
    crealo e torna indietro: il piatto è ancora lì, con nome e pasto (la bozza). Salva.
 5. **Elimina un piatto di prova** dal dialogo.
 6. **Pannello → Pasti a casa**: il valore «NESSUNO FUORI CASA» (o «N FUORI CASA») si legge intero.
+7. **Dal Piano apri un piatto, freccia: si torna al Piano.** Anche dopo essere passati dall'editor di
+   un ingrediente del piatto.
