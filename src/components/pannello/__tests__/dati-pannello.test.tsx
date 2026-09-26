@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { useState } from 'react';
 import type { Impostazioni, MealSlotDef } from '@/domain/types';
 import type { VoceEvitata } from '@/domain/list-builder';
@@ -68,7 +68,14 @@ function mockDati(o: { porzioni?: number; pasti?: MealSlotDef[] } = {}) {
 function Consumatore() {
   const { stato, salvaImpostazioni: salva, salvaPasti, casaCambiata, ricaricaCasa, cancellataIl, segnaCancellata } = useDatiPannello();
   const [errore, setErrore] = useState(false);
-  if (stato.stato !== 'pronto') return <p>{`stato ${stato.stato}`}</p>;
+  if (stato.stato !== 'pronto') {
+    return (
+      <div>
+        <p>{`stato ${stato.stato}`}</p>
+        {casaCambiata && <p>La casa è cambiata: dati ricaricati. Riprova.</p>}
+      </div>
+    );
+  }
   const { impostazioni: i, slotDefs, casa, risparmio, utente } = stato.dati;
   const p = i.moltiplicatorePorzioni;
   return (
@@ -377,6 +384,42 @@ describe('DatiPannello: salvataggio delle impostazioni (spec §B.5, §L)', () =>
     await screen.findByText('La casa è cambiata: dati ricaricati. Riprova.');
     piu();
     expect(screen.queryByText('La casa è cambiata: dati ricaricati. Riprova.')).not.toBeInTheDocument();
+    // La seconda scrittura riesce e la rilettura (sul server c'è ancora 1) chiude il gesto.
+    expect(screen.getByText('Porzioni: 2')).toBeInTheDocument();
+    await waitFor(() => expect(salvaImpostazioni).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText('Porzioni: 1')).toBeInTheDocument();
+    expect(leggiImpostazioni).toHaveBeenCalledTimes(3);
+    errore.mockRestore();
+  });
+
+  // Review del Task 6 (I1): i dati a schermo sono di una casa che non è più la sua.
+  it('se dopo un rifiuto RLS anche la ricarica fallisce, il pannello va in errore e non dice «dati ricaricati»', async () => {
+    mockDati({ porzioni: 1 });
+    render(albero());
+    await screen.findByText('Porzioni: 1');
+    const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(salvaImpostazioni).mockRejectedValueOnce({ code: '42501', message: 'rls' });
+    vi.mocked(leggiImpostazioni).mockRejectedValue(new Error('rete'));
+
+    piu();
+    expect(await screen.findByText('stato errore')).toBeInTheDocument();
+    expect(dimenticaIdCasa).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText('La casa è cambiata: dati ricaricati. Riprova.')).not.toBeInTheDocument();
+    expect(screen.queryByText('Porzioni: 2')).not.toBeInTheDocument();
+    errore.mockRestore();
+  });
+
+  it('lo stesso quando il rifiuto RLS viene dai pasti', async () => {
+    mockDati();
+    render(albero());
+    await screen.findByText('Porzioni: 1');
+    const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(salvaSlotDefs).mockRejectedValueOnce({ code: '42501', message: 'rls' });
+    vi.mocked(leggiSlotDefs).mockRejectedValue(new Error('rete'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'rinomina' }));
+    expect(await screen.findByText('stato errore')).toBeInTheDocument();
+    expect(screen.queryByText('La casa è cambiata: dati ricaricati. Riprova.')).not.toBeInTheDocument();
     errore.mockRestore();
   });
 });
@@ -460,6 +503,37 @@ describe('DatiPannello: pasti e casa (spec §C.1, §C.2, §L)', () => {
     pannello.aperto = true;
     rerender(albero());
     expect(screen.getByText('Cancellata: no')).toBeInTheDocument();
+    // La riapertura rilegge in silenzio: si aspetta che la rilettura arrivi.
+    await waitFor(() => expect(leggiUtente).toHaveBeenCalledTimes(2));
+    await act(async () => {});
+    expect(screen.getByText('Cancellata: no')).toBeInTheDocument();
+  });
+
+  // Review del Task 6 (minor a): la lettura non passa davanti alla scrittura in volo.
+  it('riaperto con una scrittura in volo, rilegge solo dopo che la scrittura è arrivata', async () => {
+    mockDati({ porzioni: 1 });
+    const { rerender } = render(albero());
+    await screen.findByText('Porzioni: 1');
+    let conferma: () => void = () => {};
+    vi.mocked(salvaImpostazioni).mockReturnValueOnce(new Promise<void>((r) => { conferma = r; }));
+    piu();
+    await waitFor(() => expect(salvaImpostazioni).toHaveBeenCalledTimes(1));
+
+    pannello.aperto = false;
+    rerender(albero());
+    pannello.aperto = true;
+    rerender(albero());
+    await new Promise((r) => setTimeout(r, 0));
+    expect(leggiImpostazioni).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Porzioni: 2')).toBeInTheDocument();
+
+    vi.mocked(leggiImpostazioni).mockResolvedValue(impostazioni(2));
+    conferma();
+    // La rilettura del salvataggio e quella della riapertura, tutte e due dopo la scrittura.
+    await waitFor(() => expect(leggiImpostazioni).toHaveBeenCalledTimes(3));
+    await waitFor(() => expect(leggiUtente).toHaveBeenCalledTimes(2));
+    await act(async () => {});
+    expect(screen.getByText('Porzioni: 2')).toBeInTheDocument();
   });
 
   it('ricaricaCasa: se la rilettura fallisce vale lo stato di riserva passato', async () => {

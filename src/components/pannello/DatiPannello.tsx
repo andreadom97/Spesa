@@ -88,8 +88,11 @@ async function leggiTutto(): Promise<DatiPannello> {
  * - **solo l'ultima richiesta tocca lo schermo**: una rilettura o un errore di una richiesta
  *   superata si ignorano, la più recente dirà l'ultima parola;
  * - **il rifiuto RLS** (la casa è cambiata sotto i piedi, prova del 15/09): si scarta l'id
- *   della casa, si chiude l'eventuale dialogo, si ricarica tutto e `casaCambiata` lo dice. La
- *   scrittura non si riprova da sola: era un gesto su dati che l'utente deve prima rivedere.
+ *   della casa, si chiude l'eventuale dialogo, si ricarica tutto e `casaCambiata` lo dice. Se
+ *   la ricarica fallisce, il pannello va in errore di caricamento (con `RIPROVA`), senza
+ *   `casaCambiata`. La scrittura non si riprova da sola: era un gesto su dati che l'utente deve
+ *   prima rivedere;
+ * - **le letture aspettano la fila**: una riapertura rilegge dopo le scritture in volo.
  *
  * `salvaImpostazioni` e `salvaPasti` tornano `false` solo quando la riga deve mostrare
  * `Non siamo riusciti a salvare. Riprova.`; una richiesta superata o un rifiuto RLS tornano
@@ -134,21 +137,29 @@ export function DatiPannelloProvider({ children }: { children: ReactNode }) {
     if (dati.current) metti(f(dati.current));
   }, [metti]);
 
-  const carica = useCallback(async (silenziosa: boolean) => {
+  /**
+   * Legge tutto. Prima aspetta la fila delle scritture: una riapertura con una scrittura in volo
+   * rileggerebbe il valore di prima, e la sua lettura, più recente, lo rimetterebbe a schermo.
+   * Dice com'è andata: `superata` se nel frattempo è partita una lettura più recente.
+   */
+  const carica = useCallback(async (silenziosa: boolean): Promise<'riuscita' | 'fallita' | 'superata'> => {
     const n = ++lettura.current;
     if (!silenziosa) setStato({ stato: 'carico' });
     try {
+      await coda.current;
       const letti = await leggiTutto();
-      if (n !== lettura.current) return;
+      if (n !== lettura.current) return 'superata';
       impostazioniSalvate.current = letti.impostazioni;
       pastiSalvati.current = letti.slotDefs;
       metti(letti);
+      return 'riuscita';
     } catch (errore) {
       console.error('impostazioni: caricamento fallito.', errore);
-      if (n !== lettura.current) return;
-      if (silenziosa && dati.current) return;
+      if (n !== lettura.current) return 'superata';
+      if (silenziosa && dati.current) return 'fallita';
       dati.current = null;
       setStato({ stato: 'errore' });
+      return 'fallita';
     }
   }, [metti]);
 
@@ -159,11 +170,21 @@ export function DatiPannelloProvider({ children }: { children: ReactNode }) {
     void carica(dati.current !== null);
   }, [aperto, carica]);
 
-  /** La casa è cambiata: memoria dell'id scartata, dialogo chiuso, tutto riletto. */
-  const dopoRifiutoRls = useCallback(async () => {
+  /**
+   * La casa è cambiata: memoria dell'id scartata, dialogo chiuso, tutto riletto. Se la rilettura
+   * fallisce, i dati a schermo sono di una casa che non è più la sua, e col valore appena
+   * rifiutato: niente «dati ricaricati», il pannello va in errore con `RIPROVA`, come la pagina
+   * di prima. Torna vero solo se la rilettura è riuscita.
+   */
+  const dopoRifiutoRls = useCallback(async (): Promise<boolean> => {
     dimenticaIdCasa();
     chiudiDialogo();
-    await carica(true);
+    const esito = await carica(true);
+    if (esito === 'fallita') {
+      dati.current = null;
+      setStato({ stato: 'errore' });
+    }
+    return esito === 'riuscita';
   }, [carica, chiudiDialogo]);
 
   const salvaImpostazioni = useCallback(async (parziale: Partial<Impostazioni>): Promise<boolean> => {
@@ -188,8 +209,8 @@ export function DatiPannelloProvider({ children }: { children: ReactNode }) {
       console.error('impostazioni: salvataggio delle impostazioni fallito.', errore);
       if (!eUltima()) return true;
       if (eRifiutoRls(errore)) {
-        await dopoRifiutoRls();
-        if (eUltima()) setCasaCambiata(true);
+        const riletti = await dopoRifiutoRls();
+        if (riletti && eUltima()) setCasaCambiata(true);
         return true;
       }
       // Il valore a cui tornare si rilegge dal server: con due gesti veloci la prima scrittura
@@ -227,8 +248,8 @@ export function DatiPannelloProvider({ children }: { children: ReactNode }) {
       console.error('impostazioni: salvataggio dei pasti fallito.', errore);
       if (!eUltima()) return true;
       if (eRifiutoRls(errore)) {
-        await dopoRifiutoRls();
-        if (eUltima()) setCasaCambiata(true);
+        const riletti = await dopoRifiutoRls();
+        if (riletti && eUltima()) setCasaCambiata(true);
         return true;
       }
       // salvaSlotDefs non è atomico: la cancellazione dei pasti tolti può essere già avvenuta.

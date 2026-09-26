@@ -41,13 +41,16 @@ const VOCI = [
  * Guscio segna data-barra="ridotta"; le etichette si nascondono ma la voce resta
  * alta 54 e cliccabile. La voce Lista porta il Marchio, che riflette le aree in
  * cui manca ancora qualcosa. Misure e movimento in globals.css.
+ *
+ * `inerte`: col Pannello impostazioni aperto la barra sta sotto il velo, e non deve prendere
+ * il fuoco dalla tastiera (spec fase 5 §A.2).
  */
-export function TabBar() {
+export function TabBar({ inerte = false }: { inerte?: boolean }) {
   const pathname = usePathname();
   const aree = useAreeMancantiCorrenti();
 
   return (
-    <nav className="barra anim-barra" aria-label="Sezioni">
+    <nav className="barra anim-barra" aria-label="Sezioni" inert={inerte}>
       {VOCI.map((voce) => {
         const attiva = pathname?.startsWith(voce.href) ?? false;
         const colore = attiva ? 'var(--ink)' : 'var(--off)';

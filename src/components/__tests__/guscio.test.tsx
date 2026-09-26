@@ -4,7 +4,7 @@ import { render, fireEvent, screen } from '@testing-library/react';
 
 const percorso = vi.hoisted(() => ({ valore: '/lista' }));
 vi.mock('next/navigation', () => ({ usePathname: () => percorso.valore, useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
-vi.mock('../TabBar', () => ({ TabBar: () => <nav aria-label="Sezioni" /> }));
+vi.mock('../TabBar', () => ({ TabBar: ({ inerte }: { inerte?: boolean }) => <nav aria-label="Sezioni" inert={inerte} /> }));
 vi.mock('@/data/utente', () => ({ useUtente: () => ({ nome: 'Andrea', email: 'andrea@example.it' }), inizialeDi: () => 'A' }));
 vi.mock('../pannello/Pannello', () => ({ Pannello: () => <div data-testid="pannello" /> }));
 vi.mock('../pannello/DatiPannello', () => ({
@@ -106,5 +106,26 @@ describe('Guscio', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Andrea: profilo e impostazioni' }));
     expect(guscio).toHaveAttribute('data-pannello', 'aperto');
     expect(guscio).not.toHaveAttribute('data-istantaneo');
+  });
+
+  // Review del Task 6 (minor b): aria-modal da solo non trattiene il Tab dentro il pannello.
+  it('a pannello aperto l\'app dietro, lo slot del Dock e la tab bar sono inert; chiuso, no', () => {
+    const { container } = render(<Guscio><Testata titolo="Lista" /></Guscio>);
+    const main = container.querySelector('main.guscio-main')!;
+    const slot = container.querySelector('.dock-slot')!;
+    const barra = () => container.querySelector('nav[aria-label="Sezioni"]')!;
+    expect(main).not.toHaveAttribute('inert');
+    expect(slot).not.toHaveAttribute('inert');
+    expect(barra()).not.toHaveAttribute('inert');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Andrea: profilo e impostazioni' }));
+    expect(main).toHaveAttribute('inert');
+    expect(slot).toHaveAttribute('inert');
+    expect(barra()).toHaveAttribute('inert');
+
+    // Nel telefono il Menù è sotto il velo, che chiude; qui il tocco arriva al bottone.
+    fireEvent.click(screen.getByRole('button', { name: 'Andrea: profilo e impostazioni' }));
+    expect(main).not.toHaveAttribute('inert');
+    expect(slot).not.toHaveAttribute('inert');
   });
 });

@@ -38,12 +38,27 @@ export function inizialeDi(nome: string): string {
 // per la stessa sessione. Una sola promessa condivisa a livello di modulo.
 let promessa: Promise<Utente> | null = null;
 
+/**
+ * La promessa condivisa, che si tiene solo se ha trovato l'utente: una lettura fallita (rete) o
+ * senza utente si scarta appena arriva, così il montaggio dopo rilegge invece di mostrare il
+ * puntino per tutta la sessione.
+ */
+function utenteCondiviso(): Promise<Utente> {
+  if (promessa) return promessa;
+  const questa = leggiUtente().then((u) => {
+    if (!u.email && promessa === questa) promessa = null;
+    return u;
+  });
+  promessa = questa;
+  return questa;
+}
+
 /** null finché `getUser` non risponde. */
 export function useUtente(): Utente | null {
   const [utente, setUtente] = useState<Utente | null>(null);
   useEffect(() => {
     let vivo = true;
-    (promessa ??= leggiUtente()).then((u) => { if (vivo) setUtente(u); });
+    utenteCondiviso().then((u) => { if (vivo) setUtente(u); });
     return () => { vivo = false; };
   }, []);
   return utente;

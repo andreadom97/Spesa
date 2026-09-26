@@ -103,6 +103,23 @@ const pannello = () => document.getElementById('pannello-impostazioni')!;
 const tocca = (nome: string) => fireEvent.click(screen.getByRole('button', { name: nome }));
 const titolo = () => screen.getByRole('heading', { level: 2 }).textContent;
 
+/**
+ * Apre dal Menù utente e aspetta che i dati arrivino (`CARICO…` sparisce): così le letture non
+ * aggiornano lo stato dopo la fine del test, fuori da `act`.
+ */
+async function apri() {
+  fireEvent.click(menu());
+  await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument());
+}
+
+/**
+ * Lascia arrivare le letture dove `CARICO…` non si vede (una riapertura silenziosa, un'apertura
+ * da indirizzo su una sotto-schermata): i mock rispondono subito, basta un giro dentro `act`.
+ */
+async function assesta() {
+  await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+}
+
 /** Il gesto indietro del telefono, o il popstate che segue un go(). */
 function indietro() {
   act(() => { window.dispatchEvent(new PopStateEvent('popstate')); });
@@ -126,7 +143,7 @@ afterEach(() => {
 });
 
 describe('Pannello: aprire e chiudere (spec §A.2, §B.1)', () => {
-  it('è chiuso finché il Menù utente non lo apre; aperto: aria-expanded, --ombra-nav, fuoco al pannello, una voce, e i dati si leggono', () => {
+  it('è chiuso finché il Menù utente non lo apre; aperto: aria-expanded, --ombra-nav, fuoco al pannello, una voce, e i dati si leggono', async () => {
     monta();
     expect(menu()).toHaveAttribute('aria-expanded', 'false');
     expect(menu()).toHaveAttribute('aria-controls', 'pannello-impostazioni');
@@ -134,7 +151,7 @@ describe('Pannello: aprire e chiudere (spec §A.2, §B.1)', () => {
     expect(pannello()).toHaveAttribute('data-stato', 'chiuso');
     expect(leggiImpostazioni).not.toHaveBeenCalled();
 
-    fireEvent.click(menu());
+    await apri();
     const dialogo = screen.getByRole('dialog', { name: 'Impostazioni' });
     expect(dialogo).toHaveAttribute('aria-modal', 'true');
     expect(dialogo).toHaveAttribute('data-stato', 'aperto');
@@ -146,9 +163,9 @@ describe('Pannello: aprire e chiudere (spec §A.2, §B.1)', () => {
     expect(leggiImpostazioni).toHaveBeenCalledTimes(1);
   });
 
-  it('si chiude con la X: un go(-1), e il fuoco torna al Menù utente', () => {
+  it('si chiude con la X: un go(-1), e il fuoco torna al Menù utente', async () => {
     monta();
-    fireEvent.click(menu());
+    await apri();
     tocca('Chiudi le impostazioni');
     expect(pannello()).toHaveAttribute('data-stato', 'chiuso');
     expect(screen.queryByRole('dialog', { name: 'Impostazioni' })).not.toBeInTheDocument();
@@ -157,15 +174,16 @@ describe('Pannello: aprire e chiudere (spec §A.2, §B.1)', () => {
     expect(menu()).toHaveFocus();
   });
 
-  it('si chiude col velo e col Menù utente', () => {
+  it('si chiude col velo e col Menù utente', async () => {
     monta();
-    fireEvent.click(menu());
+    await apri();
     fireEvent.click(document.querySelector('.pannello-velo')!);
     expect(pannello()).toHaveAttribute('data-stato', 'chiuso');
     indietro(); // il popstate del go(-1)
 
     fireEvent.click(menu());
     expect(pannello()).toHaveAttribute('data-stato', 'aperto');
+    await assesta(); // la rilettura silenziosa della riapertura
     fireEvent.click(menu());
     expect(pannello()).toHaveAttribute('data-stato', 'chiuso');
     expect(menu()).toHaveFocus();
@@ -173,9 +191,9 @@ describe('Pannello: aprire e chiudere (spec §A.2, §B.1)', () => {
 });
 
 describe('Pannello: sotto-schermate e dialogo (spec §A.4, §B.1, §B.2, §D)', () => {
-  it('entra e torna: la freccia a sinistra al posto della X, e il titolo della sotto-schermata', () => {
+  it('entra e torna: la freccia a sinistra al posto della X, e il titolo della sotto-schermata', async () => {
     monta();
-    fireEvent.click(menu());
+    await apri();
     tocca('entra in cadenza');
     expect(titolo()).toBe('Cadenza dei controlli');
     expect(screen.getByRole('dialog', { name: 'Cadenza dei controlli' })).toBeInTheDocument();
@@ -190,7 +208,7 @@ describe('Pannello: sotto-schermate e dialogo (spec §A.4, §B.1, §B.2, §D)', 
 
   it('la sotto-schermata entra da destra, ed esce restando a schermo per la durata dell\'uscita', async () => {
     monta();
-    fireEvent.click(menu());
+    await apri();
     const corpo = () => pannello().querySelector('.pannello-corpo')!;
     tocca('entra in aree');
     expect(corpo()).toHaveClass('anim-sotto-entra');
@@ -203,9 +221,9 @@ describe('Pannello: sotto-schermate e dialogo (spec §A.4, §B.1, §B.2, §D)', 
     expect(corpo()).not.toHaveClass('anim-sotto-esce');
   });
 
-  it('PiedePannello porta il primario nel piede fisso, fuori dallo scorrimento; in cima il piede è vuoto', () => {
+  it('PiedePannello porta il primario nel piede fisso, fuori dallo scorrimento; in cima il piede è vuoto', async () => {
     monta();
-    fireEvent.click(menu());
+    await apri();
     expect(pannello().querySelector('.pannello-piede')!.childElementCount).toBe(0);
     tocca('entra in aree');
     const salva = screen.getByRole('button', { name: 'SALVA ORDINE' });
@@ -213,9 +231,9 @@ describe('Pannello: sotto-schermate e dialogo (spec §A.4, §B.1, §B.2, §D)', 
     expect(salva.closest('.pannello-corpo')).toBeNull();
   });
 
-  it('il gesto indietro scende di un livello: dialogo → sotto-schermata → cima → chiuso, senza go()', () => {
+  it('il gesto indietro scende di un livello: dialogo → sotto-schermata → cima → chiuso, senza go()', async () => {
     monta();
-    fireEvent.click(menu());
+    await apri();
     tocca('entra in cadenza');
     tocca('mostra il dialogo');
     expect(screen.getByRole('alertdialog', { name: 'Uscire da Dispesa?' })).toBeInTheDocument();
@@ -234,7 +252,7 @@ describe('Pannello: sotto-schermate e dialogo (spec §A.4, §B.1, §B.2, §D)', 
 
   it('il dialogo: ANNULLA lo chiude; una conferma fallita mostra l\'errore e resta; una riuscita lo chiude', async () => {
     monta();
-    fireEvent.click(menu());
+    await apri();
     tocca('mostra il dialogo');
     tocca('ANNULLA');
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
@@ -255,7 +273,7 @@ describe('Pannello: sotto-schermate e dialogo (spec §A.4, §B.1, §B.2, §D)', 
 });
 
 describe('Pannello: aprire da un indirizzo (spec §A.3, §A.4)', () => {
-  it('?impostazioni=ingredienti apre sulla sotto-schermata senza animazione, toglie il parametro e ripristina lo scorrimento', () => {
+  it('?impostazioni=ingredienti apre sulla sotto-schermata senza animazione, toglie il parametro e ripristina lo scorrimento', async () => {
     // jsdom non fa layout: qui scrollTop si ricorda e basta, come in un corpo abbastanza lungo.
     Object.defineProperty(HTMLElement.prototype, 'scrollTop', {
       configurable: true,
@@ -266,6 +284,7 @@ describe('Pannello: aprire da un indirizzo (spec §A.3, §A.4)', () => {
       window.history.replaceState(null, '', '/lista?impostazioni=ingredienti');
       window.sessionStorage.setItem('spesa:pannello-scroll:ingredienti', '420');
       monta();
+      await assesta();
       expect(pannello()).toHaveAttribute('data-stato', 'aperto');
       expect(pannello()).toHaveAttribute('data-istantaneo');
       expect(titolo()).toBe('Ingredienti');
@@ -286,28 +305,30 @@ describe('Pannello: aprire da un indirizzo (spec §A.3, §A.4)', () => {
     }
   });
 
-  it('un valore sconosciuto apre in cima; senza parametro non apre niente', () => {
+  it('un valore sconosciuto apre in cima; senza parametro non apre niente', async () => {
     const { unmount } = monta();
     expect(pannello()).toHaveAttribute('data-stato', 'chiuso');
     unmount();
     window.history.replaceState(null, '', '/lista?impostazioni=boh');
     monta();
+    await assesta();
     expect(pannello()).toHaveAttribute('data-stato', 'aperto');
     expect(titolo()).toBe('Impostazioni');
   });
 
   // Regola B′ della sonda del Task 2: con null la voce perde `__NA` di Next, e il primo
   // indietro ricarica la pagina.
-  it('il parametro si toglie conservando lo stato di Next nella voce, non con null', () => {
+  it('il parametro si toglie conservando lo stato di Next nella voce, non con null', async () => {
     const statoNext = { __NA: true, __PRIVATE_NEXTJS_INTERNALS_TREE: 'albero' };
     window.history.replaceState(statoNext, '', '/lista?impostazioni=cima');
     const replaceState = vi.spyOn(window.history, 'replaceState');
     monta();
+    await assesta();
     expect(replaceState).toHaveBeenCalledTimes(1);
     expect(replaceState).toHaveBeenCalledWith(statoNext, '', '/lista');
   });
 
-  it('il parametro si rilegge a ogni cambio di pathname', () => {
+  it('il parametro si rilegge a ogni cambio di pathname', async () => {
     percorso.valore = '/piatti';
     window.history.replaceState(null, '', '/piatti');
     const { rerender } = monta();
@@ -316,6 +337,7 @@ describe('Pannello: aprire da un indirizzo (spec §A.3, §A.4)', () => {
     window.history.replaceState(null, '', '/dispensa?impostazioni=cima');
     percorso.valore = '/dispensa';
     rerender(albero());
+    await assesta();
     expect(pannello()).toHaveAttribute('data-stato', 'aperto');
     expect(window.location.pathname + window.location.search).toBe('/dispensa');
   });
@@ -325,7 +347,7 @@ describe('Pannello: lasciarlo per una pagina piena (spec §A.5)', () => {
   // Ramo A: la sonda del Task 2 regge con la fn differita di un giro (registro, «Sonda del Task 2»).
   it('vaiA salva l\'origine, chiude, e naviga un giro dopo il popstate che consuma le voci', async () => {
     monta();
-    fireEvent.click(menu());
+    await apri();
     tocca('vai a piatti');
     expect(JSON.parse(window.sessionStorage.getItem('spesa:origine-pannello')!)).toEqual({ pathname: '/lista', sotto: 'cima' });
     expect(pannello()).toHaveAttribute('data-stato', 'chiuso');

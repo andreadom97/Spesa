@@ -88,14 +88,16 @@ function GuscioInterno({ children }: { children: ReactNode }) {
       data-pannello={aperto ? 'aperto' : undefined}
       data-istantaneo={istantaneo ? '' : undefined}
     >
+      {/* Col pannello aperto l'app dietro è `inert`: `aria-modal` da solo non trattiene il
+          Tab, che uscirebbe verso la pagina, il Dock e la barra sotto il velo. */}
       <SlotDockProvider slot={slotDock}>
-        <main className="guscio-main">{children}</main>
+        <main className="guscio-main" inert={aperto}>{children}</main>
       </SlotDockProvider>
       {/* Lo slot copre la cornice ma non intercetta niente: `pointer-events: none`
           sul contenitore, `auto` su quello che il Dock ci mette dentro. Senza,
           un velo invisibile mangerebbe lo scorrimento di tutta l'app. */}
-      <div className="dock-slot" ref={setSlotDock} />
-      <TabBarSeVisibile />
+      <div className="dock-slot" ref={setSlotDock} inert={aperto} />
+      <TabBarSeVisibile inerte={aperto} />
       <DatiPannelloProvider>
         <Pannello />
       </DatiPannelloProvider>
@@ -109,6 +111,6 @@ function GuscioInterno({ children }: { children: ReactNode }) {
  * una barra invisibile resterebbe raggiungibile da tastiera e da screen reader.
  * Un componente a sé perché il Guscio rende il provider e non può leggerlo.
  */
-function TabBarSeVisibile() {
-  return useBarraNascosta() ? null : <TabBar />;
+function TabBarSeVisibile({ inerte }: { inerte: boolean }) {
+  return useBarraNascosta() ? null : <TabBar inerte={inerte} />;
 }
