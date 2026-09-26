@@ -35,6 +35,14 @@ export function OrdineAree() {
   const [ordine, setOrdine] = useState<AreaId[] | null>(null);
   const [volo, setVolo] = useState(false);
   const [errore, setErrore] = useState(false);
+  // La casa è cambiata (rifiuto RLS, dati riletti): l'ordine spostato era della casa di prima e
+  // si scarta, qualunque cosa torni il salvataggio (review finale M4b). Aggiustato durante il
+  // render, come il conteggio dei piatti in GestionePasti, non in un effetto.
+  const [casaVista, setCasaVista] = useState(casaCambiata);
+  if (casaCambiata !== casaVista) {
+    setCasaVista(casaCambiata);
+    if (casaCambiata) setOrdine(null);
+  }
   if (stato.stato === 'carico') return <Carico />;
   if (stato.stato === 'errore') return <ErroreCaricamento testo="Non riusciamo a caricare l'ordine delle aree. Riprova più tardi." />;
   const salvato = stato.dati.impostazioni.ordineAree;

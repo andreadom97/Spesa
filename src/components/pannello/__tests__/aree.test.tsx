@@ -116,6 +116,26 @@ describe('Ordine delle aree', () => {
     expect(salvaImpostazioni).not.toHaveBeenCalled();
   });
 
+  // Review finale M4b: dopo un rifiuto RLS l'ordine a schermo è quello della casa riletta, non
+  // quello spostato sulla casa di prima.
+  it('se la casa è cambiata sotto i piedi mostra l’ordine riletto, con SALVA ORDINE spento', async () => {
+    const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
+    montaPannello('aree', { impostazioni: { ordineAree: DI_BASE } });
+    await screen.findByText('Ortofrutta');
+    fireEvent.click(screen.getByLabelText('Sposta SURGELATI in alto'));
+    expect(ordineAschermo()[4]).toBe('SURGELATI');
+    vi.mocked(salvaImpostazioni).mockRejectedValueOnce({ code: '42501', message: 'new row violates row-level security policy for table "settings"' });
+    const dellaCasaNuova: AreaId[] = ['surgelati', 'dispensa', 'cereali', 'latticini', 'macelleria', 'ortofrutta'];
+    vi.mocked(leggiImpostazioni).mockResolvedValue(impostazioni({ ordineAree: dellaCasaNuova }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'SALVA ORDINE' }));
+
+    expect(await screen.findByText(/La casa è cambiata/)).toBeInTheDocument();
+    expect(ordineAschermo()).toEqual(['SURGELATI', 'DISPENSA E CONSERVE', 'PASTA, RISO E CEREALI', 'LATTICINI, UOVA E SALUMI', 'MACELLERIA E PESCHERIA', 'ORTOFRUTTA']);
+    expect(screen.getByRole('button', { name: 'SALVA ORDINE' })).toBeDisabled();
+    errore.mockRestore();
+  });
+
   it('se il caricamento fallisce lo dice col testo delle aree', async () => {
     const errore = vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.mocked(leggiImpostazioni).mockRejectedValueOnce(new Error('rete'));
