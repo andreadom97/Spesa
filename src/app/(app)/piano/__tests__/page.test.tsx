@@ -496,6 +496,40 @@ describe('Settimana (piano alimentare)', () => {
     expect(push).not.toHaveBeenCalledWith('/lista');
   });
 
+  // Regressione: la settimana passava a 'confermata' prima di generare la lista. Se
+  // generaListe falliva (rete, UnitaIncompatibileError) la settimana restava confermata
+  // senza lista, e il tasto, ormai "VAI ALLA LISTA", non la rigenerava più.
+  it('genera la lista prima di confermare la settimana', async () => {
+    mockCarico();
+    vi.mocked(confermaSettimana).mockResolvedValue(undefined);
+    vi.mocked(generaListe).mockResolvedValue(undefined);
+    rendi();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'CONFERMA E CREA LA LISTA' }));
+
+    await waitFor(() => expect(confermaSettimana).toHaveBeenCalledWith('week-1'));
+    expect(vi.mocked(generaListe).mock.invocationCallOrder[0])
+      .toBeLessThan(vi.mocked(confermaSettimana).mock.invocationCallOrder[0]);
+  });
+
+  it('se generaListe fallisce la settimana non si conferma, e un secondo tocco riprova tutto', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockCarico();
+    vi.mocked(confermaSettimana).mockResolvedValue(undefined);
+    vi.mocked(generaListe).mockRejectedValueOnce(new Error('rete assente')).mockResolvedValue(undefined);
+    rendi();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'CONFERMA E CREA LA LISTA' }));
+    await screen.findByText('Non siamo riusciti a confermare la settimana. Riprova.');
+    expect(confermaSettimana).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'CONFERMA E CREA LA LISTA' }));
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/lista'));
+    expect(generaListe).toHaveBeenCalledTimes(2);
+    expect(confermaSettimana).toHaveBeenCalledTimes(1);
+    consoleError.mockRestore();
+  });
+
   it('il primario sta nel Dock, e lo scroller tiene la coda del dock', async () => {
     mockCarico();
     rendi();
