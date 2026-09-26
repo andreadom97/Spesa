@@ -1,37 +1,21 @@
 'use client';
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { UnitaBase } from '@/domain/types';
-import { formatoProposto, type QuantitaConfezione } from '@/domain/ean';
+import { formatoProposto } from '@/domain/ean';
 import { confezioniNecessarie } from '@/domain/confezioni';
+import { listaFinita } from '@/domain/lista-finita';
 import { leggiSettimanaCorrente } from '@/data/settimana';
-import { leggiListe, type ListaSalvata, type SezioneSalvata } from '@/data/lista';
+import { leggiListe } from '@/data/lista';
 import {
   leggiVociComprate, aggiornaFormatoDaScansione, FORMATO_MAX, CONFEZIONI_MAX, type VoceComprata,
 } from '@/data/confezioni';
-import { Scanner } from '@/components/Scanner';
-
-/**
- * Stessa regola di "Hai preso tutto" (lista/fatta): copiata, non importata
- * da una pagina. Una lista è finita solo quando ogni voce è spuntata e non
- * resta nessun controllo da rispondere.
- */
-function tuttoFatto(lista: ListaSalvata): boolean {
-  const sezioni: SezioneSalvata[] = [...lista.base, ...lista.topup];
-  let totale = 0;
-  let fatte = 0;
-  let controlliInSospeso = 0;
-  for (const s of sezioni) {
-    for (const v of s.voci) {
-      totale += 1;
-      if (v.spuntato) fatte += 1;
-    }
-    controlliInSospeso += s.controlli.length;
-  }
-  return totale > 0 && fatte === totale && controlliInSospeso === 0;
-}
+import { Testata } from '@/components/Testata';
+import { FoglioDalBasso, TestataFoglio } from '@/components/FoglioDalBasso';
+import { TastoPrimario, TastoSecondario, MessaggioErrore, STILE_PILLOLA } from '@/components/controlli';
+import { Carico } from '@/components/pannello/pezzi';
+import { LettoreCodice, cercaProdotto } from '@/app/(app)/dispensa/LettoreCodice';
 
 /**
  * "500 g", "1250 g", "750 ml", "6 pz": il valore esatto, senza arrotondare
@@ -43,12 +27,7 @@ function quantita(valore: number, unita: UnitaBase): string {
   return `${valore} ${unita}`;
 }
 
-/** La risposta di GET /api/prodotto/[ean] (spec §2). */
-type RispostaProdotto =
-  | { trovato: true; nome: string; marca: string; quantita: QuantitaConfezione | null }
-  | { trovato: false };
-
-/** Cosa mostra il riquadro di una voce dopo la lettura del codice. */
+/** Cosa mostra il foglio di una voce dopo la lettura del codice. */
 type Esito =
   | { tipo: 'cerco' }
   | { tipo: 'unita-diversa'; unitaOff: UnitaBase }
@@ -69,6 +48,8 @@ type Esito =
 
 interface Attiva {
   itemId: string;
+  /** Il codice letto, per il riquadro; null finché si sta leggendo. */
+  codice: string | null;
   esito: Esito | null;
 }
 
@@ -140,6 +121,10 @@ function necessarieCon(voce: VoceComprata, formato: number): number {
  * accreditato e la correzione non cambierebbe niente (si rimanda a
  * /piano). Lo scanner non parla con la rete: è questa pagina che chiama
  * `/api/prodotto/[ean]` e decide cosa proporre.
+ *
+ * La scansione si apre in un foglio dal basso con `LettoreCodice`, come nella
+ * Dispensa (spec fase 6 §B.4): un foglio alla volta, quindi una sola voce
+ * aperta.
  */
 export default function Confezioni() {
   const router = useRouter();
@@ -180,7 +165,7 @@ export default function Confezioni() {
           return;
         }
         const lista = await leggiListe(settimana.id);
-        if (!lista || !tuttoFatto(lista)) {
+        if (!lista || !listaFinita(lista)) {
           router.replace('/lista');
           return;
         }
@@ -208,7 +193,7 @@ export default function Confezioni() {
   }
 
   function apriScanner(itemId: string) {
-    apri({ itemId, esito: null });
+    apri({ itemId, codice: null, esito: null });
   }
 
   function chiudi() {
@@ -216,12 +201,12 @@ export default function Confezioni() {
   }
 
   /**
-   * Un esito arrivato da una fetch: vale solo se la voce è ancora quella
-   * aperta. Se intanto si è premuto SCANSIONA su un'altra voce, la risposta
-   * in ritardo non deve coprire il suo scanner.
+   * Un esito arrivato da una fetch: vale solo se la voce è ancora quella aperta. Se
+   * intanto si è chiuso il foglio e aperto un'altra voce, la risposta in ritardo non
+   * deve coprire la sua lettura.
    */
   function seAncoraAperta(voce: VoceComprata, esito: Esito) {
-    setAttiva((a) => (a?.itemId === voce.itemId ? { itemId: voce.itemId, esito } : a));
+    setAttiva((a) => (a?.itemId === voce.itemId ? { ...a, esito } : a));
   }
 
   /**
@@ -283,21 +268,14 @@ export default function Confezioni() {
   }
 
   async function onCodice(voce: VoceComprata, ean: string) {
-    apri({ itemId: voce.itemId, esito: { tipo: 'cerco' } });
-    let risposta: RispostaProdotto;
-    try {
-      const res = await fetch(`/api/prodotto/${ean}`);
-      // Sessione scaduta: il proxy rimanda a /entra (la fetch segue il
-      // redirect e torna HTML) o la route risponde 401. Non è un errore del
-      // catalogo: si va a entrare, non si propone di scrivere a mano.
-      if (res.redirected || res.status === 401) {
-        router.replace('/entra');
-        return;
-      }
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      risposta = (await res.json()) as RispostaProdotto;
-    } catch (errore) {
-      console.error('lista/confezioni: catalogo non raggiungibile.', errore instanceof Error ? errore.name : 'errore');
+    apri({ itemId: voce.itemId, codice: ean, esito: { tipo: 'cerco' } });
+    const risposta = await cercaProdotto(ean);
+    // Sessione scaduta: non è un errore del catalogo, si va a entrare.
+    if (risposta === 'sessione') {
+      router.replace('/entra');
+      return;
+    }
+    if (risposta === 'errore') {
       seAncoraAperta(voce, {
         tipo: 'manuale',
         messaggio: 'Non riusciamo a interrogare il catalogo. Riprova, o scrivi il formato a mano.',
@@ -305,7 +283,6 @@ export default function Confezioni() {
       });
       return;
     }
-
     if (!risposta.trovato || !risposta.quantita) {
       seAncoraAperta(voce, {
         tipo: 'manuale',
@@ -334,318 +311,216 @@ export default function Confezioni() {
     seAncoraAperta(voce, { tipo: 'proposta', marca: risposta.marca, nome: risposta.nome, formato: proposta, ean });
   }
 
+  const indietro = { etichetta: 'FINE SPESA', ariaLabel: 'Torna a fine spesa', onTorna: () => router.push('/lista/fatta') };
+
   if (erroreCaricamento) {
     return (
-      <Cornice>
-        <p style={{ margin: '20px 18px', color: 'var(--sec)' }}>{erroreCaricamento}</p>
+      <Cornice indietro={indietro}>
+        <div style={{ padding: '6px 16px' }}><MessaggioErrore>{erroreCaricamento}</MessaggioErrore></div>
       </Cornice>
     );
   }
 
-  if (!stato) return <Cornice />;
+  if (!stato) {
+    return (
+      <Cornice indietro={indietro}>
+        <div style={{ padding: '6px 16px' }}><Carico /></div>
+      </Cornice>
+    );
+  }
 
-  const formatoManuale = numeroDaCampo(manuale);
+  const voceAperta = attiva ? stato.voci.find((v) => v.itemId === attiva.itemId) ?? null : null;
 
-  return (
-    <Cornice>
-      <div className="sc scroll-app con-piede" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div>
-          <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-0.035em', lineHeight: 1.2, color: 'var(--ink)', marginBottom: 6 }}>
-            Le confezioni vere
-          </div>
-          <div style={{ fontSize: 13, lineHeight: 1.5, color: '#8A8A96' }}>
-            Scansiona quello che hai comprato: se la confezione è diversa dal formato che l’app assume, il residuo si
-            corregge da solo.
-          </div>
+  /** Cosa mostra il foglio di una voce dopo la lettura del codice (legge lo stato del componente). */
+  function corpoFoglio(voce: VoceComprata, a: Attiva): ReactNode {
+    const esito = a.esito;
+    if (esito === null) return <LettoreCodice onCodice={(ean) => void onCodice(voce, ean)} />;
+
+    const formatoManuale = numeroDaCampo(manuale);
+    // Il formato su cui si chiede "quante ne hai comprate": quello proposto dal catalogo,
+    // o quello scritto a mano se è valido.
+    const formatoInDomanda = esito.tipo === 'proposta' ? esito.formato : esito.tipo === 'manuale' ? formatoManuale : null;
+    const necessarie = formatoInDomanda === null ? null : necessarieCon(voce, formatoInDomanda);
+    const confezioniComprate = necessarie === null ? null : interoDaCampo(comprate ?? String(necessarie));
+    const inVolo = scrivendo === voce.itemId;
+
+    return (
+      <>
+        <div style={{ background: 'rgba(20,22,58,0.04)', borderRadius: 14, padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {a.codice && (
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.13em', color: 'var(--testo-2)' }}>
+              {`CODICE ${a.codice}`}
+            </span>
+          )}
+          {esito.tipo === 'cerco' && <Testo secondario>Cerco nel catalogo…</Testo>}
+          {esito.tipo === 'unita-diversa' && (
+            <Testo>{`Unità diversa (${esito.unitaOff} contro ${voce.unita}): non aggiorno. Correggi il formato a mano se serve.`}</Testo>
+          )}
+          {esito.tipo === 'confermo' && !erroreScrittura && (
+            <Testo>{`Formato ${quantita(esito.formato, voce.unita)}, come in lista. Memorizzo il codice…`}</Testo>
+          )}
+          {esito.tipo === 'confermato' && <Testo>{`Formato confermato: ${quantita(esito.formato, voce.unita)}.`}</Testo>}
+          {esito.tipo === 'proposta' && (
+            <>
+              <Testo forte>{rigaProdotto(esito.marca, esito.nome, quantita(esito.formato, voce.unita))}</Testo>
+              <Testo>
+                {`La confezione è ${quantita(esito.formato, voce.unita)}, nel formato avevi ${quantita(voce.formato, voce.unita)}. Aggiorno per questa settimana e per le prossime?`}
+              </Testo>
+            </>
+          )}
+          {esito.tipo === 'manuale' && (
+            <>
+              <Testo>{esito.messaggio}</Testo>
+              {(esito.marca || esito.nome) && <Testo forte>{rigaProdotto(esito.marca, esito.nome)}</Testo>}
+              <CampoNumerico
+                aria="Formato a mano"
+                valore={manuale}
+                segnaposto={String(voce.formato)}
+                unita={voce.unita}
+                onChange={(v) => {
+                  setManuale(v);
+                  // Le confezioni digitate erano per il formato di prima: con un altro
+                  // formato la proposta cambia e il campo deve tornare a seguirla.
+                  setComprate(null);
+                }}
+              />
+            </>
+          )}
+          {necessarie !== null && formatoInDomanda !== null && (
+            <>
+              <Testo>
+                {`Con confezioni da ${quantita(formatoInDomanda, voce.unita)} ne bastano ${necessarie} (la lista ne chiedeva ${voce.confezioni}). Quante ne hai comprate?`}
+              </Testo>
+              <CampoNumerico aria="Confezioni comprate" valore={comprate ?? String(necessarie)} unita="confezioni" onChange={setComprate} />
+            </>
+          )}
         </div>
 
+        {erroreScrittura && <MessaggioErrore>{erroreScrittura}</MessaggioErrore>}
+
+        {(esito.tipo === 'unita-diversa' || esito.tipo === 'confermato') && (
+          <TastoSecondario onClick={chiudi}>CHIUDI</TastoSecondario>
+        )}
+        {esito.tipo === 'confermo' && (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <TastoSecondario onClick={chiudi} style={{ flex: 1 }}>CHIUDI</TastoSecondario>
+            {erroreScrittura && (
+              <TastoPrimario disabled={inVolo} onClick={() => void scrivi(voce, esito.formato, esito.ean, voce.confezioni, 'confermato')} style={{ flex: 1 }}>
+                RIPROVA
+              </TastoPrimario>
+            )}
+          </div>
+        )}
+        {(esito.tipo === 'proposta' || esito.tipo === 'manuale') && (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <TastoSecondario onClick={chiudi} style={{ flex: 1 }}>LASCIA</TastoSecondario>
+            <TastoPrimario
+              disabled={inVolo || confezioniComprate === null || (esito.tipo === 'manuale' && formatoManuale === null)}
+              onClick={() => {
+                const formato = esito.tipo === 'proposta' ? esito.formato : formatoManuale;
+                if (formato !== null && confezioniComprate !== null) void scrivi(voce, formato, esito.ean, confezioniComprate, 'chiudi');
+              }}
+              style={{ flex: 1 }}
+            >
+              AGGIORNA
+            </TastoPrimario>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  return (
+    <Cornice indietro={indietro}>
+      <div className="sc scroll-app" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <p style={{ margin: '0 2px', fontSize: 13, lineHeight: 1.5, color: 'var(--testo-2)' }}>
+          Scansiona quello che hai comprato: se la confezione è diversa dal formato che l’app assume, il residuo si
+          corregge da solo.
+        </p>
+
         {stato.voci.length === 0 && (
-          <div style={{ padding: '16px 18px', borderRadius: 20, background: 'rgba(20,22,58,0.045)', fontSize: 13.5, lineHeight: 1.5, color: 'var(--ink)' }}>
+          <div style={{ padding: '16px 18px', borderRadius: 20, background: 'rgba(20,22,58,0.035)', fontSize: 13.5, lineHeight: 1.5, color: 'var(--ink)' }}>
             Niente da scansionare: le voci comprate sono tutte a pezzo o a stima.
           </div>
         )}
 
-        {stato.voci.map((voce) => {
-          const aperta = attiva?.itemId === voce.itemId;
-          const esito = aperta ? attiva.esito : null;
-          // Il formato su cui si chiede "quante ne hai comprate": quello
-          // proposto dal catalogo, o quello scritto a mano se è valido.
-          const formatoInDomanda = esito?.tipo === 'proposta' ? esito.formato : esito?.tipo === 'manuale' ? formatoManuale : null;
-          const necessarie = formatoInDomanda === null ? null : necessarieCon(voce, formatoInDomanda);
-          const confezioniComprate = necessarie === null ? null : interoDaCampo(comprate ?? String(necessarie));
-          return (
-            <div
-              key={voce.itemId}
-              style={{ padding: '14px 16px', borderRadius: 20, background: '#FFFFFF', border: '1px solid rgba(20,22,58,0.07)', display: 'flex', flexDirection: 'column', gap: 10 }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {voce.nome}
-                  </div>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.06em', color: 'var(--sec)', marginTop: 2 }}>
-                    {`${voce.confezioni} × ${quantita(voce.formato, voce.unita)}`}
-                    {aggiornati.has(voce.itemId) && ' · AGGIORNATO'}
-                  </div>
-                </div>
-                {!aperta && (
-                  <button
-                    type="button"
-                    onClick={() => apriScanner(voce.itemId)}
-                    style={{
-                      flex: 'none', height: 40, padding: '0 16px', borderRadius: 999, border: 'none',
-                      background: '#14163A', color: '#FFFFFF',
-                      fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, letterSpacing: '0.09em',
-                    }}
-                  >
-                    SCANSIONA
-                  </button>
-                )}
+        {stato.voci.map((voce) => (
+          <div
+            key={voce.itemId}
+            style={{ padding: 16, borderRadius: 22, background: 'var(--superficie)', border: '1px solid var(--bordo)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}
+          >
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {voce.nome}
               </div>
-
-              {aperta && esito === null && (
-                <Scanner onCodice={(ean) => void onCodice(voce, ean)} onAnnulla={chiudi} />
-              )}
-
-              {esito?.tipo === 'cerco' && (
-                <p style={{ margin: 0, fontSize: 13, color: 'var(--sec)' }}>Cerco nel catalogo…</p>
-              )}
-
-              {esito?.tipo === 'unita-diversa' && (
-                <Riquadro>
-                  <Testo>
-                    {`Unità diversa (${esito.unitaOff} contro ${voce.unita}): non aggiorno. Correggi il formato a mano se serve.`}
-                  </Testo>
-                  <Azioni>
-                    <Secondario onClick={chiudi}>CHIUDI</Secondario>
-                  </Azioni>
-                </Riquadro>
-              )}
-
-              {esito?.tipo === 'confermo' && (
-                <Riquadro>
-                  {erroreScrittura
-                    ? <Errore>{erroreScrittura}</Errore>
-                    : <Testo>{`Formato ${quantita(esito.formato, voce.unita)}, come in lista. Memorizzo il codice…`}</Testo>}
-                  <Azioni>
-                    {erroreScrittura && (
-                      <Primario disabled={scrivendo === voce.itemId} onClick={() => void scrivi(voce, esito.formato, esito.ean, voce.confezioni, 'confermato')}>
-                        RIPROVA
-                      </Primario>
-                    )}
-                    <Secondario onClick={chiudi}>CHIUDI</Secondario>
-                  </Azioni>
-                </Riquadro>
-              )}
-
-              {esito?.tipo === 'confermato' && (
-                <Riquadro>
-                  <Testo>{`Formato confermato: ${quantita(esito.formato, voce.unita)}.`}</Testo>
-                  <Azioni>
-                    <Secondario onClick={chiudi}>CHIUDI</Secondario>
-                  </Azioni>
-                </Riquadro>
-              )}
-
-              {esito?.tipo === 'proposta' && (
-                <Riquadro>
-                  <Testo forte>{rigaProdotto(esito.marca, esito.nome, quantita(esito.formato, voce.unita))}</Testo>
-                  <Testo>
-                    {`La confezione è ${quantita(esito.formato, voce.unita)}, nel formato avevi ${quantita(voce.formato, voce.unita)}. Aggiorno per questa settimana e per le prossime?`}
-                  </Testo>
-                  {necessarie !== null && (
-                    <DomandaConfezioni
-                      testo={`Con confezioni da ${quantita(esito.formato, voce.unita)} ne bastano ${necessarie} (la lista ne chiedeva ${voce.confezioni}). Quante ne hai comprate?`}
-                      valore={comprate ?? String(necessarie)}
-                      onChange={setComprate}
-                    />
-                  )}
-                  {erroreScrittura && <Errore>{erroreScrittura}</Errore>}
-                  <Azioni>
-                    <Primario
-                      disabled={scrivendo === voce.itemId || confezioniComprate === null}
-                      onClick={() => confezioniComprate !== null && void scrivi(voce, esito.formato, esito.ean, confezioniComprate, 'chiudi')}
-                    >
-                      AGGIORNA
-                    </Primario>
-                    <Secondario onClick={chiudi}>LASCIA</Secondario>
-                  </Azioni>
-                </Riquadro>
-              )}
-
-              {esito?.tipo === 'manuale' && (
-                <Riquadro>
-                  <Testo>{esito.messaggio}</Testo>
-                  {(esito.marca || esito.nome) && <Testo forte>{rigaProdotto(esito.marca, esito.nome)}</Testo>}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <input
-                      type="text"
-                      aria-label="Formato a mano"
-                      inputMode="numeric"
-                      placeholder={String(voce.formato)}
-                      value={manuale}
-                      onChange={(e) => {
-                        setManuale(e.target.value);
-                        // Le confezioni digitate erano per il formato di
-                        // prima: con un altro formato la proposta cambia e
-                        // il campo deve tornare a seguirla.
-                        setComprate(null);
-                      }}
-                      style={{
-                        flex: 1, minWidth: 0, height: 44, padding: '0 14px', borderRadius: 14,
-                        border: '1px solid rgba(20,22,58,0.16)', background: '#FFFFFF',
-                        fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--ink)',
-                      }}
-                    />
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--sec)' }}>{voce.unita}</span>
-                  </div>
-                  {formatoManuale !== null && necessarie !== null && (
-                    <DomandaConfezioni
-                      testo={`Con confezioni da ${quantita(formatoManuale, voce.unita)} ne bastano ${necessarie} (la lista ne chiedeva ${voce.confezioni}). Quante ne hai comprate?`}
-                      valore={comprate ?? String(necessarie)}
-                      onChange={setComprate}
-                    />
-                  )}
-                  {erroreScrittura && <Errore>{erroreScrittura}</Errore>}
-                  <Azioni>
-                    <Primario
-                      disabled={scrivendo === voce.itemId || formatoManuale === null || confezioniComprate === null}
-                      onClick={() =>
-                        formatoManuale !== null && confezioniComprate !== null
-                        && void scrivi(voce, formatoManuale, esito.ean, confezioniComprate, 'chiudi')}
-                    >
-                      AGGIORNA
-                    </Primario>
-                    <Secondario onClick={chiudi}>LASCIA</Secondario>
-                  </Azioni>
-                </Riquadro>
-              )}
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.06em', color: 'var(--testo-2)', marginTop: 2 }}>
+                {`${voce.confezioni} × ${quantita(voce.formato, voce.unita)}`}
+                {aggiornati.has(voce.itemId) && ' · AGGIORNATO'}
+              </div>
             </div>
-          );
-        })}
+            <button
+              type="button"
+              aria-label={`Scansiona ${voce.nome}`}
+              onClick={() => apriScanner(voce.itemId)}
+              style={{ ...STILE_PILLOLA, flex: 'none', border: 'none', background: 'var(--ink)', color: 'var(--superficie)' }}
+            >
+              SCANSIONA
+            </button>
+          </div>
+        ))}
       </div>
 
-      <div className="coda-barra" style={{ padding: '6px 16px 0' }}>
-        <Link
-          href="/lista/fatta"
-          style={{
-            width: '100%', height: 52, borderRadius: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: 'var(--font-mono)', fontSize: 11.5, fontWeight: 700, letterSpacing: '0.09em',
-            background: 'transparent', border: '1.5px solid rgba(20,22,58,0.16)', color: 'var(--ink)',
-          }}
-        >
-          TORNA A HAI PRESO TUTTO
-        </Link>
-      </div>
+      {attiva && voceAperta && (
+        <FoglioDalBasso etichetta={`Confezione di ${voceAperta.nome}`} onChiudi={chiudi}>
+          <TestataFoglio onChiudi={chiudi} etichettaChiudi="Chiudi la scansione">
+            <span style={{ fontSize: 15.5, fontWeight: 700, color: 'var(--ink)' }}>{voceAperta.nome}</span>
+          </TestataFoglio>
+          <div className="sc corpo-foglio" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 16px 26px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {corpoFoglio(voceAperta, attiva)}
+          </div>
+        </FoglioDalBasso>
+      )}
     </Cornice>
   );
 }
 
-/** "Quante ne hai comprate?" con il campo intero accanto. */
-function DomandaConfezioni({ testo, valore, onChange }: { testo: string; valore: string; onChange: (v: string) => void }) {
+function Testo({ children, forte = false, secondario = false }: { children: ReactNode; forte?: boolean; secondario?: boolean }) {
   return (
-    <>
-      <Testo>{testo}</Testo>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <input
-          type="text"
-          aria-label="Confezioni comprate"
-          inputMode="numeric"
-          value={valore}
-          onChange={(e) => onChange(e.target.value)}
-          style={{
-            width: 96, height: 44, padding: '0 14px', borderRadius: 14,
-            border: '1px solid rgba(20,22,58,0.16)', background: '#FFFFFF',
-            fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--ink)',
-          }}
-        />
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--sec)' }}>confezioni</span>
-      </div>
-    </>
-  );
-}
-
-function Riquadro({ children }: { children: ReactNode }) {
-  return (
-    <div style={{ padding: '12px 14px', borderRadius: 16, background: 'rgba(20,22,58,0.045)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {children}
-    </div>
-  );
-}
-
-function Testo({ children, forte = false }: { children: ReactNode; forte?: boolean }) {
-  return (
-    <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, color: 'var(--ink)', fontWeight: forte ? 700 : 400 }}>
+    <p style={{ margin: 0, fontSize: forte ? 15.5 : secondario ? 12.5 : 13.5, lineHeight: 1.5, fontWeight: forte ? 700 : 400, color: secondario ? 'var(--testo-2)' : 'var(--ink)' }}>
       {children}
     </p>
   );
 }
 
-function Errore({ children }: { children: ReactNode }) {
-  return <p style={{ margin: 0, fontSize: 12.5, color: 'var(--sec)' }}>{children}</p>;
-}
-
-function Azioni({ children }: { children: ReactNode }) {
-  return <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>{children}</div>;
-}
-
-function Primario({ children, onClick, disabled = false }: { children: ReactNode; onClick: () => void; disabled?: boolean }) {
+/** Campo numerico di DESIGN.md §8: largo 96, mono 14/700 a destra, l'unità in mono 10 --ter. */
+function CampoNumerico({ aria, valore, segnaposto, unita, onChange }: {
+  aria: string; valore: string; segnaposto?: string; unita: string; onChange: (v: string) => void;
+}) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      style={{
-        height: 40, padding: '0 16px', borderRadius: 999, border: 'none',
-        background: '#14163A', color: '#FFFFFF',
-        fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, letterSpacing: '0.09em',
-        opacity: disabled ? 0.45 : 1,
-      }}
-    >
-      {children}
-    </button>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <input
+        type="text"
+        aria-label={aria}
+        inputMode="numeric"
+        placeholder={segnaposto}
+        value={valore}
+        onChange={(e) => onChange(e.target.value)}
+        style={{
+          width: 96, height: 44, boxSizing: 'border-box', borderRadius: 14, padding: '0 12px', textAlign: 'right',
+          border: '1px solid var(--bordo)', background: 'var(--superficie)',
+          fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 700, color: 'var(--ink)',
+        }}
+      />
+      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', color: 'var(--ter)' }}>{unita}</span>
+    </div>
   );
 }
 
-function Secondario({ children, onClick }: { children: ReactNode; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        height: 40, padding: '0 14px', borderRadius: 999,
-        background: 'transparent', border: '1.5px solid rgba(20,22,58,0.16)', color: 'var(--ink)',
-        fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, letterSpacing: '0.09em',
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
-/**
- * Header ridotto come in Scegli: freccia indietro verso "Hai preso tutto",
- * etichetta mono al centro. Da qui si torna sempre a /lista/fatta, che è
- * l'unico posto da cui si arriva.
- */
-function Cornice({ children }: { children?: ReactNode }) {
+/** Colonna a tutta altezza con la Testata in modo indietro verso il traguardo (spec fase 6 §B.2). */
+function Cornice({ indietro, children }: { indietro: { etichetta: string; ariaLabel: string; onTorna: () => void }; children?: ReactNode }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <div style={{ padding: '18px 16px 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Link
-          href="/lista/fatta"
-          aria-label="Torna a Hai preso tutto"
-          style={{ width: 44, height: 44, margin: '0 0 0 -10px', flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <svg width="23" height="23" viewBox="0 0 24 24" fill="none">
-            <path d="M14.5 5 7.8 12l6.7 7" stroke="var(--ink)" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </Link>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--sec)' }}>
-          CONFEZIONI
-        </span>
-        <div style={{ width: 44, height: 44, flex: 'none' }} />
-      </div>
+      <Testata titolo="Confezioni" indietro={indietro} />
       {children}
     </div>
   );

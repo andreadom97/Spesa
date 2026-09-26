@@ -30,8 +30,8 @@ const INTERVALLO_MS = 250;
  * La lettura continua del codice a barre (spec scan-confezione §3), senza
  * interfaccia: apre la fotocamera posteriore se c'è `BarcodeDetector`, prova
  * un frame ogni 250 ms e al primo codice valido ferma tutto e chiama
- * `onCodice`. Allo smontaggio ferma lo stream. La usano `Scanner` (Lista →
- * confezioni) e `LettoreCodice` (Dispensa), che la vestono diversamente.
+ * `onCodice`. Allo smontaggio ferma lo stream. L'unico chiamante è
+ * `LettoreCodice` (Dispensa e, dalla fase 6, Lista → confezioni).
  */
 export function useLettoreCodici(onCodice: (ean: string) => void): { modo: ModoLettore; videoRef: RefObject<HTMLVideoElement | null> } {
   const [modo, setModo] = useState<ModoLettore>('rilevamento');

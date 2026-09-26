@@ -102,12 +102,12 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-/** Apre lo scanner sulla (sola) voce, scrive il codice e preme CERCA. */
-async function scansiona(codice = EAN) {
-  fireEvent.click(await screen.findByRole('button', { name: 'SCANSIONA' }));
-  const campo = await screen.findByLabelText('Scrivi il codice');
+/** Apre il foglio sulla voce, digita il codice (in jsdom la fotocamera non c'è) e preme CERCA IL CODICE. */
+async function scansiona(codice = EAN, nome = 'Pasta') {
+  fireEvent.click(await screen.findByRole('button', { name: `Scansiona ${nome}` }));
+  const campo = await screen.findByLabelText('Codice a barre');
   fireEvent.change(campo, { target: { value: codice } });
-  fireEvent.click(screen.getByRole('button', { name: 'CERCA' }));
+  fireEvent.click(screen.getByRole('button', { name: 'CERCA IL CODICE' }));
 }
 
 describe('Confezioni — accesso ed elenco', () => {
@@ -117,13 +117,15 @@ describe('Confezioni — accesso ed elenco', () => {
     expect(await screen.findByText('Pasta')).toBeInTheDocument();
     // La quantità esatta, non "1,0 kg": qui si confrontano formati.
     expect(screen.getByText('1 × 1000 g')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'SCANSIONA' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Scansiona Pasta' })).toBeInTheDocument();
     expect(screen.queryByText('Uova')).not.toBeInTheDocument();
     expect(screen.queryByText('Insalata')).not.toBeInTheDocument();
     expect(leggiVociComprate).toHaveBeenCalledWith('week-1');
-    expect(screen.getByText('CONFEZIONI')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Torna a Hai preso tutto' })).toHaveAttribute('href', '/lista/fatta');
-    expect(screen.getByRole('link', { name: 'TORNA A HAI PRESO TUTTO' })).toHaveAttribute('href', '/lista/fatta');
+    expect(screen.getByRole('heading', { level: 1, name: 'Confezioni' })).toBeInTheDocument();
+    expect(screen.queryByText('Le confezioni vere')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'TORNA A HAI PRESO TUTTO' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Torna a fine spesa' }));
+    expect(push).toHaveBeenCalledWith('/lista/fatta');
     expect(replace).not.toHaveBeenCalled();
   });
 
@@ -141,7 +143,7 @@ describe('Confezioni — accesso ed elenco', () => {
     render(<Confezioni />);
 
     expect(await screen.findByText('Niente da scansionare: le voci comprate sono tutte a pezzo o a stima.')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'SCANSIONA' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Scansiona / })).not.toBeInTheDocument();
   });
 
   it('senza settimana rimanda a /lista', async () => {
@@ -188,8 +190,8 @@ describe('Confezioni — scansione', () => {
     const campo = screen.getByLabelText('Confezioni comprate');
     expect(campo).toHaveAttribute('inputmode', 'numeric');
     expect(campo).toHaveValue('2');
-    // Lo scanner è stato smontato: niente campo del codice.
-    expect(screen.queryByLabelText('Scrivi il codice')).not.toBeInTheDocument();
+    // Il lettore è stato smontato: niente campo del codice.
+    expect(screen.queryByLabelText('Codice a barre')).not.toBeInTheDocument();
 
     fireEvent.change(campo, { target: { value: '3' } });
     fireEvent.click(screen.getByRole('button', { name: 'AGGIORNA' }));
@@ -425,6 +427,9 @@ describe('Confezioni — scansione', () => {
     expect(await screen.findByText('Non riusciamo a interrogare il catalogo. Riprova, o scrivi il formato a mano.')).toBeInTheDocument();
     expect(screen.getByLabelText('Formato a mano')).toBeInTheDocument();
     expect(aggiornaFormatoDaScansione).not.toHaveBeenCalled();
+    // Il log del catalogo non raggiungibile è ora di cercaProdotto (dispensa),
+    // non di questa pagina: qui si verifica solo che sia stato chiamato.
+    expect(errore).toHaveBeenCalled();
     errore.mockRestore();
   });
 
@@ -495,20 +500,20 @@ describe('Confezioni — scansione', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'LASCIA' }));
 
     expect(screen.queryByText(/La confezione è/)).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'SCANSIONA' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Scansiona Pasta' })).toBeInTheDocument();
     expect(screen.getByText('1 × 1000 g')).toBeInTheDocument();
     expect(aggiornaFormatoDaScansione).not.toHaveBeenCalled();
   });
 
-  it('ANNULLA nello scanner torna alla scheda', async () => {
+  it('il ✕ chiude il foglio senza cercare niente', async () => {
     render(<Confezioni />);
-    fireEvent.click(await screen.findByRole('button', { name: 'SCANSIONA' }));
-    expect(await screen.findByLabelText('Scrivi il codice')).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: 'Scansiona Pasta' }));
+    await screen.findByLabelText('Codice a barre');
 
-    fireEvent.click(screen.getByRole('button', { name: 'ANNULLA' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Chiudi la scansione' }));
 
-    expect(screen.queryByLabelText('Scrivi il codice')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'SCANSIONA' })).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Scansiona Pasta' })).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -519,15 +524,13 @@ describe('Confezioni — scansione', () => {
     ]);
 
     render(<Confezioni />);
-    const bottoni = await screen.findAllByRole('button', { name: 'SCANSIONA' });
+    const bottoni = await screen.findAllByRole('button', { name: /^Scansiona / });
     expect(bottoni).toHaveLength(2);
     fireEvent.click(bottoni[0]);
 
-    expect(screen.getAllByLabelText('Scrivi il codice')).toHaveLength(1);
-    // nome → colonna → riga di testa → scheda
-    const schedaPasta = screen.getByText('Pasta').parentElement!.parentElement!.parentElement!;
-    expect(within(schedaPasta).getByLabelText('Scrivi il codice')).toBeInTheDocument();
-    expect(within(schedaPasta).queryByRole('button', { name: 'SCANSIONA' })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
+    const foglio = screen.getByRole('dialog', { name: 'Confezione di Pasta' });
+    expect(await within(foglio).findByLabelText('Codice a barre')).toBeInTheDocument();
   });
 
   it('una scrittura in volo su una voce non chiude lo scanner aperto intanto su un\'altra', async () => {
@@ -541,24 +544,23 @@ describe('Confezioni — scansione', () => {
 
     render(<Confezioni />);
     // Pasta: si scansiona, si preme AGGIORNA, la scrittura resta in sospeso.
-    fireEvent.click((await screen.findAllByRole('button', { name: 'SCANSIONA' }))[0]);
-    fireEvent.change(await screen.findByLabelText('Scrivi il codice'), { target: { value: EAN } });
-    fireEvent.click(screen.getByRole('button', { name: 'CERCA' }));
+    await scansiona();
     fireEvent.click(await screen.findByRole('button', { name: 'AGGIORNA' }));
     expect(aggiornaFormatoDaScansione).toHaveBeenCalledTimes(1);
 
+    // Un foglio alla volta: si chiude col ✕ prima di aprire il riso.
+    fireEvent.click(screen.getByRole('button', { name: 'Chiudi la scansione' }));
+
     // Intanto si apre lo scanner sul riso.
-    fireEvent.click(screen.getByRole('button', { name: 'SCANSIONA' }));
-    const schedaRiso = screen.getByText('Riso').parentElement!.parentElement!.parentElement!;
-    expect(within(schedaRiso).getByLabelText('Scrivi il codice')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Scansiona Riso' }));
+    const foglioRiso = screen.getByRole('dialog', { name: 'Confezione di Riso' });
+    expect(await within(foglioRiso).findByLabelText('Codice a barre')).toBeInTheDocument();
 
     // La scrittura della pasta si risolve: la pasta è aggiornata, lo scanner del riso resta.
     risolvi();
     expect(await screen.findByText('2 × 500 g · AGGIORNATO')).toBeInTheDocument();
-    expect(within(schedaRiso).getByLabelText('Scrivi il codice')).toBeInTheDocument();
-    expect(within(schedaRiso).queryByRole('button', { name: 'SCANSIONA' })).not.toBeInTheDocument();
-    // La pasta, chiusa, torna col suo SCANSIONA: uno solo in pagina.
-    expect(screen.getAllByRole('button', { name: 'SCANSIONA' })).toHaveLength(1);
+    expect(screen.getByRole('dialog', { name: 'Confezione di Riso' })).toBeInTheDocument();
+    expect(within(foglioRiso).getByLabelText('Codice a barre')).toBeInTheDocument();
   });
 
   it('una scrittura in volo su una voce non blocca il "formato uguale" di un\'altra', async () => {
@@ -575,17 +577,17 @@ describe('Confezioni — scansione', () => {
       .mockResolvedValueOnce(undefined);
 
     render(<Confezioni />);
-    fireEvent.click((await screen.findAllByRole('button', { name: 'SCANSIONA' }))[0]);
-    fireEvent.change(await screen.findByLabelText('Scrivi il codice'), { target: { value: EAN } });
-    fireEvent.click(screen.getByRole('button', { name: 'CERCA' }));
+    await scansiona();
     fireEvent.click(await screen.findByRole('button', { name: 'AGGIORNA' }));
 
-    // Riso: formato uguale → il codice si memorizza anche se la pasta è ancora in volo.
-    fireEvent.click(screen.getByRole('button', { name: 'SCANSIONA' }));
-    fireEvent.change(await screen.findByLabelText('Scrivi il codice'), { target: { value: '80768001' } });
-    fireEvent.click(screen.getByRole('button', { name: 'CERCA' }));
+    // Un foglio alla volta: si chiude col ✕ prima di aprire il riso.
+    fireEvent.click(screen.getByRole('button', { name: 'Chiudi la scansione' }));
 
-    expect(await screen.findByText('Formato confermato: 1000 g.')).toBeInTheDocument();
+    // Riso: formato uguale → il codice si memorizza anche se la pasta è ancora in volo.
+    await scansiona('80768001', 'Riso');
+
+    const foglioRiso = screen.getByRole('dialog', { name: 'Confezione di Riso' });
+    expect(await within(foglioRiso).findByText('Formato confermato: 1000 g.')).toBeInTheDocument();
     expect(aggiornaFormatoDaScansione).toHaveBeenCalledTimes(2);
     expect(vi.mocked(aggiornaFormatoDaScansione).mock.calls[1][0]).toEqual({
       ingredientId: 'ing-riso', weekId: 'week-1', formato: 1000, ean: '80768001', confezioni: 1,
@@ -594,7 +596,7 @@ describe('Confezioni — scansione', () => {
     risolviPasta();
     expect(await screen.findByText('2 × 500 g · AGGIORNATO')).toBeInTheDocument();
     // Il riso resta sulla sua conferma: la pasta non chiude la scheda di un'altra voce.
-    expect(screen.getByText('Formato confermato: 1000 g.')).toBeInTheDocument();
+    expect(within(foglioRiso).getByText('Formato confermato: 1000 g.')).toBeInTheDocument();
   });
 
   it('la risposta in ritardo di una voce non copre lo scanner aperto su un\'altra', async () => {
@@ -607,15 +609,18 @@ describe('Confezioni — scansione', () => {
 
     render(<Confezioni />);
     // Pasta (la prima): si scansiona, la fetch resta in sospeso.
-    fireEvent.click((await screen.findAllByRole('button', { name: 'SCANSIONA' }))[0]);
-    fireEvent.change(await screen.findByLabelText('Scrivi il codice'), { target: { value: EAN } });
-    fireEvent.click(screen.getByRole('button', { name: 'CERCA' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Scansiona Pasta' }));
+    fireEvent.change(await screen.findByLabelText('Codice a barre'), { target: { value: EAN } });
+    fireEvent.click(screen.getByRole('button', { name: 'CERCA IL CODICE' }));
     expect(await screen.findByText('Cerco nel catalogo…')).toBeInTheDocument();
 
+    // Un foglio alla volta: si chiude col ✕ prima di aprire il riso.
+    fireEvent.click(screen.getByRole('button', { name: 'Chiudi la scansione' }));
+
     // Intanto si apre lo scanner sul riso.
-    fireEvent.click(screen.getByRole('button', { name: 'SCANSIONA' }));
-    const schedaRiso = screen.getByText('Riso').parentElement!.parentElement!.parentElement!;
-    expect(within(schedaRiso).getByLabelText('Scrivi il codice')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Scansiona Riso' }));
+    const foglioRiso = screen.getByRole('dialog', { name: 'Confezione di Riso' });
+    expect(await within(foglioRiso).findByLabelText('Codice a barre')).toBeInTheDocument();
     expect(screen.queryByText('Cerco nel catalogo…')).not.toBeInTheDocument();
 
     // Arriva la risposta della pasta: lo scanner del riso resta, nessuna proposta.
@@ -623,9 +628,60 @@ describe('Confezioni — scansione', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     await new Promise((r) => setTimeout(r, 0));
 
-    expect(within(schedaRiso).getByLabelText('Scrivi il codice')).toBeInTheDocument();
+    expect(within(foglioRiso).getByLabelText('Codice a barre')).toBeInTheDocument();
     expect(screen.queryByText(/La confezione è/)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'AGGIORNA' })).not.toBeInTheDocument();
     expect(aggiornaFormatoDaScansione).not.toHaveBeenCalled();
+  });
+});
+
+describe('Confezioni — il foglio (spec fase 6 §B.4)', () => {
+  it('SCANSIONA apre un dialogo col nome della voce, e LettoreCodice dentro', async () => {
+    render(<Confezioni />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Scansiona Pasta' }));
+
+    const foglio = screen.getByRole('dialog', { name: 'Confezione di Pasta' });
+    expect(await within(foglio).findByLabelText('Codice a barre')).toBeInTheDocument();
+  });
+
+  it('dopo la lettura il riquadro dice il codice letto', async () => {
+    fetchMock.mockResolvedValue(rispostaJson(OFF_500G));
+    render(<Confezioni />);
+    await scansiona();
+
+    expect(await screen.findByText(`CODICE ${EAN}`)).toBeInTheDocument();
+  });
+
+  it('AGGIORNA scrive e chiude il foglio; la riga dice AGGIORNATO', async () => {
+    fetchMock.mockResolvedValue(rispostaJson(OFF_500G));
+    render(<Confezioni />);
+    await scansiona();
+    fireEvent.click(await screen.findByRole('button', { name: 'AGGIORNA' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(screen.getByText('2 × 500 g · AGGIORNATO')).toBeInTheDocument();
+  });
+
+  it('LASCIA chiude il foglio senza scrivere', async () => {
+    fetchMock.mockResolvedValue(rispostaJson(OFF_500G));
+    render(<Confezioni />);
+    await scansiona();
+    fireEvent.click(await screen.findByRole('button', { name: 'LASCIA' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(aggiornaFormatoDaScansione).not.toHaveBeenCalled();
+  });
+
+  it('la pillola SCANSIONA è alta almeno 44 e ha il nome della voce', async () => {
+    render(<Confezioni />);
+    const pillola = await screen.findByRole('button', { name: 'Scansiona Pasta' });
+    expect(pillola).toHaveTextContent('SCANSIONA');
+    expect(pillola.style.minHeight).toBe('44px');
+  });
+
+  it('in caricamento: CARICO…', async () => {
+    vi.mocked(leggiVociComprate).mockReturnValue(new Promise(() => {}));
+    render(<Confezioni />);
+    expect(await screen.findByText('CARICO…')).toBeInTheDocument();
   });
 });
