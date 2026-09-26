@@ -69,9 +69,11 @@ sono state fatte in un'ondata sola:
   test nuovo della race fallisce sul codice di prima [misurato]. Ha trovato un buco di copertura: nessun
   test protegge la guardia del ramo «formato uguale», quello che scrive da solo. Togliendo il
   confronto sul codice, la suite di Confezioni resta verde [misurato dal revisore, in una copia]. Il
-  codice è giusto, ma se in futuro qualcuno toglie la guardia nessun test se ne accorge.
+  codice è giusto, ma se in futuro qualcuno toglie la guardia nessun test se ne accorge. **Chiuso su
+  richiesta di Andrea** (e4873da): il test «la risposta in ritardo di un codice vecchio con formato
+  uguale non scrive» passa con la guardia e fallisce senza, perché la scrittura parte con l'ean vecchio
+  [misurato].
 - **Restano, di proposito:**
-  - il test della guardia del «formato uguale», di cui sopra;
   - con lo **stesso** codice riletto dopo ✕, se la prima ricerca fallisce in ritardo il foglio passa a
     «Non riusciamo a interrogare il catalogo». Nessuna scrittura sbagliata, solo un messaggio che
     confonde [per lettura del codice];
