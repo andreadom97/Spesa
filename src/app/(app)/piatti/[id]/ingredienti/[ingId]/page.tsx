@@ -1,13 +1,14 @@
 'use client';
 
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import type { AreaId, ClasseResiduo, Ingredient, UnitaBase } from '@/domain/types';
 import { salvaIngrediente, leggiIngredienti, eliminaIngrediente, IngredienteInUsoError, haAcquistiRegistrati } from '@/data/repertorio';
 import { leggiImpostazioni } from '@/data/impostazioni';
 import { AREE, coloreArea, nomeArea } from '@/domain/aree';
 import { GIORNI_CONTROLLO_DEFAULT, ogniCadenza, type GiorniControllo } from '@/domain/pantry';
-import { MSG_CATALOGO, proprietario } from '@/domain/scansione-dispensa';
+import { formatoProposto } from '@/domain/ean';
+import { MSG_CATALOGO, msgUnitaDiversa, proprietario } from '@/domain/scansione-dispensa';
 import { Segmento } from '@/components/Segmento';
 import { Dock } from '@/components/Dock';
 import { FoglioDalBasso, TestataFoglio } from '@/components/FoglioDalBasso';
@@ -221,8 +222,18 @@ export default function IngredienteEditor() {
   const [messaggioScan, setMessaggioScan] = useState<string | null>(null);
   const [scansione, setScansione] = useState(false);
   const [altro, setAltro] = useState<Ingredient | null>(null);
+  // La generazione del foglio di scansione: sale a ogni apertura e a ogni chiusura. Una
+  // lettura in volo (elenco o catalogo) che arriva con un'altra generazione è di un foglio
+  // che non c'è più, e si scarta tutta: niente formato, EAN, messaggio o «codice di un altro».
+  const generazioneScan = useRef(0);
+
+  function apriScansione() {
+    generazioneScan.current += 1;
+    setScansione(true);
+  }
 
   function chiudiScansione() {
+    generazioneScan.current += 1;
     setScansione(false);
     setAltro(null);
   }
@@ -364,20 +375,34 @@ export default function IngredienteEditor() {
    * guarda se il codice è già di un altro ingrediente, senza rete; poi il catalogo.
    * Niente si scrive: formato, unità ed EAN restano nel modulo fino a SALVA. Qui non
    * si usa `aggiornaFormatoDaScansione`, che tocca le righe della lista.
+   *
+   * L'unità di un ingrediente che esiste non la cambia il catalogo (review del Task 12,
+   * scarto da §F.1 punto 2): le quantità dei suoi piatti sono scritte in quell'unità,
+   * `salvaIngrediente` non le converte, e `convertiInUnitaBase` lancerebbe
+   * `UnitaIncompatibileError` generando la lista (`src/domain/unita.ts`, `src/data/lista.ts`).
+   * Vale la regola della fase 4 (`formatoProposto`, `esitoDaCatalogo`): il formato si
+   * riempie solo nella stessa unità, altrimenti `msgUnitaDiversa`, e l'EAN si lega lo stesso.
+   * Un ingrediente nuovo non è in nessun piatto: prende formato e unità, come oggi.
+   *
+   * Se il foglio si chiude (o si riapre) mentre la lettura è in volo, l'esito si scarta.
    */
   async function letto(codice: string) {
+    const generazione = generazioneScan.current;
+    const superata = () => generazioneScan.current !== generazione;
     let catalogo: Ingredient[] = [];
     try {
       catalogo = await leggiIngredienti();
     } catch {
       // Senza elenco non si riconosce il proprietario: si passa al catalogo.
     }
+    if (superata()) return;
     const suo = proprietario(codice, catalogo, nuovo ? undefined : ingId);
     if (suo) {
       setAltro(suo);
       return;
     }
     const risposta = await cercaProdotto(codice);
+    if (superata()) return;
     if (risposta === 'sessione') {
       router.replace('/entra');
       return;
@@ -387,12 +412,21 @@ export default function IngredienteEditor() {
       setMessaggioScan(MSG_CATALOGO);
     } else if (!risposta.trovato || !risposta.quantita) {
       setMessaggioScan(MSG_SCONOSCIUTO);
-    } else {
-      setMessaggioScan(null);
+    } else if (intero) {
       // Un INTERO si conta a pezzi con formato 1 (list-builder): il peso del catalogo non vale.
-      if (!intero) {
-        setFormatoTesto(String(risposta.quantita.valore));
-        setUnitaBase(risposta.quantita.unita);
+      setMessaggioScan(null);
+    } else if (nuovo) {
+      setMessaggioScan(null);
+      setFormatoTesto(String(risposta.quantita.valore));
+      setUnitaBase(risposta.quantita.unita);
+    } else {
+      // L'unità confrontata è quella del modulo, cioè quella che SALVA scriverà.
+      const formato = formatoProposto(risposta.quantita, unitaBase);
+      if (formato === null) {
+        setMessaggioScan(msgUnitaDiversa(risposta.quantita.unita, unitaBase));
+      } else {
+        setMessaggioScan(null);
+        setFormatoTesto(String(formato));
       }
     }
     chiudiScansione();
@@ -419,7 +453,12 @@ export default function IngredienteEditor() {
       console.error('ingrediente: eliminazione fallita.', e);
       throw e; // DialogoConferma mostra il suo errore e resta aperto
     }
-    router.push(ritorno());
+    // Il dialogo ha una voce di cronologia aperta: la push parte dopo il go(-1) che la
+    // consuma, così la voce non resta orfana (spec §A.5). Se il gesto indietro ha già
+    // chiuso il dialogo mentre l'eliminazione era in volo, non c'è voce da consumare e
+    // la push parte nell'effetto dell'hook: una volta sola, senza altri go.
+    chiudiTuttoPoi(() => router.push(ritorno()));
+    setConfermaEliminazione(false);
   }
 
   const freccia = { etichetta: tornaAImpostazioni ? 'Torna agli ingredienti' : 'Torna al piatto', onTorna: () => router.push(ritorno()) };
@@ -508,7 +547,7 @@ export default function IngredienteEditor() {
               })}
             </div>
           </div>
-          <TastoSecondario onClick={() => setScansione(true)} style={{ marginTop: 4 }}>
+          <TastoSecondario onClick={apriScansione} style={{ marginTop: 4 }}>
             <IconaScansione />
             SCANSIONA LA CONFEZIONE
           </TastoSecondario>

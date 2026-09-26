@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import type { Ingredient } from '@/domain/types';
 
@@ -341,7 +341,7 @@ describe('Ingrediente (editor): il ritorno (spec fase 5 §F)', () => {
     expect(push).not.toHaveBeenCalledWith('/piatti/nuovo');
   });
 
-  it('con torna=impostazioni anche SALVA torna al pannello, e non segnala un ingrediente al piatto', async () => {
+  it('con torna=impostazioni anche SALVA torna al pannello', async () => {
     paramsId = 'nuovo';
     paramsIngId = 'i-1';
     window.history.replaceState(null, '', '/piatti/nuovo/ingredienti/i-1?torna=impostazioni');
@@ -352,6 +352,36 @@ describe('Ingrediente (editor): il ritorno (spec fase 5 §F)', () => {
     fireEvent.change(screen.getByLabelText('Formato della confezione'), { target: { value: '450' } });
     fireEvent.click(salva());
     await waitFor(() => expect(push).toHaveBeenCalledWith('/piano?impostazioni=ingredienti'));
+  });
+
+  // Il segnale che fa aggiungere l'ingrediente nuovo al piatto che lo aspetta (bozza.ts,
+  // `spesa:ingrediente-creato:{piatto}`): c'è solo creando dal piatto, non dal pannello.
+  it('un ingrediente nuovo creato dal piatto lo segnala al piatto (spesa:ingrediente-creato:d-1)', async () => {
+    vi.mocked(salvaIngrediente).mockResolvedValue('i-nuovo');
+    rendi();
+    await screen.findByPlaceholderText("Dai un nome all'ingrediente");
+    fireEvent.change(screen.getByPlaceholderText("Dai un nome all'ingrediente"), { target: { value: 'Uova' } });
+    fireEvent.click(screen.getByRole('button', { name: 'MACELLERIA E PESCHERIA' }));
+    fireEvent.click(screen.getByRole('button', { name: 'INTERO' }));
+    fireEvent.click(salva());
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/piatti/d-1'));
+    expect(sessionStorage.getItem('spesa:ingrediente-creato:d-1')).toBe('i-nuovo');
+  });
+
+  it('con torna=impostazioni un ingrediente nuovo non si segnala a nessun piatto', async () => {
+    paramsId = 'nuovo';
+    window.history.replaceState(null, '', '/piatti/nuovo/ingredienti/nuovo?torna=impostazioni');
+    salvaOrigine({ pathname: '/lista', sotto: 'ingredienti' });
+    vi.mocked(salvaIngrediente).mockResolvedValue('i-nuovo');
+    rendi();
+    await screen.findByPlaceholderText("Dai un nome all'ingrediente");
+    fireEvent.change(screen.getByPlaceholderText("Dai un nome all'ingrediente"), { target: { value: 'Uova' } });
+    fireEvent.click(screen.getByRole('button', { name: 'MACELLERIA E PESCHERIA' }));
+    fireEvent.click(screen.getByRole('button', { name: 'INTERO' }));
+    fireEvent.click(salva());
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/lista?impostazioni=ingredienti'));
+    const chiavi = Array.from({ length: sessionStorage.length }, (_, i) => sessionStorage.key(i));
+    expect(chiavi.filter((k) => k?.startsWith('spesa:ingrediente-creato:'))).toEqual([]);
   });
 
   it('senza torna la freccia si chiama Torna al piatto e porta al piatto', async () => {
@@ -434,6 +464,73 @@ describe('Ingrediente (editor): la scansione (spec fase 5 §F.1)', () => {
     await scansiona(EAN_NUOVO);
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/entra'));
   });
+
+  // Il caso «stessa unità» (g e g) è «il catalogo dà la confezione…» qui sopra: 400 g su 500 g.
+  it('esistente in g e catalogo in ml: unità e formato restano, il messaggio lo dice, SALVA manda l\'ean (review del Task 12, I1)', async () => {
+    paramsIngId = 'i-1';
+    vi.mocked(salvaIngrediente).mockResolvedValue('i-1');
+    fetchMock.mockResolvedValueOnce(rispostaJson({ trovato: true, nome: 'Yogurt', marca: '', quantita: { valore: 700, unita: 'ml' } }));
+    rendi();
+    await screen.findByDisplayValue('Yogurt greco');
+    await scansiona(EAN_NUOVO);
+    expect(await screen.findByText('Unità diversa (ml contro g): scrivi il formato a mano.')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Scansiona la confezione' })).toBeNull();
+    expect(screen.getByLabelText('Formato della confezione')).toHaveValue('500');
+    expect(within(screen.getByRole('group', { name: 'Unità' })).getByRole('button', { name: 'G' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(salva());
+    await waitFor(() => expect(salvaIngrediente).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'i-1', unitaBase: 'g', formatoConfezione: 500, ean: EAN_NUOVO }),
+    ));
+  });
+
+  it('un ingrediente nuovo prende dal catalogo formato e unità, anche in ml', async () => {
+    fetchMock.mockResolvedValueOnce(rispostaJson({ trovato: true, nome: 'Latte', marca: '', quantita: { valore: 700, unita: 'ml' } }));
+    rendi();
+    await screen.findByPlaceholderText("Dai un nome all'ingrediente");
+    await scansiona(EAN_NUOVO);
+    await waitFor(() => expect(screen.getByLabelText('Formato della confezione')).toHaveValue('700'));
+    expect(within(screen.getByRole('group', { name: 'Unità' })).getByRole('button', { name: 'ML' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByText(/Unità diversa/)).toBeNull();
+  });
+
+  it('chiuso il foglio mentre il catalogo risponde, l\'esito si scarta', async () => {
+    paramsIngId = 'i-1';
+    let risolvi!: (r: Response) => void;
+    fetchMock.mockReturnValueOnce(new Promise<Response>((r) => { risolvi = r; }));
+    rendi();
+    await screen.findByDisplayValue('Yogurt greco');
+    await scansiona(EAN_NUOVO);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole('button', { name: 'Chiudi il foglio' }));
+    expect(screen.queryByRole('dialog', { name: 'Scansiona la confezione' })).toBeNull();
+    await act(async () => {
+      risolvi(rispostaJson({ trovato: true, nome: 'Yogurt', marca: '', quantita: { valore: 400, unita: 'g' } }));
+    });
+    expect(screen.getByLabelText('Formato della confezione')).toHaveValue('500');
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(salva()).toBeDisabled(); // niente ean legato: il modulo è quello caricato
+  });
+
+  it('chiuso il foglio mentre si legge l\'elenco, il codice di un altro si scarta', async () => {
+    paramsIngId = 'i-1';
+    let risolvi!: (l: Ingredient[]) => void;
+    vi.mocked(leggiIngredienti)
+      .mockResolvedValueOnce([ING_YOGURT, ING_INTERO_INCONSISTENTE, TONNO])
+      .mockReturnValueOnce(new Promise<Ingredient[]>((r) => { risolvi = r; }));
+    rendi();
+    await screen.findByDisplayValue('Yogurt greco');
+    await scansiona(EAN_TONNO);
+    await waitFor(() => expect(leggiIngredienti).toHaveBeenCalledTimes(2));
+    fireEvent.click(screen.getByRole('button', { name: 'Chiudi il foglio' }));
+    await act(async () => {
+      risolvi([ING_YOGURT, ING_INTERO_INCONSISTENTE, TONNO]);
+    });
+    // Riaperto, il foglio riparte dalla lettura: niente «Questo codice è di Tonno.» vecchio.
+    fireEvent.click(screen.getByRole('button', { name: /SCANSIONA LA CONFEZIONE/ }));
+    expect(screen.getByRole('dialog', { name: 'Scansiona la confezione' })).toBeInTheDocument();
+    expect(screen.queryByText('Questo codice è di Tonno.')).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });
 
 describe('Ingrediente (editor): ELIMINA (spec fase 5 §F)', () => {
@@ -465,6 +562,29 @@ describe('Ingrediente (editor): ELIMINA (spec fase 5 §F)', () => {
     fireEvent.click(within(dialogo).getByRole('button', { name: 'ELIMINA' }));
     await waitFor(() => expect(eliminaIngrediente).toHaveBeenCalledWith('i-1'));
     await waitFor(() => expect(push).toHaveBeenCalledWith('/piatti/d-1'));
+    // Spec §A.5: prima si consuma la voce del dialogo, poi si naviga, una volta sola.
+    const go = vi.mocked(window.history.go);
+    expect(go).toHaveBeenCalledTimes(1);
+    expect(go).toHaveBeenCalledWith(-1);
+    expect(go.mock.invocationCallOrder[0]).toBeLessThan(push.mock.invocationCallOrder[0]);
+    expect(push).toHaveBeenCalledTimes(1);
+  });
+
+  it('il gesto indietro col dialogo in volo lo chiude; a eliminazione riuscita si torna al piatto una volta sola, senza altri go', async () => {
+    paramsIngId = 'i-1';
+    let risolvi!: () => void;
+    vi.mocked(eliminaIngrediente).mockReturnValue(new Promise<void>((r) => { risolvi = r; }));
+    rendi();
+    await screen.findByDisplayValue('Yogurt greco');
+    fireEvent.click(screen.getByRole('button', { name: 'Elimina ingrediente' }));
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'ELIMINA' }));
+    await waitFor(() => expect(eliminaIngrediente).toHaveBeenCalledWith('i-1'));
+    act(() => { window.dispatchEvent(new PopStateEvent('popstate')); }); // il gesto indietro
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    await act(async () => { risolvi(); });
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/piatti/d-1'));
+    expect(push).toHaveBeenCalledTimes(1);
+    expect(window.history.go).not.toHaveBeenCalled();
   });
 
   it('un ingrediente con acquisti registrati avvisa che lo storico va perso, per via della on delete cascade su purchase', async () => {
