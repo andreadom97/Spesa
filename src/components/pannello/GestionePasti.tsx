@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Dish, MealSlotDef } from '@/domain/types';
 import { MAX_PASTI, MIN_PASTI } from '@/domain/pasti';
 import { leggiRepertorio } from '@/data/repertorio';
@@ -71,8 +71,16 @@ function ElencoPasti({ defs }: { defs: MealSlotDef[] }) {
   // I pasti dell'ultimo render: la rimozione che aspetta (la rilettura del repertorio, il
   // dialogo) parte da questi, non da quelli del tocco, così non riscrive un gesto fatto nel
   // frattempo né un ritorno ai dati del server dopo un salvataggio fallito.
+  //
+  // `ultimi` e `generazione` si aggiornano in un effetto di layout, non in `useEffect`: gli
+  // effetti passivi di un render nato da una promessa (la ricarica dopo un rifiuto RLS) partono
+  // in un task dopo il commit, e una lettura del repertorio che risponde in quella finestra
+  // (un microtask) troverebbe la generazione di prima e i pasti ottimistici della casa di prima:
+  // la rimozione andrebbe avanti e riscriverebbe quei pasti nella casa nuova, cancellando senza
+  // dialogo un suo pasto coi suoi piatti (visto il 26/09, CI della PR #9). L'effetto di layout
+  // gira dentro il commit, prima di qualunque microtask: la finestra non c'è.
   const ultimi = useRef(defs);
-  useEffect(() => {
+  useLayoutEffect(() => {
     ultimi.current = defs;
   }, [defs]);
 
@@ -80,7 +88,7 @@ function ElencoPasti({ defs }: { defs: MealSlotDef[] }) {
   // repertorio partita prima (al montaggio, o dalla ✕) e arrivata dopo è della casa di prima:
   // non rimette il conteggio appena scartato (review del Task 8, minor 2).
   const generazione = useRef(0);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (casaCambiata) generazione.current += 1;
   }, [casaCambiata]);
   // Una rimozione alla volta (review del Task 8, minor 1): vedi `rimuovi`.

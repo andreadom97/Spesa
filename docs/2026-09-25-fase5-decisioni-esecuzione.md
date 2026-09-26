@@ -1172,3 +1172,30 @@ nuovo. `src/components/pannello` per intero, 1 esecuzione: 195 verdi. Suite inte
 ognuna). `npx tsc --noEmit` e `npm run lint` puliti. Il timeout a 3 s riduce la probabilità
 dell'intermittenza ma non la esclude per costruzione (resta un limite di tempo, non una garanzia):
 se dovesse ripresentarsi sotto carico più alto di questo, la causa resta quella di sopra.
+
+**La causa vera dell'intermittenza: un difetto del componente, non il carico (26/09, dopo la CI
+della PR #9).** Il timeout a 3 s non è bastato: la CI della PR #9 è caduta su «la rilettura della
+✕ che arriva dopo un rifiuto RLS…» (`Unable to find a label with the text of: Rimuovi Merenda`
+dopo 3098 ms, a schermo «3 DI 6» con Brunch e senza Merenda). Lo stato a schermo non era lento, era
+sbagliato: in `GestionePasti.tsx` i ref `generazione` e `ultimi` si aggiornavano in `useEffect`.
+Il render della ricarica dopo il rifiuto RLS nasce da una promessa, quindi i suoi effetti passivi
+partono in un task dopo il commit; una lettura del repertorio della casa di prima che risponde in
+quella finestra (un microtask) trovava ancora la generazione vecchia e i pasti ottimistici della
+casa di prima (`Brunch, Pranzo, Cena, Spuntino`), e la rimozione di Spuntino andava avanti:
+`salvaPasti([Brunch, Pranzo, Cena])` con `soloTolti` = Spuntino **e Merenda**. In produzione
+vuol dire riscrivere nella casa nuova il nome appena rifiutato e cancellare senza dialogo un suo
+pasto coi suoi piatti. Nei test `findByText` + `act` rispondeva a volte prima e a volte dopo gli
+effetti passivi, secondo il carico: da qui il verde/rosso a caso.
+[Misurato 26/09] Prova: con un `MutationObserver` che risponde alla lettura sospesa nel microtask
+del commit dell'avviso (log di `generazione` e `ultimi` all'arrivo: `gen 0, mia 0, ultimi
+Brunch,Pranzo,Cena,Spuntino`), il test cade 5 volte su 5, con lo stesso stato finale della CI.
+Correzione: i due ref si aggiornano in `useLayoutEffect`, che gira dentro il commit, prima di
+qualunque microtask. I due test «…dopo un rifiuto RLS non rimette il conteggio vecchio»
+(montaggio e ✕) ora rispondono con `rispondiAlCommitDellAvviso`, sempre nel caso peggiore, invece
+di dipendere dal tempo: senza correzione rossi 3 su 3, con la correzione verdi 3 su 3. Il file da
+solo 20 volte: 20 verdi. Suite intera (`npx vitest run`) 12 volte: **12 verdi su 12** (2047
+verdi, 1 saltato in ognuna, 29–58 s). `npx tsc --noEmit` (dopo `npx next typegen`) e `npm run
+lint` puliti. `asyncUtilTimeout: 3000` resta com'è: non serve più a questo test, abbassarlo è una
+scelta a parte. L'altro test visto rosso il 26/09 («con il repertorio non ancora letto, la ✕ lo
+rilegge e poi decide») non passa dalla ricarica dopo RLS, quindi non ha questa finestra: il suo
+fallimento resta spiegato dalla coda dei `Once` corretta in 694001d [ipotesi, non riprodotto].
