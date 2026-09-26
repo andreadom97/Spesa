@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import type { Dish, MealSlotDef } from '@/domain/types';
 import { MAX_PASTI, MIN_PASTI } from '@/domain/pasti';
 import { leggiRepertorio } from '@/data/repertorio';
@@ -94,7 +94,11 @@ function ElencoPasti({ defs }: { defs: MealSlotDef[] }) {
   // Una rimozione alla volta (review del Task 8, minor 1): vedi `rimuovi`.
   const rimozioneInCorso = useRef(false);
 
-  useEffect(() => {
+  // Di layout, non passivo: la sotto-schermata si monta in un render nato da una promessa (i dati
+  // del pannello), e un useEffect partirebbe in un task dopo il commit. Una ✕ toccata in quel
+  // frattempo farebbe lei la prima lettura, e questa partirebbe dopo: era la causa del test
+  // intermittente «la ✕ lo rilegge e poi decide». Così la lettura parte col commit delle righe.
+  useLayoutEffect(() => {
     let vivo = true;
     const mia = generazione.current;
     leggiRepertorio()

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ORDINE_MARCHIO } from '@/domain/aree';
@@ -133,8 +133,11 @@ export default function ListaFatta() {
     };
   }, [router]);
 
-  // Il Dock compare nel render in cui `stato` arriva: l'effetto dopo quel render segna l'istante.
-  useEffect(() => {
+  // Il Dock compare nel render in cui `stato` arriva: l'effetto di quel render segna l'istante.
+  // Di layout, non passivo: `stato` arriva da una promessa, e un useEffect girerebbe in un task
+  // dopo il commit, segnando la comparsa più tardi di quando il tasto è davvero a schermo (era la
+  // causa del test intermittente «in volo il tasto è disabled»).
+  useLayoutEffect(() => {
     if (stato && comparsoRef.current === null) comparsoRef.current = adesso();
   }, [stato]);
 
