@@ -14,6 +14,11 @@ describe('StatoImporta (DESIGN.md §8 Stato vuoto)', () => {
     expect(scroller).not.toHaveClass('con-dock');
   });
 
+  it('lo scroller usa "safe center": a testi lunghi su un telefono piccolo la cima della scheda resta raggiungibile', () => {
+    const { container } = render(<StatoImporta titolo="T" testo="x" />);
+    expect((container.firstElementChild as HTMLElement).style.justifyContent).toBe('safe center');
+  });
+
   it('con conDock lo scroller lascia la coda al Dock', () => {
     const { container } = render(<StatoImporta titolo="T" testo="x" conDock />);
     expect(container.firstElementChild).toHaveClass('con-dock');

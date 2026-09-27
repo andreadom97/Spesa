@@ -28,7 +28,12 @@ export function StatoImporta({ titolo, testo, testo2, luce = false, stato = fals
   return (
     <div
       className={`sc scroll-app${conDock ? ' con-dock' : ''}`}
-      style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 16px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}
+      style={{
+        flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 16px',
+        // 'safe center', come Fine spesa: a testi più alti dello spazio (telefono piccolo) la scheda
+        // parte dal bordo invece di uscire sopra e restare irraggiungibile scorrendo.
+        display: 'flex', flexDirection: 'column', justifyContent: 'safe center',
+      }}
     >
       <div
         role={stato ? 'status' : undefined}
