@@ -57,6 +57,8 @@ export function DialogoConferma({
           disabled={volo}
           style={{
             flex: 1, height: 54, borderRadius: 18, color: 'var(--superficie)', boxShadow: 'var(--ombra-tasto)',
+            // Il reset globale mette `text-align: left` su ogni <button>: centrato come i Tasti.
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
             background: tono === 'distruttivo' ? 'var(--errore)' : 'var(--ink)',
             fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700, letterSpacing: '0.09em',
             opacity: volo ? 0.5 : 1,

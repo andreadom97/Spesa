@@ -281,7 +281,7 @@ describe('Ingrediente (editor): i campi', () => {
       id: undefined, nome: 'Uova', unitaBase: 'pz', area: 'macelleria', classeResiduo: 'intero',
       deperibile: true, formatoConfezione: 1, prezzoConfezione: null,
     }));
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/piatti/d-1'));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/piatti/d-1'));
   });
 
   it('modifica: carica le proprietà, e SALVA resta spento finché niente cambia (§F)', async () => {
@@ -327,6 +327,7 @@ describe('Ingrediente (editor): i campi', () => {
     const dock = screen.getByRole('region', { name: 'Azione principale' });
     expect(await within(dock).findByRole('alert')).toHaveTextContent(motivo);
     expect(push).not.toHaveBeenCalled();
+    expect(replace).not.toHaveBeenCalled();
     expect(within(dock).getByRole('button', { name: 'SALVA' })).toBeEnabled();
   });
 
@@ -353,8 +354,8 @@ describe('Ingrediente (editor): il ritorno (spec fase 5 §F)', () => {
     rendi();
     await screen.findByDisplayValue('Yogurt greco');
     fireEvent.click(screen.getByRole('button', { name: 'Torna agli ingredienti' }));
-    expect(push).toHaveBeenCalledWith('/dispensa?impostazioni=ingredienti');
-    expect(push).not.toHaveBeenCalledWith('/piatti/nuovo');
+    expect(replace).toHaveBeenCalledWith('/dispensa?impostazioni=ingredienti');
+    expect(replace).not.toHaveBeenCalledWith('/piatti/nuovo');
   });
 
   it('con torna=impostazioni anche SALVA torna al pannello', async () => {
@@ -367,7 +368,7 @@ describe('Ingrediente (editor): il ritorno (spec fase 5 §F)', () => {
     await screen.findByDisplayValue('Yogurt greco');
     fireEvent.change(screen.getByLabelText('Formato della confezione'), { target: { value: '450' } });
     fireEvent.click(salva());
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/piano?impostazioni=ingredienti'));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/piano?impostazioni=ingredienti'));
   });
 
   // Il segnale che fa aggiungere l'ingrediente nuovo al piatto che lo aspetta (bozza.ts,
@@ -380,7 +381,7 @@ describe('Ingrediente (editor): il ritorno (spec fase 5 §F)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'MACELLERIA E PESCHERIA' }));
     fireEvent.click(screen.getByRole('button', { name: 'INTERO' }));
     fireEvent.click(salva());
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/piatti/d-1'));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/piatti/d-1'));
     expect(sessionStorage.getItem('spesa:ingrediente-creato:d-1')).toBe('i-nuovo');
   });
 
@@ -395,7 +396,7 @@ describe('Ingrediente (editor): il ritorno (spec fase 5 §F)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'MACELLERIA E PESCHERIA' }));
     fireEvent.click(screen.getByRole('button', { name: 'INTERO' }));
     fireEvent.click(salva());
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/lista?impostazioni=ingredienti'));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/lista?impostazioni=ingredienti'));
     const chiavi = Array.from({ length: sessionStorage.length }, (_, i) => sessionStorage.key(i));
     expect(chiavi.filter((k) => k?.startsWith('spesa:ingrediente-creato:'))).toEqual([]);
   });
@@ -404,7 +405,7 @@ describe('Ingrediente (editor): il ritorno (spec fase 5 §F)', () => {
     rendi();
     await screen.findByPlaceholderText("Dai un nome all'ingrediente");
     fireEvent.click(screen.getByRole('button', { name: 'Torna al piatto' }));
-    expect(push).toHaveBeenCalledWith('/piatti/d-1');
+    expect(replace).toHaveBeenCalledWith('/piatti/d-1');
   });
 
   it('la freccia perde le modifiche senza chiedere', async () => {
@@ -413,7 +414,7 @@ describe('Ingrediente (editor): il ritorno (spec fase 5 §F)', () => {
     await screen.findByDisplayValue('Yogurt greco');
     fireEvent.change(screen.getByLabelText('Formato della confezione'), { target: { value: '400' } });
     fireEvent.click(screen.getByRole('button', { name: 'Torna al piatto' }));
-    expect(push).toHaveBeenCalledWith('/piatti/d-1');
+    expect(replace).toHaveBeenCalledWith('/piatti/d-1');
     expect(salvaIngrediente).not.toHaveBeenCalled();
     expect(screen.queryByRole('alertdialog')).toBeNull();
   });
@@ -459,7 +460,9 @@ describe('Ingrediente (editor): la scansione (spec fase 5 §F.1)', () => {
     expect(await screen.findByText('Questo codice è di Tonno.')).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'APRI TONNO' }));
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/piatti/d-1/ingredienti/i-tonno'));
+    // replace: l'editor di Tonno prende il posto di questo (review delle prove dal telefono).
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/piatti/d-1/ingredienti/i-tonno'));
+    expect(push).not.toHaveBeenCalled();
   });
 
   it('NON È QUESTA toglie l\'esito e riprende la lettura', async () => {
@@ -577,13 +580,13 @@ describe('Ingrediente (editor): ELIMINA (spec fase 5 §F)', () => {
     expect(eliminaIngrediente).not.toHaveBeenCalled();
     fireEvent.click(within(dialogo).getByRole('button', { name: 'ELIMINA' }));
     await waitFor(() => expect(eliminaIngrediente).toHaveBeenCalledWith('i-1'));
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/piatti/d-1'));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/piatti/d-1'));
     // Spec §A.5: prima si consuma la voce del dialogo, poi si naviga, una volta sola.
     const go = vi.mocked(window.history.go);
     expect(go).toHaveBeenCalledTimes(1);
     expect(go).toHaveBeenCalledWith(-1);
-    expect(go.mock.invocationCallOrder[0]).toBeLessThan(push.mock.invocationCallOrder[0]);
-    expect(push).toHaveBeenCalledTimes(1);
+    expect(go.mock.invocationCallOrder[0]).toBeLessThan(replace.mock.invocationCallOrder[0]);
+    expect(replace).toHaveBeenCalledTimes(1);
   });
 
   it('il gesto indietro col dialogo in volo lo chiude; a eliminazione riuscita si torna al piatto una volta sola, senza altri go', async () => {
@@ -598,8 +601,8 @@ describe('Ingrediente (editor): ELIMINA (spec fase 5 §F)', () => {
     act(() => { window.dispatchEvent(new PopStateEvent('popstate')); }); // il gesto indietro
     expect(screen.queryByRole('alertdialog')).toBeNull();
     await act(async () => { risolvi(); });
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/piatti/d-1'));
-    expect(push).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/piatti/d-1'));
+    expect(replace).toHaveBeenCalledTimes(1);
     expect(window.history.go).not.toHaveBeenCalled();
   });
 
@@ -657,6 +660,7 @@ describe('Ingrediente (editor): ELIMINA (spec fase 5 §F)', () => {
     )).toBeInTheDocument();
     expect(screen.queryByRole('alertdialog')).toBeNull();
     expect(push).not.toHaveBeenCalled();
+    expect(replace).not.toHaveBeenCalled();
   });
 
   it('un errore qualunque resta nel dialogo, che non si chiude', async () => {
@@ -669,6 +673,7 @@ describe('Ingrediente (editor): ELIMINA (spec fase 5 §F)', () => {
     fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'ELIMINA' }));
     expect(await within(screen.getByRole('alertdialog')).findByText('Non siamo riusciti a eliminare l’ingrediente. Riprova.')).toBeInTheDocument();
     expect(push).not.toHaveBeenCalled();
+    expect(replace).not.toHaveBeenCalled();
   });
 });
 

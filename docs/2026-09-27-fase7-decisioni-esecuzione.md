@@ -151,3 +151,54 @@ Da fare dopo il merge, in produzione:
    un ingrediente del piatto.
 8. **Dal Piano apri un piatto e chiudi l'app senza uscirne** (o usa l'indietro di sistema): poi apri lo
    stesso piatto da Piatti. La freccia deve dire «Torna ai piatti» e portare a Piatti, non al Piano.
+
+## Cosa hanno trovato le prove dal telefono (27/09)
+
+Andrea ha provato su **Chrome Android**, non sulla PWA di iOS: l'indietro di sistema c'è, e fa
+parte delle prove. Cinque segnalazioni, con la causa trovata prima di correggere.
+
+1. **Un piatto senza nome si salvava.** La regola che accende `SALVA` controllava ingredienti,
+   grammature e nomi dei componenti, ma non il nome del piatto. C'era già prima della fase 7. In
+   produzione due piatti senza nome, entrambi già eliminati (`attivo = false`) [misurato]. Corretto:
+   senza nome `SALVA` resta spento. Il segnaposto «Dai un nome al piatto» dice già cosa manca.
+2. **`ELIMINA` del Dialogo di conferma aveva la scritta a sinistra.** Il reset globale dà a ogni
+   `button` `text-align: left`; `ANNULLA` usa lo stile dei Tasti (flex, centrato), l'azione no. C'era
+   dalla fase 5, in ogni dialogo. Corretto: l'azione è centrata come `ANNULLA`.
+3. **Non si capiva dove scrivere la grammatura.** La spiegazione in rosso c'era, sotto la griglia, ma
+   allo scorrimento dello screenshot stava dietro il Dock. Deciso con Andrea: la tessera appena
+   aggiunta porta il fuoco sul campo, col testo selezionato, e la pillola fa `.anim-chiamata`
+   (DESIGN.md §7): un anello che si allarga due volte, 250 ms. Vale per i fissi e per le opzioni.
+4. **L'indietro di sistema da Piatti tornava al piatto eliminato («Piatto non trovato»).** Ogni
+   ritorno era una `router.push`: la cronologia diventava Pannello → Piatti → Piatto → Piatti.
+   Corretto in tutta l'app con `src/components/tornaA.ts`: se la voce prima è la destinazione
+   (stesso percorso e stessi parametri, `da` escluso, letta dalla Navigation API) si torna indietro
+   davvero; altrimenti la destinazione sostituisce la voce di oggi. Il pannello, prima di aprire una
+   pagina piena, dà alla voce d'origine il suo indirizzo (`?impostazioni=`), così l'indietro di
+   sistema ci torna a pannello aperto. Misurato nel browser con Next 16 e il `PannelloProvider`
+   vero: pannello → Piatti → Piatto → freccia → indietro di sistema = pannello aperto; un altro
+   indietro lo chiude. Con `back()` la pagina si rimonta e rilegge i dati. Dove la Navigation API
+   manca si sostituisce sempre: la pagina lasciata sparisce dalla cronologia, ma la destinazione può
+   comparirci due volte (Piatti, Piatti), e l'indietro di sistema ripassa una volta dalla stessa pagina.
+5. **Il guscio bianco del Dock non convince.** Non è un difetto: è il Dock di DESIGN.md §8. Tre
+   alternative proposte ad Andrea in una pagina di confronto (tasto da solo, tasto su dissolvenza,
+   barra a filo): scelta la **B**, nella stessa PR su sua richiesta. Il tasto resta dove stava e lo
+   scroller sfuma in trasparenza nei 40 px sopra di lui (DESIGN.md §8 Dock, §13 del 27/09).
+   Misurato in una sonda a 360 × 740: bordo alto del tasto a 176 dal fondo con la barra grande e
+   a 84 senza barra, maschera che finisce lì, Dock trasparente e senza ombra.
+
+**Review del ramo (opus), un'ondata di correzioni.** Nessun bloccante. Corretti: l'ingrediente
+creato per il piatto, al rientro, prende anche lui fuoco e anello; il test della selezione ora spia
+`select()` (in jsdom `selectionStart` di un campo numerico è sempre `null`); la `replaceState` di
+`vaiA` passa **senza** `__NA`, così la gestisce Next e aggiorna il suo indirizzo canonico, e un
+commit in ritardo della traversata non può riscrivere `/lista` sulla voce d'origine (rimisurato
+nella sonda: il giro regge); APRI di un altro ingrediente sostituisce l'editor invece di
+aggiungerne uno; un test di pagina copre il ramo `back()` (ELIMINA con Piatti subito prima).
+
+Limiti noti del punto 4, lasciati di proposito:
+- **Senza Navigation API** la freccia da una pagina piena sostituisce con `?impostazioni=`: la voce
+  d'origine resta con il parametro, e se ci si torna con l'indietro di sistema il pannello non si
+  apre (stesso percorso, l'effetto del provider non gira) ma l'indirizzo lo conserva: una ricarica
+  lo aprirebbe. Chrome, che Andrea usa, ha la Navigation API.
+-  se una pagina si lascia con un foglio ancora aperto senza `chiudiTuttoPoi`,
+la voce del foglio resta, e un indietro di sistema la consuma senza effetto visibile. Era così anche
+prima.

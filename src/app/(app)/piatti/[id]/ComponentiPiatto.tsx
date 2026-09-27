@@ -27,6 +27,8 @@ export interface PropsComponentiPiatto {
   onAggiungiIngrediente: (componenteId: string, opzioneId: string) => void;
   onCambiaQuantita: (componenteId: string, opzioneId: string, ingredientId: string, quantita: number) => void;
   onRimuoviRiga: (componenteId: string, opzioneId: string, ingredientId: string) => void;
+  /** `{opzioneId}:{ingredientId}` della riga appena aggiunta dal selettore: la sua tessera prende il fuoco. */
+  appenaAggiunta?: string | null;
 }
 
 /**
@@ -43,6 +45,7 @@ export interface PropsComponentiPiatto {
 export function ComponentiPiatto({
   componenti, catalogoPerId, onAggiungiComponente, onRimuoviComponente, onCambiaNomeComponente,
   onAggiungiOpzione, onRimuoviOpzione, onAggiungiIngrediente, onCambiaQuantita, onRimuoviRiga,
+  appenaAggiunta = null,
 }: PropsComponentiPiatto) {
   const componentiSenzaNome = componenti.filter((c) => c.nome.trim() === '');
   const opzioniSenzaRighe = componenti.flatMap((c) => c.opzioni.filter((o) => o.righe.length === 0));
@@ -112,6 +115,7 @@ export function ComponentiPiatto({
                           onCambiaQuantita={(q) => onCambiaQuantita(componente.id, opzione.id, riga.ingredientId, q)}
                           onRimuovi={() => onRimuoviRiga(componente.id, opzione.id, riga.ingredientId)}
                           quantitaValida={!righeNonValideOpzione.has(riga.ingredientId)}
+                          appenaAggiunta={appenaAggiunta === `${opzione.id}:${riga.ingredientId}`}
                         />
                       );
                     })}

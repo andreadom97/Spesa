@@ -21,6 +21,7 @@ import { raccogliIngredienteCreato, riprendiBozza, salvaBozza, scartaBozza, type
 import { dimenticaRitorno, leggiRitornoAlPiano } from './ritorno';
 import { SelettoreIngrediente } from './SelettoreIngrediente';
 import { ComponentiPiatto } from './ComponentiPiatto';
+import { tornaA } from '@/components/tornaA';
 
 const GIORNI_LABEL = ['LUN', 'MAR', 'MER', 'GIO', 'VEN', 'SAB', 'DOM'];
 const GIORNI_LUNGHI = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
@@ -173,6 +174,9 @@ export default function Piatto() {
     { tipo: 'principale' } | { tipo: 'opzione'; componenteId: string; opzioneId: string } | null
   >(null);
   const [confermaEliminazione, setConfermaEliminazione] = useState(false);
+  // La riga appena aggiunta dal selettore (`principale:{id}` o `{opzioneId}:{id}`): la sua
+  // tessera prende il fuoco sulla grammatura e la pillola chiama (prove dal telefono, fase 7).
+  const [appenaAggiunta, setAppenaAggiunta] = useState<string | null>(null);
   const nomeRef = useRef<HTMLTextAreaElement>(null);
 
   // Da dove si è arrivati, e quindi dove tornare (review finale, I1): il Piano apre
@@ -193,7 +197,7 @@ export default function Piatto() {
   /** L'uscita vera e propria: il ritorno memorizzato non serve più. */
   function vaiAlRitorno() {
     dimenticaRitorno(id);
-    router.push(ritorno());
+    tornaA(router, ritorno());
   }
 
   // Il titolo va a capo su più righe come nell'artboard (che lo scrive con un
@@ -286,6 +290,8 @@ export default function Piatto() {
                 ? prev
                 : [...prev, { ingredientId: creato, quantita: 0, unita: ing.unitaBase }],
             );
+            // Come un'aggiunta dal selettore: la grammatura da scrivere chiama (review, prove dal telefono).
+            setAppenaAggiunta(`principale:${creato}`);
           }
         }
       } catch (errore) {
@@ -313,8 +319,10 @@ export default function Piatto() {
     if (!selettore) return;
     if (selettore.tipo === 'principale') {
       setIngredienti((prev) => [...prev, { ingredientId: ing.id, quantita: 0, unita: ing.unitaBase }]);
+      setAppenaAggiunta(`principale:${ing.id}`);
     } else {
       aggiungiRigaOpzione(selettore.componenteId, selettore.opzioneId, ing);
+      setAppenaAggiunta(`${selettore.opzioneId}:${ing.id}`);
     }
     setSelettore(null);
   }
@@ -488,8 +496,9 @@ export default function Piatto() {
   // il problema (I2). Il salvataggio resta disattivato finché non è > 0.
   const quantitaNonValide = new Set(ingredienti.filter((r) => r.quantita <= 0).map((r) => r.ingredientId));
 
+  // Un piatto senza nome in Piatti sarebbe una riga senza titolo (prove dal telefono, fase 7).
   const salvataggioDisabilitato =
-    senzaIngredienti || quantitaNonValide.size > 0 || componentiNonValidi(componenti);
+    nome.trim() === '' || senzaIngredienti || quantitaNonValide.size > 0 || componentiNonValidi(componenti);
   const modulo: ModuloPiatto = { nome, slotDefId, descrizione, settimanaCiclo, giornoCiclo, ingredienti, componenti };
   const cambiato = firma(modulo) !== (nuovo ? FIRMA_NUOVO : firmaIniziale);
   // Spento se non è cambiato niente o se il modulo non è valido (spec fase 7 §B.5):
@@ -673,6 +682,7 @@ export default function Piatto() {
                     quantitaValida={!quantitaNonValide.has(riga.ingredientId)}
                     hrefModifica={`/piatti/${id}/ingredienti/${riga.ingredientId}`}
                     onPrimaDiModificare={riparaBozzaPrimaDiUscire}
+                    appenaAggiunta={appenaAggiunta === `principale:${riga.ingredientId}`}
                   />
                 );
               })}
@@ -720,6 +730,7 @@ export default function Piatto() {
             onAggiungiIngrediente={(componenteId, opzioneId) => setSelettore({ tipo: 'opzione', componenteId, opzioneId })}
             onCambiaQuantita={cambiaQuantitaOpzione}
             onRimuoviRiga={rimuoviRigaOpzione}
+            appenaAggiunta={appenaAggiunta}
           />
         </Blocco>
 

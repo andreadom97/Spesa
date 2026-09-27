@@ -237,7 +237,7 @@ Scala a base 4: **4 · 8 · 12 · 16 · 20 · 26**, più 22 per il distacco dal 
 | Ultimo elemento dal fondo | 22 |
 | Foglio dal basso | 16 / 16 / 26 |
 | Pannello impostazioni | testata `16 16 12`; corpo `0 12 26`, gap 12; piede fisso `12 16 26`; piede di versione `12 18 26` |
-| Coda di scorrimento sotto l'ultimo contenuto | **140** senza Dock (84 di barra + 22 dal fondo + 34 di respiro) · **194** col Dock (70 di dock + 114 dal fondo + 10) |
+| Coda di scorrimento sotto l'ultimo contenuto | **140** senza Dock (84 di barra + 22 dal fondo + 34 di respiro) · **226** col Dock (114 dal fondo + 8 + 54 di tasto + 40 di dissolvenza + 10; era 194 col guscio bianco, 27/09) |
 
 Nessun valore intermedio: 13, 14 e 15 diventano 12 o 16, tranne dentro l'anatomia di un
 componente dove il valore è dichiarato (padding `12 14 13` della tessera, `13 16 14` della
@@ -296,7 +296,7 @@ strati e governano le superfici flottanti.
 | `--ombra-casetta` | `0 1px 3px rgba(20,22,58,0.28)` | casetta piena della riga pasto, cella a casa della Matrice dei pasti |
 | `--ombra-tasto` | `0 3px 10px rgba(20,22,58,0.24)` | tasto primario e tasto distruttivo |
 | `--ombra-pannello` | `0 1px 2px rgba(20,22,58,.05), 0 6px 16px rgba(20,22,58,.06)` | Tessera widget di sezione, Riga piatto, campi, celle della striscia, Blocco di gruppo, tessere del Pannello impostazioni |
-| `--ombra-nav` | `0 2px 6px rgba(20,22,58,.08), 0 12px 30px rgba(20,22,58,.16)` | tab bar, Dock, Menù utente aperto, chrome sopra la fotocamera |
+| `--ombra-nav` | `0 2px 6px rgba(20,22,58,.08), 0 12px 30px rgba(20,22,58,.16)` | tab bar, Menù utente aperto, chrome sopra la fotocamera (il Dock fino al 27/09) |
 | `--ombra-alta` | `0 8px 24px rgba(20,22,58,.28), 0 26px 64px rgba(20,22,58,.26)` | Pannello impostazioni |
 
 Più una, locale e sola: `0 2px 6px rgba(20,22,58,.20)` sulla cella selezionata della striscia
@@ -364,6 +364,11 @@ esistono:
   salgono (FLIP: ogni widget parte dalla posizione vecchia e scivola nella nuova), `transform`
   in **220 ms** `cubic-bezier(.2,.8,.25,1)`. Causa: la spunta dell'ultima voce. Con
   `prefers-reduced-motion: reduce` il riordino è immediato. **[aggiunto 26/09]**
+- **`.anim-chiamata`** — la pillola della grammatura di una tessera appena aggiunta dal
+  selettore dell'editor del Piatto: un anello nel colore della pillola (alfa 0,45, la stessa del bordo della tessera, §2.5) che si
+  allarga da 0 a 8 px e sparisce, **250 ms** `ease-out`, **due volte**. Causa: l'aggiunta.
+  Insieme il fuoco va sul campo, col testo selezionato. Con `prefers-reduced-motion: reduce`
+  resta solo il fuoco. **[aggiunto 27/09, prove dal telefono della fase 7]**
 - **`.anim-barra`** — la tab bar che si restringe e il Dock che la segue, **200 ms**
   `cubic-bezier(.2,.8,.25,1)`, opacità delle etichette in 150 ms lineari. Si animano `width` e
   `height` della pillola (dal 25/09; prima `left` e `right`). Il gesto è lo **scorrimento**:
@@ -535,10 +540,16 @@ flottante: il tasto primario non ha più il suo posto in coda al contenuto. Il D
 - **Dentro il Pannello impostazioni il Dock non c'è:** sta sotto il pannello, coperto. I tre
   primari del pannello vivono nel suo piede fisso (§8 Pannello impostazioni).
 - **Una riga sola** (deciso il 20/09: la forma a due righe è decaduta con Base / Top-up).
-  Contenitore bianco raggio **999**, padding 8, `--ombra-nav`; dentro, una riga di controlli con
-  gap 8. **Altezza 70** = 8 + 54 + 8. Due riempimenti dello stesso contenitore:
+  **Senza guscio dal 27/09** (Andrea, variante B, §13): il contenitore non ha più fondo bianco né
+  `--ombra-nav`; resta il padding 8, così il tasto sta dove stava. **Altezza 70** = 8 + 54 + 8.
+  Due riempimenti:
   - **Un primario a larghezza piena** (Lista, Piano, stati vuoti): tasto alto **54**, raggio
-    999, mono 12/700/0,09em, `--ombra-tasto`.
+    999, mono 12/700/0,09em, `--ombra-tasto`. **Il contenuto non gli passa dietro:** lo scroller
+    della pagina (`con-dock`) sfuma in trasparenza nei **40 px** sopra il bordo alto del tasto
+    (`--dock-dissolvenza`), e sotto resta il fondo della schermata. È la maschera di scorrimento
+    (§7) spostata sopra il tasto: la distanza del bordo alto dal fondo è `--dock-cima`, 176 a barra
+    grande, 158 a barra ridotta, 84 senza barra. Il primario spento resta quello dei Tasti (§8):
+    sotto non c'è contenuto che ne attraversi l'alfa. La coda di scorrimento sale a **226**.
   - **Due controlli affiancati** (Dispensa): pillole alte **56**, raggio 999, gap 8 —
     `Modifica con l'AI` (icona AI) e il vocale.
 - **Cosa ci vive:** `HAI PRESO TUTTO` (Lista), `CHIUDI LA SPESA` (Fine spesa), `SOSTITUISCI`
@@ -1226,3 +1237,11 @@ nome di `Esci` (§2.2); il piede fisso col primario nel pannello (§8 Pannello i
    testata di modifica, `SALVA` nel Dock spento finché niente cambia o finché il modulo non è
    valido, e dopo il salvataggio si torna a `/piatti`. `ELIMINA` passa dal Dialogo di conferma.
 3. **Piatti veloce resta com'è**: si ridisegna più avanti come onboarding «più pronto».
+
+### Decisioni del 27/09/2026 (prove dal telefono della fase 7)
+
+1. **Il Dock perde il guscio bianco** (Andrea, fra tre alternative: tasto da solo, tasto su
+   dissolvenza, barra a filo; scelta la seconda). Il primario resta dove stava, e lo scroller
+   sfuma sopra di lui invece di passargli dietro (§8 Dock). La Dispensa, già senza contenitore,
+   resta com'è.
+2. **La grammatura appena aggiunta chiama:** fuoco sul campo e `.anim-chiamata` (§7).

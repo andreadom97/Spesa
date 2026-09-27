@@ -21,6 +21,7 @@ import { indirizzoRitorno } from '@/components/pannello/indirizzi';
 import { LettoreCodice, cercaProdotto } from '@/app/(app)/dispensa/LettoreCodice';
 import { IconaScansione } from '@/app/(app)/dispensa/icone';
 import { segnalaIngredienteCreato } from '../../bozza';
+import { tornaA } from '@/components/tornaA';
 
 /**
  * Le tre spiegazioni sono copiate alla lettera da Ingrediente.dc.html,
@@ -363,7 +364,7 @@ export default function IngredienteEditor() {
       // Solo tornando a un piatto: dal pannello non c'è nessun piatto in
       // attesa di questo ingrediente.
       if (nuovo && !tornaAImpostazioni) segnalaIngredienteCreato(id, idSalvato);
-      router.push(ritorno());
+      tornaA(router, ritorno());
     } catch (errore) {
       // Unità cambiata su un ingrediente in uso (anche via INTERO, che la forza a PZ):
       // riprovare non serve, serve sapere cosa togliere. La frase viene da motivoBloccoUnita.
@@ -442,8 +443,10 @@ export default function IngredienteEditor() {
   /** APRI {altro}: il codice resta suo (fase 4 §F.2). Le modifiche di qui si perdono, come con la freccia. */
   function apriAltro(a: Ingredient) {
     const dest = `/piatti/${id}/ingredienti/${a.id}${tornaAImpostazioni ? '?torna=impostazioni' : ''}`;
-    // Il foglio ha una voce di cronologia aperta: la push parte dopo il go(-1) (spec §A.5).
-    chiudiTuttoPoi(() => router.push(dest));
+    // Il foglio ha una voce di cronologia aperta: la navigazione parte dopo il go(-1) (spec §A.5).
+    // `replace` e non `push` (review delle prove dal telefono): B prende il posto di A, così il
+    // ritorno di B (`tornaA`) trova il piatto subito prima e l'indietro di sistema non riapre A.
+    chiudiTuttoPoi(() => router.replace(dest));
     chiudiScansione();
   }
 
@@ -464,11 +467,11 @@ export default function IngredienteEditor() {
     // consuma, così la voce non resta orfana (spec §A.5). Se il gesto indietro ha già
     // chiuso il dialogo mentre l'eliminazione era in volo, non c'è voce da consumare e
     // la push parte nell'effetto dell'hook: una volta sola, senza altri go.
-    chiudiTuttoPoi(() => router.push(ritorno()));
+    chiudiTuttoPoi(() => tornaA(router, ritorno()));
     setConfermaEliminazione(false);
   }
 
-  const freccia = { etichetta: tornaAImpostazioni ? 'Torna agli ingredienti' : 'Torna al piatto', onTorna: () => router.push(ritorno()) };
+  const freccia = { etichetta: tornaAImpostazioni ? 'Torna agli ingredienti' : 'Torna al piatto', onTorna: () => tornaA(router, ritorno()) };
 
   if (nonTrovato) {
     return (

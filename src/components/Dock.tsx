@@ -6,9 +6,10 @@ import { useSlotDock } from './dock-slot';
 import { useBarraNascosta } from './barra-context';
 
 /**
- * Il posto dell'azione principale: una pillola bianca a portata di pollice
- * sopra la tab bar, che scende con lei quando la barra si restringe
- * (DESIGN.md §8 Dock, una riga sola dal 20/09).
+ * Il posto dell'azione principale: a portata di pollice sopra la tab bar, e
+ * scende con lei quando la barra si restringe (DESIGN.md §8 Dock, una riga
+ * sola dal 20/09). Dal 27/09 senza guscio bianco: il tasto sta da solo, e lo
+ * scroller della pagina (`con-dock`) sfuma sopra di lui (regola in globals.css).
  *
  * Si monta con un portale in uno slot del `Guscio`, non dove è scritto nella
  * pagina. Le pagine stanno dentro `<main className="guscio-main">`, che

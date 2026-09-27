@@ -55,14 +55,18 @@
   /* Coda in fondo agli scroller: 84 di barra + 22 dal fondo + 34 di respiro. Con il Dock (fase 2) diventa 194. */
   --coda: 140px;
 
-  /* Il Dock (spec fase 2 §A): una riga sola, 8 + 54 + 8 = 70 di altezza. */
+  /* Il Dock (spec fase 2 §A): una riga sola, 8 + 54 + 8 = 70 di altezza. Dal 27/09 senza guscio
+     bianco: il padding resta, così il tasto sta dove stava. */
   --dock-lato: 16px;
   --dock-fondo: 114px;      /* 84 di barra + 22 dal fondo + 8 di respiro */
   --dock-fondo-giu: 96px;   /* 66 + 22 + 8 */
   --dock-padding: 8px;
   --dock-respiro: 8px;
   --dock-primario: 54px;
-  /* Una coda sola, tarata sulla barra grande (70 di dock + 114 dal fondo + 10), e non
+  /* Il Dock senza guscio (27/09): quanto sfuma lo scroller sopra il tasto. */
+  --dock-dissolvenza: 40px;
+  /* Una coda sola, tarata sulla barra grande (114 dal fondo + 8 + 54 di tasto + 40 di
+     dissolvenza + 10 = 226; era 70 + 114 + 10 = 194 col guscio bianco, 27/09), e non
      una coppia grande/ridotta: una coda che cambia con `data-barra` cambia anche
      l'altezza scorribile, e allora ridurre la barra a fondo lista fa ritagliare
      `scrollTop` dal browser — un evento `scroll` con delta negativo che
@@ -71,7 +75,7 @@
      Dock e irraggiungibile (misurato nel browser: −7,75 px nel Piano, +4 px per caso
      nella Lista). A barra ridotta restano 18 px d'aria in più sotto l'ultima voce: è
      uno stato transitorio, e il prezzo è quello giusto. */
-  --coda-scroll-dock: 194px;
+  --coda-scroll-dock: 226px;
 
   /* Fase 3 (spec 23/09 §J): copiati da design/sistema/tokens.css, stessi valori. */
   --bordo-tratteggio: rgba(20, 22, 58, 0.20);
@@ -142,6 +146,10 @@
   @keyframes anim-fade { from { opacity: 0; } to { opacity: 1; } }
   /* I reparti finiti che scendono in fondo alla Lista (FLIP, useRiordinoAnimato). */
   .anim-riordino { transition: transform 220ms var(--curva-barra); }
+  /* La pillola della grammatura appena aggiunta: un anello che si allarga e sparisce, due
+     volte. Causa: l'aggiunta dal selettore (prove dal telefono, fase 7). `--anello` è inline. */
+  .anim-chiamata { animation: anim-chiamata 250ms ease-out 2; }
+  @keyframes anim-chiamata { from { box-shadow: 0 0 0 0 var(--anello); } to { box-shadow: 0 0 0 8px transparent; } }
 }
 
 /* ---------- guscio comune (spec 20/09 §B) ---------- */
@@ -183,7 +191,6 @@
 
 .dock {
   position: absolute; left: var(--dock-lato); right: var(--dock-lato); bottom: var(--dock-fondo);
-  background: var(--superficie); border-radius: 999px; box-shadow: var(--ombra-nav);
   padding: var(--dock-padding); display: flex; gap: var(--dock-respiro);
 }
 .guscio[data-barra="ridotta"] .dock { bottom: var(--dock-fondo-giu); }
@@ -248,6 +255,19 @@
    tiene l'ultima voce sopra di lui. Una riga sola, senza variante per `data-barra`:
    il perché sta nel commento su --coda-scroll-dock. */
 .scroll-app.con-dock { --coda: var(--coda-scroll-dock); }
+
+/* Il Dock senza guscio (Andrea, 27/09, variante B): niente contenitore bianco, e il contenuto
+   non passa dietro il tasto. Lo scroller sfuma in trasparenza nei 40 px sopra il tasto e sotto
+   resta il fondo della schermata: il tasto spento può restare in alfa, sotto non c'è niente.
+   `--dock-cima` è la distanza del bordo alto del tasto dal fondo, nei tre stati della barra.
+   Solo con un Dock di primari davvero montato (`:has`): la Dispensa, sciolta, ha la sua maschera. */
+.guscio { --dock-cima: calc(var(--dock-fondo) + var(--dock-padding) + var(--dock-primario)); }
+.guscio[data-barra="ridotta"] { --dock-cima: calc(var(--dock-fondo-giu) + var(--dock-padding) + var(--dock-primario)); }
+.guscio[data-barra][data-senza-barra] { --dock-cima: calc(var(--barra-fondo) + var(--dock-padding) + var(--dock-primario)); }
+.guscio:has(.dock:not(.dock-sciolto)) .scroll-app.con-dock {
+  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - var(--dock-cima) - var(--dock-dissolvenza)), rgba(0,0,0,0) calc(100% - var(--dock-cima)));
+  mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - var(--dock-cima) - var(--dock-dissolvenza)), rgba(0,0,0,0) calc(100% - var(--dock-cima)));
+}
 
 @media (prefers-reduced-motion: no-preference) {
   .anim-dock { transition: bottom var(--moto-barra) var(--curva-barra); }

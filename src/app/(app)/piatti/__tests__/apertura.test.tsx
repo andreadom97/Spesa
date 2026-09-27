@@ -22,13 +22,13 @@ vi.mock('@/data/settimana', () => ({
   leggiSettimanaCorrente: vi.fn(),
 }));
 
-// vi.hoisted: push deve essere la STESSA istanza a ogni chiamata di useRouter() (il
-// componente lo richiama a ogni render).
-const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+// vi.hoisted: push/replace devono essere la STESSA istanza a ogni chiamata di
+// useRouter() (il componente lo richiama a ogni render).
+const { push, replace } = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
 let paramsId = 'd-1';
 vi.mock('next/navigation', () => ({
   useParams: () => ({ id: paramsId }),
-  useRouter: () => ({ push, back: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push, back: vi.fn(), replace }),
 }));
 
 // Modulo mockato per intero (non solo spiato): verifica strutturale che all'apertura non
@@ -194,7 +194,7 @@ describe('dettaglio piatto: si apre modificabile, senza scrivere niente', () => 
 
     fireEvent.click(screen.getByRole('button', { name: 'Torna ai piatti' }));
 
-    expect(push).toHaveBeenCalledWith('/piatti');
+    expect(replace).toHaveBeenCalledWith('/piatti');
     expect(screen.queryByRole('alertdialog')).toBeNull();
     expect(salvaPiatto).not.toHaveBeenCalled();
     expect(scartaBozza).toHaveBeenCalledWith('d-1');
@@ -208,7 +208,7 @@ describe('dettaglio piatto: si apre modificabile, senza scrivere niente', () => 
 
     fireEvent.click(screen.getByRole('button', { name: 'Torna ai piatti' }));
 
-    expect(push).toHaveBeenCalledWith('/piatti');
+    expect(replace).toHaveBeenCalledWith('/piatti');
     expect(scartaBozza).not.toHaveBeenCalled();
     expect(salvaPiatto).not.toHaveBeenCalled();
   });
@@ -227,13 +227,14 @@ describe('dettaglio piatto: si apre modificabile, senza scrivere niente', () => 
     const dock = screen.getByRole('region', { name: 'Azione principale' });
     expect(await within(dock).findByRole('alert')).toHaveTextContent('Non siamo riusciti a salvare il piatto. Riprova.');
     expect(push).not.toHaveBeenCalled();
+    expect(replace).not.toHaveBeenCalled();
     const secondo = within(dock).getByRole('button', { name: 'SALVA' });
     expect(secondo).toBeEnabled();
 
     fireEvent.click(secondo);
 
     await waitFor(() => expect(salvaPiatto).toHaveBeenCalledTimes(2));
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/piatti'));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/piatti'));
     expect(within(dock).queryByRole('alert')).toBeNull();
   });
 });

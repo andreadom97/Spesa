@@ -16,6 +16,7 @@ import { FoglioDalBasso, TestataFoglio } from '@/components/FoglioDalBasso';
 import { TastoPrimario, TastoSecondario, MessaggioErrore, STILE_PILLOLA } from '@/components/controlli';
 import { Carico } from '@/components/pannello/pezzi';
 import { LettoreCodice, cercaProdotto } from '@/app/(app)/dispensa/LettoreCodice';
+import { tornaA } from '@/components/tornaA';
 
 /**
  * "500 g", "1250 g", "750 ml", "6 pz": il valore esatto, senza arrotondare
@@ -319,7 +320,7 @@ export default function Confezioni() {
     seAncoraAperta(voce, ean, { tipo: 'proposta', marca: risposta.marca, nome: risposta.nome, formato: proposta, ean });
   }
 
-  const indietro = { etichetta: 'FINE SPESA', ariaLabel: 'Torna a fine spesa', onTorna: () => router.push('/lista/fatta') };
+  const indietro = { etichetta: 'FINE SPESA', ariaLabel: 'Torna a fine spesa', onTorna: () => tornaA(router, '/lista/fatta') };
 
   if (erroreCaricamento) {
     return (

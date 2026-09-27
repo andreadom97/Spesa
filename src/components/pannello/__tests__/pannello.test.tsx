@@ -414,6 +414,29 @@ describe('Pannello: lasciarlo per una pagina piena (spec §A.5)', () => {
     expect(push).toHaveBeenCalledWith('/piatti?da=impostazioni');
     expect(replace).not.toHaveBeenCalled();
   });
+
+  // Prove dal telefono della fase 7: l'indietro di sistema da Piatti riportava alla pagina
+  // d'origine a pannello chiuso. La voce d'origine ora porta l'indirizzo del pannello.
+  it('prima della push la voce d\'origine prende l\'indirizzo del pannello, attraverso Next', async () => {
+    monta();
+    await apri();
+    const sostituisci = vi.spyOn(window.history, 'replaceState');
+    try {
+      tocca('vai a piatti');
+      indietro();
+      await waitFor(() => expect(push).toHaveBeenCalledTimes(1));
+      const chiamata = sostituisci.mock.calls.find(([, , url]) => url === '/lista?impostazioni=cima');
+      expect(chiamata).toBeDefined();
+      // Senza `__NA`: così la replaceState avvolta da Next aggiorna anche il suo indirizzo
+      // canonico, e un commit in ritardo della traversata non riscrive `/lista` sulla voce.
+      expect((chiamata![0] as { __NA?: unknown } | null)?.__NA).toBeUndefined();
+      expect(sostituisci.mock.invocationCallOrder[sostituisci.mock.calls.indexOf(chiamata!)]).toBeLessThan(
+        push.mock.invocationCallOrder[0],
+      );
+    } finally {
+      sostituisci.mockRestore();
+    }
+  });
 });
 
 describe('Pannello: stati dei dati (spec §B.5)', () => {

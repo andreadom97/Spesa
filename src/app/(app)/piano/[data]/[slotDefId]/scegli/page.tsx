@@ -25,6 +25,7 @@ import { AggiungiTratteggiato } from '@/components/AggiungiTratteggiato';
 import { MessaggioErrore } from '@/components/controlli';
 import { RigaImpostazione } from '@/components/pannello/RigaImpostazione';
 import { Carico, Nota } from '@/components/pannello/pezzi';
+import { tornaA } from '@/components/tornaA';
 
 const GIORNI = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
 
@@ -447,7 +448,7 @@ export default function ScegliPiatto() {
       // scrive `fonte_stato` — scegliere un piatto non è di per sé una
       // transizione di stato casa/fuori.
       await aggiornaSlot(dati.slotId, patch, 'correzione');
-      router.push('/piano');
+      tornaA(router, '/piano');
     } catch (errore) {
       console.error('scegli: salvataggio della scelta fallito.', errore);
       setErroreSalva('Non siamo riusciti a salvare la scelta. Riprova.');
@@ -456,7 +457,7 @@ export default function ScegliPiatto() {
   }
 
   const { minuscolo, numero } = etichettaGiorno(dataParam);
-  const indietro: Indietro = { etichetta: 'PIANO', ariaLabel: 'Torna al piano', onTorna: () => router.push('/piano') };
+  const indietro: Indietro = { etichetta: 'PIANO', ariaLabel: 'Torna al piano', onTorna: () => tornaA(router, '/piano') };
 
   if (errore) {
     return (

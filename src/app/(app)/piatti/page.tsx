@@ -10,6 +10,7 @@ import { Testata } from '@/components/Testata';
 import { Porta } from '@/components/Porta';
 import { ElencoPiatti } from './ElencoPiatti';
 import { PILLOLA_DA, destinazioneDa, leggiDaPiatti, type DaPiatti } from './da';
+import { tornaA } from '@/components/tornaA';
 
 interface Repertorio {
   piatti: Dish[];
@@ -46,7 +47,7 @@ function useDaPiatti(): DaPiatti {
 export default function Piatti() {
   const router = useRouter();
   const da = useDaPiatti();
-  const indietro: Indietro = { ...PILLOLA_DA[da], onTorna: () => router.push(destinazioneDa(da)) };
+  const indietro: Indietro = { ...PILLOLA_DA[da], onTorna: () => tornaA(router, destinazioneDa(da)) };
   const [repertorio, setRepertorio] = useState<Repertorio | null>(null);
   const [errore, setErrore] = useState<string | null>(null);
 

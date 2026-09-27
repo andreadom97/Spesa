@@ -20,10 +20,12 @@ vi.mock('@/data/settimana', () => ({
 }));
 
 const push = vi.fn();
+const replace = vi.fn();
+const back = vi.fn();
 let paramsId = 'nuovo';
 vi.mock('next/navigation', () => ({
   useParams: () => ({ id: paramsId }),
-  useRouter: () => ({ push, back: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push, back, replace }),
 }));
 
 import { salvaPiatto, leggiRepertorio, leggiIngredienti, eliminaPiatto } from '@/data/repertorio';
@@ -151,10 +153,14 @@ describe('Piatto (editor)', () => {
   // con "Non siamo riusciti a salvare il piatto. Riprova.", per sempre.
   it('aggiungere un ingrediente dal selettore NON sblocca il salvataggio finché la grammatura è 0; digitarne una valida sì', async () => {
     rendi();
-    await screen.findByPlaceholderText('Dai un nome al piatto');
+    // Con un nome: senza, SALVA resterebbe spento comunque (prove dal telefono, fase 7).
+    fireEvent.change(await screen.findByPlaceholderText('Dai un nome al piatto'), { target: { value: 'Yogurt' } });
 
     fireEvent.click(screen.getByRole('button', { name: /AGGIUNGI\s*INGREDIENTE/ }));
     fireEvent.click(await screen.findByText('Yogurt greco'));
+
+    // Prove dal telefono della fase 7: il fuoco va subito sulla grammatura nuova.
+    expect(screen.getByLabelText('Grammatura di Yogurt greco')).toHaveFocus();
 
     // Quantita 0 appena aggiunto: il salvataggio resta bloccato, e la
     // tessera segnala quale ingrediente è il problema.
@@ -304,7 +310,7 @@ describe('Piatto (editor)', () => {
       ingredienti: [{ ingredientId: 'i-1', quantita: 150, unita: 'g' }],
       componenti: [],
     }));
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/piatti'));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/piatti'));
   });
 
   it('su un piatto nuovo ELIMINA non c’è: la freccia torna al repertorio senza chiedere conferma', async () => {
@@ -315,7 +321,7 @@ describe('Piatto (editor)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Torna ai piatti' }));
 
     expect(screen.queryByRole('alertdialog')).toBeNull();
-    expect(push).toHaveBeenCalledWith('/piatti');
+    expect(replace).toHaveBeenCalledWith('/piatti');
     expect(eliminaPiatto).not.toHaveBeenCalled();
   });
 
@@ -341,7 +347,34 @@ describe('Piatto (editor)', () => {
     fireEvent.click(within(dialogo).getByRole('button', { name: 'ELIMINA' }));
 
     await waitFor(() => expect(eliminaPiatto).toHaveBeenCalledWith('d-1'));
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/piatti'));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/piatti'));
+  });
+
+  // Il caso delle prove dal telefono: Piatti → piatto → ELIMINA. Con la voce di Piatti subito
+  // prima si torna indietro davvero, e l'indietro di sistema non ritrova il piatto eliminato.
+  it('ELIMINA con Piatti come voce prima torna indietro nella cronologia, senza aggiungere voci', async () => {
+    paramsId = 'd-1';
+    vi.mocked(leggiRepertorio).mockResolvedValue([PIATTO_ESISTENTE]);
+    vi.mocked(eliminaPiatto).mockResolvedValue(undefined);
+    (window as unknown as { navigation: unknown }).navigation = {
+      currentEntry: { url: 'http://localhost:3000/piatti/d-1?da=piatti', index: 1 },
+      entries: () => [
+        { url: 'http://localhost:3000/piatti?da=impostazioni', index: 0 },
+        { url: 'http://localhost:3000/piatti/d-1?da=piatti', index: 1 },
+      ],
+    };
+    try {
+      rendi();
+      await screen.findByDisplayValue('Yogurt e avena');
+      fireEvent.click(screen.getByRole('button', { name: 'Elimina piatto' }));
+      fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'ELIMINA' }));
+
+      await waitFor(() => expect(back).toHaveBeenCalledTimes(1));
+      expect(replace).not.toHaveBeenCalled();
+      expect(push).not.toHaveBeenCalled();
+    } finally {
+      delete (window as unknown as { navigation?: unknown }).navigation;
+    }
   });
 
   it('ANNULLA nella conferma chiude il dialogo senza eliminare', async () => {
@@ -356,6 +389,20 @@ describe('Piatto (editor)', () => {
 
     expect(screen.queryByText('Eliminare questo piatto?')).not.toBeInTheDocument();
     expect(eliminaPiatto).not.toHaveBeenCalled();
+  });
+
+  // Review delle prove dal telefono: l'ingrediente creato apposta per il piatto entra a
+  // grammatura 0 come uno scelto dal selettore, e deve chiamare allo stesso modo.
+  it('l\'ingrediente appena creato per il piatto, al rientro, prende il fuoco sulla grammatura', async () => {
+    salvaBozza('nuovo', {
+      nome: 'Riso condito', slotDefId: 'sd-2', descrizione: '', settimanaCiclo: null, giornoCiclo: null,
+      ingredienti: [], componenti: [],
+    });
+    sessionStorage.setItem('spesa:ingrediente-creato:nuovo', 'i-2');
+    rendi();
+    const campo = await screen.findByLabelText("Grammatura di Fiocchi d'avena");
+    expect(campo).toHaveFocus();
+    expect(campo.closest('.anim-chiamata')).not.toBeNull();
   });
 
   it('riprende il piatto lasciato a metà per andare a creare un ingrediente', async () => {
@@ -438,7 +485,7 @@ describe('Piatto (editor)', () => {
     fireEvent.click(salva());
 
     // Spec fase 7 §B.5: SALVA scrive e torna a /piatti anche su un piatto esistente.
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/piatti'));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/piatti'));
     expect(riprendiBozza('d-1')).toBeNull();
   });
 
@@ -536,6 +583,8 @@ describe('Piatto (editor)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: "Aggiungi ingrediente all'opzione 1 del componente 1" }));
     fireEvent.click(await screen.findByText("Fiocchi d'avena"));
+    // Anche nelle opzioni il fuoco va sulla grammatura appena aggiunta.
+    expect(screen.getByLabelText("Grammatura di Fiocchi d'avena")).toHaveFocus();
     fireEvent.change(screen.getByLabelText("Grammatura di Fiocchi d'avena"), { target: { value: '40' } });
 
     fireEvent.click(salva());
@@ -667,7 +716,7 @@ describe('Piatto (editor): un modo solo, SALVA nel Dock ed ELIMINA (spec fase 7 
     expect(nome).toHaveAttribute('placeholder', 'Dai un nome al piatto');
     expect(nome.style.fontSize).toBe('32px');
     fireEvent.click(screen.getByRole('button', { name: 'Torna ai piatti' }));
-    expect(push).toHaveBeenCalledWith('/piatti');
+    expect(replace).toHaveBeenCalledWith('/piatti');
     // L'intestazione di oggi non c'è più.
     expect(screen.queryByText('PIATTO')).toBeNull();
   });
@@ -705,6 +754,23 @@ describe('Piatto (editor): un modo solo, SALVA nel Dock ed ELIMINA (spec fase 7 
     fireEvent.click(screen.getByRole('button', { name: /Giorno fisso: Lo sceglie l.app, ruotando/ }));
     expect(salva()).toBeDisabled();
     fireEvent.change(screen.getByLabelText('Procedimento del piatto'), { target: { value: 'Mescola.' } });
+    expect(salva()).toBeEnabled();
+  });
+
+  // Prove dal telefono della fase 7: un piatto senza nome si salvava, e in Piatti
+  // compariva una riga senza titolo. Vale già dal codice di prima della fase 7.
+  it('un piatto senza nome tiene SALVA spento, anche con ingredienti e grammature a posto', async () => {
+    rendi();
+    const nome = await screen.findByPlaceholderText('Dai un nome al piatto');
+    fireEvent.click(screen.getByRole('button', { name: /AGGIUNGI\s*INGREDIENTE/ }));
+    fireEvent.click(await screen.findByText('Yogurt greco'));
+    fireEvent.change(screen.getByLabelText('Grammatura di Yogurt greco'), { target: { value: '150' } });
+
+    expect(salva()).toBeDisabled();
+    // Solo spazi non è un nome.
+    fireEvent.change(nome, { target: { value: '   ' } });
+    expect(salva()).toBeDisabled();
+    fireEvent.change(nome, { target: { value: 'Yogurt' } });
     expect(salva()).toBeEnabled();
   });
 
@@ -768,7 +834,7 @@ describe('Piatto (editor): un modo solo, SALVA nel Dock ed ELIMINA (spec fase 7 
       ingredienti: [{ ingredientId: 'i-1', quantita: 150, unita: 'g' }],
       componenti: [],
     }));
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/piatti'));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/piatti'));
   });
 
   it('in volo SALVA è spento con lo stato del sistema, non con l’opacità; se fallisce l’errore sta sopra il Dock', async () => {
@@ -791,6 +857,7 @@ describe('Piatto (editor): un modo solo, SALVA nel Dock ed ELIMINA (spec fase 7 
     expect(within(dock).getByRole('alert')).toHaveTextContent('Non siamo riusciti a salvare il piatto. Riprova.');
     expect(within(dock).getByRole('button', { name: 'SALVA' })).toBeEnabled();
     expect(push).not.toHaveBeenCalled();
+    expect(replace).not.toHaveBeenCalled();
   });
 
   it('AGGIUNGI INGREDIENTE è l’Aggiungi tratteggiato sotto le tessere, e apre il selettore in un Foglio dal basso', async () => {
@@ -820,6 +887,7 @@ describe('Piatto (editor): un modo solo, SALVA nel Dock ed ELIMINA (spec fase 7 
 
     expect(await within(screen.getByRole('alertdialog')).findByText('Non siamo riusciti a eliminare il piatto. Riprova.')).toBeInTheDocument();
     expect(push).not.toHaveBeenCalled();
+    expect(replace).not.toHaveBeenCalled();
   });
 
   it('il dialogo di eliminazione sta al livello 1 (z 50): sotto non c’è un altro foglio (review finale, M7)', async () => {
@@ -926,7 +994,7 @@ describe('Piatto (editor): un modo solo, SALVA nel Dock ed ELIMINA (spec fase 7 
 
     fireEvent.click(screen.getByRole('button', { name: 'Torna ai piatti' }));
 
-    expect(push).toHaveBeenCalledWith('/piatti');
+    expect(replace).toHaveBeenCalledWith('/piatti');
     expect(riprendiBozza('d-1')).toEqual(BOZZA_PENDENTE);
   });
 
@@ -939,7 +1007,7 @@ describe('Piatto (editor): un modo solo, SALVA nel Dock ed ELIMINA (spec fase 7 
 
     fireEvent.click(screen.getByRole('button', { name: 'Torna ai piatti' }));
 
-    expect(push).toHaveBeenCalledWith('/piatti');
+    expect(replace).toHaveBeenCalledWith('/piatti');
     expect(riprendiBozza('d-1')).toEqual(BOZZA_PENDENTE);
   });
 
@@ -1004,8 +1072,8 @@ describe('Piatto (editor): aperto dal Piano torna al Piano (review finale, I1)',
     expect(screen.queryByRole('button', { name: 'Torna ai piatti' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Torna al piano' }));
 
-    expect(push).toHaveBeenCalledWith('/piano');
-    expect(push).not.toHaveBeenCalledWith('/piatti');
+    expect(replace).toHaveBeenCalledWith('/piano');
+    expect(replace).not.toHaveBeenCalledWith('/piatti');
     expect(sessionStorage.getItem(CHIAVE_RITORNO)).toBeNull();
   });
 
@@ -1021,7 +1089,7 @@ describe('Piatto (editor): aperto dal Piano torna al Piano (review finale, I1)',
     await screen.findByDisplayValue('Yogurt e avena');
 
     fireEvent.click(screen.getByRole('button', { name: 'Torna al piano' }));
-    expect(push).toHaveBeenCalledWith('/piano');
+    expect(replace).toHaveBeenCalledWith('/piano');
   });
 
   it('SALVA aperto dal Piano torna a /piano, e il ritorno si dimentica', async () => {
@@ -1031,8 +1099,8 @@ describe('Piatto (editor): aperto dal Piano torna al Piano (review finale, I1)',
 
     fireEvent.click(salva());
 
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/piano'));
-    expect(push).not.toHaveBeenCalledWith('/piatti');
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/piano'));
+    expect(replace).not.toHaveBeenCalledWith('/piatti');
     expect(sessionStorage.getItem(CHIAVE_RITORNO)).toBeNull();
   });
 
@@ -1045,8 +1113,8 @@ describe('Piatto (editor): aperto dal Piano torna al Piano (review finale, I1)',
     fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'ELIMINA' }));
 
     await waitFor(() => expect(eliminaPiatto).toHaveBeenCalledWith('d-1'));
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/piano'));
-    expect(push).not.toHaveBeenCalledWith('/piatti');
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/piano'));
+    expect(replace).not.toHaveBeenCalledWith('/piatti');
     expect(sessionStorage.getItem(CHIAVE_RITORNO)).toBeNull();
   });
 
@@ -1057,7 +1125,7 @@ describe('Piatto (editor): aperto dal Piano torna al Piano (review finale, I1)',
 
     expect(screen.queryByRole('button', { name: 'Torna al piano' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Torna ai piatti' }));
-    expect(push).toHaveBeenCalledWith('/piatti');
+    expect(replace).toHaveBeenCalledWith('/piatti');
   });
 });
 
@@ -1086,7 +1154,7 @@ describe('Piatto (editor): aperto da Piatti ripulisce il ritorno al Piano rimast
     expect(screen.queryByRole('button', { name: 'Torna al piano' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Torna ai piatti' }));
 
-    expect(push).toHaveBeenCalledWith('/piatti');
-    expect(push).not.toHaveBeenCalledWith('/piano');
+    expect(replace).toHaveBeenCalledWith('/piatti');
+    expect(replace).not.toHaveBeenCalledWith('/piano');
   });
 });

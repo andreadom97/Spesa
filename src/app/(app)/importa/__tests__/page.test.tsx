@@ -18,9 +18,9 @@ vi.mock('@/data/supabase', () => ({
   client: () => ({ auth: { getSession: getSessionMock } }),
 }));
 // La Cornice usa useRouter per la pillola indietro (spec fase 5 §G.3): fuori da un App Router
-// lancia. vi.hoisted: la stessa `push` a ogni chiamata di useRouter.
-const { push } = vi.hoisted(() => ({ push: vi.fn() }));
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push, replace: vi.fn(), back: vi.fn() }) }));
+// lancia. vi.hoisted: la stessa `push`/`replace` a ogni chiamata di useRouter.
+const { push, replace } = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push, replace, back: vi.fn() }) }));
 import { leggiBozzaImport, salvaBozzaImport, cancellaBozzaImport } from '@/data/importa';
 import { leggiSlotDefs } from '@/data/impostazioni';
 import { leggiIngredienti } from '@/data/repertorio';
@@ -52,6 +52,7 @@ function rendi(ui: ReactNode = <Importa />) {
 beforeEach(() => {
   vi.clearAllMocks();
   push.mockClear();
+  replace.mockClear();
   sessionStorage.clear();
   slotDock = document.createElement('div');
   document.body.appendChild(slotDock);
@@ -185,10 +186,11 @@ describe('Importa: la scelta', () => {
     // `fireEvent.click` restituisce false quando il click è stato annullato.
     expect(fireEvent.click(pillola)).toBe(false);
     expect(push).not.toHaveBeenCalled();
+    expect(replace).not.toHaveBeenCalled();
     // Passata la finestra, lo stesso click non è più annullato ed esce.
     passaUnAttimo();
     expect(fireEvent.click(pillola)).toBe(true);
-    expect(push).toHaveBeenCalledWith('/lista?impostazioni=cima');
+    expect(replace).toHaveBeenCalledWith('/lista?impostazioni=cima');
   });
 
   it('la pillola IMPOSTAZIONI riapre il pannello sopra la pagina d\'origine (spec fase 5 §G.3)', async () => {
@@ -197,7 +199,7 @@ describe('Importa: la scelta', () => {
     const pillola = await screen.findByRole('button', { name: 'Torna alle impostazioni' });
     expect(pillola).toHaveTextContent('IMPOSTAZIONI');
     fireEvent.click(pillola);
-    expect(push).toHaveBeenCalledWith('/piano?impostazioni=cima');
+    expect(replace).toHaveBeenCalledWith('/piano?impostazioni=cima');
   });
 
   it('i fogli presi con la fotocamera non accendono il Dock, senza un PDF', async () => {
@@ -292,7 +294,7 @@ describe('Importa: l\'invio', () => {
     await inviaUnaFoto();
     passaUnAttimo();
     fireEvent.click(await screen.findByRole('button', { name: 'TORNA A IMPOSTAZIONI' }));
-    expect(push).toHaveBeenCalledWith('/lista?impostazioni=cima');
+    expect(replace).toHaveBeenCalledWith('/lista?impostazioni=cima');
   });
 
   it('503: estrazione non disponibile', async () => {

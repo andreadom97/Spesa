@@ -98,6 +98,20 @@ describe('Guscio', () => {
     expect(container.querySelector('nav[aria-label="Sezioni"]')).toBeInTheDocument();
   });
 
+  // Il Dock senza guscio (27/09): la dissolvenza dello scroller sta sopra il tasto, e senza
+  // barra il tasto sta più in basso. Il CSS lo sa da `data-senza-barra` sul guscio.
+  it('con la barra nascosta il guscio porta data-senza-barra, e lo toglie quando torna', () => {
+    function Nasconde() {
+      useNascondiBarra(true);
+      return <p>editor</p>;
+    }
+    const { container, rerender } = render(<Guscio><Nasconde /></Guscio>);
+    const guscio = container.firstElementChild as HTMLElement;
+    expect(guscio).toHaveAttribute('data-senza-barra');
+    rerender(<Guscio><p>lista</p></Guscio>);
+    expect(guscio).not.toHaveAttribute('data-senza-barra');
+  });
+
   it('monta il pannello, e il Menù utente della pagina lo apre: data-pannello sul guscio (spec fase 5 §A.1, §B.2)', () => {
     const { container } = render(<Guscio><Testata titolo="Lista" /></Guscio>);
     const guscio = container.firstElementChild as HTMLElement;

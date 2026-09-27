@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useIndietroFogli } from '@/components/useIndietroFogli';
 import type { PropsDialogo } from '@/components/DialogoConferma';
 import type { DestinazionePannello, SottoSchermata } from './tipi';
-import { leggiDestinazione, prendiScrollPannello, salvaOrigine, type OriginePannello } from './indirizzi';
+import { indirizzoPannello, leggiDestinazione, prendiScrollPannello, salvaOrigine, type OriginePannello } from './indirizzi';
 
 export interface ContestoPannello {
   aperto: boolean;
@@ -164,9 +164,24 @@ export function PannelloProvider({ children, attendiPrimoAvvio = false }: { chil
   // Ramo A (la sonda del Task 2 regge con la fn differita): prima si chiude, poi si naviga.
   // L'hook fa partire la push un giro dopo il popstate che conclude il suo go(-n): navigare
   // subito farebbe correre insieme go e push, e dentro il popstate Next la scarterebbe.
+  //
+  // Prima della push la voce d'origine prende l'indirizzo del pannello (prove dal telefono della
+  // fase 7): così l'indietro di sistema dalla pagina piena ci torna col pannello aperto, perché
+  // l'effetto qui sopra rilegge `?impostazioni=` al cambio di pathname, e la freccia della pagina
+  // (`tornaA` verso `indirizzoRitorno()`) trova la voce prima uguale e torna indietro davvero.
+  //
+  // Con uno stato **senza** `__NA`, di proposito (review delle prove dal telefono): qui l'AppRouter
+  // ha già avvolto la History API, e la sua `replaceState` copia da sé `__NA` e l'albero nella voce,
+  // e porta il nuovo indirizzo anche nel suo `canonicalUrl`. Con `window.history.state` (che ha
+  // `__NA`) la chiamata passerebbe diretta al browser: Next resterebbe su `/lista`, e il commit
+  // della traversata del `go(-n)`, se arrivasse dopo questo giro, riscriverebbe `/lista` sulla voce.
+  // La regola B′ della docstring vale per l'effetto al montaggio, prima dell'avvolgimento.
   const vaiA = useCallback((href: string, origine: OriginePannello) => {
     salvaOrigine(origine);
-    chiudiTuttoPoi(() => router.push(href));
+    chiudiTuttoPoi(() => {
+      window.history.replaceState({}, '', indirizzoPannello(origine.pathname, origine.sotto));
+      router.push(href);
+    });
     setStato(CHIUSO);
   }, [chiudiTuttoPoi, router]);
 

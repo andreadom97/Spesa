@@ -31,6 +31,16 @@ describe('DialogoConferma (spec fase 5 §D)', () => {
     expect(screen.getByRole('button', { name: 'ESCI' }).style.background).toBe('var(--ink)');
   });
 
+  // Prove dal telefono della fase 7: il reset globale dà a ogni <button> `text-align: left`,
+  // e l'azione, che non usa lo stile comune dei Tasti, aveva la scritta a sinistra.
+  it('la scritta dell\'azione è centrata come quella di ANNULLA', () => {
+    render(<DialogoConferma {...props()} />);
+    const azione = screen.getByRole('button', { name: 'CANCELLA' });
+    expect(azione.style.display).toBe('flex');
+    expect(azione.style.alignItems).toBe('center');
+    expect(azione.style.justifyContent).toBe('center');
+  });
+
   it('ANNULLA chiama onAnnulla e non conferma', () => {
     const p = props();
     render(<DialogoConferma {...p} />);
