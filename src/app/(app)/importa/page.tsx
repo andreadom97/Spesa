@@ -3,16 +3,22 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Ingredient, MealSlotDef } from '@/domain/types';
-import type { PianoEstratto, StatoRevisione } from '@/domain/import/types';
-import { leggiBozzaImport, salvaBozzaImport, cancellaBozzaImport, eseguiScritture, type BozzaImport } from '@/data/importa';
+import type { StatoRevisione } from '@/domain/import/types';
+import { leggiBozzaImport, salvaBozzaImport, cancellaBozzaImport, type BozzaImport } from '@/data/importa';
 import { leggiSlotDefs } from '@/data/impostazioni';
-import { leggiIngredienti, leggiRepertorio } from '@/data/repertorio';
+import { leggiIngredienti } from '@/data/repertorio';
 import { validaEsito } from '@/domain/import/valida';
 import { proponiSlot, normalizza } from '@/domain/import/mapping';
-import { traduciBozza, BozzaIncompletaError, type ScrittureImport } from '@/domain/import/commit';
 import { client } from '@/data/supabase';
 import { Testata } from '@/components/Testata';
 import { indirizzoRitorno } from '@/components/pannello/indirizzi';
+import { Dock } from '@/components/Dock';
+import { FoglioDalBasso } from '@/components/FoglioDalBasso';
+import { DialogoConferma } from '@/components/DialogoConferma';
+import { TastoSecondario } from '@/components/controlli';
+import { useIndietroFogli } from '@/components/useIndietroFogli';
+import { StatoImporta } from './StatoImporta';
+import { Riepilogo } from './Riepilogo';
 import { Camera } from './Camera';
 import { Acquisizione } from './Acquisizione';
 import { Revisione } from './Revisione';
@@ -44,18 +50,6 @@ const MESSAGGIO_SENZA_SESSIONE = 'Serve l’accesso: riapri l’app ed entra di 
  * cadrebbe sulla pillola e uscirebbe da /importa perdendo i fogli presi.
  */
 const TOCCHI_IGNORATI_DOPO_CHIUSURA_MS = 400;
-
-/**
- * La data di oggi in locale, come yyyy-mm-dd: `toISOString` converte a UTC, quindi vicino
- * alla mezzanotte (in un fuso più avanti di UTC, come l'Italia) darebbe il giorno sbagliato.
- * Costruita dai campi locali di `Date`, mai da una stringa UTC.
- */
-function dataLocaleOggi(): string {
-  const d = new Date();
-  const mese = String(d.getMonth() + 1).padStart(2, '0');
-  const giorno = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}-${mese}-${giorno}`;
-}
 
 /**
  * Costruisce la mappatura pasti iniziale da proporre in revisione: uno slot
@@ -143,6 +137,10 @@ export default function Importa() {
   // Quando la fotocamera si è chiusa l'ultima volta (`performance.now()`). Parte da
   // -Infinity, non da 0: così nessun tocco dei primi istanti dopo il caricamento si perde.
   const chiusaAlle = useRef(-Infinity);
+  // Se la fotocamera è aperta davvero: l'ascoltatore qui sotto agisce solo allora. Anche i
+  // dialoghi di Importa (Ricominciare, Sostituire) mettono voci di cronologia, e chiuderli fa un
+  // popstate: senza questa guardia scarterebbe per 400 ms il tocco dopo (fase 8a).
+  const fotocameraApertaRef = useRef(false);
 
   /**
    * Il gesto indietro del telefono dentro la fotocamera (spec fase 3 §G). A
@@ -158,6 +156,8 @@ export default function Importa() {
    */
   useEffect(() => {
     const chiudi = () => {
+      if (!fotocameraApertaRef.current) return;
+      fotocameraApertaRef.current = false;
       inChiusura.current = false;
       chiusaAlle.current = performance.now();
       setFotocameraAperta(false);
@@ -178,6 +178,7 @@ export default function Importa() {
 
   function apriFotocamera() {
     inChiusura.current = false;
+    fotocameraApertaRef.current = true;
     window.history.pushState(null, '');
     setFotocameraAperta(true);
   }
@@ -217,12 +218,22 @@ export default function Importa() {
   }
 
   async function ricomincia() {
+    // Subito, prima della cancellazione: la Cornice resta vuota, e un RIPRENDI toccato mentre
+    // `cancellaBozzaImport` è in volo non riapre una bozza che sta per sparire.
+    setVista('caricamento');
     try {
       await cancellaBozzaImport();
     } catch (e) {
       console.error('importa: cancellazione della bozza fallita.', e);
     }
     setBozza(null);
+    setVista('acquisizione');
+  }
+
+  /** Il rifiuto (spec fase 8a §B): si riparte da un file nuovo, quindi senza PDF né fogli. */
+  function provaUnAltroFile() {
+    setPdf(null);
+    setFoto([]);
     setVista('acquisizione');
   }
 
@@ -323,7 +334,7 @@ export default function Importa() {
   if (vista === 'rifiuto') {
     return (
       <Cornice>
-        <SchermataRifiuto motivazione={motivazioneRifiuto ?? ''} />
+        <SchermataRifiuto motivazione={motivazioneRifiuto ?? ''} onAltroFile={provaUnAltroFile} />
       </Cornice>
     );
   }
@@ -340,11 +351,17 @@ export default function Importa() {
   }
 
   if (vista === 'estrazione') {
+    // La bozza si salva quando arriva la risposta, anche se nel frattempo si è lasciata la pagina:
+    // la `fetch` non si annulla, e la bozza si ritrova in «Hai un import in corso». Si perde solo
+    // chiudendo o ricaricando l'app.
     return (
       <Cornice>
-        <p style={{ margin: '40px 20px', textAlign: 'center', color: 'var(--sec)', fontSize: 14 }}>
-          Sto leggendo la dieta…
-        </p>
+        <StatoImporta
+          titolo="Sto leggendo la dieta…"
+          testo="Se chiudi l'app prima che abbia finito, la lettura si perde."
+          luce
+          stato
+        />
       </Cornice>
     );
   }
@@ -382,119 +399,78 @@ export default function Importa() {
   );
 }
 
-function SchermataRipresa({ onRiprendi, onRicomincia }: { onRiprendi: () => void; onRicomincia: () => void }) {
-  const [confermaRicomincia, setConfermaRicomincia] = useState(false);
-
-  if (confermaRicomincia) {
-    return (
-      <div style={{ margin: '20px 16px', padding: '18px 16px', borderRadius: 18, background: 'var(--superficie)', border: '1px solid var(--bordo)' }}>
-        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)', marginBottom: 6 }}>
-          Ricominciare da capo?
-        </div>
-        <div style={{ fontSize: 13.5, lineHeight: 1.45, color: 'var(--sec)', marginBottom: 16 }}>
-          La bozza salvata andrà persa: la revisione fatta finora non si recupera più.
-        </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button
-            type="button"
-            onClick={() => setConfermaRicomincia(false)}
-            style={{
-              flex: 1, height: 48, borderRadius: 14, border: '1px solid var(--bordo)', background: 'transparent',
-              fontFamily: 'var(--font-mono)', fontSize: 11.5, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--ink)',
-            }}
-          >
-            ANNULLA
-          </button>
-          <button
-            type="button"
-            onClick={onRicomincia}
-            style={{
-              flex: 1, height: 48, borderRadius: 14, border: 'none', background: 'var(--ink)',
-              fontFamily: 'var(--font-mono)', fontSize: 11.5, fontWeight: 700, letterSpacing: '0.08em', color: '#FFFFFF',
-            }}
-          >
-            Sì, ricomincia
-          </button>
-        </div>
-      </div>
-    );
-  }
+/** La ripresa (spec fase 8a §B, §D): RIPRENDI nel Dock, RICOMINCIA nella scheda e poi il dialogo. */
+function SchermataRipresa({ onRiprendi, onRicomincia }: { onRiprendi: () => void; onRicomincia: () => Promise<void> }) {
+  const [conferma, setConferma] = useState(false);
+  // L'indietro di sistema chiude il dialogo invece di lasciare Importa.
+  const { chiudiTuttoPoi } = useIndietroFogli(conferma ? 1 : 0, () => setConferma(false));
 
   return (
-    <div style={{ margin: '20px 16px', padding: '18px 16px', borderRadius: 18, background: 'var(--superficie)', border: '1px solid var(--bordo)' }}>
-      <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)', marginBottom: 6 }}>
-        Hai un import in corso
-      </div>
-      <div style={{ fontSize: 13.5, lineHeight: 1.45, color: 'var(--sec)', marginBottom: 16 }}>
-        C&apos;è una dieta già estratta in attesa di revisione: puoi riprenderla da dove l&apos;hai lasciata, oppure ricominciare da capo.
-      </div>
-      <div style={{ display: 'flex', gap: 10 }}>
-        <button
-          type="button"
-          onClick={() => setConfermaRicomincia(true)}
-          style={{
-            flex: 1, height: 48, borderRadius: 14, border: '1px solid var(--bordo)', background: 'transparent',
-            fontFamily: 'var(--font-mono)', fontSize: 11.5, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--ink)',
-          }}
-        >
-          RICOMINCIA
-        </button>
-        <button
-          type="button"
-          onClick={onRiprendi}
-          style={{
-            flex: 1, height: 48, borderRadius: 14, border: 'none', background: 'var(--ink)',
-            fontFamily: 'var(--font-mono)', fontSize: 11.5, fontWeight: 700, letterSpacing: '0.08em', color: '#FFFFFF',
-          }}
-        >
-          RIPRENDI
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function SchermataRifiuto({ motivazione }: { motivazione: string }) {
-  const router = useRouter();
-  return (
-    <div style={{ margin: '20px 16px', padding: '18px 16px', borderRadius: 18, background: 'var(--superficie)', border: '1px solid var(--bordo)' }}>
-      <div style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)', marginBottom: 10 }}>
-        Questa dieta non ha un menu
-      </div>
-      <div style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--ink)', marginBottom: 10 }}>{motivazione}</div>
-      <div style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--sec)', marginBottom: 18 }}>{SPIEGAZIONE_RIFIUTO}</div>
-      {/* Lo stesso della pillola della testata: il pannello sopra la pagina d'origine (spec fase 5 §G.3). */}
-      <button
-        type="button"
-        onClick={() => tornaA(router, indirizzoRitorno())}
-        style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: 48, borderRadius: 14,
-          fontFamily: 'var(--font-mono)', fontSize: 11.5, fontWeight: 700, letterSpacing: '0.08em',
-          border: '1px solid var(--bordo)', color: 'var(--ink)', background: 'none',
-        }}
+    <>
+      <StatoImporta
+        titolo="Hai un import in corso"
+        testo="C'è una dieta già estratta in attesa di revisione: puoi riprenderla da dove l'hai lasciata, oppure ricominciare da capo."
+        conDock
       >
-        TORNA A IMPOSTAZIONI
-      </button>
-    </div>
+        <TastoSecondario onClick={() => setConferma(true)}>RICOMINCIA</TastoSecondario>
+      </StatoImporta>
+      <Dock>
+        <button type="button" className="dock-primario" onClick={onRiprendi}>RIPRENDI</button>
+      </Dock>
+      {conferma && (
+        <FoglioDalBasso
+          etichetta="Ricominciare da capo?"
+          onChiudi={() => setConferma(false)}
+          altezza="contenuto"
+          ruolo="alertdialog"
+          chiudiDalVelo={false}
+        >
+          <DialogoConferma
+            titolo="Ricominciare da capo?"
+            testo="La bozza salvata andrà persa: la revisione fatta finora non si recupera più."
+            azione="RICOMINCIA"
+            tono="distruttivo"
+            // `ricomincia` oggi non lancia mai (spec §D): il testo c'è perché è obbligatorio.
+            erroreTesto="Non siamo riusciti a ricominciare. Riprova."
+            onConferma={async () => {
+              // Prima si consuma la voce del dialogo, poi si riparte dalle porte (useIndietroFogli).
+              chiudiTuttoPoi(() => void onRicomincia());
+              setConferma(false);
+            }}
+            onAnnulla={() => setConferma(false)}
+          />
+        </FoglioDalBasso>
+      )}
+    </>
   );
 }
 
+/** Il rifiuto (spec fase 8a §B, decisione 4): alle Impostazioni si torna con la pillola. */
+function SchermataRifiuto({ motivazione, onAltroFile }: { motivazione: string; onAltroFile: () => void }) {
+  return (
+    <>
+      <StatoImporta
+        titolo="Questa dieta non ha un menu"
+        testo={motivazione || SPIEGAZIONE_RIFIUTO}
+        testo2={motivazione ? SPIEGAZIONE_RIFIUTO : undefined}
+        conDock
+      />
+      <Dock>
+        <button type="button" className="dock-primario" onClick={onAltroFile}>PROVA UN ALTRO FILE</button>
+      </Dock>
+    </>
+  );
+}
+
+/** L'errore (spec fase 8a §B): RIPROVA torna alle porte tenendo PDF e fogli, come oggi. */
 function SchermataErrore({ messaggio, onRiprova }: { messaggio: string; onRiprova: () => void }) {
   return (
-    <div style={{ margin: '20px 16px', padding: '18px 16px', borderRadius: 18, background: 'var(--superficie)', border: '1px solid var(--bordo)' }}>
-      <div style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--ink)', marginBottom: 16 }}>{messaggio}</div>
-      <button
-        type="button"
-        onClick={onRiprova}
-        style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: 48, borderRadius: 14,
-          border: 'none', background: 'var(--ink)',
-          fontFamily: 'var(--font-mono)', fontSize: 11.5, fontWeight: 700, letterSpacing: '0.08em', color: '#FFFFFF',
-        }}
-      >
-        RIPROVA
-      </button>
-    </div>
+    <>
+      <StatoImporta titolo="La lettura si è fermata" testo={messaggio} conDock />
+      <Dock>
+        <button type="button" className="dock-primario" onClick={onRiprova}>RIPROVA</button>
+      </Dock>
+    </>
   );
 }
 
@@ -526,193 +502,6 @@ function ContenutoBozza({
     case 'riepilogo':
       return <Riepilogo piano={bozza.piano} stato={bozza.statoRevisione} onStato={onStatoRevisione} />;
   }
-}
-
-/**
- * Il riepilogo finale: traduce la bozza in scritture concrete (`traduciBozza`,
- * con ingredienti e repertorio riletti freschi — non quelli in memoria dal
- * mount del wizard, che potrebbero essere stati superati da un commit
- * parziale precedente) e mostra il conto prima di eseguirle davvero.
- *
- * `BozzaIncompletaError` è un difetto di dati risolvibile solo tornando alla
- * revisione (una mappatura mancante, una quantità mai risolta…): si mostra il
- * messaggio esatto dell'errore, con un link indietro, invece di un errore
- * generico che non direbbe cosa correggere.
- */
-function Riepilogo({
-  piano,
-  stato,
-  onStato,
-}: {
-  piano: PianoEstratto;
-  stato: StatoRevisione;
-  onStato: (s: StatoRevisione) => void;
-}) {
-  const router = useRouter();
-  const [scritture, setScritture] = useState<ScrittureImport | null>(null);
-  const [erroreBozza, setErroreBozza] = useState<string | null>(null);
-  const [erroreCaricamento, setErroreCaricamento] = useState<string | null>(null);
-  const [confermaSostituzione, setConfermaSostituzione] = useState(false);
-  const [eseguendo, setEseguendo] = useState(false);
-  const [erroreEsecuzione, setErroreEsecuzione] = useState<string | null>(null);
-  // Incrementato a ogni retry dopo un errore di eseguiScritture: forza l'effect sotto a
-  // rileggere ingredienti/repertorio e ricalcolare `scritture` da zero prima del nuovo
-  // tentativo — l'idempotenza vive in traduciBozza (riusaDishId, ingredienti già creati
-  // agganciati per nome), quindi un retry che riusa lo stesso oggetto `scritture` calcolato
-  // una volta salterebbe quella rivalutazione e duplicherebbe ingredienti e piatti sul DB.
-  const [tentativo, setTentativo] = useState(0);
-
-  useEffect(() => {
-    let vivo = true;
-    (async () => {
-      // Azzera subito le scritture precedenti: sia al primo giro (già null) sia a un retry
-      // dopo un errore di eseguiScritture, SOSTITUISCI/Sì, sostituisci devono restare
-      // disabilitati (vedi `pronto` più sotto) finché questo ricalcolo non è finito, mai
-      // riabilitarsi su un oggetto ormai stantio.
-      setScritture(null);
-      try {
-        const [ingredientiEsistenti, repertorioEsistente] = await Promise.all([leggiIngredienti(), leggiRepertorio()]);
-        if (!vivo) return;
-        const s = traduciBozza(piano, stato, ingredientiEsistenti, repertorioEsistente, dataLocaleOggi());
-        setScritture(s);
-      } catch (e) {
-        if (!vivo) return;
-        if (e instanceof BozzaIncompletaError) {
-          setErroreBozza(e.message);
-        } else {
-          console.error('importa: preparazione del riepilogo fallita.', e);
-          setErroreCaricamento('Non siamo riusciti a preparare il riepilogo. Riprova più tardi.');
-        }
-      }
-    })();
-    return () => {
-      vivo = false;
-    };
-  }, [piano, stato, tentativo]);
-
-  async function confermaSostituisci() {
-    if (!scritture) return;
-    setEseguendo(true);
-    setErroreEsecuzione(null);
-    try {
-      await eseguiScritture(scritture);
-      router.push('/piano');
-    } catch (e) {
-      console.error('importa: esecuzione dell’import fallita.', e);
-      setErroreEsecuzione('Qualcosa si è fermato: riprova, l’import riprende da dove era.');
-      setEseguendo(false);
-      // Il prossimo tentativo deve ripartire da scritture ricalcolate, non dallo stesso
-      // oggetto: bumpare `tentativo` fa ripartire l'effect sopra, che azzera `scritture` e
-      // rilegge ingredienti/repertorio freschi prima di ricalcolare — SOSTITUISCI/Sì,
-      // sostituisci restano disabilitati (vedi `pronto` più sotto) finché non è pronto di nuovo.
-      setTentativo((n) => n + 1);
-    }
-  }
-
-  if (erroreBozza) {
-    return (
-      <div style={{ margin: '20px 16px', padding: '18px 16px', borderRadius: 18, background: 'var(--superficie)', border: '1px solid var(--bordo)' }}>
-        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)', marginBottom: 8 }}>
-          C&apos;è ancora qualcosa da sistemare
-        </div>
-        <div style={{ fontSize: 13.5, lineHeight: 1.45, color: 'var(--sec)', marginBottom: 16 }}>{erroreBozza}</div>
-        <button
-          type="button"
-          onClick={() => onStato({ ...stato, passo: 'revisione' })}
-          style={{
-            width: '100%', height: 48, borderRadius: 14, border: 'none', background: 'var(--ink)',
-            fontFamily: 'var(--font-mono)', fontSize: 11.5, fontWeight: 700, letterSpacing: '0.08em', color: '#FFFFFF',
-          }}
-        >
-          TORNA ALLA REVISIONE
-        </button>
-      </div>
-    );
-  }
-
-  if (erroreCaricamento) {
-    return <p style={{ margin: '20px 16px', color: 'var(--sec)' }}>{erroreCaricamento}</p>;
-  }
-
-  // `scritture` è null sia al primo caricamento sia durante il ricalcolo dopo un errore
-  // di eseguiScritture (vedi effect sopra): il primo caso non ha ancora nulla da mostrare
-  // (schermo vuoto, come sempre), il secondo deve invece continuare a mostrare il messaggio
-  // di errore e il dialogo di conferma — solo con SOSTITUISCI/Sì, sostituisci disabilitati
-  // finché il ricalcolo non è pronto, mai un ritorno a null che li farebbe sparire.
-  if (!scritture && !erroreEsecuzione) return null;
-
-  const pronto = scritture !== null;
-  const nPiatti = scritture?.piattiDaCreare.length ?? 0;
-  const mSettimane = scritture?.impostazioni.settimaneCiclo ?? 0;
-  const kIngredienti = scritture?.ingredientiDaCreare.length ?? 0;
-  const xDisattivati = scritture?.piattiDaDisattivare.length ?? 0;
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-      {/* La coda ridotta si applica solo senza il dialogo di conferma sotto: con il
-          dialogo aperto il tasto SOSTITUISCI IL PIANO non è renderizzato e lo scroller
-          resta l'ultimo elemento, quindi gli serve la coda intera. */}
-      <div className={`sc scroll-app${confermaSostituzione ? '' : ' con-piede'}`} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 16px 16px' }}>
-        {pronto && (
-          <div style={{ padding: '16px 15px', borderRadius: 18, background: 'var(--superficie)', border: '1px solid var(--bordo)', fontSize: 14.5, lineHeight: 1.5, color: 'var(--ink)' }}>
-            {nPiatti} piatti su {mSettimane} settimane · {kIngredienti} ingredienti nuovi · {xDisattivati} piatti del piano attuale verranno disattivati
-          </div>
-        )}
-
-        {confermaSostituzione && (
-          <div style={{ marginTop: 14, padding: '15px 15px 16px', borderRadius: 18, background: 'var(--superficie)', border: '1px solid var(--bordo)' }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)', marginBottom: 8 }}>Sostituire il piano attuale?</div>
-            <div style={{ fontSize: 13, lineHeight: 1.45, color: 'var(--sec)', marginBottom: 14 }}>
-              I piatti del nutrizionista non più presenti nella nuova dieta verranno disattivati; questa azione non si annulla.
-            </div>
-            <div style={{ display: 'flex', gap: 9 }}>
-              <button
-                type="button"
-                onClick={() => setConfermaSostituzione(false)}
-                disabled={eseguendo}
-                style={{
-                  flex: 1, height: 48, borderRadius: 14, border: '1px solid var(--bordo)', background: 'transparent',
-                  fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--ink)',
-                }}
-              >
-                ANNULLA
-              </button>
-              <button
-                type="button"
-                onClick={confermaSostituisci}
-                disabled={eseguendo || !pronto}
-                style={{
-                  flex: 1, height: 48, borderRadius: 14, border: 'none', background: 'var(--ink)',
-                  fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: '#FFFFFF',
-                }}
-              >
-                Sì, sostituisci
-              </button>
-            </div>
-          </div>
-        )}
-
-        {erroreEsecuzione && <p style={{ margin: '14px 4px 0', fontSize: 13, color: 'var(--sec)' }}>{erroreEsecuzione}</p>}
-      </div>
-
-      {!confermaSostituzione && (
-        <div className="coda-barra" style={{ padding: '4px 16px 22px' }}>
-          <button
-            type="button"
-            disabled={!pronto}
-            onClick={() => setConfermaSostituzione(true)}
-            style={{
-              width: '100%', height: 54, borderRadius: 18,
-              fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700, letterSpacing: '0.09em',
-              background: pronto ? 'var(--ink)' : 'var(--bordo)', color: pronto ? '#FFFFFF' : 'var(--sec)',
-            }}
-          >
-            SOSTITUISCI IL PIANO
-          </button>
-        </div>
-      )}
-    </div>
-  );
 }
 
 /** Colonna a tutta altezza con la testata fissa in cima. La pillola riapre il pannello sopra la

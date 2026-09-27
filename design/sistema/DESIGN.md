@@ -1217,7 +1217,8 @@ nome di `Esci` (§2.2); il piede fisso col primario nel pannello (§8 Pannello i
    Dispensa. Titolo `Confezioni`, pillola `FINE SPESA`.
 4. **Entra mostra Marchio e nome**, senza la frase di posizionamento, che resta alla landing.
 5. Restano fuori dal sistema, per le fasi 7 e 8: l'editor del Piatto, Piatti veloce, Scegli e i
-   passi di Importa diversi dalle due porte e dalla fotocamera.
+   passi di Importa diversi dalle due porte e dalla fotocamera. Dal 27/09 restano fuori solo
+   Revisione e Formati (fase 8b).
 6. In volo i primari pieni (il Dock di `Fine spesa`, `AGGIORNA` in Confezioni, `ENTRA CON UN
    LINK`) prendono lo stato spento del sistema invece dell'opacità 0,5: con l'opacità il testo
    bianco scende sotto soglia (commento su `.dock-primario:disabled` in `globals.css`), e il Dock
@@ -1245,3 +1246,16 @@ nome di `Esci` (§2.2); il piede fisso col primario nel pannello (§8 Pannello i
    sfuma sopra di lui invece di passargli dietro (§8 Dock). La Dispensa, già senza contenitore,
    resta com'è.
 2. **La grammatura appena aggiunta chiama:** fuoco sul campo e `.anim-chiamata` (§7).
+
+### Decisioni del 27/09/2026 (fase 8a: gli stati e il riepilogo di Importa)
+
+1. **La fase 8 si divide.** L'8a porta nel sistema ripresa, attesa, rifiuto, errore e riepilogo con
+   i pezzi che esistono: lo Stato vuoto (§8) con l'azione nel Dock, il Dialogo di conferma. L'8b,
+   Revisione e Formati, aspetta un giro in Claude Design.
+2. **Il riepilogo chiede conferma solo se disattiva qualcosa.** Senza piatti del nutrizionista da
+   disattivare il Dock dice `CREA IL PIANO` e scrive subito; altrimenti `SOSTITUISCI IL PIANO` e il
+   Dialogo di conferma rosso. Il conto è una scheda con una riga per voce.
+3. **L'attesa dell'estrazione usa `.anim-luce-testo`** (§7) sul titolo dello Stato vuoto, con la nota
+   «Se chiudi l'app prima che abbia finito, la lettura si perde.» Lasciare la pagina non la perde:
+   la `fetch` continua e la bozza si ritrova in «Hai un import in corso».
+4. **Nel rifiuto l'azione è `PROVA UN ALTRO FILE`**: alle Impostazioni riporta la pillola.

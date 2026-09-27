@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 vi.mock('@/data/importa', () => ({
   leggiBozzaImport: vi.fn(),
@@ -287,14 +287,48 @@ describe('Importa: l\'invio', () => {
     expect(salvaBozzaImport).not.toHaveBeenCalled();
   });
 
-  it('rifiuto macro: TORNA A IMPOSTAZIONI fa lo stesso della pillola', async () => {
+  it('rifiuto macro: PROVA UN ALTRO FILE nel Dock torna alle porte, senza PDF né fogli', async () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => FIXTURE_RIFIUTO_MACRO });
-    salvaOrigine({ pathname: '/lista', sotto: 'cima' });
     rendi();
     await inviaUnaFoto();
+    await screen.findByRole('heading', { name: 'Questa dieta non ha un menu' });
+    expect(screen.queryByRole('button', { name: 'TORNA A IMPOSTAZIONI' })).toBeNull();
+    const dock = screen.getByRole('region', { name: 'Azione principale' });
     passaUnAttimo();
-    fireEvent.click(await screen.findByRole('button', { name: 'TORNA A IMPOSTAZIONI' }));
-    expect(replace).toHaveBeenCalledWith('/lista?impostazioni=cima');
+    fireEvent.click(within(dock).getByRole('button', { name: 'PROVA UN ALTRO FILE' }));
+    // Le porte, e i fogli presi non ci sono più: la fotocamera riparte vuota.
+    fireEvent.click(await screen.findByRole('button', { name: 'APRI LA FOTOCAMERA' }));
+    expect(screen.queryByRole('button', { name: /Rivedi/ })).toBeNull();
+  });
+
+  it('rifiuto dopo un PDF: PROVA UN ALTRO FILE torna alle porte senza il file scelto', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => FIXTURE_RIFIUTO_MACRO });
+    rendi();
+    await screen.findByText('Carica il PDF');
+    sceglieUnPdf();
+    await screen.findByText('dieta-settembre.pdf');
+    fireEvent.click(within(screen.getByRole('region', { name: 'Azione principale' })).getByRole('button', { name: 'ESTRAI LA DIETA' }));
+    await screen.findByRole('heading', { name: 'Questa dieta non ha un menu' });
+
+    fireEvent.click(within(screen.getByRole('region', { name: 'Azione principale' })).getByRole('button', { name: 'PROVA UN ALTRO FILE' }));
+    expect(await screen.findByText('Carica il PDF')).toBeInTheDocument();
+    expect(screen.queryByText('dieta-settembre.pdf')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'ESTRAI LA DIETA' })).toBeNull();
+  });
+
+  it('errore dopo un PDF: RIPROVA torna alle porte col file ancora scelto', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500, json: async () => ({}) });
+    rendi();
+    await screen.findByText('Carica il PDF');
+    sceglieUnPdf();
+    await screen.findByText('dieta-settembre.pdf');
+    fireEvent.click(within(screen.getByRole('region', { name: 'Azione principale' })).getByRole('button', { name: 'ESTRAI LA DIETA' }));
+    await screen.findByRole('heading', { name: 'La lettura si è fermata' });
+
+    fireEvent.click(within(screen.getByRole('region', { name: 'Azione principale' })).getByRole('button', { name: 'RIPROVA' }));
+    expect(await screen.findByText('dieta-settembre.pdf')).toBeInTheDocument();
+    const dock = screen.getByRole('region', { name: 'Azione principale' });
+    expect(dock).toContainElement(screen.getByRole('button', { name: 'ESTRAI LA DIETA' }));
   });
 
   it('503: estrazione non disponibile', async () => {
@@ -310,7 +344,8 @@ describe('Importa: l\'invio', () => {
     await inviaUnaFoto();
 
     // Anche `Ho finito` chiude la fotocamera: nel telefono l'estrazione dura secondi.
-    const riprova = await screen.findByRole('button', { name: /riprova/i });
+    await screen.findByRole('heading', { name: 'La lettura si è fermata' });
+    const riprova = within(screen.getByRole('region', { name: 'Azione principale' })).getByRole('button', { name: 'RIPROVA' });
     passaUnAttimo();
     fireEvent.click(riprova);
 
@@ -415,15 +450,75 @@ describe('Importa: l\'invio', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('bozza esistente: riprendi/ricomincia; ricominciare la cancella', async () => {
+  it('bozza esistente: RIPRENDI nel Dock, RICOMINCIA nella scheda; ricominciare passa dal dialogo', async () => {
+    vi.mocked(leggiBozzaImport).mockResolvedValue({
+      piano: PIANO,
+      statoRevisione: { passo: 'revisione', mappaturaPasti: {}, pastiConfermati: [], correzioni: {}, ingredientiNuovi: [] },
+    });
+    vi.mocked(cancellaBozzaImport).mockResolvedValue(undefined);
+    rendi();
+    expect(await screen.findByRole('heading', { name: 'Hai un import in corso' })).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'Azione principale' })).getByRole('button', { name: 'RIPRENDI' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'RICOMINCIA' }));
+    const dialogo = await screen.findByRole('alertdialog', { name: 'Ricominciare da capo?' });
+    expect(window.history.pushState).toHaveBeenCalled(); // la voce del dialogo
+    expect(cancellaBozzaImport).not.toHaveBeenCalled();
+
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'RICOMINCIA' }));
+    await waitFor(() => expect(cancellaBozzaImport).toHaveBeenCalledTimes(1));
+    expect(await screen.findByRole('button', { name: 'APRI LA FOTOCAMERA' })).toBeInTheDocument();
+  });
+
+  it('confermato RICOMINCIA, mentre la cancellazione è in volo RIPRENDI non c\'è più', async () => {
+    vi.mocked(leggiBozzaImport).mockResolvedValue({
+      piano: PIANO,
+      statoRevisione: { passo: 'revisione', mappaturaPasti: {}, pastiConfermati: [], correzioni: {}, ingredientiNuovi: [] },
+    });
+    // La cancellazione resta in sospeso finché il test non la risolve: un RIPRENDI toccato in
+    // questa finestra riaprirebbe una bozza che sta per sparire.
+    let finisciCancellazione: () => void = () => {};
+    vi.mocked(cancellaBozzaImport).mockReturnValue(new Promise<void>((r) => { finisciCancellazione = r; }));
+    rendi();
+    fireEvent.click(await screen.findByRole('button', { name: 'RICOMINCIA' }));
+    const dialogo = await screen.findByRole('alertdialog', { name: 'Ricominciare da capo?' });
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'RICOMINCIA' }));
+
+    await waitFor(() => expect(cancellaBozzaImport).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole('button', { name: 'RIPRENDI' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Hai un import in corso' })).toBeNull();
+
+    finisciCancellazione();
+    expect(await screen.findByRole('button', { name: 'APRI LA FOTOCAMERA' })).toBeInTheDocument();
+  });
+
+  it('ANNULLA chiude il dialogo di Ricominciare senza cancellare, e il tocco dopo non si perde', async () => {
     vi.mocked(leggiBozzaImport).mockResolvedValue({
       piano: PIANO,
       statoRevisione: { passo: 'revisione', mappaturaPasti: {}, pastiConfermati: [], correzioni: {}, ingredientiNuovi: [] },
     });
     rendi();
-    expect(await screen.findByText(/import in corso/i)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /ricomincia/i }));
-    fireEvent.click(await screen.findByRole('button', { name: /sì, ricomincia/i }));
-    await waitFor(() => expect(cancellaBozzaImport).toHaveBeenCalled());
+    fireEvent.click(await screen.findByRole('button', { name: 'RICOMINCIA' }));
+    const dialogo = await screen.findByRole('alertdialog', { name: 'Ricominciare da capo?' });
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'ANNULLA' }));
+    // Il go(-1) dell'hook: in jsdom il popstate va mandato a mano.
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+    expect(cancellaBozzaImport).not.toHaveBeenCalled();
+
+    // Niente `passaUnAttimo()`: con la fotocamera chiusa il popstate non scarta i tocchi.
+    fireEvent.click(screen.getByRole('button', { name: 'RIPRENDI' }));
+    // La revisione si è aperta: un CONFERMA PASTO per ogni pasto del piano.
+    expect((await screen.findAllByRole('button', { name: /conferma pasto/i })).length).toBeGreaterThan(0);
+  });
+
+  it('attesa: il titolo luccica, dice che chiudere l\'app perde la lettura, niente Dock', async () => {
+    global.fetch = vi.fn(() => new Promise<Response>(() => {})) as unknown as typeof fetch;
+    rendi();
+    await inviaUnaFoto();
+    const stato = await screen.findByRole('status');
+    expect(within(stato).getByRole('heading', { name: 'Sto leggendo la dieta…' })).toHaveClass('anim-luce-testo');
+    expect(within(stato).getByText('Se chiudi l\'app prima che abbia finito, la lettura si perde.')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Azione principale' })).toBeNull();
   });
 });
