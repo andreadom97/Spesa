@@ -301,6 +301,36 @@ describe('Importa: l\'invio', () => {
     expect(screen.queryByRole('button', { name: /Rivedi/ })).toBeNull();
   });
 
+  it('rifiuto dopo un PDF: PROVA UN ALTRO FILE torna alle porte senza il file scelto', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => FIXTURE_RIFIUTO_MACRO });
+    rendi();
+    await screen.findByText('Carica il PDF');
+    sceglieUnPdf();
+    await screen.findByText('dieta-settembre.pdf');
+    fireEvent.click(within(screen.getByRole('region', { name: 'Azione principale' })).getByRole('button', { name: 'ESTRAI LA DIETA' }));
+    await screen.findByRole('heading', { name: 'Questa dieta non ha un menu' });
+
+    fireEvent.click(within(screen.getByRole('region', { name: 'Azione principale' })).getByRole('button', { name: 'PROVA UN ALTRO FILE' }));
+    expect(await screen.findByText('Carica il PDF')).toBeInTheDocument();
+    expect(screen.queryByText('dieta-settembre.pdf')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'ESTRAI LA DIETA' })).toBeNull();
+  });
+
+  it('errore dopo un PDF: RIPROVA torna alle porte col file ancora scelto', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500, json: async () => ({}) });
+    rendi();
+    await screen.findByText('Carica il PDF');
+    sceglieUnPdf();
+    await screen.findByText('dieta-settembre.pdf');
+    fireEvent.click(within(screen.getByRole('region', { name: 'Azione principale' })).getByRole('button', { name: 'ESTRAI LA DIETA' }));
+    await screen.findByRole('heading', { name: 'La lettura si è fermata' });
+
+    fireEvent.click(within(screen.getByRole('region', { name: 'Azione principale' })).getByRole('button', { name: 'RIPROVA' }));
+    expect(await screen.findByText('dieta-settembre.pdf')).toBeInTheDocument();
+    const dock = screen.getByRole('region', { name: 'Azione principale' });
+    expect(dock).toContainElement(screen.getByRole('button', { name: 'ESTRAI LA DIETA' }));
+  });
+
   it('503: estrazione non disponibile', async () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 503, json: async () => ({ errore: 'estrazione non disponibile' }) });
     rendi();
@@ -440,6 +470,28 @@ describe('Importa: l\'invio', () => {
     expect(await screen.findByRole('button', { name: 'APRI LA FOTOCAMERA' })).toBeInTheDocument();
   });
 
+  it('confermato RICOMINCIA, mentre la cancellazione è in volo RIPRENDI non c\'è più', async () => {
+    vi.mocked(leggiBozzaImport).mockResolvedValue({
+      piano: PIANO,
+      statoRevisione: { passo: 'revisione', mappaturaPasti: {}, pastiConfermati: [], correzioni: {}, ingredientiNuovi: [] },
+    });
+    // La cancellazione resta in sospeso finché il test non la risolve: un RIPRENDI toccato in
+    // questa finestra riaprirebbe una bozza che sta per sparire.
+    let finisciCancellazione: () => void = () => {};
+    vi.mocked(cancellaBozzaImport).mockReturnValue(new Promise<void>((r) => { finisciCancellazione = r; }));
+    rendi();
+    fireEvent.click(await screen.findByRole('button', { name: 'RICOMINCIA' }));
+    const dialogo = await screen.findByRole('alertdialog', { name: 'Ricominciare da capo?' });
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'RICOMINCIA' }));
+
+    await waitFor(() => expect(cancellaBozzaImport).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole('button', { name: 'RIPRENDI' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Hai un import in corso' })).toBeNull();
+
+    finisciCancellazione();
+    expect(await screen.findByRole('button', { name: 'APRI LA FOTOCAMERA' })).toBeInTheDocument();
+  });
+
   it('ANNULLA chiude il dialogo di Ricominciare senza cancellare, e il tocco dopo non si perde', async () => {
     vi.mocked(leggiBozzaImport).mockResolvedValue({
       piano: PIANO,
@@ -460,13 +512,13 @@ describe('Importa: l\'invio', () => {
     expect((await screen.findAllByRole('button', { name: /conferma pasto/i })).length).toBeGreaterThan(0);
   });
 
-  it('attesa: il titolo luccica, dice di restare, niente Dock', async () => {
+  it('attesa: il titolo luccica, dice che chiudere l\'app perde la lettura, niente Dock', async () => {
     global.fetch = vi.fn(() => new Promise<Response>(() => {})) as unknown as typeof fetch;
     rendi();
     await inviaUnaFoto();
     const stato = await screen.findByRole('status');
     expect(within(stato).getByRole('heading', { name: 'Sto leggendo la dieta…' })).toHaveClass('anim-luce-testo');
-    expect(within(stato).getByText('Resta su questa pagina: se la lasci, la lettura si perde.')).toBeInTheDocument();
+    expect(within(stato).getByText('Se chiudi l\'app prima che abbia finito, la lettura si perde.')).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Azione principale' })).toBeNull();
   });
 });

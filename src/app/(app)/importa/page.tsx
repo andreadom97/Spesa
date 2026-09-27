@@ -218,6 +218,9 @@ export default function Importa() {
   }
 
   async function ricomincia() {
+    // Subito, prima della cancellazione: la Cornice resta vuota, e un RIPRENDI toccato mentre
+    // `cancellaBozzaImport` è in volo non riapre una bozza che sta per sparire.
+    setVista('caricamento');
     try {
       await cancellaBozzaImport();
     } catch (e) {
@@ -348,12 +351,14 @@ export default function Importa() {
   }
 
   if (vista === 'estrazione') {
-    // La bozza si salva solo quando arriva la risposta: chi lascia la pagina prima la perde.
+    // La bozza si salva quando arriva la risposta, anche se nel frattempo si è lasciata la pagina:
+    // la `fetch` non si annulla, e la bozza si ritrova in «Hai un import in corso». Si perde solo
+    // chiudendo o ricaricando l'app.
     return (
       <Cornice>
         <StatoImporta
           titolo="Sto leggendo la dieta…"
-          testo="Resta su questa pagina: se la lasci, la lettura si perde."
+          testo="Se chiudi l'app prima che abbia finito, la lettura si perde."
           luce
           stato
         />
