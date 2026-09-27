@@ -96,6 +96,17 @@ restano identici.
 - **Test.** Scegli ha il test «un piatto scelto e poi nascosto dalla ricerca: `SOSTITUISCI` scrive
   quello».
 
+## Chiusa su richiesta di Andrea (27/09)
+
+- **Il ritorno al Piano restava in `sessionStorage` se si usciva dall'editor senza freccia, `SALVA` o
+  `ELIMINA`** (per esempio chiudendo l'app a metà del giro verso l'editor dell'ingrediente, o con
+  l'indietro di sistema su Android): riaprendo lo stesso piatto da Piatti nella stessa sessione, la
+  freccia portava al Piano invece che a Piatti. Corretto così: la riga piatto di `ElencoPiatti.tsx` apre
+  ora con `/piatti/{id}?da=piatti`; `leggiRitornoAlPiano` (`piatti/[id]/ritorno.ts`) cancella la chiave
+  quando l'URL porta un `da` diverso da `piano`, invece di limitarsi a ignorarla. Senza `da` (il rientro
+  dall'editor dell'ingrediente) il comportamento resta quello di prima [misurato: 1 test nuovo
+  nell'editor del Piatto, 2 href aggiornati nel test di Piatti].
+
 ## Rimasto aperto, di proposito
 
 - **Scegli, piatto scelto nascosto dalla ricerca.** Con la ricerca attiva, il piatto scelto può
@@ -108,10 +119,6 @@ restano identici.
   ingrediente dall'`AGGIUNGI INGREDIENTE` di un'opzione se lo ritrova nella lista fissa del piatto.
 - **M6, un piatto creato da Scegli senza toccare il pasto va sul primo pasto** (preesistente,
   `piatti/[id]/page.tsx:507`, il ripiego `slotDefs[0]`), non sul pasto da cui si era partiti.
-- **Il ritorno al Piano resta in `sessionStorage` se si esce dall'editor senza freccia, `SALVA` o
-  `ELIMINA`** (per esempio chiudendo l'app a metà del giro verso l'editor dell'ingrediente): riaprendo
-  lo stesso piatto da Piatti nella stessa sessione, la freccia porterebbe al Piano [ipotesi, non
-  testata].
 - **Nessun test nomina il terzo cambio voluto di §B.7** (una settimana fuori ciclo non si riscrive
   all'apertura). È coperto solo per costruzione.
 - **Limiti noti del piano:**
@@ -142,3 +149,5 @@ Da fare dopo il merge, in produzione:
 6. **Pannello → Pasti a casa**: il valore «NESSUNO FUORI CASA» (o «N FUORI CASA») si legge intero.
 7. **Dal Piano apri un piatto, freccia: si torna al Piano.** Anche dopo essere passati dall'editor di
    un ingrediente del piatto.
+8. **Dal Piano apri un piatto e chiudi l'app senza uscirne** (o usa l'indietro di sistema): poi apri lo
+   stesso piatto da Piatti. La freccia deve dire «Torna ai piatti» e portare a Piatti, non al Piano.

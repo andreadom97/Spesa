@@ -50,7 +50,7 @@ export function ElencoPiatti({ piatti, ingredienti, ordineAree }: Props) {
           <RigaPiatto
             key={piatto.id}
             modo="apri"
-            href={`/piatti/${piatto.id}`}
+            href={`/piatti/${piatto.id}?da=piatti`}
             piatto={piatto}
             aree={areeDelPiatto(piatto, areaPerIngrediente, ordineAree)}
           />

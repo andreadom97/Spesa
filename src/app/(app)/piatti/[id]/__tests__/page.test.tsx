@@ -1060,3 +1060,33 @@ describe('Piatto (editor): aperto dal Piano torna al Piano (review finale, I1)',
     expect(push).toHaveBeenCalledWith('/piatti');
   });
 });
+
+describe('Piatto (editor): aperto da Piatti ripulisce il ritorno al Piano rimasto in sospeso', () => {
+  const CHIAVE_RITORNO = 'spesa:piatto-ritorno:d-1';
+
+  beforeEach(() => {
+    paramsId = 'd-1';
+    vi.mocked(leggiRepertorio).mockResolvedValue([PIATTO_ESISTENTE]);
+    // La chiave orfana: un'uscita di sistema (indietro Android, chiusura
+    // dell'app a metà) l'ha lasciata scritta senza passare da freccia, SALVA
+    // o ELIMINA, che l'avrebbero dimenticata.
+    sessionStorage.setItem(CHIAVE_RITORNO, 'piano');
+    window.history.replaceState(null, '', '/piatti/d-1?da=piatti');
+  });
+
+  afterEach(() => {
+    window.history.replaceState(null, '', '/');
+  });
+
+  it('con ?da=piatti e la chiave orfana la freccia dice «Torna ai piatti», porta a /piatti, e la chiave non c’è più', async () => {
+    rendi();
+    await screen.findByDisplayValue('Yogurt e avena');
+
+    expect(sessionStorage.getItem(CHIAVE_RITORNO)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Torna al piano' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Torna ai piatti' }));
+
+    expect(push).toHaveBeenCalledWith('/piatti');
+    expect(push).not.toHaveBeenCalledWith('/piano');
+  });
+});
