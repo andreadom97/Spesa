@@ -151,7 +151,8 @@ describe('Piatto (editor)', () => {
   // con "Non siamo riusciti a salvare il piatto. Riprova.", per sempre.
   it('aggiungere un ingrediente dal selettore NON sblocca il salvataggio finché la grammatura è 0; digitarne una valida sì', async () => {
     rendi();
-    await screen.findByPlaceholderText('Dai un nome al piatto');
+    // Con un nome: senza, SALVA resterebbe spento comunque (prove dal telefono, fase 7).
+    fireEvent.change(await screen.findByPlaceholderText('Dai un nome al piatto'), { target: { value: 'Yogurt' } });
 
     fireEvent.click(screen.getByRole('button', { name: /AGGIUNGI\s*INGREDIENTE/ }));
     fireEvent.click(await screen.findByText('Yogurt greco'));
@@ -705,6 +706,23 @@ describe('Piatto (editor): un modo solo, SALVA nel Dock ed ELIMINA (spec fase 7 
     fireEvent.click(screen.getByRole('button', { name: /Giorno fisso: Lo sceglie l.app, ruotando/ }));
     expect(salva()).toBeDisabled();
     fireEvent.change(screen.getByLabelText('Procedimento del piatto'), { target: { value: 'Mescola.' } });
+    expect(salva()).toBeEnabled();
+  });
+
+  // Prove dal telefono della fase 7: un piatto senza nome si salvava, e in Piatti
+  // compariva una riga senza titolo. Vale già dal codice di prima della fase 7.
+  it('un piatto senza nome tiene SALVA spento, anche con ingredienti e grammature a posto', async () => {
+    rendi();
+    const nome = await screen.findByPlaceholderText('Dai un nome al piatto');
+    fireEvent.click(screen.getByRole('button', { name: /AGGIUNGI\s*INGREDIENTE/ }));
+    fireEvent.click(await screen.findByText('Yogurt greco'));
+    fireEvent.change(screen.getByLabelText('Grammatura di Yogurt greco'), { target: { value: '150' } });
+
+    expect(salva()).toBeDisabled();
+    // Solo spazi non è un nome.
+    fireEvent.change(nome, { target: { value: '   ' } });
+    expect(salva()).toBeDisabled();
+    fireEvent.change(nome, { target: { value: 'Yogurt' } });
     expect(salva()).toBeEnabled();
   });
 

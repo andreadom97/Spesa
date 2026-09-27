@@ -488,8 +488,9 @@ export default function Piatto() {
   // il problema (I2). Il salvataggio resta disattivato finché non è > 0.
   const quantitaNonValide = new Set(ingredienti.filter((r) => r.quantita <= 0).map((r) => r.ingredientId));
 
+  // Un piatto senza nome in Piatti sarebbe una riga senza titolo (prove dal telefono, fase 7).
   const salvataggioDisabilitato =
-    senzaIngredienti || quantitaNonValide.size > 0 || componentiNonValidi(componenti);
+    nome.trim() === '' || senzaIngredienti || quantitaNonValide.size > 0 || componentiNonValidi(componenti);
   const modulo: ModuloPiatto = { nome, slotDefId, descrizione, settimanaCiclo, giornoCiclo, ingredienti, componenti };
   const cambiato = firma(modulo) !== (nuovo ? FIRMA_NUOVO : firmaIniziale);
   // Spento se non è cambiato niente o se il modulo non è valido (spec fase 7 §B.5):
