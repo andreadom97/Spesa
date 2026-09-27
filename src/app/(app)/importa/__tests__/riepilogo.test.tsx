@@ -182,7 +182,7 @@ describe('Riepilogo (spec fase 8a §C)', () => {
     expect(push).not.toHaveBeenCalled();
   });
 
-  it('retry dopo un errore: il Dock resta spento fino al ricalcolo, che rilegge i dati freschi', async () => {
+  it('retry dopo un errore: il Dock resta spento (CREA IL PIANO) fino alla fine del ricalcolo, che rilegge i dati freschi', async () => {
     vi.mocked(leggiBozzaImport).mockResolvedValue({ piano: PIANO_SEMPLICE, statoRevisione: STATO_OK });
     const ESISTENTE: Ingredient = {
       id: 'i-pasta-gia-creata', nome: 'Pasta di semola', unitaBase: 'g',
@@ -190,8 +190,12 @@ describe('Riepilogo (spec fase 8a §C)', () => {
     };
     // Tre letture prima del retry: il mount della pagina, il primo calcolo del riepilogo
     // (nessun esistente: l'ingrediente è nuovo, e la scrittura fallisce), il ricalcolo dopo
-    // l'errore, dove l'ingrediente esiste già come se il primo giro l'avesse creato.
-    vi.mocked(leggiIngredienti).mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValueOnce([ESISTENTE]);
+    // l'errore, dove l'ingrediente esiste già come se il primo giro l'avesse creato. Il
+    // ricalcolo resta in sospeso finché il test non lo risolve a mano: così si guarda il Dock
+    // proprio nella finestra fra l'errore e la fine del ricalcolo.
+    let finisciRicalcolo: (v: Ingredient[]) => void = () => {};
+    const ricalcolo = new Promise<Ingredient[]>((r) => { finisciRicalcolo = r; });
+    vi.mocked(leggiIngredienti).mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockReturnValueOnce(ricalcolo);
     vi.mocked(eseguiScritture).mockRejectedValueOnce(new Error('scrittura fallita'));
     await riprendiBozza();
     // Durante il primo calcolo il riepilogo non rende niente, Dock compreso: prima il conto.
@@ -200,10 +204,27 @@ describe('Riepilogo (spec fase 8a §C)', () => {
     const crea = await within(dock()).findByRole('button', { name: 'CREA IL PIANO' });
     await waitFor(() => expect(crea).toBeEnabled());
     fireEvent.click(crea);
-    expect(await within(dock()).findByRole('alert')).toHaveTextContent(/qualcosa si è fermato/i);
+    // Da qui il tasto è spento (scrittura in corso) e non deve riaccendersi mai, neanche per un
+    // solo commit, prima che il ricalcolo finisca: un tocco in quel momento rieseguirebbe le
+    // scritture di prima, cioè doppioni. Partendo spento, ogni cambio di `disabled` è
+    // un'accensione.
+    expect(crea).toBeDisabled();
+    const cambiDisabled: MutationRecord[] = [];
+    const osservatore = new MutationObserver((r) => { cambiDisabled.push(...r); });
+    osservatore.observe(crea, { attributes: true, attributeFilter: ['disabled'], attributeOldValue: true });
 
+    expect(await within(dock()).findByRole('alert')).toHaveTextContent(/qualcosa si è fermato/i);
     await waitFor(() => expect(leggiIngredienti).toHaveBeenCalledTimes(3));
+    // Un giro di attesa in più: se un commit acceso fosse in coda, qui sarebbe già avvenuto.
+    await new Promise((r) => setTimeout(r, 20));
+    cambiDisabled.push(...osservatore.takeRecords());
+    osservatore.disconnect();
+    expect(cambiDisabled).toHaveLength(0);
     const riprova = within(dock()).getByRole('button', { name: 'CREA IL PIANO' });
+    expect(riprova).toBe(crea);
+    expect(riprova).toBeDisabled();
+
+    finisciRicalcolo([ESISTENTE]);
     await waitFor(() => expect(riprova).toBeEnabled());
 
     vi.mocked(eseguiScritture).mockResolvedValue(undefined);

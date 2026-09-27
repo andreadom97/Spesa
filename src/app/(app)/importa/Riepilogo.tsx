@@ -111,6 +111,9 @@ export function Riepilogo({
     } catch (e) {
       console.error('importa: esecuzione dell’import fallita.', e);
       setErroreEsecuzione(ERRORE_ESECUZIONE);
+      // Prima di riaccendere: senza, il tasto resterebbe acceso per un commit, fino all'effetto
+      // del ricalcolo, e un tocco lì rieseguirebbe le scritture di prima (doppioni).
+      setPronto(false);
       setEseguendo(false);
       setConfermaSostituzione(false);
       setTentativo((n) => n + 1);
