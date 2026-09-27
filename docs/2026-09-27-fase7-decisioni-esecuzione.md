@@ -151,3 +151,38 @@ Da fare dopo il merge, in produzione:
    un ingrediente del piatto.
 8. **Dal Piano apri un piatto e chiudi l'app senza uscirne** (o usa l'indietro di sistema): poi apri lo
    stesso piatto da Piatti. La freccia deve dire «Torna ai piatti» e portare a Piatti, non al Piano.
+
+## Cosa hanno trovato le prove dal telefono (27/09)
+
+Andrea ha provato su **Chrome Android**, non sulla PWA di iOS: l'indietro di sistema c'è, e fa
+parte delle prove. Cinque segnalazioni, con la causa trovata prima di correggere.
+
+1. **Un piatto senza nome si salvava.** La regola che accende `SALVA` controllava ingredienti,
+   grammature e nomi dei componenti, ma non il nome del piatto. C'era già prima della fase 7. In
+   produzione due piatti senza nome, entrambi già eliminati (`attivo = false`) [misurato]. Corretto:
+   senza nome `SALVA` resta spento. Il segnaposto «Dai un nome al piatto» dice già cosa manca.
+2. **`ELIMINA` del Dialogo di conferma aveva la scritta a sinistra.** Il reset globale dà a ogni
+   `button` `text-align: left`; `ANNULLA` usa lo stile dei Tasti (flex, centrato), l'azione no. C'era
+   dalla fase 5, in ogni dialogo. Corretto: l'azione è centrata come `ANNULLA`.
+3. **Non si capiva dove scrivere la grammatura.** La spiegazione in rosso c'era, sotto la griglia, ma
+   allo scorrimento dello screenshot stava dietro il Dock. Deciso con Andrea: la tessera appena
+   aggiunta porta il fuoco sul campo, col testo selezionato, e la pillola fa `.anim-chiamata`
+   (DESIGN.md §7): un anello che si allarga due volte, 250 ms. Vale per i fissi e per le opzioni.
+4. **L'indietro di sistema da Piatti tornava al piatto eliminato («Piatto non trovato»).** Ogni
+   ritorno era una `router.push`: la cronologia diventava Pannello → Piatti → Piatto → Piatti.
+   Corretto in tutta l'app con `src/components/tornaA.ts`: se la voce prima è la destinazione
+   (stesso percorso e stessi parametri, `da` escluso, letta dalla Navigation API) si torna indietro
+   davvero; altrimenti la destinazione sostituisce la voce di oggi. Il pannello, prima di aprire una
+   pagina piena, dà alla voce d'origine il suo indirizzo (`?impostazioni=`), così l'indietro di
+   sistema ci torna a pannello aperto. Misurato nel browser con Next 16 e il `PannelloProvider`
+   vero: pannello → Piatti → Piatto → freccia → indietro di sistema = pannello aperto; un altro
+   indietro lo chiude. Con `back()` la pagina si rimonta e rilegge i dati. Dove la Navigation API
+   manca si sostituisce sempre: la pagina lasciata sparisce dalla cronologia, ma la destinazione può
+   comparirci due volte (Piatti, Piatti), e l'indietro di sistema ripassa una volta dalla stessa pagina.
+5. **Il guscio bianco del Dock non convince.** Non è un difetto: è il Dock di DESIGN.md §8. Tre
+   alternative proposte ad Andrea in una pagina di confronto; il cambio, che tocca ogni Dock, va in
+   una PR a parte.
+
+Limite noto del punto 4: se una pagina si lascia con un foglio ancora aperto senza `chiudiTuttoPoi`,
+la voce del foglio resta, e un indietro di sistema la consuma senza effetto visibile. Era così anche
+prima.

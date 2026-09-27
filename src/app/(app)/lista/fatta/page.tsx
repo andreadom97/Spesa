@@ -18,6 +18,7 @@ import { Dock } from '@/components/Dock';
 import { MessaggioErrore } from '@/components/controlli';
 import { Carico } from '@/components/pannello/pezzi';
 import { GUARDIA_DOPPIO_TOCCO_MS, adesso } from './guardia';
+import { tornaA } from '@/components/tornaA';
 
 interface Stato {
   weekId: string;
@@ -157,7 +158,7 @@ export default function ListaFatta() {
     }
   }
 
-  const indietro: Indietro = { etichetta: 'LISTA', ariaLabel: 'Torna alla lista', onTorna: () => router.push('/lista') };
+  const indietro: Indietro = { etichetta: 'LISTA', ariaLabel: 'Torna alla lista', onTorna: () => tornaA(router, '/lista') };
 
   if (erroreCaricamento) {
     return (

@@ -27,12 +27,14 @@ vi.mock('@/data/lista', () => ({
 }));
 
 const push = vi.fn();
+const replace = vi.fn();
+const back = vi.fn();
 // La data scelta è un giovedì (2026-08-27): verifica sia l'etichetta header
 // ("GIOVEDÌ 27 · CENA") sia il giorno minuscolo nella nota ("cena di
 // giovedì"), senza dipendere dall'orologio di sistema.
 let paramsMock = { data: '2026-08-27', slotDefId: 'sd-3' };
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push }),
+  useRouter: () => ({ push, replace, back }),
   useParams: () => paramsMock,
 }));
 
@@ -366,7 +368,7 @@ describe('Scegli il piatto', () => {
     await waitFor(() =>
       expect(aggiornaSlot).toHaveBeenCalledWith('slot-cena', { dishId: 'd-2' }, 'correzione'),
     );
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/piano'));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/piano'));
   });
 
   // Fix round 2 (Important): il flusso "Ho mangiato un altro piatto" dal
@@ -385,7 +387,7 @@ describe('Scegli il piatto', () => {
     await waitFor(() =>
       expect(aggiornaSlot).toHaveBeenCalledWith('slot-cena', { dishId: 'd-2', stato: 'casa' }, 'correzione'),
     );
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/piano'));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/piano'));
   });
 
   it('slot già "sostituito": la conferma riporta lo stato a casa con fonte correzione', async () => {
@@ -400,7 +402,7 @@ describe('Scegli il piatto', () => {
     await waitFor(() =>
       expect(aggiornaSlot).toHaveBeenCalledWith('slot-cena', { dishId: 'd-2', stato: 'casa' }, 'correzione'),
     );
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/piano'));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/piano'));
   });
 
   it('errore di salvataggio: mostra un messaggio inline e la schermata resta in piedi', async () => {
@@ -413,7 +415,7 @@ describe('Scegli il piatto', () => {
     fireEvent.click(screen.getByText('SOSTITUISCI'));
 
     expect(await screen.findByText('Non siamo riusciti a salvare la scelta. Riprova.')).toBeInTheDocument();
-    expect(push).not.toHaveBeenCalledWith('/piano');
+    expect(replace).not.toHaveBeenCalledWith('/piano');
     // La schermata resta in piedi: il piatto è ancora lì, non è stato sostituito da un gate d'errore.
     expect(screen.getByText('Merluzzo e piselli')).toBeInTheDocument();
   });
@@ -432,7 +434,7 @@ describe('Scegli il piatto', () => {
     await screen.findByText('Pollo e riso');
 
     fireEvent.click(screen.getByRole('button', { name: 'Torna al piano' }));
-    expect(push).toHaveBeenCalledWith('/piano');
+    expect(replace).toHaveBeenCalledWith('/piano');
     expect(aggiornaSlot).not.toHaveBeenCalled();
     expect(screen.queryByText('ANNULLA')).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Torna al Piano' })).not.toBeInTheDocument();
@@ -488,7 +490,7 @@ describe('Scegli il piatto', () => {
         'correzione',
       ),
     );
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/piano'));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/piano'));
   });
 
   it('un ciclo andata-e-ritorno su un componente non lo manda come scelta manuale, un cambio vero su un altro sì', async () => {
@@ -797,7 +799,7 @@ describe('Scegli — il ridisegno della fase 7', () => {
     await waitFor(() =>
       expect(aggiornaSlot).toHaveBeenCalledWith('slot-cena', { dishId: 'd-2' }, 'correzione'),
     );
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/piano'));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/piano'));
   });
 
   it('la riga scelta: aria-pressed sul piatto in programma prima di un tocco, poi su quello toccato', async () => {
@@ -886,6 +888,7 @@ describe('Scegli — il ridisegno della fase 7', () => {
       expect(msg.style.color).toBe('var(--errore)');
       expect(tasto).not.toBeDisabled();
       expect(push).not.toHaveBeenCalled();
+      expect(replace).not.toHaveBeenCalled();
     } finally {
       errore.mockRestore();
     }

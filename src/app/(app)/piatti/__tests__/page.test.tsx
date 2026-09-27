@@ -12,9 +12,9 @@ vi.mock('@/data/impostazioni', () => ({
   leggiImpostazioni: vi.fn(),
 }));
 // Piatti usa useRouter per la pillola indietro (spec fase 5 §G.2): fuori da un App Router
-// lancia. vi.hoisted: la stessa `push` a ogni chiamata di useRouter.
-const { push } = vi.hoisted(() => ({ push: vi.fn() }));
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push, replace: vi.fn(), back: vi.fn() }) }));
+// lancia. vi.hoisted: la stessa `push`/`replace` a ogni chiamata di useRouter.
+const { push, replace } = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push, replace, back: vi.fn() }) }));
 
 import { leggiRepertorio, leggiIngredienti } from '@/data/repertorio';
 import { leggiSlotDefs, leggiImpostazioni } from '@/data/impostazioni';
@@ -25,6 +25,7 @@ beforeEach(() => {
   sessionStorage.clear();
   window.history.replaceState(null, '', '/piatti');
   push.mockClear();
+  replace.mockClear();
 });
 
 const ING_LATTE: Ingredient = {
@@ -209,14 +210,14 @@ describe('la pillola indietro (spec fase 5 §G.2)', () => {
     const pillola = await screen.findByRole('button', { name: 'Torna alle impostazioni' });
     expect(pillola).toHaveTextContent('IMPOSTAZIONI');
     fireEvent.click(pillola);
-    expect(push).toHaveBeenCalledWith('/dispensa?impostazioni=cima');
+    expect(replace).toHaveBeenCalledWith('/dispensa?impostazioni=cima');
   });
 
   it('senza origine salvata IMPOSTAZIONI apre il pannello sopra la Lista', async () => {
     mockRepertorio([PIATTO_PRANZO]);
     render(<Piatti />);
     fireEvent.click(await screen.findByRole('button', { name: 'Torna alle impostazioni' }));
-    expect(push).toHaveBeenCalledWith('/lista?impostazioni=cima');
+    expect(replace).toHaveBeenCalledWith('/lista?impostazioni=cima');
   });
 
   it('da lista: LISTA torna a /lista, e il valore resta per il ritorno dall\'editor', async () => {
@@ -229,7 +230,7 @@ describe('la pillola indietro (spec fase 5 §G.2)', () => {
     const pillola = screen.getByRole('button', { name: 'Torna alla lista' });
     expect(pillola).toHaveTextContent('LISTA');
     fireEvent.click(pillola);
-    expect(push).toHaveBeenCalledWith('/lista');
+    expect(replace).toHaveBeenCalledWith('/lista');
     expect(sessionStorage.getItem('spesa:piatti-da')).toBe('lista');
   });
 
@@ -238,7 +239,7 @@ describe('la pillola indietro (spec fase 5 §G.2)', () => {
     sessionStorage.setItem('spesa:piatti-da', 'piano');
     render(<Piatti />);
     fireEvent.click(await screen.findByRole('button', { name: 'Torna al piano' }));
-    expect(push).toHaveBeenCalledWith('/piano');
+    expect(replace).toHaveBeenCalledWith('/piano');
   });
 
   it('niente Menù utente su Piatti', async () => {

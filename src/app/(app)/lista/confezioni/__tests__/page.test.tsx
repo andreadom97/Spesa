@@ -125,8 +125,8 @@ describe('Confezioni — accesso ed elenco', () => {
     expect(screen.queryByText('Le confezioni vere')).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'TORNA A HAI PRESO TUTTO' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Torna a fine spesa' }));
-    expect(push).toHaveBeenCalledWith('/lista/fatta');
-    expect(replace).not.toHaveBeenCalled();
+    expect(replace).toHaveBeenCalledWith('/lista/fatta');
+    expect(push).not.toHaveBeenCalled();
   });
 
   it('un formato non tondo si mostra com\'è (1250 g, non 1,3 kg)', async () => {

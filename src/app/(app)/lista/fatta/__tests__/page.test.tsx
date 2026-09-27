@@ -281,7 +281,7 @@ describe('Lista fatta — Testata, Dock e guardia (spec fase 6 §A)', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Fine spesa' })).toBeInTheDocument();
     expect(screen.getByText('Settimana del 24 agosto')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Torna alla lista' }));
-    expect(push).toHaveBeenCalledWith('/lista');
+    expect(replace).toHaveBeenCalledWith('/lista');
     expect(screen.queryByRole('link', { name: 'TORNA ALLA LISTA' })).not.toBeInTheDocument();
   });
 

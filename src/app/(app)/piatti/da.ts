@@ -12,9 +12,9 @@ function eDa(v: unknown): v is DaPiatti {
 
 /**
  * Prima l'URL (`?da=`), poi `sessionStorage`, poi `impostazioni`. Quando lo
- * trova nell'URL lo salva: l'editor del piatto torna a `/piatti` senza
- * parametro [misurato: `router.push('/piatti')`], e così ritrova la stessa
- * pillola. `sessionStorage` può lanciare (navigazione privata, spazio
+ * trova nell'URL lo salva: dalla fase 7 l'editor del piatto torna con `tornaA`,
+ * che di solito ritrova la voce `/piatti?da=…`, ma dove non può sostituisce con
+ * `/piatti` senza parametro, e così ritrova la stessa pillola. `sessionStorage` può lanciare (navigazione privata, spazio
  * esaurito): in quel caso vale solo l'URL.
  */
 export function leggiDaPiatti(search: string): DaPiatti {

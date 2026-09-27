@@ -17,6 +17,7 @@ import { Camera } from './Camera';
 import { Acquisizione } from './Acquisizione';
 import { Revisione } from './Revisione';
 import { Formati } from './Formati';
+import { tornaA } from '@/components/tornaA';
 
 type Vista =
   | 'caricamento'
@@ -465,7 +466,7 @@ function SchermataRifiuto({ motivazione }: { motivazione: string }) {
       {/* Lo stesso della pillola della testata: il pannello sopra la pagina d'origine (spec fase 5 §G.3). */}
       <button
         type="button"
-        onClick={() => router.push(indirizzoRitorno())}
+        onClick={() => tornaA(router, indirizzoRitorno())}
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: 48, borderRadius: 14,
           fontFamily: 'var(--font-mono)', fontSize: 11.5, fontWeight: 700, letterSpacing: '0.08em',
@@ -722,7 +723,7 @@ function Cornice({ children }: { children?: ReactNode }) {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       <Testata
         titolo="Importa la dieta"
-        indietro={{ etichetta: 'IMPOSTAZIONI', ariaLabel: 'Torna alle impostazioni', onTorna: () => router.push(indirizzoRitorno()) }}
+        indietro={{ etichetta: 'IMPOSTAZIONI', ariaLabel: 'Torna alle impostazioni', onTorna: () => tornaA(router, indirizzoRitorno()) }}
       />
       {children}
     </div>

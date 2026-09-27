@@ -21,6 +21,7 @@ import { raccogliIngredienteCreato, riprendiBozza, salvaBozza, scartaBozza, type
 import { dimenticaRitorno, leggiRitornoAlPiano } from './ritorno';
 import { SelettoreIngrediente } from './SelettoreIngrediente';
 import { ComponentiPiatto } from './ComponentiPiatto';
+import { tornaA } from '@/components/tornaA';
 
 const GIORNI_LABEL = ['LUN', 'MAR', 'MER', 'GIO', 'VEN', 'SAB', 'DOM'];
 const GIORNI_LUNGHI = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
@@ -196,7 +197,7 @@ export default function Piatto() {
   /** L'uscita vera e propria: il ritorno memorizzato non serve più. */
   function vaiAlRitorno() {
     dimenticaRitorno(id);
-    router.push(ritorno());
+    tornaA(router, ritorno());
   }
 
   // Il titolo va a capo su più righe come nell'artboard (che lo scrive con un
