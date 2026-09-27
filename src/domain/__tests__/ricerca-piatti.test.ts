@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import type { Dish, Ingredient } from '@/domain/types';
-import { cercaPiatti, ingredientiDelPiatto } from '../ricerca-piatti';
+import type { AreaId, Dish, Ingredient } from '@/domain/types';
+import { areeDelPiatto, cercaPiatti, ingredientiDelPiatto } from '../ricerca-piatti';
 
-function ingrediente(id: string, nome: string): Ingredient {
+function ingrediente(id: string, nome: string, area: AreaId = 'dispensa'): Ingredient {
   return {
-    id, nome, unitaBase: 'g', area: 'dispensa',
+    id, nome, unitaBase: 'g', area,
     classeResiduo: 'intero', deperibile: false, formatoConfezione: 500, prezzoConfezione: null, ean: null,
   };
 }
@@ -88,5 +88,29 @@ describe('cercaPiatti', () => {
 
   it('regola 6: l\'ordine di uscita è quello di entrata', () => {
     expect(cercaPiatti([INSALATA, LASAGNE, PASTA_POMODORO], INGREDIENTI, 'pasta')).toEqual([LASAGNE, PASTA_POMODORO]);
+  });
+});
+
+describe('areeDelPiatto', () => {
+  const FARINA = ingrediente('i-farina', 'Farina', 'cereali');
+  const LATTE = ingrediente('i-latte', 'Latte', 'latticini');
+  const OLIO = ingrediente('i-olio', 'Olio', 'dispensa');
+  const AREA_PER_INGREDIENTE = new Map([RICOTTA, FARINA, LATTE, OLIO].map((i) => [i.id, i.area]));
+  const ORDINE: AreaId[] = ['ortofrutta', 'macelleria', 'latticini', 'cereali', 'dispensa', 'surgelati'];
+
+  it('le aree distinte del piatto (fissi e opzioni), nell\'ordine dell\'utente e non di inserimento', () => {
+    // Inserimento: cereali, latticini, dispensa. L'ordine dell'utente le vuole latticini, cereali, dispensa.
+    const misto = piatto('d-10', 'Misto', ['i-farina'], [['i-latte'], ['i-olio']]);
+    expect(areeDelPiatto(misto, AREA_PER_INGREDIENTE, ORDINE)).toEqual(['latticini', 'cereali', 'dispensa']);
+  });
+
+  it('un ingrediente sconosciuto alla mappa non aggiunge nessuna area', () => {
+    const orfano = piatto('d-11', 'Orfano', ['i-sparito']);
+    expect(areeDelPiatto(orfano, AREA_PER_INGREDIENTE, ORDINE)).toEqual([]);
+  });
+
+  it('senza ingredienti dà nessuna area', () => {
+    const vuoto = piatto('d-12', 'Vuoto', []);
+    expect(areeDelPiatto(vuoto, AREA_PER_INGREDIENTE, ORDINE)).toEqual([]);
   });
 });

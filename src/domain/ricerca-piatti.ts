@@ -1,4 +1,4 @@
-import type { Dish, Ingredient } from './types';
+import type { AreaId, Dish, Ingredient } from './types';
 import { normalizza } from './import/mapping';
 
 /**
@@ -36,4 +36,24 @@ export function cercaPiatti(piatti: Dish[], ingredienti: Ingredient[], testo: st
       normalizza(p.nome).includes(cercato) ||
       ingredientiDelPiatto(p).some((id) => nomi.get(id)?.includes(cercato) ?? false),
   );
+}
+
+/**
+ * Le aree distinte fra gli ingredienti del piatto (fissi e delle opzioni),
+ * nell'ordine impostato dall'utente — non quello di inserimento. Spostata da
+ * `ElencoPiatti.tsx` (spec fase 7 §A.3): la usano Piatti e, dal Task 3,
+ * Scegli — la stessa informazione (quali reparti tocca un piatto) deve
+ * comparire nello stesso ordine in entrambe le schermate.
+ */
+export function areeDelPiatto(
+  piatto: Dish,
+  areaPerIngrediente: Map<string, AreaId>,
+  ordineAree: AreaId[],
+): AreaId[] {
+  const presenti = new Set(
+    ingredientiDelPiatto(piatto)
+      .map((id) => areaPerIngrediente.get(id))
+      .filter((a): a is AreaId => a !== undefined),
+  );
+  return ordineAree.filter((a) => presenti.has(a));
 }

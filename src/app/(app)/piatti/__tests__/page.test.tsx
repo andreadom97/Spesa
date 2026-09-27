@@ -112,8 +112,8 @@ describe('Piatti (repertorio)', () => {
   it('ogni riga è un solo link che apre il piatto', async () => {
     mockRepertorio([PIATTO_COLAZIONE, PIATTO_PRANZO]);
     render(<Piatti />);
-    expect(await screen.findByRole('link', { name: 'Apri Latte e pane' })).toHaveAttribute('href', '/piatti/d-1');
-    expect(screen.getByRole('link', { name: 'Apri Pasta al pomodoro' })).toHaveAttribute('href', '/piatti/d-2');
+    expect(await screen.findByRole('link', { name: 'Apri Latte e pane' })).toHaveAttribute('href', '/piatti/d-1?da=piatti');
+    expect(screen.getByRole('link', { name: 'Apri Pasta al pomodoro' })).toHaveAttribute('href', '/piatti/d-2?da=piatti');
   });
 
   it('la sottoriga conta gli ingredienti e dice «dalla dieta» solo sui piatti dell\'import', async () => {

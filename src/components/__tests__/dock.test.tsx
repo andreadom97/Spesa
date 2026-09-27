@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { Dock } from '../Dock';
+import { Dock, ErroreSopraDock } from '../Dock';
 import { SlotDockProvider } from '../dock-slot';
 import { BarraProvider, useNascondiBarra } from '../barra-context';
 
@@ -90,6 +90,28 @@ describe('Dock', () => {
       </BarraProvider>,
     );
     expect(slot.querySelector('.dock')).not.toHaveClass('dock-senza-barra');
+    slot.remove();
+  });
+
+  it('ErroreSopraDock: un alert dentro la regione del Dock, sopra la pillola e fuori, su fondo bianco, in --errore (fase 7)', () => {
+    const slot = document.createElement('div');
+    document.body.appendChild(slot);
+    render(
+      <SlotDockProvider slot={slot}>
+        <Dock>
+          <ErroreSopraDock>Non siamo riusciti a salvare. Riprova.</ErroreSopraDock>
+          <button type="button">SALVA</button>
+        </Dock>
+      </SlotDockProvider>,
+    );
+    const regione = screen.getByRole('region', { name: 'Azione principale' });
+    const msg = screen.getByRole('alert');
+    expect(regione).toContainElement(msg);
+    expect(msg).toHaveTextContent('Non siamo riusciti a salvare. Riprova.');
+    expect(msg.style.position).toBe('absolute');
+    expect(msg.style.bottom).toBe('calc(100% + 8px)');
+    expect(msg.style.background).toBe('var(--superficie)');
+    expect(msg.style.color).toBe('var(--errore)');
     slot.remove();
   });
 });

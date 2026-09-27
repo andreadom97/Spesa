@@ -475,8 +475,10 @@ export default function Settimana() {
     await ricaricaLotti();
   }
 
+  // `?da=piano`: freccia, SALVA ed ELIMINA dell'editor tornano qui, non a /piatti
+  // (review finale, I1). Nella PWA su iOS non c'è un indietro di sistema.
   function apriPiatto(dishId: string) {
-    router.push(`/piatti/${dishId}`);
+    router.push(`/piatti/${dishId}?da=piano`);
   }
 
   /**

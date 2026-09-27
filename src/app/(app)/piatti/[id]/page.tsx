@@ -1,17 +1,26 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import Link from 'next/link';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import type { Componente, Dish, DishIngredient, Ingredient, MealSlotDef } from '@/domain/types';
 import { salvaPiatto, leggiRepertorio, leggiIngredienti, eliminaPiatto } from '@/data/repertorio';
 import { leggiImpostazioni, leggiSlotDefs } from '@/data/impostazioni';
 import { leggiSettimanaCorrente } from '@/data/settimana';
 import { giorniDellaSettimana } from '@/domain/date';
-import { coloreArea, nomeArea } from '@/domain/aree';
 import { Segmento } from '@/components/Segmento';
 import { TesseraIngrediente } from '@/components/TesseraIngrediente';
-import { raccogliIngredienteCreato, riprendiBozza, salvaBozza, scartaBozza } from './bozza';
+import { TestataModifica } from '@/components/TestataModifica';
+import { Dock, ErroreSopraDock } from '@/components/Dock';
+import { FoglioDalBasso } from '@/components/FoglioDalBasso';
+import { DialogoConferma } from '@/components/DialogoConferma';
+import { Blocco, Etichetta, MessaggioErrore, TastoSecondario } from '@/components/controlli';
+import { useNascondiBarra } from '@/components/barra-context';
+import { AggiungiTratteggiato } from '@/components/AggiungiTratteggiato';
+import { Carico, Nota } from '@/components/pannello/pezzi';
+import { raccogliIngredienteCreato, riprendiBozza, salvaBozza, scartaBozza, type BozzaPiatto } from './bozza';
+import { dimenticaRitorno, leggiRitornoAlPiano } from './ritorno';
+import { SelettoreIngrediente } from './SelettoreIngrediente';
+import { ComponentiPiatto } from './ComponentiPiatto';
 
 const GIORNI_LABEL = ['LUN', 'MAR', 'MER', 'GIO', 'VEN', 'SAB', 'DOM'];
 const GIORNI_LUNGHI = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
@@ -26,14 +35,8 @@ const TESTO_NON_IN_PROGRAMMA =
 const TESTO_ELIMINA =
   'Non comparirà più nel repertorio né nelle prossime settimane. Le settimane già passate restano invariate.';
 
-const TESTO_COMPONENTE_SENZA_NOME =
-  'Dai un nome a ogni componente: senza, non si distinguerebbe in Scegli.';
-
-const TESTO_OPZIONE_SENZA_RIGHE =
-  "Ogni opzione deve avere almeno un ingrediente: aggiungine uno o elimina l'opzione.";
-
-const TESTO_OPZIONE_QUANTITA =
-  'Manca la grammatura di uno o più ingredienti nelle opzioni: tocca il numero sulla tessera e scrivi quanto ne usi.';
+/** Il testo di oggi dell'eliminazione fallita: dalla fase 7 lo mostra il Dialogo di conferma, sotto i tasti. */
+const ERRORE_ELIMINA = 'Non siamo riusciti a eliminare il piatto. Riprova.';
 
 /**
  * Stesso vincolo di `check (quantita > 0)` che vale per `ingredienti`, esteso
@@ -84,43 +87,70 @@ function testoRiepilogo(nCasa: number, nFuori: number): string {
   return frase;
 }
 
+/** Il modulo dell'editor: gli stessi sette campi che la bozza mette al riparo e che SALVA scrive. */
+type ModuloPiatto = BozzaPiatto;
+
+const MODULO_NUOVO: ModuloPiatto = {
+  nome: '', slotDefId: '', descrizione: '', settimanaCiclo: null, giornoCiclo: null, ingredienti: [], componenti: [],
+};
+
 /**
- * Confronto tollerante agli accenti: chi cerca "caffe" deve trovare "Caffè",
- * perché sulla tastiera del telefono l'accento costa un tocco in più e
- * nessuno lo mette per cercare.
+ * Il confronto «è cambiato qualcosa?» (spec fase 7 §B.5, come `firma` dell'editor
+ * dell'ingrediente): i sette campi del modulo con i valori grezzi — nome, pasto,
+ * settimana e giorno del ciclo, ingredienti, componenti, descrizione. Le righe
+ * contano in ordine e per valore (ingrediente, quantità, unità); i componenti e le
+ * opzioni anche per id, perché salvaPiatto li riscrive in blocco. Tuple e non
+ * oggetti: l'ordine delle chiavi di un oggetto letto dal server o dalla bozza non
+ * deve contare.
  */
-function normalizza(testo: string): string {
-  return testo
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim();
+function firma(m: ModuloPiatto): string {
+  const righe = (rr: DishIngredient[]) => rr.map((r) => [r.ingredientId, r.quantita, r.unita]);
+  return JSON.stringify([
+    m.nome,
+    m.slotDefId,
+    m.settimanaCiclo,
+    m.giornoCiclo,
+    righe(m.ingredienti),
+    m.componenti.map((c) => [c.id, c.nome, c.opzioni.map((o) => [o.id, righe(o.righe)])]),
+    m.descrizione,
+  ]);
+}
+
+const FIRMA_NUOVO = firma(MODULO_NUOVO);
+
+/** Il modulo come lo scrive il piatto letto dal server: la firma di riferimento di un piatto esistente. */
+function moduloDaPiatto(p: Dish): ModuloPiatto {
+  return {
+    nome: p.nome, slotDefId: p.slotDefId, descrizione: p.descrizione ?? '', settimanaCiclo: p.settimanaCiclo,
+    giornoCiclo: p.giornoCiclo, ingredienti: p.ingredienti, componenti: p.componenti,
+  };
 }
 
 /**
  * Editor della ricetta: crea (`id === 'nuovo'`) o modifica un piatto del
- * repertorio. Il marchio non compare in questa schermata (niente Testata:
- * l'header qui è quello minimale degli artboard Piatto/VuotoPiatto, non il
- * titolo di casa a 52px — sono due schermate diverse, non la stessa).
+ * repertorio. Dalla fase 7 ha un modo solo, come l'editor dell'ingrediente
+ * (spec §B.2): si apre sempre modificabile, con la testata di modifica (la
+ * freccia verso /piatti, o /piano se si è partiti da lì, e il nome come campo), senza tab bar, e SALVA nel Dock
+ * spento finché niente cambia o finché il modulo non è valido. Aprire un
+ * piatto per guardarlo non scrive niente: si scrive solo con SALVA.
  */
 export default function Piatto() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const nuovo = id === 'nuovo';
-
-  // 'vista' di default: il piano si apre per essere letto, non per essere
-  // toccato — coerente con l'obiettivo del task (niente scritture accidentali
-  // da chi sta solo consultando). Un piatto nuovo non ha niente da
-  // consultare, quindi apre già in 'modifica' (stesso ramo di `nuovo` sopra).
-  const [modalita, setModalita] = useState<'vista' | 'modifica'>(nuovo ? 'modifica' : 'vista');
+  // Pagina di modifica piena, senza tab bar (spec fase 7 §B.2): il Dock scende a 22 da sé.
+  useNascondiBarra(true);
 
   const [caricamento, setCaricamento] = useState(true);
-  const [errore, setErrore] = useState<string | null>(null);
+  const [erroreCarica, setErroreCarica] = useState<string | null>(null);
+  const [erroreSalva, setErroreSalva] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
 
   const [slotDefs, setSlotDefs] = useState<MealSlotDef[]>([]);
   const [catalogo, setCatalogo] = useState<Ingredient[]>([]);
   const [piattoOriginale, setPiattoOriginale] = useState<Dish | null>(null);
+  // La firma del piatto letto dal server, prima della bozza: null finché non c'è.
+  const [firmaIniziale, setFirmaIniziale] = useState<string | null>(null);
   const [giorniCasa, setGiorniCasa] = useState<Set<string>>(new Set());
   const [giorniFuori, setGiorniFuori] = useState<Set<string>>(new Set());
   const [dataInizioSettimana, setDataInizioSettimana] = useState<string | null>(null);
@@ -142,20 +172,40 @@ export default function Piatto() {
   const [selettore, setSelettore] = useState<
     { tipo: 'principale' } | { tipo: 'opzione'; componenteId: string; opzioneId: string } | null
   >(null);
-  const [ricerca, setRicerca] = useState('');
   const [confermaEliminazione, setConfermaEliminazione] = useState(false);
-  const [eliminando, setEliminando] = useState(false);
   const nomeRef = useRef<HTMLTextAreaElement>(null);
+
+  // Da dove si è arrivati, e quindi dove tornare (review finale, I1): il Piano apre
+  // con `?da=piano`, e `ritorno.ts` lo tiene per id attraverso il giro verso l'editor
+  // dell'ingrediente. Letto da window.location e non da useSearchParams, come
+  // `?torna=` nell'editor dell'ingrediente: niente confine <Suspense>.
+  const [dalPiano, setDalPiano] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDalPiano(leggiRitornoAlPiano(id, window.location.search));
+  }, [id]);
+
+  /** Freccia, SALVA ed ELIMINA riuscito vanno qui: il Piano se si è partiti da lì, altrimenti Piatti. */
+  function ritorno(): string {
+    return dalPiano ? '/piano' : '/piatti';
+  }
+
+  /** L'uscita vera e propria: il ritorno memorizzato non serve più. */
+  function vaiAlRitorno() {
+    dimenticaRitorno(id);
+    router.push(ritorno());
+  }
 
   // Il titolo va a capo su più righe come nell'artboard (che lo scrive con un
   // <br>): un <input> a riga singola l'avrebbe semplicemente tagliato fuori
-  // dallo schermo. La textarea si auto-ridimensiona sul contenuto reale.
+  // dallo schermo. La textarea si auto-ridimensiona sul contenuto reale. Anche
+  // su `caricamento`: la textarea nasce a caricamento finito, con il nome già scritto.
   useEffect(() => {
     const el = nomeRef.current;
     if (!el) return;
     el.style.height = 'auto';
     el.style.height = `${el.scrollHeight}px`;
-  }, [nome]);
+  }, [nome, caricamento]);
 
   useEffect(() => {
     let vivo = true;
@@ -177,7 +227,7 @@ export default function Piatto() {
         if (!nuovo) {
           const trovato = (repertorio ?? []).find((p) => p.id === id) ?? null;
           if (!trovato) {
-            setErrore('Piatto non trovato.');
+            setErroreCarica('Piatto non trovato.');
           } else {
             setPiattoOriginale(trovato);
             setNome(trovato.nome);
@@ -193,6 +243,10 @@ export default function Piatto() {
             // meal_slot_choice di un piatto già in uso (nota della review
             // del Task 1).
             setComponenti(trovato.componenti);
+            // Il riferimento di «è cambiato qualcosa?» è il piatto del server,
+            // non la bozza che si applica sotto: una bozza ripresa è lavoro non
+            // salvato, e SALVA deve accendersi.
+            setFirmaIniziale(firma(moduloDaPiatto(trovato)));
             if (settimana) {
               const casa = new Set<string>();
               const fuori = new Set<string>();
@@ -218,10 +272,6 @@ export default function Piatto() {
           setGiornoCiclo(bozza.giornoCiclo);
           setIngredienti(bozza.ingredienti);
           setComponenti(bozza.componenti);
-          // Una bozza pendente è lavoro non ancora salvato: si apre già in
-          // 'modifica', non in 'vista', altrimenti chi ha lasciato a metà una
-          // modifica se la vede sostituita dalla sola lettura.
-          setModalita('modifica');
         }
 
         // Chi è appena tornato dalla creazione di un ingrediente lo aveva
@@ -240,7 +290,7 @@ export default function Piatto() {
         }
       } catch (errore) {
         console.error('piatto: caricamento fallito.', errore);
-        if (vivo) setErrore('Non riusciamo a caricare il piatto. Riprova più tardi.');
+        if (vivo) setErroreCarica('Non riusciamo a caricare il piatto. Riprova più tardi.');
       } finally {
         if (vivo) setCaricamento(false);
       }
@@ -254,8 +304,10 @@ export default function Piatto() {
   /**
    * Unico punto in cui il selettore aggiunge davvero un ingrediente,
    * qualunque sia il target aperto: alla lista fissa `ingredienti` o alle
-   * righe di un'opzione. Stesso selettore, stesso comportamento di sempre
-   * (compreso l'azzeramento della ricerca), solo con una destinazione in più.
+   * righe di un'opzione. Stesso selettore, stesso comportamento di sempre,
+   * solo con una destinazione in più. Chiuderlo smonta `SelettoreIngrediente`
+   * e con lui la ricerca: riaprendolo si riparte dall'elenco intero, perché la
+   * ricerca di prima non ha niente a che vedere con l'ingrediente successivo.
    */
   function aggiungiIngrediente(ing: Ingredient) {
     if (!selettore) return;
@@ -265,9 +317,6 @@ export default function Piatto() {
       aggiungiRigaOpzione(selettore.componenteId, selettore.opzioneId, ing);
     }
     setSelettore(null);
-    // Riaprendo il selettore si riparte dall'elenco intero: la ricerca di
-    // prima non ha niente a che vedere con l'ingrediente successivo.
-    setRicerca('');
   }
 
   function cambiaQuantita(ingredientId: string, quantita: number) {
@@ -371,85 +420,86 @@ export default function Piatto() {
   /**
    * Da chiamare prima di ogni uscita verso l'editor di un ingrediente: è
    * l'unica navigazione che si porta via lavoro non salvato, perché il
-   * piatto qui esiste solo in memoria finché non si preme SALVA PIATTO.
+   * piatto qui esiste solo in memoria finché non si preme SALVA.
    */
   function riparaBozzaPrimaDiUscire() {
     salvaBozza(id, { nome, slotDefId, descrizione, settimanaCiclo, giornoCiclo, ingredienti, componenti });
   }
 
   /**
-   * ANNULLA nell'editor. Su un piatto nuovo (mai esistito) non c'è niente a
-   * cui tornare: esce dalla pagina, come ha sempre fatto. Su un piatto
-   * esistente invece c'è una vista a cui tornare — si ripristina lo stato dal
-   * `piattoOriginale` già in pagina (stessa assegnazione di campi di
-   * `carica()`, per non tenere due copie della stessa logica) e si torna a
-   * 'vista' senza navigare via. Scarta anche una bozza pendente: senza
-   * questo, un ANNULLA seguito da un giro completo (uscita e rientro sulla
-   * pagina) risuscita modifiche che l'utente ha appena scelto di buttare.
-   * Azzera anche `errore`: un salvataggio fallito lo aveva scritto per
-   * l'editor che si sta abbandonando, e senza questo resterebbe appeso allo
-   * stato — un fantasma che ricompare al prossimo MODIFICA senza che sia
-   * successo niente di nuovo (review Task 5, finding media).
+   * La freccia (spec fase 7 §B.2): esce verso `ritorno()` (/piatti, o /piano se
+   * si è partiti da lì) senza chiedere, e le
+   * modifiche non salvate si perdono, come con ANNULLA prima della fase 7. La
+   * bozza si tratta come la trattava ANNULLA: su un piatto esistente si scarta,
+   * perché un giro completo (uscita e rientro) non risusciti modifiche appena
+   * buttate; su un piatto nuovo ANNULLA usciva senza toccarla, e così resta.
+   * Solo a piatto caricato, come ANNULLA che esisteva solo lì: in caricamento o
+   * dopo un caricamento fallito la bozza non è ancora stata ripresa, e c'era solo
+   * il link della vecchia intestazione, che non la toccava (review Task 6, R1).
    */
-  function annulla() {
-    if (nuovo) {
-      router.push('/piatti');
-      return;
-    }
-    if (piattoOriginale) {
-      setNome(piattoOriginale.nome);
-      setSlotDefId(piattoOriginale.slotDefId);
-      setDescrizione(piattoOriginale.descrizione ?? '');
-      setSettimanaCiclo(piattoOriginale.settimanaCiclo);
-      setGiornoCiclo(piattoOriginale.giornoCiclo);
-      setIngredienti(piattoOriginale.ingredienti);
-      setComponenti(piattoOriginale.componenti);
-    }
-    scartaBozza(id);
-    setErrore(null);
-    setModalita('vista');
+  function esci() {
+    if (!nuovo && piattoOriginale) scartaBozza(id);
+    vaiAlRitorno();
   }
 
   /**
-   * Il cestino nell'header è quello dell'artboard: deve fare qualcosa di
-   * vero, non solo esserci. Su un piatto nuovo (mai salvato) non c'è ancora
-   * niente da eliminare: equivale ad annullare, senza bisogno di conferma
-   * (ANNULLA già fa esattamente questo senza chiederla). Su un piatto
-   * esistente apre la conferma.
+   * La conferma del Dialogo (spec fase 7 §B.3 punto 7). Se l'eliminazione
+   * fallisce l'errore si rilancia: il Dialogo lo mostra sotto i tasti e resta
+   * aperto. Se riesce, come prima: via la bozza, poi `ritorno()`.
    */
-  function tapCestino() {
-    if (nuovo) {
-      router.push('/piatti');
-      return;
-    }
-    setConfermaEliminazione(true);
-  }
-
-  async function confermaElimina() {
+  async function confermaElimina(): Promise<void> {
     if (!piattoOriginale) return;
-    setEliminando(true);
     try {
       await eliminaPiatto(piattoOriginale.id);
-      scartaBozza(id);
-      router.push('/piatti');
     } catch (errore) {
       console.error('piatto: eliminazione fallita.', errore);
-      setErrore('Non siamo riusciti a eliminare il piatto. Riprova.');
-      setEliminando(false);
-      setConfermaEliminazione(false);
+      throw errore;
     }
+    scartaBozza(id);
+    setConfermaEliminazione(false);
+    vaiAlRitorno();
   }
 
+  const catalogoPerId = new Map(catalogo.map((i) => [i.id, i]));
+
+  // La lista da cui il selettore esclude ciò che c'è già dipende dal target
+  // aperto: `ingredienti` per il selettore principale, le righe della
+  // singola opzione per quello aperto da un componente. Stesso selettore,
+  // deduplica sulla lista giusta.
+  const righeTargetSelettore: DishIngredient[] =
+    selettore?.tipo === 'opzione'
+      ? (componenti.find((c) => c.id === selettore.componenteId)?.opzioni.find((o) => o.id === selettore.opzioneId)
+          ?.righe ?? [])
+      : ingredienti;
+  const nonAncoraNelPiatto = catalogo.filter((i) => !righeTargetSelettore.some((r) => r.ingredientId === i.id));
+
+  const giorniSettimana = dataInizioSettimana ? giorniDellaSettimana(dataInizioSettimana) : [];
+  const giorni = GIORNI_LABEL.map((label, i) => {
+    const iso = giorniSettimana[i];
+    return { label, inProgramma: iso ? giorniCasa.has(iso) : false };
+  });
+  const nCasa = giorni.filter((g) => g.inProgramma).length;
+  const nFuori = giorniFuori.size;
+
+  const senzaIngredienti = ingredienti.length === 0;
+  // dish_ingredient ha `check (quantita > 0)`: un ingrediente aggiunto e mai
+  // toccato parte da quantita: 0 (vedi aggiungiIngrediente sopra) e
+  // salverebbe sempre lo stesso errore generico, senza dire quale tessera è
+  // il problema (I2). Il salvataggio resta disattivato finché non è > 0.
+  const quantitaNonValide = new Set(ingredienti.filter((r) => r.quantita <= 0).map((r) => r.ingredientId));
+
+  const salvataggioDisabilitato =
+    senzaIngredienti || quantitaNonValide.size > 0 || componentiNonValidi(componenti);
+  const modulo: ModuloPiatto = { nome, slotDefId, descrizione, settimanaCiclo, giornoCiclo, ingredienti, componenti };
+  const cambiato = firma(modulo) !== (nuovo ? FIRMA_NUOVO : firmaIniziale);
+  // Spento se non è cambiato niente o se il modulo non è valido (spec fase 7 §B.5):
+  // la ragione della seconda resta scritta nel modulo, dove sta.
+  const spento = salvataggioDisabilitato || !cambiato;
+
   async function salva() {
-    if (
-      ingredienti.length === 0 ||
-      ingredienti.some((r) => r.quantita <= 0) ||
-      componentiNonValidi(componenti) ||
-      salvando
-    )
-      return;
+    if (spento || salvando) return;
     setSalvando(true);
-    setErrore(null);
+    setErroreSalva(null);
     try {
       // Fallback silenzioso sul primo pasto se l'utente non ne ha ancora
       // scelto uno: la schermata non blocca il salvataggio su questo (solo
@@ -479,145 +529,44 @@ export default function Piatto() {
         componenti: componentiEffettivi,
       });
       scartaBozza(id);
-      if (nuovo) {
-        router.push('/piatti');
-      } else {
-        // Spec §C: "SALVA salva e torna alla vista" — su un piatto esistente
-        // non si naviga più via, si resta sulla pagina. `piattoOriginale` si
-        // aggiorna con quanto appena scritto: senza questo, un successivo
-        // MODIFICA -> ANNULLA ripristinerebbe i dati precedenti al
-        // salvataggio, buttando via ciò che è appena stato persistito.
-        setPiattoOriginale({
-          id,
-          nome: nomeEffettivo,
-          slotDefId: slotEffettivo,
-          fonte: piattoOriginale?.fonte ?? 'proprio',
-          attivo: piattoOriginale?.attivo ?? true,
-          descrizione: descrizioneEffettiva,
-          settimanaCiclo: settimanaEffettiva,
-          giornoCiclo,
-          ingredienti,
-          componenti: componentiEffettivi,
-        });
-        setModalita('vista');
-        // Sul ramo nuovo si naviga via (router.push) e la pagina si
-        // smonta: qui invece si resta, quindi `salvando` va azzerato a
-        // mano — altrimenti il secondo SALVA (dopo un MODIFICA) resta
-        // per sempre disabilitato: bottone disabled + guardia in salva().
-        setSalvando(false);
-      }
+      // SALVA torna a `ritorno()` anche su un piatto esistente (spec fase 7 §B.5,
+      // review finale I1): la vista a cui tornava prima non c'è più. `salvando`
+      // resta vero: la pagina si smonta, e un secondo tocco nel frattempo non riscrive.
+      vaiAlRitorno();
     } catch (errore) {
       console.error('piatto: salvataggio fallito.', errore);
-      setErrore('Non siamo riusciti a salvare il piatto. Riprova.');
+      setErroreSalva('Non siamo riusciti a salvare il piatto. Riprova.');
       setSalvando(false);
     }
   }
 
-  if (errore && !caricamento && !piattoOriginale && !nuovo) {
-    // Niente da eliminare su un piatto che non è stato trovato.
+  const freccia = { etichetta: dalPiano ? 'Torna al piano' : 'Torna ai piatti', onTorna: esci };
+
+  if (erroreCarica) {
+    // Niente Dock e niente ELIMINA: su un piatto che non si è letto non c'è niente da salvare né da eliminare.
     return (
-      <Cornice cestinoAttivo={false}>
-        <p style={{ margin: '20px 18px', color: 'var(--sec)' }}>{errore}</p>
-      </Cornice>
+      <TestataModifica freccia={freccia}>
+        <div style={{ padding: '6px 16px' }}>
+          <MessaggioErrore ruolo="alert">{erroreCarica}</MessaggioErrore>
+        </div>
+      </TestataModifica>
     );
   }
 
-  if (caricamento) return <Cornice cestinoAttivo={false} />;
-
-  const catalogoPerId = new Map(catalogo.map((i) => [i.id, i]));
-
-  if (modalita === 'vista') {
-    // Spec §C: "quantità + nome + area", stessi tre dati che l'editor mostra
-    // già sulla tessera (TesseraIngrediente), solo su una riga sola invece
-    // che su tre righe di pillola.
-    const testoRiga = (r: DishIngredient) => {
-      const ing = catalogoPerId.get(r.ingredientId);
-      return ing ? `${r.quantita} ${r.unita} · ${ing.nome} · ${nomeArea(ing.area)}` : null;
-    };
-    const righeIngredienti = ingredienti
-      .map((r) => ({ id: r.ingredientId, testo: testoRiga(r) }))
-      .filter((r): r is { id: string; testo: string } => r.testo !== null);
-    // Una riga per opzione, non per ingrediente della singola riga:
-    // "ricotta 50g + noci 20g" è UNA opzione (stesso vincolo di
-    // OpzioneComponente in domain/types). Il nome del componente apre la
-    // prima opzione; "oppure" separa le successive, stesso lessico usato in
-    // Revisione.tsx per lo stesso concetto.
-    const righeComponenti = componenti.flatMap((c) =>
-      c.opzioni.flatMap((o, i) => {
-        const testoOpzione = o.righe
-          .map(testoRiga)
-          .filter((t): t is string => t !== null)
-          .join(' + ');
-        const riga = { id: `${c.id}:${o.id}`, testo: i === 0 ? `${c.nome}: ${testoOpzione}` : testoOpzione };
-        return i === 0 ? [riga] : [{ id: `${c.id}:${o.id}:oppure`, testo: 'oppure' }, riga];
-      }),
-    );
+  if (caricamento) {
     return (
-      <VistaPiatto
-        nome={nome}
-        pasto={slotDefs.find((s) => s.id === slotDefId)?.nome ?? ''}
-        settimana={settimaneCiclo > 1 && settimanaCiclo !== null ? `Settimana ${settimanaCiclo} del giro` : null}
-        giorno={giornoCiclo !== null ? GIORNI_LUNGHI[giornoCiclo] : null}
-        righe={[...righeIngredienti, ...righeComponenti]}
-        // Azzera anche qui, non solo in annulla(): MODIFICA è l'altro punto
-        // da cui si entra nell'editor, e un errore di un salvataggio fallito
-        // di un giro precedente non deve riapparire su un editor che
-        // ricomincia pulito (stesso finding di annulla(), stesso rimedio).
-        onModifica={() => {
-          setErrore(null);
-          setModalita('modifica');
-        }}
-        onIndietro={() => router.back()}
-      />
+      <TestataModifica freccia={freccia}>
+        <div style={{ padding: '6px 16px' }}>
+          <Carico />
+        </div>
+      </TestataModifica>
     );
   }
-
-  // La lista da cui il selettore esclude ciò che c'è già dipende dal target
-  // aperto: `ingredienti` per il selettore principale, le righe della
-  // singola opzione per quello aperto da un componente. Stesso selettore,
-  // deduplica sulla lista giusta.
-  const righeTargetSelettore: DishIngredient[] =
-    selettore?.tipo === 'opzione'
-      ? (componenti.find((c) => c.id === selettore.componenteId)?.opzioni.find((o) => o.id === selettore.opzioneId)
-          ?.righe ?? [])
-      : ingredienti;
-  const nonAncoraNelPiatto = catalogo.filter((i) => !righeTargetSelettore.some((r) => r.ingredientId === i.id));
-  // La ricerca cerca dentro il nome, non solo all'inizio: "pomo" trova sia
-  // "Pomodori" sia "Passata di pomodoro".
-  const disponibili = ricerca.trim()
-    ? nonAncoraNelPiatto.filter((i) => normalizza(i.nome).includes(normalizza(ricerca)))
-    : nonAncoraNelPiatto;
-
-  const giorniSettimana = dataInizioSettimana ? giorniDellaSettimana(dataInizioSettimana) : [];
-  const giorni = GIORNI_LABEL.map((label, i) => {
-    const iso = giorniSettimana[i];
-    return { label, inProgramma: iso ? giorniCasa.has(iso) : false };
-  });
-  const nCasa = giorni.filter((g) => g.inProgramma).length;
-  const nFuori = giorniFuori.size;
-
-  const senzaIngredienti = ingredienti.length === 0;
-  // dish_ingredient ha `check (quantita > 0)`: un ingrediente aggiunto e mai
-  // toccato parte da quantita: 0 (vedi aggiungiIngrediente sopra) e
-  // salverebbe sempre lo stesso errore generico, senza dire quale tessera è
-  // il problema (I2). Il salvataggio resta disattivato finché non è > 0.
-  const quantitaNonValide = new Set(ingredienti.filter((r) => r.quantita <= 0).map((r) => r.ingredientId));
-
-  // Le stesse tre condizioni di componentiNonValidi, separate qui per poter
-  // dire *cosa* manca invece di un unico messaggio generico — come già fa
-  // quantitaNonValide sopra per gli ingredienti fissi.
-  const componentiSenzaNome = componenti.filter((c) => c.nome.trim() === '');
-  const opzioniSenzaRighe = componenti.flatMap((c) => c.opzioni.filter((o) => o.righe.length === 0));
-  const quantitaNonValideOpzioni = new Set(
-    componenti.flatMap((c) => c.opzioni).flatMap((o) => o.righe.filter((r) => r.quantita <= 0).map((r) => `${o.id}|${r.ingredientId}`)),
-  );
-
-  const salvataggioDisabilitato =
-    senzaIngredienti || quantitaNonValide.size > 0 || componentiNonValidi(componenti);
 
   return (
-    <Cornice onCestino={tapCestino}>
-      <div className="sc scroll-app con-piede" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 14px' }}>
+    <TestataModifica
+      freccia={freccia}
+      nome={
         <textarea
           ref={nomeRef}
           rows={1}
@@ -631,37 +580,32 @@ export default function Piatto() {
           placeholder="Dai un nome al piatto"
           className="nome-piatto"
           style={{
-            display: 'block',
-            width: '100%',
-            resize: 'none',
-            overflow: 'hidden',
-            fontFamily: 'inherit',
-            fontSize: 34,
-            fontWeight: 800,
-            letterSpacing: '-0.045em',
-            lineHeight: 1.05,
-            color: 'var(--ink)',
-            padding: '0 2px 4px',
-            border: 'none',
-            borderBottom: '1.5px solid rgba(20,22,58,0.14)',
-            background: 'transparent',
-            outline: 'none',
+            display: 'block', width: '100%', resize: 'none', overflow: 'hidden',
+            fontFamily: 'inherit', fontSize: 32, fontWeight: 800, letterSpacing: '-0.045em', lineHeight: 1.05,
+            color: 'var(--ink)', padding: '0 2px 8px', border: 'none',
+            borderBottom: '1.5px solid rgba(20,22,58,0.14)', background: 'transparent', outline: 'none',
           }}
         />
-        <style jsx>{`
-          .nome-piatto::placeholder {
-            color: #c4c4ce;
-          }
-        `}</style>
+      }
+    >
+      <style jsx>{`
+        .nome-piatto::placeholder,
+        .ricetta::placeholder {
+          color: var(--icona-spenta);
+        }
+      `}</style>
 
-        <div style={{ marginTop: 16 }}>
+      <div
+        className="sc scroll-app con-dock"
+        style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px', display: 'flex', flexDirection: 'column', gap: 16 }}
+      >
+        <Blocco primo>
           <Segmento
             opzioni={slotDefs.map((s) => ({ id: s.id, label: s.nome }))}
             valore={slotDefId}
             onCambia={setSlotDefId}
           />
-        </div>
-
+        </Blocco>
 
         {/* Dove sta il piatto nel piano: la settimana del giro e il giorno
             fisso. Entrambi facoltativi — un piatto senza niente di dichiarato
@@ -669,13 +613,11 @@ export default function Piatto() {
             come si comportava il repertorio prima della rotazione. La
             settimana compare solo se un ciclo c'è: con una sola settimana non
             avrebbe nulla fra cui scegliere. */}
-        <div style={{ margin: '22px 4px 9px', fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--ink)' }}>
-          NEL PIANO
-        </div>
-        <div style={{ background: 'var(--superficie)', borderRadius: 18, border: '1px solid var(--bordo)', padding: '13px 14px 14px' }}>
+        <Blocco>
+          <Etichetta>NEL PIANO</Etichetta>
           {settimaneCiclo > 1 && (
-            <>
-              <EtichettaCampo>SETTIMANA DEL GIRO</EtichettaCampo>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+              <Etichetta>SETTIMANA DEL GIRO</Etichetta>
               <Pillole
                 opzioni={[
                   { valore: null, label: 'TUTTE', descrizione: 'Va bene in ogni settimana del giro' },
@@ -689,596 +631,221 @@ export default function Piatto() {
                 onCambia={setSettimanaCiclo}
                 gruppo="Settimana del giro"
               />
+            </div>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+            <Etichetta>GIORNO FISSO</Etichetta>
+            <Pillole
+              opzioni={[
+                { valore: null, label: 'LIBERO', descrizione: 'Lo sceglie l’app, ruotando' },
+                ...GIORNI_LABEL.map((label, i) => ({ valore: i, label, descrizione: GIORNI_LUNGHI[i] })),
+              ]}
+              valore={giornoCiclo}
+              onCambia={setGiornoCiclo}
+              gruppo="Giorno fisso"
+              aCapo
+            />
+          </div>
+        </Blocco>
+
+        <Blocco>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Etichetta>INGREDIENTI</Etichetta>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 500, letterSpacing: '0.1em', color: 'var(--sec)' }}>
+              PER 1 PORZIONE
+            </span>
+          </div>
+
+          {ingredienti.length > 0 && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+              {ingredienti.map((riga) => {
+                const ing = catalogoPerId.get(riga.ingredientId);
+                if (!ing) return null;
+                return (
+                  <TesseraIngrediente
+                    key={riga.ingredientId}
+                    nome={ing.nome}
+                    area={ing.area}
+                    quantita={riga.quantita}
+                    unita={riga.unita}
+                    onCambiaQuantita={(q) => cambiaQuantita(riga.ingredientId, q)}
+                    onRimuovi={() => rimuoviIngrediente(riga.ingredientId)}
+                    quantitaValida={!quantitaNonValide.has(riga.ingredientId)}
+                    hrefModifica={`/piatti/${id}/ingredienti/${riga.ingredientId}`}
+                    onPrimaDiModificare={riparaBozzaPrimaDiUscire}
+                  />
+                );
+              })}
+            </div>
+          )}
+
+          <AggiungiTratteggiato etichetta="AGGIUNGI INGREDIENTE" onClick={() => setSelettore({ tipo: 'principale' })} />
+
+          {/* Una Nota e non un errore (DESIGN.md §8 Messaggi): dice perché SALVA è
+              spento. Su un piatto nuovo c'è dalla prima apertura, e lì non ha niente
+              di sbagliato da segnalare: manca solo quello che si sta per scrivere. */}
+          {senzaIngredienti && <Nota>{TESTO_SENZA_INGREDIENTI}</Nota>}
+
+          {/* Il bordo rosso della tessera segnala che qualcosa non va, ma non
+              dice cosa fare, e il numero in alto nella tessera non si legge
+              come un campo da riempire — sembra un'etichetta. Senza questa
+              riga il salvataggio resta bloccato senza spiegazione: si prova a
+              toccare in giro finché non si scopre da soli che quel numero si
+              scrive. Nominare gli ingredienti che mancano evita anche di
+              doverli cercare a occhio in una griglia lunga. */}
+          {!senzaIngredienti && quantitaNonValide.size > 0 && (
+            <MessaggioErrore>
+              {quantitaNonValide.size === 1 ? 'Manca la grammatura di' : 'Mancano le grammature di'}{' '}
+              <strong style={{ color: 'var(--ink)', fontWeight: 700 }}>
+                {ingredienti
+                  .filter((r) => quantitaNonValide.has(r.ingredientId))
+                  .map((r) => catalogoPerId.get(r.ingredientId)?.nome)
+                  .filter(Boolean)
+                  .join(', ')}
+              </strong>
+              : tocca il numero sulla tessera e scrivi quanto ne usi per una porzione.
+            </MessaggioErrore>
+          )}
+        </Blocco>
+
+        <Blocco>
+          <ComponentiPiatto
+            componenti={componenti}
+            catalogoPerId={catalogoPerId}
+            onAggiungiComponente={aggiungiComponente}
+            onRimuoviComponente={rimuoviComponente}
+            onCambiaNomeComponente={cambiaNomeComponente}
+            onAggiungiOpzione={aggiungiOpzione}
+            onRimuoviOpzione={rimuoviOpzione}
+            onAggiungiIngrediente={(componenteId, opzioneId) => setSelettore({ tipo: 'opzione', componenteId, opzioneId })}
+            onCambiaQuantita={cambiaQuantitaOpzione}
+            onRimuoviRiga={rimuoviRigaOpzione}
+          />
+        </Blocco>
+
+        <Blocco>
+          <Etichetta>COME SI FA</Etichetta>
+          <textarea
+            value={descrizione}
+            onChange={(e) => setDescrizione(e.target.value)}
+            placeholder="Il procedimento, se serve ricordarlo"
+            aria-label="Procedimento del piatto"
+            rows={4}
+            className="ricetta"
+            style={{
+              display: 'block', width: '100%', boxSizing: 'border-box', resize: 'none',
+              fontFamily: 'inherit', fontSize: 14, lineHeight: 1.5, color: 'var(--ink)',
+              padding: '13px 14px', borderRadius: 14,
+              background: 'var(--superficie)', border: '1px solid var(--bordo)', boxShadow: 'var(--ombra-pannello)', outline: 'none',
+            }}
+          />
+        </Blocco>
+
+        <Blocco>
+          {nCasa === 0 && nFuori === 0 ? (
+            // Non in programma: niente striscia di sette giorni tutti spenti
+            // (rumore che non dice niente) — il riquadro muto di
+            // VuotoPiatto.dc.html, copiato alla lettera, dice cosa manca e
+            // cosa fare per rimediare.
+            <>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--icona-spenta)' }}>
+                IN QUESTA SETTIMANA
+              </span>
+              <div style={{ padding: '16px 18px', borderRadius: 18, background: 'var(--spento)', fontSize: 13, lineHeight: 1.45, color: 'var(--testo-2)' }}>
+                {TESTO_NON_IN_PROGRAMMA}
+              </div>
+            </>
+          ) : (
+            <>
+              <Etichetta>IN QUESTA SETTIMANA</Etichetta>
+              <div style={{ display: 'flex', gap: 5 }}>
+                {giorni.map((g) => (
+                  <span
+                    key={g.label}
+                    style={{
+                      flex: '1 1 0%', textAlign: 'center', padding: '11px 0', borderRadius: 12,
+                      fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: g.inProgramma ? 700 : 500, letterSpacing: '0.07em',
+                      color: g.inProgramma ? 'var(--superficie)' : 'var(--ter)',
+                      background: g.inProgramma ? 'var(--ink)' : 'var(--spento)',
+                    }}
+                  >
+                    {g.label}
+                  </span>
+                ))}
+              </div>
+              <p style={{ margin: '2px 4px 0', fontSize: 13, lineHeight: 1.45, color: 'var(--testo-2)' }}>
+                {testoRiepilogo(nCasa, nFuori)}
+              </p>
             </>
           )}
-          <EtichettaCampo margine={settimaneCiclo > 1 ? '13px 0 7px' : '0 0 7px'}>GIORNO FISSO</EtichettaCampo>
-          <Pillole
-            opzioni={[
-              { valore: null, label: 'LIBERO', descrizione: 'Lo sceglie l’app, ruotando' },
-              ...GIORNI_LABEL.map((label, i) => ({ valore: i, label, descrizione: GIORNI_LUNGHI[i] })),
-            ]}
-            valore={giornoCiclo}
-            onCambia={setGiornoCiclo}
-            gruppo="Giorno fisso"
-            aCapo
-          />
-        </div>
+        </Blocco>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '22px 4px 9px' }}>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--ink)' }}>
-            INGREDIENTI
-          </span>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.1em', color: 'var(--sec)' }}>
-            PER 1 PORZIONE
-          </span>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
-          {ingredienti.map((riga) => {
-            const ing = catalogoPerId.get(riga.ingredientId);
-            if (!ing) return null;
-            return (
-              <TesseraIngrediente
-                key={riga.ingredientId}
-                nome={ing.nome}
-                area={ing.area}
-                quantita={riga.quantita}
-                unita={riga.unita}
-                onCambiaQuantita={(q) => cambiaQuantita(riga.ingredientId, q)}
-                onRimuovi={() => rimuoviIngrediente(riga.ingredientId)}
-                quantitaValida={!quantitaNonValide.has(riga.ingredientId)}
-                hrefModifica={`/piatti/${id}/ingredienti/${riga.ingredientId}`}
-                onPrimaDiModificare={riparaBozzaPrimaDiUscire}
-              />
-            );
-          })}
-
-          <button
-            type="button"
-            onClick={() => setSelettore({ tipo: 'principale' })}
-            style={{
-              minHeight: 108,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 9,
-              padding: '13px 12px',
-              borderRadius: 15,
-              background: 'transparent',
-              border: '1.5px dashed rgba(20,22,58,0.28)',
-            }}
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <path d="M12 5v14M5 12h14" stroke="#8A8A96" strokeWidth="2.1" strokeLinecap="round" />
-            </svg>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 700, letterSpacing: '0.11em', color: 'var(--sec)', textAlign: 'center', lineHeight: 1.5 }}>
-              AGGIUNGI
-              <br />
-              INGREDIENTE
-            </span>
-          </button>
-
-          {senzaIngredienti && (
-            <div style={{ minHeight: 108, borderRadius: 15, border: '1.5px dashed rgba(20,22,58,0.10)' }} />
-          )}
-        </div>
-
-        {senzaIngredienti && (
-          <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', margin: '14px 6px 0' }}>
-            {TESTO_SENZA_INGREDIENTI}
-          </div>
-        )}
-
-        {/* Il bordo rosso della tessera segnala che qualcosa non va, ma non
-            dice cosa fare, e il numero in alto nella tessera non si legge
-            come un campo da riempire — sembra un'etichetta. Senza questa
-            riga il salvataggio resta bloccato senza spiegazione: si prova a
-            toccare in giro finché non si scopre da soli che quel numero si
-            scrive. Nominare gli ingredienti che mancano evita anche di
-            doverli cercare a occhio in una griglia lunga. */}
-        {!senzaIngredienti && quantitaNonValide.size > 0 && (
-          <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', margin: '14px 6px 0' }}>
-            {quantitaNonValide.size === 1 ? 'Manca la grammatura di' : 'Mancano le grammature di'}{' '}
-            <strong style={{ color: 'var(--ink)', fontWeight: 700 }}>
-              {ingredienti
-                .filter((r) => quantitaNonValide.has(r.ingredientId))
-                .map((r) => catalogoPerId.get(r.ingredientId)?.nome)
-                .filter(Boolean)
-                .join(', ')}
-            </strong>
-            : tocca il numero sulla tessera e scrivi quanto ne usi per una porzione.
-          </div>
-        )}
-
-        <div style={{ margin: '22px 4px 9px', fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--ink)' }}>
-          COMPONENTI A SCELTA
-        </div>
-
-        {componenti.map((componente, indiceComponente) => (
-          <div
-            key={componente.id}
-            style={{
-              background: 'var(--superficie)',
-              borderRadius: 18,
-              border: '1px solid var(--bordo)',
-              padding: '13px 14px 14px',
-              marginBottom: 10,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <input
-                type="text"
-                value={componente.nome}
-                onChange={(e) => cambiaNomeComponente(componente.id, e.target.value)}
-                placeholder="Nome del componente"
-                aria-label={`Nome del componente ${indiceComponente + 1}`}
-                style={{
-                  flex: 1,
-                  height: 40,
-                  padding: '0 12px',
-                  borderRadius: 12,
-                  border: '1px solid var(--bordo)',
-                  background: 'var(--fondo)',
-                  fontSize: 15,
-                  fontWeight: 600,
-                  color: 'var(--ink)',
-                  outline: 'none',
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => rimuoviComponente(componente.id)}
-                aria-label={`Elimina componente ${indiceComponente + 1}`}
-                style={{
-                  flex: 'none', width: 40, height: 40, display: 'flex',
-                  alignItems: 'center', justifyContent: 'center', background: 'transparent',
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                  <path d="M5 5l14 14M19 5 5 19" stroke="#8A8A96" strokeWidth="2.1" strokeLinecap="round" />
-                </svg>
-              </button>
-            </div>
-
-            {componente.opzioni.map((opzione, indiceOpzione) => {
-              const righeNonValideOpzione = new Set(
-                opzione.righe.filter((r) => r.quantita <= 0).map((r) => r.ingredientId),
-              );
-              return (
-                <div key={opzione.id} style={{ marginTop: 14 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0 2px 7px' }}>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8.5, letterSpacing: '0.11em', color: 'var(--ter)' }}>
-                      OPZIONE {indiceOpzione + 1}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => rimuoviOpzione(componente.id, opzione.id)}
-                      aria-label={`Elimina opzione ${indiceOpzione + 1} del componente ${indiceComponente + 1}`}
-                      style={{
-                        fontFamily: 'var(--font-mono)', fontSize: 8.5, fontWeight: 700, letterSpacing: '0.09em',
-                        color: 'var(--sec)', background: 'transparent', padding: '4px 2px',
-                      }}
-                    >
-                      ELIMINA
-                    </button>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
-                    {opzione.righe.map((riga) => {
-                      const ing = catalogoPerId.get(riga.ingredientId);
-                      if (!ing) return null;
-                      return (
-                        <TesseraIngrediente
-                          key={riga.ingredientId}
-                          nome={ing.nome}
-                          area={ing.area}
-                          quantita={riga.quantita}
-                          unita={riga.unita}
-                          onCambiaQuantita={(q) => cambiaQuantitaOpzione(componente.id, opzione.id, riga.ingredientId, q)}
-                          onRimuovi={() => rimuoviRigaOpzione(componente.id, opzione.id, riga.ingredientId)}
-                          quantitaValida={!righeNonValideOpzione.has(riga.ingredientId)}
-                        />
-                      );
-                    })}
-
-                    <button
-                      type="button"
-                      onClick={() => setSelettore({ tipo: 'opzione', componenteId: componente.id, opzioneId: opzione.id })}
-                      aria-label={`Aggiungi ingrediente all'opzione ${indiceOpzione + 1} del componente ${indiceComponente + 1}`}
-                      style={{
-                        minHeight: 108, display: 'flex', flexDirection: 'column',
-                        alignItems: 'center', justifyContent: 'center', gap: 9,
-                        padding: '13px 12px', borderRadius: 15, background: 'transparent',
-                        border: '1.5px dashed rgba(20,22,58,0.28)',
-                      }}
-                    >
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                        <path d="M12 5v14M5 12h14" stroke="#8A8A96" strokeWidth="2.1" strokeLinecap="round" />
-                      </svg>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 700, letterSpacing: '0.11em', color: 'var(--sec)', textAlign: 'center', lineHeight: 1.5 }}>
-                        AGGIUNGI
-                        <br />
-                        INGREDIENTE
-                      </span>
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-
-            <button
-              type="button"
-              onClick={() => aggiungiOpzione(componente.id)}
-              style={{
-                marginTop: 12, height: 40, width: '100%', borderRadius: 12,
-                fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.09em',
-                color: 'var(--sec)', background: 'rgba(20,22,58,0.05)',
-              }}
+        {/* ELIMINA in coda (spec fase 7 §B.3 punto 7), solo su un piatto che esiste:
+            su uno nuovo non c'è niente da eliminare, e la freccia fa quel lavoro.
+            Passa sempre dal Dialogo di conferma, mai con un tocco solo. Il nome
+            accessibile è quello del cestino di prima. Spento con SALVA in volo: l'upsert di
+            salvaPiatto scrive attivo:true e resusciterebbe il piatto appena eliminato (review finale). */}
+        {!nuovo && (
+          <Blocco>
+            <TastoSecondario
+              aria-label="Elimina piatto"
+              onClick={() => setConfermaEliminazione(true)}
+              disabled={salvando}
+              style={{ color: 'var(--errore)' }}
             >
-              AGGIUNGI OPZIONE
-            </button>
-          </div>
-        ))}
-
-        <button
-          type="button"
-          onClick={aggiungiComponente}
-          style={{
-            width: '100%', minHeight: 54, borderRadius: 18, display: 'flex',
-            alignItems: 'center', justifyContent: 'center', gap: 9,
-            background: 'transparent', border: '1.5px dashed rgba(20,22,58,0.28)',
-          }}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <path d="M12 5v14M5 12h14" stroke="#8A8A96" strokeWidth="2.1" strokeLinecap="round" />
-          </svg>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.09em', color: 'var(--sec)' }}>
-            AGGIUNGI COMPONENTE
-          </span>
-        </button>
-
-        {componentiSenzaNome.length > 0 && (
-          <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', margin: '14px 6px 0' }}>
-            {TESTO_COMPONENTE_SENZA_NOME}
-          </div>
+              ELIMINA
+            </TastoSecondario>
+          </Blocco>
         )}
-        {opzioniSenzaRighe.length > 0 && (
-          <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', margin: '14px 6px 0' }}>
-            {TESTO_OPZIONE_SENZA_RIGHE}
-          </div>
-        )}
-        {opzioniSenzaRighe.length === 0 && quantitaNonValideOpzioni.size > 0 && (
-          <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', margin: '14px 6px 0' }}>
-            {TESTO_OPZIONE_QUANTITA}
-          </div>
-        )}
-
-        <div style={{ margin: '22px 4px 9px', fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--ink)' }}>
-          COME SI FA
-        </div>
-        <textarea
-          value={descrizione}
-          onChange={(e) => setDescrizione(e.target.value)}
-          placeholder="Il procedimento, se serve ricordarlo"
-          aria-label="Procedimento del piatto"
-          rows={4}
-          className="ricetta"
-          style={{
-            display: 'block', width: '100%', resize: 'vertical',
-            fontFamily: 'inherit', fontSize: 14, lineHeight: 1.5, color: 'var(--ink)',
-            padding: '13px 14px', borderRadius: 18,
-            background: 'var(--superficie)', border: '1px solid var(--bordo)', outline: 'none',
-          }}
-        />
-        <style jsx>{`
-          .ricetta::placeholder {
-            color: #c4c4ce;
-          }
-        `}</style>
-
-        {nCasa === 0 && nFuori === 0 ? (
-          // Non in programma: niente striscia di sette giorni tutti spenti
-          // (rumore che non dice niente) — il riquadro muto di
-          // VuotoPiatto.dc.html, copiato alla lettera, dice cosa manca e
-          // cosa fare per rimediare.
-          <>
-            <div style={{ margin: '26px 4px 9px', fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: '#C4C4CE' }}>
-              IN QUESTA SETTIMANA
-            </div>
-            <div style={{ padding: '16px 18px', borderRadius: 18, background: 'rgba(20,22,58,0.035)', fontSize: 13, lineHeight: 1.45, color: 'var(--sec)' }}>
-              {TESTO_NON_IN_PROGRAMMA}
-            </div>
-          </>
-        ) : (
-          <>
-            <div style={{ margin: '22px 4px 9px', fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--ink)' }}>
-              IN QUESTA SETTIMANA
-            </div>
-            <div style={{ display: 'flex', gap: 5 }}>
-              {giorni.map((g) => (
-                <span
-                  key={g.label}
-                  style={{
-                    flex: '1 1 0%',
-                    textAlign: 'center',
-                    padding: '11px 0',
-                    borderRadius: 12,
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 10,
-                    fontWeight: g.inProgramma ? 700 : 500,
-                    letterSpacing: '0.07em',
-                    color: g.inProgramma ? '#FFFFFF' : 'var(--ter)',
-                    background: g.inProgramma ? 'var(--ink)' : 'rgba(20,22,58,0.045)',
-                  }}
-                >
-                  {g.label}
-                </span>
-              ))}
-            </div>
-            <div style={{ margin: '10px 4px 0', fontSize: 13, lineHeight: 1.45, color: 'var(--sec)' }}>
-              {testoRiepilogo(nCasa, nFuori)}
-            </div>
-          </>
-        )}
-
-        {errore && <p style={{ margin: '14px 6px 0', color: 'var(--sec)', fontSize: 13 }}>{errore}</p>}
       </div>
 
-      <div className="coda-barra" style={{ padding: '8px 16px 22px', display: 'flex', gap: 9 }}>
+      <Dock>
+        {/* Sopra il Dock, come in Scegli e nell'editor dell'ingrediente: fuori dalla pillola,
+            su fondo bianco, perché sotto scorre la pagina. */}
+        {erroreSalva && <ErroreSopraDock>{erroreSalva}</ErroreSopraDock>}
+        {/* In volo lo stato spento del sistema (`.dock-primario:disabled`, DESIGN.md §13,
+            26/09, punto 6), non l'opacità: con l'opacità il testo bianco scende sotto soglia. */}
         <button
           type="button"
-          onClick={annulla}
-          // Nome accessibile diverso dal testo visibile "ANNULLA": è quello
-          // che distingue questo bottone dall'ANNULLA della conferma di
-          // eliminazione, che può essere aperta sopra l'editor (stesso testo,
-          // due controlli diversi — senza aria-label sarebbero ambigui per
-          // chi naviga a nome accessibile, screen reader compresi).
-          aria-label="Annulla modifiche"
-          style={{
-            flex: 'none',
-            width: 104,
-            height: 54,
-            borderRadius: 18,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontFamily: 'var(--font-mono)',
-            fontSize: 11.5,
-            fontWeight: 700,
-            letterSpacing: '0.09em',
-            color: 'var(--sec)',
-            background: 'rgba(20,22,58,0.05)',
-          }}
+          className="dock-primario"
+          onClick={() => void salva()}
+          disabled={spento || salvando}
+          aria-busy={salvando || undefined}
         >
-          ANNULLA
+          SALVA
         </button>
-        <button
-          type="button"
-          onClick={salva}
-          disabled={salvataggioDisabilitato || salvando}
-          style={{
-            flex: 1,
-            height: 54,
-            borderRadius: 18,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontFamily: 'var(--font-mono)',
-            fontSize: 12,
-            fontWeight: 700,
-            letterSpacing: '0.09em',
-            background: salvataggioDisabilitato ? 'rgba(20,22,58,0.10)' : 'var(--ink)',
-            color: salvataggioDisabilitato ? 'var(--ter)' : '#FFFFFF',
-          }}
-        >
-          SALVA PIATTO
-        </button>
-      </div>
+      </Dock>
 
       {selettore && (
-        <div
-          onClick={() => {
-            setSelettore(null);
-            setRicerca('');
-          }}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(20,22,58,0.35)', display: 'flex', alignItems: 'flex-end', zIndex: 50 }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="sc"
-            style={{
-              width: '100%',
-              maxHeight: '70vh',
-              overflowY: 'auto',
-              background: '#FFFFFF',
-              borderRadius: '22px 22px 0 0',
-              padding: '18px 16px 24px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 4,
-            }}
-          >
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--ink)', margin: '0 6px 8px' }}>
-              AGGIUNGI INGREDIENTE
-            </div>
-
-            {/* Niente autoFocus: su un telefono aprirebbe la tastiera addosso
-                alla lista, e chi vuole solo scorrere si troverebbe metà
-                schermo occupato senza averlo chiesto. Compare solo quando la
-                lista è abbastanza lunga da rendere lo scorrimento peggiore
-                della digitazione. */}
-            {nonAncoraNelPiatto.length > 8 && (
-              <input
-                type="search"
-                value={ricerca}
-                onChange={(e) => setRicerca(e.target.value)}
-                placeholder="Cerca"
-                aria-label="Cerca un ingrediente"
-                style={{
-                  height: 44, margin: '0 2px 10px', padding: '0 14px',
-                  borderRadius: 14, border: '1px solid var(--bordo)',
-                  background: 'var(--fondo)', color: 'var(--ink)',
-                  fontSize: 15, outline: 'none',
-                }}
-              />
-            )}
-
-            {disponibili.length === 0 && (
-              <div style={{ fontSize: 13, color: 'var(--sec)', padding: '8px 6px' }}>
-                {ricerca.trim()
-                  ? `Nessun ingrediente per "${ricerca.trim()}". Puoi crearlo qui sotto.`
-                  : 'Hai già aggiunto tutti gli ingredienti del repertorio.'}
-              </div>
-            )}
-            {disponibili.map((ing) => (
-              <button
-                key={ing.id}
-                type="button"
-                onClick={() => aggiungiIngrediente(ing)}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 6px', minHeight: 44, borderRadius: 12 }}
-              >
-                <span style={{ width: 8, height: 8, borderRadius: 2.6, flex: 'none', background: coloreArea(ing.area) }} />
-                <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>{ing.nome}</span>
-              </button>
-            ))}
-            {/* Disponibile anche aprendo il selettore da un'opzione: da qui in
-                avanti `riparaBozzaPrimaDiUscire` mette al riparo anche
-                `componenti` (vedi BozzaPiatto in bozza.ts), quindi il viaggio
-                verso la creazione dell'ingrediente e ritorno non perde più le
-                modifiche fatte ai componenti fino a quel momento. */}
-            <Link
-              href={`/piatti/${id}/ingredienti/nuovo`}
-              onClick={riparaBozzaPrimaDiUscire}
-              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 6px', minHeight: 44 }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path d="M12 5v14M5 12h14" stroke="#14163A" strokeWidth="2.1" strokeLinecap="round" />
-              </svg>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--ink)' }}>
-                NUOVO INGREDIENTE
-              </span>
-            </Link>
-          </div>
-        </div>
+        <SelettoreIngrediente
+          ingredienti={nonAncoraNelPiatto}
+          onScegli={aggiungiIngrediente}
+          onChiudi={() => setSelettore(null)}
+          hrefNuovo={`/piatti/${id}/ingredienti/nuovo`}
+          onPrimaDiCreare={riparaBozzaPrimaDiUscire}
+        />
       )}
 
       {confermaEliminazione && (
-        <div
-          onClick={() => !eliminando && setConfermaEliminazione(false)}
-          style={{
-            position: 'fixed', inset: 0, background: 'rgba(20,22,58,0.35)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: '0 24px',
-          }}
+        <FoglioDalBasso
+          etichetta="Eliminare questo piatto?"
+          onChiudi={() => setConfermaEliminazione(false)}
+          altezza="contenuto"
+          ruolo="alertdialog"
+          chiudiDalVelo={false}
         >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{ width: '100%', maxWidth: 320, background: '#FFFFFF', borderRadius: 22, padding: '22px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}
-          >
-            <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)' }}>
-              Eliminare questo piatto?
-            </div>
-            <div style={{ fontSize: 13.5, lineHeight: 1.5, color: 'var(--sec)' }}>{TESTO_ELIMINA}</div>
-            <div style={{ display: 'flex', gap: 9, marginTop: 4 }}>
-              <button
-                type="button"
-                onClick={() => setConfermaEliminazione(false)}
-                disabled={eliminando}
-                style={{
-                  flex: 1, height: 48, borderRadius: 14, fontFamily: 'var(--font-mono)', fontSize: 11,
-                  fontWeight: 700, letterSpacing: '0.08em', color: 'var(--sec)', background: 'rgba(20,22,58,0.05)',
-                }}
-              >
-                ANNULLA
-              </button>
-              <button
-                type="button"
-                onClick={confermaElimina}
-                disabled={eliminando}
-                style={{
-                  flex: 1, height: 48, borderRadius: 14, fontFamily: 'var(--font-mono)', fontSize: 11,
-                  fontWeight: 700, letterSpacing: '0.08em', color: '#FFFFFF', background: 'var(--ink)',
-                }}
-              >
-                ELIMINA
-              </button>
-            </div>
-          </div>
-        </div>
+          <DialogoConferma
+            titolo="Eliminare questo piatto?"
+            testo={TESTO_ELIMINA}
+            azione="ELIMINA"
+            tono="distruttivo"
+            erroreTesto={ERRORE_ELIMINA}
+            onConferma={confermaElimina}
+            onAnnulla={() => setConfermaEliminazione(false)}
+          />
+        </FoglioDalBasso>
       )}
-    </Cornice>
-  );
-}
-
-
-/** Sola consultazione: il piano del nutrizionista si legge senza rischiare di cambiarlo. */
-function VistaPiatto({ nome, pasto, settimana, giorno, righe, onModifica, onIndietro }: {
-  nome: string;
-  pasto: string;
-  settimana: string | null;
-  giorno: string | null;
-  righe: { id: string; testo: string }[];
-  onModifica: () => void;
-  onIndietro: () => void;
-}) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '16px 18px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <button
-          type="button"
-          onClick={onIndietro}
-          aria-label="Indietro"
-          style={{ width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-            <path d="M12.5 4 6.5 10l6 6" stroke="var(--ink)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          onClick={onModifica}
-          style={{
-            height: 40, padding: '0 18px', borderRadius: 999, background: 'var(--ink)',
-            fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.1em', color: '#FFFFFF',
-          }}
-        >
-          MODIFICA
-        </button>
-      </div>
-      <h1 style={{ margin: 0, fontSize: 34, fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.05, color: 'var(--ink)' }}>
-        {nome}
-      </h1>
-      <p style={{ margin: 0, fontFamily: 'var(--font-mono)', fontSize: 10.5, letterSpacing: '0.08em', color: 'var(--sec)' }}>
-        {[pasto, settimana, giorno].filter(Boolean).join(' · ').toUpperCase()}
-      </p>
-      {/* Spec §C: "per 1 porzione" accanto all'elenco, stesso stile
-          mono-uppercase della riga meta sopra (mai la stessa riga: qui non
-          c'è un'intestazione INGREDIENTI come nell'editor da cui pendere). */}
-      <p style={{ margin: '-8px 0 0', fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.1em', color: 'var(--sec)' }}>
-        PER 1 PORZIONE
-      </p>
-      <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {righe.map((r) => (
-          <li
-            key={r.id}
-            style={{
-              padding: '12px 14px', borderRadius: 14, background: '#FFFFFF',
-              border: '1px solid rgba(20,22,58,0.07)', fontSize: 15.5, fontWeight: 600, color: 'var(--ink)',
-            }}
-          >
-            {r.testo}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function EtichettaCampo({ children, margine = '0 0 7px' }: { children: ReactNode; margine?: string }) {
-  return (
-    <div style={{ margin: margine, fontFamily: 'var(--font-mono)', fontSize: 8.5, letterSpacing: '0.11em', color: 'var(--ter)' }}>
-      {children}
-    </div>
+    </TestataModifica>
   );
 }
 
@@ -1295,7 +862,11 @@ interface OpzionePillola {
  *
  * L'area di tap è 44px anche se la pillola disegnata è più bassa, come in
  * Segmento: la regola dei bersagli vale ovunque, non solo dove il disegno è
- * già abbastanza alto.
+ * già abbastanza alto. Dalla fase 7 la pillola è anche larga almeno 44
+ * (`minWidth`, prima 42): il bottone è largo quanto lei, e le pillole di una
+ * cifra della settimana del giro (`1`, `2`) davano un bersaglio di 42. Dalla
+ * fase 7 la pillola spenta è bianca (DESIGN.md §8 Pillole d'azione): il
+ * riquadro bianco che la conteneva non c'è più.
  */
 function Pillole({ opzioni, valore, onCambia, gruppo, aCapo = false }: {
   opzioni: OpzionePillola[];
@@ -1327,11 +898,11 @@ function Pillole({ opzioni, valore, onCambia, gruppo, aCapo = false }: {
               <span
                 style={{
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  minWidth: 42, height: 36, padding: '0 12px', borderRadius: 999,
+                  minWidth: 44, height: 36, padding: '0 12px', borderRadius: 999,
                   fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: attivo ? 700 : 500,
                   letterSpacing: '0.09em',
-                  color: attivo ? '#FFFFFF' : 'var(--sec)',
-                  background: attivo ? 'var(--ink)' : 'var(--fondo)',
+                  color: attivo ? 'var(--superficie)' : 'var(--sec)',
+                  background: attivo ? 'var(--ink)' : 'var(--superficie)',
                   border: attivo ? 'none' : '1px solid rgba(20,22,58,0.09)',
                 }}
               >
@@ -1341,58 +912,6 @@ function Pillole({ opzioni, valore, onCambia, gruppo, aCapo = false }: {
           );
         })}
       </div>
-    </div>
-  );
-}
-
-/**
- * L'header minimale degli artboard Piatto/VuotoPiatto: freccia indietro,
- * etichetta centrale, icona a destra. Non è Testata (quella è per le
- * schermate di casa, con marchio e titolo a 52px).
- *
- * Il cestino è quello dell'artboard e deve fare qualcosa di vero: quando
- * `onCestino` non è passato (in caricamento, o piatto non trovato) resta un
- * bottone disattivato — un controllo che sembra fare qualcosa senza fare
- * niente è peggio di uno assente.
- */
-function Cornice({ children, onCestino, cestinoAttivo = true }: { children?: ReactNode; onCestino?: () => void; cestinoAttivo?: boolean }) {
-  const attivo = cestinoAttivo && !!onCestino;
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <div style={{ padding: '18px 16px 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Link
-          href="/piatti"
-          style={{ width: 44, height: 44, margin: '0 0 0 -10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <svg width="23" height="23" viewBox="0 0 24 24" fill="none">
-            <path d="M14.5 5 7.8 12l6.7 7" stroke="var(--ink)" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </Link>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--sec)' }}>
-          PIATTO
-        </span>
-        <button
-          type="button"
-          onClick={onCestino}
-          disabled={!attivo}
-          aria-label="Elimina piatto"
-          style={{
-            width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 -10px 0 0', background: 'transparent', opacity: attivo ? 1 : 0.35,
-          }}
-        >
-          <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M4.6 6.6h14.8M9.6 6.6V4.4h4.8v2.2M6.6 6.6l.9 12.2a1.4 1.4 0 0 0 1.4 1.3h6.2a1.4 1.4 0 0 0 1.4-1.3l.9-12.2"
-              stroke="var(--ink)"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
-      </div>
-      {children}
     </div>
   );
 }

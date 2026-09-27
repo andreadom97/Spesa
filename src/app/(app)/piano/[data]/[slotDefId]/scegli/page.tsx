@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
-import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import type { AreaId, ClasseResiduo, Componente, Dish, Ingredient, MealSlot, MealSlotDef, OpzioneComponente, PantryState, Scelta, StatoSlot } from '@/domain/types';
 import { leggiRepertorio, leggiIngredienti } from '@/data/repertorio';
@@ -10,19 +9,28 @@ import { leggiSlotDefs, leggiImpostazioni } from '@/data/impostazioni';
 import { leggiDispensa } from '@/data/dispensa';
 import { leggiListe } from '@/data/lista';
 import { giorniTra, lunediDi } from '@/domain/date';
-import { coloreArea } from '@/domain/aree';
 import { residuoUtilizzabile } from '@/domain/pantry';
 import { confezioniNecessarie } from '@/domain/confezioni';
 import { convertiInUnitaBase } from '@/domain/unita';
 import { conflittiSostituzione, type ConflittiSostituzioneInput, type ConflittoResiduo, type VoceListaConflitto } from '@/domain/conflitto';
 import { etichettaScadenza } from '@/domain/scadenza';
 import { formattaQuantita } from '@/domain/risparmio';
+import { areeDelPiatto, cercaPiatti } from '@/domain/ricerca-piatti';
+import { Testata } from '@/components/Testata';
+import { Dock, ErroreSopraDock } from '@/components/Dock';
+import { RigaPiatto } from '@/components/RigaPiatto';
+import { CampoRicercaPiatti } from '@/components/CampoRicercaPiatti';
+import { VuotoRicercaPiatti } from '@/components/VuotoRicercaPiatti';
+import { AggiungiTratteggiato } from '@/components/AggiungiTratteggiato';
+import { MessaggioErrore } from '@/components/controlli';
+import { RigaImpostazione } from '@/components/pannello/RigaImpostazione';
+import { Carico, Nota } from '@/components/pannello/pezzi';
 
 const GIORNI = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
 
 interface DatiScegli {
   slotId: string;
-  /** Piatto assegnato allo slot al caricamento: mostra il badge "ORA IN PROGRAMMA" e serve da riferimento per capire se qualcosa è cambiato. */
+  /** Piatto assegnato allo slot al caricamento: dice "ORA IN PROGRAMMA" nella sua sottoriga e serve da riferimento per capire se qualcosa è cambiato. */
   dishIdOriginale: string | null;
   /**
    * Stato dello slot al caricamento. Serve solo a `confermaScelta`: su uno
@@ -174,22 +182,6 @@ function conflittiSenzaEsplodere(i: ConflittiSostituzioneInput): ConflittoResidu
 }
 
 /**
- * Le aree distinte presenti negli ingredienti del piatto, nell'ordine
- * impostato dall'utente — allineata a `areeDelPiatto` di
- * `src/app/(app)/piatti/page.tsx`: la stessa informazione (quali reparti
- * tocca un piatto) deve comparire nello stesso ordine in entrambe le
- * schermate, non in un ordine fisso diverso da schermata a schermata.
- */
-function areeDelPiatto(piatto: Dish, areaPerIngrediente: Map<string, AreaId>, ordineAree: AreaId[]): AreaId[] {
-  const presenti = new Set(
-    piatto.ingredienti
-      .map((i) => areaPerIngrediente.get(i.ingredientId))
-      .filter((a): a is AreaId => a !== undefined),
-  );
-  return ordineAree.filter((a) => presenti.has(a));
-}
-
-/**
  * L'opzione attualmente in vigore per un componente: quella scelta, o la
  * prima (il default) quando nessuna scelta è registrata — stesso criterio di
  * `righeEffettive`/`descriviScelte` in `src/domain/opzioni.ts`. Se la scelta
@@ -312,12 +304,28 @@ function scelteManualiDaMandare(
   return Object.keys(scelte).length > 0 ? scelte : undefined;
 }
 
+/** Il ritorno al Piano: la pillola della Testata in modo indietro (spec fase 7 §A.2). */
+type Indietro = { etichetta: string; ariaLabel: string; onTorna: () => void };
+
+/**
+ * `IN CASA` nella nota della Riga di impostazione del componente (spec §A.4): mono 10
+ * in --ink. Fra i token non c'è un verde, e §C non vuole famiglie nuove.
+ */
+const STILE_IN_CASA = {
+  fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: 'var(--ink)',
+} as const;
+
 /**
  * Scegli il piatto: sostituzione per-pasto, non per-piatto. Nasce dal pasto
  * (data + slotDefId dalla rotta), mostra solo i piatti attivi di quello slot
  * e scrive solo `meal_slot.dish_id` di quel singolo slot — non tocca mai il
- * repertorio. Il marchio non compare in questa schermata (niente Testata,
- * come in Piatto): l'header è quello minimale dell'artboard.
+ * repertorio.
+ *
+ * Dalla fase 7 è una schermata del sistema (spec 2026-09-26 §A): la Testata in
+ * modo indietro con la pillola del giorno e del pasto, la ricerca e le righe di
+ * Piatti (la riga in modo «scegli»), i componenti come Righe di impostazione e
+ * `SOSTITUISCI` nel Dock. I dati non cambiano: stesso caricamento, stessa
+ * scelta, stesso patch di `aggiornaSlot`.
  */
 export default function ScegliPiatto() {
   const { data: dataParam, slotDefId } = useParams<{ data: string; slotDefId: string }>();
@@ -329,6 +337,8 @@ export default function ScegliPiatto() {
   const [scelteCorrenti, setScelteCorrenti] = useState<Record<string, Scelta>>({});
   const [salvando, setSalvando] = useState(false);
   const [erroreSalva, setErroreSalva] = useState<string | null>(null);
+  /** Il testo della ricerca: filtra le righe, non tocca la scelta (spec §A.3). */
+  const [ricerca, setRicerca] = useState('');
 
   useEffect(() => {
     let vivo = true;
@@ -445,27 +455,39 @@ export default function ScegliPiatto() {
     }
   }
 
-  const { maiuscolo, minuscolo, numero } = etichettaGiorno(dataParam);
-  const etichettaGiornoTesto = maiuscolo ? `${maiuscolo} ${numero}` : '';
+  const { minuscolo, numero } = etichettaGiorno(dataParam);
+  const indietro: Indietro = { etichetta: 'PIANO', ariaLabel: 'Torna al piano', onTorna: () => router.push('/piano') };
 
   if (errore) {
     return (
-      <Cornice etichetta={etichettaGiornoTesto}>
-        <p style={{ margin: '20px 18px', color: 'var(--sec)' }}>{errore}</p>
+      <Cornice indietro={indietro}>
+        <div style={{ padding: '6px 16px' }}>
+          <MessaggioErrore>{errore}</MessaggioErrore>
+        </div>
       </Cornice>
     );
   }
 
   if (!dati) {
-    // Nessuno stato di caricamento nell'artboard: l'header basta finché i dati non arrivano.
-    return <Cornice etichetta={etichettaGiornoTesto} />;
+    // Come in Fine spesa (spec §A.6): la Testata è già disegnata, sotto una riga sola.
+    return (
+      <Cornice indietro={indietro}>
+        <div style={{ padding: '6px 16px' }}>
+          <Carico />
+        </div>
+      </Cornice>
+    );
   }
 
   const cambiato = ilPiattoOLeScelteSonoCambiate(dati, scelto, scelteCorrenti);
-  const etichettaHeader = etichettaGiornoTesto ? `${etichettaGiornoTesto} · ${dati.nomePasto.toUpperCase()}` : dati.nomePasto.toUpperCase();
+  // La pillola sotto il titolo (spec §A.2): «Giovedì 27 · Cena» in sentence case, la
+  // maiuscola la mette la Testata. Con una data illeggibile resta il solo pasto, come oggi.
+  const giorno = minuscolo ? `${minuscolo.charAt(0).toUpperCase()}${minuscolo.slice(1)} ${numero}` : '';
+  const pillola = giorno ? `${giorno} · ${dati.nomePasto}` : dati.nomePasto;
   const dishSelezionato = dati.piatti.find((p) => p.id === scelto) ?? null;
   const dispensaPerId = new Map(dati.dispensa.map((d) => [d.ingredientId, d]));
   const oggi = new Date().toISOString().slice(0, 10);
+  const ingredienti = [...dati.ingredientiPerId.values()];
   const conflitti = cambiato && dishSelezionato
     ? conflittiSenzaEsplodere({
       slot: dati.slot,
@@ -473,7 +495,7 @@ export default function ScegliPiatto() {
       scelte: scelteCorrenti,
       slots: dati.slots,
       dishes: dati.tuttiIPiatti,
-      ingredients: [...dati.ingredientiPerId.values()],
+      ingredients: ingredienti,
       pantry: dati.dispensa,
       impostazioni: { moltiplicatorePorzioni: dati.moltiplicatorePorzioni },
       statoSettimana: dati.statoSettimana,
@@ -481,276 +503,112 @@ export default function ScegliPiatto() {
       oggi,
     })
     : [];
+  // L'ordine e il filtro di Piatti (spec §A.3). Il piatto scelto può uscire dal filtro:
+  // resta scelto, e i suoi componenti restano sotto.
+  const mostrati = cercaPiatti(dati.piatti, ingredienti, ricerca);
 
   return (
-    <Cornice etichetta={etichettaHeader}>
-      <div className="sc scroll-app con-piede" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 16px' }}>
-        <div style={{ fontSize: 32, fontWeight: 800, letterSpacing: '-0.045em', lineHeight: 1.05, color: 'var(--ink)', padding: '0 2px 16px' }}>
-          Cosa mangi
-        </div>
+    <Cornice indietro={indietro} settimana={pillola}>
+      {/* Fuori dallo scroller: resta ferma mentre l'elenco scorre, come in Piatti. */}
+      <CampoRicercaPiatti valore={ricerca} onCambia={setRicerca} />
 
-        <div style={{ margin: '0 4px 9px', fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--ink)' }}>
-          DAL TUO REPERTORIO
-        </div>
+      <div
+        className="sc scroll-app con-dock"
+        style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '2px 16px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}
+      >
+        {mostrati.map((p) => (
+          <RigaPiatto
+            key={p.id}
+            piatto={p}
+            aree={dati.areePerPiatto.get(p.id) ?? []}
+            modo="scegli"
+            scelto={scelto === p.id}
+            corrente={dati.dishIdOriginale === p.id}
+            onScegli={() => setScelto(p.id)}
+          />
+        ))}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {dati.piatti.map((p) => {
-            const selezionato = scelto === p.id;
-            const corrente = dati.dishIdOriginale === p.id;
-            const aree = dati.areePerPiatto.get(p.id) ?? [];
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => setScelto(p.id)}
-                aria-pressed={selezionato}
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: '15px 16px',
-                  borderRadius: 20,
-                  background: '#FFFFFF',
-                  border: selezionato ? '1.5px solid var(--ink)' : '1px solid var(--bordo)',
-                }}
-              >
-                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {corrente && (
-                    <span
-                      style={{
-                        alignSelf: 'flex-start',
-                        fontFamily: 'var(--font-mono)',
-                        fontSize: 8,
-                        fontWeight: 700,
-                        letterSpacing: '0.11em',
-                        color: '#FFFFFF',
-                        background: 'var(--ink)',
-                        borderRadius: 999,
-                        padding: '4px 8px',
-                      }}
-                    >
-                      ORA IN PROGRAMMA
-                    </span>
-                  )}
-                  <span
-                    style={{
-                      fontSize: 17,
-                      fontWeight: 700,
-                      letterSpacing: '-0.03em',
-                      lineHeight: 1.15,
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      color: 'var(--ink)',
-                    }}
-                  >
-                    {p.nome}
-                  </span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ display: 'flex', gap: 3 }}>
-                      {aree.map((a) => (
-                        <span
-                          key={a}
-                          data-area={a}
-                          style={{ width: 8, height: 8, borderRadius: 2.6, display: 'inline-block', background: coloreArea(a) }}
-                        />
-                      ))}
+        {/* Il vuoto di ricerca di Piatti, lo stesso pezzo (Task 1). Solo se il pasto ha dei
+            piatti: senza, il vuoto non è della ricerca, e sotto c'è già CREA UN PIATTO NUOVO,
+            come oggi. */}
+        {mostrati.length === 0 && dati.piatti.length > 0 && <VuotoRicercaPiatti />}
+
+        {/* Sotto l'elenco (spec §A.4): componenti, conflitti e nota. Distacchi a margine e
+            non a gap, perché la regione dei conflitti c'è anche vuota. */}
+        <div style={{ flexShrink: 0, marginTop: 8, display: 'flex', flexDirection: 'column' }}>
+          {dishSelezionato && dishSelezionato.componenti.length > 0 && (
+            <section style={{ display: 'flex', flexDirection: 'column', gap: 9, marginBottom: 14 }}>
+              <h2 style={{ margin: 0, padding: '0 4px', fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--ink)' }}>
+                COMPONENTI
+              </h2>
+              {/* Il widget bianco, raggio 22: una Riga di impostazione per componente, col
+                  filetto fra l'una e l'altra come nel Blocco di gruppo. Il tocco passa
+                  all'opzione dopo, senza foglio, come oggi. */}
+              <div style={{ background: 'var(--superficie)', border: '1px solid var(--bordo)', borderRadius: 22, boxShadow: 'var(--ombra-pannello)', padding: '4px 12px' }}>
+                {dishSelezionato.componenti.map((componente, i) => {
+                  const opzione = opzioneCorrente(componente, scelteCorrenti);
+                  const nomeOpz = nomeOpzione(opzione, dati.nomePerIngrediente);
+                  const inCasa = opzioneInCasa(opzione, dati.ingredientiPerId, dispensaPerId, dati.moltiplicatorePorzioni, oggi);
+                  return (
+                    <div key={componente.id} style={{ borderTop: i > 0 ? '1px solid var(--bordo)' : 'none' }}>
+                      <RigaImpostazione
+                        nome={componente.nome}
+                        etichetta={`Cambia ${componente.nome}: ora ${nomeOpz}`}
+                        nota={inCasa ? <span style={STILE_IN_CASA}>IN CASA</span> : undefined}
+                        finale={{ tipo: 'valore', valore: nomeOpz, onApri: () => toccaComponente(componente) }}
+                      />
                     </div>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.09em', color: 'var(--ter)' }}>
-                      {p.ingredienti.length} INGR.
-                    </span>
-                  </div>
-                </div>
-                <span
-                  style={{
-                    width: 24,
-                    height: 24,
-                    flex: 'none',
-                    borderRadius: 999,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: selezionato ? 'var(--ink)' : 'transparent',
-                    border: selezionato ? 'none' : '1.5px solid rgba(20,22,58,0.20)',
-                  }}
-                >
-                  {selezionato && (
-                    <svg width="13" height="13" viewBox="0 0 20 20" fill="none">
-                      <path d="M4.5 10.5 8.2 14 15.5 6.4" stroke="#FFFFFF" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        {dishSelezionato && dishSelezionato.componenti.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 14 }}>
-            {dishSelezionato.componenti.map((componente) => {
-              const opzione = opzioneCorrente(componente, scelteCorrenti);
-              const inCasa = opzioneInCasa(opzione, dati.ingredientiPerId, dispensaPerId, dati.moltiplicatorePorzioni, oggi);
-              return (
-                <button
-                  key={componente.id}
-                  type="button"
-                  onClick={() => toccaComponente(componente)}
-                  aria-label={`Cambia ${componente.nome}: ora ${nomeOpzione(opzione, dati.nomePerIngrediente)}`}
-                  style={{
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    padding: '15px 16px',
-                    borderRadius: 20,
-                    background: '#FFFFFF',
-                    border: '1px solid var(--bordo)',
-                  }}
-                >
-                  <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--ink)' }}>
-                      {componente.nome.toUpperCase()}
-                    </span>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--sec)' }}>
-                      {nomeOpzione(opzione, dati.nomePerIngrediente)}
-                    </span>
-                    {inCasa && (
-                      <span
-                        style={{
-                          alignSelf: 'flex-start',
-                          fontFamily: 'var(--font-mono)',
-                          fontSize: 8,
-                          fontWeight: 700,
-                          letterSpacing: '0.11em',
-                          color: '#FFFFFF',
-                          background: 'var(--ink)',
-                          borderRadius: 999,
-                          padding: '4px 8px',
-                        }}
-                      >
-                        IN CASA
-                      </span>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {conflitti.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, margin: '14px 6px 0' }}>
-            {conflitti.map((c) => (
-              <div key={c.ingredientId} style={{ fontSize: 12.5, lineHeight: 1.45, fontWeight: 600, color: 'var(--ink-2)' }}>
-                {testoConflitto(c, dati.slotDefs, oggi)}
+                  );
+                })}
               </div>
+            </section>
+          )}
+
+          {/* L'Avviso in linea (DESIGN.md §8 Messaggi): la regione aria-live c'è sempre,
+              così il primo conflitto che compare dopo un tocco viene annunciato. */}
+          <div aria-live="polite" style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '0 4px', marginBottom: conflitti.length > 0 ? 12 : 0 }}>
+            {conflitti.map((c) => (
+              <p key={c.ingredientId} style={{ margin: 0, fontSize: 11.5, lineHeight: 1.45, color: 'var(--avviso)' }}>
+                {testoConflitto(c, dati.slotDefs, oggi)}
+              </p>
             ))}
           </div>
-        )}
 
-        <Link
-          href="/piatti/nuovo"
-          style={{
-            marginTop: 14,
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 9,
-            minHeight: 52,
-            borderRadius: 18,
-            background: 'transparent',
-            border: '1.5px dashed rgba(20,22,58,0.28)',
-          }}
-        >
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
-            <path d="M12 5v14M5 12h14" stroke="var(--sec)" strokeWidth="2.1" strokeLinecap="round" />
-          </svg>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.11em', color: 'var(--sec)' }}>
-            CREA UN PIATTO NUOVO
-          </span>
-        </Link>
-
-        <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'var(--sec)', margin: '16px 6px 0' }}>
-          {testoNota(cambiato, dati.nomePasto, minuscolo)}
+          <Nota>{testoNota(cambiato, dati.nomePasto, minuscolo)}</Nota>
         </div>
 
-        {erroreSalva && <p style={{ margin: '10px 6px 0', fontSize: 12.5, color: 'var(--sec)' }}>{erroreSalva}</p>}
+        {/* L'Aggiungi tratteggiato condiviso con Piatti (DESIGN.md §8 Tasti). In fondo e
+            non in cima come in Piatti: qui si sceglie, creare è l'eccezione (spec §A.3).
+            Il contenitore dà gli 8 in più di distacco dalla nota. */}
+        <div style={{ flexShrink: 0, marginTop: 8 }}>
+          <AggiungiTratteggiato etichetta="CREA UN PIATTO NUOVO" href="/piatti/nuovo" />
+        </div>
       </div>
 
-      <div className="coda-barra" style={{ padding: '8px 16px 22px', display: 'flex', gap: 9 }}>
-        <Link
-          href="/piano"
-          style={{
-            flex: 'none',
-            width: 104,
-            height: 54,
-            borderRadius: 18,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontFamily: 'var(--font-mono)',
-            fontSize: 11.5,
-            fontWeight: 700,
-            letterSpacing: '0.09em',
-            color: 'var(--sec)',
-            background: 'rgba(20,22,58,0.05)',
-          }}
-        >
-          ANNULLA
-        </Link>
-        <button
-          type="button"
-          onClick={confermaScelta}
-          disabled={!cambiato || salvando}
-          style={{
-            flex: 1,
-            height: 54,
-            borderRadius: 18,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontFamily: 'var(--font-mono)',
-            fontSize: 12,
-            fontWeight: 700,
-            letterSpacing: '0.09em',
-            background: cambiato ? 'var(--ink)' : 'rgba(20,22,58,0.10)',
-            boxShadow: cambiato ? '0 3px 10px rgba(20,22,58,0.24)' : 'none',
-            color: cambiato ? '#FFFFFF' : 'var(--ter)',
-            opacity: salvando ? 0.7 : 1,
-          }}
-        >
+      <Dock>
+        {/* Sopra il Dock, come nell'editor dell'ingrediente: fuori dalla pillola, su fondo
+            bianco, perché sotto scorre la pagina. */}
+        {erroreSalva && <ErroreSopraDock>{erroreSalva}</ErroreSopraDock>}
+        {/* Spento finché niente cambia e in volo: lo spento di `.dock-primario:disabled`
+            (DESIGN.md §13, 26/09, punto 6), nessuna opacità. */}
+        <button type="button" className="dock-primario" onClick={() => void confermaScelta()} disabled={!cambiato || salvando}>
           SOSTITUISCI
         </button>
-      </div>
+      </Dock>
     </Cornice>
   );
 }
 
 /**
- * Header minimale dell'artboard: freccia indietro, etichetta centrale
- * ("GIOVEDÌ 4 · CENA"), spaziatore a destra per tenere l'etichetta centrata.
- * Torna sempre a `/piano`: questa schermata si apre solo da lì.
+ * Colonna a tutta altezza con la Testata fissa in cima (titolo `Cosa mangi`, pillola
+ * `PIANO`, sotto la pillola del giorno e del pasto): solo il corpo passato come children
+ * scorre. Sostituisce l'intestazione minimale e il tasto secondario del piede di prima:
+ * portavano tutti e due a `/piano`, come la pillola.
  */
-function Cornice({ etichetta, children }: { etichetta: string; children?: ReactNode }) {
+function Cornice({ settimana, indietro, children }: { settimana?: string; indietro: Indietro; children?: ReactNode }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <div style={{ padding: '18px 16px 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Link
-          href="/piano"
-          aria-label="Torna al Piano"
-          style={{ width: 44, height: 44, margin: '0 0 0 -10px', flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <svg width="23" height="23" viewBox="0 0 24 24" fill="none">
-            <path d="M14.5 5 7.8 12l6.7 7" stroke="var(--ink)" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </Link>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--sec)' }}>
-          {etichetta}
-        </span>
-        <div style={{ width: 44, height: 44, flex: 'none' }} />
-      </div>
+      <Testata titolo="Cosa mangi" settimana={settimana} indietro={indietro} />
       {children}
     </div>
   );
