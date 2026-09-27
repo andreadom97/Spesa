@@ -157,6 +157,9 @@ describe('Piatto (editor)', () => {
     fireEvent.click(screen.getByRole('button', { name: /AGGIUNGI\s*INGREDIENTE/ }));
     fireEvent.click(await screen.findByText('Yogurt greco'));
 
+    // Prove dal telefono della fase 7: il fuoco va subito sulla grammatura nuova.
+    expect(screen.getByLabelText('Grammatura di Yogurt greco')).toHaveFocus();
+
     // Quantita 0 appena aggiunto: il salvataggio resta bloccato, e la
     // tessera segnala quale ingrediente è il problema.
     expect(salva()).toBeDisabled();
@@ -537,6 +540,8 @@ describe('Piatto (editor)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: "Aggiungi ingrediente all'opzione 1 del componente 1" }));
     fireEvent.click(await screen.findByText("Fiocchi d'avena"));
+    // Anche nelle opzioni il fuoco va sulla grammatura appena aggiunta.
+    expect(screen.getByLabelText("Grammatura di Fiocchi d'avena")).toHaveFocus();
     fireEvent.change(screen.getByLabelText("Grammatura di Fiocchi d'avena"), { target: { value: '40' } });
 
     fireEvent.click(salva());

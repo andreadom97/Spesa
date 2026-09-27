@@ -18,6 +18,23 @@ function rendi(extra: Partial<Parameters<typeof TesseraIngrediente>[0]> = {}) {
 }
 
 describe('TesseraIngrediente', () => {
+  // Prove dal telefono della fase 7: appena aggiunto un ingrediente non si capiva
+  // dove scrivere la grammatura.
+  it('appena aggiunta: il fuoco va sulla grammatura, selezionata, e la pillola chiama', () => {
+    rendi({ quantita: 0, appenaAggiunta: true });
+    const campo = screen.getByLabelText('Grammatura di Olio di semi') as HTMLInputElement;
+    expect(campo).toHaveFocus();
+    expect(campo.selectionStart ?? 0).toBe(0);
+    expect(campo.closest('.anim-chiamata')).not.toBeNull();
+  });
+
+  it('senza appenaAggiunta niente fuoco e niente anello', () => {
+    rendi();
+    const campo = screen.getByLabelText('Grammatura di Olio di semi');
+    expect(campo).not.toHaveFocus();
+    expect(campo.closest('.anim-chiamata')).toBeNull();
+  });
+
   it('senza hrefModifica non mostra alcun accesso all\'ingrediente', () => {
     rendi();
     expect(screen.queryByRole('link', { name: 'Modifica Olio di semi' })).toBeNull();

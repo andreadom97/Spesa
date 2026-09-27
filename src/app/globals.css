@@ -142,6 +142,10 @@
   @keyframes anim-fade { from { opacity: 0; } to { opacity: 1; } }
   /* I reparti finiti che scendono in fondo alla Lista (FLIP, useRiordinoAnimato). */
   .anim-riordino { transition: transform 220ms var(--curva-barra); }
+  /* La pillola della grammatura appena aggiunta: un anello che si allarga e sparisce, due
+     volte. Causa: l'aggiunta dal selettore (prove dal telefono, fase 7). `--anello` è inline. */
+  .anim-chiamata { animation: anim-chiamata 250ms ease-out 2; }
+  @keyframes anim-chiamata { from { box-shadow: 0 0 0 0 var(--anello); } to { box-shadow: 0 0 0 8px transparent; } }
 }
 
 /* ---------- guscio comune (spec 20/09 §B) ---------- */

@@ -173,6 +173,9 @@ export default function Piatto() {
     { tipo: 'principale' } | { tipo: 'opzione'; componenteId: string; opzioneId: string } | null
   >(null);
   const [confermaEliminazione, setConfermaEliminazione] = useState(false);
+  // La riga appena aggiunta dal selettore (`principale:{id}` o `{opzioneId}:{id}`): la sua
+  // tessera prende il fuoco sulla grammatura e la pillola chiama (prove dal telefono, fase 7).
+  const [appenaAggiunta, setAppenaAggiunta] = useState<string | null>(null);
   const nomeRef = useRef<HTMLTextAreaElement>(null);
 
   // Da dove si è arrivati, e quindi dove tornare (review finale, I1): il Piano apre
@@ -313,8 +316,10 @@ export default function Piatto() {
     if (!selettore) return;
     if (selettore.tipo === 'principale') {
       setIngredienti((prev) => [...prev, { ingredientId: ing.id, quantita: 0, unita: ing.unitaBase }]);
+      setAppenaAggiunta(`principale:${ing.id}`);
     } else {
       aggiungiRigaOpzione(selettore.componenteId, selettore.opzioneId, ing);
+      setAppenaAggiunta(`${selettore.opzioneId}:${ing.id}`);
     }
     setSelettore(null);
   }
@@ -674,6 +679,7 @@ export default function Piatto() {
                     quantitaValida={!quantitaNonValide.has(riga.ingredientId)}
                     hrefModifica={`/piatti/${id}/ingredienti/${riga.ingredientId}`}
                     onPrimaDiModificare={riparaBozzaPrimaDiUscire}
+                    appenaAggiunta={appenaAggiunta === `principale:${riga.ingredientId}`}
                   />
                 );
               })}
@@ -721,6 +727,7 @@ export default function Piatto() {
             onAggiungiIngrediente={(componenteId, opzioneId) => setSelettore({ tipo: 'opzione', componenteId, opzioneId })}
             onCambiaQuantita={cambiaQuantitaOpzione}
             onRimuoviRiga={rimuoviRigaOpzione}
+            appenaAggiunta={appenaAggiunta}
           />
         </Blocco>
 

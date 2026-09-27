@@ -364,6 +364,11 @@ esistono:
   salgono (FLIP: ogni widget parte dalla posizione vecchia e scivola nella nuova), `transform`
   in **220 ms** `cubic-bezier(.2,.8,.25,1)`. Causa: la spunta dell'ultima voce. Con
   `prefers-reduced-motion: reduce` il riordino è immediato. **[aggiunto 26/09]**
+- **`.anim-chiamata`** — la pillola della grammatura di una tessera appena aggiunta dal
+  selettore dell'editor del Piatto: un anello nel colore della pillola (alfa 0,45, la stessa del bordo della tessera, §2.5) che si
+  allarga da 0 a 8 px e sparisce, **250 ms** `ease-out`, **due volte**. Causa: l'aggiunta.
+  Insieme il fuoco va sul campo, col testo selezionato. Con `prefers-reduced-motion: reduce`
+  resta solo il fuoco. **[aggiunto 27/09, prove dal telefono della fase 7]**
 - **`.anim-barra`** — la tab bar che si restringe e il Dock che la segue, **200 ms**
   `cubic-bezier(.2,.8,.25,1)`, opacità delle etichette in 150 ms lineari. Si animano `width` e
   `height` della pillola (dal 25/09; prima `left` e `right`). Il gesto è lo **scorrimento**:

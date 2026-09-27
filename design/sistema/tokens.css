@@ -107,6 +107,7 @@
   --moto-foglio: 200ms;               /* .anim-foglio: il foglio che sale dal basso */
   --moto-apparsa: 180ms;              /* .anim-apparsa: comparsa di un elemento nuovo */
   --moto-giorno: 160ms;               /* .anim-giorno: cambio di giorno nella Settimana */
+  --moto-chiamata: 250ms;             /* .anim-chiamata: l'anello sulla grammatura appena aggiunta, due volte */
   --moto-easing: ease;                /* easing standard, nessuna curva d'autore */
   --moto-barra: 200ms;                /* .anim-barra: la tab bar che si restringe e il dock che la segue */
   --curva-barra: cubic-bezier(.2, .8, .25, 1);  /* la curva del ridisegno: parte pronta e decelera, usata da barra, dock e scatto */

@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { AreaId, UnitaMisura } from '@/domain/types';
 import { coloreArea, nomeArea } from '@/domain/aree';
@@ -26,6 +26,12 @@ interface Props {
   hrefModifica?: string;
   /** Chiamata prima di seguire `hrefModifica`: serve a mettere al riparo la bozza del piatto, che vive solo in memoria. */
   onPrimaDiModificare?: () => void;
+  /**
+   * La tessera nasce da un'aggiunta dal selettore (prove dal telefono della fase 7: non si
+   * capiva dove scrivere la grammatura). Al montaggio il fuoco va sul campo, col testo
+   * selezionato così la prima cifra sostituisce lo 0, e la pillola fa `.anim-chiamata`.
+   */
+  appenaAggiunta?: boolean;
 }
 
 /**
@@ -86,11 +92,20 @@ export function TesseraIngrediente({
   quantitaValida = true,
   hrefModifica,
   onPrimaDiModificare,
+  appenaAggiunta = false,
 }: Props) {
   const colore = coloreArea(area);
   const coloreBordo = quantitaValida ? colore : COLORE_NON_VALIDA;
   const [testoQuantita, setTestoQuantita] = useState(String(quantita));
   const idQuantita = useId();
+  const campoRef = useRef<HTMLInputElement>(null);
+  // Solo al montaggio: la tessera nuova nasce con la chiave del suo ingrediente.
+  useEffect(() => {
+    if (!appenaAggiunta) return;
+    campoRef.current?.focus();
+    campoRef.current?.select();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const chiave = trovaIcona(nome);
 
   function cambiaTesto(valore: string) {
@@ -184,7 +199,10 @@ export function TesseraIngrediente({
         }}
       >
         <span
+          className={appenaAggiunta ? 'anim-chiamata' : undefined}
           style={{
+            // Il colore dell'anello di `.anim-chiamata`: quello del bordo della tessera (alfa 0,45, DESIGN.md §2.5).
+            ['--anello' as string]: rgba(coloreBordo, 0.45),
             display: 'inline-flex',
             alignItems: 'center',
             gap: 3,
@@ -199,6 +217,7 @@ export function TesseraIngrediente({
           }}
         >
           <input
+            ref={campoRef}
             id={idQuantita}
             type="number"
             inputMode="decimal"
