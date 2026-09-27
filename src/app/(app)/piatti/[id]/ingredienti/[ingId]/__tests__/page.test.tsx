@@ -460,7 +460,9 @@ describe('Ingrediente (editor): la scansione (spec fase 5 §F.1)', () => {
     expect(await screen.findByText('Questo codice è di Tonno.')).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'APRI TONNO' }));
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/piatti/d-1/ingredienti/i-tonno'));
+    // replace: l'editor di Tonno prende il posto di questo (review delle prove dal telefono).
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/piatti/d-1/ingredienti/i-tonno'));
+    expect(push).not.toHaveBeenCalled();
   });
 
   it('NON È QUESTA toglie l\'esito e riprende la lettura', async () => {

@@ -21,11 +21,17 @@ describe('TesseraIngrediente', () => {
   // Prove dal telefono della fase 7: appena aggiunto un ingrediente non si capiva
   // dove scrivere la grammatura.
   it('appena aggiunta: il fuoco va sulla grammatura, selezionata, e la pillola chiama', () => {
-    rendi({ quantita: 0, appenaAggiunta: true });
-    const campo = screen.getByLabelText('Grammatura di Olio di semi') as HTMLInputElement;
-    expect(campo).toHaveFocus();
-    expect(campo.selectionStart ?? 0).toBe(0);
-    expect(campo.closest('.anim-chiamata')).not.toBeNull();
+    // Una spia: in jsdom `selectionStart` di un input number vale null prima e dopo `select()`.
+    const seleziona = vi.spyOn(HTMLInputElement.prototype, 'select');
+    try {
+      rendi({ quantita: 0, appenaAggiunta: true });
+      const campo = screen.getByLabelText('Grammatura di Olio di semi');
+      expect(campo).toHaveFocus();
+      expect(seleziona.mock.contexts).toContain(campo);
+      expect(campo.closest('.anim-chiamata')).not.toBeNull();
+    } finally {
+      seleziona.mockRestore();
+    }
   });
 
   it('senza appenaAggiunta niente fuoco e niente anello', () => {

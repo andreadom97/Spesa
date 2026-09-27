@@ -169,11 +169,17 @@ export function PannelloProvider({ children, attendiPrimoAvvio = false }: { chil
   // fase 7): così l'indietro di sistema dalla pagina piena ci torna col pannello aperto, perché
   // l'effetto qui sopra rilegge `?impostazioni=` al cambio di pathname, e la freccia della pagina
   // (`tornaA` verso `indirizzoRitorno()`) trova la voce prima uguale e torna indietro davvero.
-  // Con `window.history.state`, mai `null`: vedi la regola B′ nella docstring del provider.
+  //
+  // Con uno stato **senza** `__NA`, di proposito (review delle prove dal telefono): qui l'AppRouter
+  // ha già avvolto la History API, e la sua `replaceState` copia da sé `__NA` e l'albero nella voce,
+  // e porta il nuovo indirizzo anche nel suo `canonicalUrl`. Con `window.history.state` (che ha
+  // `__NA`) la chiamata passerebbe diretta al browser: Next resterebbe su `/lista`, e il commit
+  // della traversata del `go(-n)`, se arrivasse dopo questo giro, riscriverebbe `/lista` sulla voce.
+  // La regola B′ della docstring vale per l'effetto al montaggio, prima dell'avvolgimento.
   const vaiA = useCallback((href: string, origine: OriginePannello) => {
     salvaOrigine(origine);
     chiudiTuttoPoi(() => {
-      window.history.replaceState(window.history.state, '', indirizzoPannello(origine.pathname, origine.sotto));
+      window.history.replaceState({}, '', indirizzoPannello(origine.pathname, origine.sotto));
       router.push(href);
     });
     setStato(CHIUSO);

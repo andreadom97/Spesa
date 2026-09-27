@@ -56,6 +56,17 @@ describe('tornaA', () => {
     expect(router.replace).toHaveBeenCalledWith('/piatti');
   });
 
+  it('se la Navigation API lancia sostituisce, senza propagare', () => {
+    (window as unknown as { navigation: unknown }).navigation = {
+      currentEntry: { url: 'http://localhost:3000/piatti/d-1', index: 1 },
+      entries: () => { throw new Error('negata'); },
+    };
+    const router = { back: vi.fn(), replace: vi.fn() };
+    expect(() => tornaA(router, '/piatti')).not.toThrow();
+    expect(router.replace).toHaveBeenCalledWith('/piatti');
+    expect(router.back).not.toHaveBeenCalled();
+  });
+
   it("senza Navigation API (i browser che non ce l'hanno) sostituisce", () => {
     const router = { back: vi.fn(), replace: vi.fn() };
     tornaA(router, '/piano');

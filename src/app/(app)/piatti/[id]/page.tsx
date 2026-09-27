@@ -290,6 +290,8 @@ export default function Piatto() {
                 ? prev
                 : [...prev, { ingredientId: creato, quantita: 0, unita: ing.unitaBase }],
             );
+            // Come un'aggiunta dal selettore: la grammatura da scrivere chiama (review, prove dal telefono).
+            setAppenaAggiunta(`principale:${creato}`);
           }
         }
       } catch (errore) {

@@ -443,8 +443,10 @@ export default function IngredienteEditor() {
   /** APRI {altro}: il codice resta suo (fase 4 §F.2). Le modifiche di qui si perdono, come con la freccia. */
   function apriAltro(a: Ingredient) {
     const dest = `/piatti/${id}/ingredienti/${a.id}${tornaAImpostazioni ? '?torna=impostazioni' : ''}`;
-    // Il foglio ha una voce di cronologia aperta: la push parte dopo il go(-1) (spec §A.5).
-    chiudiTuttoPoi(() => router.push(dest));
+    // Il foglio ha una voce di cronologia aperta: la navigazione parte dopo il go(-1) (spec §A.5).
+    // `replace` e non `push` (review delle prove dal telefono): B prende il posto di A, così il
+    // ritorno di B (`tornaA`) trova il piatto subito prima e l'indietro di sistema non riapre A.
+    chiudiTuttoPoi(() => router.replace(dest));
     chiudiScansione();
   }
 

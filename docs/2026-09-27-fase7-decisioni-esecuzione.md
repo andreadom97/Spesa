@@ -183,6 +183,19 @@ parte delle prove. Cinque segnalazioni, con la causa trovata prima di correggere
    alternative proposte ad Andrea in una pagina di confronto; il cambio, che tocca ogni Dock, va in
    una PR a parte.
 
-Limite noto del punto 4: se una pagina si lascia con un foglio ancora aperto senza `chiudiTuttoPoi`,
+**Review del ramo (opus), un'ondata di correzioni.** Nessun bloccante. Corretti: l'ingrediente
+creato per il piatto, al rientro, prende anche lui fuoco e anello; il test della selezione ora spia
+`select()` (in jsdom `selectionStart` di un campo numerico è sempre `null`); la `replaceState` di
+`vaiA` passa **senza** `__NA`, così la gestisce Next e aggiorna il suo indirizzo canonico, e un
+commit in ritardo della traversata non può riscrivere `/lista` sulla voce d'origine (rimisurato
+nella sonda: il giro regge); APRI di un altro ingrediente sostituisce l'editor invece di
+aggiungerne uno; un test di pagina copre il ramo `back()` (ELIMINA con Piatti subito prima).
+
+Limiti noti del punto 4, lasciati di proposito:
+- **Senza Navigation API** la freccia da una pagina piena sostituisce con `?impostazioni=`: la voce
+  d'origine resta con il parametro, e se ci si torna con l'indietro di sistema il pannello non si
+  apre (stesso percorso, l'effetto del provider non gira) ma l'indirizzo lo conserva: una ricarica
+  lo aprirebbe. Chrome, che Andrea usa, ha la Navigation API.
+-  se una pagina si lascia con un foglio ancora aperto senza `chiudiTuttoPoi`,
 la voce del foglio resta, e un indietro di sistema la consuma senza effetto visibile. Era così anche
 prima.

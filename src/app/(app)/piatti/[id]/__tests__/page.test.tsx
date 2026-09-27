@@ -21,10 +21,11 @@ vi.mock('@/data/settimana', () => ({
 
 const push = vi.fn();
 const replace = vi.fn();
+const back = vi.fn();
 let paramsId = 'nuovo';
 vi.mock('next/navigation', () => ({
   useParams: () => ({ id: paramsId }),
-  useRouter: () => ({ push, back: vi.fn(), replace }),
+  useRouter: () => ({ push, back, replace }),
 }));
 
 import { salvaPiatto, leggiRepertorio, leggiIngredienti, eliminaPiatto } from '@/data/repertorio';
@@ -349,6 +350,33 @@ describe('Piatto (editor)', () => {
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/piatti'));
   });
 
+  // Il caso delle prove dal telefono: Piatti → piatto → ELIMINA. Con la voce di Piatti subito
+  // prima si torna indietro davvero, e l'indietro di sistema non ritrova il piatto eliminato.
+  it('ELIMINA con Piatti come voce prima torna indietro nella cronologia, senza aggiungere voci', async () => {
+    paramsId = 'd-1';
+    vi.mocked(leggiRepertorio).mockResolvedValue([PIATTO_ESISTENTE]);
+    vi.mocked(eliminaPiatto).mockResolvedValue(undefined);
+    (window as unknown as { navigation: unknown }).navigation = {
+      currentEntry: { url: 'http://localhost:3000/piatti/d-1?da=piatti', index: 1 },
+      entries: () => [
+        { url: 'http://localhost:3000/piatti?da=impostazioni', index: 0 },
+        { url: 'http://localhost:3000/piatti/d-1?da=piatti', index: 1 },
+      ],
+    };
+    try {
+      rendi();
+      await screen.findByDisplayValue('Yogurt e avena');
+      fireEvent.click(screen.getByRole('button', { name: 'Elimina piatto' }));
+      fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'ELIMINA' }));
+
+      await waitFor(() => expect(back).toHaveBeenCalledTimes(1));
+      expect(replace).not.toHaveBeenCalled();
+      expect(push).not.toHaveBeenCalled();
+    } finally {
+      delete (window as unknown as { navigation?: unknown }).navigation;
+    }
+  });
+
   it('ANNULLA nella conferma chiude il dialogo senza eliminare', async () => {
     paramsId = 'd-1';
     vi.mocked(leggiRepertorio).mockResolvedValue([PIATTO_ESISTENTE]);
@@ -361,6 +389,20 @@ describe('Piatto (editor)', () => {
 
     expect(screen.queryByText('Eliminare questo piatto?')).not.toBeInTheDocument();
     expect(eliminaPiatto).not.toHaveBeenCalled();
+  });
+
+  // Review delle prove dal telefono: l'ingrediente creato apposta per il piatto entra a
+  // grammatura 0 come uno scelto dal selettore, e deve chiamare allo stesso modo.
+  it('l\'ingrediente appena creato per il piatto, al rientro, prende il fuoco sulla grammatura', async () => {
+    salvaBozza('nuovo', {
+      nome: 'Riso condito', slotDefId: 'sd-2', descrizione: '', settimanaCiclo: null, giornoCiclo: null,
+      ingredienti: [], componenti: [],
+    });
+    sessionStorage.setItem('spesa:ingrediente-creato:nuovo', 'i-2');
+    rendi();
+    const campo = await screen.findByLabelText("Grammatura di Fiocchi d'avena");
+    expect(campo).toHaveFocus();
+    expect(campo.closest('.anim-chiamata')).not.toBeNull();
   });
 
   it('riprende il piatto lasciato a metà per andare a creare un ingrediente', async () => {
