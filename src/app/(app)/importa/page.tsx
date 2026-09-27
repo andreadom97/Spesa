@@ -13,6 +13,12 @@ import { traduciBozza, BozzaIncompletaError, type ScrittureImport } from '@/doma
 import { client } from '@/data/supabase';
 import { Testata } from '@/components/Testata';
 import { indirizzoRitorno } from '@/components/pannello/indirizzi';
+import { Dock } from '@/components/Dock';
+import { FoglioDalBasso } from '@/components/FoglioDalBasso';
+import { DialogoConferma } from '@/components/DialogoConferma';
+import { TastoSecondario } from '@/components/controlli';
+import { useIndietroFogli } from '@/components/useIndietroFogli';
+import { StatoImporta } from './StatoImporta';
 import { Camera } from './Camera';
 import { Acquisizione } from './Acquisizione';
 import { Revisione } from './Revisione';
@@ -143,6 +149,10 @@ export default function Importa() {
   // Quando la fotocamera si è chiusa l'ultima volta (`performance.now()`). Parte da
   // -Infinity, non da 0: così nessun tocco dei primi istanti dopo il caricamento si perde.
   const chiusaAlle = useRef(-Infinity);
+  // Se la fotocamera è aperta davvero: l'ascoltatore qui sotto agisce solo allora. Anche i
+  // dialoghi di Importa (Ricominciare, Sostituire) mettono voci di cronologia, e chiuderli fa un
+  // popstate: senza questa guardia scarterebbe per 400 ms il tocco dopo (fase 8a).
+  const fotocameraApertaRef = useRef(false);
 
   /**
    * Il gesto indietro del telefono dentro la fotocamera (spec fase 3 §G). A
@@ -158,6 +168,8 @@ export default function Importa() {
    */
   useEffect(() => {
     const chiudi = () => {
+      if (!fotocameraApertaRef.current) return;
+      fotocameraApertaRef.current = false;
       inChiusura.current = false;
       chiusaAlle.current = performance.now();
       setFotocameraAperta(false);
@@ -178,6 +190,7 @@ export default function Importa() {
 
   function apriFotocamera() {
     inChiusura.current = false;
+    fotocameraApertaRef.current = true;
     window.history.pushState(null, '');
     setFotocameraAperta(true);
   }
@@ -223,6 +236,13 @@ export default function Importa() {
       console.error('importa: cancellazione della bozza fallita.', e);
     }
     setBozza(null);
+    setVista('acquisizione');
+  }
+
+  /** Il rifiuto (spec fase 8a §B): si riparte da un file nuovo, quindi senza PDF né fogli. */
+  function provaUnAltroFile() {
+    setPdf(null);
+    setFoto([]);
     setVista('acquisizione');
   }
 
@@ -323,7 +343,7 @@ export default function Importa() {
   if (vista === 'rifiuto') {
     return (
       <Cornice>
-        <SchermataRifiuto motivazione={motivazioneRifiuto ?? ''} />
+        <SchermataRifiuto motivazione={motivazioneRifiuto ?? ''} onAltroFile={provaUnAltroFile} />
       </Cornice>
     );
   }
@@ -340,11 +360,15 @@ export default function Importa() {
   }
 
   if (vista === 'estrazione') {
+    // La bozza si salva solo quando arriva la risposta: chi lascia la pagina prima la perde.
     return (
       <Cornice>
-        <p style={{ margin: '40px 20px', textAlign: 'center', color: 'var(--sec)', fontSize: 14 }}>
-          Sto leggendo la dieta…
-        </p>
+        <StatoImporta
+          titolo="Sto leggendo la dieta…"
+          testo="Resta su questa pagina: se la lasci, la lettura si perde."
+          luce
+          stato
+        />
       </Cornice>
     );
   }
@@ -382,119 +406,78 @@ export default function Importa() {
   );
 }
 
-function SchermataRipresa({ onRiprendi, onRicomincia }: { onRiprendi: () => void; onRicomincia: () => void }) {
-  const [confermaRicomincia, setConfermaRicomincia] = useState(false);
-
-  if (confermaRicomincia) {
-    return (
-      <div style={{ margin: '20px 16px', padding: '18px 16px', borderRadius: 18, background: 'var(--superficie)', border: '1px solid var(--bordo)' }}>
-        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)', marginBottom: 6 }}>
-          Ricominciare da capo?
-        </div>
-        <div style={{ fontSize: 13.5, lineHeight: 1.45, color: 'var(--sec)', marginBottom: 16 }}>
-          La bozza salvata andrà persa: la revisione fatta finora non si recupera più.
-        </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button
-            type="button"
-            onClick={() => setConfermaRicomincia(false)}
-            style={{
-              flex: 1, height: 48, borderRadius: 14, border: '1px solid var(--bordo)', background: 'transparent',
-              fontFamily: 'var(--font-mono)', fontSize: 11.5, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--ink)',
-            }}
-          >
-            ANNULLA
-          </button>
-          <button
-            type="button"
-            onClick={onRicomincia}
-            style={{
-              flex: 1, height: 48, borderRadius: 14, border: 'none', background: 'var(--ink)',
-              fontFamily: 'var(--font-mono)', fontSize: 11.5, fontWeight: 700, letterSpacing: '0.08em', color: '#FFFFFF',
-            }}
-          >
-            Sì, ricomincia
-          </button>
-        </div>
-      </div>
-    );
-  }
+/** La ripresa (spec fase 8a §B, §D): RIPRENDI nel Dock, RICOMINCIA nella scheda e poi il dialogo. */
+function SchermataRipresa({ onRiprendi, onRicomincia }: { onRiprendi: () => void; onRicomincia: () => Promise<void> }) {
+  const [conferma, setConferma] = useState(false);
+  // L'indietro di sistema chiude il dialogo invece di lasciare Importa.
+  const { chiudiTuttoPoi } = useIndietroFogli(conferma ? 1 : 0, () => setConferma(false));
 
   return (
-    <div style={{ margin: '20px 16px', padding: '18px 16px', borderRadius: 18, background: 'var(--superficie)', border: '1px solid var(--bordo)' }}>
-      <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)', marginBottom: 6 }}>
-        Hai un import in corso
-      </div>
-      <div style={{ fontSize: 13.5, lineHeight: 1.45, color: 'var(--sec)', marginBottom: 16 }}>
-        C&apos;è una dieta già estratta in attesa di revisione: puoi riprenderla da dove l&apos;hai lasciata, oppure ricominciare da capo.
-      </div>
-      <div style={{ display: 'flex', gap: 10 }}>
-        <button
-          type="button"
-          onClick={() => setConfermaRicomincia(true)}
-          style={{
-            flex: 1, height: 48, borderRadius: 14, border: '1px solid var(--bordo)', background: 'transparent',
-            fontFamily: 'var(--font-mono)', fontSize: 11.5, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--ink)',
-          }}
-        >
-          RICOMINCIA
-        </button>
-        <button
-          type="button"
-          onClick={onRiprendi}
-          style={{
-            flex: 1, height: 48, borderRadius: 14, border: 'none', background: 'var(--ink)',
-            fontFamily: 'var(--font-mono)', fontSize: 11.5, fontWeight: 700, letterSpacing: '0.08em', color: '#FFFFFF',
-          }}
-        >
-          RIPRENDI
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function SchermataRifiuto({ motivazione }: { motivazione: string }) {
-  const router = useRouter();
-  return (
-    <div style={{ margin: '20px 16px', padding: '18px 16px', borderRadius: 18, background: 'var(--superficie)', border: '1px solid var(--bordo)' }}>
-      <div style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)', marginBottom: 10 }}>
-        Questa dieta non ha un menu
-      </div>
-      <div style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--ink)', marginBottom: 10 }}>{motivazione}</div>
-      <div style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--sec)', marginBottom: 18 }}>{SPIEGAZIONE_RIFIUTO}</div>
-      {/* Lo stesso della pillola della testata: il pannello sopra la pagina d'origine (spec fase 5 §G.3). */}
-      <button
-        type="button"
-        onClick={() => tornaA(router, indirizzoRitorno())}
-        style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: 48, borderRadius: 14,
-          fontFamily: 'var(--font-mono)', fontSize: 11.5, fontWeight: 700, letterSpacing: '0.08em',
-          border: '1px solid var(--bordo)', color: 'var(--ink)', background: 'none',
-        }}
+    <>
+      <StatoImporta
+        titolo="Hai un import in corso"
+        testo="C'è una dieta già estratta in attesa di revisione: puoi riprenderla da dove l'hai lasciata, oppure ricominciare da capo."
+        conDock
       >
-        TORNA A IMPOSTAZIONI
-      </button>
-    </div>
+        <TastoSecondario onClick={() => setConferma(true)}>RICOMINCIA</TastoSecondario>
+      </StatoImporta>
+      <Dock>
+        <button type="button" className="dock-primario" onClick={onRiprendi}>RIPRENDI</button>
+      </Dock>
+      {conferma && (
+        <FoglioDalBasso
+          etichetta="Ricominciare da capo?"
+          onChiudi={() => setConferma(false)}
+          altezza="contenuto"
+          ruolo="alertdialog"
+          chiudiDalVelo={false}
+        >
+          <DialogoConferma
+            titolo="Ricominciare da capo?"
+            testo="La bozza salvata andrà persa: la revisione fatta finora non si recupera più."
+            azione="RICOMINCIA"
+            tono="distruttivo"
+            // `ricomincia` oggi non lancia mai (spec §D): il testo c'è perché è obbligatorio.
+            erroreTesto="Non siamo riusciti a ricominciare. Riprova."
+            onConferma={async () => {
+              // Prima si consuma la voce del dialogo, poi si riparte dalle porte (useIndietroFogli).
+              chiudiTuttoPoi(() => void onRicomincia());
+              setConferma(false);
+            }}
+            onAnnulla={() => setConferma(false)}
+          />
+        </FoglioDalBasso>
+      )}
+    </>
   );
 }
 
+/** Il rifiuto (spec fase 8a §B, decisione 4): alle Impostazioni si torna con la pillola. */
+function SchermataRifiuto({ motivazione, onAltroFile }: { motivazione: string; onAltroFile: () => void }) {
+  return (
+    <>
+      <StatoImporta
+        titolo="Questa dieta non ha un menu"
+        testo={motivazione || SPIEGAZIONE_RIFIUTO}
+        testo2={motivazione ? SPIEGAZIONE_RIFIUTO : undefined}
+        conDock
+      />
+      <Dock>
+        <button type="button" className="dock-primario" onClick={onAltroFile}>PROVA UN ALTRO FILE</button>
+      </Dock>
+    </>
+  );
+}
+
+/** L'errore (spec fase 8a §B): RIPROVA torna alle porte tenendo PDF e fogli, come oggi. */
 function SchermataErrore({ messaggio, onRiprova }: { messaggio: string; onRiprova: () => void }) {
   return (
-    <div style={{ margin: '20px 16px', padding: '18px 16px', borderRadius: 18, background: 'var(--superficie)', border: '1px solid var(--bordo)' }}>
-      <div style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--ink)', marginBottom: 16 }}>{messaggio}</div>
-      <button
-        type="button"
-        onClick={onRiprova}
-        style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: 48, borderRadius: 14,
-          border: 'none', background: 'var(--ink)',
-          fontFamily: 'var(--font-mono)', fontSize: 11.5, fontWeight: 700, letterSpacing: '0.08em', color: '#FFFFFF',
-        }}
-      >
-        RIPROVA
-      </button>
-    </div>
+    <>
+      <StatoImporta titolo="La lettura si è fermata" testo={messaggio} conDock />
+      <Dock>
+        <button type="button" className="dock-primario" onClick={onRiprova}>RIPROVA</button>
+      </Dock>
+    </>
   );
 }
 
