@@ -3,13 +3,12 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Ingredient, MealSlotDef } from '@/domain/types';
-import type { PianoEstratto, StatoRevisione } from '@/domain/import/types';
-import { leggiBozzaImport, salvaBozzaImport, cancellaBozzaImport, eseguiScritture, type BozzaImport } from '@/data/importa';
+import type { StatoRevisione } from '@/domain/import/types';
+import { leggiBozzaImport, salvaBozzaImport, cancellaBozzaImport, type BozzaImport } from '@/data/importa';
 import { leggiSlotDefs } from '@/data/impostazioni';
-import { leggiIngredienti, leggiRepertorio } from '@/data/repertorio';
+import { leggiIngredienti } from '@/data/repertorio';
 import { validaEsito } from '@/domain/import/valida';
 import { proponiSlot, normalizza } from '@/domain/import/mapping';
-import { traduciBozza, BozzaIncompletaError, type ScrittureImport } from '@/domain/import/commit';
 import { client } from '@/data/supabase';
 import { Testata } from '@/components/Testata';
 import { indirizzoRitorno } from '@/components/pannello/indirizzi';
@@ -19,6 +18,7 @@ import { DialogoConferma } from '@/components/DialogoConferma';
 import { TastoSecondario } from '@/components/controlli';
 import { useIndietroFogli } from '@/components/useIndietroFogli';
 import { StatoImporta } from './StatoImporta';
+import { Riepilogo } from './Riepilogo';
 import { Camera } from './Camera';
 import { Acquisizione } from './Acquisizione';
 import { Revisione } from './Revisione';
@@ -50,18 +50,6 @@ const MESSAGGIO_SENZA_SESSIONE = 'Serve l’accesso: riapri l’app ed entra di 
  * cadrebbe sulla pillola e uscirebbe da /importa perdendo i fogli presi.
  */
 const TOCCHI_IGNORATI_DOPO_CHIUSURA_MS = 400;
-
-/**
- * La data di oggi in locale, come yyyy-mm-dd: `toISOString` converte a UTC, quindi vicino
- * alla mezzanotte (in un fuso più avanti di UTC, come l'Italia) darebbe il giorno sbagliato.
- * Costruita dai campi locali di `Date`, mai da una stringa UTC.
- */
-function dataLocaleOggi(): string {
-  const d = new Date();
-  const mese = String(d.getMonth() + 1).padStart(2, '0');
-  const giorno = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}-${mese}-${giorno}`;
-}
 
 /**
  * Costruisce la mappatura pasti iniziale da proporre in revisione: uno slot
@@ -509,193 +497,6 @@ function ContenutoBozza({
     case 'riepilogo':
       return <Riepilogo piano={bozza.piano} stato={bozza.statoRevisione} onStato={onStatoRevisione} />;
   }
-}
-
-/**
- * Il riepilogo finale: traduce la bozza in scritture concrete (`traduciBozza`,
- * con ingredienti e repertorio riletti freschi — non quelli in memoria dal
- * mount del wizard, che potrebbero essere stati superati da un commit
- * parziale precedente) e mostra il conto prima di eseguirle davvero.
- *
- * `BozzaIncompletaError` è un difetto di dati risolvibile solo tornando alla
- * revisione (una mappatura mancante, una quantità mai risolta…): si mostra il
- * messaggio esatto dell'errore, con un link indietro, invece di un errore
- * generico che non direbbe cosa correggere.
- */
-function Riepilogo({
-  piano,
-  stato,
-  onStato,
-}: {
-  piano: PianoEstratto;
-  stato: StatoRevisione;
-  onStato: (s: StatoRevisione) => void;
-}) {
-  const router = useRouter();
-  const [scritture, setScritture] = useState<ScrittureImport | null>(null);
-  const [erroreBozza, setErroreBozza] = useState<string | null>(null);
-  const [erroreCaricamento, setErroreCaricamento] = useState<string | null>(null);
-  const [confermaSostituzione, setConfermaSostituzione] = useState(false);
-  const [eseguendo, setEseguendo] = useState(false);
-  const [erroreEsecuzione, setErroreEsecuzione] = useState<string | null>(null);
-  // Incrementato a ogni retry dopo un errore di eseguiScritture: forza l'effect sotto a
-  // rileggere ingredienti/repertorio e ricalcolare `scritture` da zero prima del nuovo
-  // tentativo — l'idempotenza vive in traduciBozza (riusaDishId, ingredienti già creati
-  // agganciati per nome), quindi un retry che riusa lo stesso oggetto `scritture` calcolato
-  // una volta salterebbe quella rivalutazione e duplicherebbe ingredienti e piatti sul DB.
-  const [tentativo, setTentativo] = useState(0);
-
-  useEffect(() => {
-    let vivo = true;
-    (async () => {
-      // Azzera subito le scritture precedenti: sia al primo giro (già null) sia a un retry
-      // dopo un errore di eseguiScritture, SOSTITUISCI/Sì, sostituisci devono restare
-      // disabilitati (vedi `pronto` più sotto) finché questo ricalcolo non è finito, mai
-      // riabilitarsi su un oggetto ormai stantio.
-      setScritture(null);
-      try {
-        const [ingredientiEsistenti, repertorioEsistente] = await Promise.all([leggiIngredienti(), leggiRepertorio()]);
-        if (!vivo) return;
-        const s = traduciBozza(piano, stato, ingredientiEsistenti, repertorioEsistente, dataLocaleOggi());
-        setScritture(s);
-      } catch (e) {
-        if (!vivo) return;
-        if (e instanceof BozzaIncompletaError) {
-          setErroreBozza(e.message);
-        } else {
-          console.error('importa: preparazione del riepilogo fallita.', e);
-          setErroreCaricamento('Non siamo riusciti a preparare il riepilogo. Riprova più tardi.');
-        }
-      }
-    })();
-    return () => {
-      vivo = false;
-    };
-  }, [piano, stato, tentativo]);
-
-  async function confermaSostituisci() {
-    if (!scritture) return;
-    setEseguendo(true);
-    setErroreEsecuzione(null);
-    try {
-      await eseguiScritture(scritture);
-      router.push('/piano');
-    } catch (e) {
-      console.error('importa: esecuzione dell’import fallita.', e);
-      setErroreEsecuzione('Qualcosa si è fermato: riprova, l’import riprende da dove era.');
-      setEseguendo(false);
-      // Il prossimo tentativo deve ripartire da scritture ricalcolate, non dallo stesso
-      // oggetto: bumpare `tentativo` fa ripartire l'effect sopra, che azzera `scritture` e
-      // rilegge ingredienti/repertorio freschi prima di ricalcolare — SOSTITUISCI/Sì,
-      // sostituisci restano disabilitati (vedi `pronto` più sotto) finché non è pronto di nuovo.
-      setTentativo((n) => n + 1);
-    }
-  }
-
-  if (erroreBozza) {
-    return (
-      <div style={{ margin: '20px 16px', padding: '18px 16px', borderRadius: 18, background: 'var(--superficie)', border: '1px solid var(--bordo)' }}>
-        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)', marginBottom: 8 }}>
-          C&apos;è ancora qualcosa da sistemare
-        </div>
-        <div style={{ fontSize: 13.5, lineHeight: 1.45, color: 'var(--sec)', marginBottom: 16 }}>{erroreBozza}</div>
-        <button
-          type="button"
-          onClick={() => onStato({ ...stato, passo: 'revisione' })}
-          style={{
-            width: '100%', height: 48, borderRadius: 14, border: 'none', background: 'var(--ink)',
-            fontFamily: 'var(--font-mono)', fontSize: 11.5, fontWeight: 700, letterSpacing: '0.08em', color: '#FFFFFF',
-          }}
-        >
-          TORNA ALLA REVISIONE
-        </button>
-      </div>
-    );
-  }
-
-  if (erroreCaricamento) {
-    return <p style={{ margin: '20px 16px', color: 'var(--sec)' }}>{erroreCaricamento}</p>;
-  }
-
-  // `scritture` è null sia al primo caricamento sia durante il ricalcolo dopo un errore
-  // di eseguiScritture (vedi effect sopra): il primo caso non ha ancora nulla da mostrare
-  // (schermo vuoto, come sempre), il secondo deve invece continuare a mostrare il messaggio
-  // di errore e il dialogo di conferma — solo con SOSTITUISCI/Sì, sostituisci disabilitati
-  // finché il ricalcolo non è pronto, mai un ritorno a null che li farebbe sparire.
-  if (!scritture && !erroreEsecuzione) return null;
-
-  const pronto = scritture !== null;
-  const nPiatti = scritture?.piattiDaCreare.length ?? 0;
-  const mSettimane = scritture?.impostazioni.settimaneCiclo ?? 0;
-  const kIngredienti = scritture?.ingredientiDaCreare.length ?? 0;
-  const xDisattivati = scritture?.piattiDaDisattivare.length ?? 0;
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-      {/* La coda ridotta si applica solo senza il dialogo di conferma sotto: con il
-          dialogo aperto il tasto SOSTITUISCI IL PIANO non è renderizzato e lo scroller
-          resta l'ultimo elemento, quindi gli serve la coda intera. */}
-      <div className={`sc scroll-app${confermaSostituzione ? '' : ' con-piede'}`} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 16px 16px' }}>
-        {pronto && (
-          <div style={{ padding: '16px 15px', borderRadius: 18, background: 'var(--superficie)', border: '1px solid var(--bordo)', fontSize: 14.5, lineHeight: 1.5, color: 'var(--ink)' }}>
-            {nPiatti} piatti su {mSettimane} settimane · {kIngredienti} ingredienti nuovi · {xDisattivati} piatti del piano attuale verranno disattivati
-          </div>
-        )}
-
-        {confermaSostituzione && (
-          <div style={{ marginTop: 14, padding: '15px 15px 16px', borderRadius: 18, background: 'var(--superficie)', border: '1px solid var(--bordo)' }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)', marginBottom: 8 }}>Sostituire il piano attuale?</div>
-            <div style={{ fontSize: 13, lineHeight: 1.45, color: 'var(--sec)', marginBottom: 14 }}>
-              I piatti del nutrizionista non più presenti nella nuova dieta verranno disattivati; questa azione non si annulla.
-            </div>
-            <div style={{ display: 'flex', gap: 9 }}>
-              <button
-                type="button"
-                onClick={() => setConfermaSostituzione(false)}
-                disabled={eseguendo}
-                style={{
-                  flex: 1, height: 48, borderRadius: 14, border: '1px solid var(--bordo)', background: 'transparent',
-                  fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--ink)',
-                }}
-              >
-                ANNULLA
-              </button>
-              <button
-                type="button"
-                onClick={confermaSostituisci}
-                disabled={eseguendo || !pronto}
-                style={{
-                  flex: 1, height: 48, borderRadius: 14, border: 'none', background: 'var(--ink)',
-                  fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: '#FFFFFF',
-                }}
-              >
-                Sì, sostituisci
-              </button>
-            </div>
-          </div>
-        )}
-
-        {erroreEsecuzione && <p style={{ margin: '14px 4px 0', fontSize: 13, color: 'var(--sec)' }}>{erroreEsecuzione}</p>}
-      </div>
-
-      {!confermaSostituzione && (
-        <div className="coda-barra" style={{ padding: '4px 16px 22px' }}>
-          <button
-            type="button"
-            disabled={!pronto}
-            onClick={() => setConfermaSostituzione(true)}
-            style={{
-              width: '100%', height: 54, borderRadius: 18,
-              fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700, letterSpacing: '0.09em',
-              background: pronto ? 'var(--ink)' : 'var(--bordo)', color: pronto ? '#FFFFFF' : 'var(--sec)',
-            }}
-          >
-            SOSTITUISCI IL PIANO
-          </button>
-        </div>
-      )}
-    </div>
-  );
 }
 
 /** Colonna a tutta altezza con la testata fissa in cima. La pillola riapre il pannello sopra la

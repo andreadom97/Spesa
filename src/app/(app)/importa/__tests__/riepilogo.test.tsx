@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom/vitest';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import type { Ingredient } from '@/domain/types';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import type { Dish, Ingredient } from '@/domain/types';
 import type { PianoEstratto, StatoRevisione } from '@/domain/import/types';
 
 vi.mock('@/data/importa', () => ({
@@ -13,14 +13,15 @@ vi.mock('@/data/importa', () => ({
 vi.mock('@/data/impostazioni', () => ({ leggiSlotDefs: vi.fn() }));
 vi.mock('@/data/repertorio', () => ({ leggiIngredienti: vi.fn(), leggiRepertorio: vi.fn() }));
 
-const push = vi.fn();
+const { push, replace } = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push, back: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push, back: vi.fn(), replace }),
 }));
 
 import { leggiBozzaImport, salvaBozzaImport, eseguiScritture } from '@/data/importa';
 import { leggiSlotDefs } from '@/data/impostazioni';
 import { leggiIngredienti, leggiRepertorio } from '@/data/repertorio';
+import { SlotDockProvider } from '@/components/dock-slot';
 import Importa from '../page';
 
 const SLOTS = [
@@ -64,99 +65,154 @@ const STATO_OK: StatoRevisione = {
 
 const STATO_SENZA_MAPPATURA: StatoRevisione = { ...STATO_OK, mappaturaPasti: {} };
 
+/** Un piatto del nutrizionista che la nuova dieta non contiene: l'import lo disattiva. */
+const PIATTO_VECCHIO: Dish = {
+  id: 'd-vecchio', nome: 'Minestrone', slotDefId: 's-col', fonte: 'nutrizionista', attivo: true,
+  descrizione: null, settimanaCiclo: null, giornoCiclo: null, ingredienti: [], componenti: [],
+};
+
+let slotDock: HTMLElement;
+
 async function riprendiBozza() {
-  render(<Importa />);
-  fireEvent.click(await screen.findByRole('button', { name: /riprendi/i }));
+  render(<SlotDockProvider slot={slotDock}><Importa /></SlotDockProvider>);
+  fireEvent.click(await screen.findByRole('button', { name: 'RIPRENDI' }));
 }
+
+const dock = () => screen.getByRole('region', { name: 'Azione principale' });
 
 beforeEach(() => {
   vi.clearAllMocks();
+  slotDock = document.createElement('div');
+  document.body.appendChild(slotDock);
   vi.mocked(leggiSlotDefs).mockResolvedValue(SLOTS);
   vi.mocked(leggiIngredienti).mockResolvedValue([] as Ingredient[]);
   vi.mocked(leggiRepertorio).mockResolvedValue([]);
   vi.mocked(salvaBozzaImport).mockResolvedValue(undefined);
 });
 
-describe('Riepilogo', () => {
-  it('mostra il conto, chiede conferma in due passi e commette solo al secondo sì', async () => {
+afterEach(() => {
+  slotDock.remove();
+});
+
+describe('Riepilogo (spec fase 8a §C)', () => {
+  it('il conto in righe; senza piatti da disattivare CREA IL PIANO scrive subito e va al Piano con replace', async () => {
     vi.mocked(leggiBozzaImport).mockResolvedValue({ piano: PIANO_SEMPLICE, statoRevisione: STATO_OK });
+    vi.mocked(eseguiScritture).mockResolvedValue(undefined);
     await riprendiBozza();
 
-    expect(await screen.findByText(/1 piatti su 1 settimane · 1 ingredienti nuovi · 0 piatti/i)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Il nuovo piano' })).toBeInTheDocument();
+    const conto = screen.getByRole('list', { name: 'Il conto dell\'import' });
+    expect(within(conto).getByText('Piatti').nextSibling).toHaveTextContent('1');
+    expect(within(conto).getByText('Settimane del giro').nextSibling).toHaveTextContent('1');
+    expect(within(conto).getByText('Ingredienti nuovi').nextSibling).toHaveTextContent('1');
+    expect(within(conto).queryByText('Piatti del piano attuale da disattivare')).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: /sostituisci il piano/i }));
-    expect(await screen.findByText(/sostituire il piano attuale/i)).toBeInTheDocument();
-    expect(eseguiScritture).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByRole('button', { name: /sì, sostituisci/i }));
+    const crea = await within(dock()).findByRole('button', { name: 'CREA IL PIANO' });
+    await waitFor(() => expect(crea).toBeEnabled());
+    fireEvent.click(crea);
+    expect(screen.queryByRole('alertdialog')).toBeNull();
     await waitFor(() => expect(eseguiScritture).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/piano'));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/piano'));
+    expect(push).not.toHaveBeenCalled();
   });
 
-  it('BozzaIncompletaError: mostra il messaggio e un link che riporta alla revisione', async () => {
+  it('con piatti da disattivare: la riga in più, SOSTITUISCI IL PIANO, e si scrive solo alla conferma del dialogo', async () => {
+    vi.mocked(leggiBozzaImport).mockResolvedValue({ piano: PIANO_SEMPLICE, statoRevisione: STATO_OK });
+    vi.mocked(leggiRepertorio).mockResolvedValue([PIATTO_VECCHIO]);
+    vi.mocked(eseguiScritture).mockResolvedValue(undefined);
+    await riprendiBozza();
+
+    const conto = await screen.findByRole('list', { name: 'Il conto dell\'import' });
+    expect(within(conto).getByText('Piatti del piano attuale da disattivare').nextSibling).toHaveTextContent('1');
+
+    const sostituisci = await within(dock()).findByRole('button', { name: 'SOSTITUISCI IL PIANO' });
+    await waitFor(() => expect(sostituisci).toBeEnabled());
+    fireEvent.click(sostituisci);
+    const dialogo = await screen.findByRole('alertdialog', { name: 'Sostituire il piano attuale?' });
+    expect(eseguiScritture).not.toHaveBeenCalled();
+
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'SOSTITUISCI' }));
+    await waitFor(() => expect(eseguiScritture).toHaveBeenCalledTimes(1));
+    // L'uscita passa da chiudiTuttoPoi: prima si consuma la voce del dialogo.
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/piano'));
+  });
+
+  it('BozzaIncompletaError: uno stato vuoto col messaggio, TORNA ALLA REVISIONE nel Dock', async () => {
     vi.mocked(leggiBozzaImport).mockResolvedValue({ piano: PIANO_SEMPLICE, statoRevisione: STATO_SENZA_MAPPATURA });
     await riprendiBozza();
 
-    expect(await screen.findByText(/nessuna mappatura per il pasto/i)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'C\'è ancora qualcosa da sistemare' })).toBeInTheDocument();
+    expect(screen.getByText(/nessuna mappatura per il pasto/i)).toBeInTheDocument();
     expect(eseguiScritture).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole('button', { name: /torna alla revisione/i }));
+    fireEvent.click(within(dock()).getByRole('button', { name: 'TORNA ALLA REVISIONE' }));
     await waitFor(() => {
       const bozza = vi.mocked(salvaBozzaImport).mock.calls.at(-1)![0];
       expect(bozza.statoRevisione.passo).toBe('revisione');
     });
   });
 
-  it('errore di eseguiScritture: messaggio di riprova, nessun redirect', async () => {
+  it('caricamento fallito: uno stato vuoto, e RIPROVA rilegge', async () => {
     vi.mocked(leggiBozzaImport).mockResolvedValue({ piano: PIANO_SEMPLICE, statoRevisione: STATO_OK });
-    vi.mocked(eseguiScritture).mockRejectedValue(new Error('scrittura fallita'));
+    vi.mocked(leggiRepertorio).mockRejectedValueOnce(new Error('rete'));
     await riprendiBozza();
 
-    fireEvent.click(await screen.findByRole('button', { name: /sostituisci il piano/i }));
-    fireEvent.click(await screen.findByRole('button', { name: /sì, sostituisci/i }));
+    expect(await screen.findByRole('heading', { name: 'Il riepilogo non è pronto' })).toBeInTheDocument();
+    fireEvent.click(within(dock()).getByRole('button', { name: 'RIPROVA' }));
+    expect(await screen.findByRole('heading', { name: 'Il nuovo piano' })).toBeInTheDocument();
+  });
 
-    expect(await screen.findByText(/qualcosa si è fermato/i)).toBeInTheDocument();
+  it('errore di eseguiScritture dal dialogo: il dialogo si chiude, l\'errore sta sopra il Dock, nessun redirect', async () => {
+    vi.mocked(leggiBozzaImport).mockResolvedValue({ piano: PIANO_SEMPLICE, statoRevisione: STATO_OK });
+    vi.mocked(leggiRepertorio).mockResolvedValue([PIATTO_VECCHIO]);
+    vi.mocked(eseguiScritture).mockRejectedValue(new Error('scrittura fallita'));
+    await riprendiBozza();
+    // Durante il primo calcolo il riepilogo non rende niente, Dock compreso: prima il conto.
+    await screen.findByRole('list', { name: 'Il conto dell\'import' });
+
+    const sostituisci = await within(dock()).findByRole('button', { name: 'SOSTITUISCI IL PIANO' });
+    await waitFor(() => expect(sostituisci).toBeEnabled());
+    fireEvent.click(sostituisci);
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'SOSTITUISCI' }));
+
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+    expect(within(dock()).getByRole('alert')).toHaveTextContent(/qualcosa si è fermato/i);
+    expect(replace).not.toHaveBeenCalled();
     expect(push).not.toHaveBeenCalled();
   });
 
-  it('retry dopo un errore: ricalcola le scritture con dati freschi invece di riusare le vecchie', async () => {
+  it('retry dopo un errore: il Dock resta spento fino al ricalcolo, che rilegge i dati freschi', async () => {
     vi.mocked(leggiBozzaImport).mockResolvedValue({ piano: PIANO_SEMPLICE, statoRevisione: STATO_OK });
     const ESISTENTE: Ingredient = {
       id: 'i-pasta-gia-creata', nome: 'Pasta di semola', unitaBase: 'g',
       area: 'cereali', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500, prezzoConfezione: null, ean: null,
     };
-    // page.tsx legge leggiIngredienti una volta al mount (per i formati); Riepilogo la
-    // rilegge da sé nel suo effect. Tre chiamate in tutto prima del retry: mount, calcolo
-    // iniziale di Riepilogo (nessun esistente -> nuovoAlimento, eseguiScritture fallisce),
-    // e il ricalcolo automatico scatenato dall'errore — qui l'ingrediente esiste già (come
-    // se il primo giro l'avesse davvero creato prima di fermarsi): se il retry riusasse
-    // l'oggetto scritture calcolato la prima volta invece di rileggere, continuerebbe a
-    // proporlo come nuovo invece di agganciarlo per id.
+    // Tre letture prima del retry: il mount della pagina, il primo calcolo del riepilogo
+    // (nessun esistente: l'ingrediente è nuovo, e la scrittura fallisce), il ricalcolo dopo
+    // l'errore, dove l'ingrediente esiste già come se il primo giro l'avesse creato.
     vi.mocked(leggiIngredienti).mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValueOnce([ESISTENTE]);
     vi.mocked(eseguiScritture).mockRejectedValueOnce(new Error('scrittura fallita'));
     await riprendiBozza();
+    // Durante il primo calcolo il riepilogo non rende niente, Dock compreso: prima il conto.
+    await screen.findByRole('list', { name: 'Il conto dell\'import' });
 
-    fireEvent.click(await screen.findByRole('button', { name: /sostituisci il piano/i }));
-    fireEvent.click(await screen.findByRole('button', { name: /sì, sostituisci/i }));
-    expect(await screen.findByText(/qualcosa si è fermato/i)).toBeInTheDocument();
+    const crea = await within(dock()).findByRole('button', { name: 'CREA IL PIANO' });
+    await waitFor(() => expect(crea).toBeEnabled());
+    fireEvent.click(crea);
+    expect(await within(dock()).findByRole('alert')).toHaveTextContent(/qualcosa si è fermato/i);
 
-    // Il ricalcolo è automatico (scatenato dall'errore, non da un'altra azione dell'utente):
-    // attende solo che leggiIngredienti sia stato richiamato una terza volta e che il
-    // pulsante torni disponibile prima di procedere.
     await waitFor(() => expect(leggiIngredienti).toHaveBeenCalledTimes(3));
-    const bottoneRetry = await screen.findByRole('button', { name: /sì, sostituisci/i });
-    await waitFor(() => expect(bottoneRetry).not.toBeDisabled());
+    const riprova = within(dock()).getByRole('button', { name: 'CREA IL PIANO' });
+    await waitFor(() => expect(riprova).toBeEnabled());
 
     vi.mocked(eseguiScritture).mockResolvedValue(undefined);
-    fireEvent.click(bottoneRetry);
+    fireEvent.click(riprova);
 
-    // 2 chiamate in tutto: il primo tentativo fallito + questo retry.
     await waitFor(() => expect(eseguiScritture).toHaveBeenCalledTimes(2));
-    const scrittureRicalcolate = vi.mocked(eseguiScritture).mock.calls[1][0];
-    expect(scrittureRicalcolate.ingredientiDaCreare).toHaveLength(0);
-    expect(scrittureRicalcolate.piattiDaCreare[0].righe).toContainEqual({
-      ingredientId: 'i-pasta-gia-creata', quantita: 80, unita: 'g',
-    });
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/piano'));
+    const ricalcolate = vi.mocked(eseguiScritture).mock.calls[1][0];
+    expect(ricalcolate.ingredientiDaCreare).toHaveLength(0);
+    expect(ricalcolate.piattiDaCreare[0].righe).toContainEqual({ ingredientId: 'i-pasta-gia-creata', quantita: 80, unita: 'g' });
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/piano'));
   });
 });
