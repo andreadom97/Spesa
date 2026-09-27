@@ -51,6 +51,9 @@ function GuscioInterno({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { aperto } = usePannello();
   const { istantaneo } = usePannelloInterno();
+  // Il Dock senza guscio (27/09): la dissolvenza dello scroller sta sopra il tasto, e senza
+  // barra il tasto sta a 22 dal fondo. Il CSS lo legge da `data-senza-barra`.
+  const senzaBarra = useBarraNascosta();
   const [stato, setStato] = useState<{ barra: StatoBarra; percorso: string | null }>({ barra: 'grande', percorso: pathname });
   // Inizializzazione pigra: una WeakMap allocata una volta sola, non a ogni render.
   const ultimo = useRef<WeakMap<Element, number> | null>(null);
@@ -88,6 +91,7 @@ function GuscioInterno({ children }: { children: ReactNode }) {
     <div
       className="guscio"
       data-barra={barra}
+      data-senza-barra={senzaBarra ? '' : undefined}
       data-pannello={aperto ? 'aperto' : undefined}
       data-istantaneo={istantaneo ? '' : undefined}
     >

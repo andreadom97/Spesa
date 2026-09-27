@@ -146,7 +146,8 @@
   --dock-respiro: 8px;                /* aria tra dock e tab bar, e gap interno del dock */
   --dock-pillola: 56px;               /* altezza delle due pillole affiancate (Dispensa) */
   --dock-primario: 54px;              /* altezza del primario a larghezza piena (Lista, Piano, stati vuoti) */
-  --dock-padding: 8px;                /* padding del contenitore del dock */
+  --dock-padding: 8px;                /* padding del dock: dal 27/09 senza guscio, tiene il tasto dove stava */
+  --dock-dissolvenza: 40px;           /* quanto sfuma lo scroller sopra il tasto del dock (27/09, variante B) */
   --dock-altezza: 70px;               /* altezza del dock a una riga: 8 + 54 + 8 (decisione del 20/09) */
 
   /* ---------- Ridisegno 19-20/09: componenti nuovi ---------- */
@@ -165,5 +166,5 @@
   --riga-piatto: 68px;                /* riga piatto: altezza minima */
   --riga-impostazione: 56px;          /* riga di impostazione: altezza minima */
   --coda-scroll: 140px;               /* coda di scorrimento senza dock: 84 + 22 + 34 */
-  --coda-scroll-dock: 194px;          /* coda di scorrimento col dock: 70 + 114 + 10 */
+  --coda-scroll-dock: 226px;          /* coda di scorrimento col dock: 114 + 8 + 54 + 40 di dissolvenza + 10 (era 194 col guscio) */
 }

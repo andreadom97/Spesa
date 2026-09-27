@@ -180,8 +180,11 @@ parte delle prove. Cinque segnalazioni, con la causa trovata prima di correggere
    manca si sostituisce sempre: la pagina lasciata sparisce dalla cronologia, ma la destinazione può
    comparirci due volte (Piatti, Piatti), e l'indietro di sistema ripassa una volta dalla stessa pagina.
 5. **Il guscio bianco del Dock non convince.** Non è un difetto: è il Dock di DESIGN.md §8. Tre
-   alternative proposte ad Andrea in una pagina di confronto; il cambio, che tocca ogni Dock, va in
-   una PR a parte.
+   alternative proposte ad Andrea in una pagina di confronto (tasto da solo, tasto su dissolvenza,
+   barra a filo): scelta la **B**, nella stessa PR su sua richiesta. Il tasto resta dove stava e lo
+   scroller sfuma in trasparenza nei 40 px sopra di lui (DESIGN.md §8 Dock, §13 del 27/09).
+   Misurato in una sonda a 360 × 740: bordo alto del tasto a 176 dal fondo con la barra grande e
+   a 84 senza barra, maschera che finisce lì, Dock trasparente e senza ombra.
 
 **Review del ramo (opus), un'ondata di correzioni.** Nessun bloccante. Corretti: l'ingrediente
 creato per il piatto, al rientro, prende anche lui fuoco e anello; il test della selezione ora spia
