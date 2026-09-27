@@ -1256,5 +1256,6 @@ nome di `Esci` (§2.2); il piede fisso col primario nel pannello (§8 Pannello i
    disattivare il Dock dice `CREA IL PIANO` e scrive subito; altrimenti `SOSTITUISCI IL PIANO` e il
    Dialogo di conferma rosso. Il conto è una scheda con una riga per voce.
 3. **L'attesa dell'estrazione usa `.anim-luce-testo`** (§7) sul titolo dello Stato vuoto, con la nota
-   «Resta su questa pagina: se la lasci, la lettura si perde.»
+   «Se chiudi l'app prima che abbia finito, la lettura si perde.» Lasciare la pagina non la perde:
+   la `fetch` continua e la bozza si ritrova in «Hai un import in corso».
 4. **Nel rifiuto l'azione è `PROVA UN ALTRO FILE`**: alle Impostazioni riporta la pillola.

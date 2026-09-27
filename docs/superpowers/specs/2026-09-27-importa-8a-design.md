@@ -61,13 +61,16 @@ locale di Importa**, `src/app/(app)/importa/StatoImporta.tsx`. Non va in `src/co
 | Schermata | Titolo | Testo | Dock | Altro |
 |---|---|---|---|---|
 | **Ripresa** | Hai un import in corso | «C'è una dieta già estratta in attesa di revisione: puoi riprenderla da dove l'hai lasciata, oppure ricominciare da capo.» (di oggi) | `RIPRENDI` | `RICOMINCIA` è un `TastoSecondario` nella scheda e apre il Dialogo di conferma (§D) |
-| **Attesa** | Sto leggendo la dieta… (con `luce`) | «Resta su questa pagina: se la lasci, la lettura si perde.» | nessuno | La scheda ha `role="status"` |
+| **Attesa** | Sto leggendo la dieta… (con `luce`) | «Se chiudi l'app prima che abbia finito, la lettura si perde.» | nessuno | La scheda ha `role="status"` |
 | **Rifiuto** | Questa dieta non ha un menu (di oggi) | la motivazione dell'AI; `testo2` = `SPIEGAZIONE_RIFIUTO` di oggi | `PROVA UN ALTRO FILE` | Il tasto torna alle porte **svuotando** PDF e foto: si parte da un file nuovo |
 | **Errore** | La lettura si è fermata | il messaggio di oggi, uno per codice HTTP, invariato | `RIPROVA` | Come oggi: torna alle porte **tenendo** PDF e foto, per riprovare lo stesso file |
 
-Il testo dell'attesa è vero per il codice di oggi: la bozza si salva solo quando arriva la
-risposta di `/api/import/estrai` (`page.tsx`, `salvaBozzaImport` dopo la `fetch`). Chi lascia la
-pagina prima perde la lettura.
+Il testo dell'attesa è vero per il codice di oggi: la bozza si salva quando arriva la risposta di
+`/api/import/estrai` (`page.tsx`, `salvaBozzaImport` dopo la `fetch`), anche se nel frattempo si è
+lasciata la pagina: uscendo la `fetch` non si annulla, e la bozza si ritrova poi in «Hai un import
+in corso». La lettura si perde solo chiudendo o ricaricando l'app prima della risposta. (Il primo
+testo, «Resta su questa pagina: se la lasci, la lettura si perde.», era falso: corretto dopo la
+review finale.)
 
 Il caso «dieta senza menu» oggi ha il tasto `TORNA A IMPOSTAZIONI`, che fa la stessa cosa della
 pillola. Sparisce: la decisione 4 lo sostituisce.
@@ -153,7 +156,8 @@ asserzioni sui testi e sui tasti che la spec cambia. Si aggiungono:
 
 ## G. Prove dal telefono, dopo il merge
 
-1. Importa un PDF: durante l'attesa il titolo luccica e c'è la nota «Resta su questa pagina».
+1. Importa un PDF: durante l'attesa il titolo luccica e c'è la nota «Se chiudi l'app prima che
+   abbia finito, la lettura si perde.».
 2. Con un import lasciato a metà, riapri Importa: `RIPRENDI` nel Dock; `RICOMINCIA` apre il
    dialogo, e l'indietro di Android lo chiude.
 3. Al riepilogo di un import che sostituisce un piano: la riga «da disattivare», `SOSTITUISCI IL
