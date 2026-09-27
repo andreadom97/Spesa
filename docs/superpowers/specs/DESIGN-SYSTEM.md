@@ -170,11 +170,11 @@ Il conto aperto verso `DESIGN.md` v3, al 26/09/2026.
   decisioni prese durante l'esecuzione stanno in `docs/2026-09-26-fase6-decisioni-esecuzione.md`.
 - **La fase 7 (Scegli e l'editor del Piatto) è chiusa con la PR del ramo `fase7-scegli-piatto`**.
   Le decisioni prese durante l'esecuzione stanno in `docs/2026-09-27-fase7-decisioni-esecuzione.md`.
-  Restano fuori dal sistema la **fase 8** (i passi di Importa oltre le due porte e la fotocamera)
-  e **Piatti veloce**, da ridisegnare come onboarding.
+  Resta fuori dal sistema **Piatti veloce**, da ridisegnare come onboarding.
 - **Restano fuori dal sistema Revisione e Formati di Importa** (fase 8b; probabilmente un
-  selettore nuovo, quindi un giro in Claude Design). Le decisioni prese durante l'esecuzione della
-  fase 8a stanno in `docs/2026-09-27-fase8a-decisioni-esecuzione.md`.
+  selettore nuovo, quindi un giro in Claude Design). L'audit del 26/09 le misura una per una. Le
+  decisioni prese durante l'esecuzione della fase 8a stanno in
+  `docs/2026-09-27-fase8a-decisioni-esecuzione.md`.
 - **53 token dichiarati nel design e assenti dal codice** [misurato il 26/09 con le funzioni del guardiano, dopo
   i sei `--tono-<area>` delle icone ingrediente: `tokens.css` ne dichiara 124, `src/app/globals.css` ne ha 73, 71
   in comune, 0 divergenti (`npm run design:token`); prima dei sei token del tono medio, a fase 5 finita, erano
