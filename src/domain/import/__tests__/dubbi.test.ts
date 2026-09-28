@@ -1,10 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import type { MealSlotDef } from '@/domain/types';
-import type { PastoEstratto, PianoEstratto, StatoRevisione } from '../types';
+import type { IngredienteProposto, PastoEstratto, PianoEstratto, RigaEstratta, StatoRevisione } from '../types';
 import { PIANO_MENU_SETTIMANALE, PIANO_GIORNATA_UNICA } from '../fixtures';
+import { traduciBozza } from '../commit';
+import { ingredientiDaAbbinare } from '../mapping';
+import { proponi } from '../formati-tipici';
 import {
-  chiaveGruppo, conteggi, etichettaGiorno, gruppiRighe, pastiDelGruppo, pronto, provenienza,
-  riassuntoGiorni, righeDelPasto, unitaNota, vociPasti,
+  cambiaRiga, chiaveGruppo, confermaTutti, conteggi, etichettaGiorno, gruppiRighe, pastiDelGruppo,
+  pronto, provenienza, riassuntoGiorni, righeDelPasto, rispondiGruppo, togliGruppo, togliRiga,
+  unitaNota, vociPasti,
 } from '../dubbi';
 
 const slot = (id: string, nome: string, posizione: number): MealSlotDef => ({ id, nome, posizione, assenzeAbituali: Array(7).fill(false) });
@@ -225,5 +229,133 @@ describe('riassuntoGiorni e conteggi', () => {
     const stato = { ...STATO, correzioni: { '1-0-2': { nomeOriginale: 'condimenti', piatti: [] } } };
     expect(riassuntoGiorni(PIANO_MENU_SETTIMANALE, stato)[0]).toMatchObject({ piatti: 'Porridge · Tacchino con pane', pasti: 2 });
     expect(conteggi(PIANO_MENU_SETTIMANALE, stato)).toEqual({ settimane: 2, giorni: 3, pastiLetti: 6, pastiConfermabili: 5 });
+  });
+});
+
+describe('togliRiga — la cascata (decisione 9)', () => {
+  const cenaMartedi = () => structuredClone(PIANO_MENU_SETTIMANALE.settimane[0].giorni[1].pasti[1]);
+  const cenaLunedi = () => structuredClone(PIANO_MENU_SETTIMANALE.settimane[0].giorni[0].pasti[1]);
+
+  it('togliere una riga lascia le altre', () => {
+    const pasto = togliRiga(cenaMartedi(), { piatto: 0, componente: null, opzione: null, riga: 1 });
+    expect(pasto.piatti[0].righeFisse.map((r) => r.alimento)).toEqual(['filetto di merluzzo']);
+    expect(pasto.piatti).toHaveLength(2);
+  });
+
+  it("togliere l'unica riga di un piatto toglie il piatto", () => {
+    const pasto = togliRiga(cenaMartedi(), { piatto: 1, componente: null, opzione: null, riga: 0 });
+    expect(pasto.piatti.map((p) => p.nome)).toEqual(['Merluzzo']);
+  });
+
+  it("togliere l'ultimo piatto svuota il pasto", () => {
+    let pasto = togliRiga(cenaMartedi(), { piatto: 1, componente: null, opzione: null, riga: 0 });
+    pasto = togliRiga(pasto, { piatto: 0, componente: null, opzione: null, riga: 1 });
+    pasto = togliRiga(pasto, { piatto: 0, componente: null, opzione: null, riga: 0 });
+    expect(pasto).toEqual({ nomeOriginale: 'cena', piatti: [] });
+  });
+
+  it("un'opzione vuota sparisce, e un componente senza opzioni pure", () => {
+    let pasto = togliRiga(cenaLunedi(), { piatto: 0, componente: 0, opzione: 1, riga: 0 });
+    expect(pasto.piatti[0].componenti[0].opzioni).toHaveLength(1);
+    pasto = togliRiga(pasto, { piatto: 0, componente: 0, opzione: 0, riga: 0 });
+    expect(pasto.piatti[0].componenti).toEqual([]);
+    expect(pasto.piatti[0].righeFisse.map((r) => r.alimento)).toEqual(['fesa di tacchino']);
+  });
+});
+
+describe('cambiaRiga', () => {
+  it('cambia solo la riga indicata', () => {
+    const pasto = cambiaRiga(structuredClone(PIANO_MENU_SETTIMANALE.settimane[0].giorni[0].pasti[1]), { piatto: 0, componente: null, opzione: null, riga: 0 }, { quantita: 150 });
+    expect(pasto.piatti[0].righeFisse[0].quantita).toBe(150);
+    expect(pasto.piatti[0].componenti[0].opzioni[0][0].quantita).toBe(60);
+  });
+});
+
+describe('rispondiGruppo e togliGruppo', () => {
+  it('una risposta vale per tutte le 14 righe del gruppo, e tocca solo i loro pasti', () => {
+    const piano = pianoConOlio();
+    const chiave = 'olio|olio q.b.';
+    const stato = rispondiGruppo(piano, STATO, chiave, 5, 'ml');
+    expect(Object.keys(stato.correzioni)).toHaveLength(14);
+    expect(Object.keys(stato.correzioni).every((k) => k.endsWith('-1'))).toBe(true);
+    for (const pasto of Object.values(stato.correzioni)) {
+      expect(pasto.piatti[0].righeFisse[0]).toEqual({ alimento: 'olio', quantita: 5, unita: 'ml', quantitaInferita: false, testoOriginale: 'olio q.b.' });
+    }
+    expect(gruppiRighe(piano, stato)[0]).toMatchObject({ stato: 'fatto', quantita: 5, unita: 'ml' });
+  });
+
+  it('togliere il gruppo svuota a cascata i 14 pasti dei condimenti', () => {
+    const piano = pianoConOlio();
+    const stato = togliGruppo(piano, STATO, 'olio|olio q.b.');
+    expect(Object.values(stato.correzioni).every((p) => p.nomeOriginale === 'condimenti' && p.piatti.length === 0)).toBe(true);
+    expect(gruppiRighe(piano, stato)[0].stato).toBe('tolto');
+    expect(vociPasti(piano, stato, SLOTS).map((v) => v.chiave)).toEqual(['pranzo']);
+  });
+
+  it('ritrova le righe per chiave anche dopo una rimozione che sposta gli indici', () => {
+    const cena = togliRiga(structuredClone(PIANO_MENU_SETTIMANALE.settimane[0].giorni[1].pasti[1]), { piatto: 0, componente: null, opzione: null, riga: 0 });
+    const prima = { ...STATO, correzioni: { '1-1-1': cena } };
+    const dopo = rispondiGruppo(PIANO_MENU_SETTIMANALE, prima, chiaveGruppo(OLIVE), 3, 'pz');
+    expect(dopo.correzioni['1-1-1'].piatti[0].righeFisse).toEqual([{ ...OLIVE, quantita: 3, unita: 'pz' }]);
+  });
+});
+
+describe('confermaTutti', () => {
+  it('scrive tutte le chiavi e passa agli ingredienti in un solo stato', () => {
+    const stato = confermaTutti(PIANO_MENU_SETTIMANALE, STATO);
+    expect(stato.passo).toBe('formati');
+    expect([...stato.pastiConfermati].sort()).toEqual(['1-0-0', '1-0-1', '1-0-2', '1-1-0', '1-1-1', '2-0-0']);
+    expect(stato.correzioni).toBe(STATO.correzioni);
+  });
+});
+
+/**
+ * Il test differenziale (spec 8b §I): la Revisione di prima scriveva le correzioni con
+ * `cambiaRigaFissa` e `rimuoviRigaFissa` (copiate qui com'erano in Revisione.tsx, che il Task 7
+ * cancella). La stessa bozza risolta coi dubbi deve dare le stesse correzioni e le stesse
+ * scritture da `traduciBozza`.
+ */
+describe('differenziale: la Revisione di prima contro i dubbi', () => {
+  function vecchiaCambiaRigaFissa(pasto: PastoEstratto, ip: number, ir: number, cambio: Partial<RigaEstratta>): PastoEstratto {
+    return {
+      ...pasto,
+      piatti: pasto.piatti.map((p, i) =>
+        i !== ip ? p : { ...p, righeFisse: p.righeFisse.map((r, j) => (j !== ir ? r : { ...r, ...cambio })) },
+      ),
+    };
+  }
+  function vecchiaRimuoviRigaFissa(pasto: PastoEstratto, ip: number, ir: number): PastoEstratto {
+    return {
+      ...pasto,
+      piatti: pasto.piatti.map((p, i) => (i !== ip ? p : { ...p, righeFisse: p.righeFisse.filter((_, j) => j !== ir) })),
+    };
+  }
+  const MAPPATURA = { colazione: 's-col', cena: 's-cena', condimenti: 's-cena' };
+  const proposte = (correzioni: Record<string, PastoEstratto>): IngredienteProposto[] =>
+    ingredientiDaAbbinare(PIANO_MENU_SETTIMANALE, correzioni).map(({ alimento, unita }) => proponi(alimento, unita));
+  const scritture = (correzioni: Record<string, PastoEstratto>) =>
+    traduciBozza(
+      PIANO_MENU_SETTIMANALE,
+      { ...STATO, passo: 'riepilogo', mappaturaPasti: MAPPATURA, correzioni, ingredientiNuovi: proposte(correzioni) },
+      [], [], '2026-09-28',
+    );
+
+  it('rispondere alle olive con 3 pz', () => {
+    // La Revisione di prima: il numero (con l'unità di ripiego «g»), poi l'unità.
+    const originale = PIANO_MENU_SETTIMANALE.settimane[0].giorni[1].pasti[1];
+    let vecchia = vecchiaCambiaRigaFissa(originale, 0, 1, { quantita: 3, unita: 'g', quantitaInferita: false });
+    vecchia = vecchiaCambiaRigaFissa(vecchia, 0, 1, { unita: 'pz' });
+    const vecchie = { '1-1-1': vecchia };
+
+    const nuove = rispondiGruppo(PIANO_MENU_SETTIMANALE, STATO, chiaveGruppo(OLIVE), 3, 'pz').correzioni;
+    expect(nuove).toEqual(vecchie);
+    expect(scritture(nuove)).toEqual(scritture(vecchie));
+  });
+
+  it('togliere le olive', () => {
+    const vecchie = { '1-1-1': vecchiaRimuoviRigaFissa(PIANO_MENU_SETTIMANALE.settimane[0].giorni[1].pasti[1], 0, 1) };
+    const nuove = togliGruppo(PIANO_MENU_SETTIMANALE, STATO, chiaveGruppo(OLIVE)).correzioni;
+    expect(nuove).toEqual(vecchie);
+    expect(scritture(nuove)).toEqual(scritture(vecchie));
   });
 });

@@ -351,3 +351,83 @@ export function conteggi(piano: PianoEstratto, stato: StatoRevisione): { settima
     pastiConfermabili: pasti.filter((p) => p.effettivo.piatti.length > 0).length,
   };
 }
+
+// --- Le scritture: restituiscono sempre un pasto o uno stato nuovo, il piano estratto non si tocca. ---
+
+/**
+ * Applica `fn` a ogni riga del pasto: la riga restituita prende il posto di quella di prima,
+ * `null` la toglie. Poi la cascata (decisione 9), solo su ciò che la rimozione ha svuotato:
+ * un'opzione rimasta senza righe sparisce, un componente senza opzioni sparisce, un piatto
+ * senza righe né componenti sparisce, e un pasto senza piatti diventa
+ * `{ nomeOriginale, piatti: [] }`, che `traduciBozza` legge come pasto rimosso.
+ */
+export function mappaRighe(
+  pasto: PastoEstratto,
+  fn: (riga: RigaEstratta, posizione: PosizioneRiga) => RigaEstratta | null,
+): PastoEstratto {
+  const piatti = pasto.piatti.flatMap((piatto, ip) => {
+    const righeFisse = piatto.righeFisse.flatMap((riga, ir) => {
+      const nuova = fn(riga, { piatto: ip, componente: null, opzione: null, riga: ir });
+      return nuova ? [nuova] : [];
+    });
+    const componenti = piatto.componenti.flatMap((componente, ic) => {
+      const opzioni = componente.opzioni.flatMap((opzione, io) => {
+        const righe = opzione.flatMap((riga, ir) => {
+          const nuova = fn(riga, { piatto: ip, componente: ic, opzione: io, riga: ir });
+          return nuova ? [nuova] : [];
+        });
+        return opzione.length > 0 && righe.length === 0 ? [] : [righe];
+      });
+      return componente.opzioni.length > 0 && opzioni.length === 0 ? [] : [{ ...componente, opzioni }];
+    });
+    const aveva = piatto.righeFisse.length > 0 || piatto.componenti.length > 0;
+    const vuoto = righeFisse.length === 0 && componenti.length === 0;
+    return aveva && vuoto ? [] : [{ ...piatto, righeFisse, componenti }];
+  });
+  if (pasto.piatti.length > 0 && piatti.length === 0) return { nomeOriginale: pasto.nomeOriginale, piatti: [] };
+  return { ...pasto, piatti };
+}
+
+export function cambiaRiga(pasto: PastoEstratto, posizione: PosizioneRiga, cambio: Partial<RigaEstratta>): PastoEstratto {
+  return mappaRighe(pasto, (riga, p) => (stessaPosizione(p, posizione) ? { ...riga, ...cambio } : riga));
+}
+
+export function togliRiga(pasto: PastoEstratto, posizione: PosizioneRiga): PastoEstratto {
+  return mappaRighe(pasto, (riga, p) => (stessaPosizione(p, posizione) ? null : riga));
+}
+
+/** Riscrive, in ogni pasto effettivo che ha una riga del gruppo, le righe del gruppo con `fn`. */
+function suOgniRigaDelGruppo(
+  piano: PianoEstratto,
+  stato: StatoRevisione,
+  chiave: string,
+  fn: (riga: RigaEstratta) => RigaEstratta | null,
+): StatoRevisione {
+  const correzioni = { ...stato.correzioni };
+  for (const p of pastiDelPiano(piano, stato)) {
+    if (!righeDelPasto(p.effettivo).some(({ riga }) => chiaveGruppo(riga) === chiave)) continue;
+    correzioni[p.chiave] = mappaRighe(p.effettivo, (riga) => (chiaveGruppo(riga) === chiave ? fn(riga) : riga));
+  }
+  return { ...stato, correzioni };
+}
+
+/** La risposta a un gruppo: quantità e unità su tutte le sue righe, e la quantità non è più una proposta. */
+export function rispondiGruppo(
+  piano: PianoEstratto,
+  stato: StatoRevisione,
+  chiave: string,
+  quantita: number,
+  unita: UnitaBase,
+): StatoRevisione {
+  return suOgniRigaDelGruppo(piano, stato, chiave, (riga) => ({ ...riga, quantita, unita, quantitaInferita: false }));
+}
+
+/** Toglie tutte le righe del gruppo, con la cascata di `mappaRighe`. */
+export function togliGruppo(piano: PianoEstratto, stato: StatoRevisione, chiave: string): StatoRevisione {
+  return suOgniRigaDelGruppo(piano, stato, chiave, () => null);
+}
+
+/** CONFERMA I PASTI: tutte le chiavi del piano in `pastiConfermati` e il passo dopo, in uno stato solo. */
+export function confermaTutti(piano: PianoEstratto, stato: StatoRevisione): StatoRevisione {
+  return { ...stato, pastiConfermati: pastiDelPiano(piano, stato).map((p) => p.chiave), passo: 'formati' };
+}
