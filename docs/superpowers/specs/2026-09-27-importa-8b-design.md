@@ -110,9 +110,11 @@ Di ogni gruppo si sanno:
 - le occorrenze (settimana, giorno, nome del pasto, nome del piatto);
 - lo stato sul piano effettivo: `aperto` (una riga del gruppo è ancora irrisolta), `fatto` (tutte
   risolte), `tolto` (nessuna riga del gruppo è rimasta);
-- la quantità e l'unità comuni, se tutte le righe risolte coincidono, altrimenti `null`;
-- l'**unità fissa**: l'unità di una qualunque riga effettiva dello stesso alimento, dentro o fuori
-  dal gruppo, se c'è (decisione 8).
+- la quantità e l'unità comuni, se tutte le righe risolte coincidono, altrimenti `null` (con
+  valori diversi la nota della riga aggiunge «valori diversi nei giorni»);
+- l'**unità fissa**: l'unità di una riga effettiva dello stesso alimento **fuori dal gruppo**, se
+  c'è (decisione 8). Fuori, e non dentro: altrimenti, risposto il gruppo, la sua stessa unità lo
+  fisserebbe e un'unità scelta per sbaglio non si potrebbe più cambiare.
 
 Una riga di un gruppo si ritrova nel piano effettivo per chiave, non per indice: gli indici
 cambiano quando si tolgono righe.
@@ -174,8 +176,9 @@ con-dock`. Dall'alto:
      «{testoOriginale}»». Avviso in linea finché è aperto: «Sul foglio non c'è un peso: scrivi
      quanto ne usi e in che unità.» (o «…scrivi quanto ne usi.» se l'unità è fissa). La X toglie
      il gruppo (`togliGruppo`): con una sola occorrenza subito, con più occorrenze dopo un Dialogo
-     di conferma «Togliere {alimento} da {N} pasti?» (`TOGLI` / `ANNULLA`), perché non si torna
-     indietro. Un gruppo `tolto` resta al suo posto, senza campo né X, con la nota «Tolta dal
+     di conferma «Togliere {alimento} da {N} pasti?» (`TOGLI` / `ANNULLA`), perché qui non si torna
+     indietro. Testo: «Le righe spariscono da tutti i pasti in cui compaiono. Puoi rimetterle
+     dall'editor del piatto, a piano creato.» {N} conta i pasti distinti, non le righe. Un gruppo `tolto` resta al suo posto, senza campo né X, con la nota «Tolta dal
      piano».
 3. **Da controllare** (solo se ci sono gruppi `inferita`): stessa Riga dell'alimento, senza bordo
    di dubbio, nota «Sul foglio: «{testo}» · quantità proposta da me». Non blocca. Cambiare il
@@ -184,7 +187,14 @@ con-dock`. Dall'alto:
    `daSistemare`, nota «Nella dieta in {N} giorni», valore il nome dello slot.
 5. **I giorni** (contatore dei pasti): una Riga di impostazione per giorno, nome «Lunedì» (o il
    titolo dello scenario), nota coi piatti, finale `{N} PASTI` con chevron. Con più settimane,
-   un'Etichetta di sezione «Settimana {n}» per gruppo. Il tocco apre il foglio del giorno (§E).
+   un Blocco di gruppo per settimana, intitolato «Settimana {n}» col contatore dei suoi pasti, al
+   posto del blocco unico «I giorni». Il tocco apre il foglio del giorno (§E).
+
+**Un solo indietro per schermata.** Due `useIndietroFogli` montati insieme reagirebbero entrambi
+allo stesso `popstate`, e un gesto chiuderebbe due livelli. Controlla e Ingredienti tengono quindi
+un solo hook, con la profondità calcolata dal loro stato (foglio del giorno, selettore aperto,
+dialogo), e il Selettore a foglio è **controllato**: `aperto`, `onApri`, `onChiudi` li decide chi
+lo monta.
 6. **Dock**: `CONFERMA I PASTI`, spento finché `pronto` è falso. Il tocco chiama `confermaTutti` e
    risale con un solo `onStato`.
 
@@ -210,7 +220,8 @@ abbinato) e, per ogni piatto, il nome del piatto 15/700 e sotto le sue righe:
 
 Una riga irrisolta ha lo stato dubbio. Una riga inferita ha la nota «quantità proposta da me». La X
 toglie la riga, con la cascata. Le modifiche restano nel foglio e risalgono con un solo `onStato`
-alla chiusura (velo, indietro di Android, tasto `CHIUDI` in fondo al foglio). Un pasto svuotato
+alla chiusura (velo, indietro di Android, la X della testata del foglio, `TestataFoglio` come nella
+Dispensa). Un pasto svuotato
 mostra «Pasto tolto: nessun piatto da creare per questo giorno.» fino alla chiusura.
 
 L'indietro di Android chiude il foglio (`useIndietroFogli`), anche mentre la tastiera è aperta.
@@ -235,7 +246,7 @@ di un ingrediente esistente con un'unità diversa.
    nella mia tabella dei formati: {1 pz | 500 g | 500 ml} è un valore di ripiego.».
 4. **Proposti da me**: una Riga di impostazione per ogni altra proposta: nome, nota «{Area}» o
    «{Area} · fresco» (o «Usa «{nome esistente}»» se legata), finale `{formato} {UNITÀ}` con
-   chevron. Il tocco apre la stessa Scheda in un Foglio dal basso `alto`, con `CHIUDI` in fondo.
+   chevron. Il tocco apre la stessa Scheda in un Foglio dal basso `alto`, con la X della `TestataFoglio`.
 5. **Dock**: `VAI AL RIEPILOGO`, spento se c'è un nome doppio, un nome vuoto o una confezione non
    positiva.
 
@@ -277,16 +288,19 @@ dentro un Blocco di gruppo):
   12,5 `--avviso` con `aria-live="polite"`, e, se l'unità non è fissa, sotto la riga le pillole
   G / ML / PZ dell'editor dell'ingrediente. Il gruppo è risolto quando ha un numero valido e
   un'unità, in qualunque ordine si diano;
-- **props**: `nome`, `nota`, `provenienza?`, `quantita`, `unita`, `unitaFissa`, `dubbio`,
-  `avviso?`, `onValore(quantita, unita)`, `onTogli`, `etichetta` per i nomi accessibili («Quantità
-  di {alimento}», «Togli {alimento}»).
+- **props**: `nome`, `nota`, `provenienza?`, `quantita`, `unita`, `scegliUnita` (le pillole),
+  `dubbio`, `avviso?`, `onValore(quantita, unita)`, `onTogli?` (assente = niente X), `etichetta`
+  per i nomi accessibili («Quantità di {alimento}», «Togli {alimento}», «Unità di {alimento}»).
 
 **Selettore a foglio** (`SelettoreFoglio.tsx`): una Riga di impostazione a valore + chevron che
 apre un `FoglioDalBasso` `contenuto`, con un titolo (15.5/700) e una nota facoltativa. Le voci sono
 alte 50, raggio 14. La **voce scelta** è piena `--ink` con testo bianco e la spunta bianca in un
 tondo da 24 a destra, secondo la regola «pieno = scelto» della Riga piatto; le altre hanno il fondo
-`rgba(20,22,58,0.04)` di §8. Il tocco su una voce sceglie e chiude. Il velo e l'indietro di Android
-chiudono senza scegliere (`useIndietroFogli`). La voce scelta ha `aria-checked`, il foglio
+`rgba(20,22,58,0.04)` di §8. Le voci sono allineate a sinistra, non centrate come le azioni di un
+foglio: sono valori da leggere in colonna, con la spunta a destra e, per l'area, il pallino del
+colore a sinistra. Il tocco su una voce sceglie e chiude. Il velo e l'indietro di Android
+chiudono senza scegliere (l'hook di chi lo monta). Prop `livello` 1 o 2: 2 sopra il foglio di una
+Scheda. La voce scelta ha `aria-checked`, il foglio
 `role="dialog"`, le voci `role="radio"` in un `radiogroup`. Sostituisce ogni `<select>` di
 Importa: slot del pasto, area, «È lo stesso di…».
 
