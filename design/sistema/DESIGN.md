@@ -1333,5 +1333,16 @@ accettato di default, si tocca solo quello che l'AI non sa.
 18. **Il foglio del giorno mostra solo i pasti che hanno piatti alla sua apertura**: un pasto già
     vuoto non compare; uno svuotato nel foglio ci resta, con «Pasto tolto», fino alla chiusura — la
     spec §E vince sul brief (ruling accettato, Task 7).
+19. **Unità diverse nello stesso gruppo sono un dubbio**: un gruppo le cui righe risolte hanno più
+    di un'unità sta in «Da sistemare» con le pillole e l'avviso «Nei giorni ci sono unità diverse:
+    scegline una per tutti.», e la risposta scrive la stessa unità su tutte le righe. Nel foglio
+    del giorno una riga del gruppo prende l'unità da un'altra riga già risolta dello stesso gruppo:
+    le pillole solo se nessuna ce l'ha (ruling, review finale I2).
+20. **Il dialogo TOGLI dice cosa sparisce**: se la cascata toglie dei piatti lo dice («Spariscono
+    anche N piatti rimasti senza ingredienti.») e non promette l'editor del piatto; compare anche
+    con un pasto solo quando sparisce un piatto; il titolo conta i pasti che il gruppo tocca ora
+    (ruling, review finale I3).
+21. **Un giorno senza pasti non si apre**: in «I giorni» ha la nota «Nessun pasto» e nessun
+    finale; un foglio vuoto non serve a niente (ruling, review finale).
 
 Componenti nuovi: Riga dell'alimento, Selettore a foglio (con la voce scelta piena del Foglio).

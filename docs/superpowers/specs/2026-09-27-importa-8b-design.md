@@ -110,8 +110,13 @@ Di ogni gruppo si sanno:
 - le occorrenze (settimana, giorno, nome del pasto, nome del piatto);
 - lo stato sul piano effettivo: `aperto` (una riga del gruppo è ancora irrisolta), `fatto` (tutte
   risolte), `tolto` (nessuna riga del gruppo è rimasta);
-- la quantità e l'unità comuni, se tutte le righe risolte coincidono, altrimenti `null` (con
-  valori diversi la nota della riga aggiunge «valori diversi nei giorni»);
+- l'unità comune, se tutte le righe risolte hanno la stessa unità, anche con quantità diverse;
+  la quantità comune, se tutte le righe sono risolte con la stessa quantità e la stessa unità;
+  altrimenti `null` (con valori diversi la nota della riga aggiunge «valori diversi nei giorni»);
+- le **unità diverse**: un gruppo le cui righe risolte hanno più di un'unità è `irrisolta` e
+  `aperto`, anche se è nato `inferita`, finché una risposta non le rimette uguali (review finale,
+  I2). Se le unità diverse vengono dal piano originale (le ha lette l'AI) il gruppo resta
+  `irrisolta` anche dopo la risposta, come ogni dubbio;
 - l'**unità fissa**: l'unità di una riga effettiva dello stesso alimento fuori da **ogni gruppo
   irrisolto** (non solo il proprio), se c'è (decisione 8). Non solo fuori dal proprio gruppo: due
   gruppi irrisolti dello stesso alimento non devono fissarsi l'unità a vicenda, altrimenti,
@@ -175,21 +180,31 @@ con-dock`. Dall'alto:
      10 `--sec`: «Martedì · cena · Merluzzo» se l'occorrenza è una, «Sett. 1 · Martedì · cena ·
      Merluzzo» se il piano ha più settimane, «In {N} pasti» se sono di più. Nota: «Sul foglio:
      «{testoOriginale}»». Avviso in linea finché è aperto: «Sul foglio non c'è un peso: scrivi
-     quanto ne usi e in che unità.» (o «…scrivi quanto ne usi.» se l'unità è fissa). La X toglie
-     il gruppo (`togliGruppo`): con una sola occorrenza subito, con più occorrenze dopo un Dialogo
-     di conferma «Togliere {alimento} da {N} pasti?» (`TOGLI` / `ANNULLA`), perché qui non si torna
-     indietro. Testo: «Le righe spariscono da tutti i pasti in cui compaiono. Puoi rimetterle
-     dall'editor del piatto, a piano creato.» {N} conta i pasti distinti, non le righe. Un gruppo `tolto` resta al suo posto, senza campo né X, con la nota «Tolta dal
-     piano».
+     quanto ne usi e in che unità.» (o «…scrivi quanto ne usi.» se l'unità è fissa). Con le righe
+     tutte risolte ma in unità diverse l'avviso è «Nei giorni ci sono unità diverse: scegline una
+     per tutti.», con le pillole: la risposta passa da `rispondiGruppo` e scrive la stessa unità su
+     tutte le righe. La X toglie il gruppo (`togliGruppo`). Prima di togliere si calcola cosa
+     sparisce (`anteprimaTogli`): i pasti che hanno ancora righe del gruppo (occorrenze effettive,
+     non originali) e i piatti che la cascata toglie. Il Dialogo di conferma (`TOGLI` / `ANNULLA`),
+     perché qui non si torna indietro, compare con più di un pasto **oppure** quando togliere fa
+     sparire almeno un piatto; negli altri casi la X toglie subito. Titolo: «Togliere {alimento}
+     da {N} pasti?» con più pasti, «Togliere {alimento}?» con uno. Testo: «Le righe spariscono da
+     tutti i pasti in cui compaiono.» e poi, senza piatti spariti, «Puoi rimetterle dall'editor del
+     piatto, a piano creato.»; con piatti spariti, «Spariscono anche {N} piatti rimasti senza
+     ingredienti.» («Sparisce anche 1 piatto rimasto senza ingredienti.» con uno), senza la frase
+     sull'editor: il piatto non c'è più, e con lui magari il pasto. Un gruppo `tolto` resta al suo
+     posto, senza campo né X, con la nota «Tolta dal piano».
 3. **Da controllare** (solo se ci sono gruppi `inferita`): stessa Riga dell'alimento, senza bordo
    di dubbio, nota «Sul foglio: «{testo}» · quantità proposta da me». Non blocca. Cambiare il
-   valore chiama `rispondiGruppo`.
+   valore chiama `rispondiGruppo`. Le pillole compaiono anche qui se la riga non ha né un'unità
+   comune né un'unità fissa: senza unità il numero scritto non si salverebbe.
 4. **Dove vanno i pasti** (contatore dei nomi): un Selettore a foglio per ogni nome non
    `daSistemare`, nota «Nella dieta in {N} giorni», valore il nome dello slot.
 5. **I giorni** (contatore dei pasti): una Riga di impostazione per giorno, nome «Lunedì» (o il
    titolo dello scenario), nota coi piatti, finale `{N} PASTI` con chevron. Con più settimane,
    un Blocco di gruppo per settimana, intitolato «Settimana {n}» col contatore dei suoi pasti, al
-   posto del blocco unico «I giorni». Il tocco apre il foglio del giorno (§E).
+   posto del blocco unico «I giorni». Il tocco apre il foglio del giorno (§E). Un giorno con 0
+   pasti non si apre: nota «Nessun pasto», nessun finale.
 
 **Un solo indietro per schermata.** Due `useIndietroFogli` montati insieme reagirebbero entrambi
 allo stesso `popstate`, e un gesto chiuderebbe due livelli. Controlla e Ingredienti tengono quindi
@@ -200,7 +215,7 @@ lo monta.
    risale con un solo `onStato`.
 
 **Quando si salva.** Scegliere uno slot, rispondere a un gruppo (all'uscita dal campo o con Invio,
-come il campo numerico di §8 Riga di impostazione), togliere o rimettere un gruppo, chiudere il
+come il campo numerico di §8 Riga di impostazione), togliere un gruppo, chiudere il
 foglio del giorno: ognuno è un `onStato`. Mai a ogni tasto: `onStato` innesca
 `salvaBozzaImport`, senza debounce.
 
@@ -219,7 +234,11 @@ abbinato) e, per ogni piatto, il nome del piatto 15/700 e sotto le sue righe:
 - **componenti**: il nome del componente in mono 10 `--sec` (con la nota, se c'è), poi le
   opzioni separate da «oppure» in 12,5 `--ter` corsivo.
 
-Una riga irrisolta ha lo stato dubbio. Una riga inferita ha la nota «quantità proposta da me». La X
+Una riga irrisolta ha lo stato dubbio. L'unità di una riga di un gruppo irrisolto è fissa (niente
+pillole) se la sa un'altra riga dello stesso alimento fuori dai dubbi (decisione 8) **o un'altra
+riga già risolta dello stesso gruppo** (`unitaDelGruppo`, review finale I2): così lo stesso gruppo
+non si risolve in pz un giorno e in g un altro. Le pillole restano solo se nessuna delle due c'è.
+Una riga inferita ha la nota «quantità proposta da me». La X
 toglie la riga, con la cascata. Le modifiche restano nel foglio e risalgono con un solo `onStato`
 alla chiusura (velo, indietro di Android, la X della testata del foglio, `TestataFoglio` come nella
 Dispensa). Un pasto svuotato
@@ -344,7 +363,7 @@ Importa: slot del pasto, area, «È lo stesso di…».
   - §2.5: nessuna alfa nuova. Se ne serve una, va dichiarata lì.
 - `docs/superpowers/specs/DESIGN-SYSTEM.md`: il ponte prende i due componenti e le due schermate;
   §9 perde «Revisione e Formati».
-- Un registro `docs/2026-09-27-fase8b-decisioni-esecuzione.md`, con i ruling dell'esecuzione, i
+- Un registro `docs/2026-09-28-fase8b-decisioni-esecuzione.md`, con i ruling dell'esecuzione, i
   limiti noti e le prove dal telefono da fare.
 
 ## I. I test
@@ -383,11 +402,13 @@ Importa: slot del pasto, area, «È lo stesso di…».
 - **Chi conferma senza aprire i giorni non vede le righe lette con sicurezza**: un 120 g letto
   come 12 g passa. È il prezzo della direzione B, scelto. [ipotesi, non testata: nella direzione A
   lo avrebbe visto solo chi leggeva davvero ogni riga]
-- **Il conflitto di unità letto dall'AI resta.** Se l'estrazione scrive lo stesso alimento in g in
-  una riga e in pz in un'altra, il riepilogo va in `BozzaIncompletaError` e rimanda a Controlla,
-  dove non c'è un dubbio che lo spieghi. Le decisioni 7 e 8 impediscono che lo crei l'utente, non
-  che lo porti l'estrazione. [derivato dal codice: `risolviRiga` e `ingredientiDaAbbinare`; non
-  osservato su una dieta vera]
+- **Il conflitto di unità fra gruppi diversi resta.** Dentro un gruppo (stesso alimento, stesso
+  testo) le unità diverse sono un dubbio aperto in «Da sistemare» e si risolvono con una risposta
+  (review finale, I2). Fra gruppi diversi dello stesso alimento (testi diversi, per esempio «olive
+  (15 g)» e «3 olive») no: se l'estrazione li scrive uno in g e uno in pz, il riepilogo va in
+  `BozzaIncompletaError` e rimanda a Controlla, dove non c'è un dubbio che lo spieghi. Le
+  decisioni 7 e 8 impediscono che lo crei l'utente, non che lo porti l'estrazione. [derivato dal
+  codice: `risolviRiga` e `ingredientiDaAbbinare`; non osservato su una dieta vera]
 - **«Da sistemare» dei pasti dipende dagli slot di oggi**: se l'utente aggiunge uno slot fra una
   sessione e l'altra, un nome può passare da «Da sistemare» a «Dove vanno i pasti». La mappatura
   scelta resta.

@@ -177,7 +177,9 @@ Dal ledger, con il costo dichiarato se il ruling fosse sbagliato:
    aggiornamento e poi rinominata a mano torna scheda completa.
 8. **«Da sistemare» con tre avvisi (Task 8)**: raccoglie ogni proposta che blocca — nome doppio,
    nome vuoto, confezione non valida — ciascuna col suo avviso; si entra nella sezione solo da
-   «Proposti da me»; `passoBloccato` salta il campo Confezione per le legate. Costo se sbagliato:
+   «Proposti da me»; `passoBloccato` salta il campo Confezione solo per le legate **per scelta**
+   (quelle scelte in «È lo stesso di…», `sceltiEsistenti`), non per quelle legate per sola
+   inclusione. Costo se sbagliato:
    una sezione con più tipi di problema misti.
 9. **Bozze vecchie con l'unità cambiata (Task 8)**: `calcolaProposte` ripropone da capo una
    proposta conservata se la sua unità non è quella delle righe. Costo se sbagliato: si perdono le
@@ -191,15 +193,67 @@ Dal ledger, con il costo dichiarato se il ruling fosse sbagliato:
     copy falso. Costo se sbagliato: il numero può includere una scheda che sta in «Da
     controllare».
 
+## Correzioni della review finale
+
+La review finale (opus, su `2a9e428..eb44ace`) ha chiuso con correzioni: 0 Critical, 3 Important,
+6 minor. I tre Important sono stati riprodotti dal revisore su sonde usa-e-getta [misurato dal
+revisore]. Le correzioni sono state fatte in un'ondata sola, un test che fallisce prima di ogni
+correzione di comportamento.
+
+- **I1. Una riga di «Da controllare» col campo morto** (`b4c51b8`). `gruppiRighe` calcolava l'unità
+  comune solo con le quantità uguali: un gruppo inferito con valori diversi nei giorni (dopo un
+  cambio dal foglio del giorno) aveva la riga senza unità e senza pillole, e il numero scritto non
+  si salvava. Ora l'unità comune vale se tutte le righe risolte hanno la stessa unità, anche con
+  quantità diverse; e in Controlla le pillole compaiono anche per ogni riga senza nessuna unità da
+  mostrare.
+- **I2. Lo stesso gruppo risolto con unità diverse** (`5d4bf9c`). Dal foglio del giorno si potevano
+  dare 3 PZ il lunedì e 20 G il martedì: Controlla diceva «fatto» e il riepilogo andava in
+  `BozzaIncompletaError`. Ora un gruppo le cui righe risolte hanno più di un'unità è `irrisolta` e
+  `aperto`: sta in «Da sistemare» con le pillole e l'avviso «Nei giorni ci sono unità diverse:
+  scegline una per tutti.», e la risposta passa da `rispondiGruppo`. Nel foglio del giorno una riga
+  prende l'unità fissa da un'altra riga già risolta dello stesso gruppo (`unitaDelGruppo`).
+- **I3. Il testo del dialogo TOGLI era falso con la cascata** (`6d73e87`). Prometteva l'editor del
+  piatto anche quando il piatto spariva, e con lui il pasto. Ora `anteprimaTogli` calcola prima i
+  pasti effettivi e i piatti spariti: con piatti spariti il testo lo dice e non promette l'editor;
+  il dialogo compare anche con un pasto solo se sparisce un piatto; il titolo conta i pasti
+  effettivi (M2). Nello stesso commit, **il giorno senza pasti** non si apre più.
+- **Minor** (`1b5ea45` per il codice, questo commit per i documenti):
+  - M1: il nome proposto teneva gli accenti persi dalla normalizzazione («Caffe», «Te verde»):
+    `ingredientiDaAbbinare` porta anche il `grezzo` e `calcolaProposte` propone da lì;
+  - M2: il conteggio dei pasti nel dialogo, dentro I3;
+  - M3: la provenienza scrive il nome del pasto senza underscore («spuntino mattina»);
+  - M4: il tasto del Riepilogo è «TORNA A CONTROLLA»;
+  - M5: questi documenti riallineati al codice finale;
+  - M6: la docstring di `VoceFormato.chiave` dice «per parole intere», e l'esempio di `voceDi` usa
+    chiavi che esistono.
+
+I ruling del controller dopo la review finale, con il costo se sbagliati:
+
+12. **Unità diverse nel gruppo (I2)**: un gruppo le cui righe effettive hanno più di un'unità è un
+    dubbio aperto di tipo `irrisolta`, e nel foglio del giorno una riga irrisolta prende l'unità
+    fissa da un'altra riga già risolta dello stesso gruppo. Chiude il conflitto creato dall'utente
+    senza un tipo di dubbio nuovo; il conflitto fra gruppi diversi letto dall'AI resta nei limiti
+    noti. Costo se sbagliato: un gruppo nato «inferita» con unità diverse salta in «Da sistemare».
+13. **Il dialogo TOGLI (I3)**: calcola prima cosa sparisce; se la cascata toglie piatti lo dice e non
+    promette l'editor del piatto; compare anche con un'occorrenza sola quando toglierla fa sparire
+    un piatto; i pasti si contano sulle occorrenze effettive (M2). Costo se sbagliato: un dialogo in
+    più.
+14. **Il giorno senza pasti non si apre** (finale niente): un foglio vuoto non serve a niente. Costo
+    se sbagliato: nessuno.
+15. **M4**: il tasto del Riepilogo diventa «TORNA A CONTROLLA», perché la schermata ora si chiama
+    Controlla. Costo se sbagliato: una parola.
+
 ## I limiti noti
 
 Dalla spec §J, tutti confermati validi a fine esecuzione:
 
 - **Chi conferma senza aprire i giorni non vede le righe lette con sicurezza**: un 120 g letto
   come 12 g passa. Prezzo scelto della direzione B. [ipotesi, non testata]
-- **Il conflitto di unità letto dall'AI resta**: se l'estrazione scrive lo stesso alimento in g in
-  una riga e in pz in un'altra, il riepilogo va in `BozzaIncompletaError` e Controlla non ha un
-  dubbio che lo spieghi. [ipotesi, derivato dal codice, non osservato su una dieta vera]
+- **Il conflitto di unità fra gruppi diversi resta**: dentro un gruppo (stesso alimento, stesso
+  testo) le unità diverse ora sono un dubbio che si risolve in Controlla (review finale, I2). Fra
+  gruppi diversi dello stesso alimento (testi diversi) no: se l'estrazione ne scrive uno in g e uno
+  in pz, il riepilogo va in `BozzaIncompletaError` e Controlla non ha un dubbio che lo spieghi.
+  [ipotesi, derivato dal codice, non osservato su una dieta vera]
 - **«Da sistemare» dei pasti dipende dagli slot di oggi**: un nome può passare da «Da sistemare» a
   «Dove vanno i pasti» se l'utente aggiunge uno slot fra una sessione e l'altra; la mappatura
   scelta resta. Nota dal Task 7: nelle bozze vecchie un nome riconosciuto ma senza mappatura sta
@@ -219,8 +273,9 @@ Aperti dai `minor (deferred)` del ledger, non toccati:
   il piano più volte per render, O(gruppi × righe) (Task 2).
 - **`formati-tipici.ts`** (Task 1): la punteggiatura attaccata alla chiave rompe l'abbinamento
   («latte-scremato» finisce nel ripiego, «frutta secca,» diventa la voce «frutta», non «ortofrutta
-  1000 g»); un docstring e un esempio disallineati; test mancanti su `origineProposta` con unità
-  null e nomi con maiuscole/spazi; `normalizza` calcolata due volte in `proponi`.
+  1000 g»); test mancanti su `origineProposta` con unità null e nomi con maiuscole/spazi;
+  `normalizza` calcolata due volte in `proponi`. (Il docstring e l'esempio disallineati sono
+  stati corretti nella review finale, M6.)
 - **`numeroPositivo`** (Task 5) sostituisce solo la prima virgola: un input patologico è
   rifiutato, non accettato per sbaglio — non un difetto verso la spec.
 - **Il differenziale della cascata** (Task 3) copre solo una riga fissa, non un caso d'opzione
@@ -230,8 +285,7 @@ Aperti dai `minor (deferred)` del ledger, non toccati:
 - **Accessibilità delle voci radio** (Task 6, `SelettoreFoglio`): niente roving tabindex né le
   frecce del pattern APG.
 - **Test mancanti sul foglio del giorno** (Task 7): chiusura dal velo, ANNULLA/indietro sul
-  dialogo TOGLI, indietro sul Selettore; il giorno senza pasti resta apribile su un foglio vuoto;
-  le righe di «Da controllare» hanno la X (da confermare con Andrea se è voluto); l'accesso da
+  dialogo TOGLI, indietro sul Selettore; le righe di «Da controllare» hanno la X (da confermare con Andrea se è voluto); l'accesso da
   tastiera raggiunge le righe sotto un foglio aperto, preesistente; il blur tardivo di Chrome
   sull'input rimosso non è provato in browser.
 - **Ingredienti** (Task 8): «No, è un ingrediente nuovo» butta il nome scritto a mano (conforme
@@ -269,3 +323,8 @@ ESEGUITE**.
 13. Svuota la confezione di un ingrediente dal foglio, poi riscrivila: la riga e la scheda devono
     mostrare lo stesso numero (copre l'Important del round 1 del Task 8, `formatoTesto`
     disallineato fra le due istanze).
+14. In Controlla apri un Selettore e poi il dialogo TOGLI, e fai indietro: si chiude solo quello.
+15. Con una riga senza peso ripetuta in due giorni, rispondi nel foglio del primo giorno in PZ,
+    poi apri il secondo: la riga ha già PZ, senza pillole (copre I2).
+16. Togli da Controlla una riga che è l'unica del suo piatto: il dialogo dice che sparisce anche il
+    piatto, e non parla dell'editor (copre I3).
