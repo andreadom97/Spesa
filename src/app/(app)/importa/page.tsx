@@ -22,7 +22,7 @@ import { Riepilogo } from './Riepilogo';
 import { Camera } from './Camera';
 import { Acquisizione } from './Acquisizione';
 import { Controlla } from './Controlla';
-import { Formati } from './Formati';
+import { Ingredienti } from './Ingredienti';
 import { tornaA } from '@/components/tornaA';
 
 type Vista =
@@ -91,7 +91,7 @@ export default function Importa() {
   const [vista, setVista] = useState<Vista>('caricamento');
   const [bozza, setBozza] = useState<BozzaImport | null>(null);
   // Servono alla revisione (etichette e opzioni dello slot per pasto) e al passo
-  // formati (ingredienti esistenti da abbinare o proporre come "è lo stesso di…"):
+  // Ingredienti (ingredienti esistenti da abbinare o proporre come "è lo stesso di…"):
   // letti una volta al mount, indipendentemente dalla vista corrente, così sono già
   // pronti quando si riprende una bozza salvata (che non rifà il giro di estrazione).
   const [slotDefs, setSlotDefs] = useState<MealSlotDef[]>([]);
@@ -492,12 +492,7 @@ function ContenutoBozza({
       );
     case 'formati':
       return (
-        <Formati
-          piano={bozza.piano}
-          stato={bozza.statoRevisione}
-          ingredientiEsistenti={ingredientiEsistenti}
-          onStato={onStatoRevisione}
-        />
+        <Ingredienti piano={bozza.piano} stato={bozza.statoRevisione} ingredientiEsistenti={ingredientiEsistenti} onStato={onStatoRevisione} />
       );
     case 'riepilogo':
       return <Riepilogo piano={bozza.piano} stato={bozza.statoRevisione} onStato={onStatoRevisione} />;
