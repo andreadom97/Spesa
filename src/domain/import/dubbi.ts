@@ -242,10 +242,10 @@ function unitaDiverse(righe: RigaEstratta[]): boolean {
 /**
  * Le chiavi di gruppo irrisolte: una riga irrisolta, o righe risolte con unità diverse, nel
  * piano originale o in quello effettivo (stessa definizione di `tipo: 'irrisolta'` in
- * `gruppiRighe`). Una volta
- * irrisolta una chiave lo resta anche se poi si risolve nelle correzioni: altrimenti,
- * risolto un gruppo, la sua unità fisserebbe per sempre un altro gruppo ancora aperto
- * dello stesso alimento (e viceversa).
+ * `gruppiRighe`). Una chiave irrisolta nel piano originale lo resta anche se poi si risolve
+ * nelle correzioni: altrimenti, risolto un gruppo, la sua unità fisserebbe per sempre un altro
+ * gruppo ancora aperto dello stesso alimento (e viceversa). Le unità diverse nate solo nelle
+ * correzioni contano finché ci sono.
  */
 function chiaviGruppiIrrisolti(piano: PianoEstratto, stato: StatoRevisione): Set<string> {
   const chiavi = new Set<string>();
