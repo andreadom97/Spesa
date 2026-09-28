@@ -3,8 +3,7 @@
 import { useState, type CSSProperties } from 'react';
 import type { AreaId, ClasseResiduo, Ingredient } from '@/domain/types';
 import type { IngredienteProposto } from '@/domain/import/types';
-import { proponi } from '@/domain/import/formati-tipici';
-import { legataA } from '@/domain/import/ingredienti';
+import { legataA, type MotivoBlocco } from '@/domain/import/ingredienti';
 import { AREE, coloreArea, nomeAreaFrase } from '@/domain/aree';
 import { Blocco, Etichetta, STILE_PILLOLA } from '@/components/controlli';
 import { Nota } from '@/components/pannello/pezzi';
@@ -18,8 +17,18 @@ const OPZIONI_CLASSE: { id: ClasseResiduo; label: string }[] = [
   { id: 'stima', label: 'A stima' },
 ];
 const UNITA_IN_PAROLE = { g: 'grammi', ml: 'millilitri', pz: 'pezzi' } as const;
+const TESTO_AVVISO: Record<MotivoBlocco, string> = {
+  nomeVuoto: "Scrivi il nome dell'ingrediente.",
+  doppio: 'Un altro ingrediente si chiama già così: cambia il nome.',
+  confezione: "Scrivi quanto c'è in una confezione.",
+};
 
 export type CampoSelettore = 'area' | 'stesso';
+
+/** Un numero come lo si scrive: con la virgola («0,5»). */
+export function numeroInTesto(n: number): string {
+  return String(n).replace('.', ',');
+}
 
 function pillola(attiva: boolean): CSSProperties {
   return {
@@ -36,14 +45,27 @@ function formatoDaTesto(testo: string): number {
   return pulito === '' ? Number.NaN : Number(pulito);
 }
 
+/** L'avviso in linea di una proposta che blocca il passo (12,5 `--avviso`, come nella Riga dell'alimento). */
+function Avviso({ motivo }: { motivo: MotivoBlocco }) {
+  return (
+    <p aria-live="polite" style={{ margin: '0 4px', fontSize: 12.5, lineHeight: 1.45, color: 'var(--avviso)' }}>
+      {TESTO_AVVISO[motivo]}
+    </p>
+  );
+}
+
 interface Props {
   proposta: IngredienteProposto;
   esistenti: Ingredient[];
-  /** Il nome doppio: avviso sotto il nome. */
-  doppio: boolean;
+  /** Legata per scelta in «È lo stesso di…»: la Scheda nasconde i campi. */
+  scelto: boolean;
+  /** Perché la proposta blocca il passo; vuoto se non blocca. */
+  avvisi: MotivoBlocco[];
   /** La nota del ripiego, se la scheda è fra quelle da controllare. */
   notaRipiego?: string;
   onCambia: (cambio: Partial<IngredienteProposto>) => void;
+  /** La scelta in «È lo stesso di…»: l'id dell'esistente, o `null` per «No, è un ingrediente nuovo». */
+  onStesso: (id: string | null) => void;
   selettore: CampoSelettore | null;
   onApriSelettore: (campo: CampoSelettore) => void;
   onChiudiSelettore: () => void;
@@ -55,17 +77,24 @@ interface Props {
  * La Scheda dell'ingrediente (spec 8b §F): i campi dell'editor dell'ingrediente meno il prezzo
  * (esce dal passo) e meno l'unità (è quella delle righe della dieta, decisione 7). Le modifiche
  * vanno in `onCambia` a ogni tasto: restano nello stato locale di Ingredienti, che le salva con
- * VAI AL RIEPILOGO. Scegliere un esistente in «È lo stesso di…» mette il suo nome nella
- * proposta e nasconde il resto: `traduciBozza` userà l'esistente.
+ * VAI AL RIEPILOGO.
+ *
+ * La modalità legata («Userò l'ingrediente che hai già.», campi nascosti) la decide la SCELTA in
+ * «È lo stesso di…» (`scelto`), non il nome: decisa dal nome, il campo Nome si smonterebbe a
+ * metà parola appena il testo coincide con un esistente. Una proposta che `abbina` aggancia
+ * senza una scelta (per inclusione, o scrivendo il nome esatto) tiene la Scheda intera con la
+ * nota «Finirà su…»: si stacca rinominandola.
  */
 export function SchedaIngrediente({
-  proposta, esistenti, doppio, notaRipiego, onCambia, selettore, onApriSelettore, onChiudiSelettore, livelloSelettori,
+  proposta, esistenti, scelto, avvisi, notaRipiego, onCambia, onStesso, selettore, onApriSelettore, onChiudiSelettore, livelloSelettori,
 }: Props) {
-  const [formatoTesto, setFormatoTesto] = useState(() => String(proposta.formatoConfezione).replace('.', ','));
+  const [formatoTesto, setFormatoTesto] = useState(() =>
+    Number.isFinite(proposta.formatoConfezione) ? numeroInTesto(proposta.formatoConfezione) : '',
+  );
   const legata = legataA(proposta, esistenti);
   const compatibili = esistenti
     .filter((e) => e.unitaBase === proposta.unitaBase)
-    .sort((a, b) => (a.nome < b.nome ? -1 : a.nome > b.nome ? 1 : 0));
+    .sort((a, b) => a.nome.localeCompare(b.nome, 'it'));
 
   const stessoDi = compatibili.length > 0 && (
     <SelettoreFoglio
@@ -78,13 +107,7 @@ export function SchedaIngrediente({
       aperto={selettore === 'stesso'}
       onApri={() => onApriSelettore('stesso')}
       onChiudi={onChiudiSelettore}
-      onScegli={(id) => {
-        if (id === NUOVO) onCambia({ nome: proponi(proposta.alimento, proposta.unitaBase).nome });
-        else {
-          const esistente = esistenti.find((e) => e.id === id);
-          if (esistente) onCambia({ nome: esistente.nome });
-        }
-      }}
+      onScegli={(id) => onStesso(id === NUOVO ? null : id)}
       livello={livelloSelettori}
     />
   );
@@ -96,10 +119,10 @@ export function SchedaIngrediente({
           Dalla dieta: {proposta.alimento}
         </span>
         <span style={{ fontSize: 17, fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--ink)', overflowWrap: 'anywhere' }}>{proposta.nome || proposta.alimento}</span>
-        {notaRipiego && !legata && <Nota>{notaRipiego}</Nota>}
+        {notaRipiego && !scelto && <Nota>{notaRipiego}</Nota>}
       </div>
 
-      {legata ? (
+      {scelto ? (
         <Blocco primo>
           {stessoDi}
           <Nota>Userò l&apos;ingrediente che hai già.</Nota>
@@ -120,11 +143,8 @@ export function SchedaIngrediente({
                 }}
               />
             </label>
-            {doppio && (
-              <p aria-live="polite" style={{ margin: '0 4px', fontSize: 12.5, lineHeight: 1.45, color: 'var(--avviso)' }}>
-                Un altro ingrediente si chiama già così: cambia il nome.
-              </p>
-            )}
+            {avvisi.filter((m) => m !== 'confezione').map((m) => <Avviso key={m} motivo={m} />)}
+            {legata && <Nota>Finirà su «{legata.nome}», che hai già: se è un altro ingrediente, cambia il nome.</Nota>}
           </Blocco>
 
           <Blocco>
@@ -163,6 +183,7 @@ export function SchedaIngrediente({
                 {proposta.unitaBase}
               </span>
             </div>
+            {avvisi.includes('confezione') && <Avviso motivo="confezione" />}
           </Blocco>
 
           <Blocco>
