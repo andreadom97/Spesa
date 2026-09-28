@@ -161,8 +161,9 @@ export interface GruppoRighe {
   tipo: 'irrisolta' | 'inferita';
   occorrenze: Occorrenza[];
   stato: StatoGruppo;
-  /** Comuni a tutte le righe effettive, se risolte e uguali; altrimenti null. */
+  /** Comune a tutte le righe effettive, se sono tutte risolte con la stessa quantità e la stessa unità; altrimenti null. */
   quantita: number | null;
+  /** Comune a tutte le righe effettive risolte, anche con quantità diverse; null senza righe risolte o con unità diverse. */
   unita: UnitaBase | null;
   /** L'unità di una riga dello stesso alimento fuori da OGNI gruppo irrisolto (decisione 8), o null. */
   unitaFissa: UnitaBase | null;
@@ -268,9 +269,14 @@ export function gruppiRighe(piano: PianoEstratto, stato: StatoRevisione): Gruppo
     if (tipo === null) continue;
     const righe = r.effettive.map((e) => e.riga);
     const statoGruppo: StatoGruppo = righe.length === 0 ? 'tolto' : righe.some(rigaIrrisolta) ? 'aperto' : 'fatto';
+    // L'unità comune si calcola a parte dalla quantità: con quantità diverse nei giorni la
+    // riga resta scrivibile, perché il numero nuovo ha comunque la sua unità.
+    const risolte = righe.filter((x) => !rigaIrrisolta(x));
+    const unitaRisolte = new Set(risolte.map((x) => x.unita));
+    const unitaComune = unitaRisolte.size === 1 ? risolte[0].unita : null;
     const prima = righe[0];
-    const comuni = prima !== undefined && !rigaIrrisolta(prima)
-      && righe.every((x) => x.quantita === prima.quantita && x.unita === prima.unita);
+    const quantitaComune = unitaComune !== null && risolte.length === righe.length
+      && righe.every((x) => x.quantita === prima.quantita) ? prima.quantita : null;
     gruppi.push({
       chiave,
       alimento: r.alimento,
@@ -278,8 +284,8 @@ export function gruppiRighe(piano: PianoEstratto, stato: StatoRevisione): Gruppo
       tipo,
       occorrenze: r.originali.length > 0 ? r.originali : r.effettive.map((e) => e.occorrenza),
       stato: statoGruppo,
-      quantita: comuni ? prima.quantita : null,
-      unita: comuni ? prima.unita : null,
+      quantita: quantitaComune,
+      unita: unitaComune,
       unitaFissa: unitaNota(piano, stato, normalizza(r.alimento), chiave),
     });
   }

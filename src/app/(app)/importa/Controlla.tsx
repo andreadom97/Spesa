@@ -135,7 +135,9 @@ export function Controlla({ piano, stato, slotDefs, onStato }: Props) {
       return <RigaImpostazione key={g.chiave} nome={capitalizza(g.alimento)} nota="Tolta dal piano" finale={{ tipo: 'niente' }} />;
     }
     const aperto = g.stato === 'aperto';
-    const pillole = g.tipo === 'irrisolta' && g.unitaFissa === null;
+    // Le pillole per ogni dubbio irrisolto senza unità fissa (decisione 8), e per ogni riga che
+    // non ha nessuna unità da mostrare: senza unità il numero scritto non si salverebbe.
+    const pillole = g.unitaFissa === null && (g.tipo === 'irrisolta' || g.unita === null);
     const diversi = g.stato === 'fatto' && g.quantita === null ? ' · valori diversi nei giorni' : '';
     const proposta = g.tipo === 'inferita' ? ' · quantità proposta da me' : '';
     return (

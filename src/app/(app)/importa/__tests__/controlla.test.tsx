@@ -232,4 +232,39 @@ describe('Controlla', () => {
     expect([...stato.pastiConfermati].sort()).toEqual(['1-0-0', '1-0-1', '1-0-2', '1-1-0', '1-1-1', '2-0-0']);
     expect(stato.correzioni['1-1-1'].piatti[0].nome).toBe('Merluzzo al forno');
   });
+
+  // --- Correzioni della review finale ---
+
+  it('I1: una riga di «Da controllare» con valori diversi nei giorni ha l\'unità, e il numero salva', () => {
+    const piano = pianoConSale();
+    const lunedi = structuredClone(piano.settimane[0].giorni[0].pasti[0]);
+    lunedi.piatti[0].righeFisse[0] = { ...lunedi.piatti[0].righeFisse[0], quantita: 3, quantitaInferita: false };
+    const onStato = rendi({ ...STATO, mappaturaPasti: { cena: 's-cena' }, correzioni: { '1-0-0': lunedi } }, piano);
+    expect(screen.getByText('Sul foglio: «sale q.b.» · quantità proposta da me · valori diversi nei giorni')).toBeInTheDocument();
+    const campo = screen.getByRole('textbox', { name: 'Quantità di sale' });
+    expect(campo).toHaveValue('');
+    fireEvent.change(campo, { target: { value: '4' } });
+    fireEvent.blur(campo);
+    expect(onStato).toHaveBeenCalledTimes(1);
+    const stato = onStato.mock.calls[0][0] as StatoRevisione;
+    expect(Object.values(stato.correzioni).map((p) => p.piatti[0].righeFisse[0])).toEqual([
+      expect.objectContaining({ quantita: 4, unita: 'g' }),
+      expect.objectContaining({ quantita: 4, unita: 'g' }),
+    ]);
+  });
 });
+
+/** Una settimana di `giorni` giorni: ogni giorno una cena con la Zuppa e «sale q.b.», 2 g proposti dall'AI. */
+function pianoConSale(giorni = 2): PianoEstratto {
+  return {
+    archetipo: 'menu_settimanale', fonte: 'test', noteEstrazione: [],
+    settimane: [{
+      numero: 1,
+      giorni: Array.from({ length: giorni }, (_, g) => ({
+        giorno: g,
+        titolo: null,
+        pasti: [{ nomeOriginale: 'cena', piatti: [{ nome: 'Zuppa', descrizione: null, componenti: [], righeFisse: [{ alimento: 'sale', quantita: 2, unita: 'g' as const, quantitaInferita: true, testoOriginale: 'sale q.b.' }] }] }],
+      })),
+    }],
+  };
+}

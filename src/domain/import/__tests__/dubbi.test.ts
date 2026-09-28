@@ -148,9 +148,34 @@ describe('gruppiRighe', () => {
       pasto.piatti[0].righeFisse[0] = { ...pasto.piatti[0].righeFisse[0], quantita: g.giorno === 0 ? 5 : 10, unita: 'ml' };
       correzioni[`${s.numero}-${g.giorno}-1`] = pasto;
     }
-    expect(gruppiRighe(piano, { ...STATO, correzioni })[0]).toMatchObject({ stato: 'fatto', quantita: null, unita: null });
+    expect(gruppiRighe(piano, { ...STATO, correzioni })[0]).toMatchObject({ stato: 'fatto', quantita: null, unita: 'ml' });
+  });
+
+  // --- Correzioni della review finale ---
+
+  it('I1: un gruppo inferito con quantità diverse ma la stessa unità ha l\'unità comune', () => {
+    const piano = pianoConSale();
+    const lunedi = structuredClone(piano.settimane[0].giorni[0].pasti[0]);
+    lunedi.piatti[0].righeFisse[0] = { ...lunedi.piatti[0].righeFisse[0], quantita: 3, quantitaInferita: false };
+    const gruppi = gruppiRighe(piano, { ...STATO, mappaturaPasti: { cena: 's-cena' }, correzioni: { '1-0-0': lunedi } });
+    expect(gruppi).toEqual([expect.objectContaining({ chiave: 'sale|sale q.b.', tipo: 'inferita', stato: 'fatto', quantita: null, unita: 'g', unitaFissa: null })]);
   });
 });
+
+/** Una settimana di `giorni` giorni: ogni giorno una cena con la Zuppa e «sale q.b.», 2 g proposti dall'AI. */
+function pianoConSale(giorni = 2): PianoEstratto {
+  return {
+    archetipo: 'menu_settimanale', fonte: 'test', noteEstrazione: [],
+    settimane: [{
+      numero: 1,
+      giorni: Array.from({ length: giorni }, (_, g) => ({
+        giorno: g,
+        titolo: null,
+        pasti: [{ nomeOriginale: 'cena', piatti: [{ nome: 'Zuppa', descrizione: null, componenti: [], righeFisse: [{ alimento: 'sale', quantita: 2, unita: 'g' as const, quantitaInferita: true, testoOriginale: 'sale q.b.' }] }] }],
+      })),
+    }],
+  };
+}
 
 describe('unitaNota', () => {
   it("l'unità di un'altra riga dello stesso alimento, esclusa la chiave data", () => {
