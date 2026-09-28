@@ -231,46 +231,74 @@ L'indietro di Android chiude il foglio (`useIndietroFogli`), anche mentre la tas
 
 Il calcolo delle proposte resta quello di `calcolaProposte` di oggi (si ricalcola sempre; si
 conserva la proposta già in `ingredientiNuovi` per `alimento`; i nuovi prendono `proponi`), e il
-risultato si salva subito con `onStato`, come oggi.
+risultato si salva subito con `onStato`, come oggi. Una proposta conservata la cui unità non è
+quella (non nulla) delle righe non si conserva: si ripropone con `proponi` (bozze di Formati, che
+lasciava cambiare l'unità; decisione 7).
 
 Una proposta è **legata** se `abbina` la aggancia a un ingrediente esistente (stesso nome o per
 inclusione, stessa unità) — lo stesso criterio con cui `traduciBozza` la agganceresti invece di
-crearla. È un **nome doppio** se il suo nome normalizzato è uguale a quello di un'altra proposta,
-o a quello di un ingrediente esistente con un'unità diversa.
+crearla. Un nome vuoto non è legato a niente. La legata decide i conteggi della frase, la nota
+«Usa «…»» della riga e la voce scelta di «È lo stesso di…». È un **nome doppio** se il suo nome
+normalizzato è uguale a quello di un'altra proposta, o a quello di un ingrediente esistente con
+un'unità diversa.
+
+Una proposta è **legata per scelta** se è stata legata da «È lo stesso di…». Ingredienti tiene
+`sceltiEsistenti` (`alimento → id dell'esistente`): la scelta di un esistente lo scrive, «No, è un
+ingrediente nuovo» lo toglie, qualunque modifica del campo Nome lo toglie. All'ingresso nel passo
+vale per le proposte il cui nome normalizzato è esattamente quello di un esistente della stessa
+unità (le bozze riprese dopo una scelta). **La modalità legata della Scheda la decide la scelta,
+non il nome**: decisa dal nome, il campo Nome si smonterebbe a metà parola (scrivendo «Pasta di
+farro» passa per «Pasta», che può essere un esistente).
+
+Una proposta **blocca** il passo per un nome vuoto, un nome doppio o una confezione che non è un
+numero positivo. La confezione di una legata per scelta non conta: `traduciBozza` usa l'esistente.
 
 1. **La frase**: «{N} ingredienti nuovi. Ne conosco {T}; per {R} ho messo valori prudenti:
    controllali.» (plurali corretti; senza ripieghi: «{N} ingredienti nuovi. Li ho proposti io:
-   tocca quello che non torna.»). Le legate non contano fra i nuovi.
-2. **Da sistemare** (solo se ci sono nomi doppi; blocca): una Scheda aperta per ogni proposta col
-   nome doppio, avviso in linea «Un altro ingrediente si chiama già così: cambia il nome.».
+   tocca quello che non torna.», con uno solo «1 ingrediente nuovo. L'ho proposto io: toccalo se
+   non torna.»; con tutti ripieghi: «{N} ingredienti nuovi. Non li conosco: ho messo valori
+   prudenti, controllali.», con uno solo «1 ingrediente nuovo. Non lo conosco: ho messo valori
+   prudenti, controllalo.»). Le legate non contano fra i nuovi.
+2. **Da sistemare** (solo se qualche proposta blocca; blocca): una Scheda aperta per ogni proposta
+   che blocca, col suo avviso in linea in 12,5 `--avviso`: nome doppio «Un altro ingrediente si
+   chiama già così: cambia il nome.», nome vuoto «Scrivi il nome dell'ingrediente.» (sotto il
+   Nome), confezione non valida «Scrivi quanto c'è in una confezione.» (sotto la Confezione). Il
+   contatore conta le proposte che bloccano ancora; a zero dice `FATTO`.
 3. **Da controllare** (i ripieghi; non blocca): una Scheda aperta per ciascuno, con la nota «Non è
    nella mia tabella dei formati: {1 pz | 500 g | 500 ml} è un valore di ripiego.».
 4. **Proposti da me**: una Riga di impostazione per ogni altra proposta: nome, nota «{Area}» o
    «{Area} · fresco» (o «Usa «{nome esistente}»» se legata), finale `{formato} {UNITÀ}` con
-   chevron. Il tocco apre la stessa Scheda in un Foglio dal basso `alto`, con la X della `TestataFoglio`.
-5. **Dock**: `VAI AL RIEPILOGO`, spento se c'è un nome doppio, un nome vuoto o una confezione non
-   positiva.
+   chevron, il formato con la virgola («0,5 G») e «—» se non è un numero. Il tocco apre la stessa
+   Scheda in un Foglio dal basso `alto`, con la X della `TestataFoglio`.
+5. **Dock**: `VAI AL RIEPILOGO`, spento se qualche proposta blocca.
 
 Le sezioni si decidono **all'ingresso nel passo** e non cambiano mentre si corregge, così una
-scheda non salta via sotto il dito: un nome doppio rinominato resta in «Da sistemare» (senza più
-avviso), un ripiego corretto resta in «Da controllare». L'unica eccezione: una proposta che
-diventa un nome doppio mentre si è nel passo (rinominata dal foglio) entra in «Da sistemare».
-Un ripiego col nome doppio sta in «Da sistemare».
+scheda non salta via sotto il dito: una proposta corretta resta in «Da sistemare» (senza più
+avviso), un ripiego corretto resta in «Da controllare». L'unica eccezione: una proposta di
+«Proposti da me» che comincia a bloccare mentre si è nel passo (corretta dal foglio) entra in «Da
+sistemare» e ci resta. Una Scheda già aperta in pagina, in «Da controllare» o in «Da sistemare»,
+resta dov'è e mostra l'avviso in linea. Un ripiego che blocca sta in «Da sistemare».
+
+La stessa proposta può essere resa due volte (entrata in «Da sistemare» col foglio ancora aperto):
+ogni istanza apre solo il suo Selettore a foglio.
 
 **La Scheda dell'ingrediente**, in quest'ordine:
 - intestazione: il nome, 17/800, e sopra in mono 10 `--sec` «Dalla dieta: {alimento}»;
 - **Nome**: Campo di testo;
 - **Area**: Selettore a foglio con le sei aree, nel loro ordine, col pallino del colore d'area;
+- sotto il Nome, per una legata **non** per scelta, la nota «Finirà su «{nome esistente}», che
+  hai già: se è un altro ingrediente, cambia il nome.»;
 - **Confezione**: campo numerico con l'unità della proposta in mono 10, non modificabile
-  (decisione 7);
+  (decisione 7); se la confezione non è un numero il campo si apre vuoto;
 - **Come si consuma**: Segmento a blocco Porzionabile / Intero / A stima;
 - **Fresco**: coppia `SÌ` / `NO`;
 - **È lo stesso di…**: Selettore a foglio. Prima voce «No, è un ingrediente nuovo» (scelta di
-  default), poi gli ingredienti esistenti con la stessa unità, in ordine di nome, con la nota del
-  foglio «Solo gli ingredienti che conti in {grammi | millilitri | pezzi}, come questo.». Scegliere
-  un esistente mette il suo nome nella proposta, e la Scheda nasconde gli altri campi con la nota
-  «Userò l'ingrediente che hai già.». «No, è un ingrediente nuovo» rimette il nome di `proponi`. Se
-  non c'è nessun esistente con la stessa unità, la riga non c'è.
+  default), poi gli ingredienti esistenti con la stessa unità, in ordine di nome (`localeCompare`
+  italiano), con la nota del foglio «Solo gli ingredienti che conti in {grammi | millilitri |
+  pezzi}, come questo.». La voce scelta è l'esistente legato, se c'è. Scegliere un esistente mette
+  il suo nome nella proposta e la lega per scelta: la Scheda nasconde gli altri campi con la nota
+  «Userò l'ingrediente che hai già.». «No, è un ingrediente nuovo» rimette il nome di `proponi` e
+  toglie la scelta. Se non c'è nessun esistente con la stessa unità, la riga non c'è.
 
 Il prezzo non c'è.
 
