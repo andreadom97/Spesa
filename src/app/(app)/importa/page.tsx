@@ -368,7 +368,7 @@ export default function Importa() {
 
   if (vista === 'bozza' && bozza) {
     return (
-      <Cornice>
+      <Cornice passo={PILLOLA_PASSO[bozza.statoRevisione.passo]}>
         <ContenutoBozza
           bozza={bozza}
           slotDefs={slotDefs}
@@ -393,7 +393,7 @@ export default function Importa() {
   }
 
   return (
-    <Cornice>
+    <Cornice passo={PILLOLA_PASSO.fogli}>
       <Acquisizione pdf={pdf} onPdf={setPdf} onApriFotocamera={apriFotocamera} onEstraiPdf={() => void estrai('pdf')} />
     </Cornice>
   );
@@ -499,14 +499,24 @@ function ContenutoBozza({
   }
 }
 
-/** Colonna a tutta altezza con la testata fissa in cima. La pillola riapre il pannello sopra la
- *  pagina da cui si era partiti (spec fase 5 §G.3, §A.5). */
-function Cornice({ children }: { children?: ReactNode }) {
+/** La pillola sotto il titolo nei quattro passi (spec 8b §C). Gli stati dell'8a non ne hanno. */
+const PILLOLA_PASSO = {
+  fogli: 'Passo 1 di 4 · I fogli',
+  revisione: 'Passo 2 di 4 · Controlla',
+  formati: 'Passo 3 di 4 · Ingredienti',
+  riepilogo: 'Passo 4 di 4 · Riepilogo',
+} as const;
+
+/** Colonna a tutta altezza con la testata fissa in cima. Titolo «Importa» (spec 8b §C, §3: una
+ *  parola) e, nei quattro passi, la pillola del passo. La pillola IMPOSTAZIONI riapre il pannello
+ *  sopra la pagina da cui si era partiti (spec fase 5 §G.3, §A.5). */
+function Cornice({ children, passo }: { children?: ReactNode; passo?: string }) {
   const router = useRouter();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       <Testata
-        titolo="Importa la dieta"
+        titolo="Importa"
+        settimana={passo}
         indietro={{ etichetta: 'IMPOSTAZIONI', ariaLabel: 'Torna alle impostazioni', onTorna: () => tornaA(router, indirizzoRitorno()) }}
       />
       {children}

@@ -142,7 +142,7 @@ describe('Importa: la scelta', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'APRI LA FOTOCAMERA' }));
     expect(window.history.pushState).toHaveBeenCalledTimes(1);
     expect(await screen.findByRole('heading', { name: 'Fotografa il piano' })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Importa la dieta' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Importa' })).not.toBeInTheDocument();
   });
 
   it('il tondo indietro torna alle porte passando dalla cronologia, e i fogli restano', async () => {
@@ -218,6 +218,24 @@ describe('Importa: la scelta', () => {
     expect(screen.getByText('Cambia file')).toBeInTheDocument();
     const dock = screen.getByRole('region', { name: 'Azione principale' });
     expect(dock).toContainElement(screen.getByRole('button', { name: 'ESTRAI LA DIETA' }));
+  });
+
+  it('le porte: titolo «Importa» e la pillola del passo 1', async () => {
+    rendi();
+    expect(await screen.findByRole('heading', { name: 'Importa', level: 1 })).toBeInTheDocument();
+    expect(screen.getByText('Passo 1 di 4 · I fogli')).toBeInTheDocument();
+  });
+
+  it('la ripresa non ha la pillola del passo; ripresa la bozza, Controlla ha quella del passo 2', async () => {
+    vi.mocked(leggiBozzaImport).mockResolvedValue({
+      piano: PIANO,
+      statoRevisione: { passo: 'revisione', mappaturaPasti: {}, pastiConfermati: [], correzioni: {}, ingredientiNuovi: [] },
+    });
+    rendi();
+    expect(await screen.findByRole('heading', { name: 'Hai un import in corso' })).toBeInTheDocument();
+    expect(screen.queryByText(/^Passo /)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'RIPRENDI' }));
+    expect(await screen.findByText('Passo 2 di 4 · Controlla')).toBeInTheDocument();
   });
 });
 
