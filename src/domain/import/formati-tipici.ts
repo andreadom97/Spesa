@@ -63,25 +63,69 @@ const VOCI: VoceFormato[] = [
   { chiave: 'crackers', nome: 'Crackers', unitaBase: 'g', area: 'dispensa', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 250 },
 ];
 
-/** Il default per un alimento non abbinato: dalla tabella se una chiave è inclusa nel nome, altrimenti prudente. */
+/** Vero se `chiave` compare in `norm` come sequenza di parole intere: «melanzane» non contiene la parola «mela». */
+function contieneParole(norm: string, chiave: string): boolean {
+  return ` ${norm} `.includes(` ${chiave} `);
+}
+
+/**
+ * La voce della tabella per l'alimento: fra quelle la cui chiave compare per parole intere
+ * vince la più lunga («olio extravergine» batte «olio»), e vale solo se l'unità della riga
+ * è `null` o la sua.
+ */
+function voceDi(alimento: string, unita: UnitaBase | null): VoceFormato | null {
+  const norm = normalizza(alimento);
+  const voce = VOCI
+    .filter((v) => contieneParole(norm, v.chiave))
+    .sort((a, b) => b.chiave.length - a.chiave.length)[0];
+  if (!voce) return null;
+  return unita === null || unita === voce.unitaBase ? voce : null;
+}
+
+/** Da dove viene la proposta di `proponi`: deterministica, si ricalcola invece di salvarla nella bozza (spec 8b §A). */
+export function origineProposta(alimento: string, unita: UnitaBase | null): 'tabella' | 'ripiego' {
+  return voceDi(alimento, unita) ? 'tabella' : 'ripiego';
+}
+
+/** Il nome come lo scrive la dieta, con la prima lettera maiuscola. */
+function nomeDallaDieta(alimento: string): string {
+  const pulito = alimento.trim().replace(/\s+/g, ' ');
+  return pulito.charAt(0).toUpperCase() + pulito.slice(1);
+}
+
+/**
+ * Il default per un alimento non abbinato (spec 8b §A). Dalla tabella prende unità, area,
+ * classe, fresco e confezione; il nome è quello della tabella solo se l'alimento è proprio
+ * la chiave («pasta» → «Pasta di semola»), altrimenti quello della dieta («pane integrale»
+ * resta «Pane integrale», e non diventa «Pane» come «pane di segale»). Fuori tabella, il
+ * ripiego prudente: dispensa, a stima, non fresco, 1 pz o 500 g/ml a confezione.
+ * Nessuna proposta del prezzo (spec non-ricomprato §7): la tabella conosce i formati, non i listini.
+ */
 export function proponi(alimento: string, unita: UnitaBase | null): IngredienteProposto {
   const norm = normalizza(alimento);
-  // La voce con la chiave più lunga inclusa nel nome vince: "olio extravergine" batte "olio".
-  const voce = VOCI
-    .filter((v) => norm.includes(v.chiave))
-    .sort((a, b) => b.chiave.length - a.chiave.length)[0];
-  if (voce && (unita === null || unita === voce.unitaBase)) {
-    // Nessuna proposta automatica del prezzo (spec non-ricomprato §7): la tabella conosce i formati, non i listini.
-    return { alimento: norm, nome: voce.nome, unitaBase: voce.unitaBase, area: voce.area, classeResiduo: voce.classeResiduo, deperibile: voce.deperibile, formatoConfezione: voce.formatoConfezione, prezzoConfezione: null };
+  const voce = voceDi(alimento, unita);
+  if (voce) {
+    return {
+      alimento: norm,
+      nome: norm === voce.chiave ? voce.nome : nomeDallaDieta(alimento),
+      unitaBase: voce.unitaBase,
+      area: voce.area,
+      classeResiduo: voce.classeResiduo,
+      deperibile: voce.deperibile,
+      formatoConfezione: voce.formatoConfezione,
+      prezzoConfezione: null,
+    };
   }
+  const unitaBase = unita ?? 'g';
   return {
     alimento: norm,
-    nome: alimento.charAt(0).toUpperCase() + alimento.slice(1),
-    unitaBase: unita ?? 'g',
+    nome: nomeDallaDieta(alimento),
+    unitaBase,
     area: 'dispensa',
     classeResiduo: 'stima',
     deperibile: false,
-    formatoConfezione: 500,
+    // A pezzi, 500 a confezione farebbe comprare 1 confezione per 3 olive e lasciarne 497 in dispensa.
+    formatoConfezione: unitaBase === 'pz' ? 1 : 500,
     prezzoConfezione: null,
   };
 }
