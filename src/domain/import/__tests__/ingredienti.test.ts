@@ -159,7 +159,7 @@ describe('motiviBlocco', () => {
     ]));
   });
 
-  it('una legata per scelta salta il controllo della confezione, non quello del nome', () => {
+  it('una legata per scelta con la confezione a 0 non blocca: il controllo della confezione si salta', () => {
     const latte = ing('i-latte', 'Latte intero', 'ml');
     const scelta = { ...proposta('latte parzialmente scremato', 'Latte intero', 'ml'), formatoConfezione: 0 };
     expect(motiviBlocco([scelta], [latte], { 'latte parzialmente scremato': 'i-latte' }).size).toBe(0);

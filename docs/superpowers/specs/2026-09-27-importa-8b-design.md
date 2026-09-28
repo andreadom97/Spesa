@@ -263,7 +263,9 @@ numero positivo. La confezione di una legata per scelta non conta: `traduciBozza
    che blocca, col suo avviso in linea in 12,5 `--avviso`: nome doppio «Un altro ingrediente si
    chiama già così: cambia il nome.», nome vuoto «Scrivi il nome dell'ingrediente.» (sotto il
    Nome), confezione non valida «Scrivi quanto c'è in una confezione.» (sotto la Confezione). Il
-   contatore conta le proposte che bloccano ancora; a zero dice `FATTO`.
+   contatore conta **tutte** le proposte che bloccano ancora, anche quelle fuori dalla sezione (una
+   Scheda di «Da controllare» col nome svuotato): «FATTO» col Dock spento sarebbe falso. A zero
+   dice `FATTO`.
 3. **Da controllare** (i ripieghi; non blocca): una Scheda aperta per ciascuno, con la nota «Non è
    nella mia tabella dei formati: {1 pz | 500 g | 500 ml} è un valore di ripiego.».
 4. **Proposti da me**: una Riga di impostazione per ogni altra proposta: nome, nota «{Area}» o

@@ -45,6 +45,19 @@ function formatoDaTesto(testo: string): number {
   return pulito === '' ? Number.NaN : Number(pulito);
 }
 
+/** Il testo del campo per una confezione: vuoto se non è un numero finito (niente «NaN»). */
+function testoConfezione(n: number): string {
+  return Number.isFinite(n) ? numeroInTesto(n) : '';
+}
+
+/**
+ * Lo stesso valore di confezione: i non finiti (NaN, il campo vuoto o illeggibile) valgono tutti
+ * uguali, così il riallineamento non riscrive «abc» e non gira all'infinito.
+ */
+function stessaConfezione(a: number, b: number): boolean {
+  return a === b || (!Number.isFinite(a) && !Number.isFinite(b));
+}
+
 /** L'avviso in linea di una proposta che blocca il passo (12,5 `--avviso`, come nella Riga dell'alimento). */
 function Avviso({ motivo }: { motivo: MotivoBlocco }) {
   return (
@@ -88,9 +101,13 @@ interface Props {
 export function SchedaIngrediente({
   proposta, esistenti, scelto, avvisi, notaRipiego, onCambia, onStesso, selettore, onApriSelettore, onChiudiSelettore, livelloSelettori,
 }: Props) {
-  const [formatoTesto, setFormatoTesto] = useState(() =>
-    Number.isFinite(proposta.formatoConfezione) ? numeroInTesto(proposta.formatoConfezione) : '',
-  );
+  const [formatoTesto, setFormatoTesto] = useState(() => testoConfezione(proposta.formatoConfezione));
+  // La stessa proposta può essere resa due volte (in «Da sistemare» e nel foglio): se l'altra
+  // istanza cambia la confezione, il testo si riallinea. Aggiustamento durante il render, come in
+  // `CampoConSalva`, non un effetto. Si riscrive solo se il numero è diverso: «1,» resta «1,».
+  if (!stessaConfezione(formatoDaTesto(formatoTesto), proposta.formatoConfezione)) {
+    setFormatoTesto(testoConfezione(proposta.formatoConfezione));
+  }
   const legata = legataA(proposta, esistenti);
   const compatibili = esistenti
     .filter((e) => e.unitaBase === proposta.unitaBase)

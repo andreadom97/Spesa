@@ -120,7 +120,9 @@ export function Ingredienti({ piano, stato, ingredientiEsistenti, onStato }: Pro
   const daSistemare = ingredienti.filter((p) => inDaSistemare.has(p.alimento));
   const daControllare = ingredienti.filter((p) => !inDaSistemare.has(p.alimento) && sezioni.daControllare.includes(p.alimento));
   const proposti = ingredienti.filter((p) => !inDaSistemare.has(p.alimento) && !sezioni.daControllare.includes(p.alimento));
-  const ancoraBloccate = daSistemare.filter((p) => motivi.has(p.alimento)).length;
+  // Il contatore conta TUTTE le proposte che bloccano, anche una Scheda di «Da controllare» col
+  // nome svuotato: «Fatto» col Dock spento sarebbe falso.
+  const ancoraBloccate = motivi.size;
   const libere = ingredienti.filter((p) => !legataA(p, ingredientiEsistenti));
   const ripieghi = libere.filter(diRipiego).length;
   const bloccato = motivi.size > 0;

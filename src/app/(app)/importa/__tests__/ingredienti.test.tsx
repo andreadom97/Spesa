@@ -116,6 +116,44 @@ describe('Ingredienti', () => {
     expect(avanti()).toBeEnabled();
   });
 
+  it('la Confezione resta allineata fra la Scheda nel foglio e quella in pagina', () => {
+    rendi();
+    fireEvent.click(screen.getByRole('button', { name: 'Apri Latte parzialmente scremato' }));
+    const foglio = screen.getByRole('dialog', { name: 'Latte parzialmente scremato' });
+    fireEvent.change(within(foglio).getByRole('textbox', { name: 'Confezione' }), { target: { value: '' } });
+    // Svuotata, la proposta entra in «Da sistemare»: una seconda Scheda, in pagina, col campo vuoto.
+    fireEvent.change(within(foglio).getByRole('textbox', { name: 'Confezione' }), { target: { value: '750' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Chiudi la scheda' }));
+    const latte = screen.getByRole('region', { name: 'Latte parzialmente scremato' });
+    expect(within(latte).getByRole('textbox', { name: 'Confezione' })).toHaveValue('750');
+    expect(within(latte).queryByText("Scrivi quanto c'è in una confezione.")).toBeNull();
+  });
+
+  it('la Confezione non si riscrive mentre si digita un valore equivalente: «1,» resta «1,»', () => {
+    rendi();
+    const olive = screen.getByRole('region', { name: 'Olive taggiasche' });
+    fireEvent.change(within(olive).getByRole('textbox', { name: 'Confezione' }), { target: { value: '1,' } });
+    expect(within(olive).getByRole('textbox', { name: 'Confezione' })).toHaveValue('1,');
+    fireEvent.change(within(olive).getByRole('textbox', { name: 'Confezione' }), { target: { value: 'abc' } });
+    expect(within(olive).getByRole('textbox', { name: 'Confezione' })).toHaveValue('abc');
+  });
+
+  it('il contatore di «Da sistemare» conta tutte le proposte che bloccano, anche fuori sezione', () => {
+    rendi();
+    // Pane di segale entra in «Da sistemare» e si corregge: il contatore dice Fatto.
+    fireEvent.click(screen.getByRole('button', { name: 'Apri Pane di segale' }));
+    const foglio = screen.getByRole('dialog', { name: 'Pane di segale' });
+    fireEvent.change(within(foglio).getByRole('textbox', { name: 'Nome' }), { target: { value: 'Pane integrale' } });
+    fireEvent.change(within(foglio).getByRole('textbox', { name: 'Nome' }), { target: { value: 'Pane nero' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Chiudi la scheda' }));
+    expect(screen.getByRole('heading', { name: 'Da sistemare Fatto' })).toBeInTheDocument();
+    // Le olive, in «Da controllare», col nome svuotato: bloccano, e il contatore lo dice.
+    fireEvent.change(within(screen.getByRole('region', { name: 'Olive taggiasche' })).getByRole('textbox', { name: 'Nome' }), { target: { value: '' } });
+    expect(screen.getByRole('heading', { name: 'Da sistemare 1' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Da controllare 1' })).toBeInTheDocument();
+    expect(avanti()).toBeDisabled();
+  });
+
   it('una scheda già in pagina resta dov\'è e mostra l\'avviso: il nome vuoto delle olive', () => {
     rendi();
     const olive = screen.getByRole('region', { name: 'Olive taggiasche' });
