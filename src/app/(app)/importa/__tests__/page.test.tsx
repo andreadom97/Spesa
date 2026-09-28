@@ -508,8 +508,8 @@ describe('Importa: l\'invio', () => {
 
     // Niente `passaUnAttimo()`: con la fotocamera chiusa il popstate non scarta i tocchi.
     fireEvent.click(screen.getByRole('button', { name: 'RIPRENDI' }));
-    // La revisione si è aperta: un CONFERMA PASTO per ogni pasto del piano.
-    expect((await screen.findAllByRole('button', { name: /conferma pasto/i })).length).toBeGreaterThan(0);
+    // Controlla si è aperto: CONFERMA I PASTI nel Dock.
+    expect(await screen.findByRole('button', { name: 'CONFERMA I PASTI' })).toBeInTheDocument();
   });
 
   it('attesa: il titolo luccica, dice che chiudere l\'app perde la lettura, niente Dock', async () => {

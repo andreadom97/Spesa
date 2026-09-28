@@ -21,7 +21,7 @@ import { StatoImporta } from './StatoImporta';
 import { Riepilogo } from './Riepilogo';
 import { Camera } from './Camera';
 import { Acquisizione } from './Acquisizione';
-import { Revisione } from './Revisione';
+import { Controlla } from './Controlla';
 import { Formati } from './Formati';
 import { tornaA } from '@/components/tornaA';
 
@@ -201,10 +201,10 @@ export default function Importa() {
   }
 
   /**
-   * `onStato` di `<Revisione>`: ogni modifica che deve sopravvivere (conferma
-   * pasto, cambio mappatura, cambio giorno — mai a ogni tasto, vedi Revisione.tsx)
-   * aggiorna subito lo stato della pagina e persiste con `salvaBozzaImport`.
-   * Nessun debounce: Revisione già decide quando chiamare questa funzione.
+   * `onStato` di `<Controlla>`: ogni risposta a un dubbio, ogni abbinamento, la
+   * chiusura del foglio del giorno, la conferma — mai a ogni tasto, vedi Controlla.tsx.
+   * Aggiorna subito lo stato della pagina e persiste con `salvaBozzaImport`.
+   * Nessun debounce: Controlla già decide quando chiamare questa funzione.
    */
   async function aggiornaStatoRevisione(statoRevisione: StatoRevisione) {
     setBozza((prev) => {
@@ -488,7 +488,7 @@ function ContenutoBozza({
   switch (bozza.statoRevisione.passo) {
     case 'revisione':
       return (
-        <Revisione piano={bozza.piano} stato={bozza.statoRevisione} slotDefs={slotDefs} onStato={onStatoRevisione} />
+        <Controlla piano={bozza.piano} stato={bozza.statoRevisione} slotDefs={slotDefs} onStato={onStatoRevisione} />
       );
     case 'formati':
       return (
