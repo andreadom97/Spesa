@@ -112,9 +112,10 @@ Di ogni gruppo si sanno:
   risolte), `tolto` (nessuna riga del gruppo è rimasta);
 - la quantità e l'unità comuni, se tutte le righe risolte coincidono, altrimenti `null` (con
   valori diversi la nota della riga aggiunge «valori diversi nei giorni»);
-- l'**unità fissa**: l'unità di una riga effettiva dello stesso alimento **fuori dal gruppo**, se
-  c'è (decisione 8). Fuori, e non dentro: altrimenti, risposto il gruppo, la sua stessa unità lo
-  fisserebbe e un'unità scelta per sbaglio non si potrebbe più cambiare.
+- l'**unità fissa**: l'unità di una riga effettiva dello stesso alimento fuori da **ogni gruppo
+  irrisolto** (non solo il proprio), se c'è (decisione 8). Non solo fuori dal proprio gruppo: due
+  gruppi irrisolti dello stesso alimento non devono fissarsi l'unità a vicenda, altrimenti,
+  risposti entrambi, un'unità scelta per sbaglio non si potrebbe più cambiare.
 
 Una riga di un gruppo si ritrova nel piano effettivo per chiave, non per indice: gli indici
 cambiano quando si tolgono righe.
@@ -362,3 +363,8 @@ Importa: slot del pasto, area, «È lo stesso di…».
   scelta resta.
 - **Il foglio del giorno perde le modifiche se l'app si chiude col foglio aperto**, perché
   risalgono alla chiusura. È la regola di oggi per il cambio di giorno.
+- **Due gruppi irrisolti dello stesso alimento, senza nessun'altra riga con l'unità, mostrano
+  entrambi le pillole** (nessuno dei due può fissare l'unità per l'altro, decisione 8). Se
+  l'utente sceglie due unità diverse, il riepilogo va in `BozzaIncompletaError`. [derivato dal
+  codice: `unitaNota`/`gruppiRighe` e `risolviRiga`/`ingredientiDaAbbinare`; non osservato su una
+  dieta vera]

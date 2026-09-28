@@ -157,6 +157,40 @@ describe('unitaNota', () => {
   });
 });
 
+/** Due dubbi diversi dello stesso alimento (testi diversi), senza nessun'altra riga con l'unità. */
+function pianoConDueSale(): PianoEstratto {
+  return {
+    archetipo: 'giornata_unica', fonte: 'test', noteEstrazione: [],
+    settimane: [{
+      numero: 1,
+      giorni: [{
+        giorno: 0,
+        titolo: null,
+        pasti: [
+          { nomeOriginale: 'pranzo', piatti: [{ nome: 'Pasta', descrizione: null, componenti: [], righeFisse: [{ alimento: 'sale', quantita: null, unita: null, quantitaInferita: false, testoOriginale: 'sale q.b.' }] }] },
+          { nomeOriginale: 'cena', piatti: [{ nome: 'Zuppa', descrizione: null, componenti: [], righeFisse: [{ alimento: 'sale', quantita: null, unita: null, quantitaInferita: false, testoOriginale: 'un pizzico di sale' }] }] },
+        ],
+      }],
+    }],
+  };
+}
+
+describe('unitaFissa fra due gruppi irrisolti dello stesso alimento', () => {
+  it('nessuno dei due fissa l\'unità dell\'altro, anche dopo aver risolto uno dei due', () => {
+    const piano = pianoConDueSale();
+    const gruppi = gruppiRighe(piano, STATO);
+    expect(gruppi).toHaveLength(2);
+    expect(gruppi.every((g) => g.unitaFissa === null)).toBe(true);
+
+    const cenaRisolta = structuredClone(piano.settimane[0].giorni[0].pasti[1]);
+    cenaRisolta.piatti[0].righeFisse[0] = { ...cenaRisolta.piatti[0].righeFisse[0], quantita: 1, unita: 'pz' };
+    const stato = { ...STATO, correzioni: { '1-0-1': cenaRisolta } };
+    const gruppiDopo = gruppiRighe(piano, stato);
+    expect(gruppiDopo.find((g) => g.chiave === 'sale|un pizzico di sale')).toMatchObject({ stato: 'fatto', quantita: 1, unita: 'pz' });
+    expect(gruppiDopo.every((g) => g.unitaFissa === null)).toBe(true);
+  });
+});
+
 describe('pronto', () => {
   it('no finché ci sono i condimenti da abbinare e le olive da risolvere', () => {
     expect(pronto(PIANO_MENU_SETTIMANALE, STATO, SLOTS)).toBe(false);
@@ -169,6 +203,12 @@ describe('pronto', () => {
     const cena = structuredClone(PIANO_MENU_SETTIMANALE.settimane[0].giorni[1].pasti[1]);
     cena.piatti[0].righeFisse.splice(1, 1);
     expect(pronto(PIANO_MENU_SETTIMANALE, { ...STATO, mappaturaPasti, correzioni: { '1-1-1': cena } }, SLOTS)).toBe(true);
+  });
+
+  it('no se una mappatura punta a uno slot sparito, anche con tutto il resto risolto e abbinato', () => {
+    const mappaturaPasti = { colazione: 's-sparito', cena: 's-cena', condimenti: 's-cena' };
+    const stato = { ...STATO, mappaturaPasti, correzioni: { '1-1-1': cenaConOlive(3, 'pz') } };
+    expect(pronto(PIANO_MENU_SETTIMANALE, stato, SLOTS)).toBe(false);
   });
 });
 

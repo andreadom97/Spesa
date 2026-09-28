@@ -164,24 +164,8 @@ export interface GruppoRighe {
   /** Comuni a tutte le righe effettive, se risolte e uguali; altrimenti null. */
   quantita: number | null;
   unita: UnitaBase | null;
-  /** L'unità di una riga dello stesso alimento FUORI dal gruppo (decisione 8), o null. */
+  /** L'unità di una riga dello stesso alimento fuori da OGNI gruppo irrisolto (decisione 8), o null. */
   unitaFissa: UnitaBase | null;
-}
-
-/**
- * L'unità che il piano effettivo conosce già per un alimento (`alimento` normalizzato): la
- * prima riga con l'unità, saltando le righe del gruppo `escludi`. Fuori dal gruppo, e non
- * dentro: altrimenti, risposto un gruppo, la sua stessa unità lo fisserebbe per sempre.
- */
-export function unitaNota(piano: PianoEstratto, stato: StatoRevisione, alimento: string, escludi?: string): UnitaBase | null {
-  for (const p of pastiDelPiano(piano, stato)) {
-    for (const { riga } of righeDelPasto(p.effettivo)) {
-      if (normalizza(riga.alimento) !== alimento) continue;
-      if (escludi !== undefined && chiaveGruppo(riga) === escludi) continue;
-      if (riga.unita !== null) return riga.unita;
-    }
-  }
-  return null;
 }
 
 interface Raccolta {
@@ -194,12 +178,13 @@ interface Raccolta {
 }
 
 /**
- * I gruppi di righe da chiedere (spec 8b §B). Un gruppo esiste se una sua riga originale è
- * irrisolta o inferita, oppure se una sua riga effettiva è irrisolta: la seconda condizione
- * copre le bozze vecchie, dove la Revisione di prima poteva svuotare una quantità, e fa sì
- * che `pronto` non lasci passare una riga irrisolta invisibile.
+ * Una passata sola sul piano (originale ed effettivo) che raccoglie, per chiave di gruppo,
+ * le occorrenze e se il gruppo è irrisolta o inferita. Usata sia da `gruppiRighe` (per
+ * costruire i gruppi da mostrare) sia da `unitaNota` tramite `chiaviGruppiIrrisolti` (per
+ * sapere quali righe NON possono fissare l'unità di un altro gruppo): un gruppo solo di
+ * raccolta, mai due, per non disallineare le due letture.
  */
-export function gruppiRighe(piano: PianoEstratto, stato: StatoRevisione): GruppoRighe[] {
+function raccogliDubbi(piano: PianoEstratto, stato: StatoRevisione): Map<string, Raccolta> {
   const pasti = pastiDelPiano(piano, stato);
   const perChiave = new Map<string, Raccolta>();
   const raccolta = (riga: RigaEstratta): Raccolta => {
@@ -230,7 +215,53 @@ export function gruppiRighe(piano: PianoEstratto, stato: StatoRevisione): Gruppo
       if (rigaIrrisolta(riga)) r.irrisolta = true;
     }
   }
+  return perChiave;
+}
 
+/**
+ * Le chiavi di gruppo irrisolte: una riga irrisolta nel piano originale o in quello
+ * effettivo (stessa definizione di `tipo: 'irrisolta'` in `gruppiRighe`). Una volta
+ * irrisolta una chiave lo resta anche se poi si risolve nelle correzioni: altrimenti,
+ * risolto un gruppo, la sua unità fisserebbe per sempre un altro gruppo ancora aperto
+ * dello stesso alimento (e viceversa).
+ */
+function chiaviGruppiIrrisolti(piano: PianoEstratto, stato: StatoRevisione): Set<string> {
+  const chiavi = new Set<string>();
+  for (const [chiave, r] of raccogliDubbi(piano, stato)) {
+    if (r.irrisolta) chiavi.add(chiave);
+  }
+  return chiavi;
+}
+
+/**
+ * L'unità che il piano effettivo conosce già per un alimento (`alimento` normalizzato): la
+ * prima riga con l'unità, saltando `escludi` e le righe di OGNI chiave di gruppo irrisolta
+ * (`chiaviGruppiIrrisolti`). Non solo `escludi`: due gruppi irrisolti dello stesso alimento
+ * non devono fissarsi l'unità a vicenda, altrimenti, risposti entrambi, un'unità scelta per
+ * sbaglio non si potrebbe più cambiare (decisione 8).
+ */
+export function unitaNota(piano: PianoEstratto, stato: StatoRevisione, alimento: string, escludi?: string): UnitaBase | null {
+  const irrisolti = chiaviGruppiIrrisolti(piano, stato);
+  for (const p of pastiDelPiano(piano, stato)) {
+    for (const { riga } of righeDelPasto(p.effettivo)) {
+      if (normalizza(riga.alimento) !== alimento) continue;
+      const chiave = chiaveGruppo(riga);
+      if (escludi !== undefined && chiave === escludi) continue;
+      if (irrisolti.has(chiave)) continue;
+      if (riga.unita !== null) return riga.unita;
+    }
+  }
+  return null;
+}
+
+/**
+ * I gruppi di righe da chiedere (spec 8b §B). Un gruppo esiste se una sua riga originale è
+ * irrisolta o inferita, oppure se una sua riga effettiva è irrisolta: la seconda condizione
+ * copre le bozze vecchie, dove la Revisione di prima poteva svuotare una quantità, e fa sì
+ * che `pronto` non lasci passare una riga irrisolta invisibile.
+ */
+export function gruppiRighe(piano: PianoEstratto, stato: StatoRevisione): GruppoRighe[] {
+  const perChiave = raccogliDubbi(piano, stato);
   const gruppi: GruppoRighe[] = [];
   for (const [chiave, r] of perChiave) {
     const tipo = r.irrisolta ? 'irrisolta' : r.inferita ? 'inferita' : null;
