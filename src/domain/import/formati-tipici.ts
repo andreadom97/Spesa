@@ -3,7 +3,7 @@ import type { IngredienteProposto } from './types';
 import { normalizza } from './mapping';
 
 interface VoceFormato {
-  /** Chiave di ricerca, già normalizzata: si confronta per inclusione col nome estratto. */
+  /** Chiave di ricerca, già normalizzata: si confronta per parole intere col nome estratto. */
   chiave: string;
   nome: string;
   unitaBase: UnitaBase;
@@ -70,7 +70,7 @@ function contieneParole(norm: string, chiave: string): boolean {
 
 /**
  * La voce della tabella per l'alimento: fra quelle la cui chiave compare per parole intere
- * vince la più lunga («olio extravergine» batte «olio»), e vale solo se l'unità della riga
+ * vince la più lunga («yogurt greco» batte «yogurt»), e vale solo se l'unità della riga
  * è `null` o la sua.
  */
 function voceDi(alimento: string, unita: UnitaBase | null): VoceFormato | null {

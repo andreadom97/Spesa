@@ -189,6 +189,13 @@ describe('gruppiRighe', () => {
   });
 });
 
+describe('provenienza', () => {
+  it('M3: il nome del pasto senza underscore, minuscolo come nel foglio', () => {
+    const piano = pianoConOlive([['spuntino_mattina']]);
+    expect(provenienza(piano, gruppiRighe(piano, STATO)[0])).toBe('Lunedì · spuntino mattina · Merluzzo');
+  });
+});
+
 describe('anteprimaTogli (I3)', () => {
   it('senza cascata: i pasti effettivi e nessun piatto sparito', () => {
     const piano = pianoConOlive([['cena'], ['cena']]);

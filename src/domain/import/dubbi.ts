@@ -348,7 +348,8 @@ export function provenienza(piano: PianoEstratto, gruppo: GruppoRighe): string {
   const o = gruppo.occorrenze[0];
   const parti: string[] = [];
   if (piano.settimane.length > 1) parti.push(`Sett. ${o.settimana}`);
-  parti.push(etichettaGiorno(piano, o.giorno, o.titolo), o.nomePasto, o.nomePiatto);
+  // Il nome del pasto come nel foglio del giorno: niente underscore («spuntino mattina»).
+  parti.push(etichettaGiorno(piano, o.giorno, o.titolo), o.nomePasto.replace(/_/g, ' '), o.nomePiatto);
   return parti.join(' · ');
 }
 

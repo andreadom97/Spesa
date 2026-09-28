@@ -29,9 +29,10 @@ export function calcolaProposte(
   const giaProposti = new Map(stato.ingredientiNuovi.map((i) => [i.alimento, i]));
   return ingredientiDaAbbinare(piano, stato.correzioni)
     .filter(({ alimento, unita }) => !abbina(alimento, unita, esistenti))
-    .map(({ alimento, unita }) => {
+    .map(({ alimento, grezzo, unita }) => {
       const conservata = giaProposti.get(alimento);
-      return conservata && (unita === null || conservata.unitaBase === unita) ? conservata : proponi(alimento, unita);
+      // `proponi` normalizza da sé la chiave; dal grezzo il nome tiene accenti e maiuscole («Caffè»).
+      return conservata && (unita === null || conservata.unitaBase === unita) ? conservata : proponi(grezzo, unita);
     });
 }
 

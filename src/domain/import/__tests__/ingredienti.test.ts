@@ -62,6 +62,19 @@ describe('calcolaProposte', () => {
     const proposte = calcolaProposte(PIANO_MENU_SETTIMANALE, { ...STATO, ingredientiNuovi: [olive] }, [AVENA]);
     expect(proposte.find((p) => p.alimento === 'olive taggiasche')).toEqual(olive);
   });
+
+  it('M1: il nome proposto tiene accenti e maiuscole della dieta, la chiave resta normalizzata', () => {
+    const colazione: PastoEstratto = structuredClone(PIANO_MENU_SETTIMANALE.settimane[0].giorni[0].pasti[0]);
+    colazione.piatti[0].righeFisse.push(
+      { alimento: 'caffè', quantita: 1, unita: 'pz', quantitaInferita: false, testoOriginale: '1 caffè' },
+      { alimento: 'Tè verde', quantita: 200, unita: 'ml', quantitaInferita: false, testoOriginale: 'tè verde 200ml' },
+      { alimento: 'purè di patate', quantita: 150, unita: 'g', quantitaInferita: false, testoOriginale: 'purè di patate 150g' },
+    );
+    const proposte = calcolaProposte(PIANO_MENU_SETTIMANALE, { ...STATO, correzioni: { '1-0-0': colazione } }, [AVENA]);
+    expect(proposte.find((p) => p.alimento === 'caffe')).toMatchObject({ nome: 'Caffè' });
+    expect(proposte.find((p) => p.alimento === 'te verde')).toMatchObject({ nome: 'Tè verde' });
+    expect(proposte.find((p) => p.alimento === 'pure di patate')).toMatchObject({ nome: 'Purè di patate', area: 'ortofrutta' });
+  });
 });
 
 describe('legataA', () => {
