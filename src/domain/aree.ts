@@ -36,6 +36,12 @@ export function nomeArea(id: AreaId): string {
   return a.nome;
 }
 
+/** Il nome dell'area in una frase («Pasta, riso e cereali»): nelle note, dove il maiuscolo delle etichette stonerebbe. */
+export function nomeAreaFrase(id: AreaId): string {
+  const nome = nomeArea(id);
+  return nome.charAt(0) + nome.slice(1).toLowerCase();
+}
+
 export function tonoMedioArea(id: AreaId): string {
   const a = PER_ID.get(id);
   if (!a) throw new Error(`Area sconosciuta: ${id}`);

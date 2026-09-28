@@ -67,12 +67,16 @@ function tutteLeRighe(pasto: PastoEstratto): RigaEstratta[] {
   return pasto.piatti.flatMap((p) => [...p.righeFisse, ...p.componenti.flatMap((c) => c.opzioni.flat())]);
 }
 
-/** L'unione deduplicata (per alimento normalizzato) di tutte le righe del piano, correzioni applicate. */
+/**
+ * L'unione deduplicata (per alimento normalizzato) di tutte le righe del piano, correzioni
+ * applicate. `alimento` è la chiave normalizzata; `grezzo` è l'alimento com'è scritto nella
+ * prima riga che lo porta, con accenti e maiuscole, per il nome da proporre.
+ */
 export function ingredientiDaAbbinare(
   piano: PianoEstratto,
   correzioni: Record<string, PastoEstratto>,
-): { alimento: string; unita: UnitaBase | null }[] {
-  const visti = new Map<string, { alimento: string; unita: UnitaBase | null }>();
+): { alimento: string; grezzo: string; unita: UnitaBase | null }[] {
+  const visti = new Map<string, { alimento: string; grezzo: string; unita: UnitaBase | null }>();
   for (const settimana of piano.settimane) {
     for (const giorno of settimana.giorni) {
       giorno.pasti.forEach((_, indice) => {
@@ -82,7 +86,8 @@ export function ingredientiDaAbbinare(
           const esistente = visti.get(chiave);
           // Un'unità nota vince su null: la prima riga con grammatura fissa il tipo.
           if (!esistente || (esistente.unita === null && riga.unita !== null)) {
-            visti.set(chiave, { alimento: chiave, unita: riga.unita });
+            // `grezzo` resta quello della prima riga: accenti e maiuscole per il nome proposto.
+            visti.set(chiave, { alimento: chiave, grezzo: esistente?.grezzo ?? riga.alimento, unita: riga.unita });
           }
         }
       });

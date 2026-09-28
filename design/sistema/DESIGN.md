@@ -771,6 +771,27 @@ il valore è il nome dell'opzione di un componente, che può essere lungo. Il te
 nome accessibile della riga, se chi la monta lo passa (`etichetta`). Il 60% e non la metà (review
 finale della fase 7): a 320 px metà riga è circa 127 px e «NESSUNO FUORI CASA» ne misura 133.
 
+### Riga dell'alimento
+**Nuova il 27/09 (fase 8b).** Una Riga di impostazione che ha per finale il campo numerico 78 × 44
+(mono 14/700 a destra, virgola o punto) con l'unità in mono 10 `--ter`, e la X da 44 per togliere
+la riga. Sopra il nome, se serve, la provenienza in mono 10/700/0.10em `--sec` («Martedì · cena ·
+Merluzzo», «In 14 pasti»). Salva all'uscita dal campo e con Invio. Un valore non positivo torna a
+quello di prima con «Scrivi un numero maggiore di zero.» in 12,5 `--errore`; un campo svuotato torna
+a quello di prima senza errore: una riga si toglie con la X. **Stato dubbio:** bordo 1,5 px `--ink`
+(§5), avviso in linea 12,5 `--avviso`, e, se il piano non sa l'unità, sotto la riga le pillole
+G / ML / PZ dell'editor dell'ingrediente (`SceltaUnita`): numero e unità si danno in qualunque
+ordine. File: `src/components/RigaAlimento.tsx`.
+
+### Selettore a foglio
+**Nuovo il 27/09 (fase 8b).** Una Riga di impostazione a valore + chevron che apre un Foglio dal
+basso `contenuto`: titolo 15,5/700, nota facoltativa 12,5, voci alte 50 raggio 14, allineate a
+sinistra (sono valori da leggere in colonna), col pallino del colore d'area quando la voce è
+un'area. **La voce scelta è piena `--ink`**, testo bianco, spunta bianca in un tondo da 24 con
+bordo 1,5 bianco: «pieno = scelto», come la Riga piatto. Il tocco sceglie e chiude; il velo chiude
+senza scegliere. `radiogroup` di `radio` con `aria-checked`. È controllato: l'indietro di Android lo
+chiude l'unico `useIndietroFogli` della schermata. Sostituisce ogni `<select>` (in Importa: slot del
+pasto, area, «È lo stesso di…»). File: `src/components/SelettoreFoglio.tsx`.
+
 ### Matrice dei pasti
 **Nuova il 19/09, riorientata il 20/09, ridisegnata il 25/09.** È la sotto-schermata `Pasti a
 casa` del pannello: dice con quali pasti nasce ogni settimana nuova.
@@ -949,6 +970,8 @@ Errore: nota 12.5 in `--errore` sotto il campo.
 bianco ancorato in basso, raggio `22px 22px 0 0`, padding `16px 16px 26px`, gap 9. Voci alte
 almeno 50 (mai sotto 44), raggio 14, fondo `rgba(20,22,58,0.04)`, testo 15.5/700 centrato.
 Separatori di sezione in mono 10/700/0.13em. Classe `.anim-foglio`. Il tap sull'overlay chiude.
+Le voci di un Selettore a foglio sono l'eccezione: allineate a sinistra, e la scelta è piena
+`--ink` (vedi Selettore a foglio).
 
 ### Scheda
 Bianco, raggio 22, bordo 1 px `--bordo`, padding 16 con contenuto, `26px 20px` negli stati
@@ -1259,3 +1282,67 @@ nome di `Esci` (§2.2); il piede fisso col primario nel pannello (§8 Pannello i
    «Se chiudi l'app prima che abbia finito, la lettura si perde.» Lasciare la pagina non la perde:
    la `fetch` continua e la bozza si ritrova in «Hai un import in corso».
 4. **Nel rifiuto l'azione è `PROVA UN ALTRO FILE`**: alle Impostazioni riporta la pillola.
+
+### Decisioni del 27/09/2026 (fase 8b: Controlla e Ingredienti)
+
+Spec `docs/superpowers/specs/2026-09-27-importa-8b-design.md`. Direzione B, «Solo i dubbi»: tutto è
+accettato di default, si tocca solo quello che l'AI non sa.
+1. **Controlla** sostituisce Revisione: una pagina sola, «Da sistemare» (pasti senza abbinamento,
+   righe senza quantità), «Da controllare» (quantità proposte dall'AI, non bloccano), «Dove vanno i
+   pasti», i giorni riassunti. `CONFERMA I PASTI` nel Dock conferma tutto in un tocco.
+2. **Il giorno aperto** (Foglio dal basso) corregge quantità e righe; nomi e piatti si sistemano
+   nell'editor del Piatto.
+3. **Il nome dell'ingrediente viene dalla dieta**; la tabella dei formati presta il resto, con le
+   chiavi confrontate per parole intere. Due nomi uguali bloccano finché non se ne rinomina uno.
+4. **Il ripiego non blocca**; a pezzi propone 1 pz a confezione.
+5. **Una riga irrisolta ripetuta è un dubbio solo**: la risposta vale per tutti i pasti.
+6. **L'unità si sceglie con le pillole dell'editor dell'ingrediente** (`SceltaUnita`), non col
+   Segmento a blocco.
+7. **Nella scheda di Ingredienti l'unità non si cambia**: è quella delle righe.
+8. **Un dubbio ha l'unità fissa se il piano la conosce già** per quell'alimento, presa fuori da
+   **ogni** gruppo irrisolto dello stesso alimento — non solo dal proprio: due gruppi irrisolti
+   dello stesso alimento non devono fissarsi l'unità a vicenda, altrimenti un'unità scelta per
+   sbaglio in uno dei due non si potrebbe più cambiare (Important della review di correttezza,
+   Task 2; §J).
+9. **Togliere l'ultima riga svuota a cascata** opzione, componente, piatto, pasto.
+10. **«I giorni»**, e con più settimane un blocco per settimana.
+11. **Il titolo è «Importa»**, con la pillola `Passo N di 4 · …` nei quattro passi.
+12. **Il prezzo esce dal passo Ingredienti**: si mette dall'editor dell'ingrediente.
+13. **«Legata»** è la proposta che `abbina` aggancia a un ingrediente esistente — lo stesso
+    criterio con cui `traduciBozza` la agganceresti invece di crearla (nome esatto o per
+    inclusione, stessa unità): la schermata deve dire il vero su cosa creerà, non fermarsi ai nomi
+    identici (ruling, Task 4).
+14. **La modalità legata della Scheda** (i campi nascosti, «Userò l'ingrediente che hai già.») la
+    decide la **scelta** fatta in «È lo stesso di…» (`sceltiEsistenti`), non il nome: decisa dal
+    nome, il campo Nome si smonterebbe mentre lo si scrive («Pasta» dentro «Pasta di farro»). Una
+    legata per sola inclusione, non scelta, resta con la scheda intera e la nota «Finirà su
+    «{esistente}», che hai già: se è un altro ingrediente, cambia il nome.» (ruling, Task 8).
+15. **«Da sistemare» di Ingredienti** raccoglie ogni proposta che blocca — nome doppio, nome vuoto,
+    confezione non valida — ciascuna col suo avviso in linea; si entra nella sezione solo da
+    «Proposti da me» (una Scheda già aperta in pagina, in «Da controllare» o in «Da sistemare»,
+    resta dov'era con l'avviso sotto il campo). Il contatore della sezione conta **tutte** le
+    proposte che bloccano, anche quelle fuori dalla sezione: «FATTO» col Dock spento sarebbe copy
+    falso (ruling, Task 8).
+16. **Una proposta conservata con l'unità diversa da quella (non nulla) delle righe non si
+    conserva**: si ripropone da capo con `proponi`. Viene dalle bozze vecchie di Formati, che
+    lasciava cambiare l'unità; tenuta così manderebbe il riepilogo in `BozzaIncompletaError`
+    (decisione 7; ruling, Task 8).
+17. **In Controlla il Dock si spegne anche se non resta nessun pasto da confermare**
+    (`pastiConfermabili > 0`, oltre a `pronto`): confermare zero pasti sostituirebbe il piano con
+    niente.
+18. **Il foglio del giorno mostra solo i pasti che hanno piatti alla sua apertura**: un pasto già
+    vuoto non compare; uno svuotato nel foglio ci resta, con «Pasto tolto», fino alla chiusura — la
+    spec §E vince sul brief (ruling accettato, Task 7).
+19. **Unità diverse nello stesso gruppo sono un dubbio**: un gruppo le cui righe risolte hanno più
+    di un'unità sta in «Da sistemare» con le pillole e l'avviso «Nei giorni ci sono unità diverse:
+    scegline una per tutti.», e la risposta scrive la stessa unità su tutte le righe. Nel foglio
+    del giorno una riga del gruppo prende l'unità da un'altra riga già risolta dello stesso gruppo:
+    le pillole solo se nessuna ce l'ha (ruling, review finale I2).
+20. **Il dialogo TOGLI dice cosa sparisce**: se la cascata toglie dei piatti lo dice («Spariscono
+    anche N piatti rimasti senza ingredienti.») e non promette l'editor del piatto; compare anche
+    con un pasto solo quando sparisce un piatto; il titolo conta i pasti che il gruppo tocca ora
+    (ruling, review finale I3).
+21. **Un giorno senza pasti non si apre**: in «I giorni» ha la nota «Nessun pasto» e nessun
+    finale; un foglio vuoto non serve a niente (ruling, review finale).
+
+Componenti nuovi: Riga dell'alimento, Selettore a foglio (con la voce scelta piena del Foglio).

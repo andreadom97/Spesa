@@ -10,6 +10,7 @@ import { GIORNI_CONTROLLO_DEFAULT, ogniCadenza, type GiorniControllo } from '@/d
 import { formatoProposto } from '@/domain/ean';
 import { MSG_CATALOGO, msgUnitaDiversa, proprietario } from '@/domain/scansione-dispensa';
 import { Segmento } from '@/components/Segmento';
+import { SceltaUnita } from '@/components/SceltaUnita';
 import { Dock } from '@/components/Dock';
 import { TestataModifica } from '@/components/TestataModifica';
 import { FoglioDalBasso, TestataFoglio } from '@/components/FoglioDalBasso';
@@ -65,12 +66,6 @@ function testoElimina(haAcquisti: boolean): string {
     ' Se è ancora usato in un piatto o in una lista della spesa, l’eliminazione viene bloccata: toglilo prima da lì.';
   return base + storico + blocco;
 }
-
-const OPZIONI_UNITA: { id: UnitaBase; label: string }[] = [
-  { id: 'g', label: 'G' },
-  { id: 'ml', label: 'ML' },
-  { id: 'pz', label: 'PZ' },
-];
 
 const OPZIONI_CLASSE = [
   { id: 'porzionabile', label: 'PORZIONABILE' },
@@ -539,23 +534,7 @@ export default function IngredienteEditor() {
               onChange={(e) => setFormatoTesto(e.target.value)}
               style={{ ...STILE_CAMPO_96, opacity: intero ? 0.5 : 1 }}
             />
-            <div role="group" aria-label="Unità" style={{ display: 'flex', alignItems: 'center', gap: 4, height: 44, padding: '0 3px', borderRadius: 999, background: 'var(--barra-attiva)', opacity: intero ? 0.5 : 1 }}>
-              {OPZIONI_UNITA.map((o) => {
-                const scelta = unitaBase === o.id;
-                return (
-                  // Il bottone è l'area di tocco da 44, la pillola visibile è 38 (frame 12), come in Segmento.
-                  <button key={o.id} type="button" aria-pressed={scelta} disabled={intero} onClick={() => setUnitaBase(o.id)} style={{ height: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <span style={{
-                      height: 38, minWidth: 44, padding: '0 10px', borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      background: scelta ? 'var(--superficie)' : 'none', boxShadow: scelta ? 'var(--ombra-tessera)' : 'none',
-                      color: scelta ? 'var(--ink)' : 'var(--testo-2)', fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
-                    }}>
-                      {o.label}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+            <SceltaUnita valore={unitaBase} onCambia={setUnitaBase} disabilitato={intero} />
           </div>
           <TastoSecondario onClick={apriScansione} style={{ marginTop: 4 }}>
             <IconaScansione />

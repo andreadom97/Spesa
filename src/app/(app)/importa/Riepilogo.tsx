@@ -36,8 +36,8 @@ function dataLocaleOggi(): string {
  * (il primo import); `SOSTITUISCI IL PIANO` passa dal Dialogo di conferma quando disattiva dei
  * piatti del nutrizionista (decisione di Andrea del 27/09).
  *
- * `BozzaIncompletaError` è un difetto di dati risolvibile solo tornando alla revisione: si mostra
- * il suo messaggio esatto, con TORNA ALLA REVISIONE nel Dock.
+ * `BozzaIncompletaError` è un difetto di dati risolvibile solo tornando a Controlla (il passo
+ * `revisione`): si mostra il suo messaggio esatto, con TORNA A CONTROLLA nel Dock.
  */
 export function Riepilogo({
   piano,
@@ -126,7 +126,7 @@ export function Riepilogo({
         <StatoImporta titolo="C'è ancora qualcosa da sistemare" testo={erroreBozza} conDock />
         <Dock>
           <button type="button" className="dock-primario" onClick={() => onStato({ ...stato, passo: 'revisione' })}>
-            TORNA ALLA REVISIONE
+            TORNA A CONTROLLA
           </button>
         </Dock>
       </>

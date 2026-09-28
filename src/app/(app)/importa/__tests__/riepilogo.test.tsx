@@ -138,7 +138,7 @@ describe('Riepilogo (spec fase 8a §C)', () => {
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/piano'));
   });
 
-  it('BozzaIncompletaError: uno stato vuoto col messaggio, TORNA ALLA REVISIONE nel Dock', async () => {
+  it('BozzaIncompletaError: uno stato vuoto col messaggio, TORNA A CONTROLLA nel Dock', async () => {
     vi.mocked(leggiBozzaImport).mockResolvedValue({ piano: PIANO_SEMPLICE, statoRevisione: STATO_SENZA_MAPPATURA });
     await riprendiBozza();
 
@@ -146,7 +146,7 @@ describe('Riepilogo (spec fase 8a §C)', () => {
     expect(screen.getByText(/nessuna mappatura per il pasto/i)).toBeInTheDocument();
     expect(eseguiScritture).not.toHaveBeenCalled();
 
-    fireEvent.click(within(dock()).getByRole('button', { name: 'TORNA ALLA REVISIONE' }));
+    fireEvent.click(within(dock()).getByRole('button', { name: 'TORNA A CONTROLLA' }));
     await waitFor(() => {
       const bozza = vi.mocked(salvaBozzaImport).mock.calls.at(-1)![0];
       expect(bozza.statoRevisione.passo).toBe('revisione');

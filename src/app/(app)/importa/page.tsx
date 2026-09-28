@@ -21,8 +21,8 @@ import { StatoImporta } from './StatoImporta';
 import { Riepilogo } from './Riepilogo';
 import { Camera } from './Camera';
 import { Acquisizione } from './Acquisizione';
-import { Revisione } from './Revisione';
-import { Formati } from './Formati';
+import { Controlla } from './Controlla';
+import { Ingredienti } from './Ingredienti';
 import { tornaA } from '@/components/tornaA';
 
 type Vista =
@@ -91,7 +91,7 @@ export default function Importa() {
   const [vista, setVista] = useState<Vista>('caricamento');
   const [bozza, setBozza] = useState<BozzaImport | null>(null);
   // Servono alla revisione (etichette e opzioni dello slot per pasto) e al passo
-  // formati (ingredienti esistenti da abbinare o proporre come "è lo stesso di…"):
+  // Ingredienti (ingredienti esistenti da abbinare o proporre come "è lo stesso di…"):
   // letti una volta al mount, indipendentemente dalla vista corrente, così sono già
   // pronti quando si riprende una bozza salvata (che non rifà il giro di estrazione).
   const [slotDefs, setSlotDefs] = useState<MealSlotDef[]>([]);
@@ -201,10 +201,10 @@ export default function Importa() {
   }
 
   /**
-   * `onStato` di `<Revisione>`: ogni modifica che deve sopravvivere (conferma
-   * pasto, cambio mappatura, cambio giorno — mai a ogni tasto, vedi Revisione.tsx)
-   * aggiorna subito lo stato della pagina e persiste con `salvaBozzaImport`.
-   * Nessun debounce: Revisione già decide quando chiamare questa funzione.
+   * `onStato` di `<Controlla>`: ogni risposta a un dubbio, ogni abbinamento, la
+   * chiusura del foglio del giorno, la conferma — mai a ogni tasto, vedi Controlla.tsx.
+   * Aggiorna subito lo stato della pagina e persiste con `salvaBozzaImport`.
+   * Nessun debounce: Controlla già decide quando chiamare questa funzione.
    */
   async function aggiornaStatoRevisione(statoRevisione: StatoRevisione) {
     setBozza((prev) => {
@@ -368,7 +368,7 @@ export default function Importa() {
 
   if (vista === 'bozza' && bozza) {
     return (
-      <Cornice>
+      <Cornice passo={PILLOLA_PASSO[bozza.statoRevisione.passo]}>
         <ContenutoBozza
           bozza={bozza}
           slotDefs={slotDefs}
@@ -393,7 +393,7 @@ export default function Importa() {
   }
 
   return (
-    <Cornice>
+    <Cornice passo={PILLOLA_PASSO.fogli}>
       <Acquisizione pdf={pdf} onPdf={setPdf} onApriFotocamera={apriFotocamera} onEstraiPdf={() => void estrai('pdf')} />
     </Cornice>
   );
@@ -488,30 +488,35 @@ function ContenutoBozza({
   switch (bozza.statoRevisione.passo) {
     case 'revisione':
       return (
-        <Revisione piano={bozza.piano} stato={bozza.statoRevisione} slotDefs={slotDefs} onStato={onStatoRevisione} />
+        <Controlla piano={bozza.piano} stato={bozza.statoRevisione} slotDefs={slotDefs} onStato={onStatoRevisione} />
       );
     case 'formati':
       return (
-        <Formati
-          piano={bozza.piano}
-          stato={bozza.statoRevisione}
-          ingredientiEsistenti={ingredientiEsistenti}
-          onStato={onStatoRevisione}
-        />
+        <Ingredienti piano={bozza.piano} stato={bozza.statoRevisione} ingredientiEsistenti={ingredientiEsistenti} onStato={onStatoRevisione} />
       );
     case 'riepilogo':
       return <Riepilogo piano={bozza.piano} stato={bozza.statoRevisione} onStato={onStatoRevisione} />;
   }
 }
 
-/** Colonna a tutta altezza con la testata fissa in cima. La pillola riapre il pannello sopra la
- *  pagina da cui si era partiti (spec fase 5 §G.3, §A.5). */
-function Cornice({ children }: { children?: ReactNode }) {
+/** La pillola sotto il titolo nei quattro passi (spec 8b §C). Gli stati dell'8a non ne hanno. */
+const PILLOLA_PASSO = {
+  fogli: 'Passo 1 di 4 · I fogli',
+  revisione: 'Passo 2 di 4 · Controlla',
+  formati: 'Passo 3 di 4 · Ingredienti',
+  riepilogo: 'Passo 4 di 4 · Riepilogo',
+} as const;
+
+/** Colonna a tutta altezza con la testata fissa in cima. Titolo «Importa» (spec 8b §C, §3: una
+ *  parola) e, nei quattro passi, la pillola del passo. La pillola IMPOSTAZIONI riapre il pannello
+ *  sopra la pagina da cui si era partiti (spec fase 5 §G.3, §A.5). */
+function Cornice({ children, passo }: { children?: ReactNode; passo?: string }) {
   const router = useRouter();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       <Testata
-        titolo="Importa la dieta"
+        titolo="Importa"
+        settimana={passo}
         indietro={{ etichetta: 'IMPOSTAZIONI', ariaLabel: 'Torna alle impostazioni', onTorna: () => tornaA(router, indirizzoRitorno()) }}
       />
       {children}
