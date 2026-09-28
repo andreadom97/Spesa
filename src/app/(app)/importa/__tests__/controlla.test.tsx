@@ -252,7 +252,91 @@ describe('Controlla', () => {
       expect.objectContaining({ quantita: 4, unita: 'g' }),
     ]);
   });
+
+  it('I2: lo stesso gruppo con unità diverse nei giorni sta in «Da sistemare» con le pillole, e una risposta vale per tutti', () => {
+    const piano = pianoConOlive([['cena'], ['cena']]);
+    const onStato = rendi({ ...STATO, mappaturaPasti: { cena: 's-cena' }, correzioni: { '1-0-0': conOlive(piano, 0, 0, 3, 'pz'), '1-1-0': conOlive(piano, 1, 0, 20, 'g') } }, piano);
+    expect(screen.getByRole('heading', { name: 'Da sistemare 1' })).toBeInTheDocument();
+    expect(screen.getByText('Nei giorni ci sono unità diverse: scegline una per tutti.')).toBeInTheDocument();
+    expect(screen.queryByText("Sul foglio non c'è un peso: scrivi quanto ne usi e in che unità.")).toBeNull();
+    expect(conferma()).toBeDisabled();
+    const campo = screen.getByRole('textbox', { name: 'Quantità di olive taggiasche' });
+    fireEvent.change(campo, { target: { value: '3' } });
+    fireEvent.blur(campo);
+    expect(onStato).not.toHaveBeenCalled();
+    fireEvent.click(within(screen.getByRole('group', { name: 'Unità di olive taggiasche' })).getByRole('button', { name: 'PZ' }));
+    expect(onStato).toHaveBeenCalledTimes(1);
+    const stato = onStato.mock.calls[0][0] as StatoRevisione;
+    expect([stato.correzioni['1-0-0'], stato.correzioni['1-1-0']].map((p) => p.piatti[0].righeFisse[1])).toEqual([
+      expect.objectContaining({ quantita: 3, unita: 'pz' }),
+      expect.objectContaining({ quantita: 3, unita: 'pz' }),
+    ]);
+  });
+
+  it('I2: nel foglio del giorno la riga irrisolta prende l\'unità da una riga già risolta dello stesso gruppo', () => {
+    const piano = pianoConOlive([['cena'], ['cena']]);
+    rendi({ ...STATO, mappaturaPasti: { cena: 's-cena' }, correzioni: { '1-0-0': conOlive(piano, 0, 0, 3, 'pz') } }, piano);
+    fireEvent.click(screen.getByRole('button', { name: 'Apri Martedì' }));
+    const foglio = screen.getByRole('dialog', { name: 'Martedì' });
+    expect(within(foglio).getByRole('textbox', { name: 'Quantità di olive taggiasche' })).toHaveValue('');
+    expect(within(foglio).queryByRole('group', { name: 'Unità di olive taggiasche' })).toBeNull();
+    expect(within(foglio).getByText("Sul foglio non c'è un peso: scrivi quanto ne usi.")).toBeInTheDocument();
+  });
+
+  it('I2: nello stesso foglio, risposta la prima occorrenza, la seconda non ha più le pillole', () => {
+    const piano = pianoConOlive([['pranzo', 'cena']]);
+    const onStato = rendi({ ...STATO, mappaturaPasti: { pranzo: 's-pranzo', cena: 's-cena' } }, piano);
+    fireEvent.click(screen.getByRole('button', { name: 'Apri Lunedì' }));
+    const foglio = screen.getByRole('dialog', { name: 'Lunedì' });
+    expect(within(foglio).getAllByRole('group', { name: 'Unità di olive taggiasche' })).toHaveLength(2);
+    const [pranzo] = within(foglio).getAllByRole('textbox', { name: 'Quantità di olive taggiasche' });
+    fireEvent.change(pranzo, { target: { value: '3' } });
+    fireEvent.blur(pranzo);
+    fireEvent.click(within(within(foglio).getAllByRole('group', { name: 'Unità di olive taggiasche' })[0]).getByRole('button', { name: 'PZ' }));
+    // Il pranzo tiene le pillole (l'unità si cambia finché è l'unica risposta); la cena prende PZ.
+    expect(within(foglio).getAllByRole('group', { name: 'Unità di olive taggiasche' })).toHaveLength(1);
+    const cena = within(foglio).getAllByRole('textbox', { name: 'Quantità di olive taggiasche' })[1];
+    fireEvent.change(cena, { target: { value: '4' } });
+    fireEvent.blur(cena);
+    fireEvent.click(within(foglio).getByRole('button', { name: 'Chiudi Lunedì' }));
+    expect(onStato).toHaveBeenCalledTimes(1);
+    const stato = onStato.mock.calls[0][0] as StatoRevisione;
+    expect([stato.correzioni['1-0-0'], stato.correzioni['1-0-1']].map((p) => p.piatti[0].righeFisse[1])).toEqual([
+      expect.objectContaining({ quantita: 3, unita: 'pz' }),
+      expect.objectContaining({ quantita: 4, unita: 'pz' }),
+    ]);
+  });
 });
+
+const OLIVE = { alimento: 'olive taggiasche', quantita: null, unita: null, quantitaInferita: false, testoOriginale: '2-3 olive taggiasche' };
+
+/** Una settimana: per ogni giorno i pasti indicati, ognuno col Merluzzo («filetto di merluzzo» e le olive senza quantità). */
+function pianoConOlive(pasti: string[][]): PianoEstratto {
+  return {
+    archetipo: 'menu_settimanale', fonte: 'test', noteEstrazione: [],
+    settimane: [{
+      numero: 1,
+      giorni: pasti.map((nomi, g) => ({
+        giorno: g,
+        titolo: null,
+        pasti: nomi.map((nomeOriginale) => ({
+          nomeOriginale,
+          piatti: [{ nome: 'Merluzzo', descrizione: null, componenti: [], righeFisse: [
+            { alimento: 'filetto di merluzzo', quantita: 120, unita: 'g' as const, quantitaInferita: false, testoOriginale: 'Filetto di merluzzo (120g)' },
+            { ...OLIVE },
+          ] }],
+        })),
+      })),
+    }],
+  };
+}
+
+/** Il pasto `indice` del giorno `giorno` di `pianoConOlive`, con le olive risolte. */
+function conOlive(piano: PianoEstratto, giorno: number, indice: number, quantita: number, unita: 'g' | 'ml' | 'pz'): PastoEstratto {
+  const pasto = structuredClone(piano.settimane[0].giorni[giorno].pasti[indice]);
+  pasto.piatti[0].righeFisse[1] = { ...OLIVE, quantita, unita };
+  return pasto;
+}
 
 /** Una settimana di `giorni` giorni: ogni giorno una cena con la Zuppa e «sale q.b.», 2 g proposti dall'AI. */
 function pianoConSale(giorni = 2): PianoEstratto {

@@ -165,6 +165,11 @@ export interface GruppoRighe {
   quantita: number | null;
   /** Comune a tutte le righe effettive risolte, anche con quantità diverse; null senza righe risolte o con unità diverse. */
   unita: UnitaBase | null;
+  /**
+   * Le righe effettive sono tutte risolte ma con più di un'unità (I2): il dubbio è sceglierne
+   * una per tutte, e l'avviso lo dice al posto di «senza peso».
+   */
+  unitaDiverse: boolean;
   /** L'unità di una riga dello stesso alimento fuori da OGNI gruppo irrisolto (decisione 8), o null. */
   unitaFissa: UnitaBase | null;
 }
@@ -201,10 +206,14 @@ function raccogliDubbi(piano: PianoEstratto, stato: StatoRevisione): Map<string,
     pasto: p.chiave, settimana: p.settimana, giorno: p.giorno, titolo: p.titolo, nomePasto: pasto.nomeOriginale, nomePiatto,
   });
 
+  const righeOriginali = new Map<Raccolta, RigaEstratta[]>();
   for (const p of pasti) {
     for (const { riga, nomePiatto } of righeDelPasto(p.originale)) {
       const r = raccolta(riga);
       r.originali.push(occorrenza(p, p.originale, nomePiatto));
+      const righe = righeOriginali.get(r) ?? [];
+      righe.push(riga);
+      righeOriginali.set(r, righe);
       if (rigaIrrisolta(riga)) r.irrisolta = true;
       else if (riga.quantitaInferita) r.inferita = true;
     }
@@ -216,12 +225,24 @@ function raccogliDubbi(piano: PianoEstratto, stato: StatoRevisione): Map<string,
       if (rigaIrrisolta(riga)) r.irrisolta = true;
     }
   }
+  // Più di un'unità fra le righe risolte dello stesso gruppo è un dubbio irrisolto (I2): il
+  // riepilogo non saprebbe in che unità creare l'ingrediente. Letta sul piano originale (l'AI
+  // ha scritto unità diverse) resta irrisolto anche dopo la risposta, come ogni dubbio.
+  for (const r of perChiave.values()) {
+    if (unitaDiverse(righeOriginali.get(r) ?? []) || unitaDiverse(r.effettive.map((e) => e.riga))) r.irrisolta = true;
+  }
   return perChiave;
 }
 
+/** Più di un'unità fra le righe risolte. */
+function unitaDiverse(righe: RigaEstratta[]): boolean {
+  return new Set(righe.filter((x) => !rigaIrrisolta(x)).map((x) => x.unita)).size > 1;
+}
+
 /**
- * Le chiavi di gruppo irrisolte: una riga irrisolta nel piano originale o in quello
- * effettivo (stessa definizione di `tipo: 'irrisolta'` in `gruppiRighe`). Una volta
+ * Le chiavi di gruppo irrisolte: una riga irrisolta, o righe risolte con unità diverse, nel
+ * piano originale o in quello effettivo (stessa definizione di `tipo: 'irrisolta'` in
+ * `gruppiRighe`). Una volta
  * irrisolta una chiave lo resta anche se poi si risolve nelle correzioni: altrimenti,
  * risolto un gruppo, la sua unità fisserebbe per sempre un altro gruppo ancora aperto
  * dello stesso alimento (e viceversa).
@@ -256,10 +277,32 @@ export function unitaNota(piano: PianoEstratto, stato: StatoRevisione, alimento:
 }
 
 /**
+ * L'unità di un'altra riga GIÀ RISOLTA dello stesso gruppo nel piano effettivo, saltando la
+ * riga `escludi` (pasto e posizione), o null (I2). Il foglio del giorno la usa come unità
+ * fissa: così lo stesso gruppo non si risolve con unità diverse in giorni diversi.
+ */
+export function unitaDelGruppo(
+  piano: PianoEstratto,
+  stato: StatoRevisione,
+  chiave: string,
+  escludi: { pasto: string; posizione: PosizioneRiga },
+): UnitaBase | null {
+  for (const p of pastiDelPiano(piano, stato)) {
+    for (const { riga, posizione } of righeDelPasto(p.effettivo)) {
+      if (chiaveGruppo(riga) !== chiave || rigaIrrisolta(riga)) continue;
+      if (p.chiave === escludi.pasto && stessaPosizione(posizione, escludi.posizione)) continue;
+      return riga.unita;
+    }
+  }
+  return null;
+}
+
+/**
  * I gruppi di righe da chiedere (spec 8b §B). Un gruppo esiste se una sua riga originale è
  * irrisolta o inferita, oppure se una sua riga effettiva è irrisolta: la seconda condizione
  * copre le bozze vecchie, dove la Revisione di prima poteva svuotare una quantità, e fa sì
- * che `pronto` non lasci passare una riga irrisolta invisibile.
+ * che `pronto` non lasci passare una riga irrisolta invisibile. Esiste, irrisolto, anche se le
+ * sue righe risolte hanno più di un'unità (I2): aperto finché una risposta non le rimette uguali.
  */
 export function gruppiRighe(piano: PianoEstratto, stato: StatoRevisione): GruppoRighe[] {
   const perChiave = raccogliDubbi(piano, stato);
@@ -268,12 +311,12 @@ export function gruppiRighe(piano: PianoEstratto, stato: StatoRevisione): Gruppo
     const tipo = r.irrisolta ? 'irrisolta' : r.inferita ? 'inferita' : null;
     if (tipo === null) continue;
     const righe = r.effettive.map((e) => e.riga);
-    const statoGruppo: StatoGruppo = righe.length === 0 ? 'tolto' : righe.some(rigaIrrisolta) ? 'aperto' : 'fatto';
-    // L'unità comune si calcola a parte dalla quantità: con quantità diverse nei giorni la
-    // riga resta scrivibile, perché il numero nuovo ha comunque la sua unità.
     const risolte = righe.filter((x) => !rigaIrrisolta(x));
-    const unitaRisolte = new Set(risolte.map((x) => x.unita));
-    const unitaComune = unitaRisolte.size === 1 ? risolte[0].unita : null;
+    const diverse = unitaDiverse(righe);
+    const statoGruppo: StatoGruppo = righe.length === 0 ? 'tolto' : risolte.length < righe.length || diverse ? 'aperto' : 'fatto';
+    // L'unità comune si calcola a parte dalla quantità (I1): con quantità diverse nei giorni la
+    // riga resta scrivibile, perché il numero nuovo ha comunque la sua unità.
+    const unitaComune = risolte.length > 0 && !diverse ? risolte[0].unita : null;
     const prima = righe[0];
     const quantitaComune = unitaComune !== null && risolte.length === righe.length
       && righe.every((x) => x.quantita === prima.quantita) ? prima.quantita : null;
@@ -286,6 +329,7 @@ export function gruppiRighe(piano: PianoEstratto, stato: StatoRevisione): Gruppo
       stato: statoGruppo,
       quantita: quantitaComune,
       unita: unitaComune,
+      unitaDiverse: diverse && risolte.length === righe.length,
       unitaFissa: unitaNota(piano, stato, normalizza(r.alimento), chiave),
     });
   }

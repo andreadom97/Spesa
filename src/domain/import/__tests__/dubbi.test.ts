@@ -8,7 +8,7 @@ import { proponi } from '../formati-tipici';
 import {
   cambiaRiga, chiaveGruppo, confermaTutti, conteggi, etichettaGiorno, gruppiRighe, pastiDelGruppo,
   pronto, provenienza, riassuntoGiorni, righeDelPasto, rispondiGruppo, togliGruppo, togliRiga,
-  unitaNota, vociPasti,
+  unitaDelGruppo, unitaNota, vociPasti,
 } from '../dubbi';
 
 const slot = (id: string, nome: string, posizione: number): MealSlotDef => ({ id, nome, posizione, assenzeAbituali: Array(7).fill(false) });
@@ -160,7 +160,75 @@ describe('gruppiRighe', () => {
     const gruppi = gruppiRighe(piano, { ...STATO, mappaturaPasti: { cena: 's-cena' }, correzioni: { '1-0-0': lunedi } });
     expect(gruppi).toEqual([expect.objectContaining({ chiave: 'sale|sale q.b.', tipo: 'inferita', stato: 'fatto', quantita: null, unita: 'g', unitaFissa: null })]);
   });
+
+  it('I2: lo stesso gruppo risolto in pz e in g è un dubbio aperto, e pronto è falso finché non si risponde', () => {
+    const piano = pianoConOlive([['cena'], ['cena']]);
+    const stato = { ...STATO, mappaturaPasti: { cena: 's-cena' }, correzioni: { '1-0-0': cenaOlive(piano, 0, 3, 'pz'), '1-1-0': cenaOlive(piano, 1, 20, 'g') } };
+    expect(gruppiRighe(piano, stato)).toEqual([expect.objectContaining({ tipo: 'irrisolta', stato: 'aperto', quantita: null, unita: null, unitaDiverse: true })]);
+    expect(pronto(piano, stato, SLOTS)).toBe(false);
+
+    const risposto = rispondiGruppo(piano, stato, chiaveGruppo(OLIVE), 3, 'pz');
+    expect(gruppiRighe(piano, risposto)).toEqual([expect.objectContaining({ tipo: 'irrisolta', stato: 'fatto', quantita: 3, unita: 'pz', unitaDiverse: false })]);
+    expect(pronto(piano, risposto, SLOTS)).toBe(true);
+  });
+
+  it('I2: unità diverse lette dall\'AI nello stesso gruppo sono un dubbio, che resta al suo posto dopo la risposta', () => {
+    const piano = pianoConOlive([['cena'], ['cena']]);
+    piano.settimane[0].giorni[0].pasti[0].piatti[0].righeFisse[1] = { ...OLIVE, quantita: 3, unita: 'pz' };
+    piano.settimane[0].giorni[1].pasti[0].piatti[0].righeFisse[1] = { ...OLIVE, quantita: 15, unita: 'g' };
+    const stato = { ...STATO, mappaturaPasti: { cena: 's-cena' } };
+    expect(gruppiRighe(piano, stato)).toEqual([expect.objectContaining({ tipo: 'irrisolta', stato: 'aperto', unitaDiverse: true })]);
+    const risposto = rispondiGruppo(piano, stato, chiaveGruppo(OLIVE), 15, 'g');
+    expect(gruppiRighe(piano, risposto)).toEqual([expect.objectContaining({ tipo: 'irrisolta', stato: 'fatto', quantita: 15, unita: 'g' })]);
+  });
+
+  it('I2: con una riga ancora irrisolta le unità diverse non cambiano l\'avviso', () => {
+    const piano = pianoConOlive([['cena'], ['cena'], ['cena']]);
+    const stato = { ...STATO, correzioni: { '1-0-0': cenaOlive(piano, 0, 3, 'pz'), '1-1-0': cenaOlive(piano, 1, 20, 'g') } };
+    expect(gruppiRighe(piano, stato)).toEqual([expect.objectContaining({ stato: 'aperto', unita: null, unitaDiverse: false })]);
+  });
 });
+
+describe('unitaDelGruppo', () => {
+  it("l'unità di un'altra riga già risolta dello stesso gruppo, o null", () => {
+    const piano = pianoConOlive([['pranzo', 'cena'], ['cena']]);
+    const chiave = chiaveGruppo(OLIVE);
+    const posizione = { piatto: 0, componente: null, opzione: null, riga: 1 };
+    expect(unitaDelGruppo(piano, STATO, chiave, { pasto: '1-1-0', posizione })).toBeNull();
+    const stato = { ...STATO, correzioni: { '1-0-1': cenaOlive(piano, 0, 3, 'pz', 1) } };
+    expect(unitaDelGruppo(piano, stato, chiave, { pasto: '1-1-0', posizione })).toBe('pz');
+    // La riga risolta non si fissa da sola.
+    expect(unitaDelGruppo(piano, stato, chiave, { pasto: '1-0-1', posizione })).toBeNull();
+  });
+});
+
+/** Una settimana: per ogni giorno i pasti indicati, ognuno col Merluzzo («filetto di merluzzo» e le olive senza quantità). */
+function pianoConOlive(pasti: string[][]): PianoEstratto {
+  return {
+    archetipo: 'menu_settimanale', fonte: 'test', noteEstrazione: [],
+    settimane: [{
+      numero: 1,
+      giorni: pasti.map((nomi, g) => ({
+        giorno: g,
+        titolo: null,
+        pasti: nomi.map((nomeOriginale) => ({
+          nomeOriginale,
+          piatti: [{ nome: 'Merluzzo', descrizione: null, componenti: [], righeFisse: [
+            { alimento: 'filetto di merluzzo', quantita: 120, unita: 'g' as const, quantitaInferita: false, testoOriginale: 'Filetto di merluzzo (120g)' },
+            { ...OLIVE },
+          ] }],
+        })),
+      })),
+    }],
+  };
+}
+
+/** Il pasto `indice` del giorno `giorno` di `pianoConOlive`, con le olive risolte. */
+function cenaOlive(piano: PianoEstratto, giorno: number, quantita: number, unita: 'g' | 'ml' | 'pz', indice = 0): PastoEstratto {
+  const pasto = structuredClone(piano.settimane[0].giorni[giorno].pasti[indice]);
+  pasto.piatti[0].righeFisse[1] = { ...OLIVE, quantita, unita };
+  return pasto;
+}
 
 /** Una settimana di `giorni` giorni: ogni giorno una cena con la Zuppa e «sale q.b.», 2 g proposti dall'AI. */
 function pianoConSale(giorni = 2): PianoEstratto {

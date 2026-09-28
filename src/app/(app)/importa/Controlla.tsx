@@ -16,7 +16,7 @@ import { FoglioDalBasso } from '@/components/FoglioDalBasso';
 import { DialogoConferma } from '@/components/DialogoConferma';
 import { Dock } from '@/components/Dock';
 import { useIndietroFogli } from '@/components/useIndietroFogli';
-import { AVVISO_SENZA_PESO, AVVISO_SENZA_QUANTITA, FoglioGiorno, nomeGiorno } from './FoglioGiorno';
+import { AVVISO_SENZA_PESO, AVVISO_SENZA_QUANTITA, AVVISO_UNITA_DIVERSE, FoglioGiorno, nomeGiorno } from './FoglioGiorno';
 import { TitoloSezione, capitalizza, nomePasto, plurale } from './sezione';
 
 interface Props {
@@ -151,7 +151,7 @@ export function Controlla({ piano, stato, slotDefs, onStato }: Props) {
         unita={g.unita ?? g.unitaFissa}
         scegliUnita={pillole}
         dubbio={aperto}
-        avviso={aperto ? (pillole ? AVVISO_SENZA_PESO : AVVISO_SENZA_QUANTITA) : undefined}
+        avviso={aperto ? (g.unitaDiverse ? AVVISO_UNITA_DIVERSE : pillole ? AVVISO_SENZA_PESO : AVVISO_SENZA_QUANTITA) : undefined}
         onValore={(quantita, unita) => onStato(rispondiGruppo(piano, stato, g.chiave, quantita, unita))}
         onTogli={() => {
           if (pastiDelGruppo(g) > 1) apri({ tipo: 'togli', chiave: g.chiave });

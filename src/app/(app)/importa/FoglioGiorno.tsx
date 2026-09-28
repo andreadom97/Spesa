@@ -6,7 +6,8 @@ import type { PastoEstratto, PianoEstratto, StatoRevisione } from '@/domain/impo
 import { chiavePasto, pastoEffettivo } from '@/domain/import/types';
 import { normalizza } from '@/domain/import/mapping';
 import {
-  cambiaRiga, chiaveGruppo, etichettaGiorno, righeDelPasto, rigaIrrisolta, togliRiga, unitaNota, type RigaNelPasto,
+  cambiaRiga, chiaveGruppo, etichettaGiorno, righeDelPasto, rigaIrrisolta, togliRiga, unitaDelGruppo, unitaNota,
+  type RigaNelPasto,
 } from '@/domain/import/dubbi';
 import { FoglioDalBasso, TestataFoglio } from '@/components/FoglioDalBasso';
 import { BloccoGruppo, Nota } from '@/components/pannello/pezzi';
@@ -15,6 +16,7 @@ import { capitalizza, nomePasto } from './sezione';
 
 export const AVVISO_SENZA_PESO = "Sul foglio non c'è un peso: scrivi quanto ne usi e in che unità.";
 export const AVVISO_SENZA_QUANTITA = "Sul foglio non c'è un peso: scrivi quanto ne usi.";
+export const AVVISO_UNITA_DIVERSE = 'Nei giorni ci sono unità diverse: scegline una per tutti.';
 
 /** Il nome del foglio e del suo dialogo: «Lunedì, settimana 1», «Lunedì», o il titolo dello scenario. */
 export function nomeGiorno(piano: PianoEstratto, settimana: number, giorno: number, titolo: string | null): string {
@@ -81,7 +83,11 @@ export function FoglioGiorno({ piano, stato, slotDefs, settimana, giorno, onCamb
           const righe = righeDelPasto(pasto);
           const riga = (r: RigaNelPasto) => {
             const chiaveRiga = chiaveGruppo(r.riga);
-            const nota = unitaNota(piano, stato, normalizza(r.riga.alimento), chiaveRiga);
+            // L'unità fissa: da un'altra riga dello stesso alimento fuori dai dubbi (decisione 8)
+            // o da un'altra riga già risolta dello stesso gruppo (I2), così lo stesso gruppo non
+            // si risolve in pz un giorno e in g un altro. Le pillole solo se non c'è nessuna delle due.
+            const nota = unitaNota(piano, stato, normalizza(r.riga.alimento), chiaveRiga)
+              ?? unitaDelGruppo(piano, stato, chiaveRiga, { pasto: chiave, posizione: r.posizione });
             const irrisolta = rigaIrrisolta(r.riga);
             const pillole = irrisolteAllApertura.has(chiaveRiga) && nota === null;
             return (
