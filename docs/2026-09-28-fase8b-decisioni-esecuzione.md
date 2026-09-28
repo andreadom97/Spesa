@@ -244,22 +244,22 @@ Aperti dai `minor (deferred)` del ledger, non toccati:
 Su Chrome Android, con una dieta vera. Nessuna di queste prove è stata eseguita: sono **NON
 ESEGUITE**.
 
-1. Importare una dieta con i condimenti: in Controlla i condimenti in «Da sistemare», abbinarli
+1. Importa una dieta con i condimenti: in Controlla i condimenti sono in «Da sistemare», abbinali
    dal foglio, la voce scelta piena.
-2. Una riga senza peso: numero e pillola in ordine inverso, il dubbio resta al suo posto come
-   fatto.
-3. Una riga ripetuta in più pasti: «In N pasti», una risposta vale per tutti; togliere passa dal
-   dialogo.
-4. Aprire un giorno, cambiare una quantità, chiudere con l'indietro di Android: la modifica c'è
-   ancora riaprendo il giorno.
-5. `CONFERMA I PASTI` e poi Ingredienti: le olive (o un altro alimento fuori tabella) in «Da
-   controllare» con la nota del ripiego.
-6. Aprire un ingrediente dalla riga, scegliere l'area dal foglio sopra il foglio: l'indietro chiude
+2. Rispondi a una riga senza peso scrivendo numero e pillola in ordine inverso: il dubbio resta al
+   suo posto come fatto.
+3. Trova una riga ripetuta in più pasti («In N pasti»): una risposta vale per tutti; togli il
+   gruppo e passa dal dialogo.
+4. Apri un giorno, cambia una quantità, chiudi con l'indietro di Android: la modifica c'è ancora
+   riaprendo il giorno.
+5. Tocca `CONFERMA I PASTI` e poi vai in Ingredienti: le olive (o un altro alimento fuori tabella)
+   sono in «Da controllare» con la nota del ripiego.
+6. Apri un ingrediente dalla riga, scegli l'area dal foglio sopra il foglio: l'indietro chiude
    prima il selettore, poi la scheda.
-7. Rinominare un ingrediente come un altro: il Dock si spegne e l'avviso compare.
-8. «È lo stesso di…» verso un ingrediente che hai già, poi «No, è nuovo».
-9. Arrivare al riepilogo e creare il piano: la lista nasce giusta.
-10. Riprendere una bozza salvata prima dell'8b (se ce n'è una): si apre in Controlla.
+7. Rinomina un ingrediente come un altro: il Dock si spegne e l'avviso compare.
+8. Scegli «È lo stesso di…» verso un ingrediente che hai già, poi torna su «No, è nuovo».
+9. Arriva al riepilogo e crea il piano: la lista nasce giusta.
+10. Riprendi una bozza salvata prima dell'8b (se ce n'è una): si apre in Controlla.
 11. Nel foglio del giorno scrivi una quantità e fai indietro **con la tastiera aperta**. La
     quantità deve esserci riaprendo il giorno, e non deve comparire in un altro giorno (copre
     l'Important del Task 7 e il minor sul blur tardivo di Chrome, sopra).
