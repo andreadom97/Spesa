@@ -153,4 +153,83 @@ describe('Controlla', () => {
     expect(screen.getByText('Sul foglio: «2-3 olive taggiasche» · quantità proposta da me')).toBeInTheDocument();
     expect(conferma()).toBeEnabled();
   });
+
+  // --- Correzioni giro 1 ---
+
+  it("l'indietro con la tastiera aperta: il numero non salvato risale nell'unico onStato, e non resta indietro", () => {
+    const onStato = rendi();
+    fireEvent.click(screen.getByRole('button', { name: 'Apri Lunedì, settimana 1' }));
+    const foglio = screen.getByRole('dialog', { name: 'Lunedì, settimana 1' });
+    const tacchino = within(foglio).getByRole('textbox', { name: 'Quantità di fesa di tacchino' });
+    act(() => { tacchino.focus(); });
+    fireEvent.change(tacchino, { target: { value: '150' } });
+    act(() => { window.dispatchEvent(new PopStateEvent('popstate')); });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(onStato).toHaveBeenCalledTimes(1);
+    expect((onStato.mock.calls[0][0] as StatoRevisione).correzioni['1-0-1'].piatti[0].righeFisse[0].quantita).toBe(150);
+    // Il giorno dopo si apre e si chiude senza modifiche: niente valori rimasti in sospeso.
+    fireEvent.click(screen.getByRole('button', { name: 'Apri Martedì, settimana 1' }));
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Martedì, settimana 1' })).getByRole('button', { name: 'Chiudi Martedì, settimana 1' }));
+    expect(onStato).toHaveBeenCalledTimes(1);
+  });
+
+  it('con un pasto solo la frase dice «il pasto»', () => {
+    const piano: PianoEstratto = {
+      archetipo: 'menu_settimanale', fonte: 'test', noteEstrazione: [],
+      settimane: [{ numero: 1, giorni: [{ giorno: 0, titolo: null, pasti: [{ nomeOriginale: 'cena', piatti: [{ nome: 'Pesce', descrizione: null, componenti: [], righeFisse: [{ alimento: 'orata', quantita: 150, unita: 'g', quantitaInferita: false, testoOriginale: 'orata 150g' }] }] }] }] }],
+    };
+    rendi({ ...STATO, mappaturaPasti: { cena: 's-cena' } }, piano);
+    expect(screen.getByText('Niente più da sistemare. Confermo il pasto così: puoi sempre aprire un giorno e correggerlo.')).toBeInTheDocument();
+    expect(conferma()).toBeEnabled();
+  });
+
+  it('tutti i pasti tolti: la frase lo dice e CONFERMA I PASTI resta spento', () => {
+    const piano: PianoEstratto = {
+      archetipo: 'menu_settimanale', fonte: 'test', noteEstrazione: [],
+      settimane: [{ numero: 1, giorni: [{ giorno: 0, titolo: null, pasti: [{ nomeOriginale: 'cena', piatti: [{ nome: 'Pesce', descrizione: null, componenti: [], righeFisse: [{ alimento: 'orata', quantita: 150, unita: 'g', quantitaInferita: false, testoOriginale: 'orata 150g' }] }] }] }] }],
+    };
+    rendi({ ...STATO, mappaturaPasti: { cena: 's-cena' }, correzioni: { '1-0-0': { nomeOriginale: 'cena', piatti: [] } } }, piano);
+    expect(screen.getByText("Hai tolto tutti i pasti: non c'è niente da confermare. Se vuoi ripartire, ricomincia l'import.")).toBeInTheDocument();
+    expect(conferma()).toBeDisabled();
+  });
+
+  it('scegliere lo slot già scelto non scrive niente', () => {
+    const onStato = rendi();
+    fireEvent.click(screen.getByRole('button', { name: /Colazione/ }));
+    const foglio = screen.getByRole('dialog', { name: 'Colazione: a quale pasto corrisponde?' });
+    fireEvent.click(within(foglio).getByRole('radio', { name: 'Colazione' }));
+    expect(onStato).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('con un livello aperto, aprirne un altro non fa niente', () => {
+    rendi();
+    fireEvent.click(screen.getByRole('button', { name: /Condimenti/ }));
+    expect(screen.getByRole('dialog', { name: 'Condimenti: in quale pasto li usi?' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Apri Lunedì, settimana 1' }));
+    expect(screen.queryByRole('dialog', { name: 'Lunedì, settimana 1' })).toBeNull();
+    expect(screen.getByRole('dialog', { name: 'Condimenti: in quale pasto li usi?' })).toBeInTheDocument();
+    expect(window.history.pushState).toHaveBeenCalledTimes(1);
+  });
+
+  it('una bozza vecchia al passo revisione, con conferme parziali e correzioni della Revisione di prima, si apre e si conferma', () => {
+    const cena = structuredClone(PIANO_MENU_SETTIMANALE.settimane[0].giorni[1].pasti[1]);
+    cena.piatti[0].nome = 'Merluzzo al forno';
+    cena.piatti[0].righeFisse[1] = { ...cena.piatti[0].righeFisse[1], quantita: 3, unita: 'pz' };
+    const vecchia: StatoRevisione = {
+      passo: 'revisione',
+      mappaturaPasti: { colazione: 's-col', cena: 's-cena', condimenti: 's-cena' },
+      pastiConfermati: ['1-0-0', '1-0-1'],
+      correzioni: { '1-1-1': cena },
+      ingredientiNuovi: [],
+    };
+    const onStato = rendi(vecchia);
+    expect(screen.getByRole('button', { name: 'Apri Martedì, settimana 1' })).toHaveTextContent('Porridge · Merluzzo al forno o Tonno in insalata');
+    fireEvent.click(conferma());
+    expect(onStato).toHaveBeenCalledTimes(1);
+    const stato = onStato.mock.calls[0][0] as StatoRevisione;
+    expect(stato.passo).toBe('formati');
+    expect([...stato.pastiConfermati].sort()).toEqual(['1-0-0', '1-0-1', '1-0-2', '1-1-0', '1-1-1', '2-0-0']);
+    expect(stato.correzioni['1-1-1'].piatti[0].nome).toBe('Merluzzo al forno');
+  });
 });

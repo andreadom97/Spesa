@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { MealSlotDef } from '@/domain/types';
 import type { PastoEstratto, PianoEstratto, StatoRevisione } from '@/domain/import/types';
 import { NOME_PASTO_CONDIMENTI } from '@/domain/import/types';
@@ -43,9 +43,36 @@ type Livello =
 export function Controlla({ piano, stato, slotDefs, onStato }: Props) {
   const [livello, setLivello] = useState<Livello>(null);
   const [locali, setLocali] = useState<Record<string, PastoEstratto>>({});
+  // Le modifiche del foglio del giorno anche in un ref, e il giorno aperto: la chiusura legge
+  // il ref dopo il blur del campo a fuoco, così un numero scritto e non ancora salvato (indietro
+  // con la tastiera aperta) risale anche lui; e un blur tardivo di un foglio già chiuso non
+  // scrive più niente.
+  const localiRef = useRef<Record<string, PastoEstratto>>({});
+  const giornoAperto = useRef<string | null>(null);
+
+  /** Apre un livello solo se non ce n'è già uno: da tastiera il velo non basta a impedirlo. */
+  function apri(nuovo: NonNullable<Livello>) {
+    if (livello !== null) return;
+    if (nuovo.tipo === 'giorno') {
+      giornoAperto.current = `${nuovo.settimana}-${nuovo.giorno}`;
+      localiRef.current = {};
+    }
+    setLivello(nuovo);
+  }
+
+  function cambiaPasto(settimana: number, giorno: number, chiave: string, pasto: PastoEstratto) {
+    if (giornoAperto.current !== `${settimana}-${giorno}`) return;
+    localiRef.current = { ...localiRef.current, [chiave]: pasto };
+    setLocali(localiRef.current);
+  }
 
   function chiudiGiorno() {
-    if (Object.keys(locali).length > 0) onStato({ ...stato, correzioni: { ...stato.correzioni, ...locali } });
+    // Il campo a fuoco salva al blur: il suo numero entra nel ref prima della lettura.
+    (document.activeElement as HTMLElement | null)?.blur();
+    const modifiche = localiRef.current;
+    giornoAperto.current = null;
+    localiRef.current = {};
+    if (Object.keys(modifiche).length > 0) onStato({ ...stato, correzioni: { ...stato.correzioni, ...modifiche } });
     setLocali({});
     setLivello(null);
   }
@@ -62,8 +89,9 @@ export function Controlla({ piano, stato, slotDefs, onStato }: Props) {
   const pastiDaSistemare = voci.filter((v) => v.daSistemare);
   const pastiAbbinati = voci.filter((v) => !v.daSistemare);
   const aperti = pastiDaSistemare.filter((v) => v.slotDefId === null).length + irrisolti.filter((g) => g.stato === 'aperto').length;
-  const ok = pronto(piano, stato, slotDefs);
   const c = conteggi(piano, stato);
+  // Zero pasti confermabili (tutti tolti): confermare sostituirebbe il piano con niente.
+  const ok = pronto(piano, stato, slotDefs) && c.pastiConfermabili > 0;
   const giorni = riassuntoGiorni(piano, stato);
   const piuSettimane = piano.settimane.length > 1;
   const vociSlot = [...slotDefs].sort((a, b) => a.posizione - b.posizione).map((s) => ({ id: s.id, nome: s.nome }));
@@ -72,9 +100,11 @@ export function Controlla({ piano, stato, slotDefs, onStato }: Props) {
     ...(piuSettimane ? [plurale(c.settimane, 'settimana', 'settimane')] : []),
     plurale(c.giorni, 'giorno', 'giorni'),
   ].join(', ');
-  const frase = ok
-    ? `Niente più da sistemare. Confermo i ${plurale(c.pastiConfermabili, 'pasto', 'pasti')} così: puoi sempre aprire un giorno e correggerlo.`
-    : `Ho letto ${letto} e ${plurale(c.pastiLetti, 'pasto', 'pasti')}. Ti chiedo solo quello che non so.`;
+  const frase = c.pastiConfermabili === 0
+    ? "Hai tolto tutti i pasti: non c'è niente da confermare. Se vuoi ripartire, ricomincia l'import."
+    : ok
+      ? `Niente più da sistemare. Confermo ${c.pastiConfermabili === 1 ? 'il pasto' : `i ${c.pastiConfermabili} pasti`} così: puoi sempre aprire un giorno e correggerlo.`
+      : `Ho letto ${letto} e ${plurale(c.pastiLetti, 'pasto', 'pasti')}. Ti chiedo solo quello che non so.`;
 
   const statoVisto = Object.keys(locali).length > 0 ? { ...stato, correzioni: { ...stato.correzioni, ...locali } } : stato;
 
@@ -91,9 +121,11 @@ export function Controlla({ piano, stato, slotDefs, onStato }: Props) {
         titolo={condimenti ? 'Condimenti: in quale pasto li usi?' : `${nome}: a quale pasto corrisponde?`}
         notaFoglio={condimenti ? 'Ogni giorno le righe dei condimenti finiscono in questo pasto.' : undefined}
         aperto={livello?.tipo === 'selettore' && livello.chiave === v.chiave}
-        onApri={() => setLivello({ tipo: 'selettore', chiave: v.chiave })}
+        onApri={() => apri({ tipo: 'selettore', chiave: v.chiave })}
         onChiudi={() => setLivello(null)}
-        onScegli={(id) => onStato({ ...stato, mappaturaPasti: { ...stato.mappaturaPasti, [v.chiave]: id } })}
+        onScegli={(id) => {
+          if (id !== v.slotDefId) onStato({ ...stato, mappaturaPasti: { ...stato.mappaturaPasti, [v.chiave]: id } });
+        }}
       />
     );
   }
@@ -120,7 +152,7 @@ export function Controlla({ piano, stato, slotDefs, onStato }: Props) {
         avviso={aperto ? (pillole ? AVVISO_SENZA_PESO : AVVISO_SENZA_QUANTITA) : undefined}
         onValore={(quantita, unita) => onStato(rispondiGruppo(piano, stato, g.chiave, quantita, unita))}
         onTogli={() => {
-          if (pastiDelGruppo(g) > 1) setLivello({ tipo: 'togli', chiave: g.chiave });
+          if (pastiDelGruppo(g) > 1) apri({ tipo: 'togli', chiave: g.chiave });
           else onStato(togliGruppo(piano, stato, g.chiave));
         }}
       />
@@ -167,7 +199,7 @@ export function Controlla({ piano, stato, slotDefs, onStato }: Props) {
                     nome={g.etichetta}
                     nota={g.pasti > 0 ? g.piatti : 'Nessun pasto'}
                     etichetta={`Apri ${nome}`}
-                    finale={{ tipo: 'valore', valore: plurale(g.pasti, 'pasto', 'pasti'), onApri: () => setLivello({ tipo: 'giorno', settimana: g.settimana, giorno: g.giorno }) }}
+                    finale={{ tipo: 'valore', valore: plurale(g.pasti, 'pasto', 'pasti'), onApri: () => apri({ tipo: 'giorno', settimana: g.settimana, giorno: g.giorno }) }}
                   />
                 );
               })}
@@ -184,12 +216,14 @@ export function Controlla({ piano, stato, slotDefs, onStato }: Props) {
 
       {livello?.tipo === 'giorno' && (
         <FoglioGiorno
+          // Lo stato «all'apertura» del foglio vale per un montaggio: un giorno, un montaggio.
+          key={`${livello.settimana}-${livello.giorno}`}
           piano={piano}
           stato={statoVisto}
           slotDefs={slotDefs}
           settimana={livello.settimana}
           giorno={livello.giorno}
-          onCambiaPasto={(chiave, pasto) => setLocali((prima) => ({ ...prima, [chiave]: pasto }))}
+          onCambiaPasto={(chiave, pasto) => cambiaPasto(livello.settimana, livello.giorno, chiave, pasto)}
           onChiudi={chiudiGiorno}
         />
       )}
