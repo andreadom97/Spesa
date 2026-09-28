@@ -5,8 +5,8 @@ import type { MealSlotDef } from '@/domain/types';
 import type { PastoEstratto, PianoEstratto, StatoRevisione } from '@/domain/import/types';
 import { NOME_PASTO_CONDIMENTI } from '@/domain/import/types';
 import {
-  conteggi, confermaTutti, gruppiRighe, pastiDelGruppo, pronto, provenienza, riassuntoGiorni, rispondiGruppo,
-  togliGruppo, vociPasti, type GruppoRighe, type VocePasto,
+  anteprimaTogli, conteggi, confermaTutti, gruppiRighe, pronto, provenienza, riassuntoGiorni, rispondiGruppo, vociPasti,
+  type AnteprimaTogli, type GruppoRighe, type VocePasto,
 } from '@/domain/import/dubbi';
 import { BloccoGruppo } from '@/components/pannello/pezzi';
 import { RigaImpostazione } from '@/components/pannello/RigaImpostazione';
@@ -32,6 +32,24 @@ type Livello =
   | { tipo: 'giorno'; settimana: number; giorno: number }
   | { tipo: 'togli'; chiave: string }
   | null;
+
+/**
+ * I testi del dialogo TOGLI (I3): il titolo conta i pasti effettivi; il testo non promette
+ * l'editor del piatto quando la cascata toglie il piatto, e con lui magari il pasto.
+ */
+function testiTogli(alimento: string, anteprima: AnteprimaTogli): { titolo: string; testo: string; stato: StatoRevisione } {
+  const n = anteprima.piattiSpariti;
+  const seguito = n === 0
+    ? "Puoi rimetterle dall'editor del piatto, a piano creato."
+    : n === 1
+      ? 'Sparisce anche 1 piatto rimasto senza ingredienti.'
+      : `Spariscono anche ${n} piatti rimasti senza ingredienti.`;
+  return {
+    titolo: anteprima.pasti > 1 ? `Togliere ${alimento} da ${anteprima.pasti} pasti?` : `Togliere ${alimento}?`,
+    testo: `Le righe spariscono da tutti i pasti in cui compaiono. ${seguito}`,
+    stato: anteprima.stato,
+  };
+}
 
 /**
  * Controlla (spec 8b §D), il passo 2 di Importa: una pagina sola per tutto il piano. Tutto è
@@ -154,14 +172,17 @@ export function Controlla({ piano, stato, slotDefs, onStato }: Props) {
         avviso={aperto ? (g.unitaDiverse ? AVVISO_UNITA_DIVERSE : pillole ? AVVISO_SENZA_PESO : AVVISO_SENZA_QUANTITA) : undefined}
         onValore={(quantita, unita) => onStato(rispondiGruppo(piano, stato, g.chiave, quantita, unita))}
         onTogli={() => {
-          if (pastiDelGruppo(g) > 1) apri({ tipo: 'togli', chiave: g.chiave });
-          else onStato(togliGruppo(piano, stato, g.chiave));
+          // Il dialogo quando la X tocca più pasti o fa sparire un piatto: qui non si torna indietro.
+          const anteprima = anteprimaTogli(piano, stato, g.chiave);
+          if (anteprima.pasti > 1 || anteprima.piattiSpariti > 0) apri({ tipo: 'togli', chiave: g.chiave });
+          else onStato(anteprima.stato);
         }}
       />
     );
   }
 
   const daTogliere = livello?.tipo === 'togli' ? gruppi.find((g) => g.chiave === livello.chiave) : undefined;
+  const togli = daTogliere ? testiTogli(daTogliere.alimento, anteprimaTogli(piano, stato, daTogliere.chiave)) : null;
   const settimane = [...new Set(giorni.map((g) => g.settimana))];
 
   return (
@@ -201,7 +222,10 @@ export function Controlla({ piano, stato, slotDefs, onStato }: Props) {
                     nome={g.etichetta}
                     nota={g.pasti > 0 ? g.piatti : 'Nessun pasto'}
                     etichetta={`Apri ${nome}`}
-                    finale={{ tipo: 'valore', valore: plurale(g.pasti, 'pasto', 'pasti'), onApri: () => apri({ tipo: 'giorno', settimana: g.settimana, giorno: g.giorno }) }}
+                    // Un giorno senza pasti non si apre: il foglio sarebbe vuoto.
+                    finale={g.pasti > 0
+                      ? { tipo: 'valore', valore: plurale(g.pasti, 'pasto', 'pasti'), onApri: () => apri({ tipo: 'giorno', settimana: g.settimana, giorno: g.giorno }) }
+                      : { tipo: 'niente' }}
                   />
                 );
               })}
@@ -230,22 +254,22 @@ export function Controlla({ piano, stato, slotDefs, onStato }: Props) {
         />
       )}
 
-      {daTogliere && (
+      {togli && (
         <FoglioDalBasso
-          etichetta={`Togliere ${daTogliere.alimento} da ${pastiDelGruppo(daTogliere)} pasti?`}
+          etichetta={togli.titolo}
           ruolo="alertdialog"
           altezza="contenuto"
           chiudiDalVelo={false}
           onChiudi={() => setLivello(null)}
         >
           <DialogoConferma
-            titolo={`Togliere ${daTogliere.alimento} da ${pastiDelGruppo(daTogliere)} pasti?`}
-            testo="Le righe spariscono da tutti i pasti in cui compaiono. Puoi rimetterle dall'editor del piatto, a piano creato."
+            titolo={togli.titolo}
+            testo={togli.testo}
             azione="TOGLI"
             tono="distruttivo"
             erroreTesto=""
             onConferma={async () => {
-              onStato(togliGruppo(piano, stato, daTogliere.chiave));
+              onStato(togli.stato);
               setLivello(null);
             }}
             onAnnulla={() => setLivello(null)}

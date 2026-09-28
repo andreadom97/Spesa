@@ -6,7 +6,7 @@ import { traduciBozza } from '../commit';
 import { ingredientiDaAbbinare } from '../mapping';
 import { proponi } from '../formati-tipici';
 import {
-  cambiaRiga, chiaveGruppo, confermaTutti, conteggi, etichettaGiorno, gruppiRighe, pastiDelGruppo,
+  anteprimaTogli, cambiaRiga, chiaveGruppo, confermaTutti, conteggi, etichettaGiorno, gruppiRighe, pastiDelGruppo,
   pronto, provenienza, riassuntoGiorni, righeDelPasto, rispondiGruppo, togliGruppo, togliRiga,
   unitaDelGruppo, unitaNota, vociPasti,
 } from '../dubbi';
@@ -186,6 +186,30 @@ describe('gruppiRighe', () => {
     const piano = pianoConOlive([['cena'], ['cena'], ['cena']]);
     const stato = { ...STATO, correzioni: { '1-0-0': cenaOlive(piano, 0, 3, 'pz'), '1-1-0': cenaOlive(piano, 1, 20, 'g') } };
     expect(gruppiRighe(piano, stato)).toEqual([expect.objectContaining({ stato: 'aperto', unita: null, unitaDiverse: false })]);
+  });
+});
+
+describe('anteprimaTogli (I3)', () => {
+  it('senza cascata: i pasti effettivi e nessun piatto sparito', () => {
+    const piano = pianoConOlive([['cena'], ['cena']]);
+    const anteprima = anteprimaTogli(piano, STATO, chiaveGruppo(OLIVE));
+    expect(anteprima).toMatchObject({ pasti: 2, piattiSpariti: 0 });
+    expect(anteprima.stato).toEqual(togliGruppo(piano, STATO, chiaveGruppo(OLIVE)));
+  });
+
+  it("l'unica riga di un piatto: il piatto sparisce, e con lui il pasto", () => {
+    const piano = pianoConOlive([['cena']]);
+    piano.settimane[0].giorni[0].pasti[0].piatti[0].righeFisse.splice(0, 1);
+    const anteprima = anteprimaTogli(piano, STATO, chiaveGruppo(OLIVE));
+    expect(anteprima).toMatchObject({ pasti: 1, piattiSpariti: 1 });
+    expect(anteprima.stato.correzioni['1-0-0']).toEqual({ nomeOriginale: 'cena', piatti: [] });
+  });
+
+  it('i pasti si contano sulle occorrenze effettive, non su quelle originali (M2)', () => {
+    const piano = pianoConOlive([['cena'], ['cena'], ['cena']]);
+    const posizione = { piatto: 0, componente: null, opzione: null, riga: 1 };
+    const stato = { ...STATO, correzioni: { '1-0-0': togliRiga(piano.settimane[0].giorni[0].pasti[0], posizione) } };
+    expect(anteprimaTogli(piano, stato, chiaveGruppo(OLIVE)).pasti).toBe(2);
   });
 });
 

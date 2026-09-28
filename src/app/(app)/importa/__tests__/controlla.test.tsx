@@ -306,6 +306,55 @@ describe('Controlla', () => {
       expect.objectContaining({ quantita: 4, unita: 'pz' }),
     ]);
   });
+
+  it("I3: un gruppo unico in un piatto unico: la X apre il dialogo con la cascata, e TOGLI svuota il pasto", async () => {
+    const piano = pianoConOlive([['cena'], ['pranzo']]);
+    piano.settimane[0].giorni[0].pasti[0].piatti[0].righeFisse.splice(0, 1);
+    piano.settimane[0].giorni[1].pasti[0].piatti[0].righeFisse.splice(1, 1);
+    const onStato = rendi({ ...STATO, mappaturaPasti: { cena: 's-cena', pranzo: 's-pranzo' } }, piano);
+    fireEvent.click(screen.getByRole('button', { name: 'Togli olive taggiasche' }));
+    expect(onStato).not.toHaveBeenCalled();
+    const dialogo = screen.getByRole('alertdialog', { name: 'Togliere olive taggiasche?' });
+    expect(within(dialogo).getByText('Le righe spariscono da tutti i pasti in cui compaiono. Sparisce anche 1 piatto rimasto senza ingredienti.')).toBeInTheDocument();
+    expect(within(dialogo).queryByText(/editor del piatto/)).toBeNull();
+    await act(async () => { fireEvent.click(within(dialogo).getByRole('button', { name: 'TOGLI' })); });
+    expect(onStato).toHaveBeenCalledTimes(1);
+    expect((onStato.mock.calls[0][0] as StatoRevisione).correzioni['1-0-0']).toEqual({ nomeOriginale: 'cena', piatti: [] });
+  });
+
+  it('I3: più piatti spariti lo dicono al plurale, e il titolo conta i pasti effettivi (M2)', () => {
+    const piano = pianoConOlive([['cena'], ['cena'], ['cena']]);
+    for (const g of piano.settimane[0].giorni) g.pasti[0].piatti[0].righeFisse.splice(0, 1);
+    // Il lunedì ha già perso il suo piatto dal foglio del giorno: restano due pasti.
+    rendi({ ...STATO, mappaturaPasti: { cena: 's-cena' }, correzioni: { '1-0-0': { nomeOriginale: 'cena', piatti: [] } } }, piano);
+    fireEvent.click(screen.getByRole('button', { name: 'Togli olive taggiasche' }));
+    const dialogo = screen.getByRole('alertdialog', { name: 'Togliere olive taggiasche da 2 pasti?' });
+    expect(within(dialogo).getByText('Le righe spariscono da tutti i pasti in cui compaiono. Spariscono anche 2 piatti rimasti senza ingredienti.')).toBeInTheDocument();
+  });
+
+  it('I3: più pasti senza cascata: il dialogo promette l\'editor del piatto', () => {
+    const piano = pianoConOlive([['cena'], ['cena']]);
+    rendi({ ...STATO, mappaturaPasti: { cena: 's-cena' } }, piano);
+    fireEvent.click(screen.getByRole('button', { name: 'Togli olive taggiasche' }));
+    const dialogo = screen.getByRole('alertdialog', { name: 'Togliere olive taggiasche da 2 pasti?' });
+    expect(within(dialogo).getByText("Le righe spariscono da tutti i pasti in cui compaiono. Puoi rimetterle dall'editor del piatto, a piano creato.")).toBeInTheDocument();
+  });
+
+  it('I3: un pasto solo e niente cascata: la X toglie subito, senza dialogo', () => {
+    const onStato = rendi();
+    fireEvent.click(screen.getByRole('button', { name: 'Togli olive taggiasche' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(onStato).toHaveBeenCalledTimes(1);
+    expect((onStato.mock.calls[0][0] as StatoRevisione).correzioni['1-1-1'].piatti[0].righeFisse.map((r) => r.alimento)).toEqual(['filetto di merluzzo']);
+  });
+
+  it('un giorno senza pasti non si apre: «Nessun pasto» e nessun tasto', () => {
+    const piano = pianoConOlive([['cena'], ['cena']]);
+    rendi({ ...STATO, mappaturaPasti: { cena: 's-cena' }, correzioni: { '1-1-0': { nomeOriginale: 'cena', piatti: [] } } }, piano);
+    expect(screen.getByText('Nessun pasto')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Apri Martedì' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Apri Lunedì' })).toBeInTheDocument();
+  });
 });
 
 const OLIVE = { alimento: 'olive taggiasche', quantita: null, unita: null, quantitaInferita: false, testoOriginale: '2-3 olive taggiasche' };

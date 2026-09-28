@@ -477,6 +477,30 @@ export function togliGruppo(piano: PianoEstratto, stato: StatoRevisione, chiave:
   return suOgniRigaDelGruppo(piano, stato, chiave, () => null);
 }
 
+export interface AnteprimaTogli {
+  /** Lo stato dopo `togliGruppo`. */
+  stato: StatoRevisione;
+  /** I pasti distinti che hanno ancora righe del gruppo (occorrenze effettive, non originali). */
+  pasti: number;
+  /** I piatti che la cascata toglie perché restano senza righe, contati pasto per pasto. */
+  piattiSpariti: number;
+}
+
+/**
+ * Cosa succede togliendo un gruppo, prima di toglierlo (I3): il dialogo TOGLI non promette
+ * l'editor del piatto se il piatto stesso sparisce, e conta i pasti che il gruppo tocca ora.
+ */
+export function anteprimaTogli(piano: PianoEstratto, stato: StatoRevisione, chiave: string): AnteprimaTogli {
+  const dopo = togliGruppo(piano, stato, chiave);
+  let pasti = 0;
+  let piattiSpariti = 0;
+  for (const p of pastiDelPiano(piano, stato)) {
+    if (righeDelPasto(p.effettivo).some(({ riga }) => chiaveGruppo(riga) === chiave)) pasti += 1;
+    piattiSpariti += p.effettivo.piatti.length - pastoEffettivo(piano, dopo.correzioni, p.settimana, p.giorno, p.indice).piatti.length;
+  }
+  return { stato: dopo, pasti, piattiSpariti };
+}
+
 /** CONFERMA I PASTI: tutte le chiavi del piano in `pastiConfermati` e il passo dopo, in uno stato solo. */
 export function confermaTutti(piano: PianoEstratto, stato: StatoRevisione): StatoRevisione {
   return { ...stato, pastiConfermati: pastiDelPiano(piano, stato).map((p) => p.chiave), passo: 'formati' };
