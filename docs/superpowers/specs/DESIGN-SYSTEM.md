@@ -86,6 +86,10 @@ del file, è lì.
 | Editor del Piatto | `src/app/(app)/piatti/[id]/page.tsx`, `ComponentiPiatto.tsx`, `SelettoreIngrediente.tsx` | fatto nella fase 7: un modo solo, `TestataModifica`, `SALVA` nel Dock spento finché niente cambia o il modulo non è valido, `ELIMINA` nel Dialogo di conferma; non è una voce di `DESIGN.md` §8 |
 | Tasto di scatto · Banda dei comandi · Striscia dei fogli presi | `src/app/(app)/importa/Camera.tsx` (+ `.scatto`, `.guida-angolo` in `globals.css`), «Rivedi i fogli presi» in `src/app/(app)/importa/FogliPresi.tsx` | fatti nella fase 3 |
 | Importa: ripresa, attesa, rifiuto, errore, riepilogo | `src/app/(app)/importa/page.tsx`, `StatoImporta.tsx`, `Riepilogo.tsx` | fatto nella fase 8a: lo Stato vuoto locale `StatoImporta` con l'azione nel Dock; il riepilogo con il conto in righe, `CREA IL PIANO` o `SOSTITUISCI IL PIANO` + `DialogoConferma`; Revisione e Formati restano per l'8b |
+| Riga dell'alimento | `src/components/RigaAlimento.tsx` | fatto (fase 8b) |
+| Selettore a foglio | `src/components/SelettoreFoglio.tsx` | fatto (fase 8b) |
+| Importa: Controlla (il giorno) | `src/app/(app)/importa/Controlla.tsx`, `FoglioGiorno.tsx` | fatto nella fase 8b, al posto di `Revisione.tsx`: «Da sistemare» (pasti e gruppi di righe irrisolti), «Da controllare» (righe inferite), «Dove vanno i pasti», «I giorni»; il foglio del giorno corregge quantità e righe |
+| Importa: Ingredienti | `src/app/(app)/importa/Ingredienti.tsx`, `SchedaIngrediente.tsx` | fatto nella fase 8b, al posto di `Formati.tsx`: «Da sistemare» (blocca), «Da controllare» (ripieghi), «Proposti da me»; la Scheda con «È lo stesso di…» (Selettore a foglio) |
 | Stato vuoto · Campo di testo · Scheda · Etichetta di sezione · Messaggi | sparsi nelle pagine, in stile inline; la modalità ricerca del Campo di testo vive in `src/components/CampoRicercaPiatti.tsx` (dalla fase 7, condivisa fra Piatti e Scegli) | scelta del progetto, non una deriva (§6, prima riga) |
 | Foglio dal basso | `src/components/FoglioDalBasso.tsx` (con `TestataFoglio` e `TondoFoglio`); prima di lui, scritti a mano, `src/components/FoglioAzioniPasto.tsx` e `src/app/(app)/importa/FogliPresi.tsx` | componente dalla fase 4: i quattro fogli della Dispensa; gli altri due non sono stati migrati; anche il selettore degli ingredienti del piatto (`SelettoreIngrediente.tsx`) dalla fase 7 |
 | Porta | `src/components/Porta.tsx` | nata nello stato vuoto di Piatti, condivisa dalla fase 3 con Importa. Non è una voce di `DESIGN.md` §8 |
@@ -171,10 +175,12 @@ Il conto aperto verso `DESIGN.md` v3, al 26/09/2026.
 - **La fase 7 (Scegli e l'editor del Piatto) è chiusa con la PR del ramo `fase7-scegli-piatto`**.
   Le decisioni prese durante l'esecuzione stanno in `docs/2026-09-27-fase7-decisioni-esecuzione.md`.
   Resta fuori dal sistema **Piatti veloce**, da ridisegnare come onboarding.
-- **Restano fuori dal sistema Revisione e Formati di Importa** (fase 8b; probabilmente un
-  selettore nuovo, quindi un giro in Claude Design). L'audit del 26/09 le misura una per una. Le
-  decisioni prese durante l'esecuzione della fase 8a stanno in
-  `docs/2026-09-27-fase8a-decisioni-esecuzione.md`.
+- **La fase 8a (gli stati e il riepilogo di Importa) è chiusa**. Le decisioni prese durante
+  l'esecuzione stanno in `docs/2026-09-27-fase8a-decisioni-esecuzione.md`.
+- **La fase 8b (Controlla e Ingredienti di Importa) è chiusa con la PR del ramo
+  `fase8b-importa-revisione`**. Le decisioni prese durante l'esecuzione, i ruling e le prove dal
+  telefono da fare stanno in `docs/2026-09-28-fase8b-decisioni-esecuzione.md`. Resta fuori dal
+  sistema **Piatti veloce** (vedi sopra).
 - **53 token dichiarati nel design e assenti dal codice** [misurato il 26/09 con le funzioni del guardiano, dopo
   i sei `--tono-<area>` delle icone ingrediente: `tokens.css` ne dichiara 124, `src/app/globals.css` ne ha 73, 71
   in comune, 0 divergenti (`npm run design:token`); prima dei sei token del tono medio, a fase 5 finita, erano
