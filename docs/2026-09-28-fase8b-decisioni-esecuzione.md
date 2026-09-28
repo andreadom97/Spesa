@@ -97,30 +97,31 @@ delicati). Per ogni task: commit, modello, giri di correzione, cosa ha trovato l
   `inert` né trappola del fuoco); il blur tardivo di Chrome sull'input rimosso non è provato in
   browser (da confermare nelle prove dal telefono).
 - **Task 8** (`Ingredienti.tsx` e `SchedaIngrediente.tsx` al posto di `Formati.tsx`, `5d84589` →
-  fix round 1 `978f69f..5b3364c` → fix round 2 `d6fb552`, opus), consegnato `DONE_WITH_CONCERNS`
-  con 4 dubbi già segnalati dall'implementatore stesso [misurato dall'implementatore]. 2 giri di
-  correzione. Il round 1 ha chiuso i 4 dubbi noti più le «Da correggere» della review opus: il
-  campo Nome si smontava anche col nome esatto raggiunto a metà parola («Pasta» dentro «Pasta di
-  farro»); il Dock si spegneva senza causa visibile; una scheda di «Da controllare» saltava in
-  «Da sistemare» mentre si scriveva; le bozze vecchie con l'unità cambiata in Formati non si
+  fix round 1 `978f69f..5b3364c` → fix round 2 `bc1182b..d6fb552`, opus), consegnato
+  `DONE_WITH_CONCERNS` con 4 dubbi già segnalati dall'implementatore stesso [misurato
+  dall'implementatore]. 2 giri di correzione, poi **completo** (commits `1b1ba76..d6fb552`, review
+  clean). Il round 1 ha chiuso i 4 dubbi noti più le «Da correggere» della review opus: il campo
+  Nome si smontava anche col nome esatto raggiunto a metà parola («Pasta» dentro «Pasta di farro»);
+  il Dock si spegneva senza causa visibile; una scheda di «Da controllare» saltava in «Da
+  sistemare» mentre si scriveva; le bozze vecchie con l'unità cambiata in Formati non si
   riaprivano. I tre ruling del controller per queste correzioni: la modalità legata della Scheda
   la decide la scelta fatta in «È lo stesso di…» (`sceltiEsistenti`), non il nome; «Da sistemare»
   raccoglie ogni proposta che blocca (nome doppio, nome vuoto, confezione non valida), si entra lì
   solo da «Proposti da me», e il contatore conta tutte le proposte che bloccano, non solo quelle
   della sezione; `calcolaProposte` ripropone da capo una proposta conservata la cui unità non è
   quella delle righe. Il round 1 ha aperto 1 nuovo Important (`formatoTesto` disallineato fra
-  l'istanza in pagina e quella nel foglio: la pagina mostrava Confezione vuota col Dock acceso),
-  chiuso dal round 2 insieme al contatore globale. **Alla riga letta per questo task, il ledger
-  segna «fix round 2 fatto `d6fb552`; ri-review in corso»: la review finale del Task 8 non risulta
-  ancora chiusa** — da verificare prima di considerare la fase 8b interamente in regola. Rinviati:
-  «No, è un ingrediente nuovo» butta il nome scritto a mano (conforme alla spec); l'`aria-live`
-  dell'avviso è montato già col testo; mentre si scrive, `abbina` lega per inclusione nei due versi
-  (con «P», con «Pa») e «Finirà su…» cambia lettera per lettera; svuotare il nome dal foglio porta
-  la proposta in «Da sistemare» per sempre.
+  l'istanza in pagina e quella nel foglio: la pagina mostrava Confezione vuota col Dock acceso). Il
+  round 2 l'ha chiuso con 3 correzioni (`bc1182b..d6fb552`, 3 addressed, 0 open, [misurato dal
+  ledger]): la Confezione si riallinea fra la scheda in pagina e quella nel foglio; il contatore di
+  «Da sistemare» conta tutte le proposte che bloccano; il titolo di un test dice cosa verifica
+  (`ingredienti.test.ts:162`). Rinviati: «No, è un ingrediente nuovo» butta il nome scritto a mano
+  (conforme alla spec); l'`aria-live` dell'avviso è montato già col testo; mentre si scrive,
+  `abbina` lega per inclusione nei due versi (con «P», con «Pa») e «Finirà su…» cambia lettera per
+  lettera; svuotare il nome dal foglio porta la proposta in «Da sistemare» per sempre.
 - **Task 9** (titolo «Importa» e pillola del passo, `bc1182b`, sonnet). 0 giri di correzione:
   review sonnet approvata.
-- **Task 10** (questo task: i documenti). Nessun codice toccato. BASE `d6fb552` — lo stesso commit
-  su cui il Task 8 aspetta ancora la ri-review finale.
+- **Task 10** (questo task: i documenti). Nessun codice toccato. BASE `d6fb552`; il Task 8 ha
+  chiuso la sua ri-review finale (round 2, review clean) mentre questo task era in corso.
 
 ## Le review di correttezza
 
@@ -237,9 +238,6 @@ Aperti dai `minor (deferred)` del ledger, non toccati:
   alla spec); l'`aria-live` dell'avviso è montato già col testo; mentre si scrive, `abbina` lega
   per inclusione nei due versi («P», «Pa») e «Finirà su…» cambia lettera per lettera; svuotare il
   nome dal foglio porta la proposta in «Da sistemare» per sempre.
-- **Task 8 non ha una review finale chiusa nel ledger** alla riga letta per questo task (round 2
-  `d6fb552`, «ri-review in corso»): da chiudere prima di considerare la fase interamente in
-  regola.
 
 ## Le prove dal telefono da fare
 
