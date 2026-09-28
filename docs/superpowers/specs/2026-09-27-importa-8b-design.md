@@ -233,10 +233,10 @@ Il calcolo delle proposte resta quello di `calcolaProposte` di oggi (si ricalcol
 conserva la proposta già in `ingredientiNuovi` per `alimento`; i nuovi prendono `proponi`), e il
 risultato si salva subito con `onStato`, come oggi.
 
-Una proposta è **legata** se il suo nome normalizzato è uguale a quello di un ingrediente
-esistente con la stessa unità: è l'effetto di «È lo stesso di…», e `traduciBozza` non la crea. È
-un **nome doppio** se il suo nome normalizzato è uguale a quello di un'altra proposta, o a quello
-di un ingrediente esistente con un'unità diversa.
+Una proposta è **legata** se `abbina` la aggancia a un ingrediente esistente (stesso nome o per
+inclusione, stessa unità) — lo stesso criterio con cui `traduciBozza` la agganceresti invece di
+crearla. È un **nome doppio** se il suo nome normalizzato è uguale a quello di un'altra proposta,
+o a quello di un ingrediente esistente con un'unità diversa.
 
 1. **La frase**: «{N} ingredienti nuovi. Ne conosco {T}; per {R} ho messo valori prudenti:
    controllali.» (plurali corretti; senza ripieghi: «{N} ingredienti nuovi. Li ho proposti io:
@@ -368,3 +368,8 @@ Importa: slot del pasto, area, «È lo stesso di…».
   l'utente sceglie due unità diverse, il riepilogo va in `BozzaIncompletaError`. [derivato dal
   codice: `unitaNota`/`gruppiRighe` e `risolviRiga`/`ingredientiDaAbbinare`; non osservato su una
   dieta vera]
+- **Una proposta agganciata per inclusione non si stacca con «No, è un ingrediente nuovo».**
+  `abbina` lega ad esempio «Pasta di semola» a un esistente «Semola»; scegliere «No, è un
+  ingrediente nuovo» rimette il nome di `proponi` («Pasta di semola»), che `abbina` riaggancia
+  di nuovo allo stesso esistente. Si stacca solo rinominando la proposta in qualcosa che `abbina`
+  non trovi più. [derivato dal codice: `legataA`/`abbina`]

@@ -28,13 +28,15 @@ export function calcolaProposte(
 }
 
 /**
- * L'esistente a cui la proposta è legata: stesso nome normalizzato, stessa unità. È l'effetto
- * di «È lo stesso di…», che mette nella proposta il nome dell'esistente: `traduciBozza` la
- * aggancia per nome e non la crea.
+ * L'esistente a cui la proposta è legata: lo stesso criterio di `traduciBozza` (`risolviRiga` e
+ * il filtro di `ingredientiDaCreare` in `commit.ts`), che aggancia con
+ * `abbina(nome, unitaBase, esistenti)` — nome esatto o per inclusione, stessa unità. Una
+ * proposta «Pasta di semola» g è quindi legata a un esistente «Semola» g anche se i nomi non
+ * sono uguali: `traduciBozza` l'aggancerebbe lì in silenzio, e la schermata deve dirlo invece di
+ * mostrarla come nuova.
  */
 export function legataA(proposta: IngredienteProposto, esistenti: Ingredient[]): Ingredient | null {
-  const nome = normalizza(proposta.nome);
-  return esistenti.find((e) => e.unitaBase === proposta.unitaBase && normalizza(e.nome) === nome) ?? null;
+  return abbina(proposta.nome, proposta.unitaBase, esistenti);
 }
 
 /**

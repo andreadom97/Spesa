@@ -47,6 +47,11 @@ describe('legataA', () => {
     expect(legataA(proposta('olive taggiasche', 'olive verdi', 'pz'), [verdi])).toBe(verdi);
     expect(legataA(proposta('olive taggiasche', 'olive verdi', 'g'), [verdi])).toBeNull();
   });
+
+  it('lega anche per inclusione, come traduciBozza: "Pasta di semola" g aggancia "Semola" g', () => {
+    const semola = ing('i-semola', 'Semola', 'g');
+    expect(legataA(proponi('pasta', 'g'), [semola])).toBe(semola);
+  });
 });
 
 describe('nomiDoppi', () => {
@@ -64,6 +69,15 @@ describe('nomiDoppi', () => {
     const verdi = ing('i-verdi', 'Olive verdi', 'pz');
     expect(nomiDoppi([proposta('olive taggiasche', 'Olive verdi', 'pz'), proposta('olive nere', 'Olive verdi', 'pz')], [verdi]).size).toBe(0);
   });
+
+  it('una proposta legata per inclusione ("Pasta di semola" g a "Semola" g) non conta fra i doppi', () => {
+    const semola = ing('i-semola', 'Semola', 'g');
+    expect(nomiDoppi([proponi('pasta', 'g')], [semola]).size).toBe(0);
+  });
+
+  it('due proposte col nome vuoto non sono doppie fra loro', () => {
+    expect(nomiDoppi([proposta('riso', '   '), proposta('pasta', '')], []).size).toBe(0);
+  });
 });
 
 describe('passoBloccato', () => {
@@ -73,6 +87,10 @@ describe('passoBloccato', () => {
     expect(passoBloccato([proposta('riso', '   ')], [])).toBe(true);
     expect(passoBloccato([{ ...proposta('riso', 'Riso'), formatoConfezione: 0 }], [])).toBe(true);
     expect(passoBloccato([{ ...proposta('riso', 'Riso'), formatoConfezione: Number.NaN }], [])).toBe(true);
+  });
+
+  it('un prezzo non valido non blocca: il prezzo non è fra i controlli del passo', () => {
+    expect(passoBloccato([{ ...proposta('riso', 'Riso'), prezzoConfezione: 0 }], [])).toBe(false);
   });
 });
 
