@@ -15,6 +15,11 @@ import { origineProposta, proponi } from './formati-tipici';
  * proposta fresca da `proponi`. La chiave di conservazione è `alimento` (il
  * nome estratto normalizzato), mai `nome` (che l'utente può aver rinominato
  * con «È lo stesso di…»). Spostata qui da Formati.tsx (fase 8b).
+ *
+ * Una proposta conservata con un'unità diversa da quella (non nulla) delle righe non si
+ * conserva: si ripropone da capo. Viene dalle bozze di Formati, che lasciava cambiare l'unità;
+ * tenuta così manderebbe il riepilogo in `BozzaIncompletaError` (decisione 7), e nel passo
+ * Ingredienti l'unità non si cambia più.
  */
 export function calcolaProposte(
   piano: PianoEstratto,
@@ -24,7 +29,10 @@ export function calcolaProposte(
   const giaProposti = new Map(stato.ingredientiNuovi.map((i) => [i.alimento, i]));
   return ingredientiDaAbbinare(piano, stato.correzioni)
     .filter(({ alimento, unita }) => !abbina(alimento, unita, esistenti))
-    .map(({ alimento, unita }) => giaProposti.get(alimento) ?? proponi(alimento, unita));
+    .map(({ alimento, unita }) => {
+      const conservata = giaProposti.get(alimento);
+      return conservata && (unita === null || conservata.unitaBase === unita) ? conservata : proponi(alimento, unita);
+    });
 }
 
 /**
@@ -34,9 +42,29 @@ export function calcolaProposte(
  * proposta «Pasta di semola» g è quindi legata a un esistente «Semola» g anche se i nomi non
  * sono uguali: `traduciBozza` l'aggancerebbe lì in silenzio, e la schermata deve dirlo invece di
  * mostrarla come nuova.
+ *
+ * Un nome vuoto non è legato a niente: per inclusione starebbe dentro ogni nome, e il nome si
+ * svuota mentre lo si riscrive.
  */
 export function legataA(proposta: IngredienteProposto, esistenti: Ingredient[]): Ingredient | null {
+  if (!normalizza(proposta.nome)) return null;
   return abbina(proposta.nome, proposta.unitaBase, esistenti);
+}
+
+/**
+ * Le proposte legate per scelta, `alimento → id dell'esistente`: lo stato iniziale di
+ * `sceltiEsistenti` in Ingredienti. È legata per scelta la proposta il cui nome normalizzato è
+ * esattamente quello di un esistente della stessa unità: così la lascia «È lo stesso di…», e
+ * così si riconosce in una bozza ripresa. Una legata per sola inclusione non c'è.
+ */
+export function sceltiIniziali(proposte: IngredienteProposto[], esistenti: Ingredient[]): Record<string, string> {
+  const scelti: Record<string, string> = {};
+  for (const p of proposte) {
+    const nome = normalizza(p.nome);
+    const esistente = nome ? esistenti.find((e) => e.unitaBase === p.unitaBase && normalizza(e.nome) === nome) : undefined;
+    if (esistente) scelti[p.alimento] = esistente.id;
+  }
+  return scelti;
 }
 
 /**
@@ -63,10 +91,39 @@ export function nomiDoppi(proposte: IngredienteProposto[], esistenti: Ingredient
   return doppi;
 }
 
-/** VAI AL RIEPILOGO spento: un nome doppio, un nome vuoto, una confezione che non è un numero positivo. */
-export function passoBloccato(proposte: IngredienteProposto[], esistenti: Ingredient[]): boolean {
-  if (nomiDoppi(proposte, esistenti).size > 0) return true;
-  return proposte.some((p) => !p.nome.trim() || !Number.isFinite(p.formatoConfezione) || p.formatoConfezione <= 0);
+/** Perché una proposta blocca il passo: ognuno ha il suo avviso in linea nella Scheda. */
+export type MotivoBlocco = 'nomeVuoto' | 'doppio' | 'confezione';
+
+/**
+ * Le proposte che bloccano VAI AL RIEPILOGO, `alimento → motivi`; chi non blocca non c'è.
+ * Un nome vuoto, un nome doppio, una confezione che non è un numero positivo. La confezione di
+ * una proposta legata per scelta (`scelti`, gli `alimento` scelti in «È lo stesso di…») non
+ * conta: `traduciBozza` usa l'esistente e la proposta non si crea.
+ */
+export function motiviBlocco(
+  proposte: IngredienteProposto[],
+  esistenti: Ingredient[],
+  scelti: Readonly<Record<string, string>> = {},
+): Map<string, MotivoBlocco[]> {
+  const doppi = nomiDoppi(proposte, esistenti);
+  const motivi = new Map<string, MotivoBlocco[]>();
+  for (const p of proposte) {
+    const suoi: MotivoBlocco[] = [];
+    if (!p.nome.trim()) suoi.push('nomeVuoto');
+    if (doppi.has(p.alimento)) suoi.push('doppio');
+    if (scelti[p.alimento] === undefined && (!Number.isFinite(p.formatoConfezione) || p.formatoConfezione <= 0)) suoi.push('confezione');
+    if (suoi.length > 0) motivi.set(p.alimento, suoi);
+  }
+  return motivi;
+}
+
+/** VAI AL RIEPILOGO spento: almeno una proposta ha un motivo di blocco (`motiviBlocco`). */
+export function passoBloccato(
+  proposte: IngredienteProposto[],
+  esistenti: Ingredient[],
+  scelti: Readonly<Record<string, string>> = {},
+): boolean {
+  return motiviBlocco(proposte, esistenti, scelti).size > 0;
 }
 
 /** La proposta viene dal ripiego di `proponi`, non dalla tabella dei formati. */
@@ -87,15 +144,20 @@ export interface SezioniIngredienti {
 
 /**
  * Le sezioni all'ingresso nel passo (spec 8b §F): si decidono una volta sola, così una scheda
- * non salta via sotto il dito mentre la si corregge. I nomi doppi stanno in «Da sistemare»
- * (anche se sono ripieghi), i ripieghi liberi in «Da controllare».
+ * non salta via sotto il dito mentre la si corregge. Le proposte che bloccano (`motiviBlocco`:
+ * nome doppio, nome vuoto, confezione non valida) stanno in «Da sistemare», anche se sono
+ * ripieghi; i ripieghi liberi in «Da controllare».
  */
-export function sezioniIniziali(proposte: IngredienteProposto[], esistenti: Ingredient[]): SezioniIngredienti {
-  const doppi = nomiDoppi(proposte, esistenti);
+export function sezioniIniziali(
+  proposte: IngredienteProposto[],
+  esistenti: Ingredient[],
+  scelti: Readonly<Record<string, string>> = {},
+): SezioniIngredienti {
+  const bloccate = motiviBlocco(proposte, esistenti, scelti);
   return {
-    daSistemare: proposte.filter((p) => doppi.has(p.alimento)).map((p) => p.alimento),
+    daSistemare: proposte.filter((p) => bloccate.has(p.alimento)).map((p) => p.alimento),
     daControllare: proposte
-      .filter((p) => !doppi.has(p.alimento) && !legataA(p, esistenti) && diRipiego(p))
+      .filter((p) => !bloccate.has(p.alimento) && !legataA(p, esistenti) && diRipiego(p))
       .map((p) => p.alimento),
   };
 }
