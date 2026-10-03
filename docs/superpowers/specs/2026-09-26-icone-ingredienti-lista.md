@@ -124,3 +124,21 @@ La numerazione salta il 43 (tofu, confluito nel 41).
 - **mozzarella**: la chiave sparisce; i suoi sinonimi (mozzarella, burrata, stracciatella, fiordilatte) passano alla chiave `formaggio`.
 - Tutto il resto resta com'è.
 - Il catalogo passa da 68 a **64** chiavi.
+
+## Aggiunte del 03/10 (famiglie)
+
+Richieste da Andrea il 03/10 per coprire i nomi generici delle diete importate. Nascono direttamente a due toni.
+
+| Chiave | Disegno | Sinonimi | Reparto (foglio) |
+|---|---|---|---|
+| `frutta` | pera dietro, mela davanti | frutta, macedonia | ortofrutta |
+| `verdura` | foglia, carota, pomodoro staccati | verdura, ortaggio | ortofrutta |
+| `frutta-guscio` | nocciola, pistacchio socchiuso, anacardo | frutta a guscio, frutta secca (spostato da `noce`), nocciola, pistacchio, anacardo, noci miste | dispensa |
+| `salumi` | salame con faccia tagliata e una fetta a puntini | salume, salame, prosciutto, bresaola, speck, mortadella, affettato | latticini |
+| `olive` | rametto con due olive e tre foglie | oliva | dispensa |
+
+- **salumi**: supera l'esito del gate del 26/09 che lasciava prosciutto, bresaola, speck, mortadella, salame e affettato senza icona (decisione di Andrea del 03/10).
+- Sinonimi aggiunti a chiavi esistenti: `spezie` += spezia; `erbe` += erbe aromatiche, erba aromatica; `insalata` += insalatona.
+- Nuovo blocco: «salame di cioccolato» (un dolce, non un salume).
+- Restano dove sono: «Olio d'oliva» → `olio`, «Frutti di bosco» → `fragola`, «Noci» → `noce`, «Noce moscata» → `spezie`, «Yogurt alla frutta» → `yogurt`, «Marmellata di frutta» → `marmellata`, «Minestrone» → `minestra`.
+- Il catalogo passa da 64 a **69** chiavi; fra gli INGREDIENTI_BASE resta senza icona solo «Mais».
