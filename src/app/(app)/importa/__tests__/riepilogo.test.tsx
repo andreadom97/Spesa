@@ -175,11 +175,14 @@ describe('Riepilogo (spec fase 8a §C)', () => {
       vi.mocked(leggiIngredienti).mockResolvedValue([esistente('i-sed', 'Sedano', 'g')]);
       await riprendiBozza();
 
-      const stime = await screen.findByRole('list', { name: 'Le quantità proposte da me, portate nell\'unità dell\'ingrediente' });
+      const stime = await screen.findByRole('list', { name: 'Le quantità che ho stimato io' });
+      // Il titolo e il testo secondario (8c-bis, review finale M3).
+      expect(screen.getByRole('heading', { name: 'Le quantità che ho stimato io' })).toBeInTheDocument();
+      expect(screen.getByText('Le ho portate nell\'unità che usi tu.')).toBeInTheDocument();
       const riga = within(stime).getByText('Sedano').closest('li')!;
       expect(riga).toHaveTextContent('1 pz, quindi 50 g');
-      expect(riga).toHaveTextContent('Col peso di un pezzo');
-      expect(riga).not.toHaveTextContent('Stimato da me');
+      expect(riga).toHaveTextContent('Con il peso medio di un pezzo');
+      expect(riga).not.toHaveTextContent('Stima rifatta da me');
     });
 
     it('senza il peso di un pezzo la stima è rifatta e lo dice; più righe: il conto', async () => {
@@ -187,10 +190,11 @@ describe('Riepilogo (spec fase 8a §C)', () => {
       vi.mocked(leggiIngredienti).mockResolvedValue([esistente('i-lat', 'Lattuga', 'pz')]);
       await riprendiBozza();
 
-      const stime = await screen.findByRole('list', { name: 'Le quantità proposte da me, portate nell\'unità dell\'ingrediente' });
+      const stime = await screen.findByRole('list', { name: 'Le quantità che ho stimato io' });
       const riga = within(stime).getByText('Lattuga').closest('li')!;
       expect(riga).toHaveTextContent('50 g, quindi 1 pz');
-      expect(riga).toHaveTextContent('Stimato da me, senza il peso di un pezzo');
+      expect(riga).toHaveTextContent('Stima rifatta da me');
+      expect(riga).not.toHaveTextContent('Con il peso medio di un pezzo');
       expect(riga).toHaveTextContent('3 righe, qui la prima');
     });
 
@@ -198,7 +202,8 @@ describe('Riepilogo (spec fase 8a §C)', () => {
       vi.mocked(leggiBozzaImport).mockResolvedValue({ piano: PIANO_SEMPLICE, statoRevisione: STATO_OK });
       await riprendiBozza();
       await screen.findByRole('list', { name: 'Il conto dell\'import' });
-      expect(screen.queryByRole('list', { name: /proposte da me/ })).toBeNull();
+      expect(screen.queryByRole('list', { name: /ho stimato io/ })).toBeNull();
+      expect(screen.queryByText('Le ho portate nell\'unità che usi tu.')).toBeNull();
     });
   });
 

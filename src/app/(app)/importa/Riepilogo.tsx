@@ -52,7 +52,7 @@ export function testoDialogo(r: RiassuntoScritture): string {
  * d'una, che qui c'è la prima (fix round 1, I1).
  */
 function notaStima(s: StimaPortata): string {
-  const come = s.rifatta ? 'Stimato da me, senza il peso di un pezzo' : 'Col peso di un pezzo';
+  const come = s.rifatta ? 'Stima rifatta da me' : 'Con il peso medio di un pezzo';
   return s.righe > 1 ? `${come} · ${s.righe} righe, qui la prima` : come;
 }
 
@@ -231,11 +231,14 @@ export function Riepilogo({
           {/* Le stime del lettore scritte in un'altra unità: la quantità che si salva non è quella vista in Controlla (fix round 1, I1). */}
           {r.stime.length > 0 && (
             <>
-              <h3 style={{ margin: '20px 6px 8px', fontSize: 14, fontWeight: 700, lineHeight: 1.4, color: 'var(--testo-2)' }}>
-                {'Quantità proposte da me, nell\'unità dell\'ingrediente'}
+              <h3 style={{ margin: '20px 6px 2px', fontSize: 14, fontWeight: 700, lineHeight: 1.4, color: 'var(--testo-2)' }}>
+                Le quantità che ho stimato io
               </h3>
+              <p style={{ margin: '0 6px 8px', fontSize: 12, lineHeight: 1.4, color: 'var(--testo-2)' }}>
+                {'Le ho portate nell\'unità che usi tu.'}
+              </p>
               <ul
-                aria-label="Le quantità proposte da me, portate nell'unità dell'ingrediente"
+                aria-label="Le quantità che ho stimato io"
                 style={{
                   listStyle: 'none', margin: 0, padding: '0 16px', borderRadius: 18, background: 'var(--superficie)',
                   border: '1px solid var(--bordo)', boxShadow: 'var(--ombra-pannello)',
