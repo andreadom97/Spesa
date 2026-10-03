@@ -341,8 +341,8 @@ function unitaVerso(piano: PianoEstratto, stato: StatoRevisione, alimento: strin
  * La proposta per un gruppo, letta su queste righe (spec 8c §D): con le righe tutte risolte in
  * unità diverse, la più frequente (a pari merito quella della prima riga) con la sua quantità;
  * con una riga a cucchiai, i cucchiai convertiti nell'unità dell'ingrediente; con una riga senza
- * quantità, la porzione tipica nell'unità che il piano conosce. Altrimenti null: un dubbio che
- * blocca.
+ * quantità, la porzione tipica nell'unità che il piano conosce. L'unità è quella di una riga del
+ * gruppo già risolta, se c'è, altrimenti `unitaVerso`. Altrimenti null: un dubbio che blocca.
  */
 function propostaPer(
   piano: PianoEstratto,
@@ -369,7 +369,10 @@ function propostaPer(
   }
   const irrisolta = righe.find(rigaIrrisolta);
   if (!irrisolta) return null;
-  const verso = unitaVerso(piano, stato, alimento, chiave, esistenti);
+  // Prima l'unità di una riga dello stesso gruppo già risolta (q.b. esclusi): la proposta non
+  // deve lasciare il gruppo con unità diverse (review I1, come `unitaDelGruppo` nel foglio).
+  const delGruppo = righeConUnita(righe)[0];
+  const verso = (delGruppo ? unitaBaseDi(delGruppo.unita) : null) ?? unitaVerso(piano, stato, alimento, chiave, esistenti);
   if (irrisolta.unita === 'cucchiaio' || irrisolta.unita === 'cucchiaino') {
     if (irrisolta.quantita === null) return null;
     const destinazione = verso ?? proponi(alimento, null).unitaBase;

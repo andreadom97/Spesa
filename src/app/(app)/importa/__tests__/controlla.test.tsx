@@ -401,6 +401,38 @@ describe('Controlla', () => {
     ]);
   });
 
+  it('nel foglio del giorno una riga q.b. si corregge con le pillole, e la stima del lettore non dà l\'unità (review I2, M1)', () => {
+    const piano: PianoEstratto = {
+      archetipo: 'menu_settimanale', fonte: 'test', noteEstrazione: [],
+      settimane: [{ numero: 1, giorni: [{ giorno: 0, titolo: null, pasti: [{ nomeOriginale: 'cena', piatti: [{
+        nome: 'Zuppa', descrizione: null, componenti: [], righeFisse: [
+          { alimento: 'sale', quantita: null, unita: null, quantitaInferita: false, testoOriginale: 'sale q.b.' },
+          { alimento: 'pepe', quantita: 1, unita: 'g', quantitaInferita: true, testoOriginale: 'pepe q.b.' },
+        ],
+      }] }] }] }],
+    };
+    const onStato = rendi({ ...STATO, mappaturaPasti: { cena: 's-cena' } }, piano);
+    fireEvent.click(screen.getByRole('button', { name: 'Apri Lunedì' }));
+    const foglio = screen.getByRole('dialog', { name: 'Lunedì' });
+    // Il q.b. non è un dubbio: niente avviso, ma le pillole sì, perché nessuna riga dice un'unità.
+    expect(within(foglio).queryByText(/Sul foglio non c'è un peso/)).toBeNull();
+    expect(within(foglio).getByRole('group', { name: 'Unità di sale' })).toBeInTheDocument();
+    // Il pepe: la stima (1 g) non è nel campo e non fissa l'unità (S1).
+    expect(within(foglio).getByRole('textbox', { name: 'Quantità di pepe' })).toHaveValue('');
+    expect(within(foglio).getByRole('group', { name: 'Unità di pepe' })).toBeInTheDocument();
+    const sale = within(foglio).getByRole('textbox', { name: 'Quantità di sale' });
+    fireEvent.change(sale, { target: { value: '2' } });
+    fireEvent.blur(sale);
+    fireEvent.click(within(within(foglio).getByRole('group', { name: 'Unità di sale' })).getByRole('button', { name: 'G' }));
+    fireEvent.click(within(foglio).getByRole('button', { name: 'Chiudi Lunedì' }));
+    expect(onStato).toHaveBeenCalledTimes(1);
+    const stato = onStato.mock.calls[0][0] as StatoRevisione;
+    expect(stato.correzioni['1-0-0'].piatti[0].righeFisse).toEqual([
+      { alimento: 'sale', quantita: 2, unita: 'g', quantitaInferita: false, testoOriginale: 'sale q.b.' },
+      { alimento: 'pepe', quantita: 1, unita: 'g', quantitaInferita: true, testoOriginale: 'pepe q.b.' },
+    ]);
+  });
+
   it('nel foglio del giorno una riga con una proposta compilata non è un dubbio (correzione D4)', () => {
     const piano: PianoEstratto = {
       archetipo: 'menu_settimanale', fonte: 'test', noteEstrazione: [],

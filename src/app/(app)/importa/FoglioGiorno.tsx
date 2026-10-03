@@ -44,13 +44,14 @@ interface Props {
  */
 export function FoglioGiorno({ piano, stato, slotDefs, ingredientiEsistenti = [], settimana, giorno, onCambiaPasto, onChiudi }: Props) {
   const giornoPiano = piano.settimane.find((s) => s.numero === settimana)?.giorni.find((g) => g.giorno === giorno);
-  // Le righe irrisolte all'apertura: tengono le pillole dell'unità anche dopo la risposta,
-  // così un'unità scelta per sbaglio si cambia finché il foglio è aperto.
+  // Le righe irrisolte o q.b. all'apertura: tengono le pillole dell'unità anche dopo la risposta,
+  // così un'unità scelta per sbaglio si cambia finché il foglio è aperto. Il q.b. non è un dubbio,
+  // ma si può correggere con una quantità, e senza unità il numero non si salverebbe (review I2).
   const [irrisolteAllApertura] = useState(() => {
     const chiavi = new Set<string>();
     giornoPiano?.pasti.forEach((_, i) => {
       for (const { riga } of righeDelPasto(pastoEffettivo(piano, stato.correzioni, settimana, giorno, i))) {
-        if (rigaIrrisolta(riga)) chiavi.add(chiaveGruppo(riga));
+        if (rigaIrrisolta(riga) || quantoBasta(riga)) chiavi.add(chiaveGruppo(riga));
       }
     });
     return chiavi;
@@ -107,7 +108,8 @@ export function FoglioGiorno({ piano, stato, slotDefs, ingredientiEsistenti = []
                 nota={`Sul foglio: «${r.riga.testoOriginale}»${r.riga.quantitaInferita && !qb ? ' · quantità proposta da me' : ''}${qb ? ' · quanto basta' : ''}`}
                 // Il numero dei cucchiai non è una quantità in g/ml/pz: il campo parte vuoto. Il q.b. pure.
                 quantita={qb || unitaBaseDi(r.riga.unita) === null ? null : r.riga.quantita}
-                unita={unitaBaseDi(r.riga.unita) ?? nota}
+                // L'unità stimata dal lettore su un q.b. si scarta (S1, review M1): vale solo quella nota.
+                unita={qb ? nota : unitaBaseDi(r.riga.unita) ?? nota}
                 scegliUnita={pillole}
                 dubbio={dubbio}
                 avviso={dubbio ? (pillole ? AVVISO_SENZA_PESO : AVVISO_SENZA_QUANTITA) : undefined}
