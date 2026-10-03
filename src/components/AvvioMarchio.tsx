@@ -73,7 +73,7 @@ type Fase = 'pop' | 'volo' | 'arrivo' | 'dissolto';
 /**
  * L'animazione, senza condizioni: la monta `AvvioMarchio` quando deve partire,
  * e la sonda del Task 15 a comando. Non ritarda niente: il livello non prende
- * tocchi, e sotto la Lista carica come sempre. Le classi `.anim-avvio-*`
+ * tocchi, e sotto Oggi carica come sempre. Le classi `.anim-avvio-*`
  * stanno in globals.css; i movimenti solo dentro `no-preference`.
  *
  * Il Marchio della barra si nasconde dal montaggio e torna a 1700 mentre
@@ -167,7 +167,7 @@ export function LivelloAvvio({ onFine }: { onFine: () => void }) {
  * non segue un gesto, perché accade una volta sola ed è il marchio.
  *
  * Si decide una volta, al primo montaggio del Guscio: chi arriva su /piano e poi
- * va sulla Lista non la vede. In un effetto di layout, così il livello c'è
+ * va su Oggi non la vede. In un effetto di layout, così il livello c'è
  * prima del primo disegno dopo l'idratazione. Il ref tiene la decisione anche
  * col doppio effetto di Strict Mode.
  */

@@ -49,7 +49,7 @@ Le due inversioni della prima colonna — aree e semantici — sono la trappola 
 L'anatomia, le misure e gli stati di ogni voce stanno in `DESIGN.md` §8, sotto lo stesso nome.
 Qui c'è solo il ponte verso il codice: 34 voci `###` in `DESIGN.md` §8, 42 file `.tsx` in
 `src/components/` e `src/components/pannello/` [contati di nuovo il 26/09, a fase 5 finita; il
-03/10, a fase 8c finita, 39 voci e 50 file, misurato con grep e ls]. I componenti della Dispensa
+03/10, a fase 8c finita, 39 voci e 50 file, misurato con grep e ls; di nuovo il 03/10, a Oggi finita, 42 voci e 50 file: le tre voci nuove sono Poster del pasto, Carta alternativa e carosello nel poster e Tessere di Oggi, i cui file stanno in `src/app/(app)/oggi/` e non in `src/components/`, misurato con awk e ls]. I componenti della Dispensa
 vivono accanto alla pagina, in `src/app/(app)/dispensa/`: dove la tabella scrive solo il nome
 del file, è lì.
 
@@ -57,8 +57,8 @@ del file, è lì.
 |---|---|---|
 | Testata | `src/components/Testata.tsx` | fase 5: modo indietro a pillola (`indietro: { etichetta, ariaLabel, onTorna }`) in Piatti e Importa; fase 6: in modo indietro anche la pillola settimana; etichetta `FINE SPESA` in Confezioni |
 | Menù utente | dentro `Testata.tsx` | fase 5: un `button` che apre il pannello, `aria-expanded`, nome `{Nome}: profilo e impostazioni` |
-| Tab bar | `src/components/TabBar.tsx`, dentro `Guscio.tsx` | fase 5: tre voci (Lista · Piano · Dispensa), pillola 304 / 244 centrata, voci `flex` con un tetto di 96 / 76 (con tre voci sono esattamente quelle), anima `width`; `data-marchio-barra` sul segno della Lista |
-| Marchio | `src/components/Marchio.tsx` (+ `marchio-context.tsx`); l'avvio in `src/components/AvvioMarchio.tsx`, montato nel `Guscio` | 3 × 2, sei aree; dalla fase 5 l'avvio `.anim-avvio-*` con `@keyframes pb`, una volta per sessione su `/lista`; resa grande a 20 in `lista/fatta/page.tsx` ed `entra/page.tsx` |
+| Tab bar | `src/components/TabBar.tsx`, dentro `Guscio.tsx` | dal 03/10 (Oggi) quattro voci (Oggi · Lista · Piano · Dispensa), pillola 338 / 274 centrata, voci `flex` con un tetto di 80 / 64 (con quattro voci sono esattamente quelle), anima `width`; l'icona di Oggi, il piatto visto dall'alto, sta in `TabBar.tsx` (`ICONE.oggi`); `data-marchio-barra` sul segno della Lista. Fase 5: tre voci, 304 / 244, tetto 96 / 76 |
+| Marchio | `src/components/Marchio.tsx` (+ `marchio-context.tsx`); l'avvio in `src/components/AvvioMarchio.tsx`, montato nel `Guscio` | 3 × 2, sei aree; dalla fase 5 l'avvio `.anim-avvio-*` con `@keyframes pb`, una volta per sessione, su `/oggi` dal 03/10 (prima su `/lista`; atterra comunque sul segno della Lista in barra); resa grande a 20 in `lista/fatta/page.tsx` ed `entra/page.tsx` |
 | Dock | `src/components/Dock.tsx`, montato con `createPortal` nello slot di `dock-slot.tsx`, reso da `Guscio.tsx` | fatto nella fase 2; dalla fase 3 è una regione di nome «Azione principale» (tutti i Dock), e porta anche ESTRAI LA DIETA in Importa col PDF scelto. In Lista `HAI PRESO TUTTO` e i primari dei due stati vuoti; nel Piano la sola conferma — lo stato vuoto del Piano resta una scheda con un link in linea, di proposito. Dalla fase 4 anche **sciolto** (`<Dock sciolto>`, classe `.dock-sciolto`): nella Dispensa `DockDispensa.tsx` mette `Modifica con l'AI` e il tondo del microfono, senza contenitore bianco. Dalla fase 5 `.dock-senza-barra` a `bottom 22` quando una schermata nasconde la barra (l'editor dell'ingrediente); dalla fase 6 anche `CHIUDI LA SPESA` in `lista/fatta/page.tsx`, con la guardia in `lista/fatta/guardia.ts`; dalla fase 7 anche `SOSTITUISCI` in Scegli e `SALVA` nell'editor del Piatto, e `ErroreSopraDock` in `Dock.tsx`, l'errore sopra la pillola (Scegli, editor del Piatto; l'editor dell'ingrediente ha ancora la sua copia). Dal 27/09 **senza guscio bianco**: lo scroller `con-dock` sfuma sopra il tasto (`--dock-cima`, `--dock-dissolvenza` e la regola `:has` in `globals.css`), e il guscio porta `data-senza-barra` per la posizione senza barra |
 | Tasti | nessun file: le tre basi sono copiate in otto punti | deriva dichiarata e accettata (§6) |
 | Pillole d'azione | `RigaControllo.tsx`, `Segmento.tsx` (variante pillola) | |
@@ -98,7 +98,11 @@ del file, è lì.
 | Stato vuoto · Campo di testo · Scheda · Etichetta di sezione · Messaggi | sparsi nelle pagine, in stile inline; la modalità ricerca del Campo di testo vive in `src/components/CampoRicercaPiatti.tsx` (dalla fase 7, condivisa fra Piatti e Scegli) | scelta del progetto, non una deriva (§6, prima riga) |
 | Foglio dal basso | `src/components/FoglioDalBasso.tsx` (con `TestataFoglio` e `TondoFoglio`); prima di lui, scritti a mano, `src/components/FoglioAzioniPasto.tsx` e `src/app/(app)/importa/FogliPresi.tsx` | componente dalla fase 4: i quattro fogli della Dispensa; gli altri due non sono stati migrati; anche il selettore degli ingredienti del piatto (`SelettoreIngrediente.tsx`) dalla fase 7; dalla fase 8c ogni foglio `contenuto` si ferma a 88 dalla cima |
 | Porta | `src/components/Porta.tsx` | nata nello stato vuoto di Piatti, condivisa dalla fase 3 con Importa. Non è una voce di `DESIGN.md` §8 |
-| Icona ingrediente | `src/components/IconaIngrediente.tsx` (tracciati in `tracciati-ingredienti.ts`, catalogo in `src/domain/icone-ingredienti.ts`) | |
+| Icona ingrediente | `src/components/IconaIngrediente.tsx` (tracciati in `tracciati-ingredienti.ts`, catalogo in `src/domain/icone-ingredienti.ts`) | dal 03/10 anche fuori dalle tessere ingrediente, come icona dell'ingrediente principale di un piatto (`ingredientePrincipale` in `src/domain/oggi.ts`): poster, carta alternativa, Pronti e, come costruito, `Poi`, `Domani` e il lotto da scongelare (`DESIGN.md` §12) |
+| Poster del pasto · Poster senza pasto | `src/app/(app)/oggi/Poster.tsx` (`Poster`, `PosterVuoto`, il tipo `IconaPiatto`), con `.pillola-poster` in `globals.css` | fatto con Oggi (03/10). Senza `'use client'`: `onComEAndata` e `onRimetti` sono props, e il componente lo monta la pagina, che è client. Caselle della giornata, `RIMETTI QUELLO DEL PIANO` su riga sua, icona assente con la banda |
+| Carta alternativa · Carosello nel poster | `src/app/(app)/oggi/Alternative.tsx` (`Alternative`, `VoceAlternativa`), con `.carosello-oggi` e `.tasto-scambia` in `globals.css` | fatto con Oggi. `'use client'` per lo stato dei puntini (`round(scrollLeft / 260)`, non esercitato in jsdom: da guardare nel browser) |
+| Tessere di Oggi | `src/app/(app)/oggi/TesseraOggi.tsx` (`TesseraPiena`, `TesseraBianca`, `TesseraDispensaFerma`) | fatte con Oggi: piena d'area, bianca, tratteggiata informativa e la dispari in coda a due colonne (`larga`, solo `span 2` e altezza minima 64, il contenuto decide il resto). Senza `'use client'`, come il Poster |
+| Oggi (la pagina) | `src/app/(app)/oggi/page.tsx` e `piano-prima.ts`; dominio in `src/domain/oggi.ts` e `oggi-testi.ts`; letture in `src/data/apertura.ts` e `leggiUltimaChiusura` in `src/data/dispensa.ts` | non è una voce di `DESIGN.md` §8: è la pagina che monta i tre componenti sopra e il Foglio azioni del pasto (`FoglioAzioniPasto.tsx`, che apre anche lei, con `?da=oggi` verso Scegli) |
 
 Fuori dal sistema, perché è infrastruttura e non disegno: `Guscio.tsx` (il guscio comune della
 fase 1: stato della barra, maschera di scorrimento, reset di route), `PrimoAvvio.tsx`,
@@ -190,6 +194,22 @@ Il conto aperto verso `DESIGN.md` v3, al 26/09/2026.
   da applicare prima del merge. I ruling, le misure e le prove dal telefono da fare stanno in
   `docs/2026-10-03-fase8c-decisioni-esecuzione.md`. Fuori: 8d (Controlla e Ingredienti a step) e
   8e (affidabilità della lettura).
+- **Oggi, la home, è sul ramo `oggi-home`**, senza migrazione. I ruling, le misure, i limiti e le
+  prove dal telefono da fare stanno in `docs/2026-10-03-oggi-decisioni-esecuzione.md`; la spec è
+  `docs/superpowers/specs/2026-10-03-oggi-design.md`. I nove token del poster e delle pillole
+  (`--poster-*`, `--tinta-*`) stanno in `globals.css` e in `tokens.css` con gli stessi valori
+  (`npm run design:token`).
+- **Cosa Oggi ha lasciato fuori dalle scale** (valori che la spec o il piano scrivono e che
+  `DESIGN.md` §3 e §5 non hanno: sono dichiarati nell'anatomia di §8 e in §2.5, non promossi a
+  regola): il raggio 3 delle caselle del poster; il nome della carta alternativa a 18; mono 9 (la
+  pillola di stato della carta) e mono 9,5 (l'etichetta di `Poi` e `Domani`); `.pillola-poster` a
+  0,09em e padding 14 invece di 0,08em e 15; `SCAMBIA` spento a 0,06 invece di 0,10; `SCONGELA` a
+  4,3:1 invece di 4,5; `'#fff'` letterale nell'icona di Oggi della barra (come le altre icone
+  piene) e `'#FFFFFF'` passato ad `alone()` nelle tessere (come `TesseraIngrediente`); l'icona
+  ingrediente su `Poi`, `Domani` e sul lotto da scongelare, oltre i tre posti di `DESIGN.md` §12.
+  La forma «compatta» a due colonne non ha un disegno proprio: `larga` allarga la tessera e ne
+  abbassa l'altezza minima a 64, il contenuto decide il resto. Ognuno di questi è, se Andrea li
+  vuole in scala, un cambio di una riga.
 - **53 token dichiarati nel design e assenti dal codice** [misurato il 26/09 con le funzioni del guardiano, dopo
   i sei `--tono-<area>` delle icone ingrediente: `tokens.css` ne dichiara 124, `src/app/globals.css` ne ha 73, 71
   in comune, 0 divergenti (`npm run design:token`); prima dei sei token del tono medio, a fase 5 finita, erano
