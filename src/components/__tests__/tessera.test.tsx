@@ -64,6 +64,7 @@ describe('Tessera · icona ingrediente', () => {
   it('accesa: icona nel tono medio, alone bianco sul nome', () => {
     const { container } = render(<Tessera {...base} nome="Carote" spuntato={false} protagonista={false} />);
     expect(icona(container)).toHaveAttribute('data-icona', 'carota');
+    expect(icona(container)).toHaveAttribute('data-tono', 'area');
     expect(icona(container)).toHaveAttribute('stroke', '#7AA838');
     expect(icona(container)).toHaveAttribute('width', '60');
     expect(screen.getByText('Carote').style.textShadow).toContain('#FFFFFF');
@@ -74,6 +75,7 @@ describe('Tessera · icona ingrediente', () => {
 
   it('protagonista: icona a 96 px nel tono medio, alone nel colore d\'area a 3 px', () => {
     const { container } = render(<Tessera {...base} nome="Carote" spuntato={false} protagonista />);
+    expect(icona(container)).toHaveAttribute('data-tono', 'hero');
     expect(icona(container)).toHaveAttribute('stroke', '#7AA838');
     expect(icona(container)).toHaveAttribute('width', '96');
     expect(screen.getByText('Carote').style.textShadow).toContain('0 0 4px #A8D96A');
@@ -81,6 +83,7 @@ describe('Tessera · icona ingrediente', () => {
 
   it('spenta: icona spenta, barra del nome senza alone (Andrea 26/09: l\'alone contornava la barra)', () => {
     const { container } = render(<Tessera {...base} nome="Carote" spuntato protagonista={false} />);
+    expect(icona(container)).toHaveAttribute('data-tono', 'spento');
     expect(icona(container)).toHaveAttribute('stroke', '#9A9AA6');
     const nome = screen.getByText('Carote');
     expect(nome).toHaveStyle({ color: 'rgba(20, 22, 58, 0.34)' });

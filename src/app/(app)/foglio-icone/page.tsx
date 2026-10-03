@@ -7,8 +7,9 @@ import { FoglioTessere } from './FoglioTessere';
 
 /**
  * Foglio di controllo delle icone ingrediente (spec 2026-09-26, passo 3):
- * ogni icona in tono medio sulle sei aree e in bianco sui sei colori pieni,
- * poi le tessere vere con nomi corti e lunghi. Non esiste in produzione.
+ * ogni icona a due toni (pieno nel colore d'area, bianco sulla protagonista e
+ * sulla Dispensa in casa, tratti nel tono medio) sulle sei aree, poi le
+ * tessere vere con nomi corti e lunghi. Non esiste in produzione.
  */
 export default function FoglioIcone() {
   if (process.env.NODE_ENV === 'production') notFound();

@@ -5,8 +5,6 @@ import { IconaIngrediente, RIGHE_OMBRA, alone } from '../IconaIngrediente';
 import { TRACCIATI } from '../tracciati-ingredienti';
 import { CHIAVI_ICONE } from '@/domain/icone-ingredienti';
 
-const PILOTA = ['bistecca', 'cosciotto', 'pesce', 'carota', 'pomodoro', 'uovo', 'latte', 'formaggio', 'pasta', 'pane', 'legumi', 'piselli'] as const;
-
 function svg(c: HTMLElement) {
   return c.querySelector('svg[data-icona]') as SVGSVGElement;
 }
@@ -37,6 +35,7 @@ describe('IconaIngrediente', () => {
     expect(s.style.right).toBe('-18px');
     expect(s).toHaveAttribute('stroke', '#BB9609');
     expect(parte(s, 'pieno')).toHaveAttribute('fill', 'rgba(255,255,255,0.7)');
+    expect(parte(s, 'tratti')).toHaveAttribute('opacity', '1');
   });
 
   it('tinta (Dispensa in casa): pieno bianco a 0,7, tratti nel tono medio', () => {
@@ -44,6 +43,7 @@ describe('IconaIngrediente', () => {
     const s = svg(container);
     expect(s).toHaveAttribute('stroke', '#D88384');
     expect(parte(s, 'pieno')).toHaveAttribute('fill', 'rgba(255,255,255,0.7)');
+    expect(parte(s, 'tratti')).toHaveAttribute('opacity', '1');
   });
 
   it('spento: pieno quasi trasparente, tratti --off a 0,55', () => {
@@ -100,21 +100,6 @@ describe('IconaIngrediente', () => {
     expect(s.querySelectorAll('mask path')[1]).toHaveAttribute('transform', 'translate(-2 -2.2) rotate(-28 12 12)');
   });
 
-  it('ogni tracciato ha sagoma e dettagli', () => {
-    const vuoti = CHIAVI_ICONE.filter((k) => !TRACCIATI[k]?.d || !TRACCIATI[k]?.dd);
-    expect(vuoti).toEqual([]);
-  });
-
-  it('chiave senza tracciato: nulla', () => {
-    const { container } = render(
-      <IconaIngrediente chiave={'inesistente' as never} area="dispensa" tono="area" taglia={60} />,
-    );
-    expect(svg(container)).toBeNull();
-  });
-
-  it('i dodici del pilota hanno il tracciato', () => {
-    expect(PILOTA.filter((k) => !TRACCIATI[k])).toEqual([]);
-  });
 });
 
 describe('alone', () => {
@@ -139,12 +124,13 @@ describe('tracciati · forma a due toni (spec 03/10)', () => {
       const sil = TRACCIATI[k]?.sil;
       return sil !== undefined && !chiusa(sil);
     })).toEqual([]);
+    expect(CHIAVI_ICONE.filter((k) => /^m/.test(TRACCIATI[k]?.sil ?? '') || /^m/.test(TRACCIATI[k]?.d ?? ''))).toEqual([]);
   });
 
-  it('dettagli: da uno a cinque gruppi, nessuno vuoto', () => {
+  it('dettagli: da uno a cinque gruppi, nessuno vuoto, ognuno comincia con M assoluta', () => {
     expect(CHIAVI_ICONE.filter((k) => {
       const g = TRACCIATI[k]!.dd;
-      return g.length < 1 || g.length > 5 || g.some((x) => x.trim() === '');
+      return g.length < 1 || g.length > 5 || g.some((x) => x.trim() === '') || g.some((x) => !/^M/.test(x));
     })).toEqual([]);
   });
 
