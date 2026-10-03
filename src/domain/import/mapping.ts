@@ -12,6 +12,19 @@ export function normalizza(s: string): string {
 }
 
 /**
+ * «Quanto basta» (spec 8c §B): una riga il cui testo dice q.b., qb, quanto basta o a piacere, per
+ * parole intere, e che non ha una quantità trascritta dal foglio. Vale anche quando il lettore ci
+ * ha messo una quantità INFERITA (`quantitaInferita: true`, come chiede il prompt per «q.b.»):
+ * quella stima si scarta, quantità e unità (correzione S1 del piano 8c). Una quantità trascritta
+ * (`quantitaInferita: false`) vince sempre. È un valore, non un dubbio: non blocca e non si chiede.
+ */
+export function quantoBasta(riga: RigaEstratta): boolean {
+  if (riga.quantita !== null && !riga.quantitaInferita) return false;
+  const parole = ` ${normalizza(riga.testoOriginale).replace(/[^a-z0-9]+/g, ' ').trim()} `;
+  return [' q b ', ' qb ', ' quanto basta ', ' a piacere '].some((p) => parole.includes(p));
+}
+
+/**
  * Due livelli (spec 8c §A.2). Il primo come sempre, a unità compatibile: match esatto sul nome
  * normalizzato, poi per inclusione (in entrambi i versi) preferendo il nome più corto. Niente
  * fuzzy a distanza: un abbinamento sbagliato silenzioso è peggio di un ingrediente doppio.
@@ -94,7 +107,8 @@ export function ingredientiDaAbbinare(
           const chiave = normalizza(riga.alimento);
           const esistente = visti.get(chiave);
           // I cucchiai non sono un'unità dell'ingrediente: valgono come «senza unità».
-          const unita = unitaBaseDi(riga.unita);
+          // Il q.b. non ha unità: nemmeno quella stimata dal lettore (correzione S1).
+          const unita = quantoBasta(riga) ? null : unitaBaseDi(riga.unita);
           // Un'unità nota vince su null: la prima riga con grammatura fissa il tipo.
           if (!esistente || (esistente.unita === null && unita !== null)) {
             // `grezzo` resta quello della prima riga: accenti e maiuscole per il nome proposto.

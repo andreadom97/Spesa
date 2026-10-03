@@ -1,12 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import type { MealSlotDef } from '@/domain/types';
+import type { Ingredient, MealSlotDef } from '@/domain/types';
 import type { PastoEstratto, PianoEstratto, StatoRevisione } from '@/domain/import/types';
 import { chiavePasto, pastoEffettivo, unitaBaseDi } from '@/domain/import/types';
-import { normalizza } from '@/domain/import/mapping';
+import { normalizza, quantoBasta } from '@/domain/import/mapping';
 import {
-  cambiaRiga, chiaveGruppo, etichettaGiorno, righeDelPasto, rigaIrrisolta, togliRiga, unitaDelGruppo, unitaNota,
+  cambiaRiga, chiaveGruppo, etichettaGiorno, gruppiRighe, righeDelPasto, rigaIrrisolta, togliRiga, unitaDelGruppo, unitaNota,
   type RigaNelPasto,
 } from '@/domain/import/dubbi';
 import { FoglioDalBasso, TestataFoglio } from '@/components/FoglioDalBasso';
@@ -29,6 +29,8 @@ interface Props {
   /** Lo stato con le modifiche locali del foglio già fuse: il foglio mostra quello. */
   stato: StatoRevisione;
   slotDefs: MealSlotDef[];
+  /** Gli ingredienti che hai: servono a calcolare le stesse proposte di Controlla (correzione D4). */
+  ingredientiEsistenti?: Ingredient[];
   settimana: number;
   giorno: number;
   onCambiaPasto: (chiave: string, pasto: PastoEstratto) => void;
@@ -40,7 +42,7 @@ interface Props {
  * una quantità e si toglie una riga (decisione 2); nomi e piatti si sistemano dopo, nell'editor
  * del Piatto. Le modifiche le tiene Controlla e risalgono alla chiusura, con un solo `onStato`.
  */
-export function FoglioGiorno({ piano, stato, slotDefs, settimana, giorno, onCambiaPasto, onChiudi }: Props) {
+export function FoglioGiorno({ piano, stato, slotDefs, ingredientiEsistenti = [], settimana, giorno, onCambiaPasto, onChiudi }: Props) {
   const giornoPiano = piano.settimane.find((s) => s.numero === settimana)?.giorni.find((g) => g.giorno === giorno);
   // Le righe irrisolte all'apertura: tengono le pillole dell'unità anche dopo la risposta,
   // così un'unità scelta per sbaglio si cambia finché il foglio è aperto.
@@ -61,6 +63,9 @@ export function FoglioGiorno({ piano, stato, slotDefs, settimana, giorno, onCamb
   if (!giornoPiano) return null;
   const nome = nomeGiorno(piano, settimana, giorno, giornoPiano.titolo);
   const nomeSlot = (id: string | undefined) => slotDefs.find((s) => s.id === id)?.nome;
+  // I gruppi con una proposta compilata (spec 8c §D): nel foglio come in pagina sono «proposta da
+  // me», non un dubbio (correzione D4). Stesso calcolo di Controlla, sullo stato che il foglio mostra.
+  const conProposta = new Set(gruppiRighe(piano, stato, ingredientiEsistenti).filter((g) => g.proposta !== null).map((g) => g.chiave));
 
   return (
     <FoglioDalBasso etichetta={nome} onChiudi={onChiudi}>
@@ -89,19 +94,23 @@ export function FoglioGiorno({ piano, stato, slotDefs, settimana, giorno, onCamb
             const nota = unitaNota(piano, stato, normalizza(r.riga.alimento), chiaveRiga)
               ?? unitaDelGruppo(piano, stato, chiaveRiga, { pasto: chiave, posizione: r.posizione });
             const irrisolta = rigaIrrisolta(r.riga);
+            // Correzione D4: una riga di un gruppo con la proposta già scelta non chiede niente.
+            const dubbio = irrisolta && !conProposta.has(chiaveRiga);
+            // Correzione S1: un q.b. con la quantità stimata dal lettore resta q.b., e la stima non si mostra.
+            const qb = quantoBasta(r.riga);
             const pillole = irrisolteAllApertura.has(chiaveRiga) && nota === null;
             return (
               <RigaAlimento
                 key={`${chiaveRiga}|${r.posizione.piatto}|${r.posizione.componente}|${r.posizione.opzione}|${r.posizione.riga}`}
                 nome={capitalizza(r.riga.alimento)}
                 etichetta={r.riga.alimento}
-                nota={`Sul foglio: «${r.riga.testoOriginale}»${r.riga.quantitaInferita ? ' · quantità proposta da me' : ''}`}
-                // Il numero dei cucchiai non è una quantità in g/ml/pz: il campo parte vuoto.
-                quantita={unitaBaseDi(r.riga.unita) === null ? null : r.riga.quantita}
+                nota={`Sul foglio: «${r.riga.testoOriginale}»${r.riga.quantitaInferita && !qb ? ' · quantità proposta da me' : ''}${qb ? ' · quanto basta' : ''}`}
+                // Il numero dei cucchiai non è una quantità in g/ml/pz: il campo parte vuoto. Il q.b. pure.
+                quantita={qb || unitaBaseDi(r.riga.unita) === null ? null : r.riga.quantita}
                 unita={unitaBaseDi(r.riga.unita) ?? nota}
                 scegliUnita={pillole}
-                dubbio={irrisolta}
-                avviso={irrisolta ? (pillole ? AVVISO_SENZA_PESO : AVVISO_SENZA_QUANTITA) : undefined}
+                dubbio={dubbio}
+                avviso={dubbio ? (pillole ? AVVISO_SENZA_PESO : AVVISO_SENZA_QUANTITA) : undefined}
                 onValore={(quantita, unita) => onCambiaPasto(chiave, cambiaRiga(pasto, r.posizione, { quantita, unita, quantitaInferita: false }))}
                 onTogli={() => onCambiaPasto(chiave, togliRiga(pasto, r.posizione))}
               />

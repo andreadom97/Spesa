@@ -488,7 +488,7 @@ function ContenutoBozza({
   switch (bozza.statoRevisione.passo) {
     case 'revisione':
       return (
-        <Controlla piano={bozza.piano} stato={bozza.statoRevisione} slotDefs={slotDefs} onStato={onStatoRevisione} />
+        <Controlla piano={bozza.piano} stato={bozza.statoRevisione} slotDefs={slotDefs} ingredientiEsistenti={ingredientiEsistenti} onStato={onStatoRevisione} />
       );
     case 'formati':
       return (

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Ingredient, MealSlotDef } from '@/domain/types';
-import { normalizza, abbina, proponiSlot, ingredientiDaAbbinare } from '../mapping';
+import type { RigaEstratta } from '../types';
+import { normalizza, abbina, proponiSlot, ingredientiDaAbbinare, quantoBasta } from '../mapping';
 import { proponi } from '../formati-tipici';
 import { PIANO_MENU_SETTIMANALE } from '../fixtures';
 
@@ -119,5 +120,34 @@ describe('abbina a due livelli (spec 8c §A.2)', () => {
 
   it('a parità di nome vince il primo per id', () => {
     expect(abbina('zucchine', 'g', [es('i-z2', 'Zucchine', 'pz'), es('i-z1', 'Zucchine', 'pz')])?.id).toBe('i-z1');
+  });
+});
+
+describe('quantoBasta (spec 8c §B, correzione S1)', () => {
+  /** Una riga del sale: senza quantità, o con 2 g inferiti dal lettore (`inferita`) o trascritti dal foglio. */
+  const riga = (testoOriginale: string, quantita: number | null = null, inferita = false): RigaEstratta => ({
+    alimento: 'sale', quantita, unita: quantita === null ? null : 'g', quantitaInferita: inferita, testoOriginale,
+  });
+
+  it('q.b., qb, quanto basta, a piacere: per parole intere', () => {
+    for (const t of ['sale q.b.', 'Sale Q.B.', 'pepe qb', 'olio quanto basta', 'prezzemolo a piacere', 'Spezie (q.b.)']) {
+      expect(quantoBasta(riga(t))).toBe(true);
+    }
+  });
+
+  it('non è q.b.: un pizzico, una parola che contiene «qb»', () => {
+    expect(quantoBasta(riga('un pizzico di sale'))).toBe(false);
+    expect(quantoBasta(riga('qbaccia'))).toBe(false);
+  });
+
+  it('una quantità INFERITA dal lettore col testo q.b. è q.b.: la stima si scarta', () => {
+    expect(quantoBasta(riga('sale q.b.', 2, true))).toBe(true);
+    expect(quantoBasta(riga('prezzemolo a piacere', 5, true))).toBe(true);
+    // Inferita ma senza q.b. nel testo: resta una quantità proposta.
+    expect(quantoBasta(riga('un pizzico di sale', 1, true))).toBe(false);
+  });
+
+  it('una quantità TRASCRITTA dal foglio vince sempre: resta la quantità', () => {
+    expect(quantoBasta(riga('sale q.b.', 2, false))).toBe(false);
   });
 });

@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import type { MealSlotDef } from '@/domain/types';
+import type { Ingredient, MealSlotDef } from '@/domain/types';
 import type { PastoEstratto, PianoEstratto, StatoRevisione } from '@/domain/import/types';
 import { NOME_PASTO_CONDIMENTI } from '@/domain/import/types';
 import {
@@ -23,6 +23,7 @@ interface Props {
   piano: PianoEstratto;
   stato: StatoRevisione;
   slotDefs: MealSlotDef[];
+  ingredientiEsistenti?: Ingredient[];
   onStato: (s: StatoRevisione) => void;
 }
 
@@ -58,7 +59,7 @@ function testiTogli(alimento: string, anteprima: AnteprimaTogli): { titolo: stri
  * è un `onStato` (mai a ogni tasto: innesca `salvaBozzaImport`); il foglio del giorno tiene le
  * sue modifiche e le fa risalire alla chiusura.
  */
-export function Controlla({ piano, stato, slotDefs, onStato }: Props) {
+export function Controlla({ piano, stato, slotDefs, ingredientiEsistenti = [], onStato }: Props) {
   const [livello, setLivello] = useState<Livello>(null);
   const [locali, setLocali] = useState<Record<string, PastoEstratto>>({});
   // Le modifiche del foglio del giorno anche in un ref, e il giorno aperto: la chiusura legge
@@ -101,15 +102,18 @@ export function Controlla({ piano, stato, slotDefs, onStato }: Props) {
   useIndietroFogli(livello ? 1 : 0, chiudiLivello);
 
   const voci = vociPasti(piano, stato, slotDefs);
-  const gruppi = gruppiRighe(piano, stato);
+  const gruppi = gruppiRighe(piano, stato, ingredientiEsistenti);
+  // «Da sistemare»: i dubbi senza una proposta sul piano letto; «Da controllare»: le quantità
+  // dell'AI e le proposte compilate (spec 8c §D), che non bloccano.
   const irrisolti = gruppi.filter((g) => g.tipo === 'irrisolta');
-  const inferiti = gruppi.filter((g) => g.tipo === 'inferita');
+  const inferiti = gruppi.filter((g) => g.tipo !== 'irrisolta');
   const pastiDaSistemare = voci.filter((v) => v.daSistemare);
   const pastiAbbinati = voci.filter((v) => !v.daSistemare);
-  const aperti = pastiDaSistemare.filter((v) => v.slotDefId === null).length + irrisolti.filter((g) => g.stato === 'aperto').length;
+  const aperti = pastiDaSistemare.filter((v) => v.slotDefId === null).length
+    + irrisolti.filter((g) => g.stato === 'aperto' && g.proposta === null).length;
   const c = conteggi(piano, stato);
   // Zero pasti confermabili (tutti tolti): confermare sostituirebbe il piano con niente.
-  const ok = pronto(piano, stato, slotDefs) && c.pastiConfermabili > 0;
+  const ok = pronto(piano, stato, slotDefs, ingredientiEsistenti) && c.pastiConfermabili > 0;
   const giorni = riassuntoGiorni(piano, stato);
   const piuSettimane = piano.settimane.length > 1;
   const vociSlot = [...slotDefs].sort((a, b) => a.posizione - b.posizione).map((s) => ({ id: s.id, nome: s.nome }));
@@ -153,23 +157,27 @@ export function Controlla({ piano, stato, slotDefs, onStato }: Props) {
       return <RigaImpostazione key={g.chiave} nome={capitalizza(g.alimento)} nota="Tolta dal piano" finale={{ tipo: 'niente' }} />;
     }
     const aperto = g.stato === 'aperto';
-    // Le pillole per ogni dubbio irrisolto senza unità fissa (decisione 8), e per ogni riga che
-    // non ha nessuna unità da mostrare: senza unità il numero scritto non si salverebbe.
-    const pillole = g.unitaFissa === null && (g.tipo === 'irrisolta' || g.unita === null);
+    // Una proposta compilata (spec 8c §D): si mostra già scelta, senza bordo né avviso.
+    const proposta = aperto ? g.proposta : null;
+    // Le pillole per ogni dubbio senza unità fissa (decisione 8), e per ogni riga che non ha
+    // nessuna unità da mostrare: senza unità il numero scritto non si salverebbe.
+    const pillole = proposta === null && g.unitaFissa === null && (g.tipo !== 'inferita' || g.unita === null);
     const diversi = g.stato === 'fatto' && g.quantita === null ? ' · valori diversi nei giorni' : '';
-    const proposta = g.tipo === 'inferita' ? ' · quantità proposta da me' : '';
+    const daMe = proposta
+      ? ` · ${proposta.testo ?? (proposta.origine === 'porzione' ? 'porzione tipica' : "l'unità più usata")}, proposta da me`
+      : g.tipo === 'inferita' || g.daMe ? ' · quantità proposta da me' : '';
     return (
       <RigaAlimento
         key={g.chiave}
         nome={capitalizza(g.alimento)}
         etichetta={g.alimento}
         provenienza={provenienza(piano, g)}
-        nota={`Sul foglio: «${g.testoOriginale}»${proposta}${diversi}`}
-        quantita={g.quantita}
-        unita={g.unita ?? g.unitaFissa}
+        nota={`Sul foglio: «${g.testoOriginale}»${daMe}${diversi}`}
+        quantita={proposta?.quantita ?? g.quantita}
+        unita={proposta?.unita ?? g.unita ?? g.unitaFissa}
         scegliUnita={pillole}
-        dubbio={aperto}
-        avviso={aperto ? (g.unitaDiverse ? AVVISO_UNITA_DIVERSE : pillole ? AVVISO_SENZA_PESO : AVVISO_SENZA_QUANTITA) : undefined}
+        dubbio={aperto && proposta === null}
+        avviso={aperto && proposta === null ? (g.unitaDiverse ? AVVISO_UNITA_DIVERSE : pillole ? AVVISO_SENZA_PESO : AVVISO_SENZA_QUANTITA) : undefined}
         onValore={(quantita, unita) => onStato(rispondiGruppo(piano, stato, g.chiave, quantita, unita))}
         onTogli={() => {
           // Il dialogo quando la X tocca più pasti o fa sparire un piatto: qui non si torna indietro.
@@ -235,7 +243,7 @@ export function Controlla({ piano, stato, slotDefs, onStato }: Props) {
       </div>
 
       <Dock>
-        <button type="button" className="dock-primario" disabled={!ok} onClick={() => onStato(confermaTutti(piano, stato))}>
+        <button type="button" className="dock-primario" disabled={!ok} onClick={() => onStato(confermaTutti(piano, stato, ingredientiEsistenti))}>
           CONFERMA I PASTI
         </button>
       </Dock>
@@ -247,6 +255,7 @@ export function Controlla({ piano, stato, slotDefs, onStato }: Props) {
           piano={piano}
           stato={statoVisto}
           slotDefs={slotDefs}
+          ingredientiEsistenti={ingredientiEsistenti}
           settimana={livello.settimana}
           giorno={livello.giorno}
           onCambiaPasto={(chiave, pasto) => cambiaPasto(livello.settimana, livello.giorno, chiave, pasto)}
