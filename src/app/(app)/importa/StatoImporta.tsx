@@ -9,6 +9,8 @@ export interface PropsStatoImporta {
   luce?: boolean;
   /** La scheda è `role="status"`: il suo testo si annuncia (l'attesa). */
   stato?: boolean;
+  /** In corso (il salvataggio del piano, spec 8c §H): la scheda di stato dice `aria-busy`. */
+  occupato?: boolean;
   /** Lo scroller lascia la coda al Dock: chi usa il componente monta il suo `<Dock>`. */
   conDock?: boolean;
   /** Un tasto secondario sotto i testi (la ripresa: RICOMINCIA). */
@@ -24,7 +26,7 @@ const TESTO: CSSProperties = { margin: 0, fontSize: 14, lineHeight: 1.5, color: 
  * resta scritto dove serve, per scelta del progetto (DESIGN-SYSTEM.md §3); qui lo usano sei stati
  * dello stesso flusso. L'azione della schermata non sta qui: sta nel Dock di chi lo usa.
  */
-export function StatoImporta({ titolo, testo, testo2, luce = false, stato = false, conDock = false, children }: PropsStatoImporta) {
+export function StatoImporta({ titolo, testo, testo2, luce = false, stato = false, occupato = false, conDock = false, children }: PropsStatoImporta) {
   return (
     <div
       className={`sc scroll-app${conDock ? ' con-dock' : ''}`}
@@ -37,6 +39,7 @@ export function StatoImporta({ titolo, testo, testo2, luce = false, stato = fals
     >
       <div
         role={stato ? 'status' : undefined}
+        aria-busy={occupato || undefined}
         style={{
           padding: '26px 20px', borderRadius: 22, background: 'var(--superficie)', border: '1px solid var(--bordo)',
           textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center',

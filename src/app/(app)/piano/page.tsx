@@ -24,6 +24,7 @@ import { RigaPasto } from '@/components/RigaPasto';
 import { FoglioAzioniPasto } from '@/components/FoglioAzioniPasto';
 import { Dock } from '@/components/Dock';
 import { useRileggiDopoImpostazioni } from '@/components/pannello/eventi';
+import { consumaPianoSalvato } from '@/components/piano-salvato';
 
 const LUNGHI = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
 
@@ -82,6 +83,7 @@ export default function Settimana() {
   const [precedenteVuota, setPrecedenteVuota] = useState(false);
   const [foglio, setFoglio] = useState<{ slot: MealSlot; def: MealSlotDef } | null>(null);
   const [lotti, setLotti] = useState<LottoPronto[]>([]);
+  const [pianoSalvato, setPianoSalvato] = useState(false);
 
   // Tiene la promise di creaSettimana in corso, condivisa fra le due
   // esecuzioni dell'effetto che React Strict Mode innesca in sviluppo: senza
@@ -203,6 +205,9 @@ export default function Settimana() {
         });
         setLotti(lottiCaricati);
         if (silenziosa) return;
+
+        // Arrivando da Importa dopo il salvataggio (spec 8c §H): la riga di stato, una volta sola.
+        if (consumaPianoSalvato()) setPianoSalvato(true);
 
         const giorni = giorniDellaSettimana(corrente.dataInizio);
         if (vista === 'precedente') {
@@ -540,6 +545,13 @@ export default function Settimana() {
           {vista === 'corrente' ? '‹ SETTIMANA SCORSA' : 'SETTIMANA CORRENTE ›'}
         </button>
       </div>
+
+      {pianoSalvato && (
+        // Una Riga di stato (DESIGN.md §8 Messaggi), non un avviso a comparsa.
+        <p role="status" className="anim-apparsa" style={{ margin: '2px 20px 6px', fontSize: 12.5, lineHeight: 1.45, color: 'var(--testo-2)' }}>
+          Piano salvato
+        </p>
+      )}
 
       <div style={{ padding: '2px 16px 14px' }}>
         <StrisciaGiorni

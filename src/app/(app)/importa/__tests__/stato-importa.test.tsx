@@ -30,6 +30,11 @@ describe('StatoImporta (DESIGN.md §8 Stato vuoto)', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Sto leggendo la dieta…');
   });
 
+  it('occupato: la scheda di stato dice aria-busy', () => {
+    render(<StatoImporta titolo="Salvo il piano…" testo="Gli ingredienti." stato occupato />);
+    expect(screen.getByRole('status')).toHaveAttribute('aria-busy', 'true');
+  });
+
   it('senza luce né stato: niente classe e niente role', () => {
     render(<StatoImporta titolo="T" testo="x" />);
     expect(screen.getByRole('heading', { name: 'T' })).not.toHaveClass('anim-luce-testo');
