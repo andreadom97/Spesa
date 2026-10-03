@@ -14,11 +14,11 @@ import { IconaIngrediente, type TonoIcona } from '../src/components/IconaIngredi
 
 /** Il reparto tipico di ogni chiave, come nei commenti del catalogo: serve solo a colorare il foglio. */
 const REPARTO: Record<AreaId, readonly ChiaveIcona[]> = {
-  ortofrutta: ['banana', 'mela', 'pera', 'arancia', 'limone', 'avocado', 'zucchina', 'melanzana', 'peperone', 'broccolo', 'finocchio', 'sedano', 'pomodoro', 'pomodorini', 'insalata', 'foglie', 'carota', 'patata', 'cipolla', 'aglio', 'fungo', 'zucca', 'fagiolini', 'uva', 'fragola', 'cetriolo', 'erbe'],
+  ortofrutta: ['banana', 'mela', 'pera', 'arancia', 'limone', 'avocado', 'zucchina', 'melanzana', 'peperone', 'broccolo', 'finocchio', 'sedano', 'pomodoro', 'pomodorini', 'insalata', 'foglie', 'carota', 'patata', 'cipolla', 'aglio', 'fungo', 'zucca', 'fagiolini', 'uva', 'fragola', 'cetriolo', 'erbe', 'frutta', 'verdura'],
   macelleria: ['bistecca', 'cosciotto', 'salsiccia', 'pesce', 'gambero', 'pancetta'],
-  latticini: ['uovo', 'latte', 'yogurt', 'formaggio', 'formaggio-fresco', 'burro'],
+  latticini: ['uovo', 'latte', 'yogurt', 'formaggio', 'formaggio-fresco', 'burro', 'salumi'],
   cereali: ['pasta', 'riso', 'chicchi', 'avena', 'pane', 'pancarre', 'biscotto', 'farina', 'cornetto'],
-  dispensa: ['olio', 'ampolla', 'sale', 'spezie', 'zucchero', 'miele', 'marmellata', 'caffe', 'legumi', 'piselli', 'noce', 'mandorla', 'arachide', 'cioccolato', 'minestra', 'acqua'],
+  dispensa: ['olio', 'ampolla', 'sale', 'spezie', 'zucchero', 'miele', 'marmellata', 'caffe', 'legumi', 'piselli', 'noce', 'mandorla', 'arachide', 'frutta-guscio', 'olive', 'cioccolato', 'minestra', 'acqua'],
   surgelati: [],
 };
 const areaDi = (k: ChiaveIcona) => (Object.keys(REPARTO) as AreaId[]).find((a) => REPARTO[a].includes(k))!;
@@ -26,7 +26,9 @@ const AREA = new Map(AREE.map((a) => [a.id, a]));
 const OGGI = JSON.parse(readFileSync('design/foglio-icone/tracciati-oggi.json', 'utf8')) as Record<string, { d: string; dd: string; rot?: string }>;
 
 function iconaOggi(k: ChiaveIcona): string {
+  // le famiglie del 03/10 nascono a due toni: non hanno un'icona di tratto da confrontare
   const t = OGGI[k], a = AREA.get(areaDi(k))!;
+  if (!t) return '<svg width="52" height="52"></svg>';
   const rot = t.rot ? ` transform="${t.rot}"` : '';
   return `<svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="${a.tonoMedio}" stroke-linecap="round" stroke-linejoin="round"><path d="${t.d}"${rot} stroke-width="2"/><path d="${t.dd}"${rot} stroke-width="1.25"/></svg>`;
 }

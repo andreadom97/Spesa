@@ -23,7 +23,7 @@ export const CATALOGO_ICONE = {
   sedano: ['sedano'],
   pomodoro: ['pomodoro', 'passata', 'passata di pomodoro', 'pelati', 'polpa di pomodoro', 'concentrato di pomodoro'],
   pomodorini: ['pomodorino', 'ciliegino', 'datterino'],
-  insalata: ['insalata', 'lattuga', 'valeriana', 'songino', 'iceberg'],
+  insalata: ['insalata', 'insalatona', 'lattuga', 'valeriana', 'songino', 'iceberg'],
   foglie: ['spinaci', 'rucola', 'bietola', 'bieta', 'erbette', 'coste'],
   carota: ['carota'],
   patata: ['patata', 'patata dolce', 'batata'],
@@ -35,7 +35,11 @@ export const CATALOGO_ICONE = {
   uva: ['uva'],
   fragola: ['fragola', 'frutti di bosco', 'mirtillo', 'lampone'],
   cetriolo: ['cetriolo'],
-  erbe: ['basilico', 'prezzemolo', 'menta', 'rosmarino', 'salvia', 'erba cipollina'],
+  erbe: ['basilico', 'prezzemolo', 'menta', 'rosmarino', 'salvia', 'erba cipollina', 'erbe aromatiche', 'erba aromatica'],
+  // famiglie (03/10): i nomi generici delle diete importate. «Frutti di bosco» resta su
+  // `fragola` (sinonimo più lungo alla stessa posizione), «Minestrone» su `minestra`.
+  frutta: ['frutta', 'macedonia'],
+  verdura: ['verdura', 'ortaggio'],
   // carne e pesce
   bistecca: ['manzo', 'macinato', 'vitello', 'carne', 'bistecca', 'hamburger'],
   cosciotto: ['pollo', 'tacchino'],
@@ -43,6 +47,9 @@ export const CATALOGO_ICONE = {
   pesce: ['pesce', 'salmone', 'merluzzo', 'branzino', 'spigola', 'orata', 'tonno', 'sgombro', 'platessa', 'nasello', 'pesce spada'],
   gambero: ['gambero', 'gamberetto', 'mazzancolla'],
   pancetta: ['pancetta', 'guanciale'],
+  // famiglia (03/10, supera il gate del 26/09 che li lasciava senza icona): nel foglio sta
+  // con i latticini, come al banco gastronomia.
+  salumi: ['salume', 'salame', 'prosciutto', 'bresaola', 'speck', 'mortadella', 'affettato'],
   // latticini e uova
   uovo: ['uovo'],
   latte: ['latte'],
@@ -64,16 +71,20 @@ export const CATALOGO_ICONE = {
   olio: ['olio'],
   ampolla: ['aceto', 'salsa di soia'],
   sale: ['sale'],
-  spezie: ['pepe', 'cannella', 'cumino', 'curry', 'paprika', 'origano', 'curcuma', 'noce moscata', 'zenzero', 'peperoncino'],
+  spezie: ['pepe', 'cannella', 'cumino', 'curry', 'paprika', 'origano', 'curcuma', 'noce moscata', 'zenzero', 'peperoncino', 'spezia'],
   zucchero: ['zucchero'],
   miele: ['miele'],
   marmellata: ['marmellata', 'confettura'],
   caffe: ['caffe'],
   legumi: ['legumi', 'ceci', 'cece', 'fagioli', 'cannellini', 'borlotti', 'lenticchie'],
   piselli: ['pisello', 'edamame'],
-  noce: ['noce', 'frutta secca'],
+  noce: ['noce'],
   mandorla: ['mandorla'],
   arachide: ['arachide', 'burro di arachidi', 'noccioline'],
+  // famiglie (03/10). «Noci» resta su `noce`, «Noci miste» viene qui (più lungo alla stessa
+  // posizione); «Olio d'oliva» resta su `olio` (prima posizione).
+  'frutta-guscio': ['frutta a guscio', 'frutta secca', 'nocciola', 'pistacchio', 'anacardo', 'noci miste'],
+  olive: ['oliva'],
   cioccolato: ['cioccolato', 'cacao'],
   // pronti e bevande
   minestra: ['minestrone', 'minestra', 'brodo', 'zuppa', 'vellutata'],
@@ -100,6 +111,8 @@ export const CHIAVI_ICONE = Object.keys(CATALOGO_ICONE) as ChiaveIcona[];
  * - `pasta sfoglia`, `pasta frolla`, `pasta brisee`, `pasta per pizza`,
  *   `pasta di acciughe`: impasti o creme, non pasta secca — non devono
  *   prendere l'icona di `pasta`.
+ * - `salame di cioccolato`: un dolce, non un salume — senza il blocco prenderebbe
+ *   l'icona di `salumi` (03/10).
  */
 export const BLOCCHI: readonly string[] = [
   'pesca',
@@ -111,6 +124,7 @@ export const BLOCCHI: readonly string[] = [
   'pasta brisee',
   'pasta per pizza',
   'pasta di acciughe',
+  'salame di cioccolato',
 ];
 
 /**

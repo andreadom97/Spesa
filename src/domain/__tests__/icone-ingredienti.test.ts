@@ -50,6 +50,22 @@ describe('trovaIcona', () => {
     ['Finocchi', 'finocchio'],
     ['Arance', 'arancia'],
     ['Noce moscata', 'spezie'],
+    // icone di famiglia (03/10): i nomi generici delle diete importate
+    ['Frutta fresca di stagione', 'frutta'],
+    ['Frutta di stagione', 'frutta'],
+    ['Verdure grigliate', 'verdura'],
+    ['Verdure miste', 'verdura'],
+    ['Frutta a guscio', 'frutta-guscio'],
+    ['Nocciole', 'frutta-guscio'],
+    ['Pistacchi', 'frutta-guscio'],
+    ['Frutta secca', 'frutta-guscio'],
+    ['Prosciutto cotto', 'salumi'],
+    ['Prosciutto crudo', 'salumi'],
+    ['Bresaola', 'salumi'],
+    ['Olive taggiasche', 'olive'],
+    ['Spezie', 'spezie'],
+    ['Erbe aromatiche', 'erbe'],
+    ['Insalatona mista', 'insalata'],
   ])('%s → %s', (nome, chiave) => {
     expect(trovaIcona(nome)).toBe(chiave);
   });
@@ -67,6 +83,13 @@ describe('trovaIcona', () => {
     ['Pasta al pomodoro', 'pasta'],
     ['Olio di semi di arachide', 'olio'],
     ['Brodo di pollo', 'minestra'],
+    // non regressione delle famiglie (03/10): i composti restano sull'ingrediente base
+    ['Olio extravergine di oliva', 'olio'],
+    ["Olio d'oliva", 'olio'],
+    ['Frutti di bosco', 'fragola'],
+    ['Noci', 'noce'],
+    ['Yogurt alla frutta', 'yogurt'],
+    ['Marmellata di frutta', 'marmellata'],
   ])('%s → %s (posizione prima della lunghezza)', (nome, chiave) => {
     expect(trovaIcona(nome)).toBe(chiave);
   });
@@ -82,18 +105,17 @@ describe('trovaIcona', () => {
   });
 
   it.each([
-    // esito del gate del 26/09: nessuna icona per kiwi, affettati e mais
+    // esito del gate del 26/09, rivisto il 03/10: i salumi hanno l'icona di famiglia
     'Kiwi',
-    'Prosciutto crudo',
-    'Bresaola',
     'Mais',
   ])('%s → null (gate 26/09)', (nome) => {
     expect(trovaIcona(nome)).toBeNull();
   });
 
-  // Esclusi di proposito dal catalogo icone al gate del 26/09: restano senza
-  // icona per decisione di Andrea, non per un buco nel catalogo.
-  const ESCLUSI_DI_PROPOSITO = ['Prosciutto crudo', 'Prosciutto cotto', 'Bresaola', 'Mais'];
+  // Esclusi di proposito dal catalogo icone al gate del 26/09 (rivisto il 03/10:
+  // i salumi hanno l'icona di famiglia): restano senza icona per decisione di
+  // Andrea, non per un buco nel catalogo.
+  const ESCLUSI_DI_PROPOSITO = ['Mais'];
 
   it('copre tutti gli INGREDIENTI_BASE, salvo gli esclusi di proposito', () => {
     const scoperti = INGREDIENTI_BASE.map((i) => i.nome).filter((n) => trovaIcona(n) === null);
@@ -101,9 +123,9 @@ describe('trovaIcona', () => {
   });
 
   it.each([
-    // BLOCCHI: stessa radice di un sinonimo vero (pesca~pesce, grano~grana) o
-    // impasti/creme che non sono pasta secca — meglio nessuna icona che una
-    // sbagliata.
+    // BLOCCHI: stessa radice di un sinonimo vero (pesca~pesce, grano~grana),
+    // impasti/creme che non sono pasta secca o dolci col nome di un salume —
+    // meglio nessuna icona che una sbagliata.
     'Pesca',
     'Succo di pesca',
     'Tè alla pesca',
@@ -116,6 +138,7 @@ describe('trovaIcona', () => {
     'Pasta brisée',
     'Pasta per pizza',
     'Pasta di acciughe',
+    'Salame di cioccolato',
   ])('%s → null (blocco)', (nome) => {
     expect(trovaIcona(nome)).toBeNull();
   });
@@ -135,8 +158,8 @@ describe('trovaIcona', () => {
 });
 
 describe('CATALOGO_ICONE', () => {
-  it('64 icone', () => {
-    expect(CHIAVI_ICONE).toHaveLength(64);
+  it('69 icone (64 del 26/09 + 5 famiglie del 03/10)', () => {
+    expect(CHIAVI_ICONE).toHaveLength(69);
   });
 
   it('ogni sinonimo appartiene a una sola chiave', () => {
