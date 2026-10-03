@@ -37,7 +37,7 @@ function Cella({ chiave, area, sfondo, bordo, tono }: { chiave: ChiaveIcona; are
     <td>
       <div style={{ position: 'relative', width: 64, height: 64, borderRadius: 12, background: sfondo, border: `1px solid ${bordo}`, overflow: 'hidden' }}>
         <div style={{ position: 'absolute', inset: 6 }}>
-          <IconaIngrediente chiave={chiave} area={area} tono={tono} taglia={52} />
+          <IconaIngrediente chiave={chiave} area={area} tono={tono} taglia={60} />
         </div>
       </div>
     </td>

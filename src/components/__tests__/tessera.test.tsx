@@ -65,17 +65,17 @@ describe('Tessera · icona ingrediente', () => {
     const { container } = render(<Tessera {...base} nome="Carote" spuntato={false} protagonista={false} />);
     expect(icona(container)).toHaveAttribute('data-icona', 'carota');
     expect(icona(container)).toHaveAttribute('stroke', '#7AA838');
-    expect(icona(container)).toHaveAttribute('width', '52');
+    expect(icona(container)).toHaveAttribute('width', '60');
     expect(screen.getByText('Carote').style.textShadow).toContain('#FFFFFF');
     const t = screen.getByRole('button');
     expect(t.style.position).toBe('relative');
     expect(t.style.overflow).toBe('hidden');
   });
 
-  it('protagonista: icona bianca a 84 px, alone nel colore d\'area a 3 px', () => {
+  it('protagonista: icona a 96 px nel tono medio, alone nel colore d\'area a 3 px', () => {
     const { container } = render(<Tessera {...base} nome="Carote" spuntato={false} protagonista />);
-    expect(icona(container)).toHaveAttribute('stroke', '#FFFFFF');
-    expect(icona(container)).toHaveAttribute('width', '84');
+    expect(icona(container)).toHaveAttribute('stroke', '#7AA838');
+    expect(icona(container)).toHaveAttribute('width', '96');
     expect(screen.getByText('Carote').style.textShadow).toContain('0 0 4px #A8D96A');
   });
 

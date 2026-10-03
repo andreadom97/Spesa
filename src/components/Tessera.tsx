@@ -121,7 +121,7 @@ export function Tessera({
         overflow: 'hidden',
       }}
     >
-      {chiave && <IconaIngrediente chiave={chiave} area={area} tono={tonoIcona} taglia={protagonista ? 84 : 52} />}
+      {chiave && <IconaIngrediente chiave={chiave} area={area} tono={tonoIcona} taglia={protagonista ? 96 : 60} />}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 'none', position: 'relative' }}>
         <span
           style={{

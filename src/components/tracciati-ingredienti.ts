@@ -1,16 +1,7 @@
 import type { ChiaveIcona } from '@/domain/icone-ingredienti';
 
-/**
- * `sil` è la sagoma chiusa (pieno e maschera dell'ombra), `d` il contorno, `dd` i dettagli in
- * gruppi, al massimo cinque (spec 2026-10-03 §3); `rot` ruota sagoma, contorno e dettagli.
- * Finché il catalogo non è tutto ridisegnato, `sil` è facoltativa e `dd` può essere ancora la
- * stringa unica del 26/09: `gruppiDettaglio` la tratta come un gruppo solo.
- */
-export interface Tracciato { sil?: string; d: string; dd: string | readonly string[]; rot?: string }
-
-export function gruppiDettaglio(t: Tracciato): readonly string[] {
-  return typeof t.dd === 'string' ? [t.dd] : t.dd;
-}
+/** `sil` è la sagoma chiusa (pieno e maschera dell'ombra), `d` il contorno, `dd` i dettagli in gruppi (da uno a cinque); `rot` ruota sagoma, contorno e dettagli (spec 2026-10-03 §3). */
+export interface Tracciato { sil: string; d: string; dd: readonly string[]; rot?: string }
 
 /** Un cerchio come path: serve dove la sagoma e i fori stanno nello stesso `d`. */
 const circ = (x: number, y: number, r: number) => `M${x - r} ${y}a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0`;
@@ -18,8 +9,9 @@ const circ = (x: number, y: number, r: number) => `M${x - r} ${y}a${r} ${r} 0 1 
 /**
  * Griglia 24, grammatica del delta del 26/09 (docs/design-delta/DELTA-2026-09-26-icone-ingrediente.md):
  * sagoma fra 2 e 22, ciò che fa riconoscere l'ingrediente fuori dalla fascia
- * tagliata (x o y oltre 19,2), fino a tre segni interni, riflesso ad arco a
- * sinistra sugli oggetti tondi, oggetti allungati in diagonale.
+ * tagliata (x o y oltre 19,2), fino a cinque gruppi di dettagli (fori fino a raggio 0,3),
+ * sagoma chiusa che copre il contorno, riflesso ad arco a sinistra sugli oggetti tondi,
+ * oggetti allungati in diagonale.
  */
 export const TRACCIATI: Partial<Record<ChiaveIcona, Tracciato>> = {
   // ortofrutta

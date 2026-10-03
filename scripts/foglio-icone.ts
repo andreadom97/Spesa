@@ -10,7 +10,7 @@ import { CHIAVI_ICONE, type ChiaveIcona } from '../src/domain/icone-ingredienti'
 import { AREE } from '../src/domain/aree';
 import type { AreaId } from '../src/domain/types';
 import { TRACCIATI } from '../src/components/tracciati-ingredienti';
-import { IconaDueToni, type TonoDueToni } from '../src/components/IconaDueToni';
+import { IconaIngrediente, type TonoIcona } from '../src/components/IconaIngrediente';
 
 /** Il reparto tipico di ogni chiave, come nei commenti del catalogo: serve solo a colorare il foglio. */
 const REPARTO: Record<AreaId, readonly ChiaveIcona[]> = {
@@ -32,14 +32,14 @@ function iconaOggi(k: ChiaveIcona): string {
 }
 
 let n = 0;
-function nuova(k: ChiaveIcona, tono: TonoDueToni, taglia: 60 | 96): string {
+function nuova(k: ChiaveIcona, tono: TonoIcona, taglia: 60 | 96): string {
   // useId riparte a ogni renderToStaticMarkup: senza un prefisso unico le maschere avrebbero tutte lo stesso id.
-  return renderToStaticMarkup(createElement(IconaDueToni, { chiave: k, area: areaDi(k), tono, taglia }), { identifierPrefix: `i${++n}-` });
+  return renderToStaticMarkup(createElement(IconaIngrediente, { chiave: k, area: areaDi(k), tono, taglia }), { identifierPrefix: `i${++n}-` });
 }
 
-function tessera(k: ChiaveIcona, tono: TonoDueToni): string {
+function tessera(k: ChiaveIcona, tono: TonoIcona): string {
   const a = AREA.get(areaDi(k))!;
-  const stile: Record<TonoDueToni, string> = {
+  const stile: Record<TonoIcona, string> = {
     area: `background:#FFFFFF;border:1px solid ${a.colore}73`,
     hero: `background:${a.colore};border:1px solid ${a.colore}`,
     tinta: `background:${a.tintaOpaca}`,

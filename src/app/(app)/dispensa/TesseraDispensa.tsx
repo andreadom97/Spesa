@@ -44,7 +44,7 @@ export function TesseraDispensa({ voce, pillola, onApri }: { voce: VoceDispensa;
         position: 'relative', overflow: 'hidden',
       }}
     >
-      {chiave && <IconaIngrediente chiave={chiave} area={area} tono={inCasa ? 'area' : 'spento'} taglia={52} />}
+      {chiave && <IconaIngrediente chiave={chiave} area={area} tono={inCasa ? 'tinta' : 'spento'} taglia={60} />}
       <span
         style={{
           ...PILLOLA,
