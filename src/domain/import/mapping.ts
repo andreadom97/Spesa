@@ -12,10 +12,14 @@ export function normalizza(s: string): string {
 }
 
 /**
- * Match esatto sul nome normalizzato, poi per inclusione (in entrambi i versi)
- * preferendo il nome più corto. Niente fuzzy a distanza: un abbinamento
- * sbagliato silenzioso è peggio di un ingrediente doppio, e l'utente vede
- * comunque l'esito nel passo formati. Un conflitto di unità rompe il match.
+ * Due livelli (spec 8c §A.2). Il primo come sempre, a unità compatibile: match esatto sul nome
+ * normalizzato, poi per inclusione (in entrambi i versi) preferendo il nome più corto. Niente
+ * fuzzy a distanza: un abbinamento sbagliato silenzioso è peggio di un ingrediente doppio.
+ * Il secondo, solo se il primo non trova niente: lo stesso nome ESATTO con l'unità diversa fra
+ * g e pz → abbinamento con cambio di unità (il nuovo piano prevale, `cambiUnita` in
+ * ingredienti.ts). Niente inclusione al secondo livello («Pasta di farro» non cambia l'unità di
+ * «Pasta»), niente ml (servirebbe una densità); fra due esistenti dallo stesso nome vince il primo
+ * per id.
  */
 export function abbina(alimento: string, unita: UnitaBase | null, ingredienti: Ingredient[]): Ingredient | null {
   const norm = normalizza(alimento);
@@ -28,7 +32,12 @@ export function abbina(alimento: string, unita: UnitaBase | null, ingredienti: I
       return n.includes(norm) || norm.includes(n);
     })
     .sort((a, b) => a.nome.length - b.nome.length);
-  return inclusi[0] ?? null;
+  if (inclusi[0]) return inclusi[0];
+  if (unita !== 'g' && unita !== 'pz') return null;
+  const altra: UnitaBase = unita === 'g' ? 'pz' : 'g';
+  return ingredienti
+    .filter((i) => i.unitaBase === altra && normalizza(i.nome) === norm)
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))[0] ?? null;
 }
 
 const SINONIMI_SLOT: Record<string, string[]> = {

@@ -95,3 +95,29 @@ describe('ingredientiDaAbbinare', () => {
     expect(ingredientiDaAbbinare(piano, {}).find((v) => v.alimento === 'miele')?.unita).toBe('g');
   });
 });
+
+describe('abbina a due livelli (spec 8c §A.2)', () => {
+  const es = (id: string, nome: string, unitaBase: Ingredient['unitaBase']): Ingredient => ({
+    id, nome, unitaBase, area: 'ortofrutta', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 500, prezzoConfezione: null, ean: null,
+  });
+
+  it('se la stessa unità non trova niente, lo stesso nome esatto fra g e pz', () => {
+    expect(abbina('zucchine', 'g', [es('i-z', 'Zucchine', 'pz')])?.id).toBe('i-z');
+    expect(abbina('Uova', 'pz', [es('i-u', 'uova', 'g')])?.id).toBe('i-u');
+  });
+
+  it('mai fra ml e un\'altra unità, mai per inclusione', () => {
+    expect(abbina('latte', 'ml', [es('i-l', 'Latte', 'g')])).toBeNull();
+    expect(abbina('latte', 'g', [es('i-l', 'Latte', 'ml')])).toBeNull();
+    expect(abbina('zucchine grigliate', 'g', [es('i-z', 'Zucchine', 'pz')])).toBeNull();
+  });
+
+  it('la stessa unità vince sul cambio, anche per inclusione', () => {
+    expect(abbina('zucchine', 'g', [es('i-zp', 'Zucchine', 'pz'), es('i-zg', 'Zucchine', 'g')])?.id).toBe('i-zg');
+    expect(abbina('zucchine', 'g', [es('i-zp', 'Zucchine', 'pz'), es('i-zb', 'Zucchine bio', 'g')])?.id).toBe('i-zb');
+  });
+
+  it('a parità di nome vince il primo per id', () => {
+    expect(abbina('zucchine', 'g', [es('i-z2', 'Zucchine', 'pz'), es('i-z1', 'Zucchine', 'pz')])?.id).toBe('i-z1');
+  });
+});

@@ -93,6 +93,17 @@ export interface IngredienteProposto {
   prezzoConfezione: number | null;
 }
 
+/** La scelta esplicita «No, è nuovo» in «È lo stesso di…» (spec 8c §G): non è un id, gli id sono uuid. */
+export const SCELTA_NUOVO = 'nuovo';
+
+/** La decisione su un cambio di unità di un ingrediente che hai (spec 8c §A.3). */
+export interface DecisioneCambio {
+  /** «Tienile a pezzi»: l'ingrediente resta com'è e si convertono le righe della dieta. */
+  tieni: boolean;
+  /** Grammi di un pezzo scritti da te; null = quello della tabella. */
+  pesoPezzo: number | null;
+}
+
 export type PassoRevisione = 'revisione' | 'formati' | 'riepilogo';
 
 export interface StatoRevisione {
@@ -104,6 +115,13 @@ export interface StatoRevisione {
   correzioni: Record<string, PastoEstratto>;
   /** Compilati entrando nel passo formati; editati lì. */
   ingredientiNuovi: IngredienteProposto[];
+  /**
+   * «È lo stesso di…» (spec 8c §G): alimento → id dell'ingrediente che hai, o `SCELTA_NUOVO`.
+   * Assente nelle bozze di prima dell'8c: Ingredienti lo ricostruisce dai nomi (`sceltiIniziali`).
+   */
+  scelti?: Record<string, string>;
+  /** Le decisioni sui cambi di unità, per id dell'ingrediente. Assente = proposta accettata col peso della tabella. */
+  cambiUnita?: Record<string, DecisioneCambio>;
 }
 
 export function chiavePasto(settimana: number, giorno: number, indicePasto: number): string {

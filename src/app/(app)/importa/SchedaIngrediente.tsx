@@ -21,6 +21,7 @@ const TESTO_AVVISO: Record<MotivoBlocco, string> = {
   nomeVuoto: "Scrivi il nome dell'ingrediente.",
   doppio: 'Un altro ingrediente si chiama già così: cambia il nome.',
   confezione: "Scrivi quanto c'è in una confezione.",
+  peso: 'Scrivi quanto pesa un pezzo: serve a convertire le quantità.',
 };
 
 export type CampoSelettore = 'area' | 'stesso';

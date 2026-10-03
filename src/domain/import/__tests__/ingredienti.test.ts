@@ -1,11 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import type { Ingredient } from '@/domain/types';
-import type { IngredienteProposto, PastoEstratto, StatoRevisione } from '../types';
-import { PIANO_MENU_SETTIMANALE } from '../fixtures';
+import type { IngredienteProposto, PastoEstratto, PianoEstratto, RigaEstratta, StatoRevisione } from '../types';
+import { SCELTA_NUOVO } from '../types';
+import { PIANO_GIORNATA_UNICA, PIANO_MENU_SETTIMANALE } from '../fixtures';
 import { proponi } from '../formati-tipici';
 import {
-  calcolaProposte, diRipiego, legataA, motiviBlocco, nomiDoppi, passoBloccato, sceltiIniziali, sezioniIniziali, valoreRipiego,
+  calcolaProposte, cambiDiretti, cambiUnita, diRipiego, esempioPiatto, esempioRiga, legataA, legataAlCommit, motiviBlocco, nomeProposto,
+  nomiDoppi, passoBloccato, sceltiIniziali, sezioniIniziali, valoreRipiego,
 } from '../ingredienti';
+import { motiviBlocco8b, passoBloccato8b } from './ingredienti-8b';
 import { nomeAreaFrase } from '@/domain/aree';
 
 const ing = (id: string, nome: string, unitaBase: Ingredient['unitaBase']): Ingredient => ({
@@ -78,10 +81,13 @@ describe('calcolaProposte', () => {
 });
 
 describe('legataA', () => {
-  it('stesso nome normalizzato e stessa unità di un esistente', () => {
+  it('stesso nome normalizzato e stessa unità di un esistente; fra g e pz col cambio di unità (spec 8c §A.2)', () => {
     const verdi = ing('i-verdi', 'Olive Verdi', 'pz');
     expect(legataA(proposta('olive taggiasche', 'olive verdi', 'pz'), [verdi])).toBe(verdi);
-    expect(legataA(proposta('olive taggiasche', 'olive verdi', 'g'), [verdi])).toBeNull();
+    // Fra g e pz lo stesso nome esatto è un abbinamento con cambio di unità: legata.
+    expect(legataA(proposta('olive taggiasche', 'olive verdi', 'g'), [verdi])).toBe(verdi);
+    // Fra ml e pz non c'è cambio: non legata.
+    expect(legataA(proposta('olive taggiasche', 'olive verdi', 'ml'), [verdi])).toBeNull();
   });
 
   it('lega anche per inclusione, come traduciBozza: "Pasta di semola" g aggancia "Semola" g', () => {
@@ -115,8 +121,11 @@ describe('nomiDoppi', () => {
     expect([...nomiDoppi([a, b, proposta('riso', 'Riso')], [])].sort()).toEqual(['pane di segale', 'pane integrale']);
   });
 
-  it('un esistente con lo stesso nome e un\'unità diversa rende doppia la proposta', () => {
-    expect([...nomiDoppi([proposta('olive', 'Olive', 'g')], [ing('i-olive', 'Olive', 'pz')])]).toEqual(['olive']);
+  it('un esistente con lo stesso nome e un\'unità diversa rende doppia la proposta, se fra le due unità non c\'è cambio (spec 8c §A.2)', () => {
+    // Fra g e pz lo stesso nome esatto è un abbinamento con cambio di unità: legata, non doppia.
+    expect(nomiDoppi([proposta('olive', 'Olive', 'g')], [ing('i-olive', 'Olive', 'pz')]).size).toBe(0);
+    // Fra ml e pz non c'è cambio (servirebbe una densità): resta doppia.
+    expect([...nomiDoppi([proposta('olive', 'Olive', 'ml')], [ing('i-olive', 'Olive', 'pz')])]).toEqual(['olive']);
   });
 
   it('due proposte legate allo stesso esistente non sono doppie', () => {
@@ -207,5 +216,137 @@ describe('nomeAreaFrase', () => {
   it('il nome dell\'area in frase', () => {
     expect(nomeAreaFrase('cereali')).toBe('Pasta, riso e cereali');
     expect(nomeAreaFrase('latticini')).toBe('Latticini, uova e salumi');
+  });
+});
+
+/** Un piano di un solo pranzo con queste righe fisse (alimento, quantità, unità). */
+function pianoCon(...righe: [string, number | null, 'g' | 'ml' | 'pz' | null][]): PianoEstratto {
+  const piano = structuredClone(PIANO_GIORNATA_UNICA);
+  piano.settimane[0].giorni[0].pasti[0].piatti[0].righeFisse = righe.map(([alimento, quantita, unita]): RigaEstratta => ({
+    alimento, quantita, unita, quantitaInferita: false, testoOriginale: `${alimento} ${quantita ?? ''}${unita ?? ''}`.trim(),
+  }));
+  return piano;
+}
+const STATO_PRANZO: StatoRevisione = { ...STATO, mappaturaPasti: { pranzo: 's-1' } };
+
+describe('cambiUnita (spec 8c §A.2, §A.3)', () => {
+  const ZUCCHINE = ing('i-zucc', 'Zucchine', 'pz');
+  const piano = pianoCon(['zucchine', 150, 'g']);
+
+  it('le zucchine della dieta in g finiscono su quelle che hai a pezzi: già scelto, peso dalla tabella', () => {
+    expect(calcolaProposte(piano, STATO_PRANZO, [ZUCCHINE])).toEqual([]);
+    expect(cambiUnita(piano, STATO_PRANZO, [ZUCCHINE])).toEqual([{
+      ingredientId: 'i-zucc', nome: 'Zucchine', da: 'pz', a: 'g', alimenti: ['zucchine'], pesoPezzo: 200, pesoDaTabella: true, tieni: false,
+    }]);
+    expect(passoBloccato([], [ZUCCHINE], {}, cambiUnita(piano, STATO_PRANZO, [ZUCCHINE]))).toBe(false);
+  });
+
+  it('le decisioni salvate vincono: «Tienile a pezzi» e il peso scritto', () => {
+    const stato = { ...STATO_PRANZO, cambiUnita: { 'i-zucc': { tieni: true, pesoPezzo: 180 } } };
+    expect(cambiUnita(piano, stato, [ZUCCHINE])[0]).toMatchObject({ tieni: true, pesoPezzo: 180, pesoDaTabella: false });
+  });
+
+  it('peso fuori tabella: null, e il passo è bloccato finché non lo scrivi', () => {
+    const cavolo = ing('i-cav', 'Cavolo nero', 'pz');
+    const pianoCavolo = pianoCon(['cavolo nero', 200, 'g']);
+    const cambi = cambiUnita(pianoCavolo, STATO_PRANZO, [cavolo]);
+    expect(cambi[0]).toMatchObject({ pesoPezzo: null, pesoDaTabella: false });
+    expect(passoBloccato([], [cavolo], {}, cambi)).toBe(true);
+    expect(cambiDiretti(cambi, [])).toEqual(cambi);
+    const scritto = cambiUnita(pianoCavolo, { ...STATO_PRANZO, cambiUnita: { 'i-cav': { tieni: false, pesoPezzo: 300 } } }, [cavolo]);
+    expect(passoBloccato([], [cavolo], {}, scritto)).toBe(false);
+  });
+
+  it('una proposta legata per scelta a un ingrediente in un\'altra unità: il cambio è suo, e senza peso blocca con «peso»', () => {
+    const cavolo = ing('i-cav', 'Cavolo nero', 'pz');
+    const p = { ...proponi('cavolo riccio', 'g'), nome: 'Cavolo nero' };
+    const stato: StatoRevisione = { ...STATO_PRANZO, ingredientiNuovi: [p], scelti: { 'cavolo riccio': 'i-cav' } };
+    const cambi = cambiUnita(pianoCon(['cavolo riccio', 200, 'g']), stato, [cavolo]);
+    expect(cambi).toEqual([expect.objectContaining({ ingredientId: 'i-cav', alimenti: ['cavolo riccio'], pesoPezzo: null })]);
+    expect(cambiDiretti(cambi, [p])).toEqual([]);
+    expect(motiviBlocco([p], [cavolo], stato.scelti, cambi).get('cavolo riccio')).toEqual(['peso']);
+  });
+
+  it('fra ml e altro non c\'è cambio', () => {
+    expect(cambiUnita(pianoCon(['latte', 200, 'ml']), STATO_PRANZO, [ing('i-l', 'Latte', 'g')])).toEqual([]);
+  });
+});
+
+describe('la scelta esplicita «nuovo» (spec 8c §G)', () => {
+  const p = { ...proponi('fiocchi di avena', 'g'), nome: "Fiocchi d'avena" };
+
+  it('legataA la rispetta: il nome non riporta indietro la scelta', () => {
+    expect(legataA(p, [AVENA])).toBe(AVENA);
+    expect(legataA(p, [AVENA], { 'fiocchi di avena': SCELTA_NUOVO })).toBeNull();
+    expect(legataA(p, [AVENA, ing('i-x', 'Altro', 'g')], { 'fiocchi di avena': 'i-x' })?.id).toBe('i-x');
+  });
+
+  it('una «nuova» col nome di un ingrediente che hai è un doppio: va rinominata', () => {
+    expect(motiviBlocco([p], [AVENA], { 'fiocchi di avena': SCELTA_NUOVO }).get('fiocchi di avena')).toEqual(['doppio']);
+  });
+
+  it('legataAlCommit: una «nuova» si aggancia solo al nome esatto con la stessa unità', () => {
+    const z = { ...proponi('zucchine trifolate', 'g'), nome: 'Zucchine trifolate' };
+    const scelti = { 'zucchine trifolate': SCELTA_NUOVO };
+    expect(legataAlCommit(z, [ing('i-z', 'Zucchine', 'g')], scelti)).toBeNull();
+    expect(legataAlCommit(z, [ing('i-zt', 'Zucchine trifolate', 'g')], scelti)?.id).toBe('i-zt');
+    expect(legataAlCommit(z, [ing('i-z', 'Zucchine', 'g')])?.id).toBe('i-z');
+  });
+});
+
+describe('i nomi e gli esempi della Scheda (spec 8c §G, §A.3)', () => {
+  it('nomeProposto: il nome della dieta con gli accenti', () => {
+    expect(nomeProposto(pianoCon(['caffè', 10, 'g']), STATO_PRANZO, 'caffe', 'g')).toBe('Caffè');
+  });
+
+  it('esempioRiga: la prima riga della dieta con una quantità', () => {
+    expect(esempioRiga(pianoCon(['zucchine', null, null], ['zucchine', 150, 'g']), STATO_PRANZO, ['zucchine'])).toEqual({ quantita: 150, unita: 'g' });
+    expect(esempioRiga(pianoCon(['zucchine', null, null]), STATO_PRANZO, ['zucchine'])).toBeNull();
+  });
+
+  it('esempioPiatto: il primo piatto attivo con una quantità nell\'unità di oggi', () => {
+    const piatto = (id: string, attivo: boolean, quantita: number | null) => ({
+      id, nome: `Piatto ${id}`, slotDefId: 's', fonte: 'proprio' as const, attivo, descrizione: null, settimanaCiclo: null, giornoCiclo: null,
+      ingredienti: [{ ingredientId: 'i-zucc', quantita, unita: 'pz' as const }], componenti: [],
+    });
+    expect(esempioPiatto('i-zucc', 'pz', [piatto('a', false, 2), piatto('b', true, null), piatto('c', true, 2)])).toEqual({ nome: 'Piatto c', quantita: 2 });
+  });
+});
+
+describe('differenziale: motiviBlocco e passoBloccato dell\'8b contro l\'8c, senza unità diverse (spec 8c §J)', () => {
+  const ESISTENTI: Ingredient[][] = [
+    [],
+    [AVENA],
+    [AVENA, ing('i-pane', 'Pane integrale', 'g')],
+    [ing('i-latte', 'Latte parzialmente scremato', 'ml'), ing('i-semola', 'Semola', 'g')],
+    [ing('i-pasta', 'Pasta di semola', 'g'), ing('i-olio', 'Olio extravergine di oliva', 'ml'), ing('i-latte-g', 'Latte', 'g')],
+  ];
+
+  function varianti(proposte: IngredienteProposto[], esistenti: Ingredient[]): { proposte: IngredienteProposto[]; scelti: Record<string, string> }[] {
+    const [prima, seconda] = proposte;
+    const cambia = (bersaglio: IngredienteProposto, cambio: Partial<IngredienteProposto>) =>
+      proposte.map((p) => (p === bersaglio ? { ...p, ...cambio } : p));
+    const out: { proposte: IngredienteProposto[]; scelti: Record<string, string> }[] = [{ proposte, scelti: {} }];
+    if (prima && seconda) out.push({ proposte: cambia(seconda, { nome: prima.nome }), scelti: {} });
+    if (prima) out.push({ proposte: cambia(prima, { nome: '' }), scelti: {} });
+    if (prima) out.push({ proposte: cambia(prima, { formatoConfezione: 0 }), scelti: {} });
+    const compatibile = prima ? esistenti.find((e) => e.unitaBase === prima.unitaBase) : undefined;
+    if (prima && compatibile) {
+      out.push({ proposte: cambia(prima, { nome: compatibile.nome, formatoConfezione: Number.NaN }), scelti: { [prima.alimento]: compatibile.id } });
+    }
+    return out;
+  }
+
+  it('coincidono su ogni caso', () => {
+    let casi = 0;
+    for (const esistenti of ESISTENTI) {
+      const proposte = calcolaProposte(PIANO_MENU_SETTIMANALE, STATO, esistenti);
+      for (const v of varianti(proposte, esistenti)) {
+        expect([...motiviBlocco(v.proposte, esistenti, v.scelti)].sort()).toEqual([...motiviBlocco8b(v.proposte, esistenti, v.scelti)].sort());
+        expect(passoBloccato(v.proposte, esistenti, v.scelti)).toBe(passoBloccato8b(v.proposte, esistenti, v.scelti));
+        casi += 1;
+      }
+    }
+    expect(casi).toBeGreaterThanOrEqual(20);
   });
 });

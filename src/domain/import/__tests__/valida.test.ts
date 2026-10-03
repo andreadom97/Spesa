@@ -347,3 +347,22 @@ describe('validaEsito — i cucchiai (spec 8c §C)', () => {
     expect(() => validaEsito(conRiga({ alimento: 'latte', quantita: 1, unita: 'tazza', quantitaInferita: false, testoOriginale: '1 tazza di latte' }))).toThrow(PianoNonValidoError);
   });
 });
+
+describe('validaStatoRevisione — i campi dell\'8c (spec 8c §G, §A.3)', () => {
+  const BASE = { passo: 'formati', mappaturaPasti: {}, pastiConfermati: [], correzioni: {}, ingredientiNuovi: [] };
+
+  it('una bozza di prima dell\'8c non ha scelti né cambiUnita, e resta valida', () => {
+    expect(validaStatoRevisione(BASE)).toEqual(BASE);
+  });
+
+  it('scelti e cambiUnita arrivano intatti', () => {
+    const s = { ...BASE, scelti: { zucchine: 'nuovo', avena: 'i-1' }, cambiUnita: { 'i-z': { tieni: true, pesoPezzo: 180 }, 'i-c': { tieni: false, pesoPezzo: null } } };
+    expect(validaStatoRevisione(s)).toEqual(s);
+  });
+
+  it('un peso non positivo, un tieni non booleano o una scelta non testuale sono una bozza corrotta', () => {
+    expect(() => validaStatoRevisione({ ...BASE, cambiUnita: { 'i-z': { tieni: false, pesoPezzo: 0 } } })).toThrow(PianoNonValidoError);
+    expect(() => validaStatoRevisione({ ...BASE, cambiUnita: { 'i-z': { tieni: 'sì', pesoPezzo: null } } })).toThrow(PianoNonValidoError);
+    expect(() => validaStatoRevisione({ ...BASE, scelti: { zucchine: 3 } })).toThrow(PianoNonValidoError);
+  });
+});
