@@ -167,4 +167,15 @@
   --riga-impostazione: 56px;          /* riga di impostazione: altezza minima */
   --coda-scroll: 140px;               /* coda di scorrimento senza dock: 84 + 22 + 34 */
   --coda-scroll-dock: 226px;          /* coda di scorrimento col dock: 114 + 8 + 54 + 40 di dissolvenza + 10 (era 194 col guscio) */
+
+  /* ---------- Oggi (03/10) ---------- */
+  --poster-testo-2: rgba(255, 255, 255, 0.72);  /* poster del pasto: etichetta mono in alto (spec Oggi §B.4) */
+  --poster-testo-3: rgba(255, 255, 255, 0.66);  /* poster del pasto: sottotitolo mono sotto il nome e etichetta della banda */
+  --poster-tasto: rgba(255, 255, 255, 0.12);    /* poster del pasto: fondo delle pillole CAMBIA, COM'È ANDATA, RIMETTI */
+  --poster-bordo: rgba(255, 255, 255, 0.22);    /* poster del pasto: bordo 1 px di quelle pillole */
+  --poster-filo: rgba(255, 255, 255, 0.14);     /* poster del pasto: filo 1 px sopra la banda delle alternative */
+  --poster-casella: rgba(255, 255, 255, 0.45);  /* poster del pasto: caselle della giornata e puntini del carosello */
+  --tinta-neutra: rgba(20, 22, 58, 0.06);       /* pillola di stato neutra (TUTTO IN CASA) e fondo del tasto SCAMBIA spento */
+  --tinta-avviso: rgba(154, 92, 0, 0.10);       /* pillola di stato d'avviso (MANCA: …), testo in --avviso */
+  --tinta-freddo: rgba(47, 111, 191, 0.12);     /* pillola SCONGELA, testo in --freddo */
 }

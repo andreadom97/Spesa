@@ -87,6 +87,17 @@
   --banda-fondo: rgba(20, 22, 58, 0.72);
   --banda-bordo: rgba(255, 255, 255, 0.62);
 
+  /* Oggi (03/10, spec 2026-10-03 §B.4, §C.5): il poster in inchiostro e le tinte delle pillole. */
+  --poster-testo-2: rgba(255, 255, 255, 0.72);
+  --poster-testo-3: rgba(255, 255, 255, 0.66);
+  --poster-tasto: rgba(255, 255, 255, 0.12);
+  --poster-bordo: rgba(255, 255, 255, 0.22);
+  --poster-filo: rgba(255, 255, 255, 0.14);
+  --poster-casella: rgba(255, 255, 255, 0.45);
+  --tinta-neutra: rgba(20, 22, 58, 0.06);
+  --tinta-avviso: rgba(154, 92, 0, 0.10);
+  --tinta-freddo: rgba(47, 111, 191, 0.12);
+
   /* Il Pannello impostazioni (spec fase 5 §B.1): copiati da design/sistema/tokens.css, stessi valori. */
   --pannello-alto: 76px;
   --pannello-velo: rgba(20, 22, 58, 0.55);
@@ -405,3 +416,33 @@
 @media (prefers-reduced-motion: reduce) {
   [data-avvio] { display: none; }
 }
+
+/* Oggi (spec 2026-10-03 §B.4): pillole d'azione sul poster scuro. Disegno 38, area di tap 44. */
+.pillola-poster {
+  position: relative; height: 38px; display: inline-flex; align-items: center; padding: 0 14px;
+  border-radius: 999px; background: var(--poster-tasto); border: 1px solid var(--poster-bordo);
+  color: var(--superficie); font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+  letter-spacing: 0.09em; text-transform: uppercase; text-decoration: none; cursor: pointer;
+}
+.pillola-poster::before { content: ''; position: absolute; inset: -3px 0; }
+/* Stato spento (DESIGN.md §8 Tasti): `disabled` nativo e colori più bassi, non un'opacità. */
+.pillola-poster:disabled { color: var(--poster-casella); border-color: var(--poster-filo); cursor: default; }
+
+/* Oggi (§C.5): il carosello delle alternative scorre di lato, si ferma su ogni carta, e la
+   seconda spunta dal bordo del poster. */
+.carosello-oggi {
+  display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain; scrollbar-width: none; list-style: none; margin: 0; padding: 0;
+}
+.carosello-oggi::-webkit-scrollbar { display: none; }
+.carosello-oggi > li { flex: none; scroll-snap-align: start; }
+
+/* Oggi (§C.5): SCAMBIA, disegno 36, area di tap 44. */
+.tasto-scambia {
+  position: relative; height: 36px; display: inline-flex; align-items: center; gap: 7px;
+  padding: 0 13px 0 11px; border-radius: 999px; border: 0; background: var(--ink);
+  color: var(--superficie); font-family: var(--font-mono); font-size: 10.5px; font-weight: 700;
+  letter-spacing: 0.09em; text-transform: uppercase; cursor: pointer;
+}
+.tasto-scambia::before { content: ''; position: absolute; inset: -4px 0; }
+.tasto-scambia:disabled { background: var(--tinta-neutra); color: var(--ter); cursor: default; }
