@@ -551,22 +551,27 @@ describe('estraiPianoAPagine', () => {
       return { tipo: 'piano', piano: { archetipo: 'menu_settimanale', fonte: 'fixture sintetico', noteEstrazione: [], settimane } };
     }
 
-    it('la stessa settimana due volte nella risposta di una pagina → una voce sola, piano valido', async () => {
-      // Pagina 1: lunedì spezzato in due voci «settimana 1», poi martedì in una terza; pagina 2: la settimana 2.
+    it('la stessa settimana due volte nella risposta di una pagina, con giorni diversi → una voce sola, piano valido', async () => {
+      // Pagina 1: lunedì in una voce «settimana 1», martedì in un'altra; pagina 2: la settimana 2.
       finto.stato.risposte.push(
         { corpo: indiceDi([{ contenuto: [voce(1, 0), voce(1, 1)] }, { contenuto: [voce(2, 0)] }]) },
         ...[1, 2].map(() => ({
           perChiamata: (p: Parameters<typeof numeroPagina>[0]) => (numeroPagina(p) === 1
-            ? rispostaPagina([
-              { numero: 1, giorni: [giornoFixture(1, 0, [0])] },
-              { numero: 1, giorni: [giornoFixture(1, 0, [1, 2])] },
-              { numero: 1, giorni: [giornoFixture(1, 1)] },
-            ])
+            ? rispostaPagina([{ numero: 1, giorni: [giornoFixture(1, 0)] }, { numero: 1, giorni: [giornoFixture(1, 1)] }])
             : pianoDelGiorno(2, 0)),
         })),
       );
       const esito = await estraiPianoAPagine(foto(2), 'claude-sonnet-5');
       expect(validaEsito(esito.grezzo)).toEqual({ tipo: 'piano', piano: PIANO_MENU_SETTIMANALE });
+    });
+
+    it('la stessa settimana due volte con lo stesso giorno → i giorni NON si fondono: l\'errore della validazione resta quello di prima', async () => {
+      finto.stato.risposte.push(
+        { corpo: indiceDi([{ contenuto: [voce(1, 0)] }, { contenuto: [] }]) },
+        { corpo: rispostaPagina([{ numero: 1, giorni: [giornoFixture(1, 0, [0])] }, { numero: 1, giorni: [giornoFixture(1, 0, [1, 2])] }]) },
+      );
+      await expect(estraiPianoAPagine(foto(2), 'claude-sonnet-5'))
+        .rejects.toThrow('Piano estratto non valido (piano.settimane[0].giorni[1].giorno): duplicato nella settimana: 0');
     });
 
     it('settimana 5 su una pagina che l\'indice assegna alla sola settimana 2 → riportata a 2', async () => {
@@ -596,18 +601,15 @@ describe('estraiPianoAPagine', () => {
     });
 
     it('pagina con due settimane nell\'indice: numeri giusti passano anche frammentati; uno estraneo → errore con pagina e numeri, senza contenuto', async () => {
-      // Come la pagina 4 di una dieta vera: la coda della settimana 1 e l'inizio della settimana 2.
-      const indice = indiceDi([{ contenuto: [voce(1, 0)] }, { contenuto: [voce(1, 1), voce(2, 0)] }]);
-      const conSecondaPagina = (seconda: unknown) => ({
-        perChiamata: (p: Parameters<typeof numeroPagina>[0]) => (numeroPagina(p) === 1 ? pianoDelGiorno(1, 0) : seconda),
-      });
+      // Come la pagina 4 di una dieta vera: settimana 1 e settimana 2 sulla stessa pagina, la 1 in due frammenti.
+      const indice = indiceDi([{ contenuto: [] }, { contenuto: [voce(1, 0), voce(2, 0), voce(1, 1)] }]);
       finto.stato.risposte.push(
         { corpo: indice },
-        ...[1, 2].map(() => conSecondaPagina(rispostaPagina([
-          { numero: 1, giorni: [giornoFixture(1, 1, [0])] },
+        { corpo: rispostaPagina([
+          { numero: 1, giorni: [giornoFixture(1, 0)] },
           { numero: 2, giorni: [giornoFixture(2, 0)] },
-          { numero: 1, giorni: [giornoFixture(1, 1, [1])] },
-        ]))),
+          { numero: 1, giorni: [giornoFixture(1, 1)] },
+        ]) },
       );
       const buono = await estraiPianoAPagine(foto(2), 'claude-sonnet-5');
       expect(validaEsito(buono.grezzo)).toEqual({ tipo: 'piano', piano: PIANO_MENU_SETTIMANALE });
@@ -615,10 +617,10 @@ describe('estraiPianoAPagine', () => {
       finto.azzera();
       finto.stato.risposte.push(
         { corpo: indice },
-        ...[1, 2].map(() => conSecondaPagina(rispostaPagina([
-          { numero: 1, giorni: [giornoFixture(1, 1)] },
+        { corpo: rispostaPagina([
+          { numero: 1, giorni: [giornoFixture(1, 0), giornoFixture(1, 1)] },
           { numero: 3, giorni: [giornoFixture(2, 0)] },
-        ]))),
+        ]) },
       );
       const errore = await estraiPianoAPagine(foto(2), 'claude-sonnet-5').catch((e: Error) => e);
       expect(errore).toBeInstanceOf(Error);

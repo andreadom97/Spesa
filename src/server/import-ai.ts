@@ -1,5 +1,5 @@
 import type Anthropic from '@anthropic-ai/sdk';
-import { fondiPagine, unisciSettimaneDoppie, type GiornoDaUnire, type SettimanaDaUnire } from '@/domain/import/fusione';
+import { fondiPagine, unisciSettimaneDoppie, type SettimanaDaUnire } from '@/domain/import/fusione';
 import { validaIndice, type IndiceEstrazione, type PaginaIndice } from '@/domain/import/indice';
 import type { PianoEstratto } from '@/domain/import/types';
 import { PianoNonValidoError, validaPianoParziale } from '@/domain/import/valida';
@@ -457,24 +457,17 @@ function oggetto(v: unknown): Record<string, unknown> | null {
 }
 
 /**
- * Le settimane grezze nella forma che `unisciSettimaneDoppie` sa unire. Ogni condizione è anche
- * di `validaPianoParziale`: una forma che non passa qui non passerebbe nemmeno lì, che dà
- * l'errore preciso. Copia i giorni con `titolo` assente → null, come la validazione.
+ * Le settimane grezze nella forma che `unisciSettimaneDoppie` sa unire: oggetti con un
+ * `numero` e un array `giorni`, che restano grezzi. Ogni condizione è anche di
+ * `validaPianoParziale`: una forma che non passa qui non passerebbe nemmeno lì, che dà
+ * l'errore preciso.
  */
 function settimaneUnibili(settimane: unknown[]): SettimanaDaUnire<unknown>[] | null {
   const unibili: SettimanaDaUnire<unknown>[] = [];
   for (const s of settimane) {
     const se = oggetto(s);
     if (!se || typeof se.numero !== 'number' || !Array.isArray(se.giorni)) return null;
-    const giorni: GiornoDaUnire<unknown>[] = [];
-    for (const g of se.giorni) {
-      const gi = oggetto(g);
-      if (!gi || typeof gi.giorno !== 'number' || !Array.isArray(gi.pasti)) return null;
-      const titolo = gi.titolo ?? null;
-      if (titolo !== null && typeof titolo !== 'string') return null;
-      giorni.push({ giorno: gi.giorno, titolo, pasti: gi.pasti });
-    }
-    unibili.push({ numero: se.numero, giorni });
+    unibili.push({ numero: se.numero, giorni: se.giorni });
   }
   return unibili;
 }
@@ -485,8 +478,8 @@ function settimaneUnibili(settimane: unknown[]): SettimanaDaUnire<unknown>[] | n
  * l'indice già chiarito. Nell'ordine:
  * 1. se l'indice assegna alla pagina una sola settimana, ogni numero diverso (anche fuori
  *    1..4) torna a quella;
- * 2. le voci con lo stesso numero si uniscono (`unisciSettimaneDoppie`, le regole di
- *    `fondiPagine`); le note sui titoli diversi si accodano a quelle della pagina;
+ * 2. le voci con lo stesso numero si uniscono in una (`unisciSettimaneDoppie`): solo le voci,
+ *    i giorni si concatenano e un giorno doppio resta doppio (lo boccia la validazione);
  * 3. se l'indice assegna alla pagina più settimane, un numero che non è fra quelle è un
  *    errore che dice pagina e numeri, mai il contenuto.
  * I giorni non si toccano. Una forma che non si sa unire passa intatta: la boccia la validazione.
@@ -501,7 +494,7 @@ function settimaneRiallineate(piano: unknown, pagina: PaginaIndice): unknown {
   });
   const unibili = settimaneUnibili(riportate);
   if (!unibili) return { ...p, settimane: riportate };
-  const { settimane, note } = unisciSettimaneDoppie(unibili);
+  const settimane = unisciSettimaneDoppie(unibili);
   if (attese.length > 1) {
     const estranee = settimane.map((s) => s.numero).filter((n) => !attese.includes(n));
     if (estranee.length > 0) {
@@ -509,8 +502,7 @@ function settimaneRiallineate(piano: unknown, pagina: PaginaIndice): unknown {
       throw new PianoNonValidoError(`pagina ${pagina.pagina}`, `${quali} dall'indice (attese: ${attese.join(', ')})`);
     }
   }
-  const noteEstrazione = Array.isArray(p.noteEstrazione) && note.length > 0 ? [...p.noteEstrazione, ...note] : p.noteEstrazione;
-  return { ...p, settimane, noteEstrazione };
+  return { ...p, settimane };
 }
 
 /** L'esito grezzo di una pagina dev'essere un piano: un rifiuto qui contraddice l'indice, e non è un piano. */

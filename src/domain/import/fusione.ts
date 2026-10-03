@@ -1,79 +1,33 @@
 import type { IndiceEstrazione } from './indice';
 import { normalizza } from './mapping';
-import type { PastoEstratto, PianoEstratto } from './types';
+import type { GiornoEstratto, PianoEstratto } from './types';
 
 /**
- * La forma minima su cui lavora l'unione dei giorni: quella del piano validato e quella della
- * risposta grezza di una pagina già controllata nella forma (v. `pianoParzialeDa`), dove i pasti
- * non sono ancora validati (`P = unknown`).
+ * La settimana nella forma minima su cui lavora `unisciSettimaneDoppie`: la risposta grezza di
+ * una pagina già controllata nella forma (v. `pianoParzialeDa`), coi giorni non ancora validati.
  */
-export interface GiornoDaUnire<P> {
-  giorno: number;
-  titolo: string | null;
-  pasti: P[];
-}
-export interface SettimanaDaUnire<P> {
+export interface SettimanaDaUnire<G> {
   numero: number;
-  giorni: GiornoDaUnire<P>[];
+  giorni: G[];
 }
 
 /**
- * Le regole 2 e 3, l'unica copia: accoda in `dest` (settimana → giorno → giorno fuso) le
- * settimane di UNA pagina, nell'ordine in cui le elenca. Stesso (settimana, giorno) già in
- * `dest` → il titolo: il primo non nullo vince, un secondo diverso diventa una nota (restituita
- * senza prefisso); i pasti si accodano. `fondiCoda`, se c'è, è la regola 3: sul primo giorno
- * della pagina riceve l'ultimo pasto già fuso e il primo nuovo, e dice se ha fuso il secondo
- * dentro il primo (che allora non si accoda). Copia i giorni nuovi e le liste dei pasti, non i
- * pasti: chi chiama passa pasti che può cedere (clonati, o grezzi che nessuno rilegge).
+ * Task 12d (ruling del controller, fix round 1): la risposta di UNA pagina con più voci della
+ * stessa settimana (il modello spezza la pagina in frammenti) diventa una voce per numero, nel
+ * punto della prima comparsa, coi giorni concatenati nell'ordine in cui compaiono. Si uniscono
+ * SOLO le voci settimana: due giorni con lo stesso indice restano due (con giorni_tipo sono
+ * scenari diversi) e li boccia la validazione («duplicato nella settimana»), come prima. Non è
+ * la regola 2 di `fondiPagine`, che fra pagine diverse accoda i pasti dello stesso giorno.
+ * Non muta l'input.
  */
-function accodaSettimane<P>(
-  dest: Map<number, Map<number, GiornoDaUnire<P>>>,
-  settimane: SettimanaDaUnire<P>[],
-  fondiCoda?: (ultimo: P, primo: P) => boolean,
-): string[] {
-  const note: string[] = [];
-  let primoGiornoDellaPagina = true;
-  for (const s of settimane) {
-    let giorni = dest.get(s.numero);
-    if (!giorni) {
-      giorni = new Map();
-      dest.set(s.numero, giorni);
-    }
-    for (const g of s.giorni) {
-      const pasti = [...g.pasti];
-      const esistente = giorni.get(g.giorno);
-      if (!esistente) {
-        giorni.set(g.giorno, { giorno: g.giorno, titolo: g.titolo, pasti });
-      } else {
-        if (esistente.titolo === null) {
-          esistente.titolo = g.titolo;
-        } else if (g.titolo !== null && g.titolo !== esistente.titolo) {
-          note.push(`titolo diverso per settimana ${s.numero} giorno ${g.giorno} ("${g.titolo}" invece di "${esistente.titolo}")`);
-        }
-        const ultimo = esistente.pasti[esistente.pasti.length - 1];
-        if (fondiCoda && primoGiornoDellaPagina && ultimo !== undefined && pasti.length > 0 && fondiCoda(ultimo, pasti[0])) pasti.shift();
-        esistente.pasti.push(...pasti);
-      }
-      primoGiornoDellaPagina = false;
-    }
+export function unisciSettimaneDoppie<G>(settimane: SettimanaDaUnire<G>[]): SettimanaDaUnire<G>[] {
+  const perNumero = new Map<number, G[]>();
+  for (const s of structuredClone(settimane)) {
+    const giorni = perNumero.get(s.numero);
+    if (giorni) giorni.push(...s.giorni);
+    else perNumero.set(s.numero, [...s.giorni]);
   }
-  return note;
-}
-
-/**
- * Task 12d: la risposta di UNA pagina con più voci della stessa settimana (il modello spezza
- * la pagina in frammenti) diventa una voce per numero, con le regole 2 di `fondiPagine` dentro
- * la pagina: giorni nell'ordine in cui compaiono, stesso giorno → pasti accodati, titolo il
- * primo non nullo (un secondo diverso torna in `note`, senza prefisso). Niente regola 3: dentro
- * una pagina nessun pasto continua da un'altra. Non muta l'input.
- */
-export function unisciSettimaneDoppie<P>(settimane: SettimanaDaUnire<P>[]): { settimane: SettimanaDaUnire<P>[]; note: string[] } {
-  const dest = new Map<number, Map<number, GiornoDaUnire<P>>>();
-  const note = accodaSettimane(dest, structuredClone(settimane));
-  return {
-    settimane: [...dest.entries()].map(([numero, giorni]) => ({ numero, giorni: [...giorni.values()] })),
-    note,
-  };
+  return [...perNumero.entries()].map(([numero, giorni]) => ({ numero, giorni }));
 }
 
 /**
@@ -108,14 +62,8 @@ export function unisciSettimaneDoppie<P>(settimane: SettimanaDaUnire<P>[]): { se
 export function fondiPagine(indice: IndiceEstrazione, pagine: { pagina: number; piano: PianoEstratto }[]): PianoEstratto {
   const note = [...indice.noteEstrazione];
   // settimana -> (giorno -> giorno fuso): le chiavi numeriche restano ordinabili alla fine.
-  const settimane = new Map<number, Map<number, GiornoDaUnire<PastoEstratto>>>();
+  const settimane = new Map<number, Map<number, GiornoEstratto>>();
   const ordinate = [...pagine].sort((a, b) => a.pagina - b.pagina);
-  // Regola 3: il primo pasto della pagina entra nell'ultimo già fuso se ha lo stesso nome normalizzato.
-  const fondiCoda = (ultimo: PastoEstratto, primo: PastoEstratto) => {
-    if (normalizza(ultimo.nomeOriginale) !== normalizza(primo.nomeOriginale)) return false;
-    ultimo.piatti.push(...primo.piatti);
-    return true;
-  };
 
   for (const { pagina, piano } of ordinate) {
     const prefisso = `pagina ${pagina}: `;
@@ -124,8 +72,37 @@ export function fondiPagine(indice: IndiceEstrazione, pagine: { pagina: number; 
 
     // Una pagina assente dall'indice non continua da nessuna: si fonde come se fosse a sé.
     const continua = indice.pagine.find((p) => p.pagina === pagina)?.continuaDallaPrecedente ?? false;
-    const noteTitoli = accodaSettimane(settimane, structuredClone(piano.settimane), continua ? fondiCoda : undefined);
-    for (const n of noteTitoli) note.push(prefisso + n);
+    let primoGiornoDellaPagina = true;
+
+    for (const s of piano.settimane) {
+      let giorni = settimane.get(s.numero);
+      if (!giorni) {
+        giorni = new Map();
+        settimane.set(s.numero, giorni);
+      }
+      for (const g of s.giorni) {
+        const pasti = structuredClone(g.pasti);
+        const esistente = giorni.get(g.giorno);
+        if (!esistente) {
+          giorni.set(g.giorno, { giorno: g.giorno, titolo: g.titolo, pasti });
+        } else {
+          if (esistente.titolo === null) {
+            esistente.titolo = g.titolo;
+          } else if (g.titolo !== null && g.titolo !== esistente.titolo) {
+            note.push(`${prefisso}titolo diverso per settimana ${s.numero} giorno ${g.giorno} ("${g.titolo}" invece di "${esistente.titolo}")`);
+          }
+          const ultimo = esistente.pasti[esistente.pasti.length - 1];
+          const primo = pasti[0];
+          if (continua && primoGiornoDellaPagina && ultimo && primo
+            && normalizza(ultimo.nomeOriginale) === normalizza(primo.nomeOriginale)) {
+            ultimo.piatti.push(...primo.piatti);
+            pasti.shift();
+          }
+          esistente.pasti.push(...pasti);
+        }
+        primoGiornoDellaPagina = false;
+      }
+    }
   }
 
   const settimaneOrdinate = [...settimane.entries()]
