@@ -698,17 +698,21 @@ export function anteprimaTogli(piano: PianoEstratto, stato: StatoRevisione, chia
  * CONFERMA I PASTI: le proposte dei dubbi aperti scritte nelle correzioni come «proposta da me»
  * (`quantitaInferita: true`, spec 8c §D), tutte le chiavi del piano in `pastiConfermati` e il passo
  * dopo, in uno stato solo. La porzione e i cucchiai riempiono le righe ancora irrisolte; l'unità
- * più frequente riscrive tutte le righe del gruppo, tranne quelle q.b., che restano com'erano.
+ * più frequente porta nella sua unità le righe che non ci sono, tranne quelle q.b., che restano
+ * com'erano: anche le righe già in quell'unità restano intatte (review finale 8c-bis, I1).
  */
 export function confermaTutti(piano: PianoEstratto, stato: StatoRevisione, esistenti: Ingredient[] = []): StatoRevisione {
   let nuovo = stato;
   for (const g of gruppiRighe(piano, stato, esistenti)) {
     if (g.stato !== 'aperto' || g.proposta === null) continue;
     const p = g.proposta;
-    nuovo = suOgniRigaDelGruppo(piano, nuovo, g.chiave, (riga) =>
-      !quantoBasta(riga) && (p.origine === 'unitaFrequente' || rigaIrrisolta(riga))
-        ? { ...riga, quantita: p.quantita, unita: p.unita, quantitaInferita: true }
-        : riga);
+    nuovo = suOgniRigaDelGruppo(piano, nuovo, g.chiave, (riga) => {
+      if (quantoBasta(riga) || (p.origine !== 'unitaFrequente' && !rigaIrrisolta(riga))) return riga;
+      // Una riga già nell'unità scelta resta com'è, anche trascritta (correzione 8c-bis, review
+      // finale I1): solo la trascritta vota l'unità finale e solo le righe riscritte sono stime.
+      if (p.origine === 'unitaFrequente' && riga.quantita !== null && unitaBaseDi(riga.unita) === p.unita) return riga;
+      return { ...riga, quantita: p.quantita, unita: p.unita, quantitaInferita: true };
+    });
   }
   return { ...nuovo, pastiConfermati: pastiDelPiano(piano, nuovo).map((x) => x.chiave), passo: 'formati' };
 }

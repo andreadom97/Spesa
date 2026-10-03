@@ -4,6 +4,7 @@ import type { IngredienteProposto, PastoEstratto, PianoEstratto, RigaEstratta, S
 import { PIANO_MENU_SETTIMANALE, PIANO_GIORNATA_UNICA } from '../fixtures';
 import { traduciBozza } from '../commit';
 import { ingredientiDaAbbinare, normalizza } from '../mapping';
+import { cambiUnita } from '../ingredienti';
 import { proponi } from '../formati-tipici';
 import {
   anteprimaTogli, cambiaRiga, chiaveGruppo, confermaTutti, conteggi, etichettaGiorno, gruppiRighe, pastiDelGruppo,
@@ -998,5 +999,37 @@ describe('differenziale Task 12b: dubbi.ts contro dubbi-8c-prima', () => {
     let tolto = STATO_PRANZO;
     for (const testo of ['zucchine grigliate', 'zucchine al vapore', 'zucchine trifolate']) tolto = prima12b.togliGruppo(piano, tolto, `zucchine|${testo}`);
     expect(togliGruppo(piano, STATO_PRANZO, 'zucchine|zucchine trifolate')).toEqual(tolto);
+  });
+});
+
+describe('8c-bis, review finale I1: CONFERMA non trasforma le righe trascritte in stime', () => {
+  const zucchine = (quantita: number, unita: 'g' | 'pz'): RigaEstratta =>
+    ({ alimento: 'Zucchine', quantita, unita, quantitaInferita: false, testoOriginale: 'Zucchine' });
+  const ZUCCHINE_PZ: Ingredient = {
+    id: 'i-zucchine', nome: 'Zucchine', unitaBase: 'pz', area: 'ortofrutta', classeResiduo: 'porzionabile', deperibile: true,
+    formatoConfezione: 1, prezzoConfezione: null, ean: null,
+  };
+
+  it('le righe già nell\'unità scelta restano com\'erano, quella portata diventa una stima', () => {
+    const piano = pianoAPranzi([[zucchine(300, 'g')], [zucchine(300, 'g')], [zucchine(2, 'pz')]]);
+    expect(gruppiRighe(piano, STATO_PRANZO)[0].proposta).toMatchObject({ unita: 'g', origine: 'unitaFrequente' });
+    const confermato = confermaTutti(piano, STATO_PRANZO);
+    expect([0, 1, 2].map((g) => rigaDel(piano, confermato, g))).toEqual([
+      zucchine(300, 'g'), zucchine(300, 'g'), { ...zucchine(300, 'g'), quantitaInferita: true },
+    ]);
+  });
+
+  it('dopo CONFERMA gli Ingredienti vedono ancora il cambio pz → g, votato dalle sole righe trascritte', () => {
+    const piano = pianoAPranzi([[zucchine(300, 'g')], [zucchine(300, 'g')], [zucchine(2, 'pz')]]);
+    const confermato = confermaTutti(piano, STATO_PRANZO);
+    expect(cambiUnita(piano, confermato, [ZUCCHINE_PZ])).toEqual([expect.objectContaining({ ingredientId: 'i-zucchine', da: 'pz', a: 'g' })]);
+  });
+
+  it('nel Riepilogo nessuna stima per le righe trascritte', () => {
+    const piano = pianoAPranzi([[zucchine(300, 'g')], [zucchine(300, 'g')], [zucchine(2, 'pz')]]);
+    const confermato = { ...confermaTutti(piano, STATO_PRANZO), cambiUnita: { 'i-zucchine': { tieni: false, pesoPezzo: 200 } } };
+    const s = traduciBozza(piano, confermato, [ZUCCHINE_PZ], [], '2026-10-03');
+    // Con le righe in g sul foglio e quella portata in g, nessuna quantità è stata convertita dal lettore.
+    expect(s.stimePortate).toEqual([]);
   });
 });
