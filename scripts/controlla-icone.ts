@@ -1,7 +1,7 @@
 /**
  * Controllo della geometria delle icone a due toni (spec 2026-10-03 §5). Per ogni chiave con
  * `sil` disegna in Chrome headless contorno e sagoma su una tela 480×480 (scala 20) e conta:
- * - i pixel del contorno (tratto 0,9) fuori dalla sagoma (pieno + bordo a 0,9): sotto l'1%;
+ * - i pixel del contorno (tratto 0,9) fuori dalla sagoma (pieno + bordo a 1,0: tolleranza 0,5 = mezzo spessore più mezzo pixel della tela): sotto l'1%;
  * - i pixel della sagoma fuori dalla fascia 2–22 (mezza unità di tolleranza): zero.
  * Uso: npx tsx scripts/controlla-icone.ts [chiave …]   — senza chiavi controlla tutte quelle con `sil`.
  * Non gira nella CI: serve mentre si disegnano le icone.
@@ -41,7 +41,7 @@ function tela(rot, disegna) {
 }
 const esiti = voci.map(({ chiave, sil, d, rot }) => {
   const contorno = tela(rot, (x) => { x.lineWidth = 0.9; x.stroke(new Path2D(d)); });
-  const sagomaLarga = tela(rot, (x) => { const p = new Path2D(sil); x.fill(p); x.lineWidth = 0.9; x.stroke(p); });
+  const sagomaLarga = tela(rot, (x) => { const p = new Path2D(sil); x.fill(p); x.lineWidth = 1.0; x.stroke(p); });
   const sagoma = tela(rot, (x) => x.fill(new Path2D(sil)));
   let fuori = 0, totale = 0, oltreBordo = 0;
   const lo = 1.5 * S, hi = 22.5 * S;
