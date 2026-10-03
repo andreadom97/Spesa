@@ -15,7 +15,7 @@ import {
 import {
   etichettaPoi, etichettaPoster, etichettaUso, pillolaPronti, sottotitoloPoster, testoScongela,
 } from '@/domain/oggi-testi';
-import { aggiornaSlot, leggiSettimana } from '@/data/settimana';
+import { aggiornaSlot } from '@/data/settimana';
 import { apriSettimanaCorrente } from '@/data/apertura';
 import { leggiIngredienti, leggiRepertorio } from '@/data/repertorio';
 import { leggiImpostazioni, leggiSlotDefs } from '@/data/impostazioni';
@@ -35,7 +35,10 @@ interface Letti {
   oggi: string;
   minuti: number;
   settimana: SettimanaCorrente;
-  /** La settimana che contiene domani: la stessa, un'altra, o null se non è stata creata. */
+  /**
+   * La settimana che contiene domani: la stessa, un'altra (la domenica: aperta, e creata se mancava),
+   * o null se la sua apertura è fallita.
+   */
   settimanaDomani: SettimanaCorrente | null;
   defs: MealSlotDef[];
   dishes: Dish[];
@@ -81,8 +84,12 @@ function leggiDispensaTollerata(): Promise<Pick<Letti, 'pantry' | 'ultimaChiusur
 
 async function caricaDati(): Promise<Letti> {
   const { data: oggi, minuti } = oggiLocale(new Date());
-  // La settimana parte insieme alle letture che non ne dipendono: un giro di rete in meno all'apertura.
-  const [settimana, defs, dishes, ingredients, impostazioni, lotti, dispensa] = await Promise.all([
+  const domani = sommaGiorni(oggi, 1);
+  // La domenica domani cade nella settimana dopo: Oggi la apre, e se manca la crea come il Piano
+  // (decisione di Andrea, 03/10). Si sa dalla data, quindi non c'è da aspettare la settimana di oggi.
+  const domaniAltraSettimana = lunediDi(domani) !== lunediDi(oggi);
+  // Le settimane partono insieme alle letture che non ne dipendono: un giro di rete in meno all'apertura.
+  const [settimana, defs, dishes, ingredients, impostazioni, lotti, dispensa, aperturaDomani] = await Promise.all([
     apriSettimanaCorrente(oggi),
     leggiSlotDefs(),
     leggiRepertorio(),
@@ -90,12 +97,15 @@ async function caricaDati(): Promise<Letti> {
     leggiImpostazioni(),
     leggiPronti().catch(tollera<LottoPronto[]>([], 'dei Pronti')),
     leggiDispensaTollerata(),
+    // Tollerata: se l'apertura di domani fallisce la home regge coi dati di oggi, e il poster dice che
+    // il piano di domani non c'è ancora.
+    domaniAltraSettimana
+      ? apriSettimanaCorrente(domani).catch(tollera<SettimanaCorrente | null>(null, 'della settimana di domani'))
+      : null,
   ]);
-  const domani = sommaGiorni(oggi, 1);
-  const settimanaDomani = lunediDi(domani) === settimana.dataInizio ? settimana : await leggiSettimana(lunediDi(domani));
   return {
-    oggi, minuti, settimana, settimanaDomani, defs, dishes, ingredients,
-    persone: impostazioni.moltiplicatorePorzioni, lotti, ...dispensa,
+    oggi, minuti, settimana, settimanaDomani: domaniAltraSettimana ? aperturaDomani : settimana, defs, dishes,
+    ingredients, persone: impostazioni.moltiplicatorePorzioni, lotti, ...dispensa,
   };
 }
 

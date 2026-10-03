@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import type { Dish, Ingredient, LottoPronto, MealSlot, MealSlotDef, PantryState } from '@/domain/types';
 import type { SettimanaCorrente } from '@/data/settimana';
 
@@ -63,6 +63,25 @@ const PANTRY: PantryState[] = [PATATA, UOVO].map((i) => ({
   ingredientId: i.id, residuo: 500, ultimoAcquisto: '2026-10-01', giorniStimati: 90, congelato: false,
   scadenzaManuale: null, ultimoCheck: null,
 }));
+
+// Domenica 4 ottobre 2026, 22:00: i pasti di oggi sono finiti, domani (lunedì 5) cade nella settimana dopo.
+const DOMENICA = new Date(2026, 9, 4, 22, 0);
+const LUNEDI = '2026-10-05';
+/** La settimana che inizia lunedì 5 ottobre, con un solo pasto: il pranzo di lunedì. */
+const settimanaDiLunedi = (stato: SettimanaCorrente['stato']): SettimanaCorrente => ({
+  id: 'w2', dataInizio: LUNEDI, stato, slots: [slot('m-pra', LUNEDI, 'pra', 'd-pasta')],
+});
+/**
+ * `apriSettimanaCorrente` risponde per argomento: la data di lunedì dà la settimana di domani (o un
+ * errore), ogni altra data la settimana di oggi.
+ */
+function apriPerData(diOggi: SettimanaCorrente, diLunedi: SettimanaCorrente | Error) {
+  vi.mocked(apriSettimanaCorrente).mockImplementation(async (d) => {
+    if (d !== LUNEDI) return diOggi;
+    if (diLunedi instanceof Error) throw diLunedi;
+    return diLunedi;
+  });
+}
 
 /** Gli href delle tessere che portano in Dispensa o al Piano, nell'ordine della pagina. */
 const hrefDelleTessere = () =>
@@ -238,45 +257,96 @@ describe('Oggi (spec 2026-10-03)', () => {
     }
   });
 
-  it('domenica sera, domani nella settimana dopo che non esiste: il poster lo dice, e APRI IL PIANO', async () => {
-    vi.setSystemTime(new Date(2026, 9, 4, 22, 0));
-    render(<Oggi />);
-    expect(await screen.findByText("Il piano di domani non c'è ancora.")).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Apri il piano' })).toHaveAttribute('href', '/piano');
-    expect(leggiSettimana).toHaveBeenCalledWith('2026-10-05');
-  });
+  // ── La domenica: Oggi apre anche la settimana di domani (decisione di Andrea, 03/10, opzione a) ──
 
-  it('domenica sera: il poster è il primo pasto di lunedì, e COM\'È ANDATA segue la settimana di lunedì (bozza)', async () => {
-    vi.setSystemTime(new Date(2026, 9, 4, 22, 0));
+  it('domenica sera, la settimana di lunedì non esisteva e Oggi la apre: il poster è il suo primo pasto («Domani · Pranzo»), e COM\'È ANDATA segue la sua bozza', async () => {
+    vi.setSystemTime(DOMENICA);
     vi.mocked(leggiUltimaChiusura).mockResolvedValue('2026-10-01');
     // Un secondo pranzo tutto in casa: se la banda ci fosse, lo proporrebbe.
     vi.mocked(leggiRepertorio).mockResolvedValue([POLPETTE, FRITTATA, FONDENTE, PASTA, piatto('d-riso', 'Riso e patate', 'pra', [[PATATA, 100]])]);
-    vi.mocked(leggiSettimana).mockResolvedValue({
-      id: 'w2', dataInizio: '2026-10-05', stato: 'bozza', slots: [slot('m-pra', '2026-10-05', 'pra', 'd-pasta')],
-    });
+    // L'apertura la crea se manca: Oggi riceve comunque una settimana, appena nata, in bozza.
+    apriPerData(settimana('confermata'), settimanaDiLunedi('bozza'));
     render(<Oggi />);
     expect(await screen.findByRole('heading', { name: 'Pasta e ceci' })).toBeInTheDocument();
+    expect(apriSettimanaCorrente).toHaveBeenCalledWith(LUNEDI);
+    // Si apre, non si legge soltanto: `leggiSettimana` non crea, e la domenica sera finirebbe in un vicolo cieco.
+    expect(leggiSettimana).not.toHaveBeenCalled();
     expect(screen.getByText('Domani · Pranzo')).toBeInTheDocument();
+    expect(screen.queryByText("Il piano di domani non c'è ancora.")).toBeNull();
     expect(screen.getByRole('link', { name: 'Cambia' })).toHaveAttribute('href', '/piano/2026-10-05/pra/scegli?da=oggi');
     expect(screen.queryByRole('button', { name: "Com'è andata" })).toBeNull();
     // Per domani si cambia dal Piano: niente banda, anche con la dispensa aggiornata.
     expect(screen.queryByText('Oppure, con quello che hai')).toBeNull();
   });
 
+  it('domenica sera, l\'apertura della settimana di domani fallisce: la home regge coi dati di oggi e il poster dice che il piano non c\'è', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.setSystemTime(DOMENICA);
+    vi.mocked(leggiUltimaChiusura).mockResolvedValue('2026-10-01');
+    vi.mocked(leggiIngredienti).mockResolvedValue([PATATA, UOVO, CECI, SPINACI]);
+    vi.mocked(leggiDispensa).mockResolvedValue([
+      ...PANTRY,
+      { ingredientId: 'spinaci', residuo: 200, ultimoAcquisto: '2026-10-01', giorniStimati: 90, congelato: false, scadenzaManuale: '2026-10-05', ultimoCheck: null },
+    ]);
+    apriPerData(settimana('confermata'), new Error('rete'));
+    render(<Oggi />);
+    expect(await screen.findByText("Il piano di domani non c'è ancora.")).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Apri il piano' })).toHaveAttribute('href', '/piano');
+    // La pagina non va in errore: le tessere di oggi (qui, Scade) ci sono.
+    expect(screen.queryByText('Non riusciamo a caricare la giornata.')).toBeNull();
+    expect(screen.getByText('Scade domani')).toBeInTheDocument();
+    expect(apriSettimanaCorrente).toHaveBeenCalledWith(LUNEDI);
+    expect(log).toHaveBeenCalledWith(expect.stringContaining('settimana di domani'), expect.objectContaining({ message: 'rete' }));
+  });
+
   it('domenica sera, con la dispensa aggiornata: i pasti di lunedì (altra settimana) contano per «Scongela»', async () => {
-    vi.setSystemTime(new Date(2026, 9, 4, 22, 0));
+    vi.setSystemTime(DOMENICA);
     vi.mocked(leggiUltimaChiusura).mockResolvedValue('2026-10-01');
     vi.mocked(leggiDispensa).mockResolvedValue([
       ...PANTRY,
       { ingredientId: 'ceci', residuo: 300, ultimoAcquisto: '2026-10-01', giorniStimati: 90, congelato: true, scadenzaManuale: null, ultimoCheck: null },
     ]);
-    vi.mocked(leggiSettimana).mockResolvedValue({
-      id: 'w2', dataInizio: '2026-10-05', stato: 'confermata', slots: [slot('m-pra', '2026-10-05', 'pra', 'd-pasta')],
-    });
+    apriPerData(settimana('confermata'), settimanaDiLunedi('confermata'));
     render(<Oggi />);
     await screen.findByText('Scongela');
     expect(screen.getByText('Per pranzo di domani')).toBeInTheDocument();
     expect(hrefDelleTessere()).toEqual(['/dispensa?ingrediente=ceci']);
+  });
+
+  it('la domenica la settimana di domani parte insieme alle altre letture: una settimana lenta non la ritarda', async () => {
+    vi.setSystemTime(DOMENICA);
+    vi.mocked(apriSettimanaCorrente).mockReturnValue(new Promise(() => {}));
+    render(<Oggi />);
+    await screen.findByText('CARICO…');
+    expect(apriSettimanaCorrente).toHaveBeenCalledTimes(2);
+    expect(apriSettimanaCorrente).toHaveBeenCalledWith('2026-10-04');
+    expect(apriSettimanaCorrente).toHaveBeenCalledWith(LUNEDI);
+  });
+
+  it('domenica, falliscono sia la settimana di oggi sia quella di domani: l\'errore di caricamento, e la seconda non resta una rejection non gestita', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.setSystemTime(DOMENICA);
+    vi.mocked(apriSettimanaCorrente).mockRejectedValue(new Error('rete'));
+    render(<Oggi />);
+    expect(await screen.findByText('Non riusciamo a caricare la giornata.')).toBeInTheDocument();
+    // Lascia girare la coda dei microtask: una rejection non gestita farebbe fallire la corsa di vitest.
+    await act(async () => { await new Promise((fine) => setTimeout(fine, 0)); });
+    expect(log).toHaveBeenCalledWith(expect.stringContaining('settimana di domani'), expect.anything());
+  });
+
+  it.each([
+    ['mercoledì', new Date(2026, 8, 30, 18, 10), '2026-09-30'],
+    ['sabato (domani, domenica, è ancora la stessa settimana)', ADESSO, OGGI],
+  ])('%s: la settimana si apre una volta sola, con oggi', async (_giorno, adesso, data) => {
+    vi.setSystemTime(adesso);
+    vi.mocked(apriSettimanaCorrente).mockResolvedValue({
+      id: 'w', dataInizio: '2026-09-28', stato: 'confermata', slots: [slot('x-cen', data, 'cen', 'd-polpette')],
+    });
+    render(<Oggi />);
+    expect(await screen.findByRole('heading', { name: 'Polpette di ceci' })).toBeInTheDocument();
+    expect(apriSettimanaCorrente).toHaveBeenCalledTimes(1);
+    expect(apriSettimanaCorrente).toHaveBeenCalledWith(data);
+    expect(leggiSettimana).not.toHaveBeenCalled();
   });
 
   it('tornando in primo piano la home si rilegge', async () => {
