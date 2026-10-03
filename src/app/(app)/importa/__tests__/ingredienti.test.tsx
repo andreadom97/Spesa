@@ -232,8 +232,34 @@ describe('Ingredienti', () => {
     fireEvent.change(within(foglio).getByRole('textbox', { name: 'Nome' }), { target: { value: 'Latte fresco' } });
     fireEvent.change(within(foglio).getByRole('textbox', { name: 'Confezione' }), { target: { value: '500' } });
     fireEvent.click(within(foglio).getByRole('button', { name: 'NO' }));
-    fireEvent.click(within(screen.getByRole('region', { name: 'Olive taggiasche' })).getByRole('button', { name: 'Intero' }));
+    // Le olive sono in g (ripiego, «A stima»): «Intero» non c'è più, si cambia in «Porzionabile».
+    fireEvent.click(within(screen.getByRole('region', { name: 'Olive taggiasche' })).getByRole('button', { name: 'Porzionabile' }));
     expect(onStato).toHaveBeenCalledTimes(1);
+  });
+
+  it('«Intero» si offre solo a pezzi; una bozza vecchia con «intero» in g si mostra «Porzionabile» (review finale, I3)', () => {
+    const yogurtIntero = { ...proponi('yogurt greco', 'g'), classeResiduo: 'intero' as const };
+    rendi([AVENA], { ...STATO, ingredientiNuovi: [yogurtIntero] });
+    // Le olive del fixture sono senza unità, quindi di ripiego in g: «Intero» non c'è.
+    expect(within(screen.getByRole('region', { name: 'Olive taggiasche' })).queryByRole('button', { name: 'Intero' })).toBeNull();
+    // Il latte è in ml: «Intero» non c'è.
+    fireEvent.click(screen.getByRole('button', { name: 'Apri Latte parzialmente scremato' }));
+    const latte = screen.getByRole('dialog', { name: 'Latte parzialmente scremato' });
+    expect(within(latte).queryByRole('button', { name: 'Intero' })).toBeNull();
+    expect(within(latte).getByRole('button', { name: 'Porzionabile' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Chiudi la scheda' }));
+    // Lo yogurt in g salvato «intero» da una bozza di prima: si mostra «Porzionabile».
+    fireEvent.click(screen.getByRole('button', { name: 'Apri Yogurt greco' }));
+    const yogurt = screen.getByRole('dialog', { name: 'Yogurt greco' });
+    expect(within(yogurt).queryByRole('button', { name: 'Intero' })).toBeNull();
+    expect(within(yogurt).getByRole('button', { name: 'Porzionabile' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('a pezzi «Intero» si offre e si sceglie', () => {
+    rendi([], STATO, pianoCon(['olive taggiasche', 'pz']));
+    const olive = screen.getByRole('region', { name: 'Olive taggiasche' });
+    fireEvent.click(within(olive).getByRole('button', { name: 'Intero' }));
+    expect(within(screen.getByRole('region', { name: 'Olive taggiasche' })).getByRole('button', { name: 'Intero' })).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('la frase al singolare', () => {

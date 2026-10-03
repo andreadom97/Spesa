@@ -6,7 +6,7 @@ import { normalizza, quantoBasta } from './mapping';
 import {
   cambiUnita, destinazioni, legataAlCommit, pesiProposte, type CambioUnita, type Destino, type PesoProposta,
 } from './ingredienti';
-import { convertiPezzi } from './formati-tipici';
+import { classeCoerente, convertiPezzi } from './formati-tipici';
 
 /** `quantita` null = «quanto basta» (spec 8c §B). */
 export type RigaTradotta = { quantita: number | null; unita: UnitaBase } & (
@@ -399,9 +399,14 @@ export function traduciBozza(
   // buco, qui si blocca comunque). Il criterio deve essere lo stesso di risolviRiga: uno
   // diverso escluderebbe dai-da-creare un ingrediente che una riga ha comunque risolto come
   // nuovoAlimento — l'ingrediente referenziato non verrebbe mai creato.
-  const ingredientiDaCreare = stato.ingredientiNuovi.filter(
-    (i) => ctx.usati.has(normalizza(i.alimento)) && !legataAlCommit(i, ingredientiEsistenti, scelti),
-  );
+  // Rete per una bozza salvata prima della correzione della tabella (review finale 8c, I3): un
+  // nuovo «intero» in g o ml si scrive «porzionabile», o conterebbe una confezione per grammo.
+  const ingredientiDaCreare = stato.ingredientiNuovi
+    .filter((i) => ctx.usati.has(normalizza(i.alimento)) && !legataAlCommit(i, ingredientiEsistenti, scelti))
+    .map((i) => {
+      const classeResiduo = classeCoerente(i.classeResiduo, i.unitaBase);
+      return classeResiduo === i.classeResiduo ? i : { ...i, classeResiduo };
+    });
 
   const cicloOrigine = sommaGiorni(lunediDi(oggi), 7);
 

@@ -14,9 +14,19 @@ interface VoceFormato {
 }
 
 /**
+ * «intero» vuol dire formato 1 a pezzi (`list-builder`, `confezioni`): in g o ml conterebbe una
+ * confezione per grammo o per millilitro. Fuori dai pezzi diventa «porzionabile» (review finale
+ * 8c, I3): la confezione resta una, col suo peso. Lo usano `proponi`, la Scheda e `traduciBozza`.
+ */
+export function classeCoerente(classe: ClasseResiduo, unita: UnitaBase): ClasseResiduo {
+  return classe === 'intero' && unita !== 'pz' ? 'porzionabile' : classe;
+}
+
+/**
  * Formati tipici del supermercato italiano: default proposti al passo formati,
  * sempre correggibili dall'utente. Quando arriverà l'estrattore Claude, la sua
  * proposta rimpiazzerà la tabella per i casi non coperti; il fallback resta.
+ * «intero» solo per le voci a pezzi (`classeCoerente`).
  */
 const VOCI: VoceFormato[] = [
   { chiave: 'pasta', nome: 'Pasta di semola', unitaBase: 'g', area: 'cereali', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500 },
@@ -27,10 +37,10 @@ const VOCI: VoceFormato[] = [
   { chiave: "fiocchi d'avena", nome: "Fiocchi d'avena", unitaBase: 'g', area: 'cereali', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500 },
   { chiave: 'cous cous', nome: 'Cous cous', unitaBase: 'g', area: 'cereali', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500 },
   { chiave: 'latte', nome: 'Latte', unitaBase: 'ml', area: 'latticini', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 1000 },
-  { chiave: 'yogurt greco', nome: 'Yogurt greco', unitaBase: 'g', area: 'latticini', classeResiduo: 'intero', deperibile: true, formatoConfezione: 170 },
-  { chiave: 'yogurt', nome: 'Yogurt', unitaBase: 'g', area: 'latticini', classeResiduo: 'intero', deperibile: true, formatoConfezione: 125 },
+  { chiave: 'yogurt greco', nome: 'Yogurt greco', unitaBase: 'g', area: 'latticini', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 170 },
+  { chiave: 'yogurt', nome: 'Yogurt', unitaBase: 'g', area: 'latticini', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 125 },
   { chiave: 'parmigiano', nome: 'Parmigiano', unitaBase: 'g', area: 'latticini', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 200 },
-  { chiave: 'mozzarella', nome: 'Mozzarella', unitaBase: 'g', area: 'latticini', classeResiduo: 'intero', deperibile: true, formatoConfezione: 125 },
+  { chiave: 'mozzarella', nome: 'Mozzarella', unitaBase: 'g', area: 'latticini', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 125 },
   { chiave: 'feta', nome: 'Feta', unitaBase: 'g', area: 'latticini', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 200 },
   { chiave: 'ricotta', nome: 'Ricotta', unitaBase: 'g', area: 'latticini', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 250 },
   { chiave: 'uova', nome: 'Uova', unitaBase: 'pz', area: 'latticini', classeResiduo: 'intero', deperibile: true, formatoConfezione: 6 },
@@ -40,11 +50,11 @@ const VOCI: VoceFormato[] = [
   { chiave: 'prosciutto cotto', nome: 'Prosciutto cotto', unitaBase: 'g', area: 'macelleria', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 120 },
   { chiave: 'bresaola', nome: 'Bresaola', unitaBase: 'g', area: 'macelleria', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 100 },
   { chiave: 'salmone', nome: 'Salmone', unitaBase: 'g', area: 'macelleria', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 200 },
-  { chiave: 'tonno al naturale', nome: 'Tonno al naturale', unitaBase: 'g', area: 'dispensa', classeResiduo: 'intero', deperibile: false, formatoConfezione: 160 },
+  { chiave: 'tonno al naturale', nome: 'Tonno al naturale', unitaBase: 'g', area: 'dispensa', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 160 },
   { chiave: 'filetto di merluzzo', nome: 'Filetto di merluzzo', unitaBase: 'g', area: 'surgelati', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 300 },
-  { chiave: 'ceci', nome: 'Ceci', unitaBase: 'g', area: 'dispensa', classeResiduo: 'intero', deperibile: false, formatoConfezione: 240 },
-  { chiave: 'fagioli', nome: 'Fagioli', unitaBase: 'g', area: 'dispensa', classeResiduo: 'intero', deperibile: false, formatoConfezione: 240 },
-  { chiave: 'lenticchie', nome: 'Lenticchie', unitaBase: 'g', area: 'dispensa', classeResiduo: 'intero', deperibile: false, formatoConfezione: 250 },
+  { chiave: 'ceci', nome: 'Ceci', unitaBase: 'g', area: 'dispensa', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 240 },
+  { chiave: 'fagioli', nome: 'Fagioli', unitaBase: 'g', area: 'dispensa', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 240 },
+  { chiave: 'lenticchie', nome: 'Lenticchie', unitaBase: 'g', area: 'dispensa', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 250 },
   { chiave: 'piselli surgelati', nome: 'Piselli surgelati', unitaBase: 'g', area: 'surgelati', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 450 },
   { chiave: 'passata di pomodoro', nome: 'Passata di pomodoro', unitaBase: 'ml', area: 'dispensa', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 700 },
   { chiave: 'pomodorini', nome: 'Pomodorini', unitaBase: 'g', area: 'ortofrutta', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 500 },
@@ -107,7 +117,7 @@ export function proponi(alimento: string, unita: UnitaBase | null): IngredienteP
       nome: norm === voce.chiave ? voce.nome : nomeDallaDieta(alimento),
       unitaBase: voce.unitaBase,
       area: voce.area,
-      classeResiduo: voce.classeResiduo,
+      classeResiduo: classeCoerente(voce.classeResiduo, voce.unitaBase),
       deperibile: voce.deperibile,
       formatoConfezione: voce.formatoConfezione,
       prezzoConfezione: null,

@@ -529,6 +529,21 @@ describe('traduciBozza — fase 8c', () => {
     expect(s.ingredientiDaCreare).toEqual([p]);
   });
 
+  it('un nuovo «intero» in g o ml si scrive «porzionabile»; a pezzi resta «intero» (review finale, I3)', () => {
+    // La rete per una bozza salvata prima della correzione della tabella: «intero» = formato 1 a
+    // pezzi, in g conterebbe una confezione per grammo.
+    const inG = { ...proponi('ricotta', 'g'), classeResiduo: 'intero' as const };
+    const inMl = { ...proponi('latte', 'ml'), classeResiduo: 'intero' as const };
+    const aPezzi = { ...proponi('uova', 'pz'), classeResiduo: 'intero' as const };
+    const piano = pianoCon([riga('ricotta', 100, 'g'), riga('latte', 150, 'ml'), riga('uova', 2, 'pz')]);
+    const s = traduciBozza(piano, stato({ ingredientiNuovi: [inG, inMl, aPezzi] }), [], [], OGGI);
+    expect(s.ingredientiDaCreare).toEqual([
+      { ...inG, classeResiduo: 'porzionabile' },
+      { ...inMl, classeResiduo: 'porzionabile' },
+      aPezzi,
+    ]);
+  });
+
   it('riassuntoScritture: nuovi, aggiornati, tolti, ingredienti, cambi, e se c\'è un piano attuale (spec 8c §H)', () => {
     const base = traduciBozza(pianoCon([riga('zucchine', 150, 'g')]), stato(), [ZUCCHINE], [], OGGI);
     expect(riassuntoScritture(base)).toEqual({ piattiNuovi: 1, piattiAggiornati: 0, piattiTolti: 0, ingredientiNuovi: 0, cambi: base.cambiUnita, pianoAttuale: false });

@@ -5,7 +5,7 @@ import type { AreaId, ClasseResiduo, Ingredient } from '@/domain/types';
 import type { DecisioneCambio, IngredienteProposto } from '@/domain/import/types';
 import { SCELTA_NUOVO } from '@/domain/import/types';
 import { legataA, type CambioUnita, type MotivoBlocco } from '@/domain/import/ingredienti';
-import { UNITA_IN_PAROLE, numeroInParole, pesoPezzo } from '@/domain/import/formati-tipici';
+import { UNITA_IN_PAROLE, classeCoerente, numeroInParole, pesoPezzo } from '@/domain/import/formati-tipici';
 import { AREE, coloreArea, nomeAreaFrase } from '@/domain/aree';
 import { Blocco, Etichetta } from '@/components/controlli';
 import { Nota } from '@/components/pannello/pezzi';
@@ -235,7 +235,13 @@ export function SchedaIngrediente({
 
           <Blocco>
             <Etichetta>Come si consuma</Etichetta>
-            <Segmento opzioni={OPZIONI_CLASSE} valore={proposta.classeResiduo} onCambia={(id) => onCambia({ classeResiduo: id as ClasseResiduo })} variante="blocco" />
+            {/* «Intero» è formato 1 a pezzi: in g o ml non si offre, e un «intero» di una bozza vecchia si mostra «Porzionabile», come lo scrive traduciBozza (review finale 8c, I3). */}
+            <Segmento
+              opzioni={proposta.unitaBase === 'pz' ? OPZIONI_CLASSE : OPZIONI_CLASSE.filter((o) => o.id !== 'intero')}
+              valore={classeCoerente(proposta.classeResiduo, proposta.unitaBase)}
+              onCambia={(id) => onCambia({ classeResiduo: id as ClasseResiduo })}
+              variante="blocco"
+            />
           </Blocco>
 
           <Blocco>

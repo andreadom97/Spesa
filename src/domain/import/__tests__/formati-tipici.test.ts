@@ -1,9 +1,33 @@
 import { describe, it, expect } from 'vitest';
 import {
-  proponi, origineProposta, arrotonda, convertiCucchiai, convertiPezzi, numeroInParole,
+  proponi, origineProposta, arrotonda, classeCoerente, convertiCucchiai, convertiPezzi, numeroInParole,
   categoriaDi, pesoPezzo, porzioneTipica, quantitaInTesto, testoCambio, testoConversione,
 } from '../formati-tipici';
 import { unitaBaseDi } from '../types';
+
+describe('«intero» solo a pezzi (review finale, I3)', () => {
+  // «intero» vuol dire formato 1 a pezzi (list-builder, confezioni): in g o ml conterebbe una
+  // confezione per grammo o per millilitro.
+  it('le voci della tabella in grammi non nascono «intero»', () => {
+    for (const alimento of ['yogurt greco', 'yogurt', 'mozzarella', 'tonno al naturale', 'ceci', 'fagioli', 'lenticchie']) {
+      const p = proponi(alimento, 'g');
+      expect(p.unitaBase, alimento).toBe('g');
+      expect(p.classeResiduo, alimento).toBe('porzionabile');
+    }
+  });
+
+  it('a pezzi «intero» resta', () => {
+    expect(proponi('uova', 'pz')).toMatchObject({ unitaBase: 'pz', classeResiduo: 'intero' });
+  });
+
+  it('classeCoerente porta «intero» a «porzionabile» fuori dai pezzi e lascia il resto', () => {
+    expect(classeCoerente('intero', 'g')).toBe('porzionabile');
+    expect(classeCoerente('intero', 'ml')).toBe('porzionabile');
+    expect(classeCoerente('intero', 'pz')).toBe('intero');
+    expect(classeCoerente('stima', 'g')).toBe('stima');
+    expect(classeCoerente('porzionabile', 'pz')).toBe('porzionabile');
+  });
+});
 
 describe('proponi — le chiavi per parole intere', () => {
   it('«melanzane» non prende la voce «mela»', () => {
