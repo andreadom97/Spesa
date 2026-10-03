@@ -1,25 +1,29 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { Ingredient } from '@/domain/types';
-import type { IngredienteProposto, PianoEstratto, StatoRevisione } from '@/domain/import/types';
+import type { Dish, Ingredient } from '@/domain/types';
+import type { DecisioneCambio, IngredienteProposto, PianoEstratto, StatoRevisione } from '@/domain/import/types';
+import { SCELTA_NUOVO } from '@/domain/import/types';
 import {
-  calcolaProposte, diRipiego, legataA, motiviBlocco, sceltiIniziali, sezioniIniziali, valoreRipiego,
+  calcolaProposte, cambiDiretti, cambiUnita, diRipiego, esempioPiatto, esempioRiga, legataA, motiviBlocco, nomeProposto,
+  pesiProposte, sceltiIniziali, sezioniIniziali, valoreRipiego, type CambioUnita, type PesoProposta,
 } from '@/domain/import/ingredienti';
-import { proponi } from '@/domain/import/formati-tipici';
 import { nomeAreaFrase } from '@/domain/aree';
 import { BloccoGruppo } from '@/components/pannello/pezzi';
 import { RigaImpostazione } from '@/components/pannello/RigaImpostazione';
 import { FoglioDalBasso, TestataFoglio } from '@/components/FoglioDalBasso';
 import { Dock } from '@/components/Dock';
-import { useLivelliImporta } from './livelli';
 import { SchedaIngrediente, numeroInTesto, type CampoSelettore } from './SchedaIngrediente';
+import { SchedaCambio, type EsempioCambio } from './SchedaCambio';
 import { TitoloSezione, plurale } from './sezione';
+import { useLivelliImporta } from './livelli';
 
 interface Props {
   piano: PianoEstratto;
   stato: StatoRevisione;
   ingredientiEsistenti: Ingredient[];
+  /** I piatti attivi: l'esempio della Scheda del cambio («Pasta e zucchine»: 2 pz, quindi 400 g). */
+  repertorio?: Dish[];
   onStato: (s: StatoRevisione) => void;
 }
 
@@ -32,8 +36,20 @@ const STILE_TITOLO_SEZIONE = {
   letterSpacing: '0.16em', textTransform: 'uppercase' as const, color: 'var(--ink)',
 };
 
-function frase(nuovi: number, ripieghi: number): string {
-  if (nuovi === 0) return 'Tutti gli ingredienti del piano abbinano già qualcosa che hai: niente da rivedere qui.';
+/**
+ * La frase d'apertura. `cambi`: gli ingredienti che hai che passano all'unità della dieta;
+ * `soloPeso`: quelli che restano nella loro unità ma aspettano il peso di un pezzo (`da === a`).
+ */
+function frase(nuovi: number, ripieghi: number, cambi: number, soloPeso: number): string {
+  if (nuovi === 0) {
+    if (cambi > 0) {
+      return `Tutti gli ingredienti del piano abbinano già qualcosa che hai; ${cambi === 1 ? 'uno passa' : `${cambi} passano`} all'unità della dieta: controlla.`;
+    }
+    if (soloPeso > 0) {
+      return `Tutti gli ingredienti del piano abbinano già qualcosa che hai; per ${soloPeso === 1 ? 'uno' : soloPeso} mi serve il peso di un pezzo.`;
+    }
+    return 'Tutti gli ingredienti del piano abbinano già qualcosa che hai: niente da rivedere qui.';
+  }
   const quanti = plurale(nuovi, 'ingrediente nuovo', 'ingredienti nuovi');
   if (ripieghi === 0) return nuovi === 1 ? `${quanti}. L'ho proposto io: toccalo se non torna.` : `${quanti}. Li ho proposti io: tocca quello che non torna.`;
   if (ripieghi === nuovi) {
@@ -52,23 +68,52 @@ function senza(scelti: Record<string, string>, alimento: string): Record<string,
 }
 
 /**
- * Ingredienti (spec 8b §F), il passo 3 di Importa. Le proposte si calcolano all'ingresso e si
- * salvano subito con `onStato`, così un refresh non perde il calcolo; da lì lo stato locale è
- * la fonte di verità finché non si preme VAI AL RIEPILOGO.
- *
- * `sceltiEsistenti` (`alimento → id`) dice quali proposte sono legate per scelta in «È lo stesso
- * di…»: la scelta lo scrive, «No, è un ingrediente nuovo» e ogni modifica del Nome lo tolgono.
- * All'ingresso vale per le proposte col nome esatto di un esistente della stessa unità (le bozze
- * riprese dopo una scelta).
- *
- * Le sezioni si decidono all'ingresso e non cambiano sotto il dito. L'unica eccezione: una
- * proposta di «Proposti da me» che comincia a bloccare il passo (corretta dal foglio) entra in
- * «Da sistemare» e ci resta. Una Scheda già in pagina resta dov'è e mostra il suo avviso.
+ * Il peso di una proposta nuova con righe in g e in pz (ruling 8c, Task 8) nella forma di un
+ * cambio con `da === a`: la Scheda del cambio mostra solo il campo del peso, e la decisione si
+ * salva con la chiave `alimento` (la proposta non ha un id).
  */
-export function Ingredienti({ piano, stato, ingredientiEsistenti, onStato }: Props) {
+function cambioDelPeso(p: IngredienteProposto, peso: PesoProposta): CambioUnita | null {
+  if (p.unitaBase !== 'g' && p.unitaBase !== 'pz') return null;
+  return {
+    ingredientId: p.alimento, nome: p.nome || p.alimento, da: p.unitaBase, a: p.unitaBase, alimenti: [p.alimento],
+    pesoPezzo: peso.pesoPezzo, pesoDaTabella: peso.pesoDaTabella, tieni: false,
+  };
+}
+
+/**
+ * Ingredienti (spec 8b §F, 8c §A.3, §G), il passo 3 di Importa. Le proposte si calcolano
+ * all'ingresso e si salvano subito con `onStato`, così un refresh non perde il calcolo; da lì lo
+ * stato locale è la fonte di verità finché non si esce dal passo (VAI AL RIEPILOGO o l'indietro),
+ * che salva proposte, scelte (`scelti`) e decisioni sui cambi di unità (`cambiUnita`).
+ *
+ * `scelti` (`alimento → id`, o `SCELTA_NUOVO`) dice le scelte in «È lo stesso di…». All'ingresso
+ * viene dalla bozza; per una bozza di prima dell'8c si ricostruisce dai nomi. Rinominare toglie la
+ * scelta di un ingrediente che hai, non la scelta «nuovo».
+ *
+ * I cambi di unità diretti (un alimento della dieta che finisce su un ingrediente che hai con
+ * un'altra unità) hanno la loro Scheda: in «Da sistemare» se manca il peso di un pezzo, in «Da
+ * controllare» altrimenti. Un diretto con `da === a` (l'unità resta, alcune righe si convertono)
+ * ha la Scheda solo se manca il peso. Il peso di una proposta nuova con righe in g e in pz si
+ * scrive nella sua Scheda e si salva in `cambiUnita[alimento]`. Le sezioni si decidono
+ * all'ingresso, coi cambi e i pesi, e non cambiano sotto il dito.
+ */
+export function Ingredienti({ piano, stato, ingredientiEsistenti, repertorio = [], onStato }: Props) {
   const [ingredienti, setIngredienti] = useState<IngredienteProposto[]>(() => calcolaProposte(piano, stato, ingredientiEsistenti));
-  const [scelti, setScelti] = useState<Record<string, string>>(() => sceltiIniziali(ingredienti, ingredientiEsistenti));
-  const [sezioni] = useState(() => sezioniIniziali(ingredienti, ingredientiEsistenti, scelti));
+  const [scelti, setScelti] = useState<Record<string, string>>(() => stato.scelti ?? sceltiIniziali(ingredienti, ingredientiEsistenti));
+  const [decisioni, setDecisioni] = useState<Record<string, DecisioneCambio>>(() => stato.cambiUnita ?? {});
+  const [{ sezioni, sezioniCambi }] = useState(() => {
+    const iniziale: StatoRevisione = { ...stato, ingredientiNuovi: ingredienti, scelti, cambiUnita: decisioni };
+    const cambi = cambiUnita(piano, iniziale, ingredientiEsistenti);
+    const pesi = pesiProposte(piano, iniziale, ingredientiEsistenti);
+    const diretti = cambiDiretti(cambi, ingredienti);
+    return {
+      sezioni: sezioniIniziali(ingredienti, ingredientiEsistenti, scelti, cambi, pesi),
+      sezioniCambi: {
+        daSistemare: diretti.filter((c) => c.pesoPezzo === null).map((c) => c.ingredientId),
+        daControllare: diretti.filter((c) => c.pesoPezzo !== null && c.da !== c.a).map((c) => c.ingredientId),
+      },
+    };
+  });
   const [schedaAperta, setSchedaAperta] = useState<string | null>(null);
   // `inFoglio`: la stessa proposta può essere resa due volte (in «Da sistemare» e nel foglio), e
   // ogni istanza apre solo il suo selettore.
@@ -76,11 +121,11 @@ export function Ingredienti({ piano, stato, ingredientiEsistenti, onStato }: Pro
 
   /** Lo stato da salvare uscendo dal passo, avanti o indietro. */
   function daSalvare(passo: StatoRevisione['passo']): StatoRevisione {
-    return { ...stato, ingredientiNuovi: ingredienti, passo };
+    return { ...stato, ingredientiNuovi: ingredienti, scelti, cambiUnita: decisioni, passo };
   }
 
   useEffect(() => {
-    onStato({ ...stato, ingredientiNuovi: ingredienti });
+    onStato({ ...stato, ingredientiNuovi: ingredienti, scelti });
     // Una volta sola, all'ingresso nel passo: come Formati prima di lui.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -97,13 +142,14 @@ export function Ingredienti({ piano, stato, ingredientiEsistenti, onStato }: Pro
 
   function cambia(alimento: string, cambio: Partial<IngredienteProposto>) {
     aggiorna(alimento, cambio);
-    if ('nome' in cambio) setScelti((prima) => senza(prima, alimento));
+    if ('nome' in cambio) setScelti((prima) => (prima[alimento] === SCELTA_NUOVO ? prima : senza(prima, alimento)));
   }
 
   function scegliStesso(p: IngredienteProposto, id: string | null) {
     if (id === null) {
-      aggiorna(p.alimento, { nome: proponi(p.alimento, p.unitaBase).nome });
-      setScelti((prima) => senza(prima, p.alimento));
+      // «No, è nuovo» (spec 8c §G): il nome della dieta con gli accenti, e la scelta resta.
+      aggiorna(p.alimento, { nome: nomeProposto(piano, stato, p.alimento, p.unitaBase) });
+      setScelti((prima) => ({ ...prima, [p.alimento]: SCELTA_NUOVO }));
       return;
     }
     const esistente = ingredientiEsistenti.find((e) => e.id === id);
@@ -112,10 +158,21 @@ export function Ingredienti({ piano, stato, ingredientiEsistenti, onStato }: Pro
     setScelti((prima) => ({ ...prima, [p.alimento]: esistente.id }));
   }
 
-  const motivi = motiviBlocco(ingredienti, ingredientiEsistenti, scelti);
+  /** `chiave`: l'id dell'ingrediente che hai, o l'`alimento` di una proposta nuova (solo il peso). */
+  function decidi(chiave: string, cambio: Partial<DecisioneCambio>) {
+    setDecisioni((prima) => ({
+      ...prima,
+      [chiave]: { tieni: prima[chiave]?.tieni ?? false, pesoPezzo: prima[chiave]?.pesoPezzo ?? null, ...cambio },
+    }));
+  }
+
+  const statoVivo: StatoRevisione = { ...stato, ingredientiNuovi: ingredienti, scelti, cambiUnita: decisioni };
+  const cambi = cambiUnita(piano, statoVivo, ingredientiEsistenti);
+  const pesi = pesiProposte(piano, statoVivo, ingredientiEsistenti);
+  const diretti = cambiDiretti(cambi, ingredienti);
+  const motivi = motiviBlocco(ingredienti, ingredientiEsistenti, scelti, cambi, pesi);
   // Chi comincia a bloccare mentre sta in «Proposti da me» entra in «Da sistemare» e ci resta,
-  // anche dopo la correzione. Aggiustamento durante il render, come in `CampoConSalva`, non un
-  // effetto.
+  // anche dopo la correzione. Aggiustamento durante il render, come in `CampoConSalva`.
   const [entrati, setEntrati] = useState<string[]>([]);
   const nuoviBloccati = [...motivi.keys()].filter(
     (a) => !sezioni.daSistemare.includes(a) && !sezioni.daControllare.includes(a) && !entrati.includes(a),
@@ -125,23 +182,43 @@ export function Ingredienti({ piano, stato, ingredientiEsistenti, onStato }: Pro
   const daSistemare = ingredienti.filter((p) => inDaSistemare.has(p.alimento));
   const daControllare = ingredienti.filter((p) => !inDaSistemare.has(p.alimento) && sezioni.daControllare.includes(p.alimento));
   const proposti = ingredienti.filter((p) => !inDaSistemare.has(p.alimento) && !sezioni.daControllare.includes(p.alimento));
-  // Il contatore conta TUTTE le proposte che bloccano, anche una Scheda di «Da controllare» col
-  // nome svuotato: «Fatto» col Dock spento sarebbe falso.
-  const ancoraBloccate = motivi.size;
-  const libere = ingredienti.filter((p) => !legataA(p, ingredientiEsistenti));
+  const cambiDaSistemare = diretti.filter((c) => sezioniCambi.daSistemare.includes(c.ingredientId));
+  const cambiDaControllare = diretti.filter((c) => sezioniCambi.daControllare.includes(c.ingredientId));
+  // Il contatore conta TUTTO quello che blocca, anche fuori sezione: «Fatto» col Dock spento sarebbe falso.
+  const ancoraBloccate = motivi.size + diretti.filter((c) => c.pesoPezzo === null).length;
+  const libere = ingredienti.filter((p) => !legataA(p, ingredientiEsistenti, scelti));
   const ripieghi = libere.filter(diRipiego).length;
-  const bloccato = motivi.size > 0;
+  const bloccato = ancoraBloccate > 0;
+  const cambiVeri = diretti.filter((c) => c.da !== c.a).length;
+  const soloPeso = cambiDaSistemare.filter((c) => c.da === c.a).length;
+
+  function esempioDi(c: CambioUnita): EsempioCambio {
+    return { piatto: esempioPiatto(c.ingredientId, c.da, repertorio), riga: esempioRiga(piano, statoVivo, c.alimenti) };
+  }
+
+  function schedaCambio(c: CambioUnita) {
+    return (
+      <section key={c.ingredientId} aria-label={c.nome} style={STILE_SCHEDA}>
+        <SchedaCambio cambio={c} esempio={esempioDi(c)} conTestata onDecisione={(d) => decidi(c.ingredientId, d)} />
+      </section>
+    );
+  }
 
   function scheda(p: IngredienteProposto, inFoglio: boolean, notaRipiego?: string) {
+    const peso = pesi.find((x) => x.alimento === p.alimento);
+    const cambio = cambi.find((c) => c.alimenti.includes(p.alimento)) ?? (peso ? cambioDelPeso(p, peso) : null);
     return (
       <SchedaIngrediente
         proposta={p}
         esistenti={ingredientiEsistenti}
-        scelto={scelti[p.alimento] !== undefined}
+        scelta={scelti[p.alimento]}
         avvisi={motivi.get(p.alimento) ?? []}
         notaRipiego={notaRipiego}
-        onCambia={(cambio) => cambia(p.alimento, cambio)}
+        cambio={cambio}
+        esempioCambio={cambio ? esempioDi(cambio) : { piatto: null, riga: null }}
+        onCambia={(c) => cambia(p.alimento, c)}
         onStesso={(id) => scegliStesso(p, id)}
+        onDecisione={(d) => { if (cambio) decidi(cambio.ingredientId, d); }}
         selettore={selettore?.alimento === p.alimento && selettore.inFoglio === inFoglio ? selettore.campo : null}
         onApriSelettore={(campo) => setSelettore({ alimento: p.alimento, campo, inFoglio })}
         onChiudiSelettore={() => setSelettore(null)}
@@ -155,9 +232,9 @@ export function Ingredienti({ piano, stato, ingredientiEsistenti, onStato }: Pro
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
       <div className="sc scroll-app con-dock" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 16px', display: 'flex', flexDirection: 'column', gap: 18 }}>
-        <p style={{ margin: '0 4px', fontSize: 14, lineHeight: 1.5, color: 'var(--testo-2)' }}>{frase(libere.length, ripieghi)}</p>
+        <p style={{ margin: '0 4px', fontSize: 14, lineHeight: 1.5, color: 'var(--testo-2)' }}>{frase(libere.length, ripieghi, cambiVeri, soloPeso)}</p>
 
-        {daSistemare.length > 0 && (
+        {(daSistemare.length > 0 || cambiDaSistemare.length > 0) && (
           <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <h3 style={STILE_TITOLO_SEZIONE}>
               <TitoloSezione testo="Da sistemare" contatore={ancoraBloccate === 0 ? 'Fatto' : String(ancoraBloccate)} />
@@ -165,26 +242,28 @@ export function Ingredienti({ piano, stato, ingredientiEsistenti, onStato }: Pro
             {daSistemare.map((p) => (
               <section key={p.alimento} aria-label={p.nome || p.alimento} style={STILE_SCHEDA}>{scheda(p, false)}</section>
             ))}
+            {cambiDaSistemare.map(schedaCambio)}
           </section>
         )}
 
-        {daControllare.length > 0 && (
+        {(daControllare.length > 0 || cambiDaControllare.length > 0) && (
           <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <h3 style={STILE_TITOLO_SEZIONE}>
-              <TitoloSezione testo="Da controllare" contatore={String(daControllare.length)} />
+              <TitoloSezione testo="Da controllare" contatore={String(daControllare.length + cambiDaControllare.length)} />
             </h3>
             {daControllare.map((p) => (
               <section key={p.alimento} aria-label={p.nome || p.alimento} style={STILE_SCHEDA}>
                 {scheda(p, false, `Non è nella mia tabella dei formati: ${valoreRipiego(p)} è un valore di ripiego.`)}
               </section>
             ))}
+            {cambiDaControllare.map(schedaCambio)}
           </section>
         )}
 
         {proposti.length > 0 && (
           <BloccoGruppo titolo={<TitoloSezione testo="Proposti da me" contatore={String(proposti.length)} />}>
             {proposti.map((p) => {
-              const legata = legataA(p, ingredientiEsistenti);
+              const legata = legataA(p, ingredientiEsistenti, scelti);
               const formato = Number.isFinite(p.formatoConfezione) ? numeroInTesto(p.formatoConfezione) : '—';
               return (
                 <RigaImpostazione

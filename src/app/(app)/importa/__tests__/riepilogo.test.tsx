@@ -155,7 +155,9 @@ describe('Riepilogo (spec fase 8a §C)', () => {
 
   it('caricamento fallito: uno stato vuoto, e RIPROVA rilegge', async () => {
     vi.mocked(leggiBozzaImport).mockResolvedValue({ piano: PIANO_SEMPLICE, statoRevisione: STATO_OK });
-    vi.mocked(leggiRepertorio).mockRejectedValueOnce(new Error('rete'));
+    // La prima lettura è quella della pagina al mount (Task 11, l'esempio della Scheda del cambio);
+    // la seconda è quella del Riepilogo, che deve fallire.
+    vi.mocked(leggiRepertorio).mockResolvedValueOnce([]).mockRejectedValueOnce(new Error('rete'));
     await riprendiBozza();
 
     expect(await screen.findByRole('heading', { name: 'Il riepilogo non è pronto' })).toBeInTheDocument();

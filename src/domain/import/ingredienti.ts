@@ -374,14 +374,17 @@ export interface SezioniIngredienti {
 /**
  * Le sezioni all'ingresso nel passo (spec 8b §F): si decidono una volta sola, così una scheda
  * non salta via sotto il dito mentre la si corregge. Le proposte che bloccano stanno in «Da
- * sistemare», anche se sono ripieghi; i ripieghi liberi in «Da controllare».
+ * sistemare», anche se sono ripieghi; i ripieghi liberi in «Da controllare». Con i cambi e i pesi
+ * (8c), anche una proposta che aspetta il peso di un pezzo sta in «Da sistemare» dall'ingresso.
  */
 export function sezioniIniziali(
   proposte: IngredienteProposto[],
   esistenti: Ingredient[],
   scelti: Readonly<Record<string, string>> = {},
+  cambi: CambioUnita[] = [],
+  pesi: PesoProposta[] = [],
 ): SezioniIngredienti {
-  const bloccate = motiviBlocco(proposte, esistenti, scelti);
+  const bloccate = motiviBlocco(proposte, esistenti, scelti, cambi, pesi);
   return {
     daSistemare: proposte.filter((p) => bloccate.has(p.alimento)).map((p) => p.alimento),
     daControllare: proposte

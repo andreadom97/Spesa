@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Ingredient, MealSlotDef } from '@/domain/types';
+import type { Dish, Ingredient, MealSlotDef } from '@/domain/types';
 import type { StatoRevisione } from '@/domain/import/types';
 import { leggiBozzaImport, salvaBozzaImport, cancellaBozzaImport, type BozzaImport } from '@/data/importa';
 import { leggiSlotDefs } from '@/data/impostazioni';
-import { leggiIngredienti } from '@/data/repertorio';
+import { leggiIngredienti, leggiRepertorio } from '@/data/repertorio';
 import { validaEsito } from '@/domain/import/valida';
 import { statoRevisioneIniziale } from '@/domain/import/mapping';
 import { client } from '@/data/supabase';
@@ -72,6 +72,7 @@ export default function Importa() {
   // pronti quando si riprende una bozza salvata (che non rifà il giro di estrazione).
   const [slotDefs, setSlotDefs] = useState<MealSlotDef[]>([]);
   const [ingredientiEsistenti, setIngredientiEsistenti] = useState<Ingredient[]>([]);
+  const [repertorio, setRepertorio] = useState<Dish[]>([]);
 
   // Acquisizione: stato indipendente dalla vista corrente, così un errore o
   // un giro di estrazione non fanno perdere le foto già scelte. Foto e PDF
@@ -85,11 +86,14 @@ export default function Importa() {
 
   useEffect(() => {
     let vivo = true;
-    Promise.all([leggiBozzaImport(), leggiSlotDefs(), leggiIngredienti()])
-      .then(([b, defs, ingredienti]) => {
+    // I piatti servono solo all'esempio della Scheda del cambio di unità: se non arrivano, la bozza si apre lo stesso.
+    const piatti = Promise.resolve().then(() => leggiRepertorio()).catch(() => [] as Dish[]);
+    Promise.all([leggiBozzaImport(), leggiSlotDefs(), leggiIngredienti(), piatti])
+      .then(([b, defs, ingredienti, rep]) => {
         if (!vivo) return;
         setSlotDefs(defs);
         setIngredientiEsistenti(ingredienti);
+        setRepertorio(rep ?? []);
         if (b) {
           setBozza(b);
           setVista('ripresa');
@@ -357,6 +361,7 @@ export default function Importa() {
             bozza={bozza}
             slotDefs={slotDefs}
             ingredientiEsistenti={ingredientiEsistenti}
+            repertorio={repertorio}
             onStatoRevisione={aggiornaStatoRevisione}
           />
         </Cornice>
@@ -463,11 +468,13 @@ function ContenutoBozza({
   bozza,
   slotDefs,
   ingredientiEsistenti,
+  repertorio,
   onStatoRevisione,
 }: {
   bozza: BozzaImport;
   slotDefs: MealSlotDef[];
   ingredientiEsistenti: Ingredient[];
+  repertorio: Dish[];
   onStatoRevisione: (s: StatoRevisione) => void;
 }) {
   switch (bozza.statoRevisione.passo) {
@@ -477,7 +484,7 @@ function ContenutoBozza({
       );
     case 'formati':
       return (
-        <Ingredienti piano={bozza.piano} stato={bozza.statoRevisione} ingredientiEsistenti={ingredientiEsistenti} onStato={onStatoRevisione} />
+        <Ingredienti piano={bozza.piano} stato={bozza.statoRevisione} ingredientiEsistenti={ingredientiEsistenti} repertorio={repertorio} onStato={onStatoRevisione} />
       );
     case 'riepilogo':
       return <Riepilogo piano={bozza.piano} stato={bozza.statoRevisione} onStato={onStatoRevisione} />;

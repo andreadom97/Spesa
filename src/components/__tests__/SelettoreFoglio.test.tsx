@@ -47,4 +47,15 @@ describe('SelettoreFoglio', () => {
     expect(props.onChiudi).toHaveBeenCalled();
     expect(props.onScegli).not.toHaveBeenCalled();
   });
+
+  it('la lista delle voci scorre dentro il foglio (spec 8c §G)', () => {
+    rendi({ aperto: true });
+    expect(screen.getByRole('radiogroup').style.overflowY).toBe('auto');
+  });
+
+  it('il valore della riga si può dire a parole, e una voce può avere la sua nota', () => {
+    rendi({ sceltaId: 's-cena', valore: 'Ingrediente nuovo', voci: [...VOCI, { id: 'i-z', nome: 'Zucchine', nota: 'Lo conti in pezzi' }], aperto: true });
+    expect(screen.getByRole('button', { name: /Condimenti/ })).toHaveTextContent('Ingrediente nuovo');
+    expect(screen.getByRole('radio', { name: /Zucchine/ })).toHaveTextContent('Lo conti in pezzi');
+  });
 });
