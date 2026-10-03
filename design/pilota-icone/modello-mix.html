@@ -1,0 +1,237 @@
+<title>Mix due toni e incisione</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: in cima il foglio delle sei icone per direzione, sotto le stesse icone sulle tessere vere; le direzioni sono colonne affiancate, impilate a larghezza telefono.
+   Token del design system di Dispesa (globals.css). L'app non ha dark mode di proposito (DESIGN.md §12): un solo tema, esplicito. */
+:root {
+  --ink: #14163A; --testo-2: #5C5F7A; --mut: #8A8A96; --off: #9A9AA6;
+  --superficie: #FFFFFF; --bordo: rgba(20,22,58,0.07); --bordo-tratteggio: rgba(20,22,58,0.20);
+  --sfondo: linear-gradient(180deg, #EDECEA 0%, #F2F1EF 34%, #F8F8F7 70%, #FCFCFB 100%);
+  --fondo-pagina: #F2F1EF;
+  --ombra-pannello: 0 1px 2px rgba(20,22,58,.05), 0 6px 16px rgba(20,22,58,.06);
+  --font-testo: 'Plus Jakarta Sans', 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  color-scheme: light;
+}
+body { background: var(--fondo-pagina); background-image: var(--sfondo); color: var(--ink); font-family: var(--font-testo); }
+.pagina { max-width: 1680px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 64px; display: flex; flex-direction: column; gap: 40px; }
+.testa { display: flex; flex-direction: column; gap: 10px; max-width: 75ch; }
+.eti { font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--testo-2); }
+h1 { font-size: 30px; font-weight: 800; letter-spacing: -.035em; line-height: 1.1; margin: 0; text-wrap: balance; }
+h2 { font-size: 21px; font-weight: 800; letter-spacing: -.03em; margin: 0; text-wrap: balance; }
+p { margin: 0; font-size: 14px; line-height: 1.55; color: var(--testo-2); }
+p strong { color: var(--ink); }
+.scenario { display: flex; flex-direction: column; gap: 14px; }
+.colonne { display: flex; gap: 16px; align-items: flex-start; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x proximity; }
+/* 351 px = il pannello della Lista su un telefono da 375 (margine 12 per lato) */
+.colonna { flex: 0 0 351px; display: flex; flex-direction: column; gap: 8px; min-width: 0; scroll-snap-align: start; }
+.colonna h3 { margin: 0; font-size: 15px; font-weight: 800; letter-spacing: -.01em; }
+.colonna .nota { font-size: 12.5px; line-height: 1.45; min-height: 4.4em; }
+.pannello { background: var(--superficie); border-radius: 22px; border: 1px solid var(--bordo); box-shadow: var(--ombra-pannello); padding: 12px; display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+.foglio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+.foglio figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; padding-block: 6px; }
+.foglio figcaption { font-family: var(--font-mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--mut); }
+.griglia { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.sottoeti { font-family: var(--font-mono); font-size: 9.5px; font-weight: 700; letter-spacing: .14em; color: var(--mut); padding-inline: 2px; }
+.tessera { position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: flex-start; min-height: 104px; box-sizing: border-box; padding: 12px 14px 13px; border-radius: 14px; }
+.tessera.hero { grid-column: span 2; padding: 13px 16px 14px; border-radius: 18px; }
+.pill { position: relative; font-family: var(--font-mono); font-weight: 700; font-size: 10.5px; letter-spacing: .07em; border-radius: 999px; padding: 5px 10px; }
+.nome { position: relative; margin-top: 10px; font-size: 17px; font-weight: 700; letter-spacing: -.032em; line-height: 1.1; overflow-wrap: anywhere; }
+.hero .nome { font-size: 25px; }
+.dispensa .nome { margin-top: auto; padding-top: 12px; }
+.barrato { text-decoration: line-through; text-decoration-thickness: 1.6px; }
+.ico { position: absolute; pointer-events: none; overflow: visible; }
+.limiti { border: 2px dashed var(--bordo-tratteggio); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+.limiti ul { margin: 0; padding-left: 18px; font-size: 13.5px; line-height: 1.55; color: var(--testo-2); }
+@media (max-width: 420px) { h1 { font-size: 25px; } }
+</style>
+
+<main class="pagina">
+  <header class="testa">
+    <span class="eti">Dispesa · pilota stile icone · mix 2 + 3 · 03/10/2026</span>
+    <h1>Due toni con incisione: il Mix B con l'ombra leggera</h1>
+    <p><strong>Obiettivo:</strong> verificare la versione scelta, cioè il Mix B con un'ombreggiatura più leggera anche di quella del Mix A. La terza colonna è la nuova; le prime due sono A e B come li hai visti, per confronto. Ogni colonna è larga quanto il pannello della Lista su un telefono; se lo schermo è stretto, scorri di lato.</p>
+  </header>
+
+  <section class="scenario">
+    <h2>Il foglio</h2>
+    <p>Le sei icone a 64 px su bianco: qui si giudica il disegno.</p>
+    <div class="colonne" id="fogli"></div>
+  </section>
+
+  <section class="scenario">
+    <h2>Sulle tessere</h2>
+    <p>Misure, colori e alone del codice in produzione. Due tessere grandi (fondo pieno verde e azzurro), sei normali di cui una presa, due di Dispensa (in casa e finita).</p>
+    <div class="colonne" id="tessere"></div>
+  </section>
+
+  <section class="scenario">
+    <div class="limiti">
+      <span class="eti">Cosa guardare e cosa manca</span>
+      <ul>
+        <li>Tutte e tre usano pieni: se scegli una di queste, DESIGN.md §6 (icone ingrediente solo di tratto) va riscritto.</li>
+        <li>Il tratteggio dell'ombra è calcolato dalla sagoma, non disegnato a mano: lo stesso codice vale per tutte le 64 icone.</li>
+        <li>Le sagome sono ancora quelle del pilota del 26/09: qui cambia la dose dei due trattamenti, non il soggetto.</li>
+        <li>Pagina statica con le misure del codice, non il componente montato nell'app: la versione scelta va provata sul telefono.</li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<script>
+const OGGI = __OGGI__;
+
+const INK = '#14163A';
+const AREE = {
+  ortofrutta: { colore: '#A8D96A', tono: '#7AA838', tinta: '#E8F5D8' },
+  macelleria: { colore: '#F29B9B', tono: '#D88384', tinta: '#FCE5E5' },
+  latticini: { colore: '#9CC7F2', tono: '#759EC8', tinta: '#E5F0FC' },
+  cereali: { colore: '#F5CE5B', tono: '#BB9609', tinta: '#FCF2D4' },
+};
+
+/* Il disegno di ogni chiave (griglia 24):
+   sil = sagoma chiusa (pieni, maschere), linee = contorno a tratto,
+   det = dettagli (le direzioni ricche li usano tutti), fori = cerchi [x, y, r]. */
+const C = (x, y, r) => `M${x - r} ${y}a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0Z`;
+const ICONE = {
+  pomodoro: {
+    area: 'ortofrutta',
+    sil: 'M3.2 13.6a8.8 7.6 0 1 0 17.6 0a8.8 7.6 0 1 0-17.6 0ZM12 12 12.8 8.9 16 9.1 13.3 7.4 14.5 4.4 12 6.4 9.5 4.4 10.7 7.4 8 9.1 11.2 8.9ZM11.5 6.4V2.8h1v3.6Z',
+    linee: 'M8 6.8A8.8 7.4 0 1 0 16 6.8M12 12 12.8 8.9 16 9.1 13.3 7.4 14.5 4.4 12 6.4 9.5 4.4 10.7 7.4 8 9.1 11.2 8.9ZM12 6.4V2.8',
+    det: ['M8.4 7.6c-2.2 2.4-2.8 6.4-1.2 9.8', 'M15.6 7.6c2.2 2.4 2.8 6.4 1.2 9.8', 'M5.8 12.8c.2-1.6.9-2.8 1.9-3.6', 'M5.9 15.4c.1.4.3.8.5 1.1'],
+    fori: [],
+  },
+  carota: {
+    area: 'ortofrutta',
+    sil: 'M4.6 19.4C7.4 17.8 14.8 12.6 17 10.3A2.4 2.4 0 0 0 13.7 7C11.4 9.2 6.2 16.5 4.6 19.4ZM15.4 8.6C14.6 6.6 15 4.6 16.4 3.2 17.2 5.2 16.8 7.2 15.4 8.6ZM15.4 8.6C16 6.6 17.6 5 19.8 4.6 19.2 6.6 17.6 8.2 15.4 8.6ZM15.4 8.6C17 7.4 19.2 7 21.2 7.8 19.6 9 17.4 9.4 15.4 8.6Z',
+    linee: 'M4.6 19.4C7.4 17.8 14.8 12.6 17 10.3A2.4 2.4 0 0 0 13.7 7C11.4 9.2 6.2 16.5 4.6 19.4ZM15.4 8.6C14.6 6.6 15 4.6 16.4 3.2 17.2 5.2 16.8 7.2 15.4 8.6ZM15.4 8.6C16 6.6 17.6 5 19.8 4.6 19.2 6.6 17.6 8.2 15.4 8.6ZM15.4 8.6C17 7.4 19.2 7 21.2 7.8 19.6 9 17.4 9.4 15.4 8.6Z',
+    det: ['M7.4 15.4l1.2 1', 'M9.6 13.1l1.4 1.1', 'M11.8 10.9l1.3 1', 'M13.9 9.1l.9.8', 'M15.4 8.6 16.1 5.4', 'M15.4 8.6l3-2.6', 'M15.4 8.6l4 -.6', 'M4.6 19.4l-1.5 1.3'],
+    fori: [],
+  },
+  pesce: {
+    area: 'macelleria',
+    sil: 'M21.4 12C19.4 6.6 12 5.2 7.6 10.2L3.2 7.8 4.6 12 3.2 16.2l4.4-2.4C12 18.8 19.4 17.4 21.4 12ZM10.4 8.4 12 5.6C13.5 5.6 14.9 6 15.9 6.9 14 7 12 7.5 10.4 8.4Z',
+    linee: 'M21.4 12C19.4 6.6 12 5.2 7.6 10.2L3.2 7.8 4.6 12 3.2 16.2l4.4-2.4C12 18.8 19.4 17.4 21.4 12ZM10.4 8.4 12 5.6C13.5 5.6 14.9 6 15.9 6.9',
+    det: ['M15.2 8.4c1.3 2.1 1.3 5.1 0 7.2', 'M8 12.2c2.4-.5 4.8-.5 6.8 0', 'M10.4 10.2c.5.4.5 1 0 1.4M12.4 9.8c.5.4.5 1 0 1.4M11.4 12.9c.5.4.5 1 0 1.4M13.4 13.1c.5.4.5 1 0 1.4', 'M4.6 9.6l1.8 1.6M4.6 14.4l1.8-1.6', 'M21.4 12l-1.4.4'],
+    fori: [[18.2, 10.9, 0.9]],
+  },
+  formaggio: {
+    area: 'latticini',
+    sil: 'M3.2 19V13.4L16.4 5.4c2.8.5 4.6 2.6 4.6 5.4V19Z',
+    linee: 'M3.2 19V13.4L16.4 5.4c2.8.5 4.6 2.6 4.6 5.4V19Z',
+    det: ['M3.2 13.4H21', 'M16.4 5.4c-.6 1.2-.8 2.3-.6 3.4V13.4', 'M19.4 13.4V19'],
+    fori: [[8, 16.3, 1.5], [14.6, 16.1, 1.8], [12.6, 10.6, 1.2], [17.2, 18.2, 0.6], [9.6, 12.2, 0.6]],
+  },
+  pane: {
+    area: 'cereali',
+    sil: 'M3 19.2V12.4C1.6 11.6 2 7.4 5.6 7.4H17.6C21.2 7.4 22.2 11.2 20.6 12.4V19.2Z',
+    linee: 'M3 19.2V12.4C1.6 11.6 2 7.4 5.6 7.4H9c3.6 0 4 4.2 2.6 5v6.8ZM9 7.4h8.6c3.6 0 4.6 3.8 3 5v6.8h-9',
+    det: ['M5 17.4v-5.8c-.9-.6-.6-2.4 1-2.4h1.8c1.6 0 1.9 1.8 1 2.4v5.8Z', 'M14.8 7.8 14 9.6M18.2 8.2l-.8 1.6', 'M11.6 13.4h9'],
+    fori: [[6.3, 13.2, 0.35], [7.6, 14.8, 0.35], [6.2, 16, 0.3]],
+  },
+  latte: {
+    area: 'latticini',
+    sil: 'M5.4 20.8V9.4L8 5V3H16V5L18.6 9.4V20.8Z',
+    linee: 'M5.4 20.8V9.4L8 5h8l2.6 4.4v11.4ZM8 5V3h8v2',
+    det: ['M5.4 9.4h13.2', 'M15.6 9.4v11.4', 'M16 5l-.4 4.4', 'M8 18.4h5.6', 'M10.8 12.2c-1.4 1.9-2.1 2.9-2.1 4a2.1 2.1 0 0 0 4.2 0c0-1.1-.7-2.1-2.1-4Z'],
+    fori: [],
+  },
+};
+const ORDINE = ['pomodoro', 'carota', 'pesce', 'formaggio', 'pane', 'latte'];
+
+let uid = 0;
+function rgba(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16}, ${(n >> 8) & 255}, ${n & 255}, ${a})`; }
+function alone(c, px) { const k = +(px * .707).toFixed(2); return [[px,0],[-px,0],[0,px],[0,-px],[k,k],[-k,k],[k,-k],[-k,-k]].map(([x,y]) => `${x}px ${y}px 0 ${c}`).concat(`0 0 ${px+1}px ${c}`).join(','); }
+const fori = (ic) => ic.fori.map(([x, y, r]) => C(x, y, r)).join('');
+
+/* Colori per stato: tono (tratto), riempimento, fondo (per i tagli della silhouette). */
+function colori(ic, stato, fondo) {
+  const a = AREE[ic.area];
+  if (stato === 'spento') return { a, tratto: '#9A9AA6', op: .55, fondo };
+  if (stato === 'hero') return { a, tratto: a.tono, op: 1, fondo };
+  return { a, tratto: a.tono, op: 1, fondo };
+}
+
+/* Ogni direzione: taglia normale/grande, taglio dal bordo, e il disegno dentro lo svg. */
+/* Un mix di «Due toni» (2) e «Incisione» (3): pieno nel colore del reparto, ombra a tratteggio
+   calcolata dalla sagoma, contorno e dettagli a tratto. I parametri cambiano fra le tre versioni. */
+function mix(p) {
+  return function (k, stato) {
+    const ic = ICONE[k], a = AREE[ic.area], id = 'm' + (++uid);
+    const spento = stato === 'spento';
+    const tratto = spento ? '#9A9AA6' : a.tono, op = spento ? .55 : 1;
+    const pieno = spento ? 'rgba(20,22,58,0.06)' : stato === 'hero' ? `rgba(255,255,255,${p.pienoHero})` : stato === 'tinta' ? rgba('#FFFFFF', .7) : rgba(a.colore, p.pieno);
+    let righe = '';
+    for (let i = -2; i <= 50; i += p.passo) righe += `M${i.toFixed(2)} -1L${(i - 26).toFixed(2)} 25`;
+    const [ox, oy] = p.ombra;
+    return `<defs><mask id="${id}" maskUnits="userSpaceOnUse" x="-2" y="-2" width="28" height="28"><path d="${ic.sil}" fill="#fff"/><path d="${ic.sil}" fill="#000" transform="translate(${ox} ${oy})"/></mask></defs>
+      <path d="${ic.sil}" fill="${pieno}" transform="translate(${p.sfasa} ${p.sfasa})"/>
+      <g opacity="${op}" stroke="${tratto}" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="${righe}" stroke-width="${p.righe}" mask="url(#${id})"/><path d="${ic.linee}" stroke-width="${p.contorno}"/><path d="${ic.det.slice(0, p.dettagli).join('')}${fori(ic)}" stroke-width="${p.dett}"/></g>`;
+  };
+}
+
+const DIREZIONI = [
+  { id: 'mixA', titolo: 'Rif. Mix A · Equilibrio', nota: 'Per confronto. Pieno a metà, spostato di un soffio; ombra a tratteggio; contorno 1,1 e cinque dettagli a 0,55. Il punto di mezzo fra le due.',
+    taglia: [60, 96], taglio: [-11, -18],
+    disegna: mix({ pieno: .5, pienoHero: .55, sfasa: .9, ombra: [-3, -3.2], passo: 1, righe: .46, contorno: 1.1, dettagli: 5, dett: .55 }) },
+  { id: 'mixB', titolo: 'Rif. Mix B · Più colore', nota: 'Per confronto. Pieno più carico e in registro (non spostato); tratteggio più fitto che scurisce il pieno; contorno 0,9. Domina il colore del reparto.',
+    taglia: [60, 96], taglio: [-11, -18],
+    disegna: mix({ pieno: .72, pienoHero: .7, sfasa: 0, ombra: [-3.4, -3.6], passo: .82, righe: .5, contorno: .9, dettagli: 5, dett: .5 }) },
+  { id: 'mixBL', titolo: 'Mix B · ombra leggera', nota: 'La B (pieno carico e allineato, contorno 0,9) con un\'ombra più stretta e più rada della A: tratteggio a 0,34 ogni 1,2, solo sul bordo in basso a destra.',
+    taglia: [60, 96], taglio: [-11, -18],
+    disegna: mix({ pieno: .72, pienoHero: .7, sfasa: 0, ombra: [-2, -2.2], passo: 1.2, righe: .34, contorno: .9, dettagli: 5, dett: .5 }) },
+];
+
+function svg(dir, k, stato, grande, fondo, posiz = true) {
+  const s = dir.taglia[grande ? 1 : 0], t = dir.taglio[grande ? 1 : 0];
+  const st = posiz ? ` class="ico" style="right:${t}px;bottom:${t}px"` : '';
+  return `<svg${st} aria-hidden="true" width="${s}" height="${s}" viewBox="0 0 24 24">${dir.disegna(k, stato, fondo)}</svg>`;
+}
+
+function tesseraLista(dir, x) {
+  const a = AREE[ICONE[x.k].area], spento = !!x.preso, hero = !!x.hero;
+  let bg, bordo, nomeC, pillBg, qtyC, fondo, stato;
+  if (spento) { bg = 'rgba(20,22,58,0.035)'; bordo = '1px solid transparent'; nomeC = 'rgba(20,22,58,0.34)'; pillBg = 'rgba(20,22,58,0.06)'; qtyC = 'rgba(20,22,58,0.24)'; fondo = '#F7F7F8'; stato = 'spento'; }
+  else if (hero) { bg = a.colore; bordo = `1px solid ${rgba(a.colore, .9)}`; nomeC = INK; pillBg = '#FFFFFF'; qtyC = rgba(INK, .55); fondo = a.colore; stato = 'hero'; }
+  else { bg = '#FFFFFF'; bordo = `1px solid ${rgba(a.colore, .45)}`; nomeC = INK; pillBg = rgba(a.colore, .32); qtyC = '#8A8A96'; fondo = '#FFFFFF'; stato = 'area'; }
+  const ombra = spento ? '' : `text-shadow:${alone(fondo, hero ? 3 : 2)};`;
+  return `<div class="tessera${hero ? ' hero' : ''}" style="background:${bg};border:${bordo}">${svg(dir, x.k, stato, hero, fondo)}
+    <div style="display:flex;align-items:center;gap:6px;position:relative"><span class="pill" style="background:${pillBg};color:${spento ? 'rgba(20,22,58,0.34)' : INK}">${x.conf}</span>${x.qty ? `<span style="font-family:var(--font-mono);font-weight:500;font-size:10px;letter-spacing:.04em;color:${qtyC}">${x.qty}</span>` : ''}</div>
+    <div class="nome${spento ? ' barrato' : ''}" style="color:${nomeC};${ombra}">${x.nome}</div></div>`;
+}
+
+function tesseraDispensa(dir, x) {
+  const a = AREE[ICONE[x.k].area], inCasa = x.stato === 'casa';
+  const fondo = inCasa ? a.tinta : '#FFFFFF';
+  const ombra = inCasa ? `text-shadow:${alone(fondo, 2)};` : '';
+  return `<div class="tessera dispensa" style="background:${inCasa ? a.tinta : 'none'};border:${inCasa ? 'none' : '2px dashed var(--bordo-tratteggio)'}">${svg(dir, x.k, inCasa ? 'tinta' : 'spento', false, fondo)}
+    <span class="pill" style="background:${inCasa ? '#FFFFFF' : 'rgba(20,22,58,0.06)'};color:${inCasa ? INK : '#5C5F7A'}">${inCasa ? x.qta : 'Finito'}</span>
+    <span class="nome${inCasa ? '' : ' barrato'}" style="color:${inCasa ? INK : 'rgba(20,22,58,0.34)'};${ombra}">${x.nome}</span></div>`;
+}
+
+const LISTA = [
+  { nome: 'Pomodori', k: 'pomodoro', conf: '6 PZ', hero: true },
+  { nome: 'Carote', k: 'carota', conf: '1 CONF', qty: '500 g' },
+  { nome: 'Filetto di merluzzo', k: 'pesce', conf: '1 CONF', qty: '400 g' },
+  { nome: 'Parmigiano', k: 'formaggio', conf: '1 CONF', qty: '300 g' },
+  { nome: 'Pane', k: 'pane', conf: '1 PZ' },
+  { nome: 'Latte', k: 'latte', conf: '2 CONF', qty: '2000 ml', hero: true },
+  { nome: 'Latte', k: 'latte', conf: '2 CONF', qty: '2000 ml' },
+  { nome: 'Carote', k: 'carota', conf: '1 CONF', qty: '500 g', preso: true },
+];
+const DISPENSA = [
+  { nome: 'Parmigiano', k: 'formaggio', stato: 'casa', qta: '150 g' },
+  { nome: 'Pane', k: 'pane', stato: 'finita' },
+];
+
+// Le direzioni con le icone a tinta usano il fondo bianco per la «tinta» della silhouette solo in Dispensa.
+document.getElementById('fogli').innerHTML = DIREZIONI.map((d) => `
+  <div class="colonna"><h3>${d.titolo}</h3><p class="nota">${d.nota}</p>
+    <div class="pannello"><div class="foglio">${ORDINE.map((k) => `<figure><svg aria-hidden="true" width="64" height="64" viewBox="0 0 24 24" style="overflow:visible">${d.disegna(k, 'area', '#FFFFFF')}</svg><figcaption>${k}</figcaption></figure>`).join('')}</div></div></div>`).join('');
+
+document.getElementById('tessere').innerHTML = DIREZIONI.map((d) => `
+  <div class="colonna"><h3>${d.titolo}</h3>
+    <div class="pannello"><span class="sottoeti">LISTA</span><div class="griglia">${LISTA.map((x) => tesseraLista(d, x)).join('')}</div>
+    <span class="sottoeti">DISPENSA</span><div class="griglia">${DISPENSA.map((x) => tesseraDispensa(d, x)).join('')}</div></div></div>`).join('');
+</script>

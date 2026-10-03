@@ -171,7 +171,7 @@ export function TesseraIngrediente({
         overflow: 'hidden',
       }}
     >
-      {chiave && <IconaIngrediente chiave={chiave} area={area} tono="area" taglia={52} />}
+      {chiave && <IconaIngrediente chiave={chiave} area={area} tono="area" taglia={60} />}
       <button
         type="button"
         onClick={onRimuovi}

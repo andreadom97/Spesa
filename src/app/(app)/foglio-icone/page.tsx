@@ -7,8 +7,9 @@ import { FoglioTessere } from './FoglioTessere';
 
 /**
  * Foglio di controllo delle icone ingrediente (spec 2026-09-26, passo 3):
- * ogni icona in tono medio sulle sei aree e in bianco sui sei colori pieni,
- * poi le tessere vere con nomi corti e lunghi. Non esiste in produzione.
+ * ogni icona a due toni (pieno nel colore d'area, bianco sulla protagonista e
+ * sulla Dispensa in casa, tratti nel tono medio) sulle sei aree, poi le
+ * tessere vere con nomi corti e lunghi. Non esiste in produzione.
  */
 export default function FoglioIcone() {
   if (process.env.NODE_ENV === 'production') notFound();
@@ -37,7 +38,7 @@ function Cella({ chiave, area, sfondo, bordo, tono }: { chiave: ChiaveIcona; are
     <td>
       <div style={{ position: 'relative', width: 64, height: 64, borderRadius: 12, background: sfondo, border: `1px solid ${bordo}`, overflow: 'hidden' }}>
         <div style={{ position: 'absolute', inset: 6 }}>
-          <IconaIngrediente chiave={chiave} area={area} tono={tono} taglia={52} />
+          <IconaIngrediente chiave={chiave} area={area} tono={tono} taglia={60} />
         </div>
       </div>
     </td>

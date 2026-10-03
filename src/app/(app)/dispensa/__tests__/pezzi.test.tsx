@@ -65,6 +65,7 @@ describe('TesseraDispensa · icona ingrediente', () => {
     const { container } = render(<TesseraDispensa voce={voce()} pillola={null} onApri={vi.fn()} />);
     expect(icona(container)).toHaveAttribute('data-icona', 'cosciotto');
     expect(icona(container)).toHaveAttribute('stroke', '#D88384');
+    expect(icona(container)).toHaveAttribute('data-tono', 'tinta');
     expect(screen.getByText('Petto di pollo').style.textShadow).toContain('#FCE5E5');
     const t = screen.getByRole('button');
     expect(t.style.position).toBe('relative');
@@ -74,6 +75,7 @@ describe('TesseraDispensa · icona ingrediente', () => {
   it('finita: icona spenta, nome barrato senza alone (come la Lista spuntata)', () => {
     const { container } = render(<TesseraDispensa voce={voce({ residuo: 0 })} pillola={null} onApri={vi.fn()} />);
     expect(icona(container)).toHaveAttribute('stroke', '#9A9AA6');
+    expect(icona(container)).toHaveAttribute('data-tono', 'spento');
     const nome = screen.getByText('Petto di pollo');
     expect(nome).toHaveStyle({ color: 'rgba(20, 22, 58, 0.34)' });
     expect(nome.style.textShadow).toBe('');
@@ -82,6 +84,7 @@ describe('TesseraDispensa · icona ingrediente', () => {
   it('mai comprato: icona spenta', () => {
     const { container } = render(<TesseraDispensa voce={voce({ residuo: 0, ultimoAcquisto: null })} pillola={null} onApri={vi.fn()} />);
     expect(icona(container)).toHaveAttribute('stroke', '#9A9AA6');
+    expect(icona(container)).toHaveAttribute('data-tono', 'spento');
   });
 });
 

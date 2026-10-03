@@ -80,6 +80,7 @@ describe('TesseraIngrediente · icona ingrediente', () => {
     const s = container.querySelector('svg[data-icona]');
     expect(s).toHaveAttribute('data-icona', 'uovo');
     expect(s).toHaveAttribute('stroke', '#759EC8');
+    expect(s).toHaveAttribute('width', '60');
     expect(screen.getByText('Uova').style.textShadow).toContain('#FFFFFF');
     expect(screen.getByText('LATTICINI, UOVA E SALUMI').style.textShadow).toContain('#FFFFFF');
   });
