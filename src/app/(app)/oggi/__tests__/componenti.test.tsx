@@ -38,10 +38,14 @@ describe('Poster (spec §B.4)', () => {
     rerender(<Poster {...base} onComEAndata={null} />);
     expect(screen.queryByRole('button', { name: "Com'è andata" })).toBeNull();
   });
-  it('RIMETTI QUELLO DEL PIANO solo con la callback, spento in volo', () => {
+  it('RIMETTI QUELLO DEL PIANO solo con la callback; con una scrittura in volo anche COM\'È ANDATA è spento', () => {
     const onRimetti = vi.fn();
-    render(<Poster {...base} onRimetti={onRimetti} inVolo />);
+    const { rerender } = render(<Poster {...base} onRimetti={onRimetti} inVolo />);
     expect(screen.getByRole('button', { name: 'Rimetti quello del piano' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: "Com'è andata" })).toBeDisabled();
+    // Spento davvero (attributo nativo), e si riaccende a scrittura finita.
+    rerender(<Poster {...base} onRimetti={onRimetti} inVolo={false} />);
+    expect(screen.getByRole('button', { name: "Com'è andata" })).toBeEnabled();
   });
   it('RIMETTI QUELLO DEL PIANO chiama quando non è in volo, e senza callback non c\'è', () => {
     const onRimetti = vi.fn();

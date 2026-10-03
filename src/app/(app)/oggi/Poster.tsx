@@ -52,7 +52,9 @@ export function Poster(p: {
       <div style={{ ...SOPRA, display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
         <Link href={p.hrefCambia} className="pillola-poster">Cambia</Link>
         {p.onComEAndata && (
-          <button type="button" className="pillola-poster" onClick={p.onComEAndata}>Com&apos;è andata</button>
+          // Spento durante una scrittura sullo slot: aggiornaSlot legge e poi scrive, e due scritture
+          // ravvicinate calcolerebbero lo storno su uno stato vecchio.
+          <button type="button" className="pillola-poster" onClick={p.onComEAndata} disabled={p.inVolo}>Com&apos;è andata</button>
         )}
       </div>
       {p.onRimetti && (

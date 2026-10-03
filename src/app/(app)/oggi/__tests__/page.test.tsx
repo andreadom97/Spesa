@@ -299,6 +299,61 @@ describe('Oggi (spec 2026-10-03)', () => {
     expect(screen.getByRole('heading', { name: 'Polpette di ceci' })).toBeInTheDocument();
   });
 
+  it('primo caricamento in volo, ritorno in primo piano che fallisce: l\'errore con RIPROVA, non CARICO… per sempre', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(apriSettimanaCorrente).mockReturnValueOnce(new Promise(() => {}));
+    vi.mocked(apriSettimanaCorrente).mockRejectedValue(new Error('rete'));
+    render(<Oggi />);
+    await screen.findByText('CARICO…');
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(await screen.findByText('Non riusciamo a caricare la giornata.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Riprova' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Apri la lista' })).toHaveAttribute('href', '/lista');
+  });
+
+  it('dopo uno scambio, la rilettura è superata da un ritorno in primo piano che fallisce: l\'errore, non il poster di prima', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(leggiUltimaChiusura).mockResolvedValue('2026-10-01');
+    render(<Oggi />);
+    const scambia = await screen.findByRole('button', { name: 'Scambia con Frittata di patate' });
+    // La rilettura dopo lo scambio non risponde mai; quella del ritorno in primo piano la supera e fallisce.
+    vi.mocked(apriSettimanaCorrente).mockReturnValueOnce(new Promise(() => {}));
+    vi.mocked(apriSettimanaCorrente).mockRejectedValue(new Error('rete'));
+    fireEvent.click(scambia);
+    await waitFor(() => expect(apriSettimanaCorrente).toHaveBeenCalledTimes(2));
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(await screen.findByText('Non riusciamo a caricare la giornata.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Scambia con Frittata di patate' })).toBeNull();
+  });
+
+  it('durante una scrittura del foglio, SCAMBIA e COM\'È ANDATA sono spenti; a scrittura finita si riaccendono', async () => {
+    vi.mocked(leggiUltimaChiusura).mockResolvedValue('2026-10-01');
+    let finisci!: () => void;
+    vi.mocked(aggiornaSlot).mockReturnValueOnce(new Promise<void>((ok) => { finisci = ok; }));
+    render(<Oggi />);
+    fireEvent.click(await screen.findByRole('button', { name: "Com'è andata" }));
+    const foglio = await screen.findByRole('dialog', { name: "Com'è andata: Cena" });
+    fireEvent.click(within(foglio).getByText('Saltato'));
+    await waitFor(() => expect(aggiornaSlot).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole('button', { name: 'Scambia con Frittata di patate' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: "Com'è andata" })).toBeDisabled();
+    finisci();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Scambia con Frittata di patate' })).toBeEnabled());
+    expect(screen.getByRole('button', { name: "Com'è andata" })).toBeEnabled();
+  });
+
+  it('scrittura del foglio fallita: il messaggio sotto il poster, e SCAMBIA torna acceso', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(leggiUltimaChiusura).mockResolvedValue('2026-10-01');
+    vi.mocked(aggiornaSlot).mockRejectedValue(new Error('rete'));
+    render(<Oggi />);
+    fireEvent.click(await screen.findByRole('button', { name: "Com'è andata" }));
+    fireEvent.click(within(await screen.findByRole('dialog', { name: "Com'è andata: Cena" })).getByText('Saltato'));
+    expect(await screen.findByText('Non siamo riusciti a salvare il cambiamento. Riprova.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Scambia con Frittata di patate' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: "Com'è andata" })).toBeEnabled();
+  });
+
   it('l\'annullo sopravvive a una nuova apertura della home (sessionStorage), non a un altro pasto', async () => {
     window.sessionStorage.setItem('spesa:oggi-piano-prima', JSON.stringify({ slotId: 's-cen', dishId: 'd-polpette', scelte: {} }));
     vi.mocked(apriSettimanaCorrente).mockResolvedValue(settimana('confermata', 'd-frittata'));

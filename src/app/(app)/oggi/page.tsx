@@ -134,23 +134,32 @@ export default function Oggi() {
   const [foglio, setFoglio] = useState<MealSlot | null>(null);
   /** L'ultima lettura partita: una risposta più vecchia (ritorno in primo piano, Strict Mode) si scarta. */
   const ultimaLettura = useRef(0);
+  /**
+   * Una lettura non silenziosa (la prima, RIPROVA, quella dopo una scrittura) è partita e nessuna è
+   * ancora riuscita da allora. Finché è vera, un fallimento si mostra anche se a farlo è una
+   * rilettura silenziosa che ha superato quella lettura: altrimenti l'errore andrebbe perso.
+   */
+  const letturaAttesa = useRef(false);
 
   /**
    * `silenziosa` è la rilettura al ritorno in primo piano: se fallisce la giornata a schermo resta
-   * (come la rilettura silenziosa del Piano); dopo una scrittura invece no, perché il poster
-   * mostrerebbe un piatto che non c'è più.
+   * (come la rilettura silenziosa del Piano), ma solo se a schermo c'è una giornata aggiornata:
+   * senza dati, o dopo una scrittura di cui la rilettura non è ancora arrivata, il poster
+   * mostrerebbe un piatto che non c'è più, o niente, e l'errore va detto.
    */
   const carica = useCallback(async (silenziosa = false) => {
     const mia = ++ultimaLettura.current;
+    if (!silenziosa) letturaAttesa.current = true;
     try {
       const letti = await caricaDati();
       if (mia !== ultimaLettura.current) return;
       setDati({ ...letti, pianoPrima: pianoPrimaDi(giornata(letti).prossimo) });
       setErroreCaricamento(false);
+      letturaAttesa.current = false;
     } catch (e) {
       if (mia !== ultimaLettura.current) return;
       console.error('oggi: caricamento fallito.', e);
-      if (!silenziosa) setErroreCaricamento(true);
+      if (!silenziosa || letturaAttesa.current) setErroreCaricamento(true);
     }
   }, []);
 
@@ -241,18 +250,25 @@ export default function Oggi() {
     setInVolo(false);
   }
 
-  /** Le scritture del foglio azioni, coi patch del Piano (spec §B.5). */
+  /**
+   * Le scritture del foglio azioni, coi patch del Piano (spec §B.5). Come scambia e rimetti tengono
+   * `inVolo` fino alla rilettura: aggiornaSlot legge lo slot e poi scrive, e un'altra scrittura
+   * sullo stesso slot nel frattempo calcolerebbe lo storno su uno stato vecchio.
+   */
   async function scriviDalFoglio(slot: MealSlot, patch: Patch) {
     setFoglio(null);
     setErrore(null);
+    setInVolo(true);
     try {
       await aggiornaSlot(slot.id, patch, 'checkin');
     } catch (e) {
       console.error('oggi: azione sul pasto fallita.', e);
       setErrore(ERRORE_AZIONE);
+      setInVolo(false);
       return;
     }
     await carica();
+    setInVolo(false);
   }
 
   // ── Il poster ────────────────────────────────────────────────────────────
