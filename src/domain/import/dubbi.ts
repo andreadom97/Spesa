@@ -300,6 +300,8 @@ export function unitaNota(piano: PianoEstratto, stato: StatoRevisione, alimento:
       const chiave = chiaveGruppo(riga);
       if (escludi !== undefined && chiave === escludi) continue;
       if (irrisolti.has(chiave)) continue;
+      // Il q.b. non dice un'unità, nemmeno quella stimata dal lettore (correzione S1).
+      if (quantoBasta(riga)) continue;
       const unita = unitaBaseDi(riga.unita);
       if (unita !== null) return unita;
     }
@@ -320,7 +322,8 @@ export function unitaDelGruppo(
 ): UnitaBase | null {
   for (const p of pastiDelPiano(piano, stato)) {
     for (const { riga, posizione } of righeDelPasto(p.effettivo)) {
-      if (chiaveGruppo(riga) !== chiave || rigaIrrisolta(riga)) continue;
+      // Il q.b. non è irrisolto ma non ha un'unità da dare: si salta (correzione S1).
+      if (chiaveGruppo(riga) !== chiave || rigaIrrisolta(riga) || quantoBasta(riga)) continue;
       if (p.chiave === escludi.pasto && stessaPosizione(posizione, escludi.posizione)) continue;
       return unitaBaseDi(riga.unita);
     }
@@ -600,7 +603,7 @@ export function anteprimaTogli(piano: PianoEstratto, stato: StatoRevisione, chia
  * CONFERMA I PASTI: le proposte dei dubbi aperti scritte nelle correzioni come «proposta da me»
  * (`quantitaInferita: true`, spec 8c §D), tutte le chiavi del piano in `pastiConfermati` e il passo
  * dopo, in uno stato solo. La porzione e i cucchiai riempiono le righe ancora irrisolte; l'unità
- * più frequente riscrive tutte le righe del gruppo.
+ * più frequente riscrive tutte le righe del gruppo, tranne quelle q.b., che restano com'erano.
  */
 export function confermaTutti(piano: PianoEstratto, stato: StatoRevisione, esistenti: Ingredient[] = []): StatoRevisione {
   let nuovo = stato;
@@ -608,7 +611,7 @@ export function confermaTutti(piano: PianoEstratto, stato: StatoRevisione, esist
     if (g.stato !== 'aperto' || g.proposta === null) continue;
     const p = g.proposta;
     nuovo = suOgniRigaDelGruppo(piano, nuovo, g.chiave, (riga) =>
-      p.origine === 'unitaFrequente' || rigaIrrisolta(riga)
+      !quantoBasta(riga) && (p.origine === 'unitaFrequente' || rigaIrrisolta(riga))
         ? { ...riga, quantita: p.quantita, unita: p.unita, quantitaInferita: true }
         : riga);
   }

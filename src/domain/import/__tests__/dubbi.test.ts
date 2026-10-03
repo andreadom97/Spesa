@@ -541,6 +541,52 @@ describe('8c: il quanto basta non è un dubbio (spec §B)', () => {
   });
 });
 
+describe('8c fix round 0: il q.b. non dice un\'unità e non riceve proposte (ruling del controller su S1)', () => {
+  /** Una settimana di tre giorni, ogni giorno una cena con la Zuppa e «sale q.b.» senza numero. */
+  function pianoSaleQb(): PianoEstratto {
+    const giorno = (g: number) => ({
+      giorno: g, titolo: null,
+      pasti: [{ nomeOriginale: 'cena', piatti: [{ nome: 'Zuppa', descrizione: null, componenti: [], righeFisse: [senza('sale q.b.', 'sale')] }] }],
+    });
+    return { archetipo: 'menu_settimanale', fonte: 'test', noteEstrazione: [], settimane: [{ numero: 1, giorni: [giorno(0), giorno(1), giorno(2)] }] };
+  }
+  /** La cena del giorno `g` di `pianoSaleQb` col sale corretto a mano (quantità trascritta). */
+  const saleCorretto = (piano: PianoEstratto, g: number, quantita: number, unita: 'g' | 'pz'): PastoEstratto => {
+    const pasto = structuredClone(piano.settimane[0].giorni[g].pasti[0]);
+    pasto.piatti[0].righeFisse[0] = { ...pasto.piatti[0].righeFisse[0], quantita, unita, quantitaInferita: false };
+    return pasto;
+  };
+
+  it('unitaNota salta il q.b. stimato dal lettore: l\'unità viene dall\'altra riga', () => {
+    const piano = pianoUnPasto([{ alimento: 'sale', quantita: 2, unita: 'g', quantitaInferita: true, testoOriginale: 'sale q.b.' }]);
+    expect(unitaNota(piano, STATO_PRANZO, 'sale')).toBeNull();
+    piano.settimane[0].giorni[0].pasti.push({ nomeOriginale: 'cena', piatti: [{ nome: 'Zuppa', descrizione: null, componenti: [], righeFisse: [
+      { alimento: 'sale', quantita: 1, unita: 'pz', quantitaInferita: false, testoOriginale: '1 bustina di sale' },
+    ] }] });
+    expect(unitaNota(piano, STATO_PRANZO, 'sale')).toBe('pz');
+  });
+
+  it('confermaTutti non scrive la proposta dell\'unità più frequente su una riga q.b.', () => {
+    const piano = pianoSaleQb();
+    const stato: StatoRevisione = { ...STATO, mappaturaPasti: { cena: 's-cena' }, correzioni: {
+      '1-0-0': saleCorretto(piano, 0, 2, 'g'), '1-1-0': saleCorretto(piano, 1, 1, 'pz'),
+    } };
+    expect(gruppiRighe(piano, stato)[0].proposta).toMatchObject({ unita: 'g', origine: 'unitaFrequente' });
+    const confermato = confermaTutti(piano, stato);
+    expect(confermato.correzioni['1-1-0'].piatti[0].righeFisse[0]).toMatchObject({ quantita: 2, unita: 'g', quantitaInferita: true });
+    // Il mercoledì era q.b.: la riga resta com'era, quantità e unità comprese.
+    const mercoledi = confermato.correzioni['1-2-0'] ?? piano.settimane[0].giorni[2].pasti[0];
+    expect(mercoledi.piatti[0].righeFisse[0]).toEqual(senza('sale q.b.', 'sale'));
+  });
+
+  it('unitaDelGruppo salta le righe q.b. invece di fermarsi', () => {
+    const piano = pianoSaleQb();
+    const stato: StatoRevisione = { ...STATO, correzioni: { '1-1-0': saleCorretto(piano, 1, 2, 'g') } };
+    const posizione = { piatto: 0, componente: null, opzione: null, riga: 0 };
+    expect(unitaDelGruppo(piano, stato, 'sale|sale q.b.', { pasto: '1-2-0', posizione })).toBe('g');
+  });
+});
+
 describe('8c: le proposte compilate (spec §D)', () => {
   it('la porzione tipica: tipo «proposta», non blocca, e CONFERMA la scrive come proposta da me', () => {
     const piano = pianoUnPasto([senza('pasta', 'pasta di semola')]);
