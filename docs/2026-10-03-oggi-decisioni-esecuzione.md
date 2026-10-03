@@ -5,16 +5,18 @@
 `docs/superpowers/specs/2026-10-03-oggi-design.md` (approvata da Andrea il 03/10, precisata in
 esecuzione lo stesso giorno: ogni precisazione è marcata «precisato in esecuzione, 03/10»)
 
-**In una riga.** Oggi è costruita e rivista sul ramo, task per task, ma non è mai stata vista in un
-browser né su un telefono: la verifica nel browser del piano è **NON ESEGUITA** (motivo e
-checklist sotto), e il merge su `main`, che pubblica da solo (Vercel), aspetta l'ok di Andrea.
-Nessuna migrazione.
+**In una riga.** Oggi è costruita e rivista sul ramo, task per task e poi con una review finale,
+ma non è mai stata vista in un browser né su un telefono: la verifica nel browser del piano è
+**NON ESEGUITA** (motivo e checklist sotto), e il merge su `main`, che pubblica da solo (Vercel),
+aspetta l'ok di Andrea. Nessuna migrazione.
 
 **Cosa resta, in ordine:**
 1. Le prove nel browser (checklist in «La verifica nel browser: NON ESEGUITA»), da fare con
    Andrea, solo in lettura.
-2. Sei domande di prodotto e di disegno per Andrea («Le domande aperte»). Nessuna blocca il
-   merge; la prima (il flag `congelato`) cambia cosa vede chi ha qualcosa in congelatore.
+2. Sette domande di prodotto e di disegno per Andrea («Le domande aperte»). Nessuna blocca il
+   merge; la prima (il flag `congelato`) cambia cosa vede chi ha qualcosa in congelatore, e la
+   settima (la domenica, quando la settimana dopo non esiste) decide se il poster di domenica
+   sera ha una via d'uscita.
 3. Le prove dal telefono (spec §J.4), dopo il merge.
 
 Questo file sostituisce il registro che l'esecuzione subagent-driven tiene in `.superpowers/`
@@ -63,7 +65,8 @@ Ogni task ha avuto un implementatore e una review (spec e qualità); i commit de
 | 7 | `d321729`, `839c816` | la pagina `/oggi`, con scambio, annullo e foglio azioni |
 | 8 | `dde7531` | la tab bar a quattro voci |
 | 9 | `556043e` | gli ingressi, Scegli da Oggi, la Dispensa aperta su una voce |
-| 10 | questo commit | i documenti |
+| 10 | `0d4d3a1` | i documenti |
+| Review finale | `fb04045` (codice), e il commit dei documenti che porta questa riga | le correzioni della review finale: sezione «La review finale» |
 
 Sotto, per ogni task: i ruling (una riga del ledger ciascuno, **in ordine**, col costo se
 sbagliati), le deviazioni dell'implementatore accettate dalla review, e l'esito della review.
@@ -116,9 +119,14 @@ Review: spec ✅, qualità Approved (col fix pre-review).
   `liberato` è una mappa vuota (prudente: meno proposte, mai un falso «tutto in casa»). Più test
   per i due casi e per il candidato illeggibile, perché la pagina del Task 7 li chiama nel render
   e un piatto corrotto renderebbe bianca tutta la home. *Se sbagliato:* due `try/catch` da togliere.
-- **Spec precisata** (§C.3): la lettura «× persone» della spec è in realtà `× persone ×
-  fattoreConsumo(slot)`, cioè `1 + porzioniPreparate`, perché lo storno di `aggiornaSlot` conta
-  così le porzioni da preparare. Il test del piano era già giusto.
+- **Spec precisata** (§C.3), **poi corretta dalla review finale**: la precisazione di questo task
+  leggeva «× persone» come `× persone × fattoreConsumo(slot)`, cioè `1 + porzioniPreparate`,
+  «perché lo scambio eredita le porzioni da preparare». La premessa è **falsa**: `aggiornaSlot` con
+  un cambio di piatto azzera `porzioniPreparate` e cancella il lotto dei Pronti dello slot
+  (`src/data/settimana.ts:358`). La regola in vigore è quella della review finale (precisato in
+  esecuzione, 03/10): niente banda con porzioni da preparare (spec §C.1), e per gli altri slot il
+  fabbisogno è quantità × persone, fattore 1. Il test del piano che fissava `× (1 + N)` è
+  cambiato (sezione «I test del piano corretti»).
 - **Spec precisata** (§G.4): `ingredientePrincipale` restituisce `{ ingrediente, icona } | null` e
   `alternative` prende `AlternativeInput`.
 
@@ -270,7 +278,7 @@ Il piano lasciava all'implementatore alcune scelte, da annotare:
 - **Task 9, `window.history.state` nella pulizia dell'indirizzo della Dispensa:** sostituito da
   `{}`, ruling sopra.
 
-### Task 10: i documenti (questo commit)
+### Task 10: i documenti (`0d4d3a1`)
 
 Scritto, senza toccare logica: in `design/sistema/DESIGN.md` le sezioni §8 «Poster del pasto»,
 «Carta alternativa e carosello nel poster» e «Tessere di Oggi», la «Tab bar» a quattro voci, gli
@@ -281,15 +289,90 @@ D.4, F, G.2, G.3, G.4); l'intestazione di `design/sistema/tokens.css`; due comme
 - **Oltre il brief, per non lasciare falsità** (ritocchi di una frase, nessuna riscrittura):
   DESIGN.md §2.1 (la riga di `--ink-2`), §4 (tab bar 338 / 274), §6 (le icone piene della barra),
   §7 (`.anim-avvio` parte su `/oggi`, non su `/lista`).
-- **Da segnalare:** il codice mette l'icona dell'ingrediente principale anche sulle tessere `Poi`
-  e `Domani` e sul lotto da scongelare; la spec §G.2 ne elenca tre luoghi. L'ho scritto come
-  costruito in DESIGN.md §12 e nella spec, marcato «da confermare con Andrea» (domanda 3).
+- **Ruling.** L'icona dell'ingrediente principale sulle tessere `Poi` e `Domani` (codice del
+  piano, Task 7) resta: stessa grammatica di `TesseraBianca` (60, tono `area`), e la spec §D.4
+  tace. È scritta come costruita in DESIGN.md §12 e nella spec, marcata «da confermare con
+  Andrea» (domanda 3). La tessera `Scongela` di un lotto ha l'icona per spec §D.2: non è in
+  questione. *Se sbagliato:* togliere il prop `icona` in `tesseraPasto` di `page.tsx` (una riga:
+  la stessa funzione fa sia `Poi` sia `Domani`; il ledger diceva «due punti», e nel codice ne
+  risulta uno [letto in `page.tsx`]).
+- **Ruling.** Le misure fuori scala (raggio 3 delle caselle, nome della carta a 18, mono 9 e 9,5)
+  sono dichiarate nell'anatomia di §8 e in DESIGN-SYSTEM §9, non aggiunte alle scale di §3 e §5.
+  *Se sbagliato:* promuoverle alle scale è, per ognuna, un cambio di una riga nei documenti
+  [fonte: DESIGN-SYSTEM §9].
+
+### La review finale (`f3a45c9..0d4d3a1`)
+
+Verdetto dell'ultima review (opus): «merge con correzioni» [fonte: ledger del controller]. Nessun
+percorso che sporchi il ledger della dispensa o il residuo; i test di Oggi verdi con `TZ` UTC,
+Europe/Rome e America/Los_Angeles [fonte: ledger; non rieseguito in questa ondata]; i trailer dei
+14 commit corretti. Due difetti Important e alcuni minor. I ruling, **nell'ordine in cui sono stati
+presi**, ciascuno col costo se sbagliato; le correzioni di codice sono in `fb04045`, quelle dei
+documenti in questo commit.
+
+1. **I1: niente banda delle alternative quando il pasto del poster ha porzioni da preparare.**
+   Confermato dal controller sul codice: `aggiornaSlot` con un cambio di piatto azzera
+   `porzioniPreparate` e cancella il lotto dei Pronti dello slot (`src/data/settimana.ts:358`),
+   quindi `SCAMBIA` cancellerebbe in silenzio il meal prep pianificato e `RIMETTI QUELLO DEL PIANO`
+   non rimetterebbe «Cucina N in più». Ruling: nessuna banda (come per `daPronti`, spec §C.1); in
+   `alternative` il fabbisogno è quantità × persone, fattore 1; il test che fissava `× (1 + N)`, la
+   spec §C.3 e questo registro (Task 2) sono corretti; per cambiare quel pasto resta Scegli.
+   *Se sbagliato:* nelle sere di meal prep niente proposte (si può ripensare con un annullo a due
+   scritture).
+2. **I2: `"id": "/lista"` nel manifest.** Senza `id` l'identità della PWA è lo `start_url`, e
+   cambiarlo può far trattare l'app aggiornata come un'altra app [fonte:
+   developer.chrome.com/docs/capabilities/pwa-manifest-id, indicata dal controller, non riletta in
+   questa ondata]. Con `id: "/lista"` (l'id calcolato delle installazioni di oggi, che non ne
+   avevano) l'identità resta e lo `start_url` nuovo arriva con l'aggiornamento del manifest. Questo
+   registro non dice più «reinstallarla è la prova» (sezione «Le prove dal telefono da fare»).
+   *Se sbagliato:* un `id` in più nel manifest, innocuo.
+3. **I3: la domenica la settimana dopo non esiste. Non si corregge in questo ramo.** È un bivio di
+   prodotto, e va ad Andrea (domanda 7). *Se sbagliato:* la domenica sera senza dopocena il poster
+   resta un vicolo cieco fino alla sua scelta.
+4. **M1: se non si leggono la dispensa o l'ultima chiusura, la home non mostra niente che ne derivi
+   e nemmeno la tessera tratteggiata.** Le due letture sono tollerate (la home regge senza), ma il
+   ripiego (dispensa vuota, nessuna chiusura) faceva dire «Chiudi la prima spesa» a chi l'ha già
+   chiusa e proporre alternative su una dispensa vuota. Le due letture stanno o cadono insieme
+   (`leggiDispensaTollerata` in `page.tsx`); la tessera «Domani» che riempie il posto della
+   tratteggiata resta, perché viene dal piano e non dalla dispensa. *Se sbagliato:* una condizione
+   in `page.tsx`, e il rischio del testo falso torna.
+5. **M5: `apriSettimanaCorrente` parte insieme alle letture che non ne dipendono** (definizioni
+   dei pasti, repertorio, ingredienti, impostazioni, Pronti, dispensa, ultima chiusura); la
+   settimana di domani si legge dopo, solo se cade in un'altra settimana. Le letture tollerate
+   restano tolleranti; la gestione delle gare (`ultimaLettura`, `letturaAttesa`) non cambia.
+   *Se sbagliato:* un giro di rete in più all'apertura (la sequenza di prima).
+6. **M6: `overflowWrap: 'anywhere'` sul nome a 25 della tessera piena**, come in
+   `TesseraDispensa.tsx`, e sugli altri nomi grandi (nome della tessera bianca, della carta
+   alternativa, titolo del poster): una parola lunga va a capo invece di uscire dalla tessera.
+   *Se sbagliato:* una proprietà CSS in meno per nome, e le parole lunghe tornano a poter uscire.
+7. **M2: il Piano su `apriSettimanaCorrente`, rimandato.** Tocca `piano/page.tsx`, che il fix della
+   data locale di un'altra sessione può toccare; sta fra i seguiti («I limiti noti»). *Se
+   sbagliato:* i due creatori con deduplica separata restano, e il rischio descritto sotto resta.
+8. **M3: nei documenti, «non ruba mai» vale solo a settimana chiusa.** In `confermata` il residuo è
+   già impegnato dalla lista generata, e `allineaTopUp` (`src/data/lista.ts:177`) compensa alla
+   prossima apertura della Lista. Corretti spec §C.3 e §I, e «I limiti noti». *Se sbagliato:* i
+   documenti promettono più di quanto il codice fa in `confermata`.
+9. **M4 e M7, rimandati.** M4 (`CAMBIA` attivo mentre una scrittura è in volo): probabilità
+   bassa. M7 (fissare `TZ` in vitest): è un cambio globale della suite. Entrambi fra i seguiti.
+   *Se sbagliato:* M4, `CAMBIA` apre Scegli mentre `aggiornaSlot` scrive sullo stesso slot; M7, la
+   suite può passare con un difetto di data locale che si vede solo fuori da UTC.
+10. **I minor documentali del Task 10, dentro la stessa ondata** (i conti 6 e 3 dei token del
+    poster, il mono 9 che è già in §3, i ruling col costo e in ordine, la domanda 3 senza il
+    lotto da scongelare, «per slot», la prima persona, «rivisto»), **più i minor che contano,
+    riportati qui prima che il ledger sparisca** (sezione «I limiti noti»). *Se sbagliato:* frasi
+    imprecise restano nei documenti.
+
+Due ruling di prima, che mancavano del costo se sbagliati, ora ce l'hanno nel loro posto: l'icona
+su `Poi` e `Domani` e le misure fuori scala in «Task 10», la verifica nel browser in «La verifica
+nel browser: NON ESEGUITA».
 
 ## I test del piano corretti, e perché
 
 La regola: il codice di test del piano è una bozza da verificare, e se contraddice la spec vince la
-spec. **Nessuna asserzione del piano è stata tolta o allentata**; i test sono stati aggiunti
-[fonte: i report dei task e le review; non riverificato test per test in questo task].
+spec. **Nessuna asserzione del piano è stata tolta o allentata, tranne una** (la prima riga
+«Review finale» della tabella: il fabbisogno `× (1 + porzioni da preparare)` era costruito su una
+premessa falsa); gli altri test sono stati aggiunti [fonte: i report dei task e le review; non
+riverificato test per test in questo task].
 
 | Task | Test | Cambiamento | Perché |
 |---|---|---|---|
@@ -303,6 +386,8 @@ spec. **Nessuna asserzione del piano è stata tolta o allentata**; i test sono s
 | 9 | Scegli, `describe` di `?da=oggi` | `window.history.replaceState(null, '', '/')` nel `beforeEach` | un test con `?da=oggi` che fallisce prima di ripulire non sporca gli altri |
 | 9 | Dispensa | `afterEach` che azzera l'indirizzo; tre test oltre ai due del brief | la pulizia dell'indirizzo prima del foglio, un id inesistente, nessun parametro |
 | 9 | cinque file fuori brief | il percorso atteso passa da `/lista` a `/oggi` | conseguenza diretta di §A.3; non cambiano altro |
+| Review finale | `oggi.dispensa.test.ts`, «le persone e le porzioni da preparare moltiplicano il fabbisogno» | diventa «le persone moltiplicano il fabbisogno; le porzioni da preparare dello slot no»: con `porzioniPreparate: 1` e patate 300 la Frittata (200 g) è «tutto», non «manca la patata» | lo scambio non eredita le porzioni da preparare (`aggiornaSlot` le azzera): l'asserzione `× (1 + N)` poggiava su una premessa falsa |
+| Review finale | `page.test.tsx` (quattro nuovi), `componenti.test.tsx` (due), `manifest.test.ts` (nuovo, due test) | slot con porzioni da preparare: niente banda, con controprova; ultima chiusura non letta: niente tessera tratteggiata e niente banda; dispensa non letta con chiusura recente: niente banda su una dispensa vuota; le sette letture partono con una settimana lenta; `overflowWrap` sui nomi grandi; `id` e `start_url` del manifest | un test per ognuna delle correzioni di codice; scritti prima, visti cadere, poi verdi |
 
 Prove che i test nuovi mordono, dal report del Task 7 [fonte: mutazioni temporanee, poi
 ripristinate]: icona sempre passata al poster → cade il test della banda; `larga` mai passata →
@@ -314,14 +399,14 @@ bozza; `tuttiGliSlot = settimana.slots` → cade il test «Scongela» di domenic
 | Cosa | Valore | Provenienza |
 |---|---|---|
 | Suite di base, prima dei task | 163 file passati + 1 saltato; 2680 test passati + 1 saltato; 41 s | [misurato dal controller, nel worktree] |
-| Suite intera sul ramo | 172 file passati + 1 saltato (173); 2803 test passati + 1 saltato (2804); 33,9 s | [misurato ora, il 03/10, sul ramo con i documenti di questo task non ancora committati; la stessa suite era 172 + 1 e 2803 + 1 a `556043e`, misurata dall'agente del Task 9] |
-| Crescita rispetto alla base | +9 file (i nove file di test nuovi), +123 test | [calcolato: 172 − 163, 2803 − 2680] |
-| `npx tsc --noEmit` | exit 0, nessun output | [misurato ora] |
-| `npx eslint .` | exit 0, nessun output | [misurato ora] |
-| `npm run design:token` | 11 test su 11 | [misurato ora] |
-| `npx vitest run src/components/__tests__/avvio-marchio.test.tsx` | 19 su 19 | [misurato ora] |
-| `npx next build` | compilato; `/oggi` fra le route (statica, client); tipi ok | [misurato dal controller prima del Task 10, nel worktree, con `.env.local` copiato dal repo principale]; non rilanciato dopo, perché da allora cambiano solo documenti e due commenti |
-| Instabili noti (`gestione-pasti.test.tsx`, «ELIMINA dal dialogo» nella Dispensa) | non sono falliti in nessuna delle corse registrate | [misurato dagli agenti dei Task 7 e 9 e ora] |
+| Suite intera sul ramo | 173 file passati + 1 saltato (174); 2811 test passati + 1 saltato (2812); 38,2 s | [misurato il 03/10 dopo la review finale, a `fb04045`, con i documenti non ancora committati]. Prima, a `0d4d3a1`: 172 file + 1 saltato, 2803 test + 1 saltato, 33,9 s [misurato allora] |
+| Crescita rispetto alla base | +10 file (i nove file di test nuovi del piano, più `manifest.test.ts`), +131 test | [calcolato: 173 − 163, 2811 − 2680] |
+| `npx tsc --noEmit` | exit 0, nessun output | [misurato il 03/10 dopo la review finale] |
+| `npx eslint .` | exit 0, nessun output | [misurato il 03/10 dopo la review finale] |
+| `npm run design:token` | 11 test su 11 | [misurato il 03/10 dopo la review finale, prima dei documenti] |
+| `npx vitest run src/components/__tests__/avvio-marchio.test.tsx` | 19 su 19 | [misurato nel Task 10; non rieseguito da solo dopo la review finale: il file è nella suite intera, verde] |
+| `npx next build` | compilato; `/oggi` fra le route (statica, client); tipi ok | [misurato dal controller prima del Task 10, nel worktree, con `.env.local` copiato dal repo principale]. **NON ESEGUITO dopo la review finale**, che ha cambiato `page.tsx`, `Poster.tsx`, `TesseraOggi.tsx`, `Alternative.tsx`, `oggi.ts` e il manifest: `tsc` e la suite li coprono, la build no |
+| Instabili noti (`gestione-pasti.test.tsx`, «ELIMINA dal dialogo» nella Dispensa) | non sono falliti in nessuna delle corse registrate | [misurato dagli agenti dei Task 7 e 9 e dopo la review finale] |
 | Conti della barra | 4 × 80 + 3 × 2 + 2 × 6 = 338; 4 × 64 + 3 × 2 + 2 × 6 = 274; con le misure di prima, 4 × 96 + 3 × 2 + 12 = 402, più dei 393 della cornice | [calcolato, spec §A.2] |
 | Area di tap | `.pillola-poster` 38 − 2 (bordo) + 4 + 4 = 44; `.tasto-scambia` 36 + 4 + 4 = 44 | [calcolato dal CSS, non misurato nel browser] |
 | Contrasti | `--ink-2` sulle sei aree 4,63–6,46:1 (`--testo-2` 2,95–4,11:1); `--poster-testo-3` su `--ink` 8,1:1; `--testo-2` su bianco 6,2:1 (`--sec` 3,4:1); `--avviso` su `--tinta-avviso` 4,7:1; `--freddo` su `--tinta-freddo` 4,3:1; `--errore` su `--ink` 3,5:1 | [calcolato ora con la formula WCAG sugli hex dei token; non misurato a schermo] |
@@ -334,8 +419,10 @@ bozza; `tuttiGliSlot = settimana.slots` → cade il test «Scongela» di domenic
 
 Dalla spec §I, che l'esecuzione non ha chiuso:
 - **Il residuo è un avanzo, non un inventario.** A metà settimana `pantry_state.residuo` è ciò che
-  resta dopo il piano della settimana: per questo le proposte non rubano ai pasti dopo, e il
-  poster non dice «hai tutto».
+  resta dopo il piano della settimana: per questo, **a settimana chiusa**, le proposte non rubano
+  ai pasti dopo, e il poster non dice «hai tutto». In `confermata` non vale: il residuo è già
+  impegnato dalla lista generata, e `allineaTopUp` (`src/data/lista.ts:177`) compensa alla
+  prossima apertura della Lista (review finale, M3).
 - **Le fasce sbagliano a cavallo:** una cena alle 21:45 risulta già passata. Si corregge solo se
   succede davvero.
 - **Data UTC nel resto dell'app.** Fra mezzanotte e le 2 Oggi (data locale) e il Piano (UTC)
@@ -370,15 +457,41 @@ Emersi dall'esecuzione:
 - **La Dispensa apre il foglio da `?ingrediente=` e `?lotto=` una volta per montaggio**, e quello
   di un lotto anche se non è più «vivo» (Task 9): oggi si entra sempre da un'altra pagina, e il
   lotto del link è il vivo più vecchio.
-- **Il caricamento fa tre giri in sequenza** (settimana, settimana di domani, le sette letture in
-  parallelo): le sette letture non dipendono dalla settimana (Task 7). `page.tsx` è di 458 righe
-  [misurato, `git diff --stat`] con quattro responsabilità (caricamento, scritture, poster,
-  griglia): un hook `useGiornata` e una funzione pura per la griglia lo alleggerirebbero.
+- **Il caricamento fa un giro solo, più uno quando serve** (review finale, M5; prima erano tre in
+  sequenza): la settimana corrente e le sette letture partono insieme, e la settimana di domani
+  si legge dopo, solo se domani cade in un'altra settimana. `page.tsx` è di 480 righe [misurato,
+  `wc -l`, a `fb04045`] con quattro responsabilità (caricamento, scritture, poster, griglia): un
+  hook `useGiornata` e una funzione pura per la griglia lo alleggerirebbero.
 - **Rischi di deriva nel dominio** (Task 2 e 5): `alternative` ricalcola a mano l'aritmetica di
   `consumoSlot` (`oggi.ts` contro `storno.ts`), e le `catch` di `oggi.ts` non discriminano (un
   errore di programmazione verrebbe inghiottito come un piatto illeggibile);
   `apriSettimanaCorrente` inghiotte qualunque errore se la settimana poi esiste (una creazione
   parziale sembra un successo), con la stessa guardia del Piano per mandato della spec.
+- **Seguiti della review finale, rimandati con ruling** (sono i minor che contano, riportati qui
+  prima che il ledger sparisca):
+  - **M2: il Piano non passa a `apriSettimanaCorrente`.** I creatori della settimana corrente sono
+    due, con deduplica separata: il Piano ha il suo (`creazioneInCorsoRef` in `piano/page.tsx`,
+    righe 88–160, per componente), Oggi quello di `src/data/apertura.ts` (una mappa a livello di
+    modulo). La pagina d'ingresso crea la settimana alla prima apertura, e il lunedì mattina il
+    Piano può mostrare una settimana vuota fino alla ricarica [ipotesi della review finale,
+    meccanismo non riprodotto]. Il seguito è far usare `apriSettimanaCorrente` al Piano; tocca
+    `piano/page.tsx`, che il fix della data locale di un'altra sessione può toccare, quindi non in
+    questo ramo.
+  - **M4: `CAMBIA` resta attivo mentre una scrittura è in volo.** È un `Link`, e `inVolo` spegne
+    `COM'È ANDATA` e `RIMETTI` ma non lui [letto in `Poster.tsx`, riga 53]: si può aprire Scegli
+    mentre `aggiornaSlot` scrive sullo stesso slot. Probabilità bassa.
+  - **M7: il test «a mezzanotte e mezza è già il giorno dopo»** (`oggi.tempo.test.ts`, riga 29) ha
+    denti solo con un fuso fuori da UTC [fonte: review finale; i test di Oggi erano verdi con `TZ`
+    UTC, Europe/Rome e America/Los_Angeles]. Fissare `TZ` in vitest è un cambio globale della
+    suite, quindi non qui.
+  - **`leggiPianoPrima` non valida la forma** della voce di `sessionStorage`: `JSON.parse(...) as
+    PianoPrima` [letto in `piano-prima.ts`, riga 16]. Una voce con lo `slotId` giusto ma senza
+    `dishId` passerebbe; la scrive solo Oggi, quindi è un rischio di manomissione, non di uso.
+  - **`dataLunga` su una data malformata** scrive «NaN undefined» (`oggi-testi.ts`, riga 49): la
+    data viene dal database, quindi oggi non si vede [letto dal codice, non provato].
+  - **Già sopra, fra gli «Emersi dall'esecuzione»:** il secondo puntino del carosello oltre circa
+    442 px, `inVolo` che resta acceso se una lettura superata si blocca, il lampo `PIANO` → `OGGI`
+    in Scegli, il flag `congelato` non azzerato alla chiusura (domanda 1).
 - **Test che mancano** (minori rinviati): il ramo «da domani non si va a dopodomani» di
   `pastoDopo`; i confini di fascia (10:30, 12:00, 15:00); un pasto da Pronti come poster; gli
   slot orfani; i tetti a 2 di scongela e Pronti; l'uso con `fattoreConsumo` 0; i rami di
@@ -397,8 +510,9 @@ Emersi dall'esecuzione:
    l'ingrediente, o lasciarlo com'è? Oggi la tessera `SCONGELA` segue il flag e può comparire per
    un ingrediente comprato fresco dopo essere stato congelato (spec §D.2).
 2. **`SCONGELA` a 4,3:1.** Scurire il testo o abbassare l'alfa della tinta, per arrivare a 4,5:1?
-3. **L'icona sulle tessere `Poi`, `Domani` e sul lotto da scongelare.** Il piano la mette, la spec
-   §G.2 non la elenca: tenerla o toglierla?
+3. **L'icona sulle tessere `Poi` e `Domani`.** Il piano la mette, la spec (§D.4, §G.2) non la
+   nomina: tenerla o toglierla? (La tessera `Scongela` di un lotto ha l'icona per spec §D.2: non è
+   in questione.)
 4. **Le due eccezioni minori:** `SCAMBIA` spento a 0,06 invece di 0,10 e le pillole del poster a
    0,09em e padding 14 invece di 0,08em e 15. Restano dichiarate, o si allineano (una riga di CSS
    ciascuna)?
@@ -407,16 +521,29 @@ Emersi dall'esecuzione:
 6. **Il fix della data locale** (13 punti UTC, quattro test [fonte: memoria del progetto, audit
    del 03/10]) può ripartire ora che la 8c è su `main` [fonte: `git log`, PR #25]; `oggiLocale`
    va riallineata al suo helper quando arriva.
+7. **La domenica la settimana dopo non esiste** (review finale, I3). Piano e Oggi creano solo la
+   settimana che contiene oggi. La domenica sera, a pasti di oggi finiti, il poster dice «Il piano
+   di domani non c'è ancora.», `APRI IL PIANO` porta a un Piano che la settimana di lunedì non la
+   crea, e la tessera `Scongela` per il lunedì non compare mai [fonte: review finale; non provato
+   in produzione]. Due strade: **(a)** Oggi apre anche la settimana di domani quando cade in
+   un'altra settimana: una creazione, con il planner qualche ora prima del lunedì; **(b)** solo
+   testo, senza il tasto. Finché non si decide, il codice sulle due settimane (`settimanaDomani`,
+   `tuttiGliSlot`) e i suoi test coprono uno stato che in produzione non si raggiunge.
 
 ## La verifica nel browser: NON ESEGUITA
 
 **Cosa non è stato fatto:** la verifica nel browser del piano, Task 8 passo 4 e Task 10 passo 4.
 **Perché:** l'app richiede l'accesso con il link via email sull'account vero di Andrea, contro il
-Supabase di produzione: non posso farlo io, e le prove che scrivono (`SCAMBIA`, la conferma in
-Scegli, il foglio azioni) toccherebbero i dati veri. In più il preview `spesa-worktree` di
-`.claude/launch.json` parte dalla cartella del repo principale, non dal worktree: servirebbe il
-codice sbagliato (fermato) [fonte: ledger del controller]. **Cosa vale al suo posto:** i test
-(jsdom), `tsc`, `eslint`, `npm run design:token` e `next build`, tutti verdi; niente di visivo.
+Supabase di produzione: l'accesso non è cosa da agente, e le prove che scrivono (`SCAMBIA`, la
+conferma in Scegli, il foglio azioni) toccherebbero i dati veri. In più il preview
+`spesa-worktree` di `.claude/launch.json` parte dalla cartella del repo principale, non dal
+worktree: servirebbe il codice sbagliato (fermato) [fonte: ledger del controller]. **Cosa vale al
+suo posto:** i test (jsdom), `tsc`, `eslint` e `npm run design:token`, verdi anche dopo la review
+finale; `next build` è verde solo prima di essa (vedi «Le misure»); niente di visivo.
+
+**Ruling.** La verifica nel browser resta **NON ESEGUITA** fino alle prove con Andrea: nessun dato
+vero si tocca da un agente, e un'app senza accesso non si prova. *Se sbagliato:* un difetto visivo
+arriva alle prove dal telefono invece che prima del merge.
 
 **Da fare con Andrea**, con l'accesso fatto nel pannello browser e **solo prove in lettura**
 (nessuno `SCAMBIA`, nessuna conferma in Scegli, nessuna scelta nel foglio azioni):
@@ -448,10 +575,12 @@ Su Chrome Android con l'indietro di sistema, dopo il merge. Spec §J.4. Tutte **
 Nota: con i dati del 03/10 la home di Andrea è «non aggiornata», quindi le proposte e le scadenze
 si vedono solo dopo una spesa chiusa nell'app [calcolato dalla regola §E].
 
-- [ ] **L'app installata si apre su Oggi**, dopo l'aggiornamento del service worker a
-      `dispesa-v2` (l'`activate` cancella da sé la cache `dispesa-v1`). Se la PWA installata si
-      apre ancora su `/lista`, **reinstallarla è la prova** [fonte: piano di Oggi, «Dopo il
-      piano»: la PWA installata prende il nuovo `start_url` al prossimo aggiornamento].
+- [ ] **L'app installata, dopo l'aggiornamento, si apre su `/oggi`** [ipotesi, da validare sul
+      telefono]. Il manifest ha ora `id: "/lista"` (l'id calcolato delle installazioni di prima,
+      che non ne avevano): l'identità resta, e lo `start_url` nuovo dovrebbe arrivare con
+      l'aggiornamento del manifest, dopo quello del service worker a `dispesa-v2` (l'`activate`
+      cancella da sé la cache `dispesa-v1`). Se resta su `/lista`, guardare in DevTools ›
+      Application › Manifest › Identity prima di toccare altro.
 - [ ] Il poster giusto **in tre momenti della giornata**, a confronto con le fasce dal nome del
       pasto (per esempio mattina, primo pomeriggio, sera).
 - [ ] `COM'È ANDATA` → saltato fa passare al pasto dopo (scrive un dato vero: il pasto si rimette
@@ -478,5 +607,5 @@ si vedono solo dopo una spesa chiusa nell'app [calcolato dalla regola §E].
 
 Merge e deploy **solo con l'ok di Andrea**: il merge su `main` va in produzione da solo (Vercel).
 Nessuna migrazione, quindi nessun ordine da rispettare con il database. Il service worker passa a
-`dispesa-v2`. Restano da fare, in quest'ordine: le prove nel browser sopra, le sei domande, il
+`dispesa-v2`. Restano da fare, in quest'ordine: le prove nel browser sopra, le sette domande, il
 merge, le prove dal telefono.

@@ -175,8 +175,8 @@ Un'alfa che non è in questa tabella non si usa: si aggiunge prima qui.
 
 **Gli alfa di Oggi (03/10).** Nove, e ognuno è un token: `src/app/globals.css` e
 `design/sistema/tokens.css` li dichiarano insieme, con gli stessi valori (`npm run design:token`).
-Cinque sono bianco sul poster in inchiostro (§8 Poster del pasto), quattro sono tinte piatte sotto
-le pillole di stato.
+Sei sono bianco sul poster in inchiostro (§8 Poster del pasto), tre sono tinte piatte sotto le
+pillole di stato.
 
 | Token | Valore | Dove |
 |---|---|---|
@@ -199,8 +199,8 @@ Usi nuovi e deroghe che l'esecuzione di Oggi ha introdotto, tutti dichiarati qui
 - **`SCAMBIA` spento a 0,06, non a 0,10.** §8 Tasti, «Spento», dice `rgba(20,22,58,0.10)`; per
   `.tasto-scambia:disabled` il codice usa `--tinta-neutra` (0,06) con testo `--ter`, per non
   scrivere un colore a mano: il 0,10 su `--ink` non ha un token. **Eccezione dichiarata, non
-  allineata**: il codice è stato rivisto con questo valore, e allinearlo è una riga di CSS se
-  Andrea lo vuole uguale agli altri tasti spenti.
+  allineata**: il codice usa questo valore e Andrea non ha ancora deciso se tenerlo; allinearlo è
+  una riga di CSS se lo vuole uguale agli altri tasti spenti.
 - **Le pillole d'azione del poster hanno tracking 0,09em e padding 14**, non 0,08em e 15 come le
   Pillole d'azione di §8 (`.pillola-poster` contro `APRI LA LISTA`, che ha i valori di §8).
   **Eccezione dichiarata, non allineata**, per la stessa ragione: sono valori scritti nel piano di
@@ -1127,8 +1127,10 @@ possono fare con la dispensa, dentro il poster. Spec §C. File:
 `src/app/(app)/oggi/Alternative.tsx`, con `.carosello-oggi` e `.tasto-scambia` in `globals.css`.
 
 - **Quando c'è.** Solo con la dispensa aggiornata (sezione Tessere di Oggi), per il pasto di oggi
-  che non viene dai Pronti, con almeno un candidato fattibile e non dopo uno scambio fatto da
-  qui. Candidati: piatti del repertorio, attivi, dello stesso tipo di pasto, non già in programma
+  che non viene dai Pronti e **non ha porzioni da preparare** (lo scambio le azzererebbe,
+  cancellando il lotto dei Pronti dello slot, e `RIMETTI QUELLO DEL PIANO` non lo ridarebbe:
+  precisato in esecuzione, 03/10), con almeno un candidato fattibile e non dopo uno scambio fatto
+  da qui. Candidati: piatti del repertorio, attivi, dello stesso tipo di pasto, non già in programma
   da oggi a fine settimana; mai piatti generati. Fattibile = tutto in casa, o manca un solo
   ingrediente. Ordine: prima i «tutto in casa», poi i «manca una cosa»; dentro il gruppo prima chi
   usa un ingrediente che scade entro due giorni, poi per nome. Al massimo **2**.
@@ -1143,8 +1145,9 @@ possono fare con la dispensa, dentro il poster. Spec §C. File:
   nove livelli di §3: si dichiara qui.
 - **Pillola di stato.** Raggio 999, padding `4 8`, mono 9/700/0,07em maiuscolo: `TUTTO IN CASA`
   (`--ink` su `--tinta-neutra`) o `MANCA: {NOME}` (`--avviso` su `--tinta-avviso`). Una sola. Il
-  significato sta nel testo, non solo nel colore (§11). Il mono 9 non è fra le taglie
-  intermedie elencate in §3: si dichiara qui.
+  significato sta nel testo, non solo nel colore (§11). Il mono 9 è fra le taglie intermedie di §3,
+  ma per altri componenti (nome del pasto sulla riga pasto, sottoriga della Riga piatto): su questa
+  pillola è un uso nuovo, e si dichiara qui.
 - **`SCAMBIA`.** Pillola `--ink`, testo `--superficie`, alta **36**, raggio 999, mono
   10,5/700/0,09em, padding `0 13 0 11`, gap 7, icona delle due frecce 15 (tratto 2,1). Area di tap
   **44**: `::before` con `inset: -4px 0` (36 + 4 + 4, senza bordo). `aria-label="Scambia con
@@ -1166,9 +1169,10 @@ possono fare con la dispensa, dentro il poster. Spec §C. File:
 - **L'annullo sta dentro il poster** (§12: niente toast, niente snackbar). Dopo `SCAMBIA`,
   finché il poster mostra quello slot, sotto le azioni compare `RIMETTI QUELLO DEL PIANO`
   (pillola del poster, riga sua): rimette il piatto e le scelte che lo slot aveva prima del primo
-  scambio fatto da Oggi. «Quello del piano» è tenuto in `sessionStorage`, per slot; si cancella
-  quando si rimette, quando il poster passa a un altro slot e quando il piatto in programma è già
-  quello annotato. Con lo scambio fatto la banda sparisce: per cambiare ancora c'è `CAMBIA`.
+  scambio fatto da Oggi. «Quello del piano» è tenuto in `sessionStorage` in una voce sola (lo
+  `slotId` e il piatto e le scelte di prima), non una per slot; si cancella quando si rimette,
+  quando il poster passa a un altro slot e quando il piatto in programma è già quello annotato.
+  Con lo scambio fatto la banda sparisce: per cambiare ancora c'è `CAMBIA`.
 - **Errore di scrittura** (scambio, annullo, foglio azioni): l'errore di §8 Messaggi, `role="alert"`,
   **subito sotto il poster**, sul fondo chiaro: `--errore` sull'inchiostro fa 3,5:1 [calcolato
   ora], sotto 4,5. Il poster resta com'era.
@@ -1226,7 +1230,10 @@ padding `13 14 14`, `overflow: hidden` per tenere dentro l'icona tagliata. Quatt
 non la dispensa). Con la dispensa non aggiornata la home non mostra nessun numero che venga dalla
 dispensa: spariscono la banda delle alternative e le tessere Scade, Scongela e Pronti, e compare
 la tessera tratteggiata; «Poi» resta, più `DOMANI · {PASTO}` del primo pasto di domani se è
-diverso dal poster e da «Poi».
+diverso dal poster e da «Poi». Se la dispensa o l'ultima chiusura **non si leggono** (errore di
+rete: le due letture sono tollerate), la home non mostra niente che ne derivi e **nemmeno la
+tessera tratteggiata**, il cui testo («Chiudi la prima spesa…») sarebbe falso (precisato in
+esecuzione, 03/10).
 
 ---
 
@@ -1347,10 +1354,10 @@ Altrove le foto restano fuori.
   la riga con la quantità più grande in g o ml fra quelle che hanno un'icona (a pari quantità la
   prima; senza righe in g o ml, la prima con un'icona; senza icone, niente icona; classi `stima` e
   righe «quanto basta» non concorrono). Stessa grammatica di §6 (due toni, tagliata in basso a
-  destra), nessun uso diverso. **Come costruito**, la stessa icona (60, tono `area`) sta anche
-  sulla tessera di un lotto da scongelare (la spec §D.2 prevede un'icona su quella tessera, ma
-  §G.2 non la elenca fra queste eccezioni) e sulle tessere `Poi` e `Domani`, che la spec non
-  nomina e che vengono dal piano [da confermare con Andrea]. Le tessere Scade presto e Da
+  destra), nessun uso diverso. La stessa icona (60, tono `area`) sta anche sulla tessera di un lotto
+  da scongelare, e lì la prevede la spec §D.2 (§G.2 non la elencava fra queste eccezioni). **Come
+  costruito**, sta anche sulle tessere `Poi` e `Domani`, che la spec non nomina e che vengono dal
+  piano [da confermare con Andrea]. Le tessere Scade presto e Da
   scongelare di un ingrediente portano l'icona di quell'ingrediente, che è già il suo uso.
 - **Il carosello nel poster non è uno swipe nascosto.** La seconda carta si vede, spunta dal
   bordo (§8 Carta alternativa e carosello nel poster): lo scorrimento è un gesto che il disegno
@@ -1679,6 +1686,15 @@ snackbar): l'annullo sta dentro il poster, `RIMETTI QUELLO DEL PIANO`.
   d'azione** (disegno 38, tap 44), non come pillola di stato.
 - **Un pasto senza piatto non ha un aspetto suo nelle caselle**: è «futura» se la fascia non è
   finita, «passata» se lo è.
+- **Niente banda per un pasto con porzioni da preparare** (review finale): lo scambio le azzera e
+  cancella il lotto dei Pronti dello slot, e `RIMETTI QUELLO DEL PIANO` non lo ridarebbe; per
+  cambiare quel pasto resta `CAMBIA`. Per gli altri il fabbisogno di una proposta è quantità ×
+  persone.
+- **Se la dispensa o l'ultima chiusura non si leggono**, la home non mostra niente che ne derivi e
+  nemmeno la tessera tratteggiata: il suo testo sarebbe falso.
+- **La pagina d'ingresso crea la settimana alla prima apertura**: Oggi, come il Piano, crea la
+  settimana che contiene oggi se manca (`apriSettimanaCorrente`, `src/data/apertura.ts`). Il Piano
+  ha ancora un creatore suo, con una deduplica separata (seguito nel registro).
 - **Eccezioni dichiarate** (§2.5 e nell'anatomia di §8, non nelle scale di §3 e §5): `SCAMBIA`
   spento a 0,06 (non 0,10), pillole del poster a 0,09em e padding 14, `SCONGELA` a 4,3:1
   (eccezione aperta), raggio 3 delle caselle, nome della carta a 18, mono 9 e 9,5.

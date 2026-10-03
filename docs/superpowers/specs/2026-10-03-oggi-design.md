@@ -108,7 +108,7 @@ Ogni ingresso che oggi porta a `/lista` come pagina iniziale passa a `/oggi`:
 
 | File | Oggi | Dopo |
 |---|---|---|
-| `public/manifest.json` | `start_url: /lista` | `/oggi` |
+| `public/manifest.json` | `start_url: /lista` | `/oggi`, più `id: "/lista"` (precisato in esecuzione, 03/10): senza `id` l'identità della PWA è lo `start_url`, e cambiarlo può far trattare l'app aggiornata come un'altra app [fonte: developer.chrome.com/docs/capabilities/pwa-manifest-id, indicata dal controller, non riletta]; l'`id` è quello che le installazioni di oggi calcolano |
 | `src/app/page.tsx` | `redirect('/lista')` | `redirect('/oggi')` |
 | `src/app/auth/callback/route.ts` | redirect a `/lista` | `/oggi` |
 | `src/components/AvvioMarchio.tsx` | l'avvio del Marchio gira solo su `/lista` | gira sulla pagina d'ingresso, `/oggi` |
@@ -220,10 +220,15 @@ file.
 
 ### C.1 Quando ci sono
 
-Tutte e quattro:
+Tutte e cinque:
 - la dispensa è aggiornata (§E);
 - il pasto del poster non è `daPronti` (una porzione pronta è già il miglior uso di quello che
   hai);
+- il pasto del poster non ha porzioni da preparare (`porzioniPreparate = 0`; precisato in
+  esecuzione, 03/10): `aggiornaSlot` con un cambio di piatto azzera `porzioniPreparate` e cancella
+  il lotto dei Pronti dello slot (`src/data/settimana.ts:358`), quindi `SCAMBIA` cancellerebbe in
+  silenzio il meal prep pianificato e `RIMETTI QUELLO DEL PIANO` non lo ridarebbe. Per cambiare
+  quel pasto resta `CAMBIA`, il cambio deliberato;
 - c'è almeno un candidato fattibile (§C.2, §C.3);
 - il pasto del poster è di oggi (per domani si cambia dal Piano).
 
@@ -249,18 +254,23 @@ disponibile(i) = residuoUtilizzabile(i, oggi)
 Perché il secondo termine: dopo la chiusura il residuo è già al netto del piano, compreso il
 pasto di stasera; scambiando, quegli ingredienti tornano liberi (lo storno di `aggiornaSlot` li
 riaccredita). Prima della chiusura il piatto di stasera non è ancora stato comprato e non libera
-niente. Conseguenza voluta: una proposta **non ruba mai** quello che serve ai pasti dopo, perché il
-residuo è ciò che avanza al piano.
+niente. Conseguenza voluta, **solo a settimana chiusa**: una proposta non ruba ai pasti dopo,
+perché il residuo è ciò che avanza al piano. In `confermata` non vale (precisato in esecuzione,
+03/10): il residuo è già impegnato dalla lista generata, e a compensare è `allineaTopUp`
+(`src/data/lista.ts:177`), che a ogni apertura della Lista aggiunge al top-up quello che manca.
 
 Una riga è **coperta** se:
 - l'ingrediente è di classe `stima` (olio, sale…): sempre;
 - è «quanto basta» (`quantita === null`, dalla 8c): se `disponibile > 0` (accordo con la 8c, come
   fa la lista);
-- altrimenti: se `disponibile ≥ quantità convertita in unità base × persone × fattoreConsumo(slot)`
-  (precisato in esecuzione, 03/10). `fattoreConsumo` è `1 + porzioniPreparate` dello slot di
-  stasera, perché lo scambio fa ereditare al piatto nuovo le porzioni da preparare, e lo storno di
-  `aggiornaSlot` le conta così (la stessa funzione, `fattoreConsumo` in `src/domain/pronti.ts`,
-  che usano `consumoSlot` e `costruisciLista`). Senza porzioni da preparare vale 1: «× persone».
+- altrimenti: se `disponibile ≥ quantità convertita in unità base × persone` (precisato in
+  esecuzione, 03/10). **Niente `fattoreConsumo` dello slot**: una lettura precedente di questa
+  riga (`× persone × fattoreConsumo(slot)`, cioè `1 + porzioniPreparate`) partiva dalla premessa
+  che lo scambio faccia ereditare al piatto nuovo le porzioni da preparare, ed è falsa:
+  `aggiornaSlot` le azzera col cambio di piatto (`src/data/settimana.ts:358`). Per questo la
+  banda non c'è su uno slot che ne ha (§C.1), e per tutti gli altri il fabbisogno è quantità ×
+  persone. Il termine `consumoSlot(slot attuale)` di `disponibile` resta il consumo vero dello
+  slot, porzioni comprese: è ciò che lo storno riaccredita.
 
 **Tutto in casa** = ogni riga coperta. **Manca una cosa** = esattamente un ingrediente scoperto.
 Due o più → non è un candidato.
@@ -421,6 +431,11 @@ Lettura nuova in `src/data/dispensa.ts`: `leggiUltimaChiusura(): Promise<string 
   `Non riusciamo a caricare la giornata.`, col tasto `RIPROVA`.
 - **Offline:** la home non ha una copia locale. Con la rete giù il caricamento fallisce: sotto
   l'errore la pillola `APRI LA LISTA`, che regge offline.
+- **Dispensa che non si legge** (precisato in esecuzione, 03/10): le righe della dispensa e
+  l'ultima chiusura sono due letture tollerate, e stanno o cadono insieme. Se una fallisce la home
+  non mostra niente che ne derivi (banda, Scade, Scongela, Pronti) **e nemmeno la tessera
+  tratteggiata** (§D.5): il suo testo («Chiudi la prima spesa…», «La dispensa è ferma al…») direbbe
+  una cosa che la home non sa. Il resto della giornata regge.
 - **Settimana corrente non ancora creata:** Oggi la crea come fa il Piano (`creaSettimana` con la
   stessa guardia sul doppione `unique (user_id, data_inizio)`). La logica si estrae in un helper
   `apriSettimanaCorrente(oggi)` in `src/data/apertura.ts` (precisato in esecuzione, 03/10: prende
@@ -455,8 +470,8 @@ In §13 una sezione «Decisioni del 03/10/2026 (Oggi)» con le decisioni in test
   sulla tessera dei Pronti, come icona dell'**ingrediente principale** di un piatto (§C.4). Stessa
   grammatica (due toni, tagliata in basso a destra), nessun uso diverso. Precisato in esecuzione,
   03/10: il codice la mette anche sulla tessera di un lotto da scongelare (§D.2 prevede un'icona
-  su quella tessera, ma qui non è elencata) e sulle tessere `Poi` e `Domani` (§D.4), che la spec
-  non nomina: da confermare con Andrea.
+  su quella tessera, ma qui non era elencata: non è una domanda aperta) e sulle tessere `Poi` e
+  `Domani` (§D.4), che la spec non nomina: da confermare con Andrea.
 - **Il carosello nel poster** non è uno swipe nascosto: la seconda carta si vede.
 
 ### G.3 Componenti e file
@@ -535,8 +550,9 @@ Tutti nuovi, tranne dove scritto.
 ## I. Rischi, limiti, punti aperti
 
 - **Il residuo è un avanzo, non un inventario.** A metà settimana `pantry_state.residuo` è ciò che
-  resta **dopo** il piano della settimana. Per questo le proposte non rubano ai pasti dopo (§C.3),
-  ma anche per questo il poster non dice «hai tutto» (correzione in testa).
+  resta **dopo** il piano della settimana. Per questo, a settimana chiusa, le proposte non rubano
+  ai pasti dopo (§C.3; in `confermata` il residuo è già impegnato dalla lista e compensa
+  `allineaTopUp`), ma anche per questo il poster non dice «hai tutto» (correzione in testa).
 - **Le fasce sbagliano a cavallo** (una cena alle 21:45 risulta già passata). Si corregge solo se
   succede davvero; l'orario per pasto è la strada già scartata il 03/10 come troppo cara per ora.
 - **Data UTC nel resto dell'app.** Fra mezzanotte e le 2 Oggi e il Piano possono dire due giorni
@@ -557,11 +573,13 @@ Tutti nuovi, tranne dove scritto.
    cinque stati; `dispensaAggiornata` a 0, 9, 10 giorni e senza chiusure; `alternative` con:
    tutto in casa, manca uno, mancano due (escluso), q.b. con residuo 0 (scoperto) e > 0
    (coperto), classe stima, piatto già in programma (escluso), settimana chiusa contro
-   confermata (il consumo di stasera conta solo da chiusa), ordine e tetto a 2;
+   confermata (il consumo di stasera conta solo da chiusa), le porzioni da preparare dello slot
+   che non moltiplicano il fabbisogno, ordine e tetto a 2;
    `ingredientePrincipale` coi quattro casi di §C.4.
 2. **Test di componente:** il poster coi tre sottotitoli; la banda assente con la dispensa non
-   aggiornata; `SCAMBIA` chiama `aggiornaSlot` col patch giusto; `RIMETTI QUELLO DEL PIANO`
-   rimette piatto e scelte; la tessera tratteggiata nei due testi.
+   aggiornata, con porzioni da preparare e con la dispensa che non si legge; `SCAMBIA` chiama
+   `aggiornaSlot` col patch giusto; `RIMETTI QUELLO DEL PIANO` rimette piatto e scelte; la tessera
+   tratteggiata nei due testi.
 3. **Nel browser** (preview, utente di prova): `/` porta a `/oggi`; la barra a 4 voci a riposo e
    ridotta senza tagli di testo; il carosello scorre e si ferma sulle carte; nessun elemento
    finisce sotto la barra; `npm run design:token`, `tsc`, lint e la suite verdi.

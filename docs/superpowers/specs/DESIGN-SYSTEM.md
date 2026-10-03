@@ -102,7 +102,7 @@ del file, è lì.
 | Poster del pasto · Poster senza pasto | `src/app/(app)/oggi/Poster.tsx` (`Poster`, `PosterVuoto`, il tipo `IconaPiatto`), con `.pillola-poster` in `globals.css` | fatto con Oggi (03/10). Senza `'use client'`: `onComEAndata` e `onRimetti` sono props, e il componente lo monta la pagina, che è client. Caselle della giornata, `RIMETTI QUELLO DEL PIANO` su riga sua, icona assente con la banda |
 | Carta alternativa · Carosello nel poster | `src/app/(app)/oggi/Alternative.tsx` (`Alternative`, `VoceAlternativa`), con `.carosello-oggi` e `.tasto-scambia` in `globals.css` | fatto con Oggi. `'use client'` per lo stato dei puntini (`round(scrollLeft / 260)`, non esercitato in jsdom: da guardare nel browser) |
 | Tessere di Oggi | `src/app/(app)/oggi/TesseraOggi.tsx` (`TesseraPiena`, `TesseraBianca`, `TesseraDispensaFerma`) | fatte con Oggi: piena d'area, bianca, tratteggiata informativa e la dispari in coda a due colonne (`larga`, solo `span 2` e altezza minima 64, il contenuto decide il resto). Senza `'use client'`, come il Poster |
-| Oggi (la pagina) | `src/app/(app)/oggi/page.tsx` e `piano-prima.ts`; dominio in `src/domain/oggi.ts` e `oggi-testi.ts`; letture in `src/data/apertura.ts` e `leggiUltimaChiusura` in `src/data/dispensa.ts` | non è una voce di `DESIGN.md` §8: è la pagina che monta i tre componenti sopra e il Foglio azioni del pasto (`FoglioAzioniPasto.tsx`, che apre anche lei, con `?da=oggi` verso Scegli) |
+| Oggi (la pagina) | `src/app/(app)/oggi/page.tsx` e `piano-prima.ts`; dominio in `src/domain/oggi.ts` e `oggi-testi.ts`; letture in `src/data/apertura.ts` e `leggiUltimaChiusura` in `src/data/dispensa.ts` | non è una voce di `DESIGN.md` §8: è la pagina che monta i tre componenti sopra e il Foglio azioni del pasto (`FoglioAzioniPasto.tsx`, lo stesso del Piano); il link a Scegli del foglio porta `?da=oggi`, come `CAMBIA` |
 
 Fuori dal sistema, perché è infrastruttura e non disegno: `Guscio.tsx` (il guscio comune della
 fase 1: stato della barra, maschera di scorrimento, reset di route), `PrimoAvvio.tsx`,
@@ -201,8 +201,10 @@ Il conto aperto verso `DESIGN.md` v3, al 26/09/2026.
   (`npm run design:token`).
 - **Cosa Oggi ha lasciato fuori dalle scale** (valori che la spec o il piano scrivono e che
   `DESIGN.md` §3 e §5 non hanno: sono dichiarati nell'anatomia di §8 e in §2.5, non promossi a
-  regola): il raggio 3 delle caselle del poster; il nome della carta alternativa a 18; mono 9 (la
-  pillola di stato della carta) e mono 9,5 (l'etichetta di `Poi` e `Domani`); `.pillola-poster` a
+  regola): il raggio 3 delle caselle del poster; il nome della carta alternativa a 18; mono 9 sulla
+  pillola di stato della carta (il 9 è già in `DESIGN.md` §3, ma per il nome del pasto sulla riga
+  pasto e la sottoriga della Riga piatto: qui è un uso nuovo) e mono 9,5 (l'etichetta di `Poi` e
+  `Domani`, non in §3); `.pillola-poster` a
   0,09em e padding 14 invece di 0,08em e 15; `SCAMBIA` spento a 0,06 invece di 0,10; `SCONGELA` a
   4,3:1 invece di 4,5; `'#fff'` letterale nell'icona di Oggi della barra (come le altre icone
   piene) e `'#FFFFFF'` passato ad `alone()` nelle tessere (come `TesseraIngrediente`); l'icona
