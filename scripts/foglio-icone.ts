@@ -31,8 +31,10 @@ function iconaOggi(k: ChiaveIcona): string {
   return `<svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="${a.tonoMedio}" stroke-linecap="round" stroke-linejoin="round"><path d="${t.d}"${rot} stroke-width="2"/><path d="${t.dd}"${rot} stroke-width="1.25"/></svg>`;
 }
 
+let n = 0;
 function nuova(k: ChiaveIcona, tono: TonoDueToni, taglia: 60 | 96): string {
-  return renderToStaticMarkup(createElement(IconaDueToni, { chiave: k, area: areaDi(k), tono, taglia }));
+  // useId riparte a ogni renderToStaticMarkup: senza un prefisso unico le maschere avrebbero tutte lo stesso id.
+  return renderToStaticMarkup(createElement(IconaDueToni, { chiave: k, area: areaDi(k), tono, taglia }), { identifierPrefix: `i${++n}-` });
 }
 
 function tessera(k: ChiaveIcona, tono: TonoDueToni): string {
