@@ -5,17 +5,15 @@
 `docs/superpowers/specs/2026-10-03-oggi-design.md` (approvata da Andrea il 03/10, precisata in
 esecuzione lo stesso giorno: ogni precisazione è marcata «precisato in esecuzione, 03/10»)
 
-**In una riga.** Oggi è costruita e rivista sul ramo, task per task e poi con una review finale,
-ma non è mai stata vista in un browser né su un telefono: la verifica nel browser del piano è
-**NON ESEGUITA** (motivo e checklist sotto), e il merge su `main`, che pubblica da solo (Vercel),
+**In una riga.** Oggi è costruita e rivista sul ramo, task per task e poi con una review finale.
+La verifica nel browser è **in parte eseguita** (aspetto verificato su pagina sonda, navigazione con sessione da fare; motivo e checklist sotto); il merge su `main`, che pubblica da solo (Vercel),
 aspetta l'ok di Andrea. Nessuna migrazione.
 
 **Cosa resta, in ordine:**
-1. Le prove nel browser (checklist in «La verifica nel browser: NON ESEGUITA»), da fare con
+1. Le prove nel browser (checklist in «La verifica nel browser: in parte eseguita»), da fare con
    Andrea, solo in lettura.
-2. Sei domande di prodotto e di disegno per Andrea («Le domande aperte»). Nessuna blocca il
-   merge; la prima (il flag `congelato`) cambia cosa vede chi ha qualcosa in congelatore. La
-   settima (la domenica, quando la settimana dopo non esiste) è decisa da Andrea il 03/10,
+2. Sette domande di prodotto e di disegno per Andrea («Le domande aperte»). Nessuna blocca il
+   merge; la prima (il flag `congelato`) cambia cosa vede chi ha qualcosa in congelatore. L'ottava (la domenica, quando la settimana dopo non esiste) è decisa da Andrea il 03/10,
    opzione a: la domenica Oggi apre anche la settimana di domani (ruling 11; precisato in
    esecuzione, 03/10).
 3. Le prove dal telefono (spec §J.4), dopo il merge.
@@ -28,7 +26,7 @@ cambiati e perché, le misure, i limiti noti e le prove da fare.
 Etichette: `[misurato]` per ciò che è stato misurato, `[calcolato]` per ciò che discende da una
 formula o dal CSS letto, senza misura a schermo, `[ipotesi, non testata]` per ciò che non lo è,
 `[fonte: …]` per ciò che viene da altrove. Una prova non fatta si scrive **NON ESEGUITA**.
-**Nessun numero di questo file è stato misurato nel browser o sul telefono.**
+**I numeri della sezione «La verifica nel browser» sono stati misurati su pagina sonda; nel resto del file nessun numero è stato misurato nel browser o sul telefono.**
 
 ## Le decisioni di Andrea (03/10)
 
@@ -276,8 +274,8 @@ Il piano lasciava all'implementatore alcune scelte, da annotare:
 - **Task 7, `LargaInCoda`:** tolto il contenitore; la tessera dispari riceve la prop `larga`.
 - **Task 7, il commento `eslint-disable-next-line react-hooks/set-state-in-effect`:** tenuto,
   perché serve (tolto per prova, il lint dà un errore su `void carica()`).
-- **Task 8, la larghezza di `DISPENSA`** da misurare nel browser: **NON ESEGUITA** (vedi
-  «La verifica nel browser»).
+- **Task 8, la larghezza di `DISPENSA`** da misurare nel browser: **49,0 px su 80**, misurata
+  su pagina sonda (vedi «La verifica nel browser: in parte eseguita»).
 - **Task 9, `window.history.state` nella pulizia dell'indirizzo della Dispensa:** sostituito da
   `{}`, ruling sopra.
 
@@ -444,7 +442,7 @@ bozza; `tuttiGliSlot = settimana.slots` → cade il test «Scongela» di domenic
 | Contrasti | `--ink-2` sulle sei aree 4,63–6,46:1 (`--testo-2` 2,95–4,11:1); `--poster-testo-3` su `--ink` 8,1:1; `--testo-2` su bianco 6,2:1 (`--sec` 3,4:1); `--avviso` su `--tinta-avviso` 4,7:1; `--freddo` su `--tinta-freddo` 4,3:1; `--errore` su `--ink` 3,5:1 | [calcolato ora con la formula WCAG sugli hex dei token; non misurato a schermo] |
 | La seconda carta, a riposo | larghezza visibile = lista − 260: 56 px a 360, 71 a 375, 89 a 393 | [calcolato dal CSS, con il poster largo come lo schermo meno 28; non misurato] |
 | Il secondo puntino | non si accende mai oltre circa 442 px | [calcolato dal CSS, stesso modello; non misurato] |
-| Larghezza di `DISPENSA` in mono 8,5 / 0,12em | la spec dice circa 49 px in 80 | [fonte: spec, stima] **NON ESEGUITA** |
+| Larghezza di `DISPENSA` in mono 8,5 / 0,12em | 49,0 px su 80 | [misurato il 03/10, pagina sonda] |
 | Stato dei dati di Andrea | ultima spesa chiusa il 28/08; quindi dispensa «non aggiornata» il 03/10 | [fonte: spec, misurato il 03/10 in produzione] |
 
 ## I limiti noti
@@ -539,7 +537,7 @@ Emersi dall'esecuzione:
 
 ## Le domande aperte per Andrea
 
-Sei aperte (dalla 1 alla 6). La 7 è decisa da Andrea il 03/10 (opzione a) e resta in fondo per
+Sette aperte (dalla 1 alla 7). L'8 è decisa da Andrea il 03/10 (opzione a) e resta in fondo per
 memoria.
 
 1. **Il flag `congelato` dopo un riacquisto.** Azzerarlo quando una chiusura ricompra
@@ -557,7 +555,8 @@ memoria.
 6. **Il fix della data locale** (13 punti UTC, quattro test [fonte: memoria del progetto, audit
    del 03/10]) può ripartire ora che la 8c è su `main` [fonte: `git log`, PR #25]; `oggiLocale`
    va riallineata al suo helper quando arriva.
-7. **La domenica la settimana dopo non esiste** (review finale, I3) — **decisa da Andrea il
+7. **Altezza della tessera dispari in coda.** È 70 px, non 64 come dice la spec §D (il contenuto supera il `minHeight`): accettare o stringere?
+8. **La domenica la settimana dopo non esiste** (review finale, I3) — **decisa da Andrea il
    03/10: opzione a** (precisato in esecuzione, 03/10; non è più aperta, resta qui per memoria).
    Piano e Oggi creavano solo la settimana che contiene oggi: la domenica sera, a pasti di oggi
    finiti, il poster diceva «Il piano di domani non c'è ancora.», `APRI IL PIANO` portava a un
@@ -568,29 +567,30 @@ memoria.
    l'apertura fallisce, e il codice sulle due settimane (`settimanaDomani`, `tuttiGliSlot`) copre
    uno stato che in produzione si raggiunge quando l'apertura della domenica ha successo [calcolato dal codice, non provato in produzione].
 
-## La verifica nel browser: NON ESEGUITA
+## La verifica nel browser: in parte eseguita (03/10)
 
-**Cosa non è stato fatto:** la verifica nel browser del piano, Task 8 passo 4 e Task 10 passo 4.
-**Perché:** l'app richiede l'accesso con il link via email sull'account vero di Andrea, contro il
-Supabase di produzione: l'accesso non è cosa da agente, e le prove che scrivono (`SCAMBIA`, la
-conferma in Scegli, il foglio azioni) toccherebbero i dati veri. In più il preview
-`spesa-worktree` di `.claude/launch.json` parte dalla cartella del repo principale, non dal
-worktree: servirebbe il codice sbagliato (fermato) [fonte: ledger del controller]. **Cosa vale al
-suo posto:** i test (jsdom), `tsc`, `eslint` e `npm run design:token`, verdi anche dopo la review
-finale; `next build` è verde solo prima di essa (vedi «Le misure»); niente di visivo.
+Il link di accesso di Andrea è tornato a spesa-zeta.vercel.app (produzione) anziché a localhost — Supabase non ha accettato l'indirizzo locale [ipotesi: le Redirect URLs di Supabase non includono localhost, non verificato] — e poi il limite di email di Supabase ha bloccato ulteriori link (429 «email rate limit exceeded» [misurato]). Così le verifiche visive sono state fatte su una pagina locale temporanea sotto `/entra` (pubblica per il proxy) che rendeva i VERI componenti (Poster, Alternative, TesseraOggi) dentro lo shell vero dell'app (Guscio, con la vera TabBar e la barra che si riduce nello scroll), con dati falsi, a viewport 375×812, dev server che esegue il codice del worktree. La pagina è stata cancellata e mai committata.
 
-**Ruling.** La verifica nel browser resta **NON ESEGUITA** fino alle prove con Andrea: nessun dato
-vero si tocca da un agente, e un'app senza accesso non si prova. *Se sbagliato:* un difetto visivo
-arriva alle prove dal telefono invece che prima del merge.
+Verificato sul rendering dei componenti reali:
+
+- [x] Barra a riposo 338 × 84, voci 80 × 72; ridotta 274 × 66, voci 64 × 54 (etichette nascoste, come il disegno esistente). [misurato il 03/10, pagina sonda]
+- [x] Larghezza delle etichette: Oggi 24,5 px, Lista 30,6, Piano 30,6, **Dispensa 49,0 px su 80**, nessuna tagliata (la spec stimava circa 49). [misurato il 03/10, pagina sonda]
+- [x] Pillole del poster alte 38 con `::before` a −4 px e bordo 1 px: area di tap 44. SCAMBIA alto 36 con `::before` a −4 px: 44. [misurato il 03/10, pagina sonda]
+- [x] Carosello: carte 252 × 150; `scroll-snap-type: x mandatory`; lasciato a 140 px si ferma a 197 (la seconda carta, fine corsa); la seconda carta spunta dal bordo a riposo; puntini larghi 6 e 16, si accende il secondo. Con una proposta sola la carta è larga 315 su 315 e non ci sono puntini. [misurato il 03/10, pagina sonda]
+- [x] Nessun elemento sotto la barra: ultima tessera fino a 672 px, barra grande da 706, ridotta da 724. [misurato il 03/10, pagina sonda]
+- [x] RIMETTI QUELLO DEL PIANO su una riga sua sotto CAMBIA e COM'È ANDATA. [misurato il 03/10, pagina sonda]
+- [x] Con la dispensa non aggiornata: poster con l'icona del piatto, tessera tratteggiata «La dispensa è ferma al 28 agosto» con APRI LA LISTA, poi Poi e Domani. Poster vuoto «Il piano di domani non c'è ancora.» con APRI IL PIANO. [misurato il 03/10, pagina sonda]
+- [~] Tessera dispari in coda: prende le due colonne (347 px) ma è alta **70 px, non 64** come dice la spec §D: il contenuto (etichetta e nome) supera il `minHeight` 64. Scarto minore, da decidere se conta. [misurato il 03/10, pagina sonda]
+- [x] Nessun errore in console dal rendering (gli unici errori sono i 429 dei tentativi di accesso). [misurato il 03/10, pagina sonda]
+- [ ] NON ESEGUITI, servono la sessione: `/` porta a `/oggi`; il poster coi dati veri; CAMBIA → Scegli con la pillola OGGI e ritorno; una tessera che apre il foglio della Dispensa e l'indietro che lo chiude restando su `/dispensa`; il Marchio d'avvio su `/oggi`; la voce OGGI attiva su `/oggi` (coperta dai test di TabBar). Si fanno sul telefono dopo il merge (prove §J.4) o nel pannello browser, in sola lettura, quando l'accesso locale funziona.
+
+**Ruling.** L'aspetto visivo è verificato su componenti reali dentro lo shell vero dell'app; la navigazione e gli stati con sessione restano da fare nel pannello browser. *Se sbagliato:* un difetto visivo arriva alle prove dal telefono invece che prima del merge.
 
 **Da fare con Andrea**, con l'accesso fatto nel pannello browser e **solo prove in lettura**
 (nessuno `SCAMBIA`, nessuna conferma in Scegli, nessuna scelta nel foglio azioni):
 - [ ] `/` porta a `/oggi`.
 - [ ] La barra a quattro voci a riposo (338 × 84, voci 80 × 72) e ridotta (274 × 66, voci 64 × 54),
       nessun testo tagliato, le quattro icone allineate, `OGGI` attiva su `/oggi`.
-- [ ] **La larghezza di `DISPENSA`**, misurata con `javascript_tool` (un `Range` sul nodo di testo
-      dell'etichetta, `getBoundingClientRect().width`) e annotata qui: la spec dice circa 49 px in
-      80 [stima].
 - [ ] Il poster con i dati veri; con la dispensa non aggiornata di Andrea (ultima spesa chiusa il
       28/08) la banda delle alternative e le tessere Scade, Scongela e Pronti **non** ci sono:
       c'è la tessera tratteggiata, e «Poi».
@@ -648,5 +648,5 @@ si vedono solo dopo una spesa chiusa nell'app [calcolato dalla regola §E].
 
 Merge e deploy **solo con l'ok di Andrea**: il merge su `main` va in produzione da solo (Vercel).
 Nessuna migrazione, quindi nessun ordine da rispettare con il database. Il service worker passa a
-`dispesa-v2`. Restano da fare, in quest'ordine: le prove nel browser sopra, le sei domande
+`dispesa-v2`. Restano da fare, in quest'ordine: le prove nel browser sopra, le sette domande
 aperte, il merge, le prove dal telefono.
