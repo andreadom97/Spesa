@@ -52,7 +52,7 @@ function componentiNonValidi(componenti: Componente[]): boolean {
   return componenti.some(
     (c) =>
       c.nome.trim() === '' ||
-      c.opzioni.some((o) => o.righe.length === 0 || o.righe.some((r) => r.quantita <= 0)),
+      c.opzioni.some((o) => o.righe.length === 0 || o.righe.some((r) => r.quantita !== null && r.quantita <= 0)),
   );
 }
 
@@ -494,7 +494,7 @@ export default function Piatto() {
   // toccato parte da quantita: 0 (vedi aggiungiIngrediente sopra) e
   // salverebbe sempre lo stesso errore generico, senza dire quale tessera è
   // il problema (I2). Il salvataggio resta disattivato finché non è > 0.
-  const quantitaNonValide = new Set(ingredienti.filter((r) => r.quantita <= 0).map((r) => r.ingredientId));
+  const quantitaNonValide = new Set(ingredienti.filter((r) => r.quantita !== null && r.quantita <= 0).map((r) => r.ingredientId));
 
   // Un piatto senza nome in Piatti sarebbe una riga senza titolo (prove dal telefono, fase 7).
   const salvataggioDisabilitato =

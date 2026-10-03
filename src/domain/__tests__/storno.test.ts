@@ -115,6 +115,13 @@ describe('consumoSlot', () => {
     const cucinatoNonMangiato = consumoSlot({ slot: { ...slot('saltato', 'd-1'), porzioniPreparate: 1 }, ...base });
     expect(cucinatoNonMangiato.get('i-pollo')).toBe(200); // 0 mangiate + 1 preparata
   });
+
+  it('una riga q.b. non consuma niente (spec 8c §B)', () => {
+    const conSale: Dish = { ...POLLO_E_RISO, ingredienti: [...POLLO_E_RISO.ingredienti, { ingredientId: 'i-uova', quantita: null, unita: 'pz' }] };
+    const c = consumoSlot({ slot: slot('casa', 'd-1'), dish: conSale, ingredients: INGREDIENTI, moltiplicatorePorzioni: 1 });
+    expect(c.has('i-uova')).toBe(false);
+    expect(c.get('i-pollo')).toBe(200);
+  });
 });
 
 describe('deltaStorno', () => {

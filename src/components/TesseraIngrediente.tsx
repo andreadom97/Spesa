@@ -10,7 +10,7 @@ import { IconaIngrediente, alone } from './IconaIngrediente';
 interface Props {
   nome: string;
   area: AreaId;
-  quantita: number;
+  quantita: number | null;
   unita: UnitaMisura;
   onCambiaQuantita: (quantita: number) => void;
   onRimuovi: () => void;
@@ -96,7 +96,7 @@ export function TesseraIngrediente({
 }: Props) {
   const colore = coloreArea(area);
   const coloreBordo = quantitaValida ? colore : COLORE_NON_VALIDA;
-  const [testoQuantita, setTestoQuantita] = useState(String(quantita));
+  const [testoQuantita, setTestoQuantita] = useState(quantita === null ? '' : String(quantita));
   const idQuantita = useId();
   const campoRef = useRef<HTMLInputElement>(null);
   // Solo al montaggio: la tessera nuova nasce con la chiave del suo ingrediente.

@@ -120,6 +120,8 @@ export function costruisciLista(input: ListaInput): ListaRisultato {
 
   // Regole 1-3: solo gli slot a casa, espansi in ingredienti e aggregati.
   const fabbisogni = new Map<string, number>();
+  // Gli ingredienti visti in una riga «quanto basta» (quantita null, spec 8c §B).
+  const quantoBasta = new Set<string>();
   for (const slot of slots) {
     const fattore = fattoreConsumo(slot);
     if (fattore === 0 || !slot.dishId) continue;
@@ -128,6 +130,11 @@ export function costruisciLista(input: ListaInput): ListaRisultato {
     for (const riga of righeEffettive(piatto, slot.scelte)) {
       const ing = perId.get(riga.ingredientId);
       if (!ing) throw new IngredienteMancanteError(riga.ingredientId);
+      // Una riga q.b. non ha numero: non entra nella somma e non passa da convertiInUnitaBase.
+      if (riga.quantita === null) {
+        quantoBasta.add(ing.id);
+        continue;
+      }
       const q = convertiInUnitaBase(riga.quantita, riga.unita, ing.unitaBase)
         * impostazioni.moltiplicatorePorzioni * fattore;
       fabbisogni.set(ing.id, (fabbisogni.get(ing.id) ?? 0) + q);
@@ -182,6 +189,32 @@ export function costruisciLista(input: ListaInput): ListaRisultato {
       fabbisogno, residuo, daComprare, confezioni, quantitaTotale,
       residuoPrevisto: residuo + quantitaTotale - fabbisogno,
       mostraDettaglio: ing.classeResiduo === 'porzionabile',
+    });
+  }
+
+  // Un ingrediente solo «quanto basta» nella settimana (spec 8c §B): una confezione, senza
+  // fabbisogno, e solo se in casa non ce n'è. Con anche una riga a quantità vale la somma di
+  // sopra (il q.b. non aggiunge niente). La classe stima resta ai controlli (regola 7).
+  for (const ingredientId of quantoBasta) {
+    if (fabbisogni.has(ingredientId)) continue;
+    const ing = perId.get(ingredientId)!;
+    if (ing.classeResiduo === 'stima') continue;
+    const statoDispensa = dispensaPerId.get(ingredientId);
+    const residuo = residuoUtilizzabile({
+      residuo: statoDispensa?.residuo ?? 0,
+      deperibile: ing.deperibile,
+      area: ing.area,
+      ultimoAcquisto: statoDispensa?.ultimoAcquisto ?? null,
+      congelato: statoDispensa?.congelato ?? false,
+      scadenzaManuale: statoDispensa?.scadenzaManuale ?? null,
+      oggi,
+    });
+    if (residuo > 0) continue;
+    const formato = ing.classeResiduo === 'intero' ? 1 : ing.formatoConfezione;
+    voci.push({
+      ingredientId, nome: ing.nome, area: ing.area, unita: ing.unitaBase,
+      fabbisogno: 0, residuo: 0, daComprare: 0, confezioni: 1, quantitaTotale: formato,
+      residuoPrevisto: formato, mostraDettaglio: false,
     });
   }
 

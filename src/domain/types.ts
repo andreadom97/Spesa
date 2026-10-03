@@ -34,8 +34,12 @@ export interface Ingredient {
 
 export interface DishIngredient {
   ingredientId: string;
-  /** La porzione del piano per un commensale. */
-  quantita: number;
+  /**
+   * La porzione del piano per un commensale. null = «quanto basta» (spec 8c §B, migrazione
+   * 0016): un valore, non una dimenticanza. Non entra in nessuna somma né conversione: chi
+   * calcola esce prima (`convertiInUnitaBase` non vede mai un q.b.).
+   */
+  quantita: number | null;
   unita: UnitaMisura;
 }
 

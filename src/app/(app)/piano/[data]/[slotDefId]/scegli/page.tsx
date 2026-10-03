@@ -227,7 +227,8 @@ function opzioneInCasa(
 ): boolean {
   for (const riga of opzione.righe) {
     const ing = ingredientiPerId.get(riga.ingredientId);
-    if (!ing || ing.classeResiduo === 'stima') continue;
+    // Il q.b. (spec 8c §B) non chiede niente alla dispensa.
+    if (!ing || ing.classeResiduo === 'stima' || riga.quantita === null) continue;
     const fabbisogno = convertiInUnitaBase(riga.quantita, riga.unita, ing.unitaBase) * moltiplicatorePorzioni;
     const statoDispensa = dispensaPerId.get(riga.ingredientId);
     const residuo = residuoUtilizzabile({

@@ -482,4 +482,19 @@ describe('risoluzione dei componenti', () => {
     });
     expect(out[0].scelte.scelta.opzioneId).toBe('opz-1');
   });
+
+  it('un\'opzione con una riga q.b. non costa niente per quella riga (spec 8c §B)', () => {
+    const conQb: Dish = {
+      ...wrap,
+      componenti: [{
+        id: 'farcitura', nome: 'farcitura',
+        opzioni: [
+          { id: 'farcitura-yogurt', righe: [{ ingredientId: 'yogurt', quantita: 100, unita: 'g' }] },
+          { id: 'farcitura-qb', righe: [{ ingredientId: 'passata', quantita: null, unita: 'g' }] },
+        ],
+      }],
+    };
+    const out = assegnaPiatti({ slots: [slotPranzoLunedi()], dishes: [conQb], ingredients: INGREDIENTI, pantry: [], oggi: '2026-08-31' });
+    expect(out[0].scelte).toEqual({ farcitura: { opzioneId: 'farcitura-qb', fonte: 'planner' } });
+  });
 });
