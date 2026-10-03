@@ -76,7 +76,7 @@ describe('IconaDueToni', () => {
   });
 
   it('chiave senza sagoma: nulla', () => {
-    const { container } = render(<IconaDueToni chiave="acqua" area="dispensa" tono="area" taglia={60} />);
+    const { container } = render(<IconaDueToni chiave={'inesistente' as never} area="dispensa" tono="area" taglia={60} />);
     expect(svg(container)).toBeNull();
   });
 });
