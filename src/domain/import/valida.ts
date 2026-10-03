@@ -1,4 +1,4 @@
-import type { EsitoEstrazione, IngredienteProposto, PassoRevisione, PastoEstratto, PianoEstratto, RigaEstratta, StatoRevisione } from './types';
+import type { DecisioneCambio, EsitoEstrazione, IngredienteProposto, PassoRevisione, PastoEstratto, PianoEstratto, RigaEstratta, StatoRevisione } from './types';
 
 export class PianoNonValidoError extends Error {
   constructor(percorso: string, motivo: string) {
@@ -7,7 +7,8 @@ export class PianoNonValidoError extends Error {
   }
 }
 
-const UNITA = new Set(['g', 'ml', 'pz']);
+/** Le unità che il lettore può scrivere: le tre di base e i cucchiai (spec 8c §C). */
+const UNITA = new Set(['g', 'ml', 'pz', 'cucchiaio', 'cucchiaino']);
 
 function ogg(v: unknown, percorso: string): Record<string, unknown> {
   if (typeof v !== 'object' || v === null || Array.isArray(v)) throw new PianoNonValidoError(percorso, 'non è un oggetto');
@@ -218,6 +219,7 @@ const PASSI_REVISIONE = new Set<string>(['revisione', 'formati', 'riepilogo']);
  * normalizzazione legacy è `prezzoConfezione` degli ingredienti nuovi: assente nelle
  * bozze salvate prima della migrazione 0011 → `null`; se presente dev'essere `null` o
  * un numero positivo, come il `check (prezzo_confezione > 0)` della colonna.
+ * Dall'8c anche `scelti` (oggetto di stringhe) e `cambiUnita` (per id: `tieni` booleano, `pesoPezzo` null o positivo), facoltativi.
  */
 export function validaStatoRevisione(v: unknown): StatoRevisione {
   const s = ogg(v, 'statoRevisione');
@@ -239,12 +241,31 @@ export function validaStatoRevisione(v: unknown): StatoRevisione {
       throw new PianoNonValidoError(`${percorso}.prezzoConfezione`, 'non è un numero positivo');
     return { ...ing, prezzoConfezione: prezzo ?? null } as IngredienteProposto;
   });
+  // Fase 8c (spec §G, §A.3): facoltativi. Assenti nelle bozze di prima → restano assenti.
+  const sceltiGrezzi = s.scelti === undefined ? undefined : ogg(s.scelti, 'statoRevisione.scelti');
+  if (sceltiGrezzi) {
+    for (const [chiave, valore] of Object.entries(sceltiGrezzi)) str(valore, `statoRevisione.scelti.${chiave}`);
+  }
+  const cambiGrezzi = s.cambiUnita === undefined ? undefined : ogg(s.cambiUnita, 'statoRevisione.cambiUnita');
+  const cambiUnita: Record<string, DecisioneCambio> | undefined = cambiGrezzi && Object.fromEntries(
+    Object.entries(cambiGrezzi).map(([id, v]) => {
+      const percorso = `statoRevisione.cambiUnita.${id}`;
+      const d = ogg(v, percorso);
+      if (typeof d.tieni !== 'boolean') throw new PianoNonValidoError(`${percorso}.tieni`, 'non è un booleano');
+      const peso = d.pesoPezzo ?? null;
+      if (peso !== null && (typeof peso !== 'number' || !Number.isFinite(peso) || peso <= 0))
+        throw new PianoNonValidoError(`${percorso}.pesoPezzo`, 'non è un numero positivo');
+      return [id, { tieni: d.tieni, pesoPezzo: peso as number | null }];
+    }),
+  );
   return {
     passo: passo as PassoRevisione,
     mappaturaPasti: mappaturaPasti as Record<string, string>,
     pastiConfermati,
     correzioni: correzioni as Record<string, PastoEstratto>,
     ingredientiNuovi,
+    ...(sceltiGrezzi ? { scelti: sceltiGrezzi as Record<string, string> } : {}),
+    ...(cambiUnita ? { cambiUnita } : {}),
   };
 }
 

@@ -75,4 +75,9 @@ describe('FoglioDalBasso', () => {
     rerender(<FoglioDalBasso etichetta="Foglio" onChiudi={vi.fn()} livello={3}><p>Contenuto</p></FoglioDalBasso>);
     expect(screen.getByTestId('velo-foglio').style.zIndex).toBe('80');
   });
+
+  it('un foglio «contenuto» non va oltre la cima del foglio alto (spec 8c §G)', () => {
+    render(<FoglioDalBasso etichetta="Corto" onChiudi={() => {}} altezza="contenuto"><p>x</p></FoglioDalBasso>);
+    expect(screen.getByRole('dialog', { name: 'Corto' }).style.maxHeight).toBe('calc(100% - 88px)');
+  });
 });

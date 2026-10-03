@@ -1,14 +1,17 @@
 'use client';
 
-import { useState, type CSSProperties } from 'react';
+import { useState } from 'react';
 import type { AreaId, ClasseResiduo, Ingredient } from '@/domain/types';
-import type { IngredienteProposto } from '@/domain/import/types';
-import { legataA, type MotivoBlocco } from '@/domain/import/ingredienti';
+import type { DecisioneCambio, IngredienteProposto } from '@/domain/import/types';
+import { SCELTA_NUOVO } from '@/domain/import/types';
+import { legataA, type CambioUnita, type MotivoBlocco } from '@/domain/import/ingredienti';
+import { UNITA_IN_PAROLE, classeCoerente, numeroInParole, pesoPezzo } from '@/domain/import/formati-tipici';
 import { AREE, coloreArea, nomeAreaFrase } from '@/domain/aree';
-import { Blocco, Etichetta, STILE_PILLOLA } from '@/components/controlli';
+import { Blocco, Etichetta } from '@/components/controlli';
 import { Nota } from '@/components/pannello/pezzi';
 import { Segmento } from '@/components/Segmento';
 import { SelettoreFoglio } from '@/components/SelettoreFoglio';
+import { SchedaCambio, pillola, type EsempioCambio } from './SchedaCambio';
 
 const NUOVO = '__nuovo';
 const OPZIONI_CLASSE: { id: ClasseResiduo; label: string }[] = [
@@ -16,11 +19,11 @@ const OPZIONI_CLASSE: { id: ClasseResiduo; label: string }[] = [
   { id: 'intero', label: 'Intero' },
   { id: 'stima', label: 'A stima' },
 ];
-const UNITA_IN_PAROLE = { g: 'grammi', ml: 'millilitri', pz: 'pezzi' } as const;
 const TESTO_AVVISO: Record<MotivoBlocco, string> = {
   nomeVuoto: "Scrivi il nome dell'ingrediente.",
   doppio: 'Un altro ingrediente si chiama già così: cambia il nome.',
   confezione: "Scrivi quanto c'è in una confezione.",
+  peso: 'Scrivi quanto pesa un pezzo: serve a convertire le quantità.',
 };
 
 export type CampoSelettore = 'area' | 'stesso';
@@ -28,15 +31,6 @@ export type CampoSelettore = 'area' | 'stesso';
 /** Un numero come lo si scrive: con la virgola («0,5»). */
 export function numeroInTesto(n: number): string {
   return String(n).replace('.', ',');
-}
-
-function pillola(attiva: boolean): CSSProperties {
-  return {
-    ...STILE_PILLOLA, minWidth: 52,
-    background: attiva ? 'var(--ink)' : 'var(--superficie)',
-    color: attiva ? 'var(--superficie)' : 'var(--sec)',
-    border: attiva ? '1px solid var(--ink)' : '1px solid rgba(20,22,58,0.09)',
-  };
 }
 
 /** Da testo del campo a numero: vuoto o non numerico è NaN, e `passoBloccato` spegne il Dock. */
@@ -70,8 +64,12 @@ function Avviso({ motivo }: { motivo: MotivoBlocco }) {
 interface Props {
   proposta: IngredienteProposto;
   esistenti: Ingredient[];
-  /** Legata per scelta in «È lo stesso di…»: la Scheda nasconde i campi. */
-  scelto: boolean;
+  /** La scelta in «È lo stesso di…»: l'id di un ingrediente che hai, `SCELTA_NUOVO`, o assente. */
+  scelta: string | undefined;
+  /** Il cambio di unità dell'ingrediente scelto, se lo conti in un'altra unità (spec 8c §A.3). */
+  cambio: CambioUnita | null;
+  esempioCambio: EsempioCambio;
+  onDecisione: (d: Partial<DecisioneCambio>) => void;
   /** Perché la proposta blocca il passo; vuoto se non blocca. */
   avvisi: MotivoBlocco[];
   /** La nota del ripiego, se la scheda è fra quelle da controllare. */
@@ -97,9 +95,16 @@ interface Props {
  * metà parola appena il testo coincide con un esistente. Una proposta che `abbina` aggancia
  * senza una scelta (per inclusione, o scrivendo il nome esatto) tiene la Scheda intera con la
  * nota «Finirà su…»: si stacca rinominandola.
+ *
+ * La scelta viene da `scelti` (spec 8c §G): «nuovo» è una scelta anche lei, e il nome non la
+ * riporta indietro. Legata a un ingrediente che conti nell'altra unità, la Scheda mostra il cambio
+ * (`SchedaCambio`). Nel ramo non scelto la Scheda del cambio c'è quando manca il peso di un pezzo
+ * (correzione D3: senza il campo il passo resterebbe bloccato) e, dopo, finché il peso è quello
+ * scritto da te: il campo non sparisce sotto il dito appena lo riempi.
  */
 export function SchedaIngrediente({
-  proposta, esistenti, scelto, avvisi, notaRipiego, onCambia, onStesso, selettore, onApriSelettore, onChiudiSelettore, livelloSelettori,
+  proposta, esistenti, scelta, cambio, esempioCambio, avvisi, notaRipiego, onCambia, onStesso, onDecisione,
+  selettore, onApriSelettore, onChiudiSelettore, livelloSelettori,
 }: Props) {
   const [formatoTesto, setFormatoTesto] = useState(() => testoConfezione(proposta.formatoConfezione));
   // La stessa proposta può essere resa due volte (in «Da sistemare» e nel foglio): se l'altra
@@ -108,19 +113,36 @@ export function SchedaIngrediente({
   if (!stessaConfezione(formatoDaTesto(formatoTesto), proposta.formatoConfezione)) {
     setFormatoTesto(testoConfezione(proposta.formatoConfezione));
   }
-  const legata = legataA(proposta, esistenti);
+  const scelto = scelta !== undefined && scelta !== SCELTA_NUOVO;
+  const legata = legataA(proposta, esistenti, scelta === undefined ? {} : { [proposta.alimento]: scelta });
+  // Anche gli ingredienti che conti nell'altra unità fra g e pz (spec 8c §G): si convertono.
+  const altra: Ingredient['unitaBase'] | null = proposta.unitaBase === 'g' ? 'pz' : proposta.unitaBase === 'pz' ? 'g' : null;
   const compatibili = esistenti
-    .filter((e) => e.unitaBase === proposta.unitaBase)
+    .filter((e) => e.unitaBase === proposta.unitaBase || e.unitaBase === altra)
     .sort((a, b) => a.nome.localeCompare(b.nome, 'it'));
+
+  function notaConversione(e: Ingredient): string {
+    const peso = pesoPezzo(e.nome, proposta.alimento);
+    return `Lo conti in ${UNITA_IN_PAROLE[e.unitaBase]}: passa a ${UNITA_IN_PAROLE[proposta.unitaBase]}, `
+      + (peso === null ? 'ti chiedo quanto pesa un pezzo' : `1 pz = ${numeroInParole(peso)} g`);
+  }
+
+  // Nel ramo non scelto: quando manca il peso (D3), e dopo finché il peso è quello scritto da te.
+  const conCambio = cambio !== null && (avvisi.includes('peso') || (cambio.pesoPezzo !== null && !cambio.pesoDaTabella));
 
   const stessoDi = compatibili.length > 0 && (
     <SelettoreFoglio
       nome="È lo stesso di…"
-      voci={[{ id: NUOVO, nome: 'No, è un ingrediente nuovo' }, ...compatibili.map((e) => ({ id: e.id, nome: e.nome }))]}
+      voci={[
+        { id: NUOVO, nome: 'No, è un ingrediente nuovo' },
+        ...compatibili.map((e) => ({ id: e.id, nome: e.nome, nota: e.unitaBase === proposta.unitaBase ? undefined : notaConversione(e) })),
+      ]}
       sceltaId={legata?.id ?? NUOVO}
-      vuoto=""
+      valore={legata ? legata.nome : 'Ingrediente nuovo'}
       titolo={`${proposta.nome} è lo stesso di…`}
-      notaFoglio={`Solo gli ingredienti che conti in ${UNITA_IN_PAROLE[proposta.unitaBase]}, come questo.`}
+      notaFoglio={altra
+        ? `Gli ingredienti che conti in ${UNITA_IN_PAROLE[proposta.unitaBase]}, e quelli in ${UNITA_IN_PAROLE[altra]} che posso convertire.`
+        : `Solo gli ingredienti che conti in ${UNITA_IN_PAROLE[proposta.unitaBase]}, come questo.`}
       aperto={selettore === 'stesso'}
       onApri={() => onApriSelettore('stesso')}
       onChiudi={onChiudiSelettore}
@@ -143,6 +165,7 @@ export function SchedaIngrediente({
         <Blocco primo>
           {stessoDi}
           <Nota>Userò l&apos;ingrediente che hai già.</Nota>
+          {cambio && <SchedaCambio cambio={cambio} esempio={esempioCambio} conTestata={false} onDecisione={onDecisione} />}
         </Blocco>
       ) : (
         <>
@@ -160,9 +183,16 @@ export function SchedaIngrediente({
                 }}
               />
             </label>
-            {avvisi.filter((m) => m !== 'confezione').map((m) => <Avviso key={m} motivo={m} />)}
+            {/* L'avviso del peso lo dice la Scheda del cambio, sotto, accanto al suo campo. */}
+            {avvisi.filter((m) => m !== 'confezione' && m !== 'peso').map((m) => <Avviso key={m} motivo={m} />)}
             {legata && <Nota>Finirà su «{legata.nome}», che hai già: se è un altro ingrediente, cambia il nome.</Nota>}
           </Blocco>
+
+          {conCambio && cambio && (
+            <Blocco>
+              <SchedaCambio cambio={cambio} esempio={esempioCambio} conTestata={false} onDecisione={onDecisione} />
+            </Blocco>
+          )}
 
           <Blocco>
             <SelettoreFoglio
@@ -205,7 +235,13 @@ export function SchedaIngrediente({
 
           <Blocco>
             <Etichetta>Come si consuma</Etichetta>
-            <Segmento opzioni={OPZIONI_CLASSE} valore={proposta.classeResiduo} onCambia={(id) => onCambia({ classeResiduo: id as ClasseResiduo })} variante="blocco" />
+            {/* «Intero» è formato 1 a pezzi: in g o ml non si offre, e un «intero» di una bozza vecchia si mostra «Porzionabile», come lo scrive traduciBozza (review finale 8c, I3). */}
+            <Segmento
+              opzioni={proposta.unitaBase === 'pz' ? OPZIONI_CLASSE : OPZIONI_CLASSE.filter((o) => o.id !== 'intero')}
+              valore={classeCoerente(proposta.classeResiduo, proposta.unitaBase)}
+              onCambia={(id) => onCambia({ classeResiduo: id as ClasseResiduo })}
+              variante="blocco"
+            />
           </Blocco>
 
           <Blocco>

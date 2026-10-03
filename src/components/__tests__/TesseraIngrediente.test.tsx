@@ -113,4 +113,62 @@ describe('TesseraIngrediente · icona ingrediente', () => {
     expect(matita.style.outlineOffset).toBe('-2px');
     expect(x.style.outlineOffset).toBe('-2px');
   });
+
+  it('a fuoco la pillola offre «Q.B.»: scelta, la quantità è null (spec 8c §B)', () => {
+    const onCambiaQuantita = vi.fn();
+    rendi({ onCambiaQuantita });
+    expect(screen.queryByRole('button', { name: 'Olio di semi: quanto basta' })).toBeNull();
+    fireEvent.focus(screen.getByLabelText('Grammatura di Olio di semi'));
+    fireEvent.click(screen.getByRole('button', { name: 'Olio di semi: quanto basta' }));
+    expect(onCambiaQuantita).toHaveBeenLastCalledWith(null);
+  });
+
+  it('una riga q.b. mostra «Q.B.» al posto del numero; il tocco riapre il campo vuoto e a fuoco', () => {
+    const onCambiaQuantita = vi.fn();
+    rendi({ quantita: null, onCambiaQuantita });
+    const pillola = screen.getByRole('button', { name: 'Grammatura di Olio di semi: quanto basta' });
+    expect(pillola).toHaveTextContent('Q.B.');
+    expect(screen.queryByLabelText('Grammatura di Olio di semi')).toBeNull();
+    fireEvent.click(pillola);
+    const campo = screen.getByLabelText('Grammatura di Olio di semi');
+    expect(campo).toHaveValue(null);
+    expect(campo).toHaveFocus();
+    fireEvent.change(campo, { target: { value: '5' } });
+    expect(onCambiaQuantita).toHaveBeenLastCalledWith(5);
+  });
+
+  it('il fuoco che passa alla voce «Q.B.» (Tab) non la smonta: resta cliccabile; altrove sparisce', () => {
+    const onCambiaQuantita = vi.fn();
+    rendi({ onCambiaQuantita });
+    const campo = screen.getByLabelText('Grammatura di Olio di semi');
+    fireEvent.focus(campo);
+    const voce = screen.getByRole('button', { name: 'Olio di semi: quanto basta' });
+    fireEvent.blur(campo, { relatedTarget: voce });
+    expect(screen.getByRole('button', { name: 'Olio di semi: quanto basta' })).toBe(voce);
+    // Dalla voce il fuoco torna al campo: la voce resta.
+    fireEvent.blur(voce, { relatedTarget: campo });
+    expect(screen.getByRole('button', { name: 'Olio di semi: quanto basta' })).toBe(voce);
+    fireEvent.blur(voce, { relatedTarget: null });
+    expect(screen.queryByRole('button', { name: 'Olio di semi: quanto basta' })).toBeNull();
+    // Il percorso da tastiera: campo -> voce -> invio.
+    fireEvent.focus(campo);
+    const voce2 = screen.getByRole('button', { name: 'Olio di semi: quanto basta' });
+    fireEvent.blur(campo, { relatedTarget: voce2 });
+    fireEvent.click(voce2);
+    expect(onCambiaQuantita).toHaveBeenLastCalledWith(null);
+  });
+
+  it('i bottoni Q.B. hanno outlineOffset -2 come X e matita', () => {
+    const { unmount } = rendi({ quantita: null });
+    expect(screen.getByRole('button', { name: 'Grammatura di Olio di semi: quanto basta' }).style.outlineOffset).toBe('-2px');
+    unmount();
+    rendi();
+    fireEvent.focus(screen.getByLabelText('Grammatura di Olio di semi'));
+    expect(screen.getByRole('button', { name: 'Olio di semi: quanto basta' }).style.outlineOffset).toBe('-2px');
+  });
+
+  it('una riga q.b. non ha il bordo d\'errore', () => {
+    const { container } = rendi({ quantita: null });
+    expect(container.querySelector('[data-quantita-valida="true"]')).not.toBeNull();
+  });
 });

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Ingredient, MealSlotDef } from '@/domain/types';
-import { normalizza, abbina, proponiSlot, ingredientiDaAbbinare } from '../mapping';
+import type { RigaEstratta } from '../types';
+import { normalizza, abbina, proponiSlot, ingredientiDaAbbinare, quantoBasta, unitaPrevalente, statoRevisioneIniziale } from '../mapping';
 import { proponi } from '../formati-tipici';
 import { PIANO_MENU_SETTIMANALE } from '../fixtures';
 
@@ -81,5 +82,98 @@ describe('ingredientiDaAbbinare', () => {
     correzione.piatti[0].righeFisse = [{ alimento: 'muesli', quantita: 40, unita: 'g', quantitaInferita: false, testoOriginale: '40g muesli' }];
     const voci = ingredientiDaAbbinare(PIANO_MENU_SETTIMANALE, { '1-0-0': correzione });
     expect(voci.map((v) => v.alimento)).toContain('muesli');
+  });
+  it('i cucchiai valgono come senza unità: non fissano il tipo dell\'ingrediente (spec 8c §C)', () => {
+    const piano = structuredClone(PIANO_MENU_SETTIMANALE);
+    const pasto = piano.settimane[0].giorni[0].pasti[0];
+    pasto.piatti[0].righeFisse = [
+      { alimento: 'miele', quantita: 1, unita: 'cucchiaio', quantitaInferita: false, testoOriginale: '1 cucchiaio di miele' },
+    ];
+    pasto.piatti[0].componenti = [];
+    expect(ingredientiDaAbbinare(piano, {}).find((v) => v.alimento === 'miele')?.unita).toBeNull();
+    // Se un'altra riga dello stesso alimento ha l'unità, vince quella.
+    pasto.piatti[0].righeFisse.push({ alimento: 'miele', quantita: 10, unita: 'g', quantitaInferita: false, testoOriginale: 'miele 10g' });
+    expect(ingredientiDaAbbinare(piano, {}).find((v) => v.alimento === 'miele')?.unita).toBe('g');
+  });
+  it('le unità di tutte le righe, e fra g e pz prevale la più frequente, a pari merito la prima (ruling 8c, Task 8)', () => {
+    const piano = structuredClone(PIANO_MENU_SETTIMANALE);
+    const pasto = piano.settimane[0].giorni[0].pasti[0];
+    const riga = (quantita: number | null, unita: 'g' | 'pz' | 'ml' | null, testo: string) => ({ alimento: 'zucchine', quantita, unita, quantitaInferita: false, testoOriginale: testo });
+    pasto.piatti[0].componenti = [];
+    pasto.piatti[0].righeFisse = [riga(150, 'g', 'zucchine 150 g'), riga(1, 'pz', 'zucchine 1 pz'), riga(null, null, 'zucchine q.b.')];
+    expect(ingredientiDaAbbinare(piano, {}).find((v) => v.alimento === 'zucchine')).toMatchObject({ unita: 'g', unitaViste: ['g', 'pz'] });
+    pasto.piatti[0].righeFisse.push(riga(2, 'pz', 'zucchine 2 pz'));
+    expect(ingredientiDaAbbinare(piano, {}).find((v) => v.alimento === 'zucchine')?.unita).toBe('pz');
+  });
+  it('unitaPrevalente: con ml vince la prima, come prima dell\'8c', () => {
+    expect(unitaPrevalente([])).toBeNull();
+    expect(unitaPrevalente(['g', 'ml', 'ml'])).toBe('g');
+    expect(unitaPrevalente(['pz', 'g'])).toBe('pz');
+    expect(unitaPrevalente(['pz', 'g', 'g'])).toBe('g');
+  });
+});
+
+describe('abbina a due livelli (spec 8c §A.2)', () => {
+  const es = (id: string, nome: string, unitaBase: Ingredient['unitaBase']): Ingredient => ({
+    id, nome, unitaBase, area: 'ortofrutta', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 500, prezzoConfezione: null, ean: null,
+  });
+
+  it('se la stessa unità non trova niente, lo stesso nome esatto fra g e pz', () => {
+    expect(abbina('zucchine', 'g', [es('i-z', 'Zucchine', 'pz')])?.id).toBe('i-z');
+    expect(abbina('Uova', 'pz', [es('i-u', 'uova', 'g')])?.id).toBe('i-u');
+  });
+
+  it('mai fra ml e un\'altra unità, mai per inclusione', () => {
+    expect(abbina('latte', 'ml', [es('i-l', 'Latte', 'g')])).toBeNull();
+    expect(abbina('latte', 'g', [es('i-l', 'Latte', 'ml')])).toBeNull();
+    expect(abbina('zucchine grigliate', 'g', [es('i-z', 'Zucchine', 'pz')])).toBeNull();
+  });
+
+  it('la stessa unità vince sul cambio, anche per inclusione', () => {
+    expect(abbina('zucchine', 'g', [es('i-zp', 'Zucchine', 'pz'), es('i-zg', 'Zucchine', 'g')])?.id).toBe('i-zg');
+    expect(abbina('zucchine', 'g', [es('i-zp', 'Zucchine', 'pz'), es('i-zb', 'Zucchine bio', 'g')])?.id).toBe('i-zb');
+  });
+
+  it('a parità di nome vince il primo per id', () => {
+    expect(abbina('zucchine', 'g', [es('i-z2', 'Zucchine', 'pz'), es('i-z1', 'Zucchine', 'pz')])?.id).toBe('i-z1');
+  });
+});
+
+describe('quantoBasta (spec 8c §B, correzione S1)', () => {
+  /** Una riga del sale: senza quantità, o con 2 g inferiti dal lettore (`inferita`) o trascritti dal foglio. */
+  const riga = (testoOriginale: string, quantita: number | null = null, inferita = false): RigaEstratta => ({
+    alimento: 'sale', quantita, unita: quantita === null ? null : 'g', quantitaInferita: inferita, testoOriginale,
+  });
+
+  it('q.b., qb, quanto basta, a piacere: per parole intere', () => {
+    for (const t of ['sale q.b.', 'Sale Q.B.', 'pepe qb', 'olio quanto basta', 'prezzemolo a piacere', 'Spezie (q.b.)']) {
+      expect(quantoBasta(riga(t))).toBe(true);
+    }
+  });
+
+  it('non è q.b.: un pizzico, una parola che contiene «qb»', () => {
+    expect(quantoBasta(riga('un pizzico di sale'))).toBe(false);
+    expect(quantoBasta(riga('qbaccia'))).toBe(false);
+  });
+
+  it('una quantità INFERITA dal lettore col testo q.b. è q.b.: la stima si scarta', () => {
+    expect(quantoBasta(riga('sale q.b.', 2, true))).toBe(true);
+    expect(quantoBasta(riga('prezzemolo a piacere', 5, true))).toBe(true);
+    // Inferita ma senza q.b. nel testo: resta una quantità proposta.
+    expect(quantoBasta(riga('un pizzico di sale', 1, true))).toBe(false);
+  });
+
+  it('una quantità TRASCRITTA dal foglio vince sempre: resta la quantità', () => {
+    expect(quantoBasta(riga('sale q.b.', 2, false))).toBe(false);
+  });
+});
+
+describe('statoRevisioneIniziale (spec 8c §E)', () => {
+  const slot = (id: string, nome: string, posizione: number): MealSlotDef => ({ id, nome, posizione, assenzeAbituali: Array(7).fill(false) });
+
+  it('Controlla, con uno slot proposto per nome di pasto; condimenti e nomi ignoti restano fuori', () => {
+    expect(statoRevisioneIniziale(PIANO_MENU_SETTIMANALE, [slot('s-col', 'Colazione', 0), slot('s-cena', 'Cena', 5)])).toEqual({
+      passo: 'revisione', mappaturaPasti: { colazione: 's-col', cena: 's-cena' }, pastiConfermati: [], correzioni: {}, ingredientiNuovi: [],
+    });
   });
 });

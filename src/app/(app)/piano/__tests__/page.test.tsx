@@ -207,6 +207,23 @@ describe('Settimana (piano alimentare)', () => {
     expect(screen.queryByText('Spuntino'.toUpperCase())).not.toBeInTheDocument();
   });
 
+  it('arrivando da Importa: la riga di stato «Piano salvato», una volta sola (spec 8c §H)', async () => {
+    mockCarico();
+    sessionStorage.setItem('spesa:piano-salvato', '1');
+    rendi();
+    const riga = await screen.findByText('Piano salvato');
+    expect(riga).toHaveAttribute('role', 'status');
+    expect(sessionStorage.getItem('spesa:piano-salvato')).toBeNull();
+  });
+
+  it('senza il segno, niente riga', async () => {
+    mockCarico();
+    sessionStorage.removeItem('spesa:piano-salvato');
+    rendi();
+    await screen.findByText(/SETTIMANA SCORSA/);
+    expect(screen.queryByText('Piano salvato')).toBeNull();
+  });
+
   // Stato vuoto collegato alle porte (spec due-porte §2.4): a repertorio
   // vuoto ogni riga direbbe solo "Nessun piatto assegnato", senza dire dove
   // andare. Una scheda sopra le righe manda ai piatti.

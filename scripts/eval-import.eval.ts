@@ -20,7 +20,8 @@ import { formattaReport, stimaCostoEur, type CasoEval, type PipelineEval, type S
  * e costi. Mai un alimento, un testo della dieta, un nome di cartella o di foto.
  */
 
-const DIR_DIETE = join(process.cwd(), 'diete');
+// Dal worktree la cartella sta nel checkout principale: EVAL_IMPORT_DIR_DIETE la indica (percorso assoluto).
+const DIR_DIETE = process.env.EVAL_IMPORT_DIR_DIETE ?? join(process.cwd(), 'diete');
 const MANIFEST = join(DIR_DIETE, 'eval-manifest.json');
 const MODELLI = (process.env.EVAL_IMPORT_MODELLI ?? 'claude-sonnet-5-5').split(',').map((m) => m.trim()).filter(Boolean);
 
@@ -135,19 +136,40 @@ interface Verita {
 
 type Metriche = Omit<CasoEval, 'dieta' | 'set' | 'modello' | 'pipeline' | 'durataS' | 'uso'>;
 
+const PAROLE_NUMERO: Record<string, RegExp> = {
+  '1': /\b(un|uno|una)\b/, '0.5': /\bmezz[oa]\b/, '2': /\bdue\b/, '3': /\btre\b/,
+};
+
+/** Il numero dei cucchiai si legge nel testo copiato dal foglio: in cifre o in parole. */
+function numeroNelTesto(quantita: number, testo: string): boolean {
+  const t = testo.toLowerCase();
+  if (t.includes(String(quantita)) || t.includes(String(quantita).replace('.', ','))) return true;
+  return PAROLE_NUMERO[String(quantita)]?.test(t) ?? false;
+}
+
 /**
  * Le metriche di sempre, pure: l'estrazione contro il ground truth. Le righe
  * fabbricate tornano a parte per il dump di debug (mai per la console).
  */
-function misura(piano: PianoEstratto, verita: Verita): { metriche: Metriche; righeFabbricate: RigaEstratta[] } {
+function misura(piano: PianoEstratto, verita: Verita): { metriche: Metriche; righeFabbricate: RigaEstratta[]; cucchiai: number } {
   const righe = tutteLeRighe(piano);
-  let abbinati = 0, esatte = 0, fabbricate = 0, inferite = 0, estranei = 0;
+  let abbinati = 0, esatte = 0, fabbricate = 0, inferite = 0, estranei = 0, cucchiai = 0;
   const righeFabbricate: RigaEstratta[] = [];
   const vistiEstratti = new Set<string>();
   for (const r of righe) {
     const k = normalizza(r.alimento);
     vistiEstratti.add(k);
     if (r.quantitaInferita) inferite += 1;
+    // Una riga a cucchiai (spec 8c §C) non si confronta col ground truth, che non ne ha: passa se il
+    // suo numero si legge nel testo copiato.
+    if (r.unita === 'cucchiaio' || r.unita === 'cucchiaino') {
+      cucchiai += 1;
+      if (r.quantita !== null && !r.quantitaInferita && !numeroNelTesto(r.quantita, r.testoOriginale)) {
+        fabbricate += 1;
+        righeFabbricate.push(r);
+      }
+      continue;
+    }
     const vere = verita.quantitaVere.get(k);
     if (!vere) {
       estranei += 1;
@@ -174,6 +196,7 @@ function misura(piano: PianoEstratto, verita: Verita): { metriche: Metriche; rig
       fabbricate,
     },
     righeFabbricate,
+    cucchiai,
   };
 }
 
@@ -243,7 +266,7 @@ describe('eval estrattore', () => {
             const esito = validaEsito(risultato.grezzo); // gate duro: lancia se l'estrazione non è valida
             if (esito.tipo !== 'piano') throw new Error(`${etichetta} esito rifiuto su una dieta con menu`);
 
-            const { metriche, righeFabbricate } = misura(esito.piano, verita);
+            const { metriche, righeFabbricate, cucchiai } = misura(esito.piano, verita);
             const { uso } = risultato;
             const costo = stimaCostoEur(modello, uso);
             console.log(
@@ -252,6 +275,7 @@ describe('eval estrattore', () => {
               `alimenti del ground truth abbinati ${metriche.abbinati}/${metriche.abbinabili} · ` +
               `alimenti fuori dal ground truth: ${metriche.estranei} · ` +
               `righe con quantità esatta ${metriche.esatte}/${metriche.righe} · inferite ${metriche.inferite} · ` +
+              `righe a cucchiai ${cucchiai} · ` +
               `QUANTITÀ FABBRICATE: ${metriche.fabbricate} · ` +
               `chiamate ${uso.chiamate} · token in ${uso.inputTokens} · out ${uso.outputTokens} · ` +
               `cache letti ${uso.cacheLetti} · scritti ${uso.cacheScritti} · ` +

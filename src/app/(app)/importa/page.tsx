@@ -2,13 +2,13 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Ingredient, MealSlotDef } from '@/domain/types';
+import type { Dish, Ingredient, MealSlotDef } from '@/domain/types';
 import type { StatoRevisione } from '@/domain/import/types';
 import { leggiBozzaImport, salvaBozzaImport, cancellaBozzaImport, type BozzaImport } from '@/data/importa';
 import { leggiSlotDefs } from '@/data/impostazioni';
-import { leggiIngredienti } from '@/data/repertorio';
+import { leggiIngredienti, leggiRepertorio } from '@/data/repertorio';
 import { validaEsito } from '@/domain/import/valida';
-import { proponiSlot, normalizza } from '@/domain/import/mapping';
+import { statoRevisioneIniziale } from '@/domain/import/mapping';
 import { client } from '@/data/supabase';
 import { Testata } from '@/components/Testata';
 import { indirizzoRitorno } from '@/components/pannello/indirizzi';
@@ -24,6 +24,7 @@ import { Acquisizione } from './Acquisizione';
 import { Controlla } from './Controlla';
 import { Ingredienti } from './Ingredienti';
 import { tornaA } from '@/components/tornaA';
+import { LivelliImporta, useEsciImporta } from './livelli';
 
 type Vista =
   | 'caricamento'
@@ -52,32 +53,6 @@ const MESSAGGIO_SENZA_SESSIONE = 'Serve l’accesso: riapri l’app ed entra di 
 const TOCCHI_IGNORATI_DOPO_CHIUSURA_MS = 400;
 
 /**
- * Costruisce la mappatura pasti iniziale da proporre in revisione: uno slot
- * proposto per ogni `nomeOriginale` distinto del piano (chiave normalizzata),
- * i `null` di `proponiSlot` (condimenti, nomi ignoti) restano fuori dalla
- * mappa — li assegna l'utente nel passo di revisione.
- */
-function mappaturaPastiIniziale(
-  piano: BozzaImport['piano'],
-  slotDefs: MealSlotDef[],
-): Record<string, string> {
-  const mappa: Record<string, string> = {};
-  const visti = new Set<string>();
-  for (const settimana of piano.settimane) {
-    for (const giorno of settimana.giorni) {
-      for (const pasto of giorno.pasti) {
-        const chiave = normalizza(pasto.nomeOriginale);
-        if (visti.has(chiave)) continue;
-        visti.add(chiave);
-        const slotId = proponiSlot(pasto.nomeOriginale, slotDefs);
-        if (slotId) mappa[chiave] = slotId;
-      }
-    }
-  }
-  return mappa;
-}
-
-/**
  * Il wizard di importazione: acquisizione delle pagine della dieta (foto o
  * PDF), estrazione via `/api/import/estrai`, e smistamento fra piano
  * (bozza salvata, passo revisione) e rifiuto onesto (dieta solo-macro, senza
@@ -88,6 +63,7 @@ function mappaturaPastiIniziale(
  * esplicita, mai in silenzio.
  */
 export default function Importa() {
+  const router = useRouter();
   const [vista, setVista] = useState<Vista>('caricamento');
   const [bozza, setBozza] = useState<BozzaImport | null>(null);
   // Servono alla revisione (etichette e opzioni dello slot per pasto) e al passo
@@ -96,6 +72,7 @@ export default function Importa() {
   // pronti quando si riprende una bozza salvata (che non rifà il giro di estrazione).
   const [slotDefs, setSlotDefs] = useState<MealSlotDef[]>([]);
   const [ingredientiEsistenti, setIngredientiEsistenti] = useState<Ingredient[]>([]);
+  const [repertorio, setRepertorio] = useState<Dish[]>([]);
 
   // Acquisizione: stato indipendente dalla vista corrente, così un errore o
   // un giro di estrazione non fanno perdere le foto già scelte. Foto e PDF
@@ -109,11 +86,14 @@ export default function Importa() {
 
   useEffect(() => {
     let vivo = true;
-    Promise.all([leggiBozzaImport(), leggiSlotDefs(), leggiIngredienti()])
-      .then(([b, defs, ingredienti]) => {
+    // I piatti servono solo all'esempio della Scheda del cambio di unità: se non arrivano, la bozza si apre lo stesso.
+    const piatti = Promise.resolve().then(() => leggiRepertorio()).catch(() => [] as Dish[]);
+    Promise.all([leggiBozzaImport(), leggiSlotDefs(), leggiIngredienti(), piatti])
+      .then(([b, defs, ingredienti, rep]) => {
         if (!vivo) return;
         setSlotDefs(defs);
         setIngredientiEsistenti(ingredienti);
+        setRepertorio(rep ?? []);
         if (b) {
           setBozza(b);
           setVista('ripresa');
@@ -296,26 +276,33 @@ export default function Importa() {
       }
       // Rivalidato lato client: la risposta 200 non è mai attendibile solo
       // perché ha lo status giusto — la forma va verificata di nuovo qui.
-      const esito = validaEsito(await res.json());
+      const corpo: unknown = await res.json();
+      const esito = validaEsito(corpo);
       if (esito.tipo === 'rifiuto') {
         setMotivazioneRifiuto(esito.rifiuto.motivazione);
         setVista('rifiuto');
         return;
       }
       const slotDefs = await leggiSlotDefs();
-      const statoRevisione: StatoRevisione = {
-        passo: 'revisione',
-        mappaturaPasti: mappaturaPastiIniziale(esito.piano, slotDefs),
-        pastiConfermati: [],
-        correzioni: {},
-        ingredientiNuovi: [],
-      };
-      const nuovaBozza: BozzaImport = { piano: esito.piano, statoRevisione };
-      await salvaBozzaImport(nuovaBozza);
+      const nuovaBozza: BozzaImport = { piano: esito.piano, statoRevisione: statoRevisioneIniziale(esito.piano, slotDefs) };
+      // La bozza la salva il server (spec 8c §E); il telefono solo se il server non ci è riuscito.
+      if ((corpo as { bozzaSalvata?: unknown }).bozzaSalvata !== true) await salvaBozzaImport(nuovaBozza);
       setBozza(nuovaBozza);
       setVista('bozza');
     } catch (e) {
       console.error('importa: estrazione fallita.', e);
+      // La risposta può essersi persa col telefono in un'altra app (spec 8c §K.1): se il server ha
+      // salvato la bozza, si ritrova come ripresa invece di un errore.
+      try {
+        const salvata = await leggiBozzaImport();
+        if (salvata) {
+          setBozza(salvata);
+          setVista('ripresa');
+          return;
+        }
+      } catch (eRilettura) {
+        console.error('importa: rilettura della bozza fallita.', eRilettura);
+      }
       setMessaggioErrore(MESSAGGIO_ERRORE_GENERICO);
       setVista('errore');
     }
@@ -368,14 +355,17 @@ export default function Importa() {
 
   if (vista === 'bozza' && bozza) {
     return (
-      <Cornice passo={PILLOLA_PASSO[bozza.statoRevisione.passo]}>
-        <ContenutoBozza
-          bozza={bozza}
-          slotDefs={slotDefs}
-          ingredientiEsistenti={ingredientiEsistenti}
-          onStatoRevisione={aggiornaStatoRevisione}
-        />
-      </Cornice>
+      <LivelliImporta passo={bozza.statoRevisione.passo} onEsci={() => tornaA(router, indirizzoRitorno())}>
+        <Cornice passo={PILLOLA_PASSO[bozza.statoRevisione.passo]}>
+          <ContenutoBozza
+            bozza={bozza}
+            slotDefs={slotDefs}
+            ingredientiEsistenti={ingredientiEsistenti}
+            repertorio={repertorio}
+            onStatoRevisione={aggiornaStatoRevisione}
+          />
+        </Cornice>
+      </LivelliImporta>
     );
   }
 
@@ -478,21 +468,23 @@ function ContenutoBozza({
   bozza,
   slotDefs,
   ingredientiEsistenti,
+  repertorio,
   onStatoRevisione,
 }: {
   bozza: BozzaImport;
   slotDefs: MealSlotDef[];
   ingredientiEsistenti: Ingredient[];
+  repertorio: Dish[];
   onStatoRevisione: (s: StatoRevisione) => void;
 }) {
   switch (bozza.statoRevisione.passo) {
     case 'revisione':
       return (
-        <Controlla piano={bozza.piano} stato={bozza.statoRevisione} slotDefs={slotDefs} onStato={onStatoRevisione} />
+        <Controlla piano={bozza.piano} stato={bozza.statoRevisione} slotDefs={slotDefs} ingredientiEsistenti={ingredientiEsistenti} onStato={onStatoRevisione} />
       );
     case 'formati':
       return (
-        <Ingredienti piano={bozza.piano} stato={bozza.statoRevisione} ingredientiEsistenti={ingredientiEsistenti} onStato={onStatoRevisione} />
+        <Ingredienti piano={bozza.piano} stato={bozza.statoRevisione} ingredientiEsistenti={ingredientiEsistenti} repertorio={repertorio} onStato={onStatoRevisione} />
       );
     case 'riepilogo':
       return <Riepilogo piano={bozza.piano} stato={bozza.statoRevisione} onStato={onStatoRevisione} />;
@@ -509,15 +501,17 @@ const PILLOLA_PASSO = {
 
 /** Colonna a tutta altezza con la testata fissa in cima. Titolo «Importa» (spec 8b §C, §3: una
  *  parola) e, nei quattro passi, la pillola del passo. La pillola IMPOSTAZIONI riapre il pannello
- *  sopra la pagina da cui si era partiti (spec fase 5 §G.3, §A.5). */
+ *  sopra la pagina da cui si era partiti (spec fase 5 §G.3, §A.5). Dentro la bozza la pillola
+ *  esce con `esci()`: consuma prima le voci dei passi (spec 8c §F). */
 function Cornice({ children, passo }: { children?: ReactNode; passo?: string }) {
   const router = useRouter();
+  const esci = useEsciImporta();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       <Testata
         titolo="Importa"
         settimana={passo}
-        indietro={{ etichetta: 'IMPOSTAZIONI', ariaLabel: 'Torna alle impostazioni', onTorna: () => tornaA(router, indirizzoRitorno()) }}
+        indietro={{ etichetta: 'IMPOSTAZIONI', ariaLabel: 'Torna alle impostazioni', onTorna: () => (esci ? esci() : tornaA(router, indirizzoRitorno())) }}
       />
       {children}
     </div>

@@ -664,6 +664,12 @@ colore, e al posto del chevron un tondo 24 in `--superficie` con la spunta `--in
 «pieno = scelto» della Striscia dei giorni. Il piatto in programma dice `ORA IN PROGRAMMA · ` in
 testa alla sottoriga: sulla riga non ci sono badge.
 
+### Pillola della grammatura (editor del Piatto)
+**La voce «Q.B.», 03/10 (fase 8c).** Col campo a fuoco, sotto la pillola compare la pillola «Q.B.»
+(mono 10,5/700, fondo 0,04, bordo 0,09, 44 di tocco): sceglie «quanto basta», una riga senza
+numero che non entra nella lista se in casa ce n'è. Una riga q.b. mostra «Q.B.» al posto del
+numero; toccata, torna il campo vuoto, a fuoco. File: `src/components/TesseraIngrediente.tsx`.
+
 ### Scegli
 La schermata che cambia il piatto di un pasto, aperta dal chevron della riga pasto. Testata in
 modo indietro (`PIANO`), titolo `Cosa mangi`, sotto la pillola col giorno e il pasto. La ricerca
@@ -782,6 +788,25 @@ bordo 1,5 bianco: «pieno = scelto», come la Riga piatto. Il tocco sceglie e ch
 senza scegliere. `radiogroup` di `radio` con `aria-checked`. È controllato: l'indietro di Android lo
 chiude l'unico `useIndietroFogli` della schermata. Sostituisce ogni `<select>` (in Importa: slot del
 pasto, area, «È lo stesso di…»). File: `src/components/SelettoreFoglio.tsx`.
+**Dal 03/10 (fase 8c):** titolo e nota restano fermi e la lista delle voci scorre (il foglio si
+ferma a 88 dalla cima). Una voce può avere una nota sotto il nome, 12,5/500 in `--testo-2`
+(bianca sulla voce scelta): «Lo conti in pezzi: passa a grammi, 1 pz = 200 g». La riga può dire
+il valore a parole invece del nome della voce: «Ingrediente nuovo».
+
+### Scheda del cambio di unità
+**Nuova il 03/10 (fase 8c).** Un ingrediente che hai passa all'unità della dieta, già scelto (il
+nuovo piano prevale). Una Scheda (§8) con, in testa, «Dalla dieta: …» in mono 10 `--sec` e il nome
+17/800; poi una Nota coi due valori («Zucchine passa a grammi: 1 pz = 200 g. «Pasta e zucchine»:
+2 pz, quindi 400 g.»); la riga «Tienile a pezzi» (o «in grammi») con le pillole SÌ / NO di «Fresco»;
+il campo «Quanto pesa 1 pz di …?» 78 × 44 in g, che salva all'uscita e con Invio. Senza peso in
+tabella l'avviso in linea 12,5 `--avviso` «Scrivi quanto pesa un pezzo: serve a convertire le
+quantità.» e il passo è bloccato; col peso della tabella la Nota «È un peso medio: correggilo se
+serve.». Dentro la Scheda di una proposta legata a un ingrediente nell'altra unità compare senza
+testa. Quando l'unità resta (righe della dieta nell'altra unità da convertire, o una proposta nuova
+con righe in g e in pz) non c'è niente da accettare: niente «passa a» né «Tienile…», solo il campo
+del peso e, col peso noto, la Nota «Le righe della dieta passano a grammi: 2 pz, quindi 400 g.»
+(l'unità che resta, coi due valori di una riga; senza una riga da mostrare finisce col punto). La
+stessa Nota c'è con «Tienile…» su SÌ. File: `src/app/(app)/importa/SchedaCambio.tsx`.
 
 ### Matrice dei pasti
 **Nuova il 19/09, riorientata il 20/09, ridisegnata il 25/09.** È la sotto-schermata `Pasti a
@@ -876,6 +901,9 @@ secondario a sinistra, l'azione a destra.
   chiude solo quando l'azione riesce.
 - Il velo **non** chiude: si esce da ANNULLA. (Il log del designer lo voleva come ANNULLA; resta
   com'era, spec fase 5 §N.) Sopra il Pannello impostazioni il dialogo sta a z-index 80.
+- Il tasto che annulla può avere un altro nome: RESTA in «Esci dall'import?» (fase 8c). «Esci
+  dall'import?» e «Salvare il nuovo piano?» sono `primario`, pieni in `--ink`: tornano o salvano,
+  non distruggono.
 
 ### Onda di dettatura
 **Nuova il 25/09.** Banda `--ink` alta 54, raggio 999, con 22 barre bianche da 3 px (§7
@@ -962,7 +990,8 @@ bianco ancorato in basso, raggio `22px 22px 0 0`, padding `16px 16px 26px`, gap 
 almeno 50 (mai sotto 44), raggio 14, fondo `rgba(20,22,58,0.04)`, testo 15.5/700 centrato.
 Separatori di sezione in mono 10/700/0.13em. Classe `.anim-foglio`. Il tap sull'overlay chiude.
 Le voci di un Selettore a foglio sono l'eccezione: allineate a sinistra, e la scelta è piena
-`--ink` (vedi Selettore a foglio).
+`--ink` (vedi Selettore a foglio). Il foglio `contenuto` non sale oltre 88 dalla cima, la stessa
+di `foglio-alto` (fase 8c): sopra, chi lo usa fa scorrere la sua parte lunga.
 
 ### Scheda
 Bianco, raggio 22, bordo 1 px `--bordo`, padding 16 con contenuto, `26px 20px` negli stati
@@ -981,7 +1010,8 @@ Nessun toast, nessuna snackbar, nessun banner colorato: lo stato si legge dove s
 - **Avviso in linea** — 11.5 in `--avviso`, con `aria-live="polite"`.
 - **Nota** — 12.5 in `--testo-2`: spiega la provenienza di un numero o il perché di un default.
 - **Riga di stato** — 12.5 in `--testo-2`, sopra il contenuto ("Sei offline: la lista è quella
-  dell'ultima apertura.").
+  dell'ultima apertura."; «Piano salvato» sul Piano dopo un import, con `.anim-apparsa`, una volta
+  sola).
 - **Caricamento** — una sola riga mono `CARICO…` in `--sec`, al posto del contenuto, sotto la
   testata che è già disegnata. Nessuno spinner, nessuno scheletro.
 
@@ -1335,6 +1365,33 @@ accettato di default, si tocca solo quello che l'AI non sa.
     finale; un foglio vuoto non serve a niente (ruling, review finale).
 
 Componenti nuovi: Riga dell'alimento, Selettore a foglio (con la voce scelta piena del Foglio).
+
+### Decisioni del 03/10/2026 (fase 8c: il motore di Importa)
+
+Spec `docs/superpowers/specs/2026-10-03-importa-8c-design.md`. Dalle prove dal telefono dell'8a/8b.
+1. **L'unità del nuovo piano prevale.** Un ingrediente che hai con lo stesso nome e un'altra unità
+   fra g e pz passa all'unità della dieta, già scelto; piatti, dispensa, storni, acquisti e liste
+   aperte si convertono col peso medio di un pezzo, in una transazione (migrazione 0016). Si può
+   rifiutare: «Tienile a pezzi».
+2. **Una conversione si mostra sempre coi due valori**: «150 g, quindi 0,75 pz», «1 cucchiaio,
+   quindi 15 ml».
+3. **Il peso che la tabella non sa si chiede una volta per ingrediente**: «Quanto pesa 1 pz di …?».
+4. **«Quanto basta» è un valore**: non si chiede, non blocca, e in lista c'è solo se in casa non ce n'è.
+5. **Cucchiai e cucchiaini sono unità della dieta**, convertite in ml o g.
+6. **Ogni cosa aperta arriva con la risposta proposta e già scelta**, in «Da controllare»; blocca
+   solo quello che non si può proporre.
+7. **L'indietro di Android va al passo prima**; da Controlla chiede «Esci dall'import?» (RESTA / ESCI,
+   blu notte).
+8. **Il tasto finale dice sempre SALVA IL PIANO**; il dialogo, blu notte e coi numeri, solo se c'è
+   un piano attuale; poi l'attesa a passi e «Piano salvato» sul Piano (una Riga di stato).
+9. **Verdure e frutta senza quantità hanno una porzione** (decisione di Andrea dopo la prima misura,
+   Task 12b): 200 g le verdure, 150 g la frutta, 1 pz se si contano a pezzi e il peso non si sa; le
+   domande senza quantità dello stesso alimento sono una sola, «In N pasti».
+10. **Il lettore propone sempre una quantità quando il foglio non la scrive** (Task 12c), segnata
+    «proposta da me»; il «quanto basta» resta senza numero, «a volontà» no (si stima la porzione).
+Componenti nuovi o cambiati: Scheda del cambio di unità; Selettore a foglio (lista che scorre,
+nota della voce, valore a parole); Dialogo di conferma (annulla rinominabile); la voce «Q.B.» della
+pillola della grammatura.
 
 ### Decisioni del 03/10/2026 (icone a due toni)
 

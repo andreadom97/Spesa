@@ -14,11 +14,14 @@ export interface PropsDialogo {
   erroreTesto: string;
   /** Chi la passa chiude il dialogo quando riesce: il dialogo da sé non si chiude mai. */
   onConferma: () => Promise<void>;
+  /** Il testo del tasto che annulla: 'ANNULLA' se assente; 'RESTA' in «Esci dall'import?» (spec 8c §F). */
+  annulla?: string;
 }
 
 /**
  * Il Dialogo di conferma (DESIGN.md §8, spec fase 5 §D): titolo, testo, ANNULLA secondario a
- * sinistra e l'azione a destra. Nato come dialogo di eliminazione del lotto nella fase 4, di
+ * sinistra e l'azione a destra. Il tasto che annulla si può chiamare in un altro modo (`annulla`:
+ * RESTA in «Esci dall'import?», spec 8c §F). Nato come dialogo di eliminazione del lotto nella fase 4, di
  * uso comune dalla fase 5. Va dentro un `FoglioDalBasso` con `ruolo="alertdialog"`,
  * `altezza="contenuto"`, `chiudiDalVelo={false}` e `livello` 2 (sopra un foglio) o 3 (sopra il
  * Pannello impostazioni).
@@ -28,7 +31,7 @@ export interface PropsDialogo {
  * finché chi l'ha aperto non lo toglie.
  */
 export function DialogoConferma({
-  titolo, testo, azione, tono, erroreTesto, onConferma, onAnnulla,
+  titolo, testo, azione, tono, erroreTesto, onConferma, onAnnulla, annulla = 'ANNULLA',
 }: PropsDialogo & { onAnnulla: () => void }) {
   const [volo, setVolo] = useState(false);
   const [errore, setErrore] = useState(false);
@@ -50,7 +53,7 @@ export function DialogoConferma({
       <h2 style={{ margin: 0, fontSize: 21, fontWeight: 800, letterSpacing: '-0.035em', lineHeight: 1.2, color: 'var(--ink)' }}>{titolo}</h2>
       <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: 'var(--testo-2)' }}>{testo}</p>
       <div style={{ display: 'flex', gap: 8 }}>
-        <TastoSecondario onClick={onAnnulla} disabled={volo} style={{ flex: 1 }}>ANNULLA</TastoSecondario>
+        <TastoSecondario onClick={onAnnulla} disabled={volo} style={{ flex: 1 }}>{annulla}</TastoSecondario>
         <button
           type="button"
           onClick={() => void conferma()}

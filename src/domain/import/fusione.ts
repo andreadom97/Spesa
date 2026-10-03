@@ -3,6 +3,34 @@ import { normalizza } from './mapping';
 import type { GiornoEstratto, PianoEstratto } from './types';
 
 /**
+ * La settimana nella forma minima su cui lavora `unisciSettimaneDoppie`: la risposta grezza di
+ * una pagina già controllata nella forma (v. `pianoParzialeDa`), coi giorni non ancora validati.
+ */
+export interface SettimanaDaUnire<G> {
+  numero: number;
+  giorni: G[];
+}
+
+/**
+ * Task 12d (ruling del controller, fix round 1): la risposta di UNA pagina con più voci della
+ * stessa settimana (il modello spezza la pagina in frammenti) diventa una voce per numero, nel
+ * punto della prima comparsa, coi giorni concatenati nell'ordine in cui compaiono. Si uniscono
+ * SOLO le voci settimana: due giorni con lo stesso indice restano due (con giorni_tipo sono
+ * scenari diversi) e li boccia la validazione («duplicato nella settimana»), come prima. Non è
+ * la regola 2 di `fondiPagine`, che fra pagine diverse accoda i pasti dello stesso giorno.
+ * Non muta l'input.
+ */
+export function unisciSettimaneDoppie<G>(settimane: SettimanaDaUnire<G>[]): SettimanaDaUnire<G>[] {
+  const perNumero = new Map<number, G[]>();
+  for (const s of structuredClone(settimane)) {
+    const giorni = perNumero.get(s.numero);
+    if (giorni) giorni.push(...s.giorni);
+    else perNumero.set(s.numero, [...s.giorni]);
+  }
+  return [...perNumero.entries()].map(([numero, giorni]) => ({ numero, giorni }));
+}
+
+/**
  * La fusione delle pagine di un'estrazione a pagine (spec 2026-09-05 §2.3): funzione pura,
  * deterministica, che ricompone i piani parziali (uno per pagina, già passati da
  * `validaPianoParziale`) in un piano intero. Non valida: il chiamante passa il risultato a

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { aComponenti, aIngrediente, aMealSlot, aPantryState } from '../mappers';
+import { aComponenti, aDishIngredient, aIngrediente, aMealSlot, aPantryState } from '../mappers';
 
 describe('aIngrediente', () => {
   it('converte una riga in un ingrediente di dominio', () => {
@@ -160,5 +160,15 @@ describe('aComponenti', () => {
       { id: 'o-a1', componente_id: 'c-a', componente_nome: 'pane', posizione: 0 },
     ];
     expect(aComponenti(opzioniAPariMerito, []).map((c) => c.id)).toEqual(['c-a', 'c-b']);
+  });
+});
+
+describe('aDishIngredient', () => {
+  it('il numero arriva come stringa e diventa numero', () => {
+    expect(aDishIngredient({ ingredient_id: 'i-1', quantita: '80', unita: 'g' })).toEqual({ ingredientId: 'i-1', quantita: 80, unita: 'g' });
+  });
+
+  it('null è il q.b. (spec 8c §B), non un errore', () => {
+    expect(aDishIngredient({ ingredient_id: 'i-sale', quantita: null, unita: 'g' })).toEqual({ ingredientId: 'i-sale', quantita: null, unita: 'g' });
   });
 });

@@ -313,6 +313,24 @@ describe('Piatto (editor)', () => {
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/piatti'));
   });
 
+  it('Q.B. nella pillola: il piatto si salva con la riga quanto basta (spec 8c §B)', async () => {
+    rendi();
+    await screen.findByPlaceholderText('Dai un nome al piatto');
+    vi.mocked(salvaPiatto).mockResolvedValue('d-nuovo');
+    fireEvent.change(screen.getByPlaceholderText('Dai un nome al piatto'), { target: { value: 'Pasta' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Pranzo' }));
+    fireEvent.click(screen.getByRole('button', { name: /AGGIUNGI\s*INGREDIENTE/ }));
+    fireEvent.click(await screen.findByText('Yogurt greco'));
+    fireEvent.focus(screen.getByLabelText('Grammatura di Yogurt greco'));
+    fireEvent.click(screen.getByRole('button', { name: 'Yogurt greco: quanto basta' }));
+    expect(screen.getByRole('button', { name: 'Grammatura di Yogurt greco: quanto basta' })).toHaveTextContent('Q.B.');
+    expect(salva()).toBeEnabled();
+    fireEvent.click(salva());
+    await waitFor(() => expect(salvaPiatto).toHaveBeenCalledWith(expect.objectContaining({
+      ingredienti: [{ ingredientId: 'i-1', quantita: null, unita: 'g' }],
+    })));
+  });
+
   it('su un piatto nuovo ELIMINA non c’è: la freccia torna al repertorio senza chiedere conferma', async () => {
     rendi();
     await screen.findByPlaceholderText('Dai un nome al piatto');

@@ -153,6 +153,45 @@ describe('estraiPiano (v1, una chiamata)', () => {
     expect(contenuto[contenuto.length - 1].type).toBe('text');
   });
 
+  it('lo schema e il prompt ammettono cucchiaio e cucchiaino, con un esempio (spec 8c §C)', async () => {
+    finto.stato.risposte.push({ corpo: RIFIUTO });
+    await estraiPiano(FOTO, 'claude-sonnet-5');
+    const args = finto.stato.chiamate[0];
+    const riga = args.output_config.format.schema.anyOf[0].properties.piano.properties.settimane.items
+      .properties.giorni.items.properties.pasti.items.properties.piatti.items.properties.righeFisse.items;
+    expect(riga.properties.unita.anyOf[0].enum).toEqual(['g', 'ml', 'pz', 'cucchiaio', 'cucchiaino']);
+    expect(args.system).toContain('"unita":"g"|"ml"|"pz"|"cucchiaio"|"cucchiaino"|null');
+    expect(args.system).toContain('"2 cucchiaini di miele"');
+  });
+
+  it('il prompt chiede sempre una quantità stimata quando il foglio non la scrive, tranne i «quanto basta» (Task 12c)', async () => {
+    finto.stato.risposte.push({ corpo: RIFIUTO });
+    await estraiPiano(FOTO, 'claude-sonnet-5');
+    const sistema: string = finto.stato.chiamate[0].system;
+    expect(sistema).toContain('proponi SEMPRE una quantità tipica ragionevole');
+    expect(sistema).toContain('con quantitaInferita true: non lasciare mai quantita null per un alimento concreto');
+    expect(sistema).toContain('"Verdure di stagione" senza grammi → quantita 200, unita "g", quantitaInferita true');
+    expect(sistema).toContain('"Sale q.b." → null, null, false');
+    for (const qb of ['"q.b."', '"qb"', '"quanto basta"', '"a piacere"']) expect(sistema).toContain(qb);
+    // «a volontà» non è un quanto basta: si stima (esempio nel prompt), e non sta nella lista delle eccezioni
+    expect(sistema).not.toContain('"a piacere", "a volontà"');
+    expect(sistema).toContain('"A volontà" NON è un "quanto basta"');
+    expect(sistema).toContain('"Verdure a volontà" → una porzione stimata (quantita 200, unita "g", quantitaInferita true)');
+    // nessuna frase del prompt contraddice la regola: né «quantita null» per ogni alimento senza quantità, né «MAI inventare … quantità»
+    expect(sistema).not.toContain('Anche l\'alimento senza quantità è comunque una RIGA (quantita null).');
+    expect(sistema).toContain('con la quantità proposta (quantitaInferita true) o quantita null solo se è un "quanto basta"');
+    expect(sistema).not.toContain('MAI inventare alimenti, pasti, giorni o quantità');
+    expect(sistema).toContain('una stima si fa solo con quantitaInferita true (mai con false)');
+    // provenienza netta: numero non leggibile nel testo → flag sempre true
+    expect(sistema).toContain('il flag è SEMPRE true');
+    expect(sistema).toContain('Mai un numero non leggibile con quantitaInferita false');
+    // la vecchia scelta libera fra null e proposta non c'è più
+    expect(sistema).not.toContain('o quantita null e unita null, oppure una proposta');
+    // restano la prova di provenienza (anche per i numeri in lettere) e le unità a cucchiai
+    expect(sistema).toContain('Prova di provenienza (vale solo per le quantità trascritte)');
+    expect(sistema).toContain('"mezzo cucchiaio" è quantita 0.5 con quantitaInferita false');
+  });
+
   it('un PDF diventa un blocco document', async () => {
     finto.stato.risposte.push({ corpo: RIFIUTO });
     await estraiPiano([{ tipo: 'pdf', mime: 'application/pdf', base64: 'QUJD' }], 'claude-sonnet-5');
@@ -499,5 +538,93 @@ describe('estraiPianoAPagine', () => {
     expect(finto.stream).toHaveBeenCalledTimes(4);
     const valido = validaEsito(esito.grezzo);
     expect(valido).toEqual({ tipo: 'piano', piano: PIANO_MENU_SETTIMANALE });
+  });
+
+  describe('Task 12d: le settimane frammentate di una pagina non fanno fallire l\'import', () => {
+    /** Il giorno (settimana, giorno) del fixture, eventualmente ristretto ai pasti indicati. */
+    function giornoFixture(settimana: number, giorno: number, pasti?: number[]) {
+      const g = structuredClone(PIANO_MENU_SETTIMANALE.settimane.find((x) => x.numero === settimana)!.giorni.find((x) => x.giorno === giorno)!);
+      if (pasti) g.pasti = pasti.map((i) => g.pasti[i]);
+      return g;
+    }
+    function rispostaPagina(settimane: { numero: number; giorni: unknown[] }[]) {
+      return { tipo: 'piano', piano: { archetipo: 'menu_settimanale', fonte: 'fixture sintetico', noteEstrazione: [], settimane } };
+    }
+
+    it('la stessa settimana due volte nella risposta di una pagina, con giorni diversi → una voce sola, piano valido', async () => {
+      // Pagina 1: lunedì in una voce «settimana 1», martedì in un'altra; pagina 2: la settimana 2.
+      finto.stato.risposte.push(
+        { corpo: indiceDi([{ contenuto: [voce(1, 0), voce(1, 1)] }, { contenuto: [voce(2, 0)] }]) },
+        ...[1, 2].map(() => ({
+          perChiamata: (p: Parameters<typeof numeroPagina>[0]) => (numeroPagina(p) === 1
+            ? rispostaPagina([{ numero: 1, giorni: [giornoFixture(1, 0)] }, { numero: 1, giorni: [giornoFixture(1, 1)] }])
+            : pianoDelGiorno(2, 0)),
+        })),
+      );
+      const esito = await estraiPianoAPagine(foto(2), 'claude-sonnet-5');
+      expect(validaEsito(esito.grezzo)).toEqual({ tipo: 'piano', piano: PIANO_MENU_SETTIMANALE });
+    });
+
+    it('la stessa settimana due volte con lo stesso giorno → i giorni NON si fondono: l\'errore della validazione resta quello di prima', async () => {
+      finto.stato.risposte.push(
+        { corpo: indiceDi([{ contenuto: [voce(1, 0)] }, { contenuto: [] }]) },
+        { corpo: rispostaPagina([{ numero: 1, giorni: [giornoFixture(1, 0, [0])] }, { numero: 1, giorni: [giornoFixture(1, 0, [1, 2])] }]) },
+      );
+      await expect(estraiPianoAPagine(foto(2), 'claude-sonnet-5'))
+        .rejects.toThrow('Piano estratto non valido (piano.settimane[0].giorni[1].giorno): duplicato nella settimana: 0');
+    });
+
+    it('settimana 5 su una pagina che l\'indice assegna alla sola settimana 2 → riportata a 2', async () => {
+      finto.stato.risposte.push(
+        { corpo: indiceDi([{ contenuto: [voce(1, 0), voce(1, 1)] }, { contenuto: [voce(2, 0)] }]) },
+        ...[1, 2].map(() => ({
+          perChiamata: (p: Parameters<typeof numeroPagina>[0]) => (numeroPagina(p) === 1
+            ? rispostaPagina([{ numero: 1, giorni: [giornoFixture(1, 0), giornoFixture(1, 1)] }])
+            : rispostaPagina([{ numero: 5, giorni: [giornoFixture(2, 0)] }])),
+        })),
+      );
+      const esito = await estraiPianoAPagine(foto(2), 'claude-sonnet-5');
+      expect(validaEsito(esito.grezzo)).toEqual({ tipo: 'piano', piano: PIANO_MENU_SETTIMANALE });
+    });
+
+    it('numeri diversi su una pagina di una sola settimana → tutti riportati a quella, poi uniti', async () => {
+      finto.stato.risposte.push(
+        { corpo: indiceDi([{ contenuto: [voce(1, 0), voce(1, 1)] }, { contenuto: [voce(2, 0)] }]) },
+        ...[1, 2].map(() => ({
+          perChiamata: (p: Parameters<typeof numeroPagina>[0]) => (numeroPagina(p) === 1
+            ? rispostaPagina([{ numero: 1, giorni: [giornoFixture(1, 0)] }, { numero: 2, giorni: [giornoFixture(1, 1)] }])
+            : pianoDelGiorno(2, 0)),
+        })),
+      );
+      const esito = await estraiPianoAPagine(foto(2), 'claude-sonnet-5');
+      expect(validaEsito(esito.grezzo)).toEqual({ tipo: 'piano', piano: PIANO_MENU_SETTIMANALE });
+    });
+
+    it('pagina con due settimane nell\'indice: numeri giusti passano anche frammentati; uno estraneo → errore con pagina e numeri, senza contenuto', async () => {
+      // Come la pagina 4 di una dieta vera: settimana 1 e settimana 2 sulla stessa pagina, la 1 in due frammenti.
+      const indice = indiceDi([{ contenuto: [] }, { contenuto: [voce(1, 0), voce(2, 0), voce(1, 1)] }]);
+      finto.stato.risposte.push(
+        { corpo: indice },
+        { corpo: rispostaPagina([
+          { numero: 1, giorni: [giornoFixture(1, 0)] },
+          { numero: 2, giorni: [giornoFixture(2, 0)] },
+          { numero: 1, giorni: [giornoFixture(1, 1)] },
+        ]) },
+      );
+      const buono = await estraiPianoAPagine(foto(2), 'claude-sonnet-5');
+      expect(validaEsito(buono.grezzo)).toEqual({ tipo: 'piano', piano: PIANO_MENU_SETTIMANALE });
+
+      finto.azzera();
+      finto.stato.risposte.push(
+        { corpo: indice },
+        { corpo: rispostaPagina([
+          { numero: 1, giorni: [giornoFixture(1, 0), giornoFixture(1, 1)] },
+          { numero: 3, giorni: [giornoFixture(2, 0)] },
+        ]) },
+      );
+      const errore = await estraiPianoAPagine(foto(2), 'claude-sonnet-5').catch((e: Error) => e);
+      expect(errore).toBeInstanceOf(Error);
+      expect((errore as Error).message).toBe('Piano estratto non valido (pagina 2): settimana 3 non prevista dall\'indice (attese: 1, 2)');
+    });
   });
 });

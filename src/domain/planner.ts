@@ -172,7 +172,8 @@ export function assegnaPiatti(input: AssegnaPiattiInput): MealSlot[] {
     let totale = 0;
     for (const riga of righe) {
       const ing = ingredientiPerId.get(riga.ingredientId);
-      if (!ing || ing.classeResiduo === 'stima') continue;
+      // Una riga q.b. (spec 8c §B) non costa e non consuma: si esce prima della conversione.
+      if (!ing || ing.classeResiduo === 'stima' || riga.quantita === null) continue;
       const fabbisogno = convertiInUnitaBase(riga.quantita, riga.unita, ing.unitaBase) * moltiplicatore;
       const residuo = residuoLavoro.get(riga.ingredientId) ?? 0;
       totale += confezioniNecessarie({
@@ -203,7 +204,8 @@ export function assegnaPiatti(input: AssegnaPiattiInput): MealSlot[] {
     if (!criterioAttivo) return;
     for (const riga of righe) {
       const ing = ingredientiPerId.get(riga.ingredientId);
-      if (!ing || ing.classeResiduo === 'stima') continue;
+      // Una riga q.b. (spec 8c §B) non costa e non consuma: si esce prima della conversione.
+      if (!ing || ing.classeResiduo === 'stima' || riga.quantita === null) continue;
       const fabbisogno = convertiInUnitaBase(riga.quantita, riga.unita, ing.unitaBase) * moltiplicatore;
       const residuo = residuoLavoro.get(riga.ingredientId) ?? 0;
       if (residuo >= fabbisogno) {

@@ -6,7 +6,7 @@ interface Props {
   /** Il nome del dialogo: dice il contesto (DESIGN.md §8 Foglio dal basso). */
   etichetta: string;
   onChiudi: () => void;
-  /** 'alto': da top 88 al fondo, il contenuto scorre dentro. 'contenuto': alto quanto serve. */
+  /** 'alto': da top 88 al fondo, il contenuto scorre dentro. 'contenuto': alto quanto serve, al massimo fino a 88 dalla cima. */
   altezza?: 'alto' | 'contenuto';
   ruolo?: 'dialog' | 'alertdialog';
   /** Il dialogo di conferma non si chiude dal velo: si esce da ANNULLA. */
@@ -56,6 +56,9 @@ export function FoglioDalBasso({
           position: 'absolute', left: 0, right: 0, bottom: 0,
           background: 'var(--superficie)', borderRadius: '22px 22px 0 0',
           display: 'flex', flexDirection: 'column', outline: 'none', overflow: 'hidden',
+          // Un foglio «contenuto» non sale oltre la cima di `foglio-alto` (88): sopra, chi lo usa
+          // fa scorrere la sua parte lunga (spec 8c §G, il Selettore a foglio).
+          maxHeight: altezza === 'contenuto' ? 'calc(100% - 88px)' : undefined,
         }}
       >
         {children}

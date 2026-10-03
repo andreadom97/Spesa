@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import type { MealSlotDef } from '@/domain/types';
+import type { Ingredient, MealSlotDef } from '@/domain/types';
 import type { PastoEstratto, PianoEstratto, StatoRevisione } from '@/domain/import/types';
 import { NOME_PASTO_CONDIMENTI } from '@/domain/import/types';
 import {
@@ -15,7 +15,7 @@ import { SelettoreFoglio } from '@/components/SelettoreFoglio';
 import { FoglioDalBasso } from '@/components/FoglioDalBasso';
 import { DialogoConferma } from '@/components/DialogoConferma';
 import { Dock } from '@/components/Dock';
-import { useIndietroFogli } from '@/components/useIndietroFogli';
+import { useLivelliImporta } from './livelli';
 import { AVVISO_SENZA_PESO, AVVISO_SENZA_QUANTITA, AVVISO_UNITA_DIVERSE, FoglioGiorno, nomeGiorno } from './FoglioGiorno';
 import { TitoloSezione, capitalizza, nomePasto, plurale } from './sezione';
 
@@ -23,14 +23,16 @@ interface Props {
   piano: PianoEstratto;
   stato: StatoRevisione;
   slotDefs: MealSlotDef[];
+  ingredientiEsistenti?: Ingredient[];
   onStato: (s: StatoRevisione) => void;
 }
 
-/** Il livello aperto sopra la pagina: uno alla volta, un solo `useIndietroFogli` (spec 8b §D). */
+/** Il livello aperto sopra la pagina: uno alla volta, dichiarato con `useLivelliImporta` (spec 8b §D, 8c §F). */
 type Livello =
   | { tipo: 'selettore'; chiave: string }
   | { tipo: 'giorno'; settimana: number; giorno: number }
   | { tipo: 'togli'; chiave: string }
+  | { tipo: 'esci' }
   | null;
 
 /**
@@ -56,9 +58,10 @@ function testiTogli(alimento: string, anteprima: AnteprimaTogli): { titolo: stri
  * accettato di default; si tocca solo quello che l'AI non sa — i pasti senza abbinamento e le
  * righe senza quantità — e il resto è riassunto per giorno e si apre col tocco. Ogni risposta
  * è un `onStato` (mai a ogni tasto: innesca `salvaBozzaImport`); il foglio del giorno tiene le
- * sue modifiche e le fa risalire alla chiusura.
+ * sue modifiche e le fa risalire alla chiusura. L'indietro di Android senza livelli aperti apre
+ * «Esci dall'import?» (spec 8c §F): ESCI torna alla pagina di provenienza, RESTA chiude.
  */
-export function Controlla({ piano, stato, slotDefs, onStato }: Props) {
+export function Controlla({ piano, stato, slotDefs, ingredientiEsistenti = [], onStato }: Props) {
   const [livello, setLivello] = useState<Livello>(null);
   const [locali, setLocali] = useState<Record<string, PastoEstratto>>({});
   // Le modifiche del foglio del giorno anche in un ref, e il giorno aperto: la chiusura legge
@@ -98,18 +101,22 @@ export function Controlla({ piano, stato, slotDefs, onStato }: Props) {
     if (livello?.tipo === 'giorno') chiudiGiorno();
     else setLivello(null);
   }
-  useIndietroFogli(livello ? 1 : 0, chiudiLivello);
+  // Un solo indietro per la bozza (spec 8c §F): i livelli di Controlla, e senza livelli il dialogo di uscita.
+  const { esci } = useLivelliImporta(livello ? 1 : 0, chiudiLivello, () => setLivello({ tipo: 'esci' }));
 
   const voci = vociPasti(piano, stato, slotDefs);
-  const gruppi = gruppiRighe(piano, stato);
+  const gruppi = gruppiRighe(piano, stato, ingredientiEsistenti);
+  // «Da sistemare»: i dubbi senza una proposta sul piano letto; «Da controllare»: le quantità
+  // dell'AI e le proposte compilate (spec 8c §D), che non bloccano.
   const irrisolti = gruppi.filter((g) => g.tipo === 'irrisolta');
-  const inferiti = gruppi.filter((g) => g.tipo === 'inferita');
+  const inferiti = gruppi.filter((g) => g.tipo !== 'irrisolta');
   const pastiDaSistemare = voci.filter((v) => v.daSistemare);
   const pastiAbbinati = voci.filter((v) => !v.daSistemare);
-  const aperti = pastiDaSistemare.filter((v) => v.slotDefId === null).length + irrisolti.filter((g) => g.stato === 'aperto').length;
+  const aperti = pastiDaSistemare.filter((v) => v.slotDefId === null).length
+    + irrisolti.filter((g) => g.stato === 'aperto' && g.proposta === null).length;
   const c = conteggi(piano, stato);
   // Zero pasti confermabili (tutti tolti): confermare sostituirebbe il piano con niente.
-  const ok = pronto(piano, stato, slotDefs) && c.pastiConfermabili > 0;
+  const ok = pronto(piano, stato, slotDefs, ingredientiEsistenti) && c.pastiConfermabili > 0;
   const giorni = riassuntoGiorni(piano, stato);
   const piuSettimane = piano.settimane.length > 1;
   const vociSlot = [...slotDefs].sort((a, b) => a.posizione - b.posizione).map((s) => ({ id: s.id, nome: s.nome }));
@@ -153,23 +160,27 @@ export function Controlla({ piano, stato, slotDefs, onStato }: Props) {
       return <RigaImpostazione key={g.chiave} nome={capitalizza(g.alimento)} nota="Tolta dal piano" finale={{ tipo: 'niente' }} />;
     }
     const aperto = g.stato === 'aperto';
-    // Le pillole per ogni dubbio irrisolto senza unità fissa (decisione 8), e per ogni riga che
-    // non ha nessuna unità da mostrare: senza unità il numero scritto non si salverebbe.
-    const pillole = g.unitaFissa === null && (g.tipo === 'irrisolta' || g.unita === null);
+    // Una proposta compilata (spec 8c §D): si mostra già scelta, senza bordo né avviso.
+    const proposta = aperto ? g.proposta : null;
+    // Le pillole per ogni dubbio senza unità fissa (decisione 8), e per ogni riga che non ha
+    // nessuna unità da mostrare: senza unità il numero scritto non si salverebbe.
+    const pillole = proposta === null && g.unitaFissa === null && (g.tipo !== 'inferita' || g.unita === null);
     const diversi = g.stato === 'fatto' && g.quantita === null ? ' · valori diversi nei giorni' : '';
-    const proposta = g.tipo === 'inferita' ? ' · quantità proposta da me' : '';
+    const daMe = proposta
+      ? ` · ${proposta.testo ?? (proposta.origine === 'unitaFrequente' ? "l'unità più usata" : 'porzione tipica')}, proposta da me`
+      : g.tipo === 'inferita' || g.daMe ? ' · quantità proposta da me' : '';
     return (
       <RigaAlimento
         key={g.chiave}
         nome={capitalizza(g.alimento)}
         etichetta={g.alimento}
         provenienza={provenienza(piano, g)}
-        nota={`Sul foglio: «${g.testoOriginale}»${proposta}${diversi}`}
-        quantita={g.quantita}
-        unita={g.unita ?? g.unitaFissa}
+        nota={`Sul foglio: «${g.testoOriginale}»${daMe}${diversi}`}
+        quantita={proposta?.quantita ?? g.quantita}
+        unita={proposta?.unita ?? g.unita ?? g.unitaFissa}
         scegliUnita={pillole}
-        dubbio={aperto}
-        avviso={aperto ? (g.unitaDiverse ? AVVISO_UNITA_DIVERSE : pillole ? AVVISO_SENZA_PESO : AVVISO_SENZA_QUANTITA) : undefined}
+        dubbio={aperto && proposta === null}
+        avviso={aperto && proposta === null ? (g.unitaDiverse ? AVVISO_UNITA_DIVERSE : pillole ? AVVISO_SENZA_PESO : AVVISO_SENZA_QUANTITA) : undefined}
         onValore={(quantita, unita) => onStato(rispondiGruppo(piano, stato, g.chiave, quantita, unita))}
         onTogli={() => {
           // Il dialogo quando la X tocca più pasti o fa sparire un piatto: qui non si torna indietro.
@@ -235,7 +246,7 @@ export function Controlla({ piano, stato, slotDefs, onStato }: Props) {
       </div>
 
       <Dock>
-        <button type="button" className="dock-primario" disabled={!ok} onClick={() => onStato(confermaTutti(piano, stato))}>
+        <button type="button" className="dock-primario" disabled={!ok} onClick={() => onStato(confermaTutti(piano, stato, ingredientiEsistenti))}>
           CONFERMA I PASTI
         </button>
       </Dock>
@@ -247,6 +258,7 @@ export function Controlla({ piano, stato, slotDefs, onStato }: Props) {
           piano={piano}
           stato={statoVisto}
           slotDefs={slotDefs}
+          ingredientiEsistenti={ingredientiEsistenti}
           settimana={livello.settimana}
           giorno={livello.giorno}
           onCambiaPasto={(chiave, pasto) => cambiaPasto(livello.settimana, livello.giorno, chiave, pasto)}
@@ -270,6 +282,30 @@ export function Controlla({ piano, stato, slotDefs, onStato }: Props) {
             erroreTesto=""
             onConferma={async () => {
               onStato(togli.stato);
+              setLivello(null);
+            }}
+            onAnnulla={() => setLivello(null)}
+          />
+        </FoglioDalBasso>
+      )}
+
+      {livello?.tipo === 'esci' && (
+        <FoglioDalBasso
+          etichetta="Esci dall'import?"
+          ruolo="alertdialog"
+          altezza="contenuto"
+          chiudiDalVelo={false}
+          onChiudi={() => setLivello(null)}
+        >
+          <DialogoConferma
+            titolo="Esci dall'import?"
+            testo="Lo ritrovi com'è: riprendi quando vuoi."
+            azione="ESCI"
+            annulla="RESTA"
+            tono="primario"
+            erroreTesto=""
+            onConferma={async () => {
+              esci();
               setLivello(null);
             }}
             onAnnulla={() => setLivello(null)}

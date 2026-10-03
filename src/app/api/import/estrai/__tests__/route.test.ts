@@ -3,7 +3,7 @@
 /** @vitest-environment node */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-const { getUserMock, rpcMock, createClientMock, estraiPianoAPagineMock, dividiPdfMock, contaImportRecentiMock, registraImportMock } = vi.hoisted(() => ({
+const { getUserMock, rpcMock, createClientMock, estraiPianoAPagineMock, dividiPdfMock, contaImportRecentiMock, registraImportMock, salvaBozzaDalServerMock } = vi.hoisted(() => ({
   getUserMock: vi.fn(),
   rpcMock: vi.fn(),
   createClientMock: vi.fn(),
@@ -11,6 +11,7 @@ const { getUserMock, rpcMock, createClientMock, estraiPianoAPagineMock, dividiPd
   dividiPdfMock: vi.fn(),
   contaImportRecentiMock: vi.fn(),
   registraImportMock: vi.fn(),
+  salvaBozzaDalServerMock: vi.fn(),
 }));
 vi.mock('@supabase/supabase-js', () => ({ createClient: createClientMock }));
 vi.mock('@/server/import-ai', async (importOriginal) => ({
@@ -26,6 +27,7 @@ vi.mock('@/data/import-uso', async (importOriginal) => ({
   contaImportRecenti: contaImportRecentiMock,
   registraImport: registraImportMock,
 }));
+vi.mock('@/data/import-bozza', () => ({ salvaBozzaDalServer: salvaBozzaDalServerMock }));
 
 import { POST, maxDuration } from '../route';
 import { FIXTURE_MENU_SETTIMANALE, FIXTURE_RIFIUTO_MACRO } from '@/domain/import/fixtures';
@@ -80,6 +82,8 @@ describe('POST /api/import/estrai', () => {
     contaImportRecentiMock.mockResolvedValue({ conteggio: 0, piuVecchio: null });
     registraImportMock.mockReset();
     registraImportMock.mockResolvedValue(undefined);
+    salvaBozzaDalServerMock.mockReset();
+    salvaBozzaDalServerMock.mockResolvedValue(true);
     delete process.env.ANTHROPIC_API_KEY;
     delete process.env.IMPORT_MOCK;
     delete process.env.IMPORT_LIMITE_30GG;
@@ -230,8 +234,11 @@ describe('POST /api/import/estrai', () => {
       expect(rpcMock).toHaveBeenCalledTimes(1);
       expect(rpcMock).toHaveBeenCalledWith('casa_id');
       expect(rpcMock.mock.invocationCallOrder[0]).toBeLessThan(registraImportMock.mock.invocationCallOrder[0]!);
-      expect(registraImportMock).toHaveBeenCalledWith(clientUtente(), 'casa-1', 2, MODELLO_DEFAULT_IMPORT);
-      expect(contaImportRecentiMock).toHaveBeenCalledWith(clientUtente(), 'casa-1', expect.any(Date));
+      // Identità, non struttura: nel mock tutti i client sono uguali per forma.
+      expect(registraImportMock).toHaveBeenCalledWith(expect.anything(), 'casa-1', 2, MODELLO_DEFAULT_IMPORT);
+      expect(registraImportMock.mock.calls[0]![0]).toBe(clientUtente());
+      expect(contaImportRecentiMock).toHaveBeenCalledWith(expect.anything(), 'casa-1', expect.any(Date));
+      expect(contaImportRecentiMock.mock.calls[0]![0]).toBe(clientUtente());
     });
 
     it('casa_id con errore → 500 generico, senza registrare, contare né estrarre', async () => {
@@ -262,9 +269,11 @@ describe('POST /api/import/estrai', () => {
       const sbUtente = clientUtente();
       expect(sbUtente).toBeDefined();
       expect(registraImportMock).toHaveBeenCalledTimes(1);
-      expect(registraImportMock).toHaveBeenCalledWith(sbUtente, 'casa-1', 5, MODELLO_DEFAULT_IMPORT);
+      expect(registraImportMock).toHaveBeenCalledWith(expect.anything(), 'casa-1', 5, MODELLO_DEFAULT_IMPORT);
+      expect(registraImportMock.mock.calls[0]![0]).toBe(sbUtente);
       expect(contaImportRecentiMock).toHaveBeenCalledTimes(1);
-      expect(contaImportRecentiMock).toHaveBeenCalledWith(sbUtente, 'casa-1', expect.any(Date));
+      expect(contaImportRecentiMock).toHaveBeenCalledWith(expect.anything(), 'casa-1', expect.any(Date));
+      expect(contaImportRecentiMock.mock.calls[0]![0]).toBe(sbUtente);
 
       expect(estraiPianoAPagineMock).toHaveBeenCalledTimes(1);
       const [files, modello, opzioni] = estraiPianoAPagineMock.mock.calls[0]!;
@@ -314,7 +323,8 @@ describe('POST /api/import/estrai', () => {
       dividiPdfMock.mockResolvedValue(['p1', 'p2', 'p3']);
       const res = await POST(richiesta({ documento: true }));
       expect(res.status).toBe(200);
-      expect(registraImportMock).toHaveBeenCalledWith(clientUtente(), 'casa-1', 0, MODELLO_DEFAULT_IMPORT);
+      expect(registraImportMock).toHaveBeenCalledWith(expect.anything(), 'casa-1', 0, MODELLO_DEFAULT_IMPORT);
+      expect(registraImportMock.mock.calls[0]![0]).toBe(clientUtente());
       expect(dividiPdfMock).toHaveBeenCalledTimes(1);
       const [byte, maxPagine] = dividiPdfMock.mock.calls[0]!;
       expect(byte).toBeInstanceOf(Uint8Array);
@@ -353,7 +363,8 @@ describe('POST /api/import/estrai', () => {
       contaImportRecentiMock.mockResolvedValue({ conteggio: 4, piuVecchio: new Date('2026-08-13T10:00:00Z') });
       const res = await POST(richiesta({ documento: true }));
       expect(res.status).toBe(429);
-      expect(registraImportMock).toHaveBeenCalledWith(clientUtente(), 'casa-1', 0, MODELLO_DEFAULT_IMPORT);
+      expect(registraImportMock).toHaveBeenCalledWith(expect.anything(), 'casa-1', 0, MODELLO_DEFAULT_IMPORT);
+      expect(registraImportMock.mock.calls[0]![0]).toBe(clientUtente());
       expect(dividiPdfMock).not.toHaveBeenCalled();
       expect(estraiPianoAPagineMock).not.toHaveBeenCalled();
     });
@@ -402,5 +413,50 @@ describe('POST /api/import/estrai', () => {
   it('IMPORT_MOCK su file assente → 503', async () => {
     process.env.IMPORT_MOCK = 'dieta-inesistente';
     expect((await POST(richiesta())).status).toBe(503);
+  });
+
+  describe('la bozza salvata dal server (spec 8c §E)', () => {
+    const PIANO = (FIXTURE_MENU_SETTIMANALE as { piano: unknown }).piano;
+    beforeEach(() => {
+      process.env.ANTHROPIC_API_KEY = 'k';
+      estraiPianoAPagineMock.mockResolvedValue(conUso(FIXTURE_MENU_SETTIMANALE));
+    });
+
+    it('un piano: la bozza si salva col client dell\'utente, dopo l\'estrazione, e la risposta lo dice', async () => {
+      const res = await POST(richiesta({ nImmagini: 2 }));
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ ...FIXTURE_MENU_SETTIMANALE, bozzaSalvata: true });
+      expect(salvaBozzaDalServerMock).toHaveBeenCalledWith(expect.anything(), PIANO);
+      expect(salvaBozzaDalServerMock.mock.calls[0]![0]).toBe(clientUtente());
+      expect(salvaBozzaDalServerMock.mock.invocationCallOrder[0]).toBeGreaterThan(estraiPianoAPagineMock.mock.invocationCallOrder[0]!);
+    });
+
+    it('salvataggio fallito: l\'esito arriva comunque, con bozzaSalvata false', async () => {
+      salvaBozzaDalServerMock.mockResolvedValue(false);
+      const res = await POST(richiesta({ nImmagini: 2 }));
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ ...FIXTURE_MENU_SETTIMANALE, bozzaSalvata: false });
+    });
+
+    it('col tetto spento la bozza si salva lo stesso', async () => {
+      process.env.IMPORT_LIMITE_30GG = '0';
+      expect((await POST(richiesta({ nImmagini: 2 }))).status).toBe(200);
+      expect(salvaBozzaDalServerMock).toHaveBeenCalledWith(expect.anything(), PIANO);
+      expect(salvaBozzaDalServerMock.mock.calls[0]![0]).toBe(clientUtente());
+      expect(registraImportMock).not.toHaveBeenCalled();
+    });
+
+    it('un rifiuto non si salva, e la risposta resta com\'era', async () => {
+      estraiPianoAPagineMock.mockResolvedValue(conUso(FIXTURE_RIFIUTO_MACRO));
+      expect(await (await POST(richiesta())).json()).toEqual(FIXTURE_RIFIUTO_MACRO);
+      expect(salvaBozzaDalServerMock).not.toHaveBeenCalled();
+    });
+
+    it('il ramo mock non salva: lo fa il telefono', async () => {
+      delete process.env.ANTHROPIC_API_KEY;
+      process.env.IMPORT_MOCK = 'sintetico';
+      expect(await (await POST(richiesta())).json()).toEqual(FIXTURE_MENU_SETTIMANALE);
+      expect(salvaBozzaDalServerMock).not.toHaveBeenCalled();
+    });
   });
 });

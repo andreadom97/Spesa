@@ -28,7 +28,8 @@ export function consumoSlot(i: ConsumoSlotInput): Map<string, number> {
   for (const riga of righeEffettive(i.dish, i.slot.scelte)) {
     const ing = perId.get(riga.ingredientId);
     if (!ing) throw new IngredienteMancanteError(riga.ingredientId);
-    if (ing.classeResiduo === 'stima') continue;
+    // La classe stima e il q.b. (spec 8c §B) non spostano il residuo.
+    if (ing.classeResiduo === 'stima' || riga.quantita === null) continue;
     const q = convertiInUnitaBase(riga.quantita, riga.unita, ing.unitaBase)
       * i.moltiplicatorePorzioni * fattore;
     consumo.set(ing.id, (consumo.get(ing.id) ?? 0) + q);

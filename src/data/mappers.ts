@@ -81,10 +81,11 @@ export function aSlotDef(r: Record<string, unknown>): MealSlotDef {
   };
 }
 
-export function aDishIngredient(r: Record<string, unknown>) {
+export function aDishIngredient(r: Record<string, unknown>): { ingredientId: string; quantita: number | null; unita: UnitaMisura } {
   return {
     ingredientId: String(r.ingredient_id),
-    quantita: num(r.quantita),
+    // null è il q.b. (migrazione 0016): un valore, non un numero mancante.
+    quantita: r.quantita == null ? null : num(r.quantita),
     unita: r.unita as UnitaMisura,
   };
 }

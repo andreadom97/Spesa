@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
 import Link from 'next/link';
 import type { AreaId, UnitaMisura } from '@/domain/types';
 import { coloreArea, nomeArea } from '@/domain/aree';
@@ -10,11 +10,12 @@ import { IconaIngrediente, alone } from './IconaIngrediente';
 interface Props {
   nome: string;
   area: AreaId;
-  quantita: number;
+  quantita: number | null;
   unita: UnitaMisura;
-  onCambiaQuantita: (quantita: number) => void;
+  /** `null` = «quanto basta» (spec 8c §B), scelto dalla voce «Q.B.» della pillola. */
+  onCambiaQuantita: (quantita: number | null) => void;
   onRimuovi: () => void;
-  /** false quando quantita <= 0: lo schema ha `check (quantita > 0)`, un salvataggio con questa tessera così fallirebbe sempre (I2). Evidenzia il bordo in rosso invece del colore d'area. */
+  /** false quando quantita <= 0: lo schema ha `check (quantita > 0)`, un salvataggio con questa tessera così fallirebbe sempre (I2). Evidenzia il bordo in rosso invece del colore d'area. Una riga q.b. (`quantita` null) è valida. */
   quantitaValida?: boolean;
   /**
    * Rotta dell'editor dell'ingrediente. Senza, area, formato confezione,
@@ -96,9 +97,18 @@ export function TesseraIngrediente({
 }: Props) {
   const colore = coloreArea(area);
   const coloreBordo = quantitaValida ? colore : COLORE_NON_VALIDA;
-  const [testoQuantita, setTestoQuantita] = useState(String(quantita));
+  const [testoQuantita, setTestoQuantita] = useState(quantita === null ? '' : String(quantita));
   const idQuantita = useId();
   const campoRef = useRef<HTMLInputElement>(null);
+  const voceRef = useRef<HTMLButtonElement>(null);
+  // La riga q.b. mostra «Q.B.» finché non la si tocca per scrivere un numero (spec 8c §B).
+  const [scrivendo, setScrivendo] = useState(false);
+  // Il campo a fuoco: solo allora sotto la pillola c'è la voce «Q.B.».
+  const [aFuoco, setAFuoco] = useState(false);
+  const quantoBasta = quantita === null && !scrivendo;
+  useEffect(() => {
+    if (scrivendo) campoRef.current?.focus();
+  }, [scrivendo]);
   // Solo al montaggio: la tessera nuova nasce con la chiave del suo ingrediente.
   useEffect(() => {
     if (!appenaAggiunta) return;
@@ -113,6 +123,35 @@ export function TesseraIngrediente({
     const n = Number(valore);
     if (valore.trim() !== '' && !Number.isNaN(n)) onCambiaQuantita(n);
   }
+
+  function scegliQuantoBasta() {
+    setScrivendo(false);
+    setAFuoco(false);
+    setTestoQuantita('');
+    onCambiaQuantita(null);
+  }
+
+  function scriviNumero() {
+    setTestoQuantita('');
+    setScrivendo(true);
+  }
+
+  // La pillola della grammatura, la stessa nei due stati (numero e «Q.B.»).
+  const stilePillola: CSSProperties = {
+    // Il colore dell'anello di `.anim-chiamata`: quello del bordo della tessera (alfa 0,45, DESIGN.md §2.5).
+    ['--anello' as string]: rgba(coloreBordo, 0.45),
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 3,
+    fontFamily: 'var(--font-mono)',
+    fontSize: 10.5,
+    fontWeight: 700,
+    letterSpacing: '0.07em',
+    color: 'var(--ink)',
+    background: rgba(coloreBordo, 0.32),
+    borderRadius: 999,
+    padding: '5px 10px',
+  };
 
   return (
     <div
@@ -188,60 +227,89 @@ export function TesseraIngrediente({
         </Link>
       )}
 
-      <label
-        htmlFor={idQuantita}
-        style={{
-          position: 'relative',
-          display: 'flex',
-          alignItems: 'flex-start',
-          minHeight: ALTEZZA_TAP_QUANTITA,
-          cursor: 'text',
-        }}
-      >
-        <span
-          className={appenaAggiunta ? 'anim-chiamata' : undefined}
+      {quantoBasta ? (
+        // La riga q.b.: «Q.B.» al posto del numero; il tocco riapre il campo, vuoto e a fuoco.
+        <button
+          type="button"
+          onClick={scriviNumero}
+          aria-label={`Grammatura di ${nome}: quanto basta`}
+          style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', minHeight: ALTEZZA_TAP_QUANTITA, padding: 0, background: 'transparent', outlineOffset: -2 }}
+        >
+          <span style={stilePillola}>Q.B.</span>
+        </button>
+      ) : (
+        <label
+          htmlFor={idQuantita}
           style={{
-            // Il colore dell'anello di `.anim-chiamata`: quello del bordo della tessera (alfa 0,45, DESIGN.md §2.5).
-            ['--anello' as string]: rgba(coloreBordo, 0.45),
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 3,
-            fontFamily: 'var(--font-mono)',
-            fontSize: 10.5,
-            fontWeight: 700,
-            letterSpacing: '0.07em',
-            color: 'var(--ink)',
-            background: rgba(coloreBordo, 0.32),
-            borderRadius: 999,
-            padding: '5px 10px',
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'flex-start',
+            minHeight: ALTEZZA_TAP_QUANTITA,
+            cursor: 'text',
           }}
         >
-          <input
-            ref={campoRef}
-            id={idQuantita}
-            type="number"
-            inputMode="decimal"
-            min={0}
-            value={testoQuantita}
-            onChange={(e) => cambiaTesto(e.target.value)}
-            aria-label={`Grammatura di ${nome}`}
-            className="quantita-input"
+          <span className={appenaAggiunta ? 'anim-chiamata' : undefined} style={stilePillola}>
+            <input
+              ref={campoRef}
+              id={idQuantita}
+              type="number"
+              inputMode="decimal"
+              min={0}
+              value={testoQuantita}
+              onChange={(e) => cambiaTesto(e.target.value)}
+              onFocus={() => setAFuoco(true)}
+              onBlur={(e) => {
+                // Il fuoco passa alla voce «Q.B.» (Tab, screen reader): la voce resta, raggiungibile da tastiera.
+                if (e.relatedTarget !== null && e.relatedTarget === voceRef.current) return;
+                setAFuoco(false);
+                // Uscito dal campo senza un numero: la riga resta q.b.
+                if (quantita === null) setScrivendo(false);
+              }}
+              aria-label={`Grammatura di ${nome}`}
+              className="quantita-input"
+              style={{
+                width: 32,
+                border: 'none',
+                background: 'transparent',
+                outline: 'none',
+                padding: 0,
+                fontFamily: 'inherit',
+                fontSize: 'inherit',
+                fontWeight: 'inherit',
+                letterSpacing: 'inherit',
+                color: 'inherit',
+              }}
+            />
+            <span>{unita}</span>
+          </span>
+        </label>
+      )}
+      {aFuoco && !quantoBasta && (
+        // La voce «Q.B.» della pillola (spec 8c §B): il tocco non toglie il fuoco al campo prima del click.
+        <button
+          ref={voceRef}
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={scegliQuantoBasta}
+          onBlur={(e) => {
+            // Il fuoco torna al campo: la voce resta. Altrove: esce, come uscirebbe dal campo.
+            if (e.relatedTarget !== null && e.relatedTarget === campoRef.current) return;
+            setAFuoco(false);
+            if (quantita === null) setScrivendo(false);
+          }}
+          aria-label={`${nome}: quanto basta`}
+          style={{ position: 'relative', display: 'flex', alignItems: 'center', minHeight: ALTEZZA_TAP_QUANTITA, padding: 0, background: 'transparent', outlineOffset: -2 }}
+        >
+          <span
             style={{
-              width: 32,
-              border: 'none',
-              background: 'transparent',
-              outline: 'none',
-              padding: 0,
-              fontFamily: 'inherit',
-              fontSize: 'inherit',
-              fontWeight: 'inherit',
-              letterSpacing: 'inherit',
-              color: 'inherit',
+              fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.07em', color: 'var(--ink)',
+              background: 'rgba(20,22,58,0.04)', border: '1px solid rgba(20,22,58,0.09)', borderRadius: 999, padding: '5px 10px',
             }}
-          />
-          <span>{unita}</span>
-        </span>
-      </label>
+          >
+            Q.B.
+          </span>
+        </button>
+      )}
       <style jsx>{`
         .quantita-input::-webkit-outer-spin-button,
         .quantita-input::-webkit-inner-spin-button {

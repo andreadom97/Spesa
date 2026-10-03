@@ -1,7 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import type { Dish, Ingredient } from '@/domain/types';
-import { traduciBozza, BozzaIncompletaError } from '../commit';
-import type { StatoRevisione, PianoEstratto } from '../types';
+import { traduciBozza, BozzaIncompletaError, riassuntoScritture, type RigaTradotta, type ScrittureImport } from '../commit';
+import type { StatoRevisione, PianoEstratto, RigaEstratta } from '../types';
+import { SCELTA_NUOVO } from '../types';
+import { proponi } from '../formati-tipici';
+import { calcolaProposte, cambiUnita, motiviBlocco, passoBloccato, pesiProposte } from '../ingredienti';
 import { PIANO_MENU_SETTIMANALE, PIANO_GIORNATA_UNICA } from '../fixtures';
 
 const AVENA: Ingredient = { id: 'i-avena', nome: "Fiocchi d'avena", unitaBase: 'g', area: 'cereali', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500 , prezzoConfezione: null, ean: null};
@@ -428,5 +431,229 @@ describe('giornata_unica e griglia_alternative: un solo giorno vale ogni giorno'
     const scritture = traduciBozza(piano, stato, [], [], '2026-08-30');
     expect(scritture.piattiDaCreare).toHaveLength(1);
     expect(scritture.piattiDaCreare[0]).toMatchObject({ nome: 'Riso e pollo', settimanaCiclo: null, giornoCiclo: null });
+  });
+});
+
+describe('traduciBozza — una riga a cucchiai non convertita (spec 8c §C)', () => {
+  it('ferma tutto: i cucchiai si convertono in Controlla', () => {
+    const piano = structuredClone(PIANO_GIORNATA_UNICA);
+    piano.settimane[0].giorni[0].pasti[0].piatti[0].righeFisse = [
+      { alimento: 'olio extravergine di oliva', quantita: 1, unita: 'cucchiaio', quantitaInferita: false, testoOriginale: '1 cucchiaio di olio' },
+    ];
+    const stato: StatoRevisione = { passo: 'riepilogo', mappaturaPasti: { pranzo: 's-1' }, pastiConfermati: [], correzioni: {}, ingredientiNuovi: [] };
+    expect(() => traduciBozza(piano, stato, [], [], '2026-10-05')).toThrow('Cucchiai non convertiti per "1 cucchiaio di olio"');
+  });
+});
+
+describe('traduciBozza — fase 8c', () => {
+  const ingrediente = (id: string, nome: string, unitaBase: Ingredient['unitaBase']): Ingredient => ({
+    id, nome, unitaBase, area: 'ortofrutta', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 500, prezzoConfezione: null, ean: null,
+  });
+  const ZUCCHINE = ingrediente('i-zucc', 'Zucchine', 'pz');
+  function pianoCon(righe: RigaEstratta[]): PianoEstratto {
+    const piano = structuredClone(PIANO_GIORNATA_UNICA);
+    piano.settimane[0].giorni[0].pasti[0].piatti[0].righeFisse = righe;
+    return piano;
+  }
+  const riga = (alimento: string, quantita: number | null, unita: RigaEstratta['unita'], testoOriginale = alimento): RigaEstratta => ({
+    alimento, quantita, unita, quantitaInferita: false, testoOriginale,
+  });
+  const stato = (extra: Partial<StatoRevisione> = {}): StatoRevisione => ({
+    passo: 'riepilogo', mappaturaPasti: { pranzo: 's-1' }, pastiConfermati: [], correzioni: {}, ingredientiNuovi: [], ...extra,
+  });
+  const righe = (s: ScrittureImport) => s.piattiDaCreare[0].righe;
+  const OGGI = '2026-10-05';
+
+  it('il cambio accettato: la riga resta in g, e il cambio va nelle scritture col fattore g per pz', () => {
+    const s = traduciBozza(pianoCon([riga('zucchine', 150, 'g')]), stato(), [ZUCCHINE], [], OGGI);
+    expect(righe(s)).toEqual([{ ingredientId: 'i-zucc', quantita: 150, unita: 'g' }]);
+    expect(s.cambiUnita).toEqual([{ ingredientId: 'i-zucc', nome: 'Zucchine', da: 'pz', a: 'g', pesoPezzo: 200, fattore: 200 }]);
+    expect(s.ingredientiDaCreare).toEqual([]);
+  });
+
+  it('«Tienile a pezzi»: la riga si converte, arrotondata al quarto, e nessun cambio', () => {
+    const s = traduciBozza(pianoCon([riga('zucchine', 150, 'g')]), stato({ cambiUnita: { 'i-zucc': { tieni: true, pesoPezzo: null } } }), [ZUCCHINE], [], OGGI);
+    expect(righe(s)).toEqual([{ ingredientId: 'i-zucc', quantita: 0.75, unita: 'pz' }]);
+    expect(s.cambiUnita).toEqual([]);
+  });
+
+  it('da g a pz il fattore è l\'inverso del peso', () => {
+    const s = traduciBozza(pianoCon([riga('uova', 2, 'pz')]), stato(), [ingrediente('i-uova', 'Uova', 'g')], [], OGGI);
+    expect(s.cambiUnita).toEqual([{ ingredientId: 'i-uova', nome: 'Uova', da: 'g', a: 'pz', pesoPezzo: 60, fattore: 1 / 60 }]);
+    expect(righe(s)).toEqual([{ ingredientId: 'i-uova', quantita: 2, unita: 'pz' }]);
+  });
+
+  it('senza il peso di un pezzo non si scrive; col peso scritto sì', () => {
+    const cavolo = ingrediente('i-cav', 'Cavolo nero', 'pz');
+    const piano = pianoCon([riga('cavolo nero', 200, 'g')]);
+    expect(() => traduciBozza(piano, stato(), [cavolo], [], OGGI)).toThrow('Manca il peso di un pezzo di "Cavolo nero"');
+    const s = traduciBozza(piano, stato({ cambiUnita: { 'i-cav': { tieni: false, pesoPezzo: 300 } } }), [cavolo], [], OGGI);
+    expect(s.cambiUnita[0]).toMatchObject({ pesoPezzo: 300, fattore: 300 });
+  });
+
+  it('il q.b.: senza quantità, nell\'unità dell\'ingrediente; e un ingrediente nuovo se non c\'è', () => {
+    const piano = pianoCon([riga('sale', null, null, 'sale q.b.')]);
+    expect(righe(traduciBozza(piano, stato(), [ingrediente('i-sale', 'Sale', 'g')], [], OGGI))).toEqual([{ ingredientId: 'i-sale', quantita: null, unita: 'g' }]);
+    const nuovo = proponi('sale', null);
+    const s = traduciBozza(piano, stato({ ingredientiNuovi: [nuovo] }), [], [], OGGI);
+    expect(righe(s)).toEqual([{ nuovoAlimento: 'sale', quantita: null, unita: 'g' }]);
+    expect(s.ingredientiDaCreare).toEqual([nuovo]);
+  });
+
+  it('senza quantità e senza q.b. ferma tutto, come prima', () => {
+    expect(() => traduciBozza(pianoCon([riga('sale', null, null, 'un pizzico di sale')]), stato(), [ingrediente('i-sale', 'Sale', 'g')], [], OGGI))
+      .toThrow('Quantità non risolta per "un pizzico di sale"');
+  });
+
+  it('un q.b. con la quantità stimata dal lettore si scrive q.b.; una quantità trascritta resta (correzione S1)', () => {
+    const sale = ingrediente('i-sale', 'Sale', 'g');
+    const stimata: RigaEstratta = { alimento: 'sale', quantita: 2, unita: 'g', quantitaInferita: true, testoOriginale: 'sale q.b.' };
+    expect(righe(traduciBozza(pianoCon([stimata]), stato(), [sale], [], OGGI))).toEqual([{ ingredientId: 'i-sale', quantita: null, unita: 'g' }]);
+    const trascritta: RigaEstratta = { ...stimata, quantitaInferita: false, testoOriginale: 'sale q.b. 2 g' };
+    expect(righe(traduciBozza(pianoCon([trascritta]), stato(), [sale], [], OGGI))).toEqual([{ ingredientId: 'i-sale', quantita: 2, unita: 'g' }]);
+  });
+
+  it('q.b. e una quantità sullo stesso ingrediente nello stesso piatto: vale la quantità', () => {
+    const s = traduciBozza(pianoCon([riga('sale', null, null, 'sale q.b.'), riga('sale', 2, 'g', 'sale 2 g')]), stato(), [ingrediente('i-sale', 'Sale', 'g')], [], OGGI);
+    expect(righe(s)).toEqual([{ ingredientId: 'i-sale', quantita: 2, unita: 'g' }]);
+  });
+
+  it('la scelta «nuovo» crea l\'ingrediente anche se il suo nome ne include uno che hai', () => {
+    const p = { ...proponi('courgette', 'g'), nome: 'Zucchine trifolate' };
+    const piano = pianoCon([riga('courgette', 100, 'g')]);
+    const esistenti = [ingrediente('i-z', 'Zucchine', 'g')];
+    // Senza scelta, come prima: il nome include «Zucchine», e la riga finisce lì.
+    expect(righe(traduciBozza(piano, stato({ ingredientiNuovi: [p] }), esistenti, [], OGGI))).toEqual([{ ingredientId: 'i-z', quantita: 100, unita: 'g' }]);
+    const s = traduciBozza(piano, stato({ ingredientiNuovi: [p], scelti: { courgette: SCELTA_NUOVO } }), esistenti, [], OGGI);
+    expect(righe(s)).toEqual([{ nuovoAlimento: 'courgette', quantita: 100, unita: 'g' }]);
+    expect(s.ingredientiDaCreare).toEqual([p]);
+  });
+
+  it('un nuovo «intero» in g o ml si scrive «porzionabile»; a pezzi resta «intero» (review finale, I3)', () => {
+    // La rete per una bozza salvata prima della correzione della tabella: «intero» = formato 1 a
+    // pezzi, in g conterebbe una confezione per grammo.
+    const inG = { ...proponi('ricotta', 'g'), classeResiduo: 'intero' as const };
+    const inMl = { ...proponi('latte', 'ml'), classeResiduo: 'intero' as const };
+    const aPezzi = { ...proponi('uova', 'pz'), classeResiduo: 'intero' as const };
+    const piano = pianoCon([riga('ricotta', 100, 'g'), riga('latte', 150, 'ml'), riga('uova', 2, 'pz')]);
+    const s = traduciBozza(piano, stato({ ingredientiNuovi: [inG, inMl, aPezzi] }), [], [], OGGI);
+    expect(s.ingredientiDaCreare).toEqual([
+      { ...inG, classeResiduo: 'porzionabile' },
+      { ...inMl, classeResiduo: 'porzionabile' },
+      aPezzi,
+    ]);
+  });
+
+  it('riassuntoScritture: nuovi, aggiornati, tolti, ingredienti, cambi, e se c\'è un piano attuale (spec 8c §H)', () => {
+    const base = traduciBozza(pianoCon([riga('zucchine', 150, 'g')]), stato(), [ZUCCHINE], [], OGGI);
+    expect(riassuntoScritture(base)).toEqual({ piattiNuovi: 1, piattiAggiornati: 0, piattiTolti: 0, ingredientiNuovi: 0, cambi: base.cambiUnita, pianoAttuale: false });
+    const conVecchi: ScrittureImport = { ...base, piattiDaDisattivare: ['d-1', 'd-2'], piattiDaCreare: [{ ...base.piattiDaCreare[0], riusaDishId: 'd-0' }] };
+    expect(riassuntoScritture(conVecchi)).toMatchObject({ piattiNuovi: 0, piattiAggiornati: 1, piattiTolti: 2, pianoAttuale: true });
+  });
+
+  it('«Tienile» da g a pz: le uova restano in g, la riga a pezzi si converte col peso, e nessun cambio', () => {
+    const s = traduciBozza(pianoCon([riga('uova', 2, 'pz')]), stato({ cambiUnita: { 'i-uova': { tieni: true, pesoPezzo: null } } }), [ingrediente('i-uova', 'Uova', 'g')], [], OGGI);
+    expect(righe(s)).toEqual([{ ingredientId: 'i-uova', quantita: 120, unita: 'g' }]);
+    expect(s.cambiUnita).toEqual([]);
+  });
+
+  describe('l\'unità finale viene dalle righe della dieta, mai dall\'unità di oggi (ruling 8c, Task 8, fix 1)', () => {
+    /** Lo stato del database dopo la RPC: l'ingrediente nell'unità nuova, e il piatto del primo giro già scritto. */
+    const dopoLaRpc = (ing: Ingredient, unita: Ingredient['unitaBase'], righePiatto: RigaTradotta[]) => {
+      const convertito = { ...ing, unitaBase: unita };
+      const piatto: Dish = {
+        id: 'd-1', nome: 'Pasta al pomodoro', slotDefId: 's-1', fonte: 'nutrizionista', attivo: true, descrizione: null,
+        settimanaCiclo: null, giornoCiclo: null, componenti: [],
+        ingredienti: righePiatto.map((r) => ({ ingredientId: (r as { ingredientId: string }).ingredientId, quantita: r.quantita, unita: r.unita })),
+      };
+      return { esistenti: [convertito], repertorio: [piatto] };
+    };
+
+    it('(a) il ritentativo dopo la RPC: «courgette» legata per scelta alle zucchine, nessun cambio inverso e righe identiche', () => {
+      const piano = pianoCon([riga('zucchine', 150, 'g'), riga('courgette', 1, 'pz')]);
+      const st = stato({ ingredientiNuovi: [{ ...proponi('courgette', 'pz'), nome: 'Courgette' }], scelti: { courgette: 'i-zucc' } });
+      const primo = traduciBozza(piano, st, [ZUCCHINE], [], OGGI);
+      // Pari merito fra g e pz: vince la prima riga del piano, in g.
+      expect(primo.cambiUnita).toEqual([{ ingredientId: 'i-zucc', nome: 'Zucchine', da: 'pz', a: 'g', pesoPezzo: 200, fattore: 200 }]);
+      expect(righe(primo)).toEqual([{ ingredientId: 'i-zucc', quantita: 350, unita: 'g' }]);
+      expect(primo.ingredientiDaCreare).toEqual([]);
+
+      const { esistenti, repertorio } = dopoLaRpc(ZUCCHINE, 'g', righe(primo));
+      const secondo = traduciBozza(piano, st, esistenti, repertorio, OGGI);
+      expect(secondo.cambiUnita).toEqual([]);
+      expect(righe(secondo)).toEqual(righe(primo));
+      expect(secondo.piattiDaCreare[0].riusaDishId).toBe('d-1');
+    });
+
+    it('(b) «zucchine grigliate» per inclusione: al ritentativo resta sulle zucchine, niente «Ingrediente non risolto»', () => {
+      const piano = pianoCon([riga('zucchine', 150, 'g'), riga('zucchine grigliate', 1, 'pz')]);
+      const primo = traduciBozza(piano, stato(), [ZUCCHINE], [], OGGI);
+      expect(primo.cambiUnita).toEqual([expect.objectContaining({ ingredientId: 'i-zucc', da: 'pz', a: 'g', fattore: 200 })]);
+      expect(righe(primo)).toEqual([{ ingredientId: 'i-zucc', quantita: 350, unita: 'g' }]);
+
+      const { esistenti, repertorio } = dopoLaRpc(ZUCCHINE, 'g', righe(primo));
+      const secondo = traduciBozza(piano, stato(), esistenti, repertorio, OGGI);
+      expect(secondo.cambiUnita).toEqual([]);
+      expect(righe(secondo)).toEqual(righe(primo));
+    });
+
+    it('righe miste su un ingrediente già nell\'unità che prevale: nessun cambio, l\'altra riga convertita (concern 1)', () => {
+      const piano = pianoCon([riga('zucchine', 150, 'g'), riga('zucchine', 1, 'pz')]);
+      const s = traduciBozza(piano, stato(), [ingrediente('i-zucc', 'Zucchine', 'g')], [], OGGI);
+      expect(s.cambiUnita).toEqual([]);
+      expect(righe(s)).toEqual([{ ingredientId: 'i-zucc', quantita: 350, unita: 'g' }]);
+    });
+
+    it('vince l\'unità più frequente, anche contro la prima riga: due righe a pezzi e una in g restano a pezzi', () => {
+      const piano = pianoCon([riga('zucchine', 150, 'g'), riga('zucchine', 1, 'pz'), riga('zucchine', 2, 'pz')]);
+      const s = traduciBozza(piano, stato(), [ZUCCHINE], [], OGGI);
+      expect(s.cambiUnita).toEqual([]);
+      expect(righe(s)).toEqual([{ ingredientId: 'i-zucc', quantita: 3.75, unita: 'pz' }]);
+    });
+
+    it('righe miste senza il peso di un pezzo: ferma tutto anche senza cambio di unità; col peso scritto si scrive', () => {
+      const cavolo = ingrediente('i-cav', 'Cavolo nero', 'g');
+      const piano = pianoCon([riga('cavolo nero', 200, 'g'), riga('cavolo nero', 1, 'pz')]);
+      expect(() => traduciBozza(piano, stato(), [cavolo], [], OGGI)).toThrow('Manca il peso di un pezzo di "Cavolo nero"');
+      const s = traduciBozza(piano, stato({ cambiUnita: { 'i-cav': { tieni: false, pesoPezzo: 300 } } }), [cavolo], [], OGGI);
+      expect(s.cambiUnita).toEqual([]);
+      expect(righe(s)).toEqual([{ ingredientId: 'i-cav', quantita: 500, unita: 'g' }]);
+    });
+
+    it('(c) una proposta nuova con righe in g e in pz: l\'unità più frequente, l\'altra riga convertita col peso della tabella', () => {
+      const piano = pianoCon([riga('zucchine romanesche', 1, 'pz'), riga('zucchine romanesche', 150, 'g'), riga('zucchine romanesche', 100, 'g')]);
+      const proposte = calcolaProposte(piano, stato(), []);
+      expect(proposte.map((p) => p.unitaBase)).toEqual(['g']);
+      const st = stato({ ingredientiNuovi: proposte });
+      expect(passoBloccato(proposte, [], {}, cambiUnita(piano, st, []), pesiProposte(piano, st, []))).toBe(false);
+      const s = traduciBozza(piano, st, [], [], OGGI);
+      expect(righe(s)).toEqual([{ nuovoAlimento: 'zucchine romanesche', quantita: 450, unita: 'g' }]);
+      expect(s.ingredientiDaCreare).toEqual(proposte);
+      expect(s.cambiUnita).toEqual([]);
+    });
+
+    it('(c) senza il peso in tabella la proposta ha il motivo «peso»; col peso scritto per l\'alimento si scrive', () => {
+      const piano = pianoCon([riga('cavolo nero', 200, 'g'), riga('cavolo nero', 1, 'pz')]);
+      const proposte = calcolaProposte(piano, stato(), []);
+      const st = stato({ ingredientiNuovi: proposte });
+      const pesi = pesiProposte(piano, st, []);
+      expect(pesi).toEqual([{ alimento: 'cavolo nero', nome: 'Cavolo nero', pesoPezzo: null, pesoDaTabella: false }]);
+      expect(motiviBlocco(proposte, [], {}, [], pesi).get('cavolo nero')).toEqual(['peso']);
+      expect(() => traduciBozza(piano, st, [], [], OGGI)).toThrow('Manca il peso di un pezzo di "Cavolo nero"');
+      const conPeso = stato({ ingredientiNuovi: proposte, cambiUnita: { 'cavolo nero': { tieni: false, pesoPezzo: 300 } } });
+      expect(motiviBlocco(proposte, [], {}, [], pesiProposte(piano, conPeso, [])).size).toBe(0);
+      expect(righe(traduciBozza(piano, conPeso, [], [], OGGI))).toEqual([{ nuovoAlimento: 'cavolo nero', quantita: 500, unita: 'g' }]);
+    });
+
+    it('(c) al ritentativo l\'ingrediente creato dalla proposta ritrova il peso scritto per l\'alimento', () => {
+      const piano = pianoCon([riga('cavolo nero', 200, 'g'), riga('cavolo nero', 1, 'pz')]);
+      const proposte = calcolaProposte(piano, stato(), []);
+      const st = stato({ ingredientiNuovi: proposte, cambiUnita: { 'cavolo nero': { tieni: false, pesoPezzo: 300 } } });
+      const creato = ingrediente('i-nuovo', 'Cavolo nero', 'g');
+      const s = traduciBozza(piano, st, [creato], [], OGGI);
+      expect(s.ingredientiDaCreare).toEqual([]);
+      expect(s.cambiUnita).toEqual([]);
+      expect(righe(s)).toEqual([{ ingredientId: 'i-nuovo', quantita: 500, unita: 'g' }]);
+    });
   });
 });

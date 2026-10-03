@@ -1,7 +1,8 @@
 import { readFile } from 'fs/promises';
 import { join } from 'path';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { validaEsito, PianoNonValidoError } from '@/domain/import/valida';
+import type { EsitoEstrazione } from '@/domain/import/types';
 import { FIXTURE_MENU_SETTIMANALE, FIXTURE_RIFIUTO_MACRO } from '@/domain/import/fixtures';
 import {
   estraiPianoAPagine,
@@ -13,6 +14,7 @@ import { dividiPdf, PdfIllegibileError, TroppePagineError } from '@/server/pdf-p
 import { RispostaSenzaJsonError } from '@/server/anthropic';
 import Anthropic from '@anthropic-ai/sdk';
 import { limiteImport30ggConfigurato, contaImportRecenti, registraImport } from '@/data/import-uso';
+import { salvaBozzaDalServer } from '@/data/import-bozza';
 
 // Un piano intero è un output lungo: il default Vercel troncherebbe la chiamata.
 export const maxDuration = 300;
@@ -48,6 +50,8 @@ function formattaDataItaliana(d: Date): string {
  * concorrenti; registrare prima di dividere il PDF fa sì che un PDF costoso da
  * aprire consumi uno slot. Mock e 503 non contano né registrano nulla.
  * Ogni esito passa da validaEsito: o è integralmente valido o non esce.
+ * Un piano letto col modello si salva come bozza della casa prima di rispondere (spec 8c §E):
+ * la risposta porta `bozzaSalvata`.
  */
 export async function POST(request: Request): Promise<Response> {
   const auth = request.headers.get('authorization');
@@ -81,16 +85,20 @@ export async function POST(request: Request): Promise<Response> {
     if (byteTotali > MAX_BYTE_TOTALI) return Response.json({ errore: 'file troppo grandi, riprova con foto più leggere' }, { status: 413 });
   }
 
+  // Il client col JWT dell'utente, per salvare la bozza (solo il ramo del modello, spec 8c §E).
+  let sbBozza: SupabaseClient | null = null;
   let contenutoGrezzo: unknown;
   if (process.env.ANTHROPIC_API_KEY) {
     const modello = modelloImportConfigurato();
     // Il tetto vale solo qui: mock e 503 non spendono nulla. Con limite 0 (solo
     // sviluppo) non si conta né si registra. Il client con il JWT dell'utente negli
-    // header è quello che fa valere la RLS di import_uso: nessuna service key.
+    // header fa valere la RLS: col tetto acceso serve a import_uso, e sempre alla
+    // bozza (spec 8c §E). Nessuna service key.
     const limite = limiteImport30ggConfigurato();
-    const sbUtente = limite > 0 ? createClient(url, anon, { global: { headers: { Authorization: `Bearer ${token}` } } }) : null;
+    const sbUtente = createClient(url, anon, { global: { headers: { Authorization: `Bearer ${token}` } } });
+    sbBozza = sbUtente;
     try {
-      if (sbUtente) {
+      if (limite > 0) {
         // Il tetto è per casa (spec casa condivisa §3, §7): `import_uso` si scrive e
         // si conta con l'id della casa, non dell'account — lo stesso che la RLS
         // (`user_id = casa_id()`) accetta. La RPC gira col JWT dell'utente.
@@ -179,8 +187,9 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ errore: 'estrazione non disponibile' }, { status: 503 });
   }
 
+  let esito: EsitoEstrazione;
   try {
-    return Response.json(validaEsito(contenutoGrezzo), { status: 200 });
+    esito = validaEsito(contenutoGrezzo);
   } catch (err) {
     if (err instanceof PianoNonValidoError) {
       console.error('import/estrai: esito non valido.', err.message);
@@ -189,4 +198,11 @@ export async function POST(request: Request): Promise<Response> {
     console.error('import/estrai: validazione fallita.', err);
     return Response.json({ errore: 'estrazione non riuscita, riprova' }, { status: 502 });
   }
+  // La bozza la salva il server (spec 8c §E): solo un piano letto col modello. Un errore di
+  // scrittura non perde mai un'estrazione pagata: si risponde comunque, e il telefono salva.
+  if (esito.tipo === 'piano' && sbBozza) {
+    const bozzaSalvata = await salvaBozzaDalServer(sbBozza, esito.piano);
+    return Response.json({ ...esito, bozzaSalvata }, { status: 200 });
+  }
+  return Response.json(esito, { status: 200 });
 }

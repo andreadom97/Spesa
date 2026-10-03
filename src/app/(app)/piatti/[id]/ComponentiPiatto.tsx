@@ -25,7 +25,7 @@ export interface PropsComponentiPiatto {
   onRimuoviOpzione: (componenteId: string, opzioneId: string) => void;
   /** Apre il selettore degli ingredienti su quell'opzione (lo stesso selettore degli ingredienti del piatto). */
   onAggiungiIngrediente: (componenteId: string, opzioneId: string) => void;
-  onCambiaQuantita: (componenteId: string, opzioneId: string, ingredientId: string, quantita: number) => void;
+  onCambiaQuantita: (componenteId: string, opzioneId: string, ingredientId: string, quantita: number | null) => void;
   onRimuoviRiga: (componenteId: string, opzioneId: string, ingredientId: string) => void;
   /** `{opzioneId}:{ingredientId}` della riga appena aggiunta dal selettore: la sua tessera prende il fuoco. */
   appenaAggiunta?: string | null;
@@ -50,7 +50,7 @@ export function ComponentiPiatto({
   const componentiSenzaNome = componenti.filter((c) => c.nome.trim() === '');
   const opzioniSenzaRighe = componenti.flatMap((c) => c.opzioni.filter((o) => o.righe.length === 0));
   const quantitaNonValideOpzioni = new Set(
-    componenti.flatMap((c) => c.opzioni).flatMap((o) => o.righe.filter((r) => r.quantita <= 0).map((r) => `${o.id}|${r.ingredientId}`)),
+    componenti.flatMap((c) => c.opzioni).flatMap((o) => o.righe.filter((r) => r.quantita !== null && r.quantita <= 0).map((r) => `${o.id}|${r.ingredientId}`)),
   );
 
   return (
@@ -86,7 +86,7 @@ export function ComponentiPiatto({
 
           {componente.opzioni.map((opzione, indiceOpzione) => {
             const righeNonValideOpzione = new Set(
-              opzione.righe.filter((r) => r.quantita <= 0).map((r) => r.ingredientId),
+              opzione.righe.filter((r) => r.quantita !== null && r.quantita <= 0).map((r) => r.ingredientId),
             );
             return (
               <div key={opzione.id} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

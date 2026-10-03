@@ -3,14 +3,19 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { PianoEstratto, StatoRevisione } from '@/domain/import/types';
-import { eseguiScritture } from '@/data/importa';
+import { eseguiScritture, type AvanzamentoScritture } from '@/data/importa';
 import { leggiIngredienti, leggiRepertorio } from '@/data/repertorio';
-import { traduciBozza, BozzaIncompletaError, type ScrittureImport } from '@/domain/import/commit';
+import {
+  traduciBozza, BozzaIncompletaError, riassuntoScritture, type RiassuntoScritture, type ScrittureImport,
+} from '@/domain/import/commit';
+import { UNITA_IN_PAROLE, numeroInParole } from '@/domain/import/formati-tipici';
 import { Dock, ErroreSopraDock } from '@/components/Dock';
 import { FoglioDalBasso } from '@/components/FoglioDalBasso';
 import { DialogoConferma } from '@/components/DialogoConferma';
-import { useIndietroFogli } from '@/components/useIndietroFogli';
+import { segnaPianoSalvato } from '@/components/piano-salvato';
 import { StatoImporta } from './StatoImporta';
+import { useLivelliImporta } from './livelli';
+import { plurale } from './sezione';
 
 // Il testo di oggi, esatto (era in page.tsx).
 const ERRORE_ESECUZIONE = 'Qualcosa si è fermato: riprova, l’import riprende da dove era.';
@@ -28,13 +33,35 @@ function dataLocaleOggi(): string {
 }
 
 /**
- * Il riepilogo finale (spec fase 8a §C): traduce la bozza in scritture concrete (`traduciBozza`,
- * con ingredienti e repertorio riletti freschi, non quelli in memoria dal mount del wizard, che un
- * commit parziale precedente può aver superato) e mostra il conto prima di eseguirle.
- *
- * Il Dock dice cosa succede: `CREA IL PIANO` scrive subito quando l'import non disattiva niente
- * (il primo import); `SOSTITUISCI IL PIANO` passa dal Dialogo di conferma quando disattiva dei
- * piatti del nutrizionista (decisione di Andrea del 27/09).
+ * Il testo del dialogo (spec 8c §H): «3 piatti nuovi, 12 aggiornati, 4 tolti da Piatti. I tuoi
+ * piatti restano.», senza le parti a zero. La prima parte presente porta sempre il sostantivo
+ * (correzione D11): senza piatti nuovi «12 piatti aggiornati, 4 tolti da Piatti.», mai «12 aggiornati».
+ */
+export function testoDialogo(r: RiassuntoScritture): string {
+  const parti: string[] = [];
+  const conNome = (n: number, uno: string, molti: string) =>
+    parti.length === 0 ? plurale(n, `piatto ${uno}`, `piatti ${molti}`) : plurale(n, uno, molti);
+  if (r.piattiNuovi > 0) parti.push(conNome(r.piattiNuovi, 'nuovo', 'nuovi'));
+  if (r.piattiAggiornati > 0) parti.push(conNome(r.piattiAggiornati, 'aggiornato', 'aggiornati'));
+  if (r.piattiTolti > 0) parti.push(`${conNome(r.piattiTolti, 'tolto', 'tolti')} da Piatti`);
+  return `${parti.join(', ')}. I tuoi piatti restano.`;
+}
+
+/** I passi dell'attesa (spec 8c §H): ingredienti, piatti, fine. */
+function testoAvanzamento(a: AvanzamentoScritture): string {
+  if (a.passo === 'ingredienti') return 'Gli ingredienti.';
+  if (a.passo === 'piatti') return `I piatti: ${a.fatti} di ${a.totale}.`;
+  return 'Ancora un attimo.';
+}
+
+/**
+ * Il riepilogo finale (spec fase 8a §C, 8c §H): traduce la bozza in scritture concrete
+ * (`traduciBozza`, con ingredienti e repertorio riletti freschi, non quelli in memoria dal mount
+ * del wizard, che un commit parziale precedente può aver superato) e mostra sempre il riassunto:
+ * piatti nuovi, aggiornati, tolti, ingredienti nuovi, ingredienti che cambiano unità coi due
+ * valori. Il Dock dice sempre SALVA IL PIANO; con un piano attuale (piatti del nutrizionista
+ * attivi) passa dal Dialogo di conferma blu notte coi numeri. Dopo il tocco, «Salvo il piano…»
+ * con l'avanzamento a passi; riuscito, il Piano con `replace` e il segno «Piano salvato».
  *
  * `BozzaIncompletaError` è un difetto di dati risolvibile solo tornando a Controlla (il passo
  * `revisione`): si mostra il suo messaggio esatto, con TORNA A CONTROLLA nel Dock.
@@ -55,8 +82,9 @@ export function Riepilogo({
   const [pronto, setPronto] = useState(false);
   const [erroreBozza, setErroreBozza] = useState<string | null>(null);
   const [erroreCaricamento, setErroreCaricamento] = useState<string | null>(null);
-  const [confermaSostituzione, setConfermaSostituzione] = useState(false);
+  const [conferma, setConferma] = useState(false);
   const [eseguendo, setEseguendo] = useState(false);
+  const [avanzamento, setAvanzamento] = useState<AvanzamentoScritture>({ passo: 'ingredienti' });
   const [erroreEsecuzione, setErroreEsecuzione] = useState<string | null>(null);
   // Sale a ogni retry (dopo un errore di eseguiScritture o del caricamento): rifà l'effetto sotto,
   // che rilegge ingredienti e repertorio e ricalcola da zero. L'idempotenza vive in traduciBozza
@@ -64,8 +92,14 @@ export function Riepilogo({
   // di prima salterebbe quella rivalutazione e duplicherebbe ingredienti e piatti.
   const [tentativo, setTentativo] = useState(0);
 
-  // L'indietro di sistema chiude il dialogo invece di lasciare Importa.
-  const { chiudiTuttoPoi } = useIndietroFogli(confermaSostituzione ? 1 : 0, () => setConfermaSostituzione(false));
+  // Un solo indietro per la bozza (spec 8c §F): il dialogo, poi Ingredienti. Mentre le scritture
+  // sono in corso («Salvo il piano…») l'indietro del passo non fa niente (correzione D1): tornare a
+  // Ingredienti riscriverebbe import_draft dopo cancellaBozzaImport, e la bozza ricomparirebbe.
+  const { chiudiTuttoPoi } = useLivelliImporta(
+    conferma ? 1 : 0,
+    () => setConferma(false),
+    () => { if (!eseguendo) onStato({ ...stato, passo: 'formati' }); },
+  );
 
   useEffect(() => {
     let vivo = true;
@@ -94,20 +128,20 @@ export function Riepilogo({
   }, [piano, stato, tentativo]);
 
   /**
-   * Scrive. Dal Dock (CREA IL PIANO) o dal dialogo (SOSTITUISCI). Riuscito: al Piano con
-   * `replace`, così l'indietro di sistema non torna su un Importa già chiuso; se il dialogo è
-   * aperto, prima si consuma la sua voce (`chiudiTuttoPoi`). Fallito: il dialogo si chiude,
-   * l'errore sta sopra il Dock, e il Dock resta spento fino al ricalcolo (spec §C). Non lancia:
-   * il dialogo non deve mostrare un suo errore.
+   * Scrive, con l'avanzamento a passi. Riuscito: il segno «Piano salvato», poi il Piano con
+   * `replace` dopo aver consumato le voci dei passi (`chiudiTuttoPoi`), così l'indietro di sistema
+   * non torna su un Importa già chiuso. Fallito: l'errore sta sopra il Dock, e il Dock resta spento
+   * fino al ricalcolo (spec §C). Non lancia: il dialogo è già chiuso e non mostra un suo errore.
    */
   async function scrivi() {
     if (!scritture || !pronto || eseguendo) return;
     setEseguendo(true);
+    setAvanzamento({ passo: 'ingredienti' });
     setErroreEsecuzione(null);
     try {
-      await eseguiScritture(scritture);
+      await eseguiScritture(scritture, setAvanzamento);
+      segnaPianoSalvato();
       chiudiTuttoPoi(() => router.replace('/piano'));
-      setConfermaSostituzione(false);
     } catch (e) {
       console.error('importa: esecuzione dell’import fallita.', e);
       setErroreEsecuzione(ERRORE_ESECUZIONE);
@@ -115,7 +149,6 @@ export function Riepilogo({
       // del ricalcolo, e un tocco lì rieseguirebbe le scritture di prima (doppioni).
       setPronto(false);
       setEseguendo(false);
-      setConfermaSostituzione(false);
       setTentativo((n) => n + 1);
     }
   }
@@ -147,42 +180,47 @@ export function Riepilogo({
   // Il primo calcolo: niente sotto la testata, come oggi.
   if (!scritture) return null;
 
-  const disattivati = scritture.piattiDaDisattivare.length;
-  const sostituisce = disattivati > 0;
-  const voci: { nome: string; valore: number }[] = [
-    { nome: 'Piatti', valore: scritture.piattiDaCreare.length },
-    { nome: 'Settimane del giro', valore: scritture.impostazioni.settimaneCiclo },
-    { nome: 'Ingredienti nuovi', valore: scritture.ingredientiDaCreare.length },
-    ...(sostituisce ? [{ nome: 'Piatti del piano attuale da disattivare', valore: disattivati }] : []),
+  const r = riassuntoScritture(scritture);
+  const voci: { nome: string; valore: string }[] = [
+    { nome: 'Piatti nuovi', valore: String(r.piattiNuovi) },
+    { nome: 'Piatti aggiornati', valore: String(r.piattiAggiornati) },
+    { nome: 'Tolti da Piatti', valore: String(r.piattiTolti) },
+    { nome: 'Ingredienti nuovi', valore: String(r.ingredientiNuovi) },
+    { nome: 'Settimane del giro', valore: String(scritture.impostazioni.settimaneCiclo) },
+    ...r.cambi.map((c) => ({ nome: `${c.nome} passa a ${UNITA_IN_PAROLE[c.a]}`, valore: `1 pz = ${numeroInParole(c.pesoPezzo)} g` })),
   ];
 
   return (
     <>
-      <div className="sc scroll-app con-dock" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 16px' }}>
-        <h2 style={{ margin: '8px 6px 12px', fontSize: 21, fontWeight: 800, letterSpacing: '-0.035em', lineHeight: 1.2, color: 'var(--ink)' }}>
-          Il nuovo piano
-        </h2>
-        <ul
-          aria-label="Il conto dell'import"
-          style={{
-            listStyle: 'none', margin: 0, padding: '0 16px', borderRadius: 18, background: 'var(--superficie)',
-            border: '1px solid var(--bordo)', boxShadow: 'var(--ombra-pannello)',
-          }}
-        >
-          {voci.map((v, i) => (
-            <li
-              key={v.nome}
-              style={{
-                minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-                padding: '10px 0', borderTop: i === 0 ? 'none' : '1px solid var(--bordo)',
-              }}
-            >
-              <span style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.4, color: 'var(--testo-2)' }}>{v.nome}</span>
-              <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>{v.valore}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
+      {eseguendo ? (
+        <StatoImporta titolo="Salvo il piano…" testo={testoAvanzamento(avanzamento)} luce stato occupato conDock />
+      ) : (
+        <div className="sc scroll-app con-dock" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 16px 16px' }}>
+          <h2 style={{ margin: '8px 6px 12px', fontSize: 21, fontWeight: 800, letterSpacing: '-0.035em', lineHeight: 1.2, color: 'var(--ink)' }}>
+            Il nuovo piano
+          </h2>
+          <ul
+            aria-label="Il conto dell'import"
+            style={{
+              listStyle: 'none', margin: 0, padding: '0 16px', borderRadius: 18, background: 'var(--superficie)',
+              border: '1px solid var(--bordo)', boxShadow: 'var(--ombra-pannello)',
+            }}
+          >
+            {voci.map((v, i) => (
+              <li
+                key={v.nome}
+                style={{
+                  minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                  padding: '10px 0', borderTop: i === 0 ? 'none' : '1px solid var(--bordo)',
+                }}
+              >
+                <span style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.4, color: 'var(--testo-2)' }}>{v.nome}</span>
+                <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--ink)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{v.valore}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <Dock>
         {erroreEsecuzione && <ErroreSopraDock>{erroreEsecuzione}</ErroreSopraDock>}
@@ -190,28 +228,32 @@ export function Riepilogo({
           type="button"
           className="dock-primario"
           disabled={!pronto || eseguendo}
-          onClick={() => (sostituisce ? setConfermaSostituzione(true) : void scrivi())}
+          onClick={() => (r.pianoAttuale ? setConferma(true) : void scrivi())}
         >
-          {sostituisce ? 'SOSTITUISCI IL PIANO' : 'CREA IL PIANO'}
+          SALVA IL PIANO
         </button>
       </Dock>
 
-      {confermaSostituzione && (
+      {conferma && (
         <FoglioDalBasso
-          etichetta="Sostituire il piano attuale?"
-          onChiudi={() => setConfermaSostituzione(false)}
+          etichetta="Salvare il nuovo piano?"
+          onChiudi={() => setConferma(false)}
           altezza="contenuto"
           ruolo="alertdialog"
           chiudiDalVelo={false}
         >
           <DialogoConferma
-            titolo="Sostituire il piano attuale?"
-            testo="I piatti del nutrizionista non più presenti nella nuova dieta verranno disattivati; questa azione non si annulla."
-            azione="SOSTITUISCI"
-            tono="distruttivo"
+            titolo="Salvare il nuovo piano?"
+            testo={testoDialogo(r)}
+            azione="SALVA"
+            tono="primario"
             erroreTesto={ERRORE_ESECUZIONE}
-            onConferma={scrivi}
-            onAnnulla={() => setConfermaSostituzione(false)}
+            onConferma={async () => {
+              // Il dialogo si chiude subito: l'attesa a passi è la stessa con e senza dialogo.
+              setConferma(false);
+              void scrivi();
+            }}
+            onAnnulla={() => setConferma(false)}
           />
         </FoglioDalBasso>
       )}

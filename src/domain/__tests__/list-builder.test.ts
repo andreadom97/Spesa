@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { costruisciLista, IngredienteMancanteError, OrdineAreeNonValidoError } from '../list-builder';
 import { UnitaIncompatibileError } from '../unita';
-import type { Ingredient } from '../types';
+import type { Dish, Ingredient, PantryState } from '../types';
 import {
   INGREDIENTI, PIATTI, IMPOSTAZIONI, dispensaVuota, cinqueColazioni,
   colazione, wrap,
@@ -454,5 +454,40 @@ describe('costruisciLista — la cadenza dei controlli (spec fase 5 §E.1)', () 
     const voci = (r: typeof a) => [...r.base, ...r.topup].flatMap((s) => s.voci);
     expect(voci(a)).toEqual(voci(b));
     expect(a.evitato).toEqual(b.evitato);
+  });
+});
+
+describe('costruisciLista — quanto basta (spec 8c §B)', () => {
+  const sale: Ingredient = {
+    id: 'sale', nome: 'Sale', unitaBase: 'g', area: 'dispensa',
+    classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 1000, prezzoConfezione: null, ean: null,
+  };
+  const colazioneConSale: Dish = { ...colazione, ingredienti: [...colazione.ingredienti, { ingredientId: 'sale', quantita: null, unita: 'g' }] };
+  const residuoSale = (residuo: number): PantryState => ({
+    ingredientId: 'sale', residuo, ultimoAcquisto: '2026-08-01', giorniStimati: 90, ultimoCheck: null, congelato: false,
+  });
+
+  it('solo q.b. e niente in dispensa: una confezione, senza fabbisogno né dettaglio', () => {
+    const r = base({ dishes: [colazioneConSale], ingredients: [...INGREDIENTI, sale] });
+    expect(voce(r, 'sale')).toMatchObject({ fabbisogno: 0, residuo: 0, daComprare: 0, confezioni: 1, quantitaTotale: 1000, mostraDettaglio: false });
+  });
+
+  it('solo q.b. con del residuo in dispensa: non compare', () => {
+    const r = base({ dishes: [colazioneConSale], ingredients: [...INGREDIENTI, sale], pantry: [...dispensaVuota(), residuoSale(300)] });
+    expect(voce(r, 'sale')).toBeUndefined();
+  });
+
+  it('q.b. più una quantità nella settimana: vale la somma delle quantità', () => {
+    const conOpzione: Dish = {
+      ...colazioneConSale,
+      componenti: [{ id: 'c-sale', nome: 'sale', opzioni: [{ id: 'o-sale', righe: [{ ingredientId: 'sale', quantita: 2, unita: 'g' }] }] }],
+    };
+    const r = base({ dishes: [conOpzione], ingredients: [...INGREDIENTI, sale] });
+    expect(voce(r, 'sale')).toMatchObject({ fabbisogno: 10, confezioni: 1, mostraDettaglio: true }); // 2 g × 5 colazioni
+  });
+
+  it('un q.b. di classe stima resta ai controlli: nessuna voce', () => {
+    const r = base({ dishes: [colazioneConSale], ingredients: [...INGREDIENTI, { ...sale, classeResiduo: 'stima' }] });
+    expect(voce(r, 'sale')).toBeUndefined();
   });
 });

@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
 import type { ReactNode } from 'react';
 vi.mock('@/data/importa', () => ({
   leggiBozzaImport: vi.fn(),
@@ -23,9 +23,9 @@ const { push, replace } = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() })
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push, replace, back: vi.fn() }) }));
 import { leggiBozzaImport, salvaBozzaImport, cancellaBozzaImport } from '@/data/importa';
 import { leggiSlotDefs } from '@/data/impostazioni';
-import { leggiIngredienti } from '@/data/repertorio';
+import { leggiIngredienti, leggiRepertorio } from '@/data/repertorio';
 import { FIXTURE_MENU_SETTIMANALE, FIXTURE_RIFIUTO_MACRO } from '@/domain/import/fixtures';
-import type { PianoEstratto } from '@/domain/import/types';
+import type { PianoEstratto, StatoRevisione } from '@/domain/import/types';
 import { SlotDockProvider } from '@/components/dock-slot';
 import { salvaOrigine } from '@/components/pannello/indirizzi';
 import Importa from '../page';
@@ -393,6 +393,34 @@ describe('Importa: l\'invio', () => {
     expect((init.headers as Record<string, string>).Authorization).toBe('Bearer tok');
   });
 
+  it('bozzaSalvata dal server: il telefono non la riscrive, e si apre Controlla (spec 8c §E)', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ ...FIXTURE_MENU_SETTIMANALE, bozzaSalvata: true }) });
+    rendi();
+    await inviaUnaFoto();
+    expect(await screen.findByText('Passo 2 di 4 · Controlla')).toBeInTheDocument();
+    expect(salvaBozzaImport).not.toHaveBeenCalled();
+  });
+
+  it('bozzaSalvata false: il telefono salva come prima', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ ...FIXTURE_MENU_SETTIMANALE, bozzaSalvata: false }) });
+    rendi();
+    await inviaUnaFoto();
+    await waitFor(() => expect(salvaBozzaImport).toHaveBeenCalledTimes(1));
+  });
+
+  it('la risposta si perde ma la bozza è sul server: si apre la ripresa (spec 8c §K.1)', async () => {
+    global.fetch = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+    vi.mocked(leggiBozzaImport).mockResolvedValueOnce(null).mockResolvedValueOnce({
+      piano: PIANO,
+      statoRevisione: { passo: 'revisione', mappaturaPasti: {}, pastiConfermati: [], correzioni: {}, ingredientiNuovi: [] },
+    });
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    rendi();
+    await inviaUnaFoto();
+    expect(await screen.findByRole('heading', { name: 'Hai un import in corso' })).toBeInTheDocument();
+    vi.mocked(console.error).mockRestore();
+  });
+
   it('413 mostra il messaggio della route e non perde le foto', async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: false,
@@ -538,5 +566,89 @@ describe('Importa: l\'invio', () => {
     expect(within(stato).getByRole('heading', { name: 'Sto leggendo la dieta…' })).toHaveClass('anim-luce-testo');
     expect(within(stato).getByText('Se chiudi l\'app prima che abbia finito, la lettura si perde.')).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Azione principale' })).toBeNull();
+  });
+});
+
+describe('Importa: l\'indietro per passi (spec 8c §F)', () => {
+  const STATO_REVISIONE: StatoRevisione = {
+    passo: 'revisione', mappaturaPasti: { colazione: 's-col', cena: 's-cena', condimenti: 's-cena' }, pastiConfermati: [], correzioni: {}, ingredientiNuovi: [],
+  };
+  const indietro = () => act(() => { window.dispatchEvent(new PopStateEvent('popstate')); });
+
+  beforeEach(() => {
+    // Il browser manda il popstate di un go(); qui subito, così i tempi non contano.
+    vi.spyOn(window.history, 'go').mockImplementation(() => { window.dispatchEvent(new PopStateEvent('popstate')); });
+    // aggiornaStatoRevisione fa `salvaBozzaImport(…).catch(…)`: serve una promessa.
+    vi.mocked(salvaBozzaImport).mockResolvedValue(undefined);
+  });
+  afterEach(() => {
+    vi.mocked(window.history.go).mockRestore();
+  });
+
+  async function riprendi(stato: StatoRevisione, piano: PianoEstratto = PIANO) {
+    vi.mocked(leggiBozzaImport).mockResolvedValue({ piano, statoRevisione: stato });
+    rendi();
+    fireEvent.click(await screen.findByRole('button', { name: 'RIPRENDI' }));
+  }
+
+  it('Controlla ha la sua voce: l\'indietro apre «Esci dall\'import?», RESTA lo chiude e si resta in Controlla', async () => {
+    await riprendi(STATO_REVISIONE);
+    await screen.findByText('Passo 2 di 4 · Controlla');
+    expect(window.history.pushState).toHaveBeenCalledTimes(1);
+    indietro();
+    const dialogo = await screen.findByRole('alertdialog', { name: "Esci dall'import?" });
+    expect(within(dialogo).getByText("Lo ritrovi com'è: riprendi quando vuoi.")).toBeInTheDocument();
+    expect(within(dialogo).getByRole('button', { name: 'ESCI' }).style.background).toBe('var(--ink)');
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'RESTA' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.getByText('Passo 2 di 4 · Controlla')).toBeInTheDocument();
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it('ESCI torna alla pagina di provenienza, dopo aver consumato le voci', async () => {
+    await riprendi(STATO_REVISIONE);
+    await screen.findByText('Passo 2 di 4 · Controlla');
+    indietro();
+    fireEvent.click(within(await screen.findByRole('alertdialog', { name: "Esci dall'import?" })).getByRole('button', { name: 'ESCI' }));
+    await waitFor(() => expect(replace).toHaveBeenCalled());
+    expect(window.history.go).toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it('da Ingredienti l\'indietro torna a Controlla e salva lo stato', async () => {
+    await riprendi({ ...STATO_REVISIONE, passo: 'formati' });
+    await screen.findByText('Passo 3 di 4 · Ingredienti');
+    expect(window.history.pushState).toHaveBeenCalledTimes(2);
+    indietro();
+    expect(await screen.findByText('Passo 2 di 4 · Controlla')).toBeInTheDocument();
+    expect(vi.mocked(salvaBozzaImport).mock.calls.at(-1)![0].statoRevisione.passo).toBe('revisione');
+  });
+
+  it('da Riepilogo l\'indietro torna a Ingredienti', async () => {
+    vi.mocked(leggiRepertorio).mockResolvedValue([]);
+    await riprendi({ ...STATO_REVISIONE, passo: 'riepilogo' });
+    await screen.findByText('Passo 4 di 4 · Riepilogo');
+    expect(window.history.pushState).toHaveBeenCalledTimes(3);
+    indietro();
+    expect(await screen.findByText('Passo 3 di 4 · Ingredienti')).toBeInTheDocument();
+  });
+
+  it('KO 7: dopo TOGLI l\'indietro resta in Importa e apre «Esci dall\'import?»', async () => {
+    const giorno = (g: number) => ({
+      giorno: g, titolo: null,
+      pasti: [{ nomeOriginale: 'cena', piatti: [{ nome: 'Insalata', descrizione: null, componenti: [], righeFisse: [
+        { alimento: 'tonno al naturale', quantita: 80, unita: 'g' as const, quantitaInferita: false, testoOriginale: 'tonno 80g' },
+        { alimento: 'olive taggiasche', quantita: null, unita: null, quantitaInferita: false, testoOriginale: 'olive' },
+      ] }] }],
+    });
+    const piano: PianoEstratto = { archetipo: 'menu_settimanale', fonte: 'test', noteEstrazione: [], settimane: [{ numero: 1, giorni: [0, 1, 2].map(giorno) }] };
+    await riprendi({ ...STATO_REVISIONE, mappaturaPasti: { cena: 's-cena' } }, piano);
+    fireEvent.click(await screen.findByRole('button', { name: 'Togli olive taggiasche' }));
+    const togli = await screen.findByRole('alertdialog', { name: 'Togliere olive taggiasche da 3 pasti?' });
+    fireEvent.click(within(togli).getByRole('button', { name: 'TOGLI' }));
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+    indietro();
+    expect(await screen.findByRole('alertdialog', { name: "Esci dall'import?" })).toBeInTheDocument();
+    expect(replace).not.toHaveBeenCalled();
   });
 });
