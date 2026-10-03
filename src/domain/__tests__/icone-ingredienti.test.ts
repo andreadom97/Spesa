@@ -85,6 +85,40 @@ describe('trovaIcona', () => {
     ['Senape di Digione', 'senape'],
     ['Capperi', 'capperi'],
     ['Capperi sotto sale', 'capperi'],
+    // ondata 1, lotto B (03/10)
+    ['Maiale', 'maiale'],
+    ['Carne di maiale', 'maiale'],
+    ['Lonza', 'maiale'],
+    ['Arista di maiale', 'maiale'],
+    ['Braciola di maiale', 'maiale'],
+    ['Costine', 'maiale'],
+    ['Filetto di maiale', 'maiale'],
+    ['Porchetta', 'maiale'],
+    ['Agnello', 'agnello'],
+    ["Costolette d'agnello", 'agnello'],
+    ['Abbacchio', 'agnello'],
+    ['Capretto', 'agnello'],
+    ['Cozze', 'molluschi'],
+    ['Vongole veraci', 'molluschi'],
+    ['Calamari', 'molluschi'],
+    ['Polpo', 'molluschi'],
+    ['Seppie', 'molluschi'],
+    ['Totani', 'molluschi'],
+    ['Moscardini', 'molluschi'],
+    ['Ostriche', 'molluschi'],
+    ['Capesante', 'molluschi'],
+    ['Frutti di mare', 'molluschi'],
+    ['Insalata di mare', 'molluschi'],
+    ['Mais', 'mais'],
+    ['Mais in scatola', 'mais'],
+    ['Granturco', 'mais'],
+    ['Pannocchie', 'mais'],
+    ['Pop corn', 'mais'],
+    ['Popcorn', 'mais'],
+    ['Peperoncino', 'peperoncino'],
+    ['Peperoncini freschi', 'peperoncino'],
+    ['Peperoncino in polvere', 'peperoncino'],
+    ['Jalapeño', 'peperoncino'],
   ])('%s → %s', (nome, chiave) => {
     expect(trovaIcona(nome)).toBe(chiave);
   });
@@ -117,6 +151,18 @@ describe('trovaIcona', () => {
     ['Olive e capperi', 'olive'],
     // omografi (review del lotto A): parole vicine a un sinonimo che non devono accenderlo
     ['Pane lievitato', 'pane'],
+    // non regressione del lotto B (03/10)
+    ['Pannocchia', 'mais'],
+    ['Amido di mais', 'farina'],
+    ['Farina di mais', 'farina'],
+    ['Salsiccia di maiale', 'salsiccia'],
+    ['Macinato di manzo', 'bistecca'],
+    ['Coste', 'foglie'],
+    ['Polpa di pomodoro', 'pomodoro'],
+    ['Spaghetti alle vongole', 'pasta'],
+    ['Olio al peperoncino', 'olio'],
+    ['Peperoni', 'peperone'],
+    ['Pepe', 'spezie'],
   ])('%s → %s (posizione prima della lunghezza)', (nome, chiave) => {
     expect(trovaIcona(nome)).toBe(chiave);
   });
@@ -135,23 +181,27 @@ describe('trovaIcona', () => {
     // omografi (review del lotto A): radici diverse da lievito, cappero, panna
     'Lievitato',
     'Cappuccino',
-    'Pannocchia',
+    // radice diversa da capretto, polpo, calamaro, mais
+    'Caprino',
+    'Polpette',
+    'Calamarata',
+    'Filetto',
   ])('%s → null (omografo)', (nome) => {
     expect(trovaIcona(nome)).toBeNull();
   });
 
   it.each([
-    // esito del gate del 26/09, rivisto il 03/10: i salumi hanno l'icona di famiglia
+    // esito del gate del 26/09, rivisto il 03/10: i salumi hanno l'icona di famiglia, il mais
+    // torna con la pannocchia ridisegnata (lotto B, da confermare al foglio)
     'Kiwi',
-    'Mais',
   ])('%s → null (gate 26/09)', (nome) => {
     expect(trovaIcona(nome)).toBeNull();
   });
 
   // Esclusi di proposito dal catalogo icone al gate del 26/09 (rivisto il 03/10:
-  // i salumi hanno l'icona di famiglia): restano senza icona per decisione di
-  // Andrea, non per un buco nel catalogo.
-  const ESCLUSI_DI_PROPOSITO = ['Mais'];
+  // i salumi hanno l'icona di famiglia, il mais torna col lotto B): restano senza
+  // icona per decisione di Andrea, non per un buco nel catalogo.
+  const ESCLUSI_DI_PROPOSITO: string[] = [];
 
   it('copre tutti gli INGREDIENTI_BASE, salvo gli esclusi di proposito', () => {
     const scoperti = INGREDIENTI_BASE.map((i) => i.nome).filter((n) => trovaIcona(n) === null);
@@ -179,6 +229,8 @@ describe('trovaIcona', () => {
     'Panna cotta ai frutti di bosco',
     'Gelato alla vaniglia',
     'Budino alla vaniglia',
+    'Polpa di zucca',
+    'Polpa di granchio',
   ])('%s → null (blocco)', (nome) => {
     expect(trovaIcona(nome)).toBeNull();
   });
@@ -198,8 +250,8 @@ describe('trovaIcona', () => {
 });
 
 describe('CATALOGO_ICONE', () => {
-  it('74 icone (64 del 26/09 + 5 famiglie del 03/10 + lotto A dell\'ondata 1)', () => {
-    expect(CHIAVI_ICONE).toHaveLength(74);
+  it('79 icone (64 del 26/09 + 5 famiglie del 03/10 + lotti A e B dell\'ondata 1)', () => {
+    expect(CHIAVI_ICONE).toHaveLength(79);
   });
 
   it('ogni sinonimo appartiene a una sola chiave', () => {

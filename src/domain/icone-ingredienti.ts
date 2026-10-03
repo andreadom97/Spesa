@@ -40,6 +40,12 @@ export const CATALOGO_ICONE = {
   // `fragola` (sinonimo più lungo alla stessa posizione), «Minestrone» su `minestra`.
   frutta: ['frutta', 'macedonia'],
   verdura: ['verdura', 'ortaggio'],
+  // ondata 1 (03/10). Il mais era stato tolto al gate del 26/09 perché non si capiva: torna
+  // con la pannocchia disegnata da capo, decide Andrea al foglio. «Amido/Farina di mais»
+  // restano su `farina` (prima posizione).
+  mais: ['mais', 'granturco', 'pannocchia', 'pop corn', 'popcorn'],
+  // ondata 1 (03/10): esce da `spezie`, ha una forma sua. Anche quello in polvere.
+  peperoncino: ['peperoncino', 'peperoncino fresco', 'peperoncino in polvere', 'jalapeno'],
   // carne e pesce
   bistecca: ['manzo', 'macinato', 'vitello', 'carne', 'bistecca', 'hamburger'],
   cosciotto: ['pollo', 'tacchino'],
@@ -50,6 +56,14 @@ export const CATALOGO_ICONE = {
   // famiglia (03/10, supera il gate del 26/09 che li lasciava senza icona): nel foglio sta
   // con i latticini, come al banco gastronomia.
   salumi: ['salume', 'salame', 'prosciutto', 'bresaola', 'speck', 'mortadella', 'affettato'],
+  // ondata 1 (03/10). Niente «filetto» da solo: è anche di manzo o di pesce. «Carne di
+  // maiale» qui e non su `bistecca` (più lungo alla stessa posizione di «carne»).
+  maiale: ['maiale', 'carne di maiale', 'lonza', 'arista', 'braciola di maiale', 'costine', 'filetto di maiale', 'porchetta'],
+  agnello: ['agnello', 'carne di agnello', 'abbacchio', 'capretto'],
+  // ondata 1 (03/10). I crostacei restano su `gambero`. «Ostriche» e «capesante» a parte:
+  // `radice` non unisce -ca/-che né capa-/cape-. «Frutti di mare» qui, non su `frutta`
+  // (stessa radice frutt), «Insalata di mare» non su `insalata`; «Polpa di» è un blocco (radice di «polpo»).
+  molluschi: ['cozza', 'vongola', 'calamaro', 'polpo', 'seppia', 'totano', 'moscardino', 'ostrica', 'ostriche', 'capasanta', 'capesante', 'frutti di mare', 'insalata di mare'],
   // latticini e uova
   uovo: ['uovo'],
   latte: ['latte'],
@@ -74,7 +88,7 @@ export const CATALOGO_ICONE = {
   olio: ['olio'],
   ampolla: ['aceto', 'salsa di soia'],
   sale: ['sale'],
-  spezie: ['pepe', 'cannella', 'cumino', 'curry', 'paprika', 'origano', 'curcuma', 'noce moscata', 'zenzero', 'peperoncino', 'spezia'],
+  spezie: ['pepe', 'cannella', 'cumino', 'curry', 'paprika', 'origano', 'curcuma', 'noce moscata', 'zenzero', 'spezia'],
   zucchero: ['zucchero'],
   miele: ['miele'],
   marmellata: ['marmellata', 'confettura'],
@@ -128,6 +142,12 @@ export const CHIAVI_ICONE = Object.keys(CATALOGO_ICONE) as ChiaveIcona[];
  *   "Budino alla vaniglia" prenderebbero l'icona della bacca di vaniglia (03/10).
  *   Non si blocca «crema»: bloccherebbe anche "Crema di zucca" o "Crema di
  *   ceci", che oggi prendono l'icona giusta.
+ * - `polpa di`: stessa radice di `polpo` (polp) — senza il blocco "Polpa di
+ *   zucca" o "Polpa di granchio" prenderebbero l'icona dei molluschi. "Polpa di
+ *   pomodoro" resta su `pomodoro` (sinonimo più lungo alla stessa posizione).
+ *   Non si blocca «polpa» da sola: a parità di lunghezza il blocco vincerebbe
+ *   anche su «Polpo». Prezzo: «Polpa» da sola prende i molluschi e «Polpo di
+ *   scoglio» resta senza icona (03/10).
  */
 export const BLOCCHI: readonly string[] = [
   'pesca',
@@ -143,6 +163,7 @@ export const BLOCCHI: readonly string[] = [
   'panna cotta',
   'gelato',
   'budino',
+  'polpa di',
 ];
 
 /**
