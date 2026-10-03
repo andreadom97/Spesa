@@ -26,9 +26,15 @@ export function pillola(attiva: boolean): CSSProperties {
   };
 }
 
-/** Un peso da testo: un numero positivo, con la virgola o col punto; null altrimenti. */
-function pesoDaTesto(testo: string): number | null {
-  const pulito = testo.trim().replace(',', '.');
+/**
+ * Un peso da testo: un numero positivo; null altrimenti. La virgola è il decimale; un punto seguito
+ * da esattamente tre cifre separa le migliaia («1.000» = 1000, «1.000,5» = 1000,5, review T11 M6);
+ * un altro punto è il decimale («1.5»).
+ */
+export function pesoDaTesto(testo: string): number | null {
+  let pulito = testo.trim();
+  if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(pulito)) pulito = pulito.replace(/\./g, '');
+  pulito = pulito.replace(',', '.');
   if (pulito === '') return null;
   const n = Number(pulito);
   return Number.isFinite(n) && n > 0 ? n : null;

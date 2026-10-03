@@ -8,6 +8,7 @@ import { PIANO_GIORNATA_UNICA, PIANO_MENU_SETTIMANALE } from '@/domain/import/fi
 import { proponi } from '@/domain/import/formati-tipici';
 import { SlotDockProvider } from '@/components/dock-slot';
 import { Ingredienti } from '../Ingredienti';
+import { pesoDaTesto } from '../SchedaCambio';
 
 const ing = (id: string, nome: string, unitaBase: Ingredient['unitaBase']): Ingredient => ({
   id, nome, unitaBase, area: 'latticini', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 1000, prezzoConfezione: null, ean: null,
@@ -442,5 +443,63 @@ describe('Ingredienti — fase 8c', () => {
     fireEvent.click(within(screen.getByRole('dialog', { name: 'Latte di soia' })).getByRole('button', { name: /È lo stesso di/ }));
     const voci = within(screen.getByRole('dialog', { name: 'Latte di soia è lo stesso di…' })).getAllByRole('radio').map((r) => r.textContent);
     expect(voci).toEqual(['No, è un ingrediente nuovo', 'Latte intero']);
+  });
+
+  it('un cambio che diventa diretto dopo l\'ingresso, senza peso, entra in «Da sistemare» col campo (review T11, I1)', () => {
+    const CAVOLO = ing('i-cav', 'Cavolo nero', 'pz');
+    const ripresa: StatoRevisione = { ...STATO, scelti: { 'cavolo riccio': 'i-cav' } };
+    render(
+      <SlotDockProvider slot={slotDock}>
+        <Ingredienti piano={pianoCon(['cavolo nero', 'g'], ['cavolo riccio', 'g'])} stato={ripresa} ingredientiEsistenti={[CAVOLO]} onStato={vi.fn()} />
+      </SlotDockProvider>,
+    );
+    expect(screen.getAllByRole('textbox', { name: 'Peso di un pezzo' })).toHaveLength(1);
+    const riccio = screen.getByRole('region', { name: 'Cavolo riccio' });
+    fireEvent.click(within(riccio).getByRole('button', { name: /È lo stesso di/ }));
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Cavolo riccio è lo stesso di…' })).getByRole('radio', { name: 'No, è un ingrediente nuovo' }));
+    // Il cambio del Cavolo nero adesso è diretto: ha la sua Scheda, col campo del peso.
+    expect(screen.getByRole('heading', { name: 'Da sistemare 1' })).toBeInTheDocument();
+    const scheda = screen.getByRole('region', { name: 'Cavolo nero' });
+    const campo = within(scheda).getByRole('textbox', { name: 'Peso di un pezzo' });
+    expect(avanti()).toBeDisabled();
+    fireEvent.change(campo, { target: { value: '300' } });
+    fireEvent.blur(campo);
+    expect(avanti()).toBeEnabled();
+    // E ci resta, col peso scritto.
+    expect(within(screen.getByRole('region', { name: 'Cavolo nero' })).getByRole('textbox', { name: 'Peso di un pezzo' })).toHaveValue('300');
+  });
+
+  it('la frase conta anche il cambio dentro una proposta scelta (review T11, M1)', () => {
+    const ripresa: StatoRevisione = { ...STATO, scelti: { 'zucchine trifolate': 'i-zucc' } };
+    render(
+      <SlotDockProvider slot={slotDock}>
+        <Ingredienti piano={pianoCon(['zucchine trifolate', 'g'])} stato={ripresa} ingredientiEsistenti={[ZUCCHINE]} onStato={vi.fn()} />
+      </SlotDockProvider>,
+    );
+    expect(screen.getByText("Tutti gli ingredienti del piano abbinano già qualcosa che hai; uno passa all'unità della dieta: controlla.")).toBeInTheDocument();
+  });
+
+  it('il peso «1.000» è mille grammi: il punto con tre cifre separa le migliaia (review T11, M6)', () => {
+    const onStato = rendiCon([ing('i-cav', 'Cavolo nero', 'pz')], pianoCon(['cavolo nero', 'g']));
+    const campo = within(screen.getByRole('region', { name: 'Cavolo nero' })).getByRole('textbox', { name: 'Peso di un pezzo' });
+    fireEvent.change(campo, { target: { value: '1.000' } });
+    fireEvent.blur(campo);
+    expect(screen.getByText('Cavolo nero passa a grammi: 1 pz = 1000 g.')).toBeInTheDocument();
+    fireEvent.click(avanti());
+    expect((onStato.mock.calls.at(-1)![0] as StatoRevisione).cambiUnita).toEqual({ 'i-cav': { tieni: false, pesoPezzo: 1000 } });
+  });
+});
+
+describe('pesoDaTesto (review T11, M6)', () => {
+  it('virgola decimale, punto delle migliaia con tre cifre, altrimenti punto decimale', () => {
+    expect(pesoDaTesto('1.000')).toBe(1000);
+    expect(pesoDaTesto('12.345')).toBe(12345);
+    expect(pesoDaTesto('1.000,5')).toBe(1000.5);
+    expect(pesoDaTesto('0,5')).toBe(0.5);
+    expect(pesoDaTesto('1.5')).toBe(1.5);
+    expect(pesoDaTesto('200')).toBe(200);
+    expect(pesoDaTesto('')).toBeNull();
+    expect(pesoDaTesto('0')).toBeNull();
+    expect(pesoDaTesto('abc')).toBeNull();
   });
 });

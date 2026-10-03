@@ -6,7 +6,7 @@ import type { DecisioneCambio, IngredienteProposto, PianoEstratto, StatoRevision
 import { SCELTA_NUOVO } from '@/domain/import/types';
 import {
   calcolaProposte, cambiDiretti, cambiUnita, diRipiego, esempioPiatto, esempioRiga, legataA, motiviBlocco, nomeProposto,
-  pesiProposte, sceltiIniziali, sezioniIniziali, valoreRipiego, type CambioUnita, type PesoProposta,
+  passoBloccato, pesiProposte, sceltiIniziali, sezioniIniziali, valoreRipiego, type CambioUnita, type PesoProposta,
 } from '@/domain/import/ingredienti';
 import { nomeAreaFrase } from '@/domain/aree';
 import { BloccoGruppo } from '@/components/pannello/pezzi';
@@ -95,7 +95,8 @@ function cambioDelPeso(p: IngredienteProposto, peso: PesoProposta): CambioUnita 
  * controllare» altrimenti. Un diretto con `da === a` (l'unità resta, alcune righe si convertono)
  * ha la Scheda solo se manca il peso. Il peso di una proposta nuova con righe in g e in pz si
  * scrive nella sua Scheda e si salva in `cambiUnita[alimento]`. Le sezioni si decidono
- * all'ingresso, coi cambi e i pesi, e non cambiano sotto il dito.
+ * all'ingresso, coi cambi e i pesi, e non cambiano sotto il dito: chi comincia dopo a bloccare (una
+ * proposta, o un cambio che diventa diretto) entra in «Da sistemare» e ci resta.
  */
 export function Ingredienti({ piano, stato, ingredientiEsistenti, repertorio = [], onStato }: Props) {
   const [ingredienti, setIngredienti] = useState<IngredienteProposto[]>(() => calcolaProposte(piano, stato, ingredientiEsistenti));
@@ -182,14 +183,32 @@ export function Ingredienti({ piano, stato, ingredientiEsistenti, repertorio = [
   const daSistemare = ingredienti.filter((p) => inDaSistemare.has(p.alimento));
   const daControllare = ingredienti.filter((p) => !inDaSistemare.has(p.alimento) && sezioni.daControllare.includes(p.alimento));
   const proposti = ingredienti.filter((p) => !inDaSistemare.has(p.alimento) && !sezioni.daControllare.includes(p.alimento));
-  const cambiDaSistemare = diretti.filter((c) => sezioniCambi.daSistemare.includes(c.ingredientId));
-  const cambiDaControllare = diretti.filter((c) => sezioniCambi.daControllare.includes(c.ingredientId));
+  // Lo stesso per i cambi (review T11, I1): un cambio che diventa diretto DOPO l'ingresso (una
+  // proposta scelta che torna «nuova» e lascia il cambio) entra nella sua sezione e ci resta: senza
+  // peso in «Da sistemare», col campo; col peso, se l'unità cambia, in «Da controllare».
+  const [cambiEntrati, setCambiEntrati] = useState<{ daSistemare: string[]; daControllare: string[] }>({ daSistemare: [], daControllare: [] });
+  const giaInSezione = (id: string) => sezioniCambi.daSistemare.includes(id) || sezioniCambi.daControllare.includes(id)
+    || cambiEntrati.daSistemare.includes(id) || cambiEntrati.daControllare.includes(id);
+  const nuoviCambiSenzaPeso = diretti.filter((c) => !giaInSezione(c.ingredientId) && c.pesoPezzo === null).map((c) => c.ingredientId);
+  const nuoviCambiConPeso = diretti.filter((c) => !giaInSezione(c.ingredientId) && c.pesoPezzo !== null && c.da !== c.a).map((c) => c.ingredientId);
+  if (nuoviCambiSenzaPeso.length > 0 || nuoviCambiConPeso.length > 0) {
+    setCambiEntrati({
+      daSistemare: [...cambiEntrati.daSistemare, ...nuoviCambiSenzaPeso],
+      daControllare: [...cambiEntrati.daControllare, ...nuoviCambiConPeso],
+    });
+  }
+  const cambiInDaSistemare = new Set([...sezioniCambi.daSistemare, ...cambiEntrati.daSistemare, ...nuoviCambiSenzaPeso]);
+  const cambiInDaControllare = new Set([...sezioniCambi.daControllare, ...cambiEntrati.daControllare, ...nuoviCambiConPeso]);
+  const cambiDaSistemare = diretti.filter((c) => cambiInDaSistemare.has(c.ingredientId));
+  const cambiDaControllare = diretti.filter((c) => cambiInDaControllare.has(c.ingredientId));
   // Il contatore conta TUTTO quello che blocca, anche fuori sezione: «Fatto» col Dock spento sarebbe falso.
   const ancoraBloccate = motivi.size + diretti.filter((c) => c.pesoPezzo === null).length;
   const libere = ingredienti.filter((p) => !legataA(p, ingredientiEsistenti, scelti));
   const ripieghi = libere.filter(diRipiego).length;
-  const bloccato = ancoraBloccate > 0;
-  const cambiVeri = diretti.filter((c) => c.da !== c.a).length;
+  // Una fonte sola per il Dock spento: la stessa funzione del dominio (review T11, M4).
+  const bloccato = passoBloccato(ingredienti, ingredientiEsistenti, scelti, cambi, pesi);
+  // Tutti i cambi veri, anche quelli dentro una proposta scelta su un ingrediente che hai (review T11, M1).
+  const cambiVeri = cambi.filter((c) => c.da !== c.a).length;
   const soloPeso = cambiDaSistemare.filter((c) => c.da === c.a).length;
 
   function esempioDi(c: CambioUnita): EsempioCambio {
