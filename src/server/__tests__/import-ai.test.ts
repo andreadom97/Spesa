@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PIANO_MENU_SETTIMANALE } from '@/domain/import/fixtures';
 import type { IndiceEstrazione, PaginaIndice } from '@/domain/import/indice';
 import { validaEsito } from '@/domain/import/valida';
+import { RispostaSenzaJsonError } from '@/server/anthropic';
 
 /**
  * Finto client Anthropic: `beta.messages.stream(params)` registra i parametri e risponde con
@@ -12,7 +13,7 @@ import { validaEsito } from '@/domain/import/valida';
 const finto = vi.hoisted(() => {
   type Usage = Record<string, number | null>;
   type Voce =
-    | { corpo: unknown; usage?: Usage }
+    | { corpo: unknown; usage?: Usage; stopReason?: string }
     | { errore: Error }
     | { perChiamata: (params: { messages: { content: { type: string; text?: string }[] }[] }) => unknown };
   const USO_DEFAULT: Usage = { input_tokens: 100, output_tokens: 50, cache_read_input_tokens: 30, cache_creation_input_tokens: 20 };
@@ -38,7 +39,8 @@ const finto = vi.hoisted(() => {
         const corpo = 'perChiamata' in voce ? voce.perChiamata(params as never) : voce.corpo;
         const usage = 'usage' in voce && voce.usage ? voce.usage : USO_DEFAULT;
         const testo = typeof corpo === 'string' ? corpo : JSON.stringify(corpo);
-        return { content: [{ type: 'text', text: testo }], usage };
+        const stop_reason = 'stopReason' in voce && voce.stopReason ? voce.stopReason : 'end_turn';
+        return { content: [{ type: 'text', text: testo }], usage, stop_reason };
       },
     };
   });
@@ -165,6 +167,14 @@ describe('estraiPiano (v1, una chiamata)', () => {
     await expect(estraiPiano(FOTO, 'claude-sonnet-5')).rejects.toThrow();
   });
 
+  it('senza JSON due volte → RispostaSenzaJsonError col motivo dello stop dell\'ultima risposta', async () => {
+    finto.stato.risposte.push({ corpo: '', stopReason: 'max_tokens' }, { corpo: '', stopReason: 'max_tokens' });
+    const errore = await estraiPiano(FOTO, 'claude-sonnet-5').catch((e: unknown) => e);
+    expect(errore).toBeInstanceOf(RispostaSenzaJsonError);
+    expect((errore as RispostaSenzaJsonError).stopReason).toBe('max_tokens');
+    expect(finto.stream).toHaveBeenCalledTimes(2);
+  });
+
   it('JSON malformato al primo colpo → ritenta una volta e riesce', async () => {
     finto.stato.risposte.push({ corpo: '{"a":[1,2' }, { corpo: '{"a":1}' });
     expect(await estraiPiano(FOTO, 'claude-sonnet-5')).toEqual({ a: 1 });
@@ -267,12 +277,12 @@ describe('estraiIndice ed estraiPagina', () => {
     expect(ind.messages[0].content[3].text).not.toBe(pag.messages[0].content[3].text);
   });
 
-  it('indice: max_tokens 4000, schema dedicato (indice | rifiuto), istruzione che numera le pagine 1..N', async () => {
+  it('indice: max_tokens 32000, schema dedicato (indice | rifiuto), istruzione che numera le pagine 1..N', async () => {
     finto.stato.risposte.push({ corpo: indice });
     const esito = await estraiIndice(files, 'claude-sonnet-5');
     const args = finto.stato.chiamate[0];
     expect(args.model).toBe('claude-sonnet-5');
-    expect(args.max_tokens).toBe(4000);
+    expect(args.max_tokens).toBe(32000);
     expect(args.betas).toContain('structured-outputs-2025-12-15');
     expect(args.output_config.format.type).toBe('json_schema');
     const schema = args.output_config.format.schema;
@@ -362,7 +372,7 @@ describe('estraiPianoAPagine', () => {
     finto.stato.risposte.push({ corpo: RIFIUTO });
     const esito = await estraiPianoAPagine(foto(3), 'claude-sonnet-5');
     expect(finto.stream).toHaveBeenCalledTimes(1);
-    expect(finto.stato.chiamate[0].max_tokens).toBe(4000);
+    expect(finto.stato.chiamate[0].max_tokens).toBe(32000);
     expect(esito.grezzo).toEqual(RIFIUTO);
     expect(esito.uso.chiamate).toBe(1);
   });

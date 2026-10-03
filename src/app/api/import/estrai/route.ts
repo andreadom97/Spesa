@@ -10,6 +10,7 @@ import {
   type FileEstrazione,
 } from '@/server/import-ai';
 import { dividiPdf, PdfIllegibileError, TroppePagineError } from '@/server/pdf-pagine';
+import { RispostaSenzaJsonError } from '@/server/anthropic';
 import { limiteImport30ggConfigurato, contaImportRecenti, registraImport } from '@/data/import-uso';
 
 // Un piano intero è un output lungo: il default Vercel troncherebbe la chiamata.
@@ -150,7 +151,11 @@ export async function POST(request: Request): Promise<Response> {
       }
       // Tutto il resto (modello, rete, Supabase su conteggio o registrazione): 502.
       // Un import non registrato non passa: il tetto dev'essere sempre vero.
-      console.error('import/estrai: estrazione fallita.', err instanceof Error ? err.name : 'errore');
+      if (err instanceof RispostaSenzaJsonError) {
+        console.error('import/estrai: estrazione fallita.', err.name, `stop=${err.stopReason}`);
+      } else {
+        console.error('import/estrai: estrazione fallita.', err instanceof Error ? err.name : 'errore');
+      }
       return Response.json({ errore: 'estrazione non riuscita, riprova' }, { status: 502 });
     }
   } else if (process.env.IMPORT_MOCK) {
