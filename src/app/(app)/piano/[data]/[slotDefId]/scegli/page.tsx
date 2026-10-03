@@ -341,6 +341,14 @@ export default function ScegliPiatto() {
   const [erroreSalva, setErroreSalva] = useState<string | null>(null);
   /** Il testo della ricerca: filtra le righe, non tocca la scelta (spec §A.3). */
   const [ricerca, setRicerca] = useState('');
+  // Da dove si è arrivati (spec Oggi §B.6): `?da=oggi` torna a Oggi. Letto da window.location e
+  // non da useSearchParams, come `?da=piano` nell'editor del Piatto: niente confine <Suspense>.
+  const [daOggi, setDaOggi] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDaOggi(new URLSearchParams(window.location.search).get('da') === 'oggi');
+  }, []);
+  const ritorno = daOggi ? '/oggi' : '/piano';
 
   useEffect(() => {
     let vivo = true;
@@ -449,7 +457,7 @@ export default function ScegliPiatto() {
       // scrive `fonte_stato` — scegliere un piatto non è di per sé una
       // transizione di stato casa/fuori.
       await aggiornaSlot(dati.slotId, patch, 'correzione');
-      tornaA(router, '/piano');
+      tornaA(router, ritorno);
     } catch (errore) {
       console.error('scegli: salvataggio della scelta fallito.', errore);
       setErroreSalva('Non siamo riusciti a salvare la scelta. Riprova.');
@@ -458,7 +466,9 @@ export default function ScegliPiatto() {
   }
 
   const { minuscolo, numero } = etichettaGiorno(dataParam);
-  const indietro: Indietro = { etichetta: 'PIANO', ariaLabel: 'Torna al piano', onTorna: () => tornaA(router, '/piano') };
+  const indietro: Indietro = daOggi
+    ? { etichetta: 'OGGI', ariaLabel: 'Torna a oggi', onTorna: () => tornaA(router, '/oggi') }
+    : { etichetta: 'PIANO', ariaLabel: 'Torna al piano', onTorna: () => tornaA(router, '/piano') };
 
   if (errore) {
     return (

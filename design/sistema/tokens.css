@@ -1,4 +1,5 @@
-/* Dispesa — token del design system v3, aggiornato il 20/09/2026 e il 25/09/2026 (fase 5: tab bar a tre voci, pannello).
+/* Dispesa — token del design system v3, aggiornato il 20/09/2026, il 25/09/2026 (fase 5: tab bar a tre voci, pannello)
+   e il 03/10/2026 (Oggi: tab bar a quattro voci, 338/274, e i nove token del poster).
    (v2 approvata il 17/09/2026; la v3 incorpora il ridisegno del 19/09 e le
    risposte di Andrea del 20/09.)
    Fonte dei neutri, delle aree e dei font: src/app/globals.css.
@@ -123,18 +124,18 @@
   --maschera-meta: 74px;              /* dove la maschera di scorrimento passa al 55% */
   --maschera-zero: 30px;              /* dove la maschera di scorrimento si annulla */
 
-  /* ---------- Ridisegno 19-20/09, rivista il 25/09: tab bar flottante, tre voci ---------- */
-  --barra-larga: 304px;               /* larghezza della pillola a barra grande, centrata: 3 voci da 96 + 2 gap da 2 + 2 × 6 di padding */
-  --barra-larga-giu: 244px;           /* larghezza a barra ridotta: 3 × 76 + 2 × 2 + 2 × 6. Si anima width, non più left/right */
+  /* ---------- Ridisegno 19-20/09, rivista il 25/09 e il 03/10: tab bar flottante, quattro voci ---------- */
+  --barra-larga: 338px;               /* larghezza della pillola a barra grande, centrata: 4 voci da 80 + 3 gap da 2 + 2 × 6 di padding */
+  --barra-larga-giu: 274px;           /* larghezza a barra ridotta: 4 × 64 + 3 × 2 + 2 × 6. Si anima width, non più left/right */
   --barra-fondo: 22px;                /* distacco della pillola dal fondo dello schermo */
   --barra-alta: 84px;                 /* altezza della pillola a riposo */
   --barra-bassa: 66px;                /* altezza della pillola ridotta */
   --barra-voce: 72px;                 /* altezza della voce a riposo (bersaglio reale) */
   --barra-voce-giu: 54px;             /* altezza della voce a barra ridotta */
-  --barra-voce-larga: 96px;           /* larghezza della voce a barra grande (bersaglio 96 × 72) */
-  --barra-voce-larga-giu: 76px;       /* larghezza della voce a barra ridotta (76 × 54) */
+  --barra-voce-larga: 80px;           /* larghezza della voce a barra grande (bersaglio 80 × 72) */
+  --barra-voce-larga-giu: 64px;       /* larghezza della voce a barra ridotta (64 × 54) */
   --barra-padding: 6px;               /* padding interno della pillola */
-  --barra-gap: 2px;                   /* gap tra le tre voci */
+  --barra-gap: 2px;                   /* gap tra le quattro voci */
   --barra-icona: 26px;                /* taglia delle icone di navigazione, piene */
   --barra-segno: 26px;                /* altezza fissa del contenitore del segno: allinea icone e marchio */
   --barra-attiva: rgba(20, 22, 58, 0.07);  /* fondo della voce attiva, e del menù utente */
@@ -167,4 +168,15 @@
   --riga-impostazione: 56px;          /* riga di impostazione: altezza minima */
   --coda-scroll: 140px;               /* coda di scorrimento senza dock: 84 + 22 + 34 */
   --coda-scroll-dock: 226px;          /* coda di scorrimento col dock: 114 + 8 + 54 + 40 di dissolvenza + 10 (era 194 col guscio) */
+
+  /* ---------- Oggi (03/10) ---------- */
+  --poster-testo-2: rgba(255, 255, 255, 0.72);  /* poster del pasto: etichetta mono in alto (spec Oggi §B.4) */
+  --poster-testo-3: rgba(255, 255, 255, 0.66);  /* poster del pasto: sottotitolo mono sotto il nome e etichetta della banda */
+  --poster-tasto: rgba(255, 255, 255, 0.12);    /* poster del pasto: fondo delle pillole CAMBIA, COM'È ANDATA, RIMETTI */
+  --poster-bordo: rgba(255, 255, 255, 0.22);    /* poster del pasto: bordo 1 px di quelle pillole */
+  --poster-filo: rgba(255, 255, 255, 0.14);     /* poster del pasto: filo 1 px sopra la banda delle alternative */
+  --poster-casella: rgba(255, 255, 255, 0.45);  /* poster del pasto: caselle della giornata e puntini del carosello */
+  --tinta-neutra: rgba(20, 22, 58, 0.06);       /* pillola di stato neutra (TUTTO IN CASA) e fondo del tasto SCAMBIA spento */
+  --tinta-avviso: rgba(154, 92, 0, 0.10);       /* pillola di stato d'avviso (MANCA: …), testo in --avviso */
+  --tinta-freddo: rgba(47, 111, 191, 0.12);     /* pillola SCONGELA, testo in --freddo */
 }

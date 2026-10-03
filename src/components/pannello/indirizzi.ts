@@ -28,7 +28,7 @@ export interface OriginePannello {
 /**
  * sessionStorage può mancare o lanciare (Safari in navigazione privata, dati del sito
  * bloccati): ogni accesso sta dentro un try, e senza memoria il pannello torna in cima sopra
- * la Lista.
+ * Oggi.
  */
 function memoria(): Storage | null {
   try {
@@ -42,7 +42,7 @@ export function salvaOrigine(o: OriginePannello): void {
   try {
     memoria()?.setItem(CHIAVE_ORIGINE, JSON.stringify(o));
   } catch {
-    // Senza memoria il ritorno va in cima sopra la Lista.
+    // Senza memoria il ritorno va in cima sopra Oggi.
   }
 }
 
@@ -67,7 +67,7 @@ export function leggiOrigine(): OriginePannello | null {
 /** Dove porta la freccia di una pagina piena aperta dal pannello: il pannello sopra l'origine. */
 export function indirizzoRitorno(): string {
   const o = leggiOrigine();
-  return o ? indirizzoPannello(o.pathname, o.sotto) : indirizzoPannello('/lista', 'cima');
+  return o ? indirizzoPannello(o.pathname, o.sotto) : indirizzoPannello('/oggi', 'cima');
 }
 
 export function salvaScrollPannello(dest: DestinazionePannello, px: number): void {

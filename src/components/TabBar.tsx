@@ -6,7 +6,15 @@ import { Marchio } from './Marchio';
 import { useAreeMancantiCorrenti } from './marchio-context';
 
 /** Icone piene a 26 (DESIGN.md v3 §6): copiate da design/sistema/schermate/lista.html. */
-const ICONE: Record<'piano' | 'dispensa', (c: string) => React.ReactNode> = {
+const ICONE: Record<'oggi' | 'piano' | 'dispensa', (c: string) => React.ReactNode> = {
+  // Il piatto visto dall'alto (spec Oggi §A.2): non è usato altrove in src/.
+  oggi: (c) => (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" fill={c} />
+      <circle cx="12" cy="12" r="4.1" fill="#fff" opacity=".92" />
+    </svg>
+  ),
+  // piano e dispensa: le due icone di oggi, invariate.
   piano: (c) => (
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <rect x="3" y="4.5" width="18" height="15.5" rx="4.4" fill={c} />
@@ -23,19 +31,19 @@ const ICONE: Record<'piano' | 'dispensa', (c: string) => React.ReactNode> = {
   ),
 };
 
-/** Tre voci dalla fase 5 (spec §G.1): Piatti si apre dal pannello delle Impostazioni. */
+/** Quattro voci dal 03/10 (spec Oggi §A.2): Oggi è la prima e la pagina d'ingresso. */
 const VOCI = [
+  { href: '/oggi', etichetta: 'Oggi', icona: 'oggi' as const },
   { href: '/lista', etichetta: 'Lista' },
   { href: '/piano', etichetta: 'Piano', icona: 'piano' as const },
   { href: '/dispensa', etichetta: 'Dispensa', icona: 'dispensa' as const },
 ];
 
 /**
- * Tab bar flottante: pillola bianca larga 304, centrata, alta 84, con tre voci
- * 96 × 72 (flex, con un tetto di 96: con tre voci è esattamente quello). Quando
- * il Guscio segna data-barra="ridotta" scende a 244 × 66 con voci 76 × 54: le
- * etichette si nascondono, la voce resta cliccabile. Si anima la larghezza, non
- * più `left/right` (spec fase 5 §G.1).
+ * Tab bar flottante: pillola bianca larga 338, centrata, alta 84, con quattro voci
+ * 80 × 72 (flex: 4 × 80 + 3 × 2 + 2 × 6 = 338). Quando il Guscio segna
+ * data-barra="ridotta" scende a 274 × 66 con voci 64 × 54: le etichette si nascondono,
+ * la voce resta cliccabile. Si anima la larghezza, non più `left/right` (spec Oggi §A.2).
  * La voce Lista porta il Marchio, che riflette le aree in cui manca ancora
  * qualcosa. Su Piatti, su Importa e nell'editor dell'ingrediente nessuna voce
  * è attiva: nessun href è prefisso di quei percorsi. Misure e movimento in

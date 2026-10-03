@@ -57,7 +57,7 @@ describe('PILLOLA_DA e destinazioneDa', () => {
   it('lista e piano tornano alla pagina, impostazioni al pannello sopra l\'origine', () => {
     expect(destinazioneDa('lista')).toBe('/lista');
     expect(destinazioneDa('piano')).toBe('/piano');
-    expect(destinazioneDa('impostazioni')).toBe('/lista?impostazioni=cima');
+    expect(destinazioneDa('impostazioni')).toBe('/oggi?impostazioni=cima');
     salvaOrigine({ pathname: '/dispensa', sotto: 'cima' });
     expect(destinazioneDa('impostazioni')).toBe('/dispensa?impostazioni=cima');
   });

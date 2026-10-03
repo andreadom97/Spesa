@@ -173,7 +173,7 @@ export function Casa() {
     setErroreEntrata(null);
     try {
       await entraInCasa(scritto);
-      ricaricaSu('/lista');
+      ricaricaSu('/oggi');
     } catch (e) {
       console.error('pannello/casa: entrata nella casa fallita.', e);
       setErroreEntrata(messaggioEntrata(e));

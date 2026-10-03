@@ -178,8 +178,8 @@ describe('Casa condivisa', () => {
     }
   });
 
-  // Migra «ENTRA maiuscola il codice, chiama entraInCasa e ricarica su /lista».
-  it('ENTRA maiuscola il codice, si accende a 8 caratteri, chiama entraInCasa e ricarica su /lista', async () => {
+  // Migra «ENTRA maiuscola il codice, chiama entraInCasa e ricarica su /lista»: dopo la spec Oggi §A.3 si ricarica su /oggi.
+  it('ENTRA maiuscola il codice, si accende a 8 caratteri, chiama entraInCasa e ricarica su /oggi', async () => {
     vi.mocked(entraInCasa).mockResolvedValue(undefined);
     montaPannello('casa');
     const campo = await screen.findByLabelText('Ho un codice');
@@ -194,7 +194,7 @@ describe('Casa condivisa', () => {
     expect(campo).toHaveAttribute('maxlength', '8');
     fireEvent.click(screen.getByRole('button', { name: 'ENTRA' }));
     await waitFor(() => expect(entraInCasa).toHaveBeenCalledWith('K7P3QX2M'));
-    await waitFor(() => expect(assign).toHaveBeenCalledWith('/lista'));
+    await waitFor(() => expect(assign).toHaveBeenCalledWith('/oggi'));
   });
 
   // Migra «con un codice sbagliato mostra il messaggio della funzione SQL (P0001) così com’è».

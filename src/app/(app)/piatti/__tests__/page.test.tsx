@@ -213,11 +213,11 @@ describe('la pillola indietro (spec fase 5 §G.2)', () => {
     expect(replace).toHaveBeenCalledWith('/dispensa?impostazioni=cima');
   });
 
-  it('senza origine salvata IMPOSTAZIONI apre il pannello sopra la Lista', async () => {
+  it('senza origine salvata IMPOSTAZIONI apre il pannello sopra Oggi', async () => {
     mockRepertorio([PIATTO_PRANZO]);
     render(<Piatti />);
     fireEvent.click(await screen.findByRole('button', { name: 'Torna alle impostazioni' }));
-    expect(replace).toHaveBeenCalledWith('/lista?impostazioni=cima');
+    expect(replace).toHaveBeenCalledWith('/oggi?impostazioni=cima');
   });
 
   it('da lista: LISTA torna a /lista, e il valore resta per il ritorno dall\'editor', async () => {
