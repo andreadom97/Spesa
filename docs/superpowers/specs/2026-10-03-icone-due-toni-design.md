@@ -71,7 +71,9 @@ già tinto, quindi serve lo stato nuovo `tinta`.
   per gruppo e non per segno, perché è così che sono costruite le sei icone approvate nel
   pilota. I fori stanno in un gruppo come cerchi a tratto, non come buchi nella sagoma.
   L'occhio del pesce resta nel contorno `d`, come oggi.
-- **`rot`**: invariato e applicato a tutti e tre (oggi lo usa solo la pasta).
+- **`rot`**: invariato e applicato a sagoma, contorno e dettagli. Oggi lo usano dieci chiavi, fra
+  cui la pasta. Il tratteggio e lo spostamento dell'ombra restano fuori dalla rotazione: l'ombra
+  sta sempre in basso a destra e le righe sono sempre a 45°.
 
 **La grammatica del 26/09 resta**, con due modifiche:
 - i segni interni passano da tre segni a cinque gruppi;
@@ -79,8 +81,8 @@ già tinto, quindi serve lo stato nuovo `tinta`.
 
 Restano: sagoma fra 2 e 22, tratto identificativo fuori dalla fascia tagliata (x o y oltre
 19,2), riflesso ad arco a sinistra sugli oggetti tondi (coerente con l'ombra in basso a destra:
-la luce viene da in alto a sinistra), oggetti allungati in diagonale, nessun foro sotto raggio
-1,6 salvo l'occhio del pesce.
+la luce viene da in alto a sinistra), oggetti allungati in diagonale. La regola sui fori cambia:
+con il dettaglio a 0,5 il raggio minimo scende da 1,6 a **0,3** (i pori del pane del pilota).
 
 **Le sei del pilota** (pomodoro, carota, pesce, formaggio, pane, latte) hanno già `sil` e i
 dettagli arricchiti in `modello-mix.html`. Si portano come le hai viste nella colonna
