@@ -129,9 +129,9 @@ describe('gruppiRighe', () => {
 
   it('una quantità proposta dall\'AI è un gruppo «inferita», già fatto', () => {
     const piano = structuredClone(PIANO_GIORNATA_UNICA);
-    piano.settimane[0].giorni[0].pasti[0].piatti[0].righeFisse.push({ alimento: 'sale', quantita: 2, unita: 'g', quantitaInferita: true, testoOriginale: 'sale fino' });
+    piano.settimane[0].giorni[0].pasti[0].piatti[0].righeFisse.push({ alimento: 'zucchero', quantita: 2, unita: 'g', quantitaInferita: true, testoOriginale: 'zucchero fino' });
     const gruppi = gruppiRighe(piano, { ...STATO, mappaturaPasti: { pranzo: 's-pranzo' } });
-    expect(gruppi).toEqual([expect.objectContaining({ chiave: 'sale|sale fino', tipo: 'inferita', stato: 'fatto', quantita: 2, unita: 'g' })]);
+    expect(gruppi).toEqual([expect.objectContaining({ chiave: 'zucchero|zucchero fino', tipo: 'inferita', stato: 'fatto', quantita: 2, unita: 'g' })]);
     expect(provenienza(piano, gruppi[0])).toBe('Ogni giorno · pranzo · Pasta al pomodoro');
   });
 
@@ -160,7 +160,7 @@ describe('gruppiRighe', () => {
     const lunedi = structuredClone(piano.settimane[0].giorni[0].pasti[0]);
     lunedi.piatti[0].righeFisse[0] = { ...lunedi.piatti[0].righeFisse[0], quantita: 3, quantitaInferita: false };
     const gruppi = gruppiRighe(piano, { ...STATO, mappaturaPasti: { cena: 's-cena' }, correzioni: { '1-0-0': lunedi } });
-    expect(gruppi).toEqual([expect.objectContaining({ chiave: 'sale|sale fino', tipo: 'inferita', stato: 'fatto', quantita: null, unita: 'g', unitaFissa: null })]);
+    expect(gruppi).toEqual([expect.objectContaining({ chiave: 'zucchero|zucchero fino', tipo: 'inferita', stato: 'fatto', quantita: null, unita: 'g', unitaFissa: null })]);
   });
 
   it('I2: lo stesso gruppo risolto in pz e in g è un dubbio aperto, ha la proposta dell\'unità più frequente, e pronto è vero', () => {
@@ -267,7 +267,7 @@ function cenaOlive(piano: PianoEstratto, giorno: number, quantita: number, unita
   return pasto;
 }
 
-/** Una settimana di `giorni` giorni: ogni giorno una cena con la Zuppa e «sale fino», 2 g proposti dall'AI. */
+/** Una settimana di `giorni` giorni: ogni giorno una cena con la Zuppa e «zucchero fino», 2 g proposti dall'AI. */
 function pianoConSale(giorni = 2): PianoEstratto {
   return {
     archetipo: 'menu_settimanale', fonte: 'test', noteEstrazione: [],
@@ -276,7 +276,7 @@ function pianoConSale(giorni = 2): PianoEstratto {
       giorni: Array.from({ length: giorni }, (_, g) => ({
         giorno: g,
         titolo: null,
-        pasti: [{ nomeOriginale: 'cena', piatti: [{ nome: 'Zuppa', descrizione: null, componenti: [], righeFisse: [{ alimento: 'sale', quantita: 2, unita: 'g' as const, quantitaInferita: true, testoOriginale: 'sale fino' }] }] }],
+        pasti: [{ nomeOriginale: 'cena', piatti: [{ nome: 'Zuppa', descrizione: null, componenti: [], righeFisse: [{ alimento: 'zucchero', quantita: 2, unita: 'g' as const, quantitaInferita: true, testoOriginale: 'zucchero fino' }] }] }],
       })),
     }],
   };
@@ -295,7 +295,7 @@ describe('unitaNota', () => {
  * Due dubbi dello stesso alimento con testi diversi, senza nessun'altra riga con l'unità: a pranzo
  * senza quantità, a cena `cena` (di default anche lei senza quantità).
  */
-function pianoConDueSale(cena: RigaEstratta = { alimento: 'sale', quantita: null, unita: null, quantitaInferita: false, testoOriginale: 'un pizzico di sale' }): PianoEstratto {
+function pianoConDueSale(cena: RigaEstratta = { alimento: 'zucchero', quantita: null, unita: null, quantitaInferita: false, testoOriginale: 'un pizzico di zucchero' }): PianoEstratto {
   return {
     archetipo: 'giornata_unica', fonte: 'test', noteEstrazione: [],
     settimane: [{
@@ -304,7 +304,7 @@ function pianoConDueSale(cena: RigaEstratta = { alimento: 'sale', quantita: null
         giorno: 0,
         titolo: null,
         pasti: [
-          { nomeOriginale: 'pranzo', piatti: [{ nome: 'Pasta', descrizione: null, componenti: [], righeFisse: [{ alimento: 'sale', quantita: null, unita: null, quantitaInferita: false, testoOriginale: 'sale fino' }] }] },
+          { nomeOriginale: 'pranzo', piatti: [{ nome: 'Pasta', descrizione: null, componenti: [], righeFisse: [{ alimento: 'zucchero', quantita: null, unita: null, quantitaInferita: false, testoOriginale: 'zucchero fino' }] }] },
           { nomeOriginale: 'cena', piatti: [{ nome: 'Zuppa', descrizione: null, componenti: [], righeFisse: [cena] }] },
         ],
       }],
@@ -316,7 +316,7 @@ describe('unitaFissa fra due gruppi irrisolti dello stesso alimento', () => {
   // Dal Task 12b due righe senza quantità dello stesso alimento sono un gruppo solo: i due gruppi
   // irrisolti dello stesso alimento sono una riga senza quantità e una a cucchiaini.
   it('nessuno dei due fissa l\'unità dell\'altro, anche dopo aver risolto uno dei due', () => {
-    const piano = pianoConDueSale({ alimento: 'sale', quantita: 1, unita: 'cucchiaino', quantitaInferita: false, testoOriginale: '1 cucchiaino di sale' });
+    const piano = pianoConDueSale({ alimento: 'zucchero', quantita: 1, unita: 'cucchiaino', quantitaInferita: false, testoOriginale: '1 cucchiaino di zucchero' });
     const gruppi = gruppiRighe(piano, STATO);
     expect(gruppi).toHaveLength(2);
     expect(gruppi.every((g) => g.unitaFissa === null)).toBe(true);
@@ -325,7 +325,7 @@ describe('unitaFissa fra due gruppi irrisolti dello stesso alimento', () => {
     cenaRisolta.piatti[0].righeFisse[0] = { ...cenaRisolta.piatti[0].righeFisse[0], quantita: 1, unita: 'pz' };
     const stato = { ...STATO, correzioni: { '1-0-1': cenaRisolta } };
     const gruppiDopo = gruppiRighe(piano, stato);
-    expect(gruppiDopo.find((g) => g.chiave === 'sale|1 cucchiaino di sale')).toMatchObject({ stato: 'fatto', quantita: 1, unita: 'pz' });
+    expect(gruppiDopo.find((g) => g.chiave === 'zucchero|1 cucchiaino di zucchero')).toMatchObject({ stato: 'fatto', quantita: 1, unita: 'pz' });
     expect(gruppiDopo.every((g) => g.unitaFissa === null)).toBe(true);
   });
 });
@@ -525,9 +525,20 @@ describe('8c: il quanto basta non è un dubbio (spec §B)', () => {
   });
 
   it('senza quantità e senza q.b. resta un dubbio senza proposta', () => {
-    const piano = pianoUnPasto([senza('un pizzico di sale', 'sale')]);
+    // Non una spezia: per il sale, le erbe e il pepe senza quantità vale il q.b. (correzione 8c-bis A).
+    const piano = pianoUnPasto([senza('un pizzico di zucchero', 'zucchero')]);
     expect(gruppiRighe(piano, STATO_PRANZO)).toEqual([expect.objectContaining({ tipo: 'irrisolta', stato: 'aperto', proposta: null })]);
     expect(pronto(piano, STATO_PRANZO, SLOTS)).toBe(false);
+  });
+
+  it('una spezia senza quantità non è un dubbio, né in Controlla né da inferire (correzione 8c-bis A)', () => {
+    const piano = pianoUnPasto([
+      senza('Sale', 'sale'),
+      senza('Cannella se ti va', 'cannella'),
+      { alimento: 'origano', quantita: 1, unita: 'cucchiaino', quantitaInferita: true, testoOriginale: 'Origano 1 cucchiaino' },
+    ]);
+    expect(gruppiRighe(piano, STATO_PRANZO)).toEqual([]);
+    expect(pronto(piano, STATO_PRANZO, SLOTS)).toBe(true);
   });
 
   it('un q.b. con 2 g stimati dal lettore resta q.b.: niente gruppo «inferita» (correzione S1)', () => {
@@ -887,9 +898,9 @@ describe('Task 12b: le domande senza quantità si raggruppano per alimento', () 
   });
 
   it('il q.b. resta fuori e non riceve proposte', () => {
-    const p = pianoAPranzi([[senza('sale q.b.', 'sale')], [senza('un pizzico di sale', 'sale')], [senza('sale fino', 'sale')]]);
+    const p = pianoAPranzi([[senza('sale q.b.', 'sale')], [senza('un pizzico di zucchero', 'zucchero')], [senza('zucchero fino', 'zucchero')]]);
     const gruppi = gruppiRighe(p, STATO_PRANZO);
-    expect(gruppi).toEqual([expect.objectContaining({ chiave: 'sale|un pizzico di sale', tipo: 'irrisolta', proposta: null })]);
+    expect(gruppi).toEqual([expect.objectContaining({ chiave: 'zucchero|un pizzico di zucchero', tipo: 'irrisolta', proposta: null })]);
     expect(gruppi[0].occorrenze.map((o) => o.pasto)).toEqual(['1-1-0', '1-2-0']);
     const risposto = rispondiGruppo(p, STATO_PRANZO, gruppi[0].chiave, 1, 'g');
     expect(rigaDel(p, risposto, 0)).toEqual(senza('sale q.b.', 'sale'));
@@ -944,7 +955,7 @@ describe('differenziale Task 12b: dubbi.ts contro dubbi-8c-prima', () => {
     ]), STATO_PRANZO, []],
     [pianoUnPasto([{ alimento: 'patate', quantita: 2, unita: 'pz', quantitaInferita: false, testoOriginale: '2 patate' }, senza('patate lesse', 'patate')]), STATO_PRANZO, []],
     [pianoUnPasto([{ alimento: 'miele', quantita: 1, unita: 'cucchiaio', quantitaInferita: false, testoOriginale: '1 cucchiaio di miele' }]), STATO_PRANZO, [mieleAPezzi]],
-    [pianoConDueSale({ alimento: 'sale', quantita: 1, unita: 'cucchiaino', quantitaInferita: false, testoOriginale: '1 cucchiaino di sale' }), STATO, []],
+    [pianoConDueSale({ alimento: 'zucchero', quantita: 1, unita: 'cucchiaino', quantitaInferita: false, testoOriginale: '1 cucchiaino di zucchero' }), STATO, []],
   ];
 
   it('pronto, i gruppi, CONFERMA e le risposte coincidono su ogni caso', () => {
@@ -973,7 +984,7 @@ describe('differenziale Task 12b: dubbi.ts contro dubbi-8c-prima', () => {
     // Prima una risposta lasciava aperto l'altro testo; servivano due risposte per lo stesso stato.
     const unaPrima = prima12b.rispondiGruppo(piano, STATO, gruppi[0].chiave, 1, 'pz');
     expect(prima12b.gruppiRighe(piano, unaPrima).filter((g) => g.stato === 'aperto')).toHaveLength(1);
-    expect(risposto).toEqual(prima12b.rispondiGruppo(piano, unaPrima, 'sale|un pizzico di sale', 1, 'pz'));
+    expect(risposto).toEqual(prima12b.rispondiGruppo(piano, unaPrima, 'zucchero|un pizzico di zucchero', 1, 'pz'));
   });
 
   it('con le zucchine in tre testi: un gruppo invece di tre, e CONFERMA scrive le stesse righe dopo una risposta', () => {

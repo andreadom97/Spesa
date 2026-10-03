@@ -73,6 +73,28 @@ const VOCI: VoceFormato[] = [
   { chiave: 'crackers', nome: 'Crackers', unitaBase: 'g', area: 'dispensa', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 250 },
 ];
 
+/**
+ * Spezie, erbe, sale e pepe (correzione 8c-bis A, prove dal telefono del 03/10): si usano «quanto
+ * basta», senza grammatura. Chiavi già normalizzate. Lo zenzero fresco si compra a grammi, quindi
+ * c'è solo «zenzero in polvere».
+ */
+const SPEZIE = [
+  'sale', 'pepe', 'cannella', 'origano', 'basilico', 'prezzemolo', 'rosmarino', 'timo', 'salvia', 'alloro',
+  'maggiorana', 'menta', 'aneto', 'erba cipollina', 'curcuma', 'paprika', 'peperoncino', 'noce moscata',
+  'zenzero in polvere', 'curry', 'cumino', 'coriandolo', 'chiodi di garofano', 'vaniglia', 'zafferano',
+  'semi di finocchio', 'spezie', 'erbe aromatiche', 'aromi',
+];
+
+/**
+ * Vero se l'alimento è una spezia o un'erba: la chiave sta SOLO in testa al nome e per parole intere
+ * («sale fino», «pepe nero», «cannella in polvere» sì; «salmone», «salsa di pomodoro», «peperoni»,
+ * «pesto alla genovese», «pane alle erbe» no), come `categoriaDi`.
+ */
+export function eSpezia(alimento: string): boolean {
+  const norm = normalizza(alimento).replace(/['’]/g, ' ').replace(/\s+/g, ' ');
+  return SPEZIE.some((chiave) => norm === chiave || norm.startsWith(`${chiave} `));
+}
+
 /** Vero se `chiave` compare in `norm` come sequenza di parole intere: «melanzane» non contiene la parola «mela». */
 function contieneParole(norm: string, chiave: string): boolean {
   return ` ${norm} `.includes(` ${chiave} `);

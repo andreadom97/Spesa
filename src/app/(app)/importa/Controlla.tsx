@@ -15,6 +15,7 @@ import { SelettoreFoglio } from '@/components/SelettoreFoglio';
 import { FoglioDalBasso } from '@/components/FoglioDalBasso';
 import { DialogoConferma } from '@/components/DialogoConferma';
 import { Dock } from '@/components/Dock';
+import { ordinaPastiPerSlot, posizioniMedieNelGiorno } from '@/domain/import/mapping';
 import { useLivelliImporta } from './livelli';
 import { AVVISO_SENZA_PESO, AVVISO_SENZA_QUANTITA, AVVISO_UNITA_DIVERSE, FoglioGiorno, nomeGiorno } from './FoglioGiorno';
 import { TitoloSezione, capitalizza, nomePasto, plurale } from './sezione';
@@ -111,7 +112,9 @@ export function Controlla({ piano, stato, slotDefs, ingredientiEsistenti = [], o
   const irrisolti = gruppi.filter((g) => g.tipo === 'irrisolta');
   const inferiti = gruppi.filter((g) => g.tipo !== 'irrisolta');
   const pastiDaSistemare = voci.filter((v) => v.daSistemare);
-  const pastiAbbinati = voci.filter((v) => !v.daSistemare);
+  // «Dove vanno i pasti» nell'ordine della casa (slot, poi posizione nel giorno), non della dieta
+  // (correzione 8c-bis D, prove dal telefono del 03/10).
+  const pastiAbbinati = ordinaPastiPerSlot(voci.filter((v) => !v.daSistemare), slotDefs, posizioniMedieNelGiorno(piano));
   const aperti = pastiDaSistemare.filter((v) => v.slotDefId === null).length
     + irrisolti.filter((g) => g.stato === 'aperto' && g.proposta === null).length;
   const c = conteggi(piano, stato);

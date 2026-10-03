@@ -501,8 +501,16 @@ describe('traduciBozza — fase 8c', () => {
   });
 
   it('senza quantità e senza q.b. ferma tutto, come prima', () => {
-    expect(() => traduciBozza(pianoCon([riga('sale', null, null, 'un pizzico di sale')]), stato(), [ingrediente('i-sale', 'Sale', 'g')], [], OGGI))
-      .toThrow('Quantità non risolta per "un pizzico di sale"');
+    // Non una spezia: per sale e pepe senza quantità vale il q.b. (correzione 8c-bis A).
+    expect(() => traduciBozza(pianoCon([riga('zucchero', null, null, 'un pizzico di zucchero')]), stato(), [ingrediente('i-zucchero', 'Zucchero', 'g')], [], OGGI))
+      .toThrow('Quantità non risolta per "un pizzico di zucchero"');
+  });
+
+  it('una spezia senza quantità passa q.b., anche con una stima del lettore (correzione 8c-bis A)', () => {
+    const sale = ingrediente('i-sale', 'Sale', 'g');
+    expect(righe(traduciBozza(pianoCon([riga('sale', null, null, 'Sale')]), stato(), [sale], [], OGGI))).toEqual([{ ingredientId: 'i-sale', quantita: null, unita: 'g' }]);
+    const stimata: RigaEstratta = { alimento: 'sale', quantita: 1, unita: 'g', quantitaInferita: true, testoOriginale: 'Sale' };
+    expect(righe(traduciBozza(pianoCon([stimata]), stato(), [sale], [], OGGI))).toEqual([{ ingredientId: 'i-sale', quantita: null, unita: 'g' }]);
   });
 
   it('un q.b. con la quantità stimata dal lettore si scrive q.b.; una quantità trascritta resta (correzione S1)', () => {

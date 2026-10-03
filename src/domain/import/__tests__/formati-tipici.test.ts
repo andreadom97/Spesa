@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  proponi, origineProposta, arrotonda, classeCoerente, convertiCucchiai, convertiPezzi, numeroInParole,
+  eSpezia, proponi, origineProposta, arrotonda, classeCoerente, convertiCucchiai, convertiPezzi, numeroInParole,
   categoriaDi, pesoPezzo, porzioneTipica, quantitaInTesto, testoCambio, testoConversione,
 } from '../formati-tipici';
 import { unitaBaseDi } from '../types';
@@ -245,5 +245,30 @@ describe('i due valori (spec 8c, «Come si mostra una conversione»)', () => {
     expect(unitaBaseDi('g')).toBe('g');
     expect(unitaBaseDi('cucchiaio')).toBeNull();
     expect(unitaBaseDi(null)).toBeNull();
+  });
+});
+
+describe('eSpezia (correzione 8c-bis A, prove dal telefono del 03/10)', () => {
+  it('spezie, erbe, sale e pepe: la parola in testa, anche con un attributo dopo', () => {
+    for (const nome of ['Sale', 'sale fino', 'Sale iodato', 'Pepe nero', 'Cannella in polvere', 'Noce moscata', 'Basilico', 'Origano', 'Peperoncino', 'Erbe aromatiche', 'Zenzero in polvere', 'Chiodi di garofano', 'Semi di finocchio']) {
+      expect(eSpezia(nome), nome).toBe(true);
+    }
+  });
+
+  it('per parole intere: «salmone», «salsa», «salame», «peperoni» non sono spezie', () => {
+    for (const nome of ['Salmone', 'Salsa di pomodoro', 'Salame', 'Peperoni', 'Peperone', 'Pepino']) {
+      expect(eSpezia(nome), nome).toBe(false);
+    }
+  });
+
+  it('solo in testa: «pesto» e «pane alle erbe» no', () => {
+    expect(eSpezia('Pesto alla genovese')).toBe(false);
+    expect(eSpezia('Pane alle erbe')).toBe(false);
+    expect(eSpezia('Yogurt alla vaniglia')).toBe(false);
+  });
+
+  it('lo zenzero fresco si compra a grammi: non è una spezia', () => {
+    expect(eSpezia('Zenzero')).toBe(false);
+    expect(eSpezia('Zenzero fresco')).toBe(false);
   });
 });

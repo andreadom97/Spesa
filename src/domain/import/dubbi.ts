@@ -1,7 +1,7 @@
 import type { Ingredient, MealSlotDef, UnitaBase } from '@/domain/types';
 import type { PastoEstratto, PianoEstratto, RigaEstratta, StatoRevisione } from './types';
 import { chiavePasto, pastoEffettivo, unitaBaseDi } from './types';
-import { normalizza, proponiSlot, quantoBasta } from './mapping';
+import { normalizza, proponiSlot, quantoBasta, stessoNome } from './mapping';
 import { arrotonda, categoriaDi, convertiCucchiai, convertiPezzi, pesoPezzo, porzioneTipica, proponi, testoConversione } from './formati-tipici';
 
 /**
@@ -406,7 +406,7 @@ export function unitaDelGruppo(
 
 /** L'unità in cui va la riga: quella di un ingrediente che hai con lo stesso nome, poi quella di un'altra riga del piano. */
 function unitaVerso(piano: PianoEstratto, stato: StatoRevisione, alimento: string, chiave: string, esistenti: Ingredient[]): UnitaBase | null {
-  const esistente = esistenti.find((e) => normalizza(e.nome) === alimento);
+  const esistente = esistenti.find((e) => stessoNome(normalizza(e.nome), alimento));
   return esistente?.unitaBase ?? unitaNota(piano, stato, alimento, chiave);
 }
 
@@ -478,7 +478,7 @@ function propostaPer(
  * qui si salta, perché è solo una proposta.
  */
 function pesoScritto(stato: StatoRevisione, alimento: string, esistenti: Ingredient[]): number | null {
-  const esistente = esistenti.find((e) => normalizza(e.nome) === alimento);
+  const esistente = esistenti.find((e) => stessoNome(normalizza(e.nome), alimento));
   const scritti = [esistente ? stato.cambiUnita?.[esistente.id]?.pesoPezzo : undefined, stato.cambiUnita?.[alimento]?.pesoPezzo];
   return scritti.find((p): p is number => typeof p === 'number' && Number.isFinite(p) && p > 0) ?? null;
 }
