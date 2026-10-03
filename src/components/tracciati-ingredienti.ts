@@ -416,24 +416,26 @@ export const TRACCIATI: Partial<Record<ChiaveIcona, Tracciato>> = {
       'M17.6 9.4c.9.6 1.4 1.6 1.4 2.6',
     ],
   },
-  // ondata 1 (03/10, rivista): la braciola a rene, con la fascia di grasso lungo il dorso e l'osso nell'incavo; la testa di maiale non piaceva, la fetta dritta sembrava una presina
+  // ondata 1 (03/10, secondo giro): la braciola a «D», osso lungo il lato dritto con la testa tonda che esce dalla carne e lo sperone a T,
+  // fascia di grasso spessa lungo il lato tondo. Scartate: la braciola a rene (sembrava un fagiolo), la mezzaluna con l'osso a filo (un elmetto), la «D» in piedi (una presina)
   maiale: {
     rot: 'rotate(-30 12 12)',
-    sil: 'M4.2 10.4C4.6 7.6 7.6 6.4 11.2 6.6 15 6.8 18.4 6.6 20 9 21.2 11 20.6 14.4 18.4 16.2 16.6 17.6 14.6 17 13.6 15.8 12.8 14.8 11.6 14.6 10.4 15.4 8.6 16.8 6 17.4 4.8 15.8 3.8 14.6 3.9 12 4.2 10.4Z',
-    d: 'M4.2 10.4C4.6 7.6 7.6 6.4 11.2 6.6 15 6.8 18.4 6.6 20 9 21.2 11 20.6 14.4 18.4 16.2 16.6 17.6 14.6 17 13.6 15.8 12.8 14.8 11.6 14.6 10.4 15.4 8.6 16.8 6 17.4 4.8 15.8 3.8 14.6 3.9 12 4.2 10.4Z',
+    sil: 'M6.5 7.5H18.4C21.4 7.5 22.4 10 22.4 12.8 22.4 16.6 19.6 19.2 15.4 19.2 11.6 19.2 9.2 16.6 7.6 13.6 6.8 12.2 6.5 11 6.5 7.5ZM6.23 7.5H15.6A1.1 1.1 0 0 1 15.6 9.7H14.6V11.5A0.9 0.9 0 0 1 12.8 11.5V9.7H6.23A1.8 1.8 0 1 1 6.23 7.5Z',
+    d: 'M15.6 7.5H18.4C21.4 7.5 22.4 10 22.4 12.8 22.4 16.6 19.6 19.2 15.4 19.2 11.6 19.2 9.2 16.6 7.6 13.6 6.8 12.2 6.5 11 6.5 9.7M6.23 7.5H15.6A1.1 1.1 0 0 1 15.6 9.7H14.6V11.5A0.9 0.9 0 0 1 12.8 11.5V9.7H6.23A1.8 1.8 0 1 1 6.23 7.5Z',
     dd: [
-      'M5.4 10.6C5.8 8.6 8.2 7.7 11.2 7.8 14.6 8 17.6 7.8 18.9 9.6 19.8 11 19.5 13.6 17.8 15',
-      'M10.2 13.9C10.8 13.3 11.6 13 12.3 13 13 13 13.8 13.4 14.4 14.1 14.2 12.6 13.4 11.4 12.3 11.4S10.4 12.6 10.2 13.9Z',
+      'M18.2 9.5C19.8 9.6 20.4 11.2 20.4 12.8 20.4 15.4 18.4 17.2 15.4 17.2 12.6 17.2 10.8 15.2 9.4 12.8 8.8 11.8 8.5 10.8 8.5 9.7',
+      'M4.5 8.6A0.3 0.3 0 1 0 5.1 8.6A0.3 0.3 0 1 0 4.5 8.6',
     ],
   },
-  // ondata 1 (03/10, rivista): la costoletta, la noce di carne col grasso attaccata all'osso lungo e sottile; la testa d'agnello non piaceva, la noce tonda sembrava una padella
+  // ondata 1 (03/10, secondo giro): il carré, tre costolette con l'osso spolpato e la testa tonda che escono parallele dal blocco di carne,
+  // grasso in cima e le divisioni fra le costole. Scartate: la costoletta singola (un cucchiaio), le ossa dritte a pettine (una forchetta)
   agnello: {
-    rot: 'rotate(-40 12 12)',
-    sil: 'M13.6 11.4C11.6 10.6 11.2 7.8 8 7.6 5 7.4 3 9.6 3 12.2 3 15 5 16.8 8 16.6 10.8 16.4 11.6 13.6 13.6 12.6H20.8C21.4 12.6 21.8 12.4 21.8 12S21.4 11.4 20.8 11.4Z',
-    d: 'M13.6 11.4C11.6 10.6 11.2 7.8 8 7.6 5 7.4 3 9.6 3 12.2 3 15 5 16.8 8 16.6 10.8 16.4 11.6 13.6 13.6 12.6H20.8C21.4 12.6 21.8 12.4 21.8 12S21.4 11.4 20.8 11.4Z',
+    rot: 'rotate(8 12 12)',
+    sil: 'M21.4 15C21.4 13 20 12 18 12H16.81L13.427 6.146A0.95 0.95 0 1 0 12.215 6.846L15.192 12H13.41L10.027 6.146A0.95 0.95 0 1 0 8.815 6.846L11.792 12H10.01L6.627 6.146A0.95 0.95 0 1 0 5.415 6.846L8.392 12H8C6.2 12.2 5.2 13.4 5.2 15.4 5.2 18.4 8.4 19.8 13.2 19.8 18.4 19.8 21.4 18.2 21.4 15Z',
+    d: 'M21.4 15C21.4 13 20 12 18 12H16.81L13.427 6.146A0.95 0.95 0 1 0 12.215 6.846L15.192 12H13.41L10.027 6.146A0.95 0.95 0 1 0 8.815 6.846L11.792 12H10.01L6.627 6.146A0.95 0.95 0 1 0 5.415 6.846L8.392 12H8C6.2 12.2 5.2 13.4 5.2 15.4 5.2 18.4 8.4 19.8 13.2 19.8 18.4 19.8 21.4 18.2 21.4 15Z',
     dd: [
-      'M10.6 9.2C9.8 8.8 9 8.7 8 8.7 5.6 8.7 4.1 10.2 4.1 12.2',
-      'M6.6 13.8C6.4 12.6 7.2 11.6 8.4 11.6',
+      'M20.7 13.3H5.8',
+      'M14.3 13.3 17.48 18.8M10.9 13.3 14.08 18.8',
     ],
   },
   // ondata 1 (03/10): la conchiglia a ventaglio con le orecchiette alla cerniera
