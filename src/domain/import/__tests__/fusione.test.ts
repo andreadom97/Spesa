@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fondiPagine } from '../fusione';
+import { fondiPagine, unisciSettimaneDoppie } from '../fusione';
 import type { IndiceEstrazione, PaginaIndice } from '../indice';
 import { PIANO_MENU_SETTIMANALE } from '../fixtures';
 import { validaEsito } from '../valida';
@@ -261,5 +261,42 @@ describe('fondiPagine', () => {
     ]);
     expect(fuso).toEqual(PIANO_MENU_SETTIMANALE);
     expect(validaEsito({ tipo: 'piano', piano: fuso })).toEqual({ tipo: 'piano', piano: PIANO_MENU_SETTIMANALE });
+  });
+});
+
+describe('unisciSettimaneDoppie (Task 12d: la risposta di una pagina con la stessa settimana due volte)', () => {
+  it('due voci con lo stesso numero diventano una, i giorni nell\'ordine in cui compaiono', () => {
+    const { settimane, note } = unisciSettimaneDoppie([settimana(1, [giorno(1, 1)]), settimana(1, [giorno(1, 0)])]);
+    expect(settimane).toEqual([settimana(1, [giorno(1, 1), giorno(1, 0)])]);
+    expect(note).toEqual([]);
+  });
+
+  it('lo stesso giorno in due voci: i pasti si accodano, come fra due pagine', () => {
+    const { settimane } = unisciSettimaneDoppie([
+      settimana(1, [giorno(1, 0, [0])]),
+      settimana(2, [giorno(2, 0)]),
+      settimana(1, [giorno(1, 0, [1, 2]), giorno(1, 1)]),
+    ]);
+    expect(settimane).toEqual([settimana(1, [giorno(1, 0), giorno(1, 1)]), settimana(2, [giorno(2, 0)])]);
+  });
+
+  it('titolo: il primo non nullo vince, un secondo diverso torna come nota (stesso testo di fondiPagine)', () => {
+    const a = { giorno: 0, titolo: null, pasti: giorno(1, 0, [0]).pasti };
+    const b = { giorno: 0, titolo: 'Piano 1', pasti: giorno(1, 0, [1]).pasti };
+    const c = { giorno: 0, titolo: 'Piano 2', pasti: giorno(1, 0, [2]).pasti };
+    const { settimane, note } = unisciSettimaneDoppie([settimana(1, [a]), settimana(1, [b]), settimana(1, [c])]);
+    expect(settimane[0].giorni).toEqual([{ ...giorno(1, 0), titolo: 'Piano 1' }]);
+    expect(note).toEqual(['titolo diverso per settimana 1 giorno 0 ("Piano 2" invece di "Piano 1")']);
+  });
+
+  it('settimane già distinte: stesso contenuto, e gli input non cambiano', () => {
+    const ingresso = [settimana(1, [giorno(1, 0, [0])]), settimana(1, [giorno(1, 0, [1])]), settimana(2, [giorno(2, 0)])];
+    const prima = structuredClone(ingresso);
+    const { settimane } = unisciSettimaneDoppie(ingresso);
+    expect(ingresso).toEqual(prima);
+    settimane[0].giorni[0].pasti.push(giorno(1, 0, [2]).pasti[0]);
+    expect(ingresso).toEqual(prima);
+    expect(unisciSettimaneDoppie([settimana(1, [giorno(1, 0)]), settimana(2, [giorno(2, 0)])]).settimane)
+      .toEqual([settimana(1, [giorno(1, 0)]), settimana(2, [giorno(2, 0)])]);
   });
 });

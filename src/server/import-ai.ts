@@ -1,5 +1,5 @@
 import type Anthropic from '@anthropic-ai/sdk';
-import { fondiPagine } from '@/domain/import/fusione';
+import { fondiPagine, unisciSettimaneDoppie, type GiornoDaUnire, type SettimanaDaUnire } from '@/domain/import/fusione';
 import { validaIndice, type IndiceEstrazione, type PaginaIndice } from '@/domain/import/indice';
 import type { PianoEstratto } from '@/domain/import/types';
 import { PianoNonValidoError, validaPianoParziale } from '@/domain/import/valida';
@@ -452,11 +452,72 @@ async function limitaConcorrenza<T>(n: number, compiti: (() => Promise<T>)[]): P
   return risultati;
 }
 
+function oggetto(v: unknown): Record<string, unknown> | null {
+  return typeof v === 'object' && v !== null && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
+}
+
+/**
+ * Le settimane grezze nella forma che `unisciSettimaneDoppie` sa unire. Ogni condizione è anche
+ * di `validaPianoParziale`: una forma che non passa qui non passerebbe nemmeno lì, che dà
+ * l'errore preciso. Copia i giorni con `titolo` assente → null, come la validazione.
+ */
+function settimaneUnibili(settimane: unknown[]): SettimanaDaUnire<unknown>[] | null {
+  const unibili: SettimanaDaUnire<unknown>[] = [];
+  for (const s of settimane) {
+    const se = oggetto(s);
+    if (!se || typeof se.numero !== 'number' || !Array.isArray(se.giorni)) return null;
+    const giorni: GiornoDaUnire<unknown>[] = [];
+    for (const g of se.giorni) {
+      const gi = oggetto(g);
+      if (!gi || typeof gi.giorno !== 'number' || !Array.isArray(gi.pasti)) return null;
+      const titolo = gi.titolo ?? null;
+      if (titolo !== null && typeof titolo !== 'string') return null;
+      giorni.push({ giorno: gi.giorno, titolo, pasti: gi.pasti });
+    }
+    unibili.push({ numero: se.numero, giorni });
+  }
+  return unibili;
+}
+
+/**
+ * Task 12d: la risposta di una pagina riallineata all'indice PRIMA di `validaPianoParziale`,
+ * perché la validazione per pagina boccia doppioni e numeri che la fusione avrebbe unito o
+ * l'indice già chiarito. Nell'ordine:
+ * 1. se l'indice assegna alla pagina una sola settimana, ogni numero diverso (anche fuori
+ *    1..4) torna a quella;
+ * 2. le voci con lo stesso numero si uniscono (`unisciSettimaneDoppie`, le regole di
+ *    `fondiPagine`); le note sui titoli diversi si accodano a quelle della pagina;
+ * 3. se l'indice assegna alla pagina più settimane, un numero che non è fra quelle è un
+ *    errore che dice pagina e numeri, mai il contenuto.
+ * I giorni non si toccano. Una forma che non si sa unire passa intatta: la boccia la validazione.
+ */
+function settimaneRiallineate(piano: unknown, pagina: PaginaIndice): unknown {
+  const p = oggetto(piano);
+  if (!p || !Array.isArray(p.settimane)) return piano;
+  const attese = [...new Set(pagina.contenuto.map((v) => v.settimana))].sort((a, b) => a - b);
+  const riportate = attese.length !== 1 ? p.settimane : p.settimane.map((s) => {
+    const se = oggetto(s);
+    return se && typeof se.numero === 'number' && se.numero !== attese[0] ? { ...se, numero: attese[0] } : s;
+  });
+  const unibili = settimaneUnibili(riportate);
+  if (!unibili) return { ...p, settimane: riportate };
+  const { settimane, note } = unisciSettimaneDoppie(unibili);
+  if (attese.length > 1) {
+    const estranee = settimane.map((s) => s.numero).filter((n) => !attese.includes(n));
+    if (estranee.length > 0) {
+      const quali = estranee.length === 1 ? `settimana ${estranee[0]} non prevista` : `settimane ${estranee.join(', ')} non previste`;
+      throw new PianoNonValidoError(`pagina ${pagina.pagina}`, `${quali} dall'indice (attese: ${attese.join(', ')})`);
+    }
+  }
+  const noteEstrazione = Array.isArray(p.noteEstrazione) && note.length > 0 ? [...p.noteEstrazione, ...note] : p.noteEstrazione;
+  return { ...p, settimane, noteEstrazione };
+}
+
 /** L'esito grezzo di una pagina dev'essere un piano: un rifiuto qui contraddice l'indice, e non è un piano. */
-function pianoParzialeDa(grezzo: unknown, pagina: number): PianoEstratto {
-  const e = typeof grezzo === 'object' && grezzo !== null && !Array.isArray(grezzo) ? (grezzo as Record<string, unknown>) : null;
-  if (!e || e.tipo !== 'piano') throw new PianoNonValidoError(`pagina ${pagina}`, 'atteso un piano, non un rifiuto');
-  return validaPianoParziale(e.piano);
+function pianoParzialeDa(grezzo: unknown, pagina: PaginaIndice): PianoEstratto {
+  const e = oggetto(grezzo);
+  if (!e || e.tipo !== 'piano') throw new PianoNonValidoError(`pagina ${pagina.pagina}`, 'atteso un piano, non un rifiuto');
+  return validaPianoParziale(settimaneRiallineate(e.piano, pagina));
 }
 
 /**
@@ -494,7 +555,7 @@ export async function estraiPianoAPagine(
   if (daTrascrivere.length === 0) throw new PianoNonValidoError('indice.pagine', 'nessuna pagina con contenuto');
   const concorrenza = opzioni.concorrenza ?? concorrenzaImportConfigurata();
   const esiti = await limitaConcorrenza(concorrenza, daTrascrivere.map((p) => () => estraiPagina(files, p, indice, modello)));
-  const pagine = esiti.map((e, i) => ({ pagina: daTrascrivere[i].pagina, piano: pianoParzialeDa(e.grezzo, daTrascrivere[i].pagina) }));
+  const pagine = esiti.map((e, i) => ({ pagina: daTrascrivere[i].pagina, piano: pianoParzialeDa(e.grezzo, daTrascrivere[i]) }));
   const piano = fondiPagine(indice, pagine);
   return {
     grezzo: { tipo: 'piano', piano },

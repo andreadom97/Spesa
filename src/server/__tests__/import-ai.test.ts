@@ -539,4 +539,90 @@ describe('estraiPianoAPagine', () => {
     const valido = validaEsito(esito.grezzo);
     expect(valido).toEqual({ tipo: 'piano', piano: PIANO_MENU_SETTIMANALE });
   });
+
+  describe('Task 12d: le settimane frammentate di una pagina non fanno fallire l\'import', () => {
+    /** Il giorno (settimana, giorno) del fixture, eventualmente ristretto ai pasti indicati. */
+    function giornoFixture(settimana: number, giorno: number, pasti?: number[]) {
+      const g = structuredClone(PIANO_MENU_SETTIMANALE.settimane.find((x) => x.numero === settimana)!.giorni.find((x) => x.giorno === giorno)!);
+      if (pasti) g.pasti = pasti.map((i) => g.pasti[i]);
+      return g;
+    }
+    function rispostaPagina(settimane: { numero: number; giorni: unknown[] }[]) {
+      return { tipo: 'piano', piano: { archetipo: 'menu_settimanale', fonte: 'fixture sintetico', noteEstrazione: [], settimane } };
+    }
+
+    it('la stessa settimana due volte nella risposta di una pagina → una voce sola, piano valido', async () => {
+      // Pagina 1: lunedì spezzato in due voci «settimana 1», poi martedì in una terza; pagina 2: la settimana 2.
+      finto.stato.risposte.push(
+        { corpo: indiceDi([{ contenuto: [voce(1, 0), voce(1, 1)] }, { contenuto: [voce(2, 0)] }]) },
+        ...[1, 2].map(() => ({
+          perChiamata: (p: Parameters<typeof numeroPagina>[0]) => (numeroPagina(p) === 1
+            ? rispostaPagina([
+              { numero: 1, giorni: [giornoFixture(1, 0, [0])] },
+              { numero: 1, giorni: [giornoFixture(1, 0, [1, 2])] },
+              { numero: 1, giorni: [giornoFixture(1, 1)] },
+            ])
+            : pianoDelGiorno(2, 0)),
+        })),
+      );
+      const esito = await estraiPianoAPagine(foto(2), 'claude-sonnet-5');
+      expect(validaEsito(esito.grezzo)).toEqual({ tipo: 'piano', piano: PIANO_MENU_SETTIMANALE });
+    });
+
+    it('settimana 5 su una pagina che l\'indice assegna alla sola settimana 2 → riportata a 2', async () => {
+      finto.stato.risposte.push(
+        { corpo: indiceDi([{ contenuto: [voce(1, 0), voce(1, 1)] }, { contenuto: [voce(2, 0)] }]) },
+        ...[1, 2].map(() => ({
+          perChiamata: (p: Parameters<typeof numeroPagina>[0]) => (numeroPagina(p) === 1
+            ? rispostaPagina([{ numero: 1, giorni: [giornoFixture(1, 0), giornoFixture(1, 1)] }])
+            : rispostaPagina([{ numero: 5, giorni: [giornoFixture(2, 0)] }])),
+        })),
+      );
+      const esito = await estraiPianoAPagine(foto(2), 'claude-sonnet-5');
+      expect(validaEsito(esito.grezzo)).toEqual({ tipo: 'piano', piano: PIANO_MENU_SETTIMANALE });
+    });
+
+    it('numeri diversi su una pagina di una sola settimana → tutti riportati a quella, poi uniti', async () => {
+      finto.stato.risposte.push(
+        { corpo: indiceDi([{ contenuto: [voce(1, 0), voce(1, 1)] }, { contenuto: [voce(2, 0)] }]) },
+        ...[1, 2].map(() => ({
+          perChiamata: (p: Parameters<typeof numeroPagina>[0]) => (numeroPagina(p) === 1
+            ? rispostaPagina([{ numero: 1, giorni: [giornoFixture(1, 0)] }, { numero: 2, giorni: [giornoFixture(1, 1)] }])
+            : pianoDelGiorno(2, 0)),
+        })),
+      );
+      const esito = await estraiPianoAPagine(foto(2), 'claude-sonnet-5');
+      expect(validaEsito(esito.grezzo)).toEqual({ tipo: 'piano', piano: PIANO_MENU_SETTIMANALE });
+    });
+
+    it('pagina con due settimane nell\'indice: numeri giusti passano anche frammentati; uno estraneo → errore con pagina e numeri, senza contenuto', async () => {
+      // Come la pagina 4 di una dieta vera: la coda della settimana 1 e l'inizio della settimana 2.
+      const indice = indiceDi([{ contenuto: [voce(1, 0)] }, { contenuto: [voce(1, 1), voce(2, 0)] }]);
+      const conSecondaPagina = (seconda: unknown) => ({
+        perChiamata: (p: Parameters<typeof numeroPagina>[0]) => (numeroPagina(p) === 1 ? pianoDelGiorno(1, 0) : seconda),
+      });
+      finto.stato.risposte.push(
+        { corpo: indice },
+        ...[1, 2].map(() => conSecondaPagina(rispostaPagina([
+          { numero: 1, giorni: [giornoFixture(1, 1, [0])] },
+          { numero: 2, giorni: [giornoFixture(2, 0)] },
+          { numero: 1, giorni: [giornoFixture(1, 1, [1])] },
+        ]))),
+      );
+      const buono = await estraiPianoAPagine(foto(2), 'claude-sonnet-5');
+      expect(validaEsito(buono.grezzo)).toEqual({ tipo: 'piano', piano: PIANO_MENU_SETTIMANALE });
+
+      finto.azzera();
+      finto.stato.risposte.push(
+        { corpo: indice },
+        ...[1, 2].map(() => conSecondaPagina(rispostaPagina([
+          { numero: 1, giorni: [giornoFixture(1, 1)] },
+          { numero: 3, giorni: [giornoFixture(2, 0)] },
+        ]))),
+      );
+      const errore = await estraiPianoAPagine(foto(2), 'claude-sonnet-5').catch((e: Error) => e);
+      expect(errore).toBeInstanceOf(Error);
+      expect((errore as Error).message).toBe('Piano estratto non valido (pagina 2): settimana 3 non prevista dall\'indice (attese: 1, 2)');
+    });
+  });
 });
