@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   proponi, origineProposta, arrotonda, convertiCucchiai, convertiPezzi, numeroInParole,
-  pesoPezzo, porzioneTipica, quantitaInTesto, testoCambio, testoConversione,
+  categoriaDi, pesoPezzo, porzioneTipica, quantitaInTesto, testoCambio, testoConversione,
 } from '../formati-tipici';
 import { unitaBaseDi } from '../types';
 
@@ -125,15 +125,50 @@ describe('convertiCucchiai (spec 8c §C)', () => {
 
 describe('porzioneTipica (spec 8c §D)', () => {
   it('per parole intere, la chiave più lunga vince', () => {
-    expect(porzioneTipica('pasta integrale')).toEqual({ quantita: 80, unita: 'g' });
-    expect(porzioneTipica('olio extravergine di oliva')).toEqual({ quantita: 10, unita: 'ml' });
-    expect(porzioneTipica('frutta secca mista')).toEqual({ quantita: 30, unita: 'g' });
-    expect(porzioneTipica('frutta di stagione')).toEqual({ quantita: 150, unita: 'g' });
+    expect(porzioneTipica('pasta integrale')).toEqual({ quantita: 80, unita: 'g', origine: 'porzione' });
+    expect(porzioneTipica('olio extravergine di oliva')).toEqual({ quantita: 10, unita: 'ml', origine: 'porzione' });
+    expect(porzioneTipica('frutta secca mista')).toEqual({ quantita: 30, unita: 'g', origine: 'porzione' });
+    expect(porzioneTipica('frutta di stagione')).toEqual({ quantita: 150, unita: 'g', origine: 'porzione' });
   });
 
   it('niente olive né sale: restano dubbi', () => {
     expect(porzioneTipica('olive taggiasche')).toBeNull();
     expect(porzioneTipica('sale')).toBeNull();
+  });
+});
+
+describe('Task 12b: il ripiego per categoria nelle porzioni tipiche', () => {
+  it('verdure e ortaggi 200 g, frutta 150 g, singolari e plurali, per parole intere', () => {
+    for (const verdura of ['zucchine', 'finocchi', 'melanzane', 'cavolo nero', 'cime di rapa', 'cavoletti di bruxelles', 'fiori di zucca', 'spinaci', 'broccoli', 'peperone rosso']) {
+      expect(porzioneTipica(verdura), verdura).toEqual({ quantita: 200, unita: 'g', origine: 'categoria' });
+    }
+    for (const frutto of ['mela', 'pere', 'kiwi', 'fragole', 'frutti di bosco', 'arance', 'uva']) {
+      expect(porzioneTipica(frutto), frutto).toEqual({ quantita: 150, unita: 'g', origine: 'categoria' });
+    }
+  });
+
+  it('una voce specifica della tabella vince sempre sul ripiego', () => {
+    expect(porzioneTipica('insalata di pomodori')).toEqual({ quantita: 80, unita: 'g', origine: 'porzione' });
+    expect(porzioneTipica('verdure grigliate')).toEqual({ quantita: 200, unita: 'g', origine: 'porzione' });
+    expect(porzioneTipica('pasta alle zucchine')).toEqual({ quantita: 80, unita: 'g', origine: 'porzione' });
+    expect(porzioneTipica('yogurt ai frutti di bosco')).toEqual({ quantita: 125, unita: 'g', origine: 'porzione' });
+  });
+
+  it('le forme lavorate non sono una porzione di verdura o di frutta', () => {
+    for (const lavorato of ['succo di mela', 'passata di pomodoro', 'pomodori secchi', 'marmellata di albicocche', 'funghi secchi', 'spremuta di arance']) {
+      expect(porzioneTipica(lavorato), lavorato).toBeNull();
+      expect(categoriaDi(lavorato), lavorato).toBeNull();
+    }
+  });
+
+  it('categoriaDi: verdure, frutta, o niente', () => {
+    expect(categoriaDi('Zucchine')).toBe('verdure');
+    expect(categoriaDi('insalata mista')).toBe('verdure');
+    expect(categoriaDi('banana')).toBe('frutta');
+    expect(categoriaDi('frutta di stagione')).toBe('frutta');
+    expect(categoriaDi('patate')).toBeNull();
+    expect(categoriaDi('pane')).toBeNull();
+    expect(categoriaDi('fagioli')).toBeNull();
   });
 });
 

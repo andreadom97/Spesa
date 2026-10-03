@@ -232,9 +232,63 @@ const PORZIONE_TIPICA: { chiave: string; quantita: number; unita: UnitaBase }[] 
   { chiave: 'olio', quantita: 10, unita: 'ml' },
 ];
 
-export function porzioneTipica(alimento: string): { quantita: number; unita: UnitaBase } | null {
+export type CategoriaPorzione = 'verdure' | 'frutta';
+
+/**
+ * Il ripiego per categoria delle porzioni tipiche (Task 12b): le parole di verdure e ortaggi e
+ * quelle della frutta, singolari e plurali, per parole intere come le altre tabelle.
+ */
+const CATEGORIE: { chiave: string; categoria: CategoriaPorzione }[] = [
+  ...[
+    'zucchina', 'zucchine', 'melanzana', 'melanzane', 'peperone', 'peperoni', 'pomodoro', 'pomodori',
+    'pomodorino', 'pomodorini', 'carota', 'carote', 'finocchio', 'finocchi', 'sedano', 'cetriolo', 'cetrioli',
+    'cavolo', 'cavoli', 'cavolfiore', 'cavolfiori', 'cavolo nero', 'cavolo cappuccio', 'verza', 'verze',
+    'broccolo', 'broccoli', 'cime di rapa', 'friarielli', 'spinaci', 'bietola', 'bietole', 'biete', 'catalogna',
+    'cicoria', 'puntarelle', 'scarola', 'indivia', 'lattuga', 'insalata', 'rucola', 'radicchio', 'valeriana',
+    'songino', 'crescione', 'carciofo', 'carciofi', 'asparago', 'asparagi', 'fagiolini', 'piselli freschi',
+    'porro', 'porri', 'cipolla', 'cipolle', 'cipollotto', 'cipollotti', 'scalogno', 'zucca', 'fungo', 'funghi',
+    'champignon', 'ravanello', 'ravanelli', 'rapa', 'rape', 'barbabietola', 'barbabietole',
+    'cavoletti di bruxelles', 'fiori di zucca', 'germogli', 'ortaggio', 'ortaggi', 'verdura', 'verdure',
+    'contorno di verdure',
+  ].map((chiave) => ({ chiave, categoria: 'verdure' as const })),
+  ...[
+    'mela', 'mele', 'pera', 'pere', 'arancia', 'arance', 'mandarino', 'mandarini', 'clementina', 'clementine',
+    'pompelmo', 'pompelmi', 'banana', 'banane', 'kiwi', 'pesca', 'pesche', 'albicocca', 'albicocche',
+    'susina', 'susine', 'prugna', 'prugne', 'ciliegia', 'ciliegie', 'fragola', 'fragole', 'frutti di bosco',
+    'mirtilli', 'lamponi', 'ribes', 'uva', 'melone', 'meloni', 'anguria', 'angurie', 'ananas', 'mango',
+    'papaya', 'caco', 'cachi', 'fico', 'fichi', 'melagrana', 'nespole', 'macedonia', 'frutta', 'frutta fresca',
+    'frutto', 'frutti',
+  ].map((chiave) => ({ chiave, categoria: 'frutta' as const })),
+];
+
+/** Le forme lavorate: «succo di mela» o «pomodori secchi» non sono una porzione di frutta o di verdura. */
+const LAVORATI = [
+  'succo', 'succhi', 'spremuta', 'estratto', 'centrifugato', 'marmellata', 'confettura', 'composta', 'passata',
+  'polpa', 'concentrato', 'salsa', 'sugo', 'secco', 'secca', 'secchi', 'secche', 'essiccato', 'essiccata',
+  'essiccati', 'essiccate', 'disidratato', 'disidratata', 'disidratati', 'disidratate', 'sciroppato',
+  'sciroppata', 'sciroppati', 'sciroppate', 'candito', 'candita', 'canditi', 'candite', 'torta', 'crostata',
+  'polvere', 'farina', 'sottolio', 'sottaceto', 'sottaceti',
+];
+
+/** Porzioni medie per categoria (LARN/SINU): verdure e ortaggi 200 g, frutta 150 g. */
+const PORZIONE_CATEGORIA: Record<CategoriaPorzione, number> = { verdure: 200, frutta: 150 };
+
+/** Verdure, frutta, o null (anche per le forme lavorate). */
+export function categoriaDi(alimento: string): CategoriaPorzione | null {
+  const norm = normalizza(alimento);
+  if (LAVORATI.some((parola) => contieneParole(norm, parola))) return null;
+  return voceTabella(CATEGORIE, [alimento])?.categoria ?? null;
+}
+
+/**
+ * La porzione tipica di una riga senza quantità: la voce della tabella, che vince sempre, poi il
+ * ripiego per categoria (Task 12b). `origine` dice quale delle due.
+ */
+export function porzioneTipica(alimento: string): { quantita: number; unita: UnitaBase; origine: 'porzione' | 'categoria' } | null {
   const voce = voceTabella(PORZIONE_TIPICA, [alimento]);
-  return voce ? { quantita: voce.quantita, unita: voce.unita } : null;
+  if (voce) return { quantita: voce.quantita, unita: voce.unita, origine: 'porzione' };
+  const categoria = categoriaDi(alimento);
+  return categoria ? { quantita: PORZIONE_CATEGORIA[categoria], unita: 'g', origine: 'categoria' } : null;
 }
 
 /** Spec §A.3: pz al quarto, g all'intero, mai sotto il minimo (il database vuole > 0); ml al decimo. */

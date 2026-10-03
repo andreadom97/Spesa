@@ -1,8 +1,20 @@
+/**
+ * Copia congelata di dubbi.ts com'era al Task 12 della fase 8c (HEAD 14eec83), prima del Task 12b
+ * (domande senza quantità per alimento, ripiego per categoria): serve solo al test differenziale
+ * del Task 12b. Non si modifica. Uniche differenze dall'originale: i percorsi degli import e
+ * `porzioneTipica`, fissata alla sola tabella di allora (il ripiego per categoria non c'era).
+ */
 import type { Ingredient, MealSlotDef, UnitaBase } from '@/domain/types';
-import type { PastoEstratto, PianoEstratto, RigaEstratta, StatoRevisione } from './types';
-import { chiavePasto, pastoEffettivo, unitaBaseDi } from './types';
-import { normalizza, proponiSlot, quantoBasta } from './mapping';
-import { arrotonda, categoriaDi, convertiCucchiai, convertiPezzi, pesoPezzo, porzioneTipica, proponi, testoConversione } from './formati-tipici';
+import type { PastoEstratto, PianoEstratto, RigaEstratta, StatoRevisione } from '../types';
+import { chiavePasto, pastoEffettivo, unitaBaseDi } from '../types';
+import { normalizza, proponiSlot, quantoBasta } from '../mapping';
+import { arrotonda, convertiCucchiai, convertiPezzi, pesoPezzo, porzioneTipica as porzioneTipicaOggi, proponi, testoConversione } from '../formati-tipici';
+
+/** La porzione tipica di allora: solo le voci della tabella, senza il ripiego per categoria del Task 12b. */
+function porzioneTipica(alimento: string): { quantita: number; unita: UnitaBase } | null {
+  const p = porzioneTipicaOggi(alimento);
+  return p && p.origine === 'porzione' ? { quantita: p.quantita, unita: p.unita } : null;
+}
 
 /**
  * I dubbi di Controlla (spec 8b §B): cosa l'AI non sa e va chiesto, e le scritture che
@@ -16,68 +28,9 @@ import { arrotonda, categoriaDi, convertiCucchiai, convertiPezzi, pesoPezzo, por
 
 const GIORNI_LUNGHI = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
 
-/**
- * La chiave di una riga: stesso alimento e stesso testo sul foglio, un dubbio solo qualunque sia
- * il numero di pasti (decisione 5). È anche la chiave del suo gruppo, tranne per le righe senza
- * quantità (Task 12b): quelle di uno stesso alimento fanno un gruppo solo, qualunque sia il testo,
- * e la chiave del gruppo è quella della prima (`gruppoDiRiga`). Ogni scrittura per chiave accetta
- * anche la chiave di riga di un altro testo dello stesso gruppo.
- */
+/** Stesso alimento e stesso testo sul foglio: un dubbio solo, qualunque sia il numero di pasti (decisione 5). */
 export function chiaveGruppo(riga: RigaEstratta): string {
   return `${normalizza(riga.alimento)}|${riga.testoOriginale}`;
-}
-
-/** Né numero né cucchiai, e non q.b.: la domanda è per alimento (Task 12b). */
-function senzaQuantita(riga: RigaEstratta): boolean {
-  return riga.quantita === null && riga.unita !== 'cucchiaio' && riga.unita !== 'cucchiaino' && !quantoBasta(riga);
-}
-
-/**
- * Le chiavi di riga che si uniscono nel gruppo del loro alimento (Task 12b), con la chiave del
- * gruppo: quella della prima chiave senza quantità dello stesso alimento, nell'ordine del piano.
- * Si legge sulle righe originali, o sulle effettive solo se una chiave non ne ha (come in
- * `gruppiRighe`): così il gruppo non cambia quando si risponde o si toglie. Le chiavi che non ci
- * sono restano la chiave del proprio gruppo.
- */
-function chiaviUnite(pasti: PastoDelPiano[]): Map<string, string> {
-  const perChiave = new Map<string, { originali: RigaEstratta[]; effettive: RigaEstratta[] }>();
-  const voce = (riga: RigaEstratta) => {
-    const chiave = chiaveGruppo(riga);
-    let v = perChiave.get(chiave);
-    if (!v) {
-      v = { originali: [], effettive: [] };
-      perChiave.set(chiave, v);
-    }
-    return v;
-  };
-  for (const p of pasti) for (const { riga } of righeDelPasto(p.originale)) voce(riga).originali.push(riga);
-  for (const p of pasti) for (const { riga } of righeDelPasto(p.effettivo)) voce(riga).effettive.push(riga);
-  const unite = new Map<string, string>();
-  const primaPerAlimento = new Map<string, string>();
-  for (const [chiave, v] of perChiave) {
-    const lette = v.originali.length > 0 ? v.originali : v.effettive;
-    if (!lette.some(senzaQuantita)) continue;
-    const alimento = normalizza(lette[0].alimento);
-    const prima = primaPerAlimento.get(alimento) ?? chiave;
-    primaPerAlimento.set(alimento, prima);
-    unite.set(chiave, prima);
-  }
-  return unite;
-}
-
-/** La chiave del gruppo di una riga, con le chiavi unite di `chiaviUnite`. */
-function chiaveDi(unite: Map<string, string>, riga: RigaEstratta): string {
-  const chiave = chiaveGruppo(riga);
-  return unite.get(chiave) ?? chiave;
-}
-
-/**
- * La chiave del gruppo di ogni riga di questo piano (Task 12b): il foglio del giorno la usa per
- * ritrovare il gruppo di una riga, al posto di `chiaveGruppo`.
- */
-export function gruppoDiRiga(piano: PianoEstratto, stato: StatoRevisione): (riga: RigaEstratta) => string {
-  const unite = chiaviUnite(pastiDelPiano(piano, stato));
-  return (riga) => chiaveDi(unite, riga);
 }
 
 /**
@@ -218,11 +171,8 @@ export interface Occorrenza {
 export interface PropostaGruppo {
   quantita: number;
   unita: UnitaBase;
-  /**
-   * La porzione tipica (dalla tabella, o dal ripiego per categoria di verdure e frutta, Task 12b),
-   * l'unità più frequente nel gruppo, o i cucchiai convertiti.
-   */
-  origine: 'porzione' | 'categoria' | 'unitaFrequente' | 'cucchiaio';
+  /** La porzione tipica, l'unità più frequente nel gruppo, o i cucchiai convertiti. */
+  origine: 'porzione' | 'unitaFrequente' | 'cucchiaio';
   /** I due valori dei cucchiai («1 cucchiaio, quindi 15 ml»); null per le altre. */
   testo: string | null;
 }
@@ -278,10 +228,9 @@ interface Raccolta {
  */
 function raccogliDubbi(piano: PianoEstratto, stato: StatoRevisione): Map<string, Raccolta> {
   const pasti = pastiDelPiano(piano, stato);
-  const unite = chiaviUnite(pasti);
   const perChiave = new Map<string, Raccolta>();
   const raccolta = (riga: RigaEstratta): Raccolta => {
-    const chiave = chiaveDi(unite, riga);
+    const chiave = chiaveGruppo(riga);
     let r = perChiave.get(chiave);
     if (!r) {
       r = { alimento: riga.alimento, testoOriginale: riga.testoOriginale, originali: [], righeOriginali: [], effettive: [], irrisolta: false, inferita: false };
@@ -357,14 +306,11 @@ function chiaviGruppiIrrisolti(piano: PianoEstratto, stato: StatoRevisione): Set
  */
 export function unitaNota(piano: PianoEstratto, stato: StatoRevisione, alimento: string, escludi?: string): UnitaBase | null {
   const irrisolti = chiaviGruppiIrrisolti(piano, stato);
-  const pasti = pastiDelPiano(piano, stato);
-  const unite = chiaviUnite(pasti);
-  const escluso = escludi === undefined ? undefined : unite.get(escludi) ?? escludi;
-  for (const p of pasti) {
+  for (const p of pastiDelPiano(piano, stato)) {
     for (const { riga } of righeDelPasto(p.effettivo)) {
       if (normalizza(riga.alimento) !== alimento) continue;
-      const chiave = chiaveDi(unite, riga);
-      if (escluso !== undefined && chiave === escluso) continue;
+      const chiave = chiaveGruppo(riga);
+      if (escludi !== undefined && chiave === escludi) continue;
       if (irrisolti.has(chiave)) continue;
       // Il q.b. non dice un'unità, nemmeno quella stimata dal lettore (correzione S1).
       if (quantoBasta(riga)) continue;
@@ -386,13 +332,10 @@ export function unitaDelGruppo(
   chiave: string,
   escludi: { pasto: string; posizione: PosizioneRiga },
 ): UnitaBase | null {
-  const pasti = pastiDelPiano(piano, stato);
-  const unite = chiaviUnite(pasti);
-  const gruppo = unite.get(chiave) ?? chiave;
-  for (const p of pasti) {
+  for (const p of pastiDelPiano(piano, stato)) {
     for (const { riga, posizione } of righeDelPasto(p.effettivo)) {
       // Il q.b. non è irrisolto ma non ha un'unità da dare: si salta (correzione S1).
-      if (chiaveDi(unite, riga) !== gruppo || rigaIrrisolta(riga) || quantoBasta(riga)) continue;
+      if (chiaveGruppo(riga) !== chiave || rigaIrrisolta(riga) || quantoBasta(riga)) continue;
       if (p.chiave === escludi.pasto && stessaPosizione(posizione, escludi.posizione)) continue;
       return unitaBaseDi(riga.unita);
     }
@@ -410,10 +353,8 @@ function unitaVerso(piano: PianoEstratto, stato: StatoRevisione, alimento: strin
  * La proposta per un gruppo, letta su queste righe (spec 8c §D): con le righe tutte risolte in
  * unità diverse, la più frequente (a pari merito quella della prima riga) con la sua quantità;
  * con una riga a cucchiai, i cucchiai convertiti nell'unità dell'ingrediente; con una riga senza
- * quantità, la porzione tipica (o quella della categoria, Task 12b) nell'unità che il piano
- * conosce, convertita col peso di un pezzo scritto o medio; verdure e frutta a pezzi senza peso
- * sono 1 pz. L'unità è quella di una riga del gruppo già risolta, se c'è, altrimenti `unitaVerso`.
- * Altrimenti null: un dubbio che blocca.
+ * quantità, la porzione tipica nell'unità che il piano conosce. L'unità è quella di una riga del
+ * gruppo già risolta, se c'è, altrimenti `unitaVerso`. Altrimenti null: un dubbio che blocca.
  */
 function propostaPer(
   piano: PianoEstratto,
@@ -457,25 +398,10 @@ function propostaPer(
   }
   const porzione = porzioneTipica(alimento);
   if (!porzione) return null;
-  const { origine } = porzione;
-  if (verso === null || verso === porzione.unita) return { quantita: porzione.quantita, unita: porzione.unita, origine, testo: null };
-  const peso = pesoScritto(stato, alimento, esistenti) ?? pesoPezzo(alimento);
+  if (verso === null || verso === porzione.unita) return { ...porzione, origine: 'porzione', testo: null };
+  const peso = pesoPezzo(alimento);
   const convertita = peso === null ? null : convertiPezzi(porzione.quantita, porzione.unita, verso, peso);
-  if (convertita !== null) return { quantita: convertita, unita: verso, origine, testo: null };
-  // Ruling del Task 12b: verdure e frutta a pezzi, senza il peso di un pezzo, sono 1 pz.
-  if (verso === 'pz' && categoriaDi(alimento) !== null) return { quantita: 1, unita: 'pz', origine, testo: null };
-  return null;
-}
-
-/**
- * Il peso di un pezzo scritto da te agli Ingredienti (`stato.cambiUnita`), per l'ingrediente che hai
- * con lo stesso nome o per l'alimento, se è un numero finito e positivo; altrimenti null. Come agli
- * Ingredienti, vince sulla tabella dei pesi medi.
- */
-function pesoScritto(stato: StatoRevisione, alimento: string, esistenti: Ingredient[]): number | null {
-  const esistente = esistenti.find((e) => normalizza(e.nome) === alimento);
-  const scritti = [esistente ? stato.cambiUnita?.[esistente.id]?.pesoPezzo : undefined, stato.cambiUnita?.[alimento]?.pesoPezzo];
-  return scritti.find((p): p is number => typeof p === 'number' && Number.isFinite(p) && p > 0) ?? null;
+  return convertita === null ? null : { quantita: convertita, unita: verso, origine: 'porzione', testo: null };
 }
 
 /**
@@ -641,13 +567,9 @@ function suOgniRigaDelGruppo(
   fn: (riga: RigaEstratta) => RigaEstratta | null,
 ): StatoRevisione {
   const correzioni = { ...stato.correzioni };
-  const pasti = pastiDelPiano(piano, stato);
-  const unite = chiaviUnite(pasti);
-  const gruppo = unite.get(chiave) ?? chiave;
-  const delGruppo = (riga: RigaEstratta) => chiaveDi(unite, riga) === gruppo;
-  for (const p of pasti) {
-    if (!righeDelPasto(p.effettivo).some(({ riga }) => delGruppo(riga))) continue;
-    correzioni[p.chiave] = mappaRighe(p.effettivo, (riga) => (delGruppo(riga) ? fn(riga) : riga));
+  for (const p of pastiDelPiano(piano, stato)) {
+    if (!righeDelPasto(p.effettivo).some(({ riga }) => chiaveGruppo(riga) === chiave)) continue;
+    correzioni[p.chiave] = mappaRighe(p.effettivo, (riga) => (chiaveGruppo(riga) === chiave ? fn(riga) : riga));
   }
   return { ...stato, correzioni };
 }
@@ -685,11 +607,8 @@ export function anteprimaTogli(piano: PianoEstratto, stato: StatoRevisione, chia
   const dopo = togliGruppo(piano, stato, chiave);
   let pasti = 0;
   let piattiSpariti = 0;
-  const pastiPiano = pastiDelPiano(piano, stato);
-  const unite = chiaviUnite(pastiPiano);
-  const gruppo = unite.get(chiave) ?? chiave;
-  for (const p of pastiPiano) {
-    if (righeDelPasto(p.effettivo).some(({ riga }) => chiaveDi(unite, riga) === gruppo)) pasti += 1;
+  for (const p of pastiDelPiano(piano, stato)) {
+    if (righeDelPasto(p.effettivo).some(({ riga }) => chiaveGruppo(riga) === chiave)) pasti += 1;
     piattiSpariti += p.effettivo.piatti.length - pastoEffettivo(piano, dopo.correzioni, p.settimana, p.giorno, p.indice).piatti.length;
   }
   return { stato: dopo, pasti, piattiSpariti };

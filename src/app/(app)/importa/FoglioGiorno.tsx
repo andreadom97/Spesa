@@ -6,7 +6,7 @@ import type { PastoEstratto, PianoEstratto, StatoRevisione } from '@/domain/impo
 import { chiavePasto, pastoEffettivo, unitaBaseDi } from '@/domain/import/types';
 import { normalizza, quantoBasta } from '@/domain/import/mapping';
 import {
-  cambiaRiga, chiaveGruppo, etichettaGiorno, gruppiRighe, righeDelPasto, rigaIrrisolta, togliRiga, unitaDelGruppo, unitaNota,
+  cambiaRiga, etichettaGiorno, gruppiRighe, gruppoDiRiga, righeDelPasto, rigaIrrisolta, togliRiga, unitaDelGruppo, unitaNota,
   type RigaNelPasto,
 } from '@/domain/import/dubbi';
 import { FoglioDalBasso, TestataFoglio } from '@/components/FoglioDalBasso';
@@ -47,11 +47,13 @@ export function FoglioGiorno({ piano, stato, slotDefs, ingredientiEsistenti = []
   // Le righe irrisolte o q.b. all'apertura: tengono le pillole dell'unità anche dopo la risposta,
   // così un'unità scelta per sbaglio si cambia finché il foglio è aperto. Il q.b. non è un dubbio,
   // ma si può correggere con una quantità, e senza unità il numero non si salverebbe (review I2).
+  // Per chiave di gruppo: dal Task 12b le righe senza quantità di un alimento sono un gruppo solo.
   const [irrisolteAllApertura] = useState(() => {
     const chiavi = new Set<string>();
+    const gruppoDi = gruppoDiRiga(piano, stato);
     giornoPiano?.pasti.forEach((_, i) => {
       for (const { riga } of righeDelPasto(pastoEffettivo(piano, stato.correzioni, settimana, giorno, i))) {
-        if (rigaIrrisolta(riga) || quantoBasta(riga)) chiavi.add(chiaveGruppo(riga));
+        if (rigaIrrisolta(riga) || quantoBasta(riga)) chiavi.add(gruppoDi(riga));
       }
     });
     return chiavi;
@@ -67,6 +69,7 @@ export function FoglioGiorno({ piano, stato, slotDefs, ingredientiEsistenti = []
   // I gruppi con una proposta compilata (spec 8c §D): nel foglio come in pagina sono «proposta da
   // me», non un dubbio (correzione D4). Stesso calcolo di Controlla, sullo stato che il foglio mostra.
   const conProposta = new Set(gruppiRighe(piano, stato, ingredientiEsistenti).filter((g) => g.proposta !== null).map((g) => g.chiave));
+  const gruppoDi = gruppoDiRiga(piano, stato);
 
   return (
     <FoglioDalBasso etichetta={nome} onChiudi={onChiudi}>
@@ -88,7 +91,7 @@ export function FoglioGiorno({ piano, stato, slotDefs, ingredientiEsistenti = []
           }
           const righe = righeDelPasto(pasto);
           const riga = (r: RigaNelPasto) => {
-            const chiaveRiga = chiaveGruppo(r.riga);
+            const chiaveRiga = gruppoDi(r.riga);
             // L'unità fissa: da un'altra riga dello stesso alimento fuori dai dubbi (decisione 8)
             // o da un'altra riga già risolta dello stesso gruppo (I2), così lo stesso gruppo non
             // si risolve in pz un giorno e in g un altro. Le pillole solo se non c'è nessuna delle due.

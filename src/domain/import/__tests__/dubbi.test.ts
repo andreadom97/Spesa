@@ -3,14 +3,15 @@ import type { Ingredient, MealSlotDef } from '@/domain/types';
 import type { IngredienteProposto, PastoEstratto, PianoEstratto, RigaEstratta, StatoRevisione } from '../types';
 import { PIANO_MENU_SETTIMANALE, PIANO_GIORNATA_UNICA } from '../fixtures';
 import { traduciBozza } from '../commit';
-import { ingredientiDaAbbinare } from '../mapping';
+import { ingredientiDaAbbinare, normalizza } from '../mapping';
 import { proponi } from '../formati-tipici';
 import {
   anteprimaTogli, cambiaRiga, chiaveGruppo, confermaTutti, conteggi, etichettaGiorno, gruppiRighe, pastiDelGruppo,
-  pronto, provenienza, riassuntoGiorni, righeDelPasto, rispondiGruppo, togliGruppo, togliRiga,
+  gruppoDiRiga, pronto, provenienza, riassuntoGiorni, righeDelPasto, rispondiGruppo, togliGruppo, togliRiga,
   unitaDelGruppo, unitaNota, vociPasti, type GruppoRighe,
 } from '../dubbi';
 import * as v8b from './dubbi-8b';
+import * as prima12b from './dubbi-8c-prima';
 
 const slot = (id: string, nome: string, posizione: number): MealSlotDef => ({ id, nome, posizione, assenzeAbituali: Array(7).fill(false) });
 const SLOTS = [slot('s-col', 'Colazione', 0), slot('s-pranzo', 'Pranzo', 3), slot('s-cena', 'Cena', 5)];
@@ -290,8 +291,11 @@ describe('unitaNota', () => {
   });
 });
 
-/** Due dubbi diversi dello stesso alimento (testi diversi), senza nessun'altra riga con l'unità. */
-function pianoConDueSale(): PianoEstratto {
+/**
+ * Due dubbi dello stesso alimento con testi diversi, senza nessun'altra riga con l'unità: a pranzo
+ * senza quantità, a cena `cena` (di default anche lei senza quantità).
+ */
+function pianoConDueSale(cena: RigaEstratta = { alimento: 'sale', quantita: null, unita: null, quantitaInferita: false, testoOriginale: 'un pizzico di sale' }): PianoEstratto {
   return {
     archetipo: 'giornata_unica', fonte: 'test', noteEstrazione: [],
     settimane: [{
@@ -301,7 +305,7 @@ function pianoConDueSale(): PianoEstratto {
         titolo: null,
         pasti: [
           { nomeOriginale: 'pranzo', piatti: [{ nome: 'Pasta', descrizione: null, componenti: [], righeFisse: [{ alimento: 'sale', quantita: null, unita: null, quantitaInferita: false, testoOriginale: 'sale fino' }] }] },
-          { nomeOriginale: 'cena', piatti: [{ nome: 'Zuppa', descrizione: null, componenti: [], righeFisse: [{ alimento: 'sale', quantita: null, unita: null, quantitaInferita: false, testoOriginale: 'un pizzico di sale' }] }] },
+          { nomeOriginale: 'cena', piatti: [{ nome: 'Zuppa', descrizione: null, componenti: [], righeFisse: [cena] }] },
         ],
       }],
     }],
@@ -309,8 +313,10 @@ function pianoConDueSale(): PianoEstratto {
 }
 
 describe('unitaFissa fra due gruppi irrisolti dello stesso alimento', () => {
+  // Dal Task 12b due righe senza quantità dello stesso alimento sono un gruppo solo: i due gruppi
+  // irrisolti dello stesso alimento sono una riga senza quantità e una a cucchiaini.
   it('nessuno dei due fissa l\'unità dell\'altro, anche dopo aver risolto uno dei due', () => {
-    const piano = pianoConDueSale();
+    const piano = pianoConDueSale({ alimento: 'sale', quantita: 1, unita: 'cucchiaino', quantitaInferita: false, testoOriginale: '1 cucchiaino di sale' });
     const gruppi = gruppiRighe(piano, STATO);
     expect(gruppi).toHaveLength(2);
     expect(gruppi.every((g) => g.unitaFissa === null)).toBe(true);
@@ -319,7 +325,7 @@ describe('unitaFissa fra due gruppi irrisolti dello stesso alimento', () => {
     cenaRisolta.piatti[0].righeFisse[0] = { ...cenaRisolta.piatti[0].righeFisse[0], quantita: 1, unita: 'pz' };
     const stato = { ...STATO, correzioni: { '1-0-1': cenaRisolta } };
     const gruppiDopo = gruppiRighe(piano, stato);
-    expect(gruppiDopo.find((g) => g.chiave === 'sale|un pizzico di sale')).toMatchObject({ stato: 'fatto', quantita: 1, unita: 'pz' });
+    expect(gruppiDopo.find((g) => g.chiave === 'sale|1 cucchiaino di sale')).toMatchObject({ stato: 'fatto', quantita: 1, unita: 'pz' });
     expect(gruppiDopo.every((g) => g.unitaFissa === null)).toBe(true);
   });
 });
@@ -714,5 +720,244 @@ describe('differenziale: pronto, gruppiRighe e confermaTutti dell\'8b contro l\'
       expect(gruppiRighe(piano, stato).map(senzaCampiNuovi)).toEqual(v8b.gruppiRighe(piano, stato));
       expect(confermaTutti(piano, stato)).toEqual(v8b.confermaTutti(piano, stato));
     }
+  });
+});
+
+// --- Task 12b: porzioni per categoria e domande senza quantità per alimento ---
+
+const ingrediente = (nome: string, unitaBase: 'g' | 'ml' | 'pz'): Ingredient => ({
+  id: `i-${nome}`, nome, unitaBase, area: 'ortofrutta', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 1, prezzoConfezione: null, ean: null,
+});
+
+/** Un pranzo al giorno col Piatto, con le righe di quel giorno. */
+function pianoAPranzi(giorni: RigaEstratta[][]): PianoEstratto {
+  return {
+    archetipo: 'menu_settimanale', fonte: 'test', noteEstrazione: [],
+    settimane: [{
+      numero: 1,
+      giorni: giorni.map((righe, g) => ({
+        giorno: g, titolo: null,
+        pasti: [{ nomeOriginale: 'pranzo', piatti: [{ nome: 'Piatto', descrizione: null, componenti: [], righeFisse: righe.map((r) => ({ ...r })) }] }],
+      })),
+    }],
+  };
+}
+/** La riga `r` del pranzo del giorno `g`, nello stato dato. */
+const rigaDel = (piano: PianoEstratto, stato: StatoRevisione, g: number, r = 0) =>
+  (stato.correzioni[`1-${g}-0`] ?? piano.settimane[0].giorni[g].pasti[0]).piatti[0].righeFisse[r];
+
+describe('Task 12b: il ripiego per categoria nella proposta', () => {
+  it('verdure senza quantità: 200 g, una proposta che non blocca, e CONFERMA la scrive come proposta da me', () => {
+    const piano = pianoUnPasto([senza('zucchine grigliate', 'zucchine')]);
+    expect(gruppiRighe(piano, STATO_PRANZO)).toEqual([expect.objectContaining({
+      tipo: 'proposta', stato: 'aperto', proposta: { quantita: 200, unita: 'g', origine: 'categoria', testo: null },
+    })]);
+    expect(pronto(piano, STATO_PRANZO, SLOTS)).toBe(true);
+    expect(confermaTutti(piano, STATO_PRANZO).correzioni['1-0-0'].piatti[0].righeFisse[0])
+      .toEqual({ alimento: 'zucchine', quantita: 200, unita: 'g', quantitaInferita: true, testoOriginale: 'zucchine grigliate' });
+  });
+
+  it('frutta senza quantità: 150 g', () => {
+    expect(gruppiRighe(pianoUnPasto([senza('una mela', 'mela')]), STATO_PRANZO)[0].proposta)
+      .toEqual({ quantita: 150, unita: 'g', origine: 'categoria', testo: null });
+  });
+
+  it('a pezzi senza il peso di un pezzo: 1 pz per verdure e frutta, niente per il resto', () => {
+    expect(gruppiRighe(pianoUnPasto([senza('broccoli', 'broccoli')]), STATO_PRANZO, [ingrediente('Broccoli', 'pz')])[0].proposta)
+      .toEqual({ quantita: 1, unita: 'pz', origine: 'categoria', testo: null });
+    expect(gruppiRighe(pianoUnPasto([senza('fragole', 'fragole')]), STATO_PRANZO, [ingrediente('Fragole', 'pz')])[0].proposta)
+      .toEqual({ quantita: 1, unita: 'pz', origine: 'categoria', testo: null });
+    // Una voce specifica di verdura (la tabella, non il ripiego) vale lo stesso.
+    expect(gruppiRighe(pianoUnPasto([senza('verdure di stagione', 'verdure di stagione')]), STATO_PRANZO, [ingrediente('Verdure di stagione', 'pz')])[0].proposta)
+      .toEqual({ quantita: 1, unita: 'pz', origine: 'porzione', testo: null });
+    expect(gruppiRighe(pianoUnPasto([senza('pane', 'pane')]), STATO_PRANZO, [ingrediente('Pane', 'pz')])[0].proposta).toBeNull();
+  });
+
+  it('a pezzi col peso medio si converte come oggi', () => {
+    expect(gruppiRighe(pianoUnPasto([senza('zucchine', 'zucchine')]), STATO_PRANZO, [ingrediente('Zucchine', 'pz')])[0].proposta)
+      .toEqual({ quantita: 1, unita: 'pz', origine: 'categoria', testo: null });
+    // 200 g / 250 g = 0,8 pz, al quarto.
+    expect(gruppiRighe(pianoUnPasto([senza('finocchi', 'finocchi')]), STATO_PRANZO, [ingrediente('Finocchi', 'pz')])[0].proposta)
+      .toEqual({ quantita: 0.75, unita: 'pz', origine: 'categoria', testo: null });
+  });
+
+  it('a pezzi col peso scritto: vince sulla tabella, come agli Ingredienti', () => {
+    const piano = pianoUnPasto([senza('broccoli', 'broccoli')]);
+    const broccoli = ingrediente('Broccoli', 'pz');
+    const conPeso = (chiave: string, pesoPezzo: number): StatoRevisione => ({ ...STATO_PRANZO, cambiUnita: { [chiave]: { tieni: true, pesoPezzo } } });
+    expect(gruppiRighe(piano, conPeso('i-Broccoli', 400), [broccoli])[0].proposta).toEqual({ quantita: 0.5, unita: 'pz', origine: 'categoria', testo: null });
+    expect(gruppiRighe(piano, conPeso('broccoli', 100), [broccoli])[0].proposta).toEqual({ quantita: 2, unita: 'pz', origine: 'categoria', testo: null });
+    // Un peso che non è un numero positivo non vale: si torna all'1 pz.
+    expect(gruppiRighe(piano, conPeso('broccoli', 0), [broccoli])[0].proposta).toEqual({ quantita: 1, unita: 'pz', origine: 'categoria', testo: null });
+  });
+
+  it('in ml non si converte: resta un dubbio che blocca', () => {
+    const piano = pianoUnPasto([senza('zucchine', 'zucchine')]);
+    expect(gruppiRighe(piano, STATO_PRANZO, [ingrediente('Zucchine', 'ml')])).toEqual([expect.objectContaining({ tipo: 'irrisolta', proposta: null })]);
+  });
+
+  it('una riga a cucchiai resta come oggi', () => {
+    const piano = pianoUnPasto([{ alimento: 'spinaci', quantita: 2, unita: 'cucchiaio', quantitaInferita: false, testoOriginale: '2 cucchiai di spinaci' }]);
+    expect(gruppiRighe(piano, STATO_PRANZO)).toEqual(prima12b.gruppiRighe(piano, STATO_PRANZO));
+    expect(gruppiRighe(piano, STATO_PRANZO)[0].proposta).toMatchObject({ origine: 'cucchiaio', quantita: 30, unita: 'g' });
+  });
+});
+
+describe('Task 12b: le domande senza quantità si raggruppano per alimento', () => {
+  const grigliate = senza('zucchine grigliate', 'zucchine');
+  const vapore = senza('zucchine al vapore', 'zucchine');
+  const trifolate = senza('Zucchine trifolate', 'Zucchine');
+  const piano = () => pianoAPranzi([[grigliate], [grigliate], [vapore], [trifolate]]);
+
+  it('un gruppo solo per alimento, qualunque sia il testo, con la chiave della prima riga', () => {
+    const p = piano();
+    const gruppi = gruppiRighe(p, STATO_PRANZO);
+    expect(gruppi).toEqual([expect.objectContaining({
+      chiave: 'zucchine|zucchine grigliate', alimento: 'zucchine', testoOriginale: 'zucchine grigliate', tipo: 'proposta', stato: 'aperto',
+    })]);
+    expect(gruppi[0].occorrenze.map((o) => o.pasto)).toEqual(['1-0-0', '1-1-0', '1-2-0', '1-3-0']);
+    expect(provenienza(p, gruppi[0])).toBe('In 4 pasti');
+    expect(prima12b.gruppiRighe(p, STATO_PRANZO)).toHaveLength(3);
+  });
+
+  it('una risposta risolve tutte le righe, e il gruppo resta lo stesso, fatto', () => {
+    const p = piano();
+    const risposto = rispondiGruppo(p, STATO_PRANZO, 'zucchine|zucchine grigliate', 250, 'g');
+    for (const g of [0, 1, 2, 3]) expect(rigaDel(p, risposto, g)).toMatchObject({ quantita: 250, unita: 'g', quantitaInferita: false });
+    expect(gruppiRighe(p, risposto)).toEqual([expect.objectContaining({ chiave: 'zucchine|zucchine grigliate', stato: 'fatto', quantita: 250, unita: 'g' })]);
+    // La chiave di un altro testo del gruppo trova lo stesso gruppo.
+    expect(rispondiGruppo(p, STATO_PRANZO, chiaveGruppo(vapore), 250, 'g')).toEqual(risposto);
+  });
+
+  it('togliere il gruppo toglie tutte le righe, e l\'anteprima conta tutti i pasti', () => {
+    const p = piano();
+    const anteprima = anteprimaTogli(p, STATO_PRANZO, 'zucchine|zucchine grigliate');
+    expect(anteprima).toMatchObject({ pasti: 4, piattiSpariti: 4 });
+    expect(anteprima.stato).toEqual(togliGruppo(p, STATO_PRANZO, chiaveGruppo(trifolate)));
+    expect(gruppiRighe(p, anteprima.stato)).toEqual([expect.objectContaining({ stato: 'tolto' })]);
+  });
+
+  it('CONFERMA scrive la proposta su tutte le righe del gruppo', () => {
+    const p = piano();
+    const confermato = confermaTutti(p, STATO_PRANZO);
+    for (const g of [0, 1, 2, 3]) expect(rigaDel(p, confermato, g)).toMatchObject({ quantita: 200, unita: 'g', quantitaInferita: true });
+    expect(pronto(p, confermato, SLOTS)).toBe(true);
+  });
+
+  it('le righe con una quantità, anche inferita, e quelle a cucchiai restano fuori, come oggi', () => {
+    const p = pianoAPranzi([
+      [grigliate],
+      [vapore],
+      [{ alimento: 'zucchine', quantita: 150, unita: 'g', quantitaInferita: true, testoOriginale: 'zucchine (circa 150 g)' }],
+      [{ alimento: 'zucchine', quantita: 300, unita: 'g', quantitaInferita: false, testoOriginale: 'zucchine 300 g' }],
+      [{ alimento: 'zucchine', quantita: 2, unita: 'cucchiaio', quantitaInferita: false, testoOriginale: '2 cucchiai di zucchine' }],
+    ]);
+    const gruppi = gruppiRighe(p, STATO_PRANZO);
+    expect(gruppi.map((g) => [g.chiave, g.tipo, g.occorrenze.length])).toEqual([
+      ['zucchine|zucchine grigliate', 'proposta', 2],
+      ['zucchine|zucchine (circa 150 g)', 'inferita', 1],
+      ['zucchine|2 cucchiai di zucchine', 'proposta', 1],
+    ]);
+    // Le righe con la quantità, fuori dai dubbi irrisolti, fissano l'unità del gruppo (decisione 8).
+    expect(gruppi[0].unitaFissa).toBe('g');
+  });
+
+  it('il q.b. resta fuori e non riceve proposte', () => {
+    const p = pianoAPranzi([[senza('sale q.b.', 'sale')], [senza('un pizzico di sale', 'sale')], [senza('sale fino', 'sale')]]);
+    const gruppi = gruppiRighe(p, STATO_PRANZO);
+    expect(gruppi).toEqual([expect.objectContaining({ chiave: 'sale|un pizzico di sale', tipo: 'irrisolta', proposta: null })]);
+    expect(gruppi[0].occorrenze.map((o) => o.pasto)).toEqual(['1-1-0', '1-2-0']);
+    const risposto = rispondiGruppo(p, STATO_PRANZO, gruppi[0].chiave, 1, 'g');
+    expect(rigaDel(p, risposto, 0)).toEqual(senza('sale q.b.', 'sale'));
+    expect([1, 2].map((g) => rigaDel(p, risposto, g).quantita)).toEqual([1, 1]);
+    expect(pronto(p, risposto, SLOTS)).toBe(true);
+  });
+
+  it('gruppoDiRiga, unitaDelGruppo e unitaNota leggono il gruppo intero (il foglio del giorno)', () => {
+    const p = piano();
+    const gruppoDi = gruppoDiRiga(p, STATO_PRANZO);
+    expect(gruppoDi(vapore)).toBe('zucchine|zucchine grigliate');
+    expect(gruppoDi(trifolate)).toBe('zucchine|zucchine grigliate');
+    const fissa = { alimento: 'zucchine', quantita: 300, unita: 'g' as const, quantitaInferita: false, testoOriginale: 'zucchine 300 g' };
+    expect(gruppoDi(fissa)).toBe('zucchine|zucchine 300 g');
+    // Il lunedì risolto a 1 pz: il mercoledì, l'altro testo, prende l'unità dal gruppo.
+    const lunedi = structuredClone(p.settimane[0].giorni[0].pasti[0]);
+    lunedi.piatti[0].righeFisse[0] = { ...grigliate, quantita: 1, unita: 'pz' };
+    const stato = { ...STATO_PRANZO, correzioni: { '1-0-0': lunedi } };
+    const posizione = { piatto: 0, componente: null, opzione: null, riga: 0 };
+    expect(unitaDelGruppo(p, stato, gruppoDi(vapore), { pasto: '1-2-0', posizione })).toBe('pz');
+    expect(unitaDelGruppo(p, stato, chiaveGruppo(vapore), { pasto: '1-2-0', posizione })).toBe('pz');
+    // Il gruppo, irrisolto sul piano letto, non fissa l'unità di nessuno, nemmeno di sé.
+    expect(unitaNota(p, stato, 'zucchine')).toBeNull();
+  });
+});
+
+/**
+ * Il differenziale del Task 12b contro la copia congelata del dubbi.ts di prima (HEAD 14eec83):
+ * senza righe senza quantità dello stesso alimento in testi diversi, e senza verdure o frutta da
+ * proporre per categoria, tutto coincide; con lo stesso alimento in testi diversi, i gruppi
+ * scendono e una risposta sola fa quello che prima ne chiedeva una per testo.
+ */
+describe('differenziale Task 12b: dubbi.ts contro dubbi-8c-prima', () => {
+  const MAPPATO: StatoRevisione = { ...STATO, mappaturaPasti: { colazione: 's-col', cena: 's-cena', condimenti: 's-cena' } };
+  const CENA: StatoRevisione = { ...STATO, mappaturaPasti: { cena: 's-cena' } };
+  const olive3 = pianoConOlive([['cena'], ['cena'], ['cena']]);
+  const mieleAPezzi: Ingredient = { id: 'i-miele', nome: 'Miele', unitaBase: 'pz', area: 'dispensa', classeResiduo: 'intero', deperibile: false, formatoConfezione: 1, prezzoConfezione: null, ean: null };
+  const CASI: [PianoEstratto, StatoRevisione, Ingredient[]][] = [
+    [PIANO_MENU_SETTIMANALE, STATO, []],
+    [PIANO_MENU_SETTIMANALE, MAPPATO, []],
+    [PIANO_MENU_SETTIMANALE, { ...MAPPATO, correzioni: { '1-1-1': cenaConOlive(3, 'pz') } }, []],
+    [PIANO_MENU_SETTIMANALE, togliGruppo(PIANO_MENU_SETTIMANALE, MAPPATO, chiaveGruppo(OLIVE)), []],
+    [PIANO_GIORNATA_UNICA, STATO_PRANZO, []],
+    [pianoConOlio(), STATO, []],
+    [pianoConOlio(), rispondiGruppo(pianoConOlio(), STATO, 'olio|olio a filo', 5, 'ml'), []],
+    [olive3, CENA, []],
+    [olive3, { ...CENA, correzioni: { '1-0-0': cenaOlive(olive3, 0, 3, 'pz'), '1-1-0': cenaOlive(olive3, 1, 20, 'g') } }, []],
+    [pianoConSale(), CENA, []],
+    [pianoUnPasto([
+      senza('pasta', 'pasta di semola'), senza('sale q.b.', 'sale'),
+      { alimento: 'olio extravergine di oliva', quantita: 1, unita: 'cucchiaio', quantitaInferita: false, testoOriginale: '1 cucchiaio di olio' },
+    ]), STATO_PRANZO, []],
+    [pianoUnPasto([{ alimento: 'patate', quantita: 2, unita: 'pz', quantitaInferita: false, testoOriginale: '2 patate' }, senza('patate lesse', 'patate')]), STATO_PRANZO, []],
+    [pianoUnPasto([{ alimento: 'miele', quantita: 1, unita: 'cucchiaio', quantitaInferita: false, testoOriginale: '1 cucchiaio di miele' }]), STATO_PRANZO, [mieleAPezzi]],
+    [pianoConDueSale({ alimento: 'sale', quantita: 1, unita: 'cucchiaino', quantitaInferita: false, testoOriginale: '1 cucchiaino di sale' }), STATO, []],
+  ];
+
+  it('pronto, i gruppi, CONFERMA e le risposte coincidono su ogni caso', () => {
+    for (const [piano, stato, esistenti] of CASI) {
+      expect(pronto(piano, stato, SLOTS, esistenti)).toBe(prima12b.pronto(piano, stato, SLOTS, esistenti));
+      const gruppi = gruppiRighe(piano, stato, esistenti);
+      expect(gruppi).toEqual(prima12b.gruppiRighe(piano, stato, esistenti));
+      expect(confermaTutti(piano, stato, esistenti)).toEqual(prima12b.confermaTutti(piano, stato, esistenti));
+      for (const g of gruppi) {
+        expect(rispondiGruppo(piano, stato, g.chiave, 7, 'g')).toEqual(prima12b.rispondiGruppo(piano, stato, g.chiave, 7, 'g'));
+        expect(anteprimaTogli(piano, stato, g.chiave)).toEqual(prima12b.anteprimaTogli(piano, stato, g.chiave));
+        expect(unitaNota(piano, stato, normalizza(g.alimento), g.chiave)).toBe(prima12b.unitaNota(piano, stato, normalizza(g.alimento), g.chiave));
+      }
+    }
+  });
+
+  it('lo stesso alimento in testi diversi: un gruppo invece di due, e una risposta sola fa le due di prima', () => {
+    const piano = pianoConDueSale();
+    expect(prima12b.gruppiRighe(piano, STATO)).toHaveLength(2);
+    const gruppi = gruppiRighe(piano, STATO);
+    expect(gruppi).toHaveLength(1);
+    expect(gruppi[0].occorrenze).toHaveLength(2);
+    const risposto = rispondiGruppo(piano, STATO, gruppi[0].chiave, 1, 'pz');
+    expect(gruppiRighe(piano, risposto)).toEqual([expect.objectContaining({ stato: 'fatto', quantita: 1, unita: 'pz' })]);
+    expect(pronto(piano, { ...risposto, mappaturaPasti: { pranzo: 's-pranzo', cena: 's-cena' } }, SLOTS)).toBe(true);
+    // Prima una risposta lasciava aperto l'altro testo; servivano due risposte per lo stesso stato.
+    const unaPrima = prima12b.rispondiGruppo(piano, STATO, gruppi[0].chiave, 1, 'pz');
+    expect(prima12b.gruppiRighe(piano, unaPrima).filter((g) => g.stato === 'aperto')).toHaveLength(1);
+    expect(risposto).toEqual(prima12b.rispondiGruppo(piano, unaPrima, 'sale|un pizzico di sale', 1, 'pz'));
+  });
+
+  it('con le zucchine in tre testi: un gruppo invece di tre, e CONFERMA scrive le stesse righe dopo una risposta', () => {
+    const piano = pianoAPranzi([[senza('zucchine grigliate', 'zucchine')], [senza('zucchine al vapore', 'zucchine')], [senza('zucchine trifolate', 'zucchine')]]);
+    expect(prima12b.gruppiRighe(piano, STATO_PRANZO)).toHaveLength(3);
+    expect(gruppiRighe(piano, STATO_PRANZO)).toHaveLength(1);
+    let prima = STATO_PRANZO;
+    for (const testo of ['zucchine grigliate', 'zucchine al vapore', 'zucchine trifolate']) prima = prima12b.rispondiGruppo(piano, prima, `zucchine|${testo}`, 200, 'g');
+    expect(rispondiGruppo(piano, STATO_PRANZO, 'zucchine|zucchine grigliate', 200, 'g')).toEqual(prima);
   });
 });

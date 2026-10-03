@@ -449,6 +449,48 @@ describe('Controlla', () => {
     // La pasta ha la porzione tipica: niente avviso. Le olive no (fuori da PORZIONE_TIPICA): il loro avviso resta.
     expect(within(foglio).getAllByText("Sul foglio non c'è un peso: scrivi quanto ne usi e in che unità.")).toHaveLength(1);
   });
+
+  it('Task 12b: lo stesso alimento senza quantità in testi diversi è una domanda sola, con la porzione per categoria', () => {
+    const cena = (testoOriginale: string) => [{ nomeOriginale: 'cena', piatti: [{ nome: 'Contorno', descrizione: null, componenti: [], righeFisse: [
+      { alimento: 'zucchine', quantita: null, unita: null, quantitaInferita: false, testoOriginale },
+    ] }] }];
+    const piano: PianoEstratto = {
+      archetipo: 'menu_settimanale', fonte: 'test', noteEstrazione: [],
+      settimane: [{ numero: 1, giorni: [
+        { giorno: 0, titolo: null, pasti: cena('zucchine grigliate') },
+        { giorno: 1, titolo: null, pasti: cena('zucchine al vapore') },
+      ] }],
+    };
+    const onStato = rendi({ ...STATO, mappaturaPasti: { cena: 's-cena' } }, piano);
+    expect(screen.getAllByRole('textbox', { name: 'Quantità di zucchine' })).toHaveLength(1);
+    expect(screen.getByText('In 2 pasti')).toBeInTheDocument();
+    expect(screen.getByText('Sul foglio: «zucchine grigliate» · porzione tipica, proposta da me')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /Da sistemare/ })).toBeNull();
+    // Nel foglio del martedì, l'altro testo: la riga ha la proposta del gruppo e non è un dubbio.
+    fireEvent.click(screen.getByRole('button', { name: 'Apri Martedì' }));
+    const foglio = screen.getByRole('dialog', { name: 'Martedì' });
+    expect(within(foglio).queryByText(/Sul foglio non c'è un peso/)).toBeNull();
+    fireEvent.click(within(foglio).getByRole('button', { name: 'Chiudi Martedì' }));
+    fireEvent.click(conferma());
+    const stato = onStato.mock.calls.at(-1)![0] as StatoRevisione;
+    expect(stato.correzioni['1-0-0'].piatti[0].righeFisse[0]).toMatchObject({ quantita: 200, unita: 'g', quantitaInferita: true });
+    expect(stato.correzioni['1-1-0'].piatti[0].righeFisse[0]).toMatchObject({ quantita: 200, unita: 'g', quantitaInferita: true });
+  });
+
+  it('Task 12b: senza proposta, una risposta sola vale per tutti i testi dello stesso alimento', () => {
+    const piano = pianoConOlive([['cena'], ['cena']]);
+    piano.settimane[0].giorni[1].pasti[0].piatti[0].righeFisse[1] = { ...OLIVE, testoOriginale: 'olive nere' };
+    const onStato = rendi({ ...STATO, mappaturaPasti: { cena: 's-cena' } }, piano);
+    expect(screen.getByRole('heading', { name: 'Da sistemare 1' })).toBeInTheDocument();
+    const campo = screen.getByRole('textbox', { name: 'Quantità di olive taggiasche' });
+    fireEvent.change(campo, { target: { value: '3' } });
+    fireEvent.blur(campo);
+    fireEvent.click(within(screen.getByRole('group', { name: 'Unità di olive taggiasche' })).getByRole('button', { name: 'PZ' }));
+    expect(onStato).toHaveBeenCalledTimes(1);
+    const stato = onStato.mock.calls[0][0] as StatoRevisione;
+    expect(stato.correzioni['1-0-0'].piatti[0].righeFisse[1]).toMatchObject({ quantita: 3, unita: 'pz', testoOriginale: '2-3 olive taggiasche' });
+    expect(stato.correzioni['1-1-0'].piatti[0].righeFisse[1]).toMatchObject({ quantita: 3, unita: 'pz', testoOriginale: 'olive nere' });
+  });
 });
 
 const OLIVE = { alimento: 'olive taggiasche', quantita: null, unita: null, quantitaInferita: false, testoOriginale: '2-3 olive taggiasche' };

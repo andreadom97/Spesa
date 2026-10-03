@@ -167,7 +167,7 @@ export function Controlla({ piano, stato, slotDefs, ingredientiEsistenti = [], o
     const pillole = proposta === null && g.unitaFissa === null && (g.tipo !== 'inferita' || g.unita === null);
     const diversi = g.stato === 'fatto' && g.quantita === null ? ' · valori diversi nei giorni' : '';
     const daMe = proposta
-      ? ` · ${proposta.testo ?? (proposta.origine === 'porzione' ? 'porzione tipica' : "l'unità più usata")}, proposta da me`
+      ? ` · ${proposta.testo ?? (proposta.origine === 'unitaFrequente' ? "l'unità più usata" : 'porzione tipica')}, proposta da me`
       : g.tipo === 'inferita' || g.daMe ? ' · quantità proposta da me' : '';
     return (
       <RigaAlimento
