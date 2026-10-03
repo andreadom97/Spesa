@@ -327,7 +327,7 @@ export default function Piatto() {
     setSelettore(null);
   }
 
-  function cambiaQuantita(ingredientId: string, quantita: number) {
+  function cambiaQuantita(ingredientId: string, quantita: number | null) {
     setIngredienti((prev) => prev.map((r) => (r.ingredientId === ingredientId ? { ...r, quantita } : r)));
   }
 
@@ -395,7 +395,7 @@ export default function Piatto() {
     );
   }
 
-  function cambiaQuantitaOpzione(componenteId: string, opzioneId: string, ingredientId: string, quantita: number) {
+  function cambiaQuantitaOpzione(componenteId: string, opzioneId: string, ingredientId: string, quantita: number | null) {
     setComponenti((prev) =>
       prev.map((c) => {
         if (c.id !== componenteId) return c;

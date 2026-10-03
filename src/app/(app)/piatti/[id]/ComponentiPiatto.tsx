@@ -25,7 +25,7 @@ export interface PropsComponentiPiatto {
   onRimuoviOpzione: (componenteId: string, opzioneId: string) => void;
   /** Apre il selettore degli ingredienti su quell'opzione (lo stesso selettore degli ingredienti del piatto). */
   onAggiungiIngrediente: (componenteId: string, opzioneId: string) => void;
-  onCambiaQuantita: (componenteId: string, opzioneId: string, ingredientId: string, quantita: number) => void;
+  onCambiaQuantita: (componenteId: string, opzioneId: string, ingredientId: string, quantita: number | null) => void;
   onRimuoviRiga: (componenteId: string, opzioneId: string, ingredientId: string) => void;
   /** `{opzioneId}:{ingredientId}` della riga appena aggiunta dal selettore: la sua tessera prende il fuoco. */
   appenaAggiunta?: string | null;
