@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const response = NextResponse.redirect(new URL('/lista', url.origin));
+  const response = NextResponse.redirect(new URL('/oggi', url.origin));
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

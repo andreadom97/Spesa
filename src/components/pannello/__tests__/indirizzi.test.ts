@@ -39,9 +39,9 @@ describe('indirizzoPannello', () => {
 });
 
 describe('origine (spec §A.5)', () => {
-  it('senza origine il ritorno va in cima sopra la Lista', () => {
+  it('senza origine il ritorno va in cima sopra Oggi', () => {
     expect(leggiOrigine()).toBeNull();
-    expect(indirizzoRitorno()).toBe('/lista?impostazioni=cima');
+    expect(indirizzoRitorno()).toBe('/oggi?impostazioni=cima');
   });
 
   it('con l\'origine il ritorno è il pannello sopra la pagina di partenza', () => {
@@ -65,7 +65,7 @@ describe('origine (spec §A.5)', () => {
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('bloccato'); });
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('bloccato'); });
     expect(() => salvaOrigine({ pathname: '/lista', sotto: 'cima' })).not.toThrow();
-    expect(indirizzoRitorno()).toBe('/lista?impostazioni=cima');
+    expect(indirizzoRitorno()).toBe('/oggi?impostazioni=cima');
     expect(() => salvaScrollPannello('ingredienti', 300)).not.toThrow();
     expect(prendiScrollPannello('ingredienti')).toBeNull();
   });

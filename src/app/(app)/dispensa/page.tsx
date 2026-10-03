@@ -226,6 +226,33 @@ export default function Dispensa() {
     return () => window.removeEventListener(EVENTO_DISPENSA_CAMBIATA, alCambio);
   }, [leggi, ricarica]);
 
+  // Da Oggi (spec Oggi §D.1–§D.3): `?ingrediente=` e `?lotto=` aprono il foglio di quella voce,
+  // una volta, poi l'URL torna pulito. Si legge da window.location (niente useSearchParams, niente
+  // <Suspense>) e solo quando i dati sono arrivati: è `dati` a dire che l'id esiste.
+  // Prima l'URL, poi il foglio: la voce di cronologia che useIndietroFogli aggiunge all'apertura
+  // deve stare sopra `/dispensa`, non sopra il link, così il gesto indietro chiude il foglio e
+  // la pagina resta la Dispensa. La replaceState passa `{}`, non `window.history.state`: i dati
+  // arrivano dopo il primo montaggio, quindi l'AppRouter ha già avvolto la History API, e il suo
+  // avvolgimento copia da sé `__NA` e l'albero nella voce e porta il nuovo indirizzo anche nel
+  // suo canonicalUrl. Con lo stato che ha `__NA` la chiamata passerebbe diretta al browser e Next
+  // resterebbe sull'indirizzo col parametro (lo stesso caso di `vaiA` in PannelloProvider).
+  const apertoDaLink = useRef(false);
+  useEffect(() => {
+    if (!dati || apertoDaLink.current) return;
+    apertoDaLink.current = true;
+    const parametri = new URLSearchParams(window.location.search);
+    const ingrediente = parametri.get('ingrediente');
+    const lotto = parametri.get('lotto');
+    if (!ingrediente && !lotto) return;
+    window.history.replaceState({}, '', '/dispensa');
+    if (ingrediente && dati.voci.some((v) => v.ingrediente.id === ingrediente)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setFoglio({ tipo: 'ingrediente', id: ingrediente, vista: 'dettaglio' });
+    } else if (lotto && dati.lotti.some((l) => l.id === lotto)) {
+      setFoglio({ tipo: 'lotto', id: lotto, elimina: false });
+    }
+  }, [dati]);
+
   function cambiaVoce(id: string, patch: Partial<VoceDispensa>) {
     setDati((d) => d && { ...d, voci: d.voci.map((v) => (v.ingrediente.id === id ? { ...v, ...patch } : v)) });
   }

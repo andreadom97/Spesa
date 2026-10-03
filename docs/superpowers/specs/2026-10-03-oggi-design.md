@@ -108,7 +108,7 @@ Ogni ingresso che oggi porta a `/lista` come pagina iniziale passa a `/oggi`:
 
 | File | Oggi | Dopo |
 |---|---|---|
-| `public/manifest.json` | `start_url: /lista` | `/oggi` |
+| `public/manifest.json` | `start_url: /lista` | `/oggi`, più `id: "/lista"` (precisato in esecuzione, 03/10): senza `id` l'identità della PWA è lo `start_url`, e cambiarlo può far trattare l'app aggiornata come un'altra app [fonte: developer.chrome.com/docs/capabilities/pwa-manifest-id, indicata dal controller, non riletta]; l'`id` è quello che le installazioni di oggi calcolano |
 | `src/app/page.tsx` | `redirect('/lista')` | `redirect('/oggi')` |
 | `src/app/auth/callback/route.ts` | redirect a `/lista` | `/oggi` |
 | `src/components/AvvioMarchio.tsx` | l'avvio del Marchio gira solo su `/lista` | gira sulla pagina d'ingresso, `/oggi` |
@@ -134,9 +134,16 @@ parte, fuori da questa spec.
 
 Il poster mostra **il primo pasto, in ordine di posizione, che sia a casa, con un piatto, e la cui
 fascia non è ancora finita** (decisione 10). Se oggi non ce n'è più, mostra il primo pasto a casa
-con un piatto di **domani**. Domani può cadere nella settimana dopo, che il Piano crea solo quando
-lo apri (`creaSettimana`): se quella settimana non esiste ancora, il poster dice
-`Il piano di domani non c'è ancora.` con il tasto `APRI IL PIANO`.
+con un piatto di **domani**. Domani può cadere nella settimana dopo (la domenica). **La domenica
+Oggi apre anche la settimana di domani** (precisato in esecuzione, 03/10, decisione di Andrea,
+opzione a): `apriSettimanaCorrente(domani)` la legge e, se manca, la crea come fa il Piano
+(`creaSettimana`, una creazione sola anche con due aperture insieme). Parte con le altre letture,
+perché si sa dalla data se serve, e solo quando `lunediDi(domani) !== lunediDi(oggi)`. La lettura è
+**tollerata**: se l'apertura fallisce (rete, «Configura prima i tuoi pasti», doppione non risolto)
+la home regge coi dati di oggi, e il poster dice `Il piano di domani non c'è ancora.` con il tasto
+`APRI IL PIANO`. Prima di questa decisione il poster diceva quel testo la domenica sera, a pasti di
+oggi finiti, e il Piano, aperto da lì, non creava la settimana: un vicolo cieco [fonte: review
+finale, I3; non provato in produzione].
 
 Un pasto **dai Pronti** (`daPronti`) è un pasto con un piatto: il poster lo mostra.
 
@@ -151,10 +158,10 @@ Dal nome del pasto (`meal_slot_def.nome`), in minuscolo e senza accenti; si cont
 | `spuntino` o `merenda` con `mattin` | 10:30–12:00 |
 | `pranzo` | 12:00–15:00 |
 | `spuntino` o `merenda` con `pomerig` | 15:00–18:00 |
-| `spuntino` o `merenda` da solo | prima del pranzo → 10:30–12:00; dopo → 15:00–18:00 (per posizione) |
+| `spuntino` o `merenda` da solo | prima del pranzo → 10:30–12:00; dopo → 15:00–18:00 (per posizione); senza un pranzo fra i pasti → 10:30–12:00 |
 | `dopocena` | 21:30–24:00 |
 | `cena` | 18:00–21:30 |
-| altro | per posizione: dalla fine del pasto riconosciuto prima alla fascia del pasto riconosciuto dopo; senza vicini riconosciuti, fino alle 24:00 |
+| altro | per posizione: inizia dove finisce il pasto riconosciuto prima (00:00 se non c'è) e finisce dove inizia il pasto riconosciuto dopo (24:00 se non c'è) |
 
 I nomi reali in produzione sono Colazione, Spuntino, Spuntino mattina, Pranzo, Spuntino
 pomeriggio, Cena, Dopocena [misurato il 03/10]: tutti coperti dalle righe sopra.
@@ -170,9 +177,11 @@ del giorno che il poster mostra:
 | Il pasto del poster | piena, bianca |
 | Futuro, a casa | solo bordo 2 px bianco al 45% |
 | Fuori casa, saltato, sostituito | bordo 2 px **tratteggiato** bianco al 45% |
-| Senza piatto | come futuro |
+| Senza piatto | come futuro (precisato in esecuzione, 03/10: non ha un aspetto suo, vale la precedenza qui sotto, quindi con la fascia finita è «finita») |
 
-Decorativa (`aria-hidden`): l'informazione è nel testo del poster.
+Precedenza, dall'alto: il pasto del poster, poi fuori/saltato/sostituito, poi fascia finita, poi
+futuro. Per domani nessuna casella è «finita». Decorativa (`aria-hidden`): l'informazione è nel
+testo del poster.
 
 ### B.4 Anatomia
 
@@ -190,20 +199,25 @@ Tessera piena in `--ink`, due colonne del bento, raggio 18, padding `13 16 16`. 
    bianco 22%.
 5. **Banda delle alternative** (§C), solo quando c'è.
 6. **Icona ingrediente** dell'ingrediente principale (§C.4), 96, tono `hero`, tagliata in basso
-   a destra come nelle tessere.
+   a destra come nelle tessere. **Quando c'è la banda delle alternative (punto 5) il poster non
+   mostra la sua icona** (precisato in esecuzione, 03/10): è il poster con banda del mockup B1
+   approvato (`oggi-caroselli-v2.html`), senza icona hero, e l'icona starebbe sotto le carte.
+   La pagina passa `icona = null` quando ci sono proposte.
 
 ### B.5 Com'è andata
 
 `COM'È ANDATA` apre `FoglioAzioniPasto` sopra la home, con gli stessi props e callback di
 `piano/page.tsx` per quello slot (`passato` = il giorno del poster ≤ oggi). Le scritture sono le
-stesse (`aggiornaSlot(…, 'checkin')`). Dopo una scrittura la home si ricarica: se il pasto è
+stesse (`aggiornaSlot(…, 'checkin')`). Come nel Piano, il foglio si apre solo se la settimana del
+pasto non è in `bozza`: in bozza `COM'È ANDATA` non c'è. Dopo una scrittura la home si ricarica: se il pasto è
 diventato `saltato`, `sostituito` o `fuori`, il poster passa al pasto dopo (decisione 10).
 
 ### B.6 Cambia
 
 `CAMBIA` apre Scegli: `/piano/{data}/{slotDefId}/scegli?da=oggi`. Scegli oggi torna sempre al
 Piano (`tornaA(router, '/piano')`): impara il parametro `da=oggi` e in quel caso torna a `/oggi`,
-come l'editor del Piatto con `?da=piano` (fase 7). È l'unico ritocco a Scegli, una riga nel
+come l'editor del Piatto con `?da=piano` (fase 7), e la pillola della testata dice `OGGI`
+(`aria-label` `Torna a oggi`) invece di `PIANO`. È l'unico ritocco a Scegli, una riga nel
 ritorno di `confermaScelta` e nell'indietro: da fare dopo il merge della 8c, che tocca lo stesso
 file.
 
@@ -213,10 +227,15 @@ file.
 
 ### C.1 Quando ci sono
 
-Tutte e quattro:
+Tutte e cinque:
 - la dispensa è aggiornata (§E);
 - il pasto del poster non è `daPronti` (una porzione pronta è già il miglior uso di quello che
   hai);
+- il pasto del poster non ha porzioni da preparare (`porzioniPreparate = 0`; precisato in
+  esecuzione, 03/10): `aggiornaSlot` con un cambio di piatto azzera `porzioniPreparate` e cancella
+  il lotto dei Pronti dello slot (`src/data/settimana.ts:358`), quindi `SCAMBIA` cancellerebbe in
+  silenzio il meal prep pianificato e `RIMETTI QUELLO DEL PIANO` non lo ridarebbe. Per cambiare
+  quel pasto resta `CAMBIA`, il cambio deliberato;
 - c'è almeno un candidato fattibile (§C.2, §C.3);
 - il pasto del poster è di oggi (per domani si cambia dal Piano).
 
@@ -242,14 +261,23 @@ disponibile(i) = residuoUtilizzabile(i, oggi)
 Perché il secondo termine: dopo la chiusura il residuo è già al netto del piano, compreso il
 pasto di stasera; scambiando, quegli ingredienti tornano liberi (lo storno di `aggiornaSlot` li
 riaccredita). Prima della chiusura il piatto di stasera non è ancora stato comprato e non libera
-niente. Conseguenza voluta: una proposta **non ruba mai** quello che serve ai pasti dopo, perché il
-residuo è ciò che avanza al piano.
+niente. Conseguenza voluta, **solo a settimana chiusa**: una proposta non ruba ai pasti dopo,
+perché il residuo è ciò che avanza al piano. In `confermata` non vale (precisato in esecuzione,
+03/10): il residuo è già impegnato dalla lista generata, e a compensare è `allineaTopUp`
+(`src/data/lista.ts:177`), che a ogni apertura della Lista aggiunge al top-up quello che manca.
 
 Una riga è **coperta** se:
 - l'ingrediente è di classe `stima` (olio, sale…): sempre;
 - è «quanto basta» (`quantita === null`, dalla 8c): se `disponibile > 0` (accordo con la 8c, come
   fa la lista);
-- altrimenti: se `disponibile ≥ quantità convertita in unità base × persone`.
+- altrimenti: se `disponibile ≥ quantità convertita in unità base × persone` (precisato in
+  esecuzione, 03/10). **Niente `fattoreConsumo` dello slot**: una lettura precedente di questa
+  riga (`× persone × fattoreConsumo(slot)`, cioè `1 + porzioniPreparate`) partiva dalla premessa
+  che lo scambio faccia ereditare al piatto nuovo le porzioni da preparare, ed è falsa:
+  `aggiornaSlot` le azzera col cambio di piatto (`src/data/settimana.ts:358`). Per questo la
+  banda non c'è su uno slot che ne ha (§C.1), e per tutti gli altri il fabbisogno è quantità ×
+  persone. Il termine `consumoSlot(slot attuale)` di `disponibile` resta il consumo vero dello
+  slot, porzioni comprese: è ciò che lo storno riaccredita.
 
 **Tutto in casa** = ogni riga coperta. **Manca una cosa** = esattamente un ingrediente scoperto.
 Due o più → non è un candidato.
@@ -267,7 +295,9 @@ Ordine: prima i «tutto in casa», poi i «manca una cosa»; dentro ogni gruppo 
 ingrediente che scade entro due giorni (§D.1), poi per nome. **Al massimo 2.**
 
 **Anatomia della banda** (variante B1): filo 1 px bianco 14% sopra, padding alto 14, poi
-l'etichetta `OPPURE, CON QUELLO CHE HAI` (mono 10 / 700 / 0,14em, bianco 60%), poi il carosello:
+l'etichetta `OPPURE, CON QUELLO CHE HAI` (mono 10 / 700 / 0,14em, bianco **66%**: precisato in
+esecuzione, 03/10; fra i nove alfa del poster non c'è un 60%, e sei punti su un'etichetta mono non
+giustificano un decimo token), poi il carosello:
 
 - **Carta** bianca, larga 252, alta almeno 150, raggio 18, padding `13 14 14`, gap 8. Dentro: la
   pillola di stato (`TUTTO IN CASA` su `rgba(20,22,58,.06)`; `MANCA: {NOME}` su
@@ -294,7 +324,8 @@ scambio fatto da Oggi, tenuto in `sessionStorage` per slot; si cancella quando s
 quando il poster passa a un altro slot. Con lo scambio fatto, la banda delle alternative sparisce
 (non si scambia lo scambio da qui: per altro c'è `CAMBIA`).
 
-Errore di scrittura: messaggio d'errore in `--errore` sotto le azioni,
+Errore di scrittura: messaggio d'errore in `--errore` **subito sotto il poster**, sul fondo chiaro
+(`--errore` sull'inchiostro non arriva a 4,5:1),
 `Non siamo riusciti a scambiare il piatto. Riprova.`, e il poster resta com'era.
 
 ---
@@ -333,20 +364,37 @@ tessera non è stata vista coi dati veri. La regola sul flag `congelato` va veri
 (come si comporta il flag dopo una chiusura che ricompra lo stesso ingrediente) [ipotesi, non
 testata].
 
+**Verificato nel piano (precisato in esecuzione, 03/10) [misurato, leggendo il codice]:**
+`chiudiSpesa` (`src/data/lista.ts`, righe 547–557), per un ingrediente ricomprato, scrive
+`residuo` e `ultimo_acquisto` e azzera `scadenza_manuale`, ma **non tocca `congelato`**: il flag
+resta vero dopo un riacquisto fresco. Quindi la tessera `SCONGELA` può comparire per un
+ingrediente comprato fresco dopo essere stato congelato. La tessera segue il flag così com'è:
+dice quello che dice la Dispensa, che mostra lo stesso ingrediente «in congelatore» e ne stima la
+durata a 90 giorni. Azzerare il flag alla chiusura cambia la semantica della spesa ed è una scelta
+di prodotto, fuori da questo piano: **domanda aperta per Andrea**. Oggi, in produzione, non c'è
+niente in congelatore [misurato il 03/10], quindi nessuna tessera sbagliata si vede.
+
 ### D.3 Pronti (solo con la dispensa aggiornata)
 
-I lotti con `porzioniUtilizzabili(lotto, oggi) > 0` non già promessi a un pasto (stessa logica
-degli «impegni» della Dispensa). Al massimo 2, i più vecchi prima.
+**Una tessera per piatto**, non per lotto: le porzioni libere del piatto sono la somma di
+`porzioniUtilizzabili(lotto, oggi)` dei suoi lotti meno gli **impegni** (i pasti `daPronti` di
+quel piatto da oggi in poi, la stessa regola della Dispensa). Tessera solo se le libere sono più
+di 0. Al massimo 2 piatti, prima quello col lotto vivo più vecchio.
 
 Tessera **piena nel colore dell'area dell'ingrediente principale** del piatto (§C.4; bianca se non
 ce l'ha): pillola bianca `{n} PRONTI` / `1 PRONTO`, nome del piatto a 25 / 800, sottotitolo
-`In frigo` o `In congelatore`, icona 96 tono `hero`. Il tocco apre il lotto in Dispensa.
+`In congelatore` se tutti i lotti vivi del piatto sono in congelatore, altrimenti `In frigo`,
+icona 96 tono `hero`. Il tocco apre in Dispensa il lotto vivo più vecchio del piatto.
 
 ### D.4 Poi (sempre)
 
 Il pasto che viene dopo quello del poster con la stessa regola di §B.1 (a casa, con un piatto).
 Tessera bianca: etichetta mono `POI · {PASTO}` se è oggi, `DOMANI · {PASTO}` se è domani; nome
-del piatto a 17. Il tocco apre il Piano su quel giorno.
+del piatto a 17. Il tocco apre il Piano (che si apre su oggi; domani è a un tocco). Precisato in
+esecuzione, 03/10: la tessera porta anche l'icona dell'ingrediente principale del piatto (60, tono
+`area`, §C.4), come la tessera `SCONGELA` di un lotto. La spec non la nominava, il piano sì: **da
+confermare con Andrea** (vedi §G.2). L'etichetta è in `--testo-2`, non in `--sec`: porta
+un'informazione.
 
 ### D.5 Con la dispensa non aggiornata
 
@@ -390,13 +438,29 @@ Lettura nuova in `src/data/dispensa.ts`: `leggiUltimaChiusura(): Promise<string 
   `Non riusciamo a caricare la giornata.`, col tasto `RIPROVA`.
 - **Offline:** la home non ha una copia locale. Con la rete giù il caricamento fallisce: sotto
   l'errore la pillola `APRI LA LISTA`, che regge offline.
+- **Dispensa che non si legge** (precisato in esecuzione, 03/10): le righe della dispensa e
+  l'ultima chiusura sono due letture tollerate, e stanno o cadono insieme. Se una fallisce la home
+  non mostra niente che ne derivi (banda, Scade, Scongela, Pronti) **e nemmeno la tessera
+  tratteggiata** (§D.5): il suo testo («Chiudi la prima spesa…», «La dispensa è ferma al…») direbbe
+  una cosa che la home non sa. Il resto della giornata regge.
 - **Settimana corrente non ancora creata:** Oggi la crea come fa il Piano (`creaSettimana` con la
   stessa guardia sul doppione `unique (user_id, data_inizio)`). La logica si estrae in un helper
-  `apriSettimanaCorrente()` in `src/data/settimana.ts`, usato da Oggi; il Piano resta com'è (lo
-  tocca la 8c) e passa all'helper in un secondo momento.
-- **Nessun pasto a casa con un piatto, oggi né domani:** il poster diventa lo stato vuoto del
-  sistema (§8 «Stato vuoto»): `Nessun pasto in programma.` col tasto `APRI IL PIANO`.
-- **Repertorio vuoto (utente nuovo):** lo stesso stato vuoto del Piano, con i suoi testi.
+  `apriSettimanaCorrente(oggi)` in `src/data/apertura.ts` (precisato in esecuzione, 03/10: prende
+  la data locale come argomento, sta in un file suo, e due aperture insieme, Strict Mode o due
+  schede, fanno una creazione sola), usato da Oggi; il Piano resta com'è (lo tocca la 8c) e passa
+  all'helper in un secondo momento.
+- **La domenica, la settimana di domani** (precisato in esecuzione, 03/10, decisione di Andrea,
+  opzione a): quando domani cade in un'altra settimana Oggi la apre con lo stesso helper,
+  `apriSettimanaCorrente(domani)` (§B.1), e se manca la crea. È una lettura **tollerata**: se
+  fallisce (rete, «Configura prima i tuoi pasti», doppione non risolto) non diventa un errore di
+  caricamento, `console.error` come le altre letture tollerate, e il poster dice
+  `Il piano di domani non c'è ancora.` con `APRI IL PIANO`. Il lunedì il Piano legge la settimana
+  corrente e la crea solo se manca, quindi la trova già creata [letto in `piano/page.tsx`, non
+  provato in produzione].
+- **Nessun pasto a casa con un piatto, oggi né domani:** il poster resta un poster scuro senza
+  piatto, con `Nessun pasto in programma.` e il tasto `APRI IL PIANO` (come «domani senza piano»). Copre anche
+  il repertorio vuoto di un utente nuovo: il Piano, aperto da qui, ha il suo stato vuoto con
+  `COMINCIA DAI PIATTI`.
 
 ---
 
@@ -419,7 +483,10 @@ In §13 una sezione «Decisioni del 03/10/2026 (Oggi)» con le decisioni in test
 
 - **Le icone ingrediente fuori dalle tessere ingrediente:** sul poster, sulla carta alternativa e
   sulla tessera dei Pronti, come icona dell'**ingrediente principale** di un piatto (§C.4). Stessa
-  grammatica (due toni, tagliata in basso a destra), nessun uso diverso.
+  grammatica (due toni, tagliata in basso a destra), nessun uso diverso. Precisato in esecuzione,
+  03/10: il codice la mette anche sulla tessera di un lotto da scongelare (§D.2 prevede un'icona
+  su quella tessera, ma qui non era elencata: non è una domanda aperta) e sulle tessere `Poi` e
+  `Domani` (§D.4), che la spec non nomina: da confermare con Andrea.
 - **Il carosello nel poster** non è uno swipe nascosto: la seconda carta si vede.
 
 ### G.3 Componenti e file
@@ -430,9 +497,11 @@ In §13 una sezione «Decisioni del 03/10/2026 (Oggi)» con le decisioni in test
 | Poster | `src/app/(app)/oggi/Poster.tsx` |
 | Carosello e carta | `src/app/(app)/oggi/Alternative.tsx` |
 | Tessere della griglia | `src/app/(app)/oggi/TesseraOggi.tsx` |
-| Dominio puro | `src/domain/oggi.ts` (+ `src/domain/__tests__/oggi.test.ts`) |
+| Dominio puro | `src/domain/oggi.ts` + `src/domain/__tests__/oggi.tempo.test.ts`, `oggi.dispensa.test.ts`, `oggi.fare.test.ts` (precisato in esecuzione, 03/10: tre file di test, non `oggi.test.ts`) |
+| Testi composti | `src/domain/oggi-testi.ts` + `src/domain/__tests__/oggi-testi.test.ts` (precisato in esecuzione, 03/10) |
+| Annullo dello scambio | `src/app/(app)/oggi/piano-prima.ts` + `__tests__/piano-prima.test.ts`: il piatto del piano in `sessionStorage` (precisato in esecuzione, 03/10) |
 | Ultima chiusura | `src/data/dispensa.ts` → `leggiUltimaChiusura` |
-| Apertura della settimana | `src/data/settimana.ts` → `apriSettimanaCorrente` |
+| Apertura della settimana | `src/data/apertura.ts` → `apriSettimanaCorrente(oggi)` (precisato in esecuzione, 03/10: non `src/data/settimana.ts`) |
 | Tab bar | `src/components/TabBar.tsx`, `globals.css`, `design/sistema/tokens.css` |
 | Ingressi | i file di §A.3 |
 | Scegli | `?da=oggi` nel ritorno (§B.6) |
@@ -440,18 +509,30 @@ In §13 una sezione «Decisioni del 03/10/2026 (Oggi)» con le decisioni in test
 
 ### G.4 Il dominio, `src/domain/oggi.ts`
 
-Funzioni pure, senza rete né DB, tutte testate:
+Funzioni pure, senza rete né DB, tutte testate. **Le firme sono quelle del codice** (precisato in
+esecuzione, 03/10: lo schizzo della spec e le firme del piano differivano):
 
 - `oggiLocale(adesso: Date): { data: string; minuti: number }`
-- `fasciaDi(defs: MealSlotDef[]): Map<slotDefId, { inizio: number; fine: number }>` (§B.2)
-- `prossimoPasto({ slots, defs, adesso }): { slot; giorno: 'oggi' | 'domani' } | null` (§B.1),
-  e la stessa per «Poi» partendo da uno slot dato
-- `caselleGiornata({ slots, defs, data, adesso, slotPoster })` (§B.3)
+- `fasceDi(defs: MealSlotDef[]): Map<slotDefId, { inizio: number; fine: number }>` (§B.2; nella
+  spec era `fasciaDi`)
+- `prossimoPasto({ slotsOggi, slotsDomani, defs, minuti }): Prossimo` (§B.1), con `Prossimo` =
+  `{ tipo: 'pasto', slot, giorno: 'oggi' | 'domani' } | { tipo: 'domaniNonCreato' } | { tipo:
+  'nessuno' }`; `slotsDomani` null = la settimana di domani non si è potuta aprire (precisato in
+  esecuzione, 03/10: la domenica Oggi la apre e la crea, §B.1; null resta per l'apertura fallita). La stessa per
+  «Poi»: `pastoDopo({ dopo, slotsOggi, slotsDomani, defs }): PastoScelto | null`, con
+  `PastoScelto` = `{ slot, giorno }`
+- `caselleGiornata({ slots, defs, minuti, slotPosterId })` (§B.3), con `minuti` null quando il
+  giorno è domani (nessuna casella «finita»); non prende `data` né `adesso`
 - `dispensaAggiornata(ultimaChiusura: string | null, oggi: string): boolean` (§E)
-- `ingredientePrincipale(dish, ingredients): Ingredient | null` (§C.4)
-- `alternative({ slot, settimana, dishes, ingredients, pantry, impostazioni, oggi, avvisi })` →
-  al massimo 2 `{ dish, stato: 'tutto' | { manca: Ingredient } }` (§C.2–C.5)
-- `daFare({ … })` → le tessere di §D.1–D.3
+- `ingredientePrincipale(dish, ingredients, scelte = {}): { ingrediente: Ingredient; icona:
+  ChiaveIcona } | null` (§C.4): non lancia mai, un piatto che non si legge dà `null`
+- `alternative(i: AlternativeInput): Alternativa[]` con `AlternativeInput` = `{ slot,
+  statoSettimana, slotsSettimana, dishes, ingredients, pantry, persone, oggi, inScadenza }`
+  (`persone` = `moltiplicatorePorzioni`; `inScadenza` = il `Set` degli ingredienti che scadono
+  entro due giorni, da `inScadenzaEntro(avvisi, oggi)`) →
+  al massimo 2 `{ dish, stato: { tipo: 'tutto' } | { tipo: 'manca', ingrediente } }` (§C.2–C.5)
+- `daFare({ avvisi, slots, defs, dishes, ingredients, pantry, lotti, oggi, minuti })` → `{ scade,
+  scongela, pronti }`, le tessere di §D.1–D.3
 
 ---
 
@@ -466,13 +547,17 @@ Tutti nuovi, tranne dove scritto.
 | Poster, etichetta | `{GIORNO} · {PASTO}`, `DOMANI · {PASTO}` |
 | Poster, sottotitolo | `Per {n}` · `Cucina {n} in più` · `Da una porzione pronta` |
 | Poster, azioni | `CAMBIA` · `COM'È ANDATA` · `RIMETTI QUELLO DEL PIANO` |
-| Poster, domani senza piano | `Il piano di domani non c'è ancora.` · `APRI IL PIANO` |
+| Poster, domani senza piano | `Il piano di domani non c'è ancora.` · `APRI IL PIANO` (precisato in esecuzione, 03/10: per quando l'apertura della settimana di domani fallisce, §B.1) |
+| Poster senza pasto, etichetta | `DOMANI` (domani non pianificato) · `OGGI` (`Nessun pasto in programma.`) |
+| Poster, nome accessibile della sezione | `Prossimo pasto` |
+| Errore di un'azione del foglio | `Non siamo riusciti a salvare il cambiamento. Riprova.` (esistente, quello del Piano) |
 | Banda | `OPPURE, CON QUELLO CHE HAI` · `TUTTO IN CASA` · `MANCA: {NOME}` · `SCAMBIA` (`aria-label` `Scambia con {piatto}`) |
 | Errore di scambio | `Non siamo riusciti a scambiare il piatto. Riprova.` |
 | Scade | `SCADE {OGGI\|DOMANI\|GIORNO\|IL 9 SET}` · `{Pasto} di {oggi\|domani\|giorno}` · `Nessun pasto lo usa` |
 | Scongela | `SCONGELA` · `Per {pasto} di domani` |
 | Pronti | `{n} PRONTI` · `1 PRONTO` · `In frigo` · `In congelatore` |
 | Poi | `POI · {PASTO}` · `DOMANI · {PASTO}` |
+| Scegli aperto da Oggi | pillola `OGGI`, `aria-label` `Torna a oggi` |
 | Dispensa non aggiornata | `La dispensa è ferma al {d mese}, l'ultima spesa chiusa nell'app. Chiudi la prossima, e qui compaiono le proposte con quello che hai e le cose che scadono.` · `Chiudi la prima spesa nell'app, e qui compaiono le proposte con quello che hai e le cose che scadono.` · `APRI LA LISTA` |
 | Stati | `CARICO…` (esistente) · `Non riusciamo a caricare la giornata.` · `RIPROVA` (esistente) · `Nessun pasto in programma.` · `APRI IL PIANO` |
 
@@ -481,8 +566,9 @@ Tutti nuovi, tranne dove scritto.
 ## I. Rischi, limiti, punti aperti
 
 - **Il residuo è un avanzo, non un inventario.** A metà settimana `pantry_state.residuo` è ciò che
-  resta **dopo** il piano della settimana. Per questo le proposte non rubano ai pasti dopo (§C.3),
-  ma anche per questo il poster non dice «hai tutto» (correzione in testa).
+  resta **dopo** il piano della settimana. Per questo, a settimana chiusa, le proposte non rubano
+  ai pasti dopo (§C.3; in `confermata` il residuo è già impegnato dalla lista e compensa
+  `allineaTopUp`), ma anche per questo il poster non dice «hai tutto» (correzione in testa).
 - **Le fasce sbagliano a cavallo** (una cena alle 21:45 risulta già passata). Si corregge solo se
   succede davvero; l'orario per pasto è la strada già scartata il 03/10 come troppo cara per ora.
 - **Data UTC nel resto dell'app.** Fra mezzanotte e le 2 Oggi e il Piano possono dire due giorni
@@ -499,15 +585,17 @@ Tutti nuovi, tranne dove scritto.
 
 1. **Test di dominio** (`oggi.test.ts`): fasce coi sette nomi reali e con un nome sconosciuto; il
    prossimo pasto a 08:00, 10:45 (spuntino senza piatto → salta), 12:30 con pranzo fuori (salta),
-   18:10, 22:00 (dopocena), 23:59 (domani); domani in una settimana non creata; le caselle nei
+   18:10, 22:00 (dopocena), 23:59 (domani); domani in una settimana non aperta (null); le caselle nei
    cinque stati; `dispensaAggiornata` a 0, 9, 10 giorni e senza chiusure; `alternative` con:
    tutto in casa, manca uno, mancano due (escluso), q.b. con residuo 0 (scoperto) e > 0
    (coperto), classe stima, piatto già in programma (escluso), settimana chiusa contro
-   confermata (il consumo di stasera conta solo da chiusa), ordine e tetto a 2;
+   confermata (il consumo di stasera conta solo da chiusa), le porzioni da preparare dello slot
+   che non moltiplicano il fabbisogno, ordine e tetto a 2;
    `ingredientePrincipale` coi quattro casi di §C.4.
 2. **Test di componente:** il poster coi tre sottotitoli; la banda assente con la dispensa non
-   aggiornata; `SCAMBIA` chiama `aggiornaSlot` col patch giusto; `RIMETTI QUELLO DEL PIANO`
-   rimette piatto e scelte; la tessera tratteggiata nei due testi.
+   aggiornata, con porzioni da preparare e con la dispensa che non si legge; `SCAMBIA` chiama
+   `aggiornaSlot` col patch giusto; `RIMETTI QUELLO DEL PIANO` rimette piatto e scelte; la tessera
+   tratteggiata nei due testi.
 3. **Nel browser** (preview, utente di prova): `/` porta a `/oggi`; la barra a 4 voci a riposo e
    ridotta senza tagli di testo; il carosello scorre e si ferma sulle carte; nessun elemento
    finisce sotto la barra; `npm run design:token`, `tsc`, lint e la suite verdi.

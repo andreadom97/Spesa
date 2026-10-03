@@ -1050,3 +1050,65 @@ describe('la cancellazione dal pannello (spec fase 5 §E.2)', () => {
     expect(leggiDispensa).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('Dispensa: aperta su una voce da Oggi (spec Oggi §D.1–§D.3)', () => {
+  // Un test che fallisce prima di ripulire l'URL non deve sporcare i successivi.
+  afterEach(() => {
+    window.history.replaceState(null, '', '/');
+  });
+
+  it('?ingrediente= apre il dettaglio di quella voce, e l\'URL torna /dispensa (spec Oggi §D.1)', async () => {
+    window.history.replaceState(null, '', '/dispensa?ingrediente=pollo');
+    mockBase();
+    await montaCaricata();
+    expect(await screen.findByRole('dialog', { name: 'Petto di pollo' })).toBeInTheDocument();
+    expect(window.location.search).toBe('');
+    window.history.replaceState(null, '', '/');
+  });
+
+  it('?lotto= apre il foglio di quel lotto (spec Oggi §D.3)', async () => {
+    window.history.replaceState(null, '', '/dispensa?lotto=lp-1');
+    mockBase();
+    await montaCaricata();
+    expect(await screen.findByRole('dialog', { name: 'Lotto di Ragù di lenticchie' })).toBeInTheDocument();
+    window.history.replaceState(null, '', '/');
+  });
+
+  it('prima l\'URL, poi il foglio: la voce che l\'hook mette sta sopra /dispensa, e il gesto indietro chiude solo il foglio', async () => {
+    window.history.replaceState(null, '', '/dispensa?ingrediente=pollo');
+    mockBase();
+    const sostituisci = vi.spyOn(window.history, 'replaceState');
+    await montaCaricata();
+    expect(await screen.findByRole('dialog', { name: 'Petto di pollo' })).toBeInTheDocument();
+
+    expect(sostituisci).toHaveBeenCalledTimes(1);
+    expect(window.history.pushState).toHaveBeenCalledTimes(1);
+    expect(sostituisci.mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(window.history.pushState).mock.invocationCallOrder[0]);
+    expect(window.location.pathname + window.location.search).toBe('/dispensa');
+
+    indietro();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(tessera('Petto di pollo')).toBeInTheDocument();
+    expect(window.history.go).not.toHaveBeenCalled();
+    expect(window.location.pathname + window.location.search).toBe('/dispensa');
+  });
+
+  it('un id che non c\'è: nessun foglio, ma l\'URL torna pulito lo stesso', async () => {
+    window.history.replaceState(null, '', '/dispensa?ingrediente=sparito');
+    mockBase();
+    await montaCaricata();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(window.location.search).toBe('');
+    expect(window.history.pushState).not.toHaveBeenCalled();
+  });
+
+  it('senza parametri non si tocca la cronologia e non si apre niente', async () => {
+    window.history.replaceState(null, '', '/dispensa');
+    mockBase();
+    const sostituisci = vi.spyOn(window.history, 'replaceState');
+    await montaCaricata();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(sostituisci).not.toHaveBeenCalled();
+    expect(window.history.pushState).not.toHaveBeenCalled();
+  });
+});

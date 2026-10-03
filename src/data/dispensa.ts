@@ -18,6 +18,22 @@ export async function leggiDispensa(): Promise<PantryState[]> {
 }
 
 /**
+ * Il giorno dell'ultima spesa chiusa nell'app (spec Oggi §E): la data più recente di `purchase`,
+ * che `chiudiSpesa` scrive alla chiusura. Le modifiche a mano della Dispensa non passano da qui.
+ * Filtra la casa la RLS, come `leggiDispensa`.
+ */
+export async function leggiUltimaChiusura(): Promise<string | null> {
+  const { data, error } = await client()
+    .from('purchase')
+    .select('data')
+    .order('data', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? String((data as { data: unknown }).data).slice(0, 10) : null;
+}
+
+/**
  * "sì" scrive ultimo_check = oggi *e* toglie la riga di controllo da
  * shopping_list_item; "no" trasforma il controllo in voce d'acquisto.
  *

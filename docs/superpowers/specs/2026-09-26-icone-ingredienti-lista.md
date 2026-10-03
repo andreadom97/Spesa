@@ -142,3 +142,45 @@ Richieste da Andrea il 03/10 per coprire i nomi generici delle diete importate. 
 - Nuovo blocco: «salame di cioccolato» (un dolce, non un salume).
 - Restano dove sono: «Olio d'oliva» → `olio`, «Frutti di bosco» → `fragola`, «Noci» → `noce`, «Noce moscata» → `spezie`, «Yogurt alla frutta» → `yogurt`, «Marmellata di frutta» → `marmellata`, «Minestrone» → `minestra`.
 - Il catalogo passa da 64 a **69** chiavi; fra gli INGREDIENTI_BASE resta senza icona solo «Mais».
+
+## Ondata 1 (03/10)
+
+24 chiavi nuove (da 69 a **93**, dopo il gate del 03/10), costruite in cinque lotti (A-E). I sinonimi sono quelli del catalogo in `src/domain/icone-ingredienti.ts`.
+
+| Chiave | Sinonimi |
+|---|---|
+| `mais` | mais, granturco, pannocchia, pop corn, popcorn |
+| `peperoncino` | peperoncino, jalapeno (esce da `spezie`) |
+| `ananas` | ananas |
+| `cocco` | cocco, noce di cocco, latte di cocco, farina di cocco |
+| `ciliegia` | ciliegia, ciliege, amarena, marasca, marasche, visciola |
+| `melone` | melone, anguria, cocomero |
+| `datteri-fichi` | dattero, fico, fichi |
+| `pesca-albicocca` | albicocca, albicocche, nettarina, percoca, percoche |
+| `uvetta` | uvetta, uva passa, uva sultanina |
+| `carciofo` | carciofo, carciofino |
+| `asparago` | asparago |
+| ~~`maiale`~~ | confluito in `bistecca` (gate 03/10): maiale, lonza, arista, braciola di maiale, costine, filetto di maiale, porchetta |
+| `agnello` | agnello, carne di agnello, abbacchio, capretto |
+| `molluschi` | cozza, vongola, calamaro, polpo, polpo di scoglio, seppia, totano, moscardino, ostrica, ostriche, capasanta, capesante, frutti di mare, insalata di mare |
+| `panna` | panna, panna da cucina, panna fresca, panna montata |
+| `cereali` | cereali, corn flakes, cornflakes, fiocchi di mais, muesli, granola |
+| `piadina` | piadina, tortilla, wrap |
+| `vaniglia` | vaniglia, vanillina, estratto di vaniglia, bacca di vaniglia |
+| `lievito` | lievito, lievito di birra, lievito per dolci, bicarbonato, cremor tartaro |
+| `senape` | senape |
+| `capperi` | cappero |
+| `semi` | seme, semi di chia, semi di lino, semi di girasole, semi di zucca, semi di sesamo, sesamo, chia, lino |
+| `vino` | vino, spumante, prosecco |
+| `liquore` | liquore, rum, marsala, brandy, cognac, limoncello, grappa |
+| `te` | te, tisana, camomilla, infuso |
+
+| Regola | Effetto |
+|---|---|
+| Blocchi nuovi: panna cotta, gelato, budino, polpa di, mostarda | nessuna icona (dolci pronti, polpa di zucca/granchio, frutta candita), invece di vaniglia, panna, molluschi, datteri-fichi |
+| «agli» ignorata come parola (`IGNORATE`) | «Risotto agli asparagi» non prende l'aglio; prezzo: «Agli» da solo resta senza icona |
+| Pareggi esatti | a parità di posizione e lunghezza vince la voce che coincide esattamente con le parole del nome (prima di `radice`); se nessuna coincide, vince il blocco. «Grana» → formaggio, «Grano» → null, «Pesce» → pesce, «Pesche» → null |
+
+Mais torna con un disegno nuovo (tolto al gate del 26/09), da confermare al gate.
+
+**Ritocchi del gate (03/10).** `panna` ridisegnata come cartone corto di panna da cucina; `agnello` come carré di tre costole; `maiale` confluito in `bistecca` (nessun disegno del maiale si leggeva), con i suoi sinonimi.

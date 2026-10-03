@@ -55,7 +55,7 @@ schermo non ospita più vivono nel **Dock**. Il registro completo è in §13.
 | `--fondo` | `#F1F0EE` | fondo delle superfici piatte e tema PWA; **non** più il fondo della schermata (§2.4) | — |
 | `--superficie` | `#FFFFFF` | schede, tessere accese, campi, tab bar, dock | — |
 | `--ink` | `#14163A` | testo primario, tasti pieni, stati attivi, bordo "oggi" | 15,3:1 su fondo · 17,4:1 su bianco |
-| `--ink-2` | `#3D4166` | hover dei link, avvisi di scadenza nella riga pasto | — |
+| `--ink-2` | `#3D4166` | hover dei link, avvisi di scadenza nella riga pasto; dal 03/10 il sottotitolo sulle tessere piene d'area di Oggi (§2.5) | 4,63–6,46:1 sulle sei aree [calcolato, §2.5] |
 | `--testo-2` | `#5C5F7A` | **ogni testo che porta informazione**: note, sottotitoli, righe di stato | 5,5:1 su fondo |
 | `--sec` | `#8A8A96` | solo decorazione: etichette mono, contatori, unità | 3,0:1 su fondo · 3,4:1 su bianco |
 | `--ter` | `#A6A6B2` | solo decorazione: metadati, unità, testo del tasto spento | 2,4:1 su bianco |
@@ -173,6 +173,43 @@ scritto:
 
 Un'alfa che non è in questa tabella non si usa: si aggiunge prima qui.
 
+**Gli alfa di Oggi (03/10).** Nove, e ognuno è un token: `src/app/globals.css` e
+`design/sistema/tokens.css` li dichiarano insieme, con gli stessi valori (`npm run design:token`).
+Sei sono bianco sul poster in inchiostro (§8 Poster del pasto), tre sono tinte piatte sotto le
+pillole di stato.
+
+| Token | Valore | Dove |
+|---|---|---|
+| `--poster-testo-2` | `rgba(255,255,255,0.72)` | etichetta mono in alto del poster (`SABATO · CENA`) e del poster senza pasto |
+| `--poster-testo-3` | `rgba(255,255,255,0.66)` | sottotitolo del poster; etichetta della banda delle alternative (8,1:1 su `--ink` [calcolato]) |
+| `--poster-tasto` | `rgba(255,255,255,0.12)` | fondo delle pillole d'azione del poster (`CAMBIA`, `COM'È ANDATA`, `RIMETTI QUELLO DEL PIANO`) |
+| `--poster-bordo` | `rgba(255,255,255,0.22)` | bordo 1 px delle stesse pillole |
+| `--poster-filo` | `rgba(255,255,255,0.14)` | filo 1 px sopra la banda delle alternative; bordo della pillola del poster spenta |
+| `--poster-casella` | `rgba(255,255,255,0.45)` | caselle della giornata (piena e bordo), puntino non attivo del carosello, testo della pillola del poster spenta |
+| `--tinta-neutra` | `rgba(20,22,58,0.06)` | pillola `TUTTO IN CASA` della carta alternativa; fondo di `SCAMBIA` spento (eccezione, sotto) |
+| `--tinta-avviso` | `rgba(154,92,0,0.10)` | pillola `MANCA: {NOME}`, testo `--avviso` (4,7:1 [calcolato]) |
+| `--tinta-freddo` | `rgba(47,111,191,0.12)` | pillola `SCONGELA`, testo `--freddo` (4,3:1 [calcolato], eccezione, sotto) |
+
+Usi nuovi e deroghe che l'esecuzione di Oggi ha introdotto, tutti dichiarati qui e solo qui:
+
+- **`--ink-2` come sottotitolo sulle tessere piene d'area** (Scade presto, Pronti). `--testo-2` su
+  un colore d'area pieno fa 2,95–4,11:1 sulle sei aree; `--ink-2` fa 4,63–6,46:1 [calcolato ora con
+  la formula WCAG sui sei hex, non misurato a schermo]. Un testo che informa su un colore d'area
+  pieno va in `--ink-2` o in `--ink`; `--testo-2` resta il sottotitolo sulle tessere bianche.
+- **`SCAMBIA` spento a 0,06, non a 0,10.** §8 Tasti, «Spento», dice `rgba(20,22,58,0.10)`; per
+  `.tasto-scambia:disabled` il codice usa `--tinta-neutra` (0,06) con testo `--ter`, per non
+  scrivere un colore a mano: il 0,10 su `--ink` non ha un token. **Eccezione dichiarata, non
+  allineata**: il codice usa questo valore e Andrea non ha ancora deciso se tenerlo; allinearlo è
+  una riga di CSS se lo vuole uguale agli altri tasti spenti.
+- **Le pillole d'azione del poster hanno tracking 0,09em e padding 14**, non 0,08em e 15 come le
+  Pillole d'azione di §8 (`.pillola-poster` contro `APRI LA LISTA`, che ha i valori di §8).
+  **Eccezione dichiarata, non allineata**, per la stessa ragione: sono valori scritti nel piano di
+  Oggi e rimasti nel codice, a un pixel e a 0,01em dai valori del sistema.
+- **`SCONGELA` sotto 4,5:1.** `--freddo` su `--tinta-freddo` fa 4,3:1 [calcolato ora]: la spec di
+  Oggi (§D.2) prescrive questa coppia, e §11 chiede 4,5:1 su ogni testo che informa. **Eccezione
+  aperta**, da risolvere scurendo il testo o abbassando l'alfa della tinta: finché non c'è una
+  decisione di Andrea il valore resta quello della spec.
+
 ---
 
 ## 3. Tipografia
@@ -233,7 +270,7 @@ Scala a base 4: **4 · 8 · 12 · 16 · 20 · 26**, più 22 per il distacco dal 
 | Interno di una Tessera widget di sezione | 14 alto / 12 lati / 12 basso, gap 12 |
 | Griglia di tessere | gap 8, con 12 ai lati |
 | Tra un gruppo e l'altro | 12 |
-| Tab bar flottante | larga 304 (244 ridotta), centrata, 22 dal fondo, padding 6, gap 2 |
+| Tab bar flottante | larga 338 (274 ridotta), centrata, 22 dal fondo, padding 6, gap 2 (dal 03/10; prima 304 e 244) |
 | Dock | 16 dai lati, 8 sopra la tab bar, padding 8, gap 8 |
 | Ultimo elemento dal fondo | 22 |
 | Foglio dal basso | 16 / 16 / 26 |
@@ -329,9 +366,9 @@ La **matita** del Dock della Dispensa esce di scena: il Dock ora porta l'icona A
 
 **Le forme piene ammesse:** la casetta della riga pasto, il kebab a tre punti, **l'icona AI**
 (dal 25/09), e **le icone della tab bar**, che dal 19/09 sono piene: a 26 px, appoggiate su bianco e in
-mezzo ai nomi, il tratto si perdeva. Dal 25/09 la barra ha tre voci: le icone piene sono Piano
-e Dispensa, accanto al Marchio della Lista. La regola "solo tratto" vale ancora
-fuori dalla tab bar.
+mezzo ai nomi, il tratto si perdeva. Dal 03/10 la barra ha quattro voci: le icone piene sono Oggi
+(il piatto visto dall'alto), Piano e Dispensa, accanto al Marchio della Lista. La regola "solo
+tratto" vale ancora fuori dalla tab bar.
 
 **Icone ingrediente (eccezione dichiarata, 26/09; due toni dal 03/10).** Sulle tessere ingrediente (Lista, Dispensa, ingrediente del piatto) un'icona fa riconoscere l'ingrediente. Griglia 24, tre strati: la **sagoma piena** (colore d'area a 0,72; bianco a 0,7 sulla protagonista e sulla Dispensa in casa; `rgba(20,22,58,0.06)` spenta); il **contorno** a tratto `0.9` e fino a **cinque gruppi di dettagli** a tratto `0.5`, nel tono medio d'area (§2.3); l'**ombra a tratteggio**, righe a 45° di `0.34` ogni `1.2`, nella falce fra la sagoma e la sagoma spostata di (−2, −2,2). La luce viene da in alto a sinistra anche sulle icone ruotate. Estremità e giunti arrotondati, fori fino a raggio 0,3. **60 px** sulla tessera, **96 px** sulla protagonista, in basso a destra, tagliata dal bordo di **11** e **18** px, sotto il nome e fuori dal layout (`position: absolute`, `aria-hidden`). Spenta (spuntata, finita, mai comprato): tratti `--off` a 0,55. Il nome passa sopra con un alone di 2 px (3 px sulla protagonista) nel colore opaco del fondo della tessera; **sulle tessere barrate (spuntata, finita) niente alone**, perché contornava di bianco la barra (26/09, Andrea): lì il nome torna a `rgba(20,22,58,0.34)`. Sono le sole icone sopra i 26 px e le sole con un pieno fuori dalla tab bar; non si estendono ad altri componenti.
 
@@ -395,22 +432,22 @@ fermo in `--ink`, barre ferme a 13 px; lo stato lo dice la riga di testo con `ro
   freccia della pagina che lascia. Con `prefers-reduced-motion: reduce`: solo opacità in 120 ms,
   e l'app dietro non si scala. **Eccezione dichiarata:** la curva di chiusura
   `cubic-bezier(.4,0,1,1)` è l'unica curva d'autore oltre a quella della barra.
-- **`.anim-avvio`** — **eccezione dichiarata** (25/09): all'apertura dell'app, solo su `/lista`
-  e una volta per sessione di navigazione, il Marchio si compone al centro e vola sull'icona
-  della Lista in tab bar. Dura **2,1 s** e non segue un gesto: è ammessa perché accade una volta
+- **`.anim-avvio`** — **eccezione dichiarata** (25/09): all'apertura dell'app, solo su `/oggi`
+  (la pagina d'ingresso dal 03/10; prima `/lista`) e una volta per sessione di navigazione, il
+  Marchio si compone al centro e vola sull'icona della Lista in tab bar. Dura **2,1 s** e non segue un gesto: è ammessa perché accade una volta
   sola, all'apertura, ed è il marchio. Un livello fisso sopra tutto, che non prende tocchi, col
   fondo a gradiente (§2.4) e il Marchio grande al centro (§8 Marchio). I tempi:
   0–1045 ms ogni casella fa il pop `pb` (620 ms lineari, scala `0 → 1,32 (40%) → 0,93 (62%) →
   1,05 (80%) → 0,99 (92%) → 1`, opacità 0 → 1 entro il 40%, ritardi in ordine di griglia
   `0, 340, 170, 255, 85, 425` ms); 1045–1200 pausa; 1200–1820 il Marchio va al suo posto in
   620 ms `cubic-bezier(.2,.8,.25,1)`, e negli ultimi 120 ms si dissolve in quello della barra;
-  1200–1620 il fondo del livello si dissolve e la Lista, già pronta sotto, si vede; a 2100 ms
-  il livello si smonta. **Non ritarda niente:** la Lista carica sotto come sempre. Con
+  1200–1620 il fondo del livello si dissolve e la pagina d'ingresso, già pronta sotto, si vede; a
+  2100 ms il livello si smonta. **Non ritarda niente:** la pagina carica sotto come sempre. Con
   `prefers-reduced-motion: reduce` non parte: il Marchio è già al suo posto.
 
 Vietati: animazione d'ingresso della pagina, parallax, cascate, contatori animati, e qualunque
-animazione che ritardi un'azione dell'utente. L'avvio del Marchio non è un ingresso della Lista:
-è un livello sopra di lei, che la Lista non aspetta, e la Lista non ha un'animazione propria.
+animazione che ritardi un'azione dell'utente. L'avvio del Marchio non è un ingresso della pagina:
+è un livello sopra di lei, che lei non aspetta, e la pagina non ha un'animazione propria.
 
 **Direzione del moto (Andrea, 17/09; chiusa per il Marchio il 25/09).** Il carattere del moto
 può diventare più dinamico senza esagerare: durate sempre 150–250 ms, mai un'animazione senza
@@ -479,23 +516,32 @@ esistono preferenze.
 - L'iniziale è **testo**, non un avatar: nessuna immagine, nessun colore assegnato per persona.
 
 ### Tab bar
-Pillola bianca **flottante e centrata** (`left: 0; right: 0; margin: 0 auto`), larga **304**,
-`bottom 22`, altezza **84**, raggio 999, padding 6, gap 2, `--ombra-nav`. **Tre voci** da
-**96 × 72**, in colonna, gap 4, raggio 999; attiva su `rgba(20,22,58,0.07)`. (Dal 25/09: prima
-erano quattro voci `flex: 1` su una pillola a 16 dai lati.)
+Pillola bianca **flottante e centrata** (`left: 0; right: 0; margin: 0 auto`), larga **338**,
+`bottom 22`, altezza **84**, raggio 999, padding 6, gap 2, `--ombra-nav`. **Quattro voci** da
+**80 × 72**, in colonna, gap 4, raggio 999; attiva su `rgba(20,22,58,0.07)`. Il conto: 4 × 80 +
+3 × 2 + 2 × 6 = 338. Dal 03/10: prima erano tre voci da 96 su 304. (Dal 25/09 erano tre; prima
+ancora quattro `flex: 1` su una pillola a 16 dai lati.)
 
-- **Ordine e nomi:** **Lista · Piano · Dispensa**. Piatti esce dalla barra il 25/09: è una
+- **Ordine e nomi:** **Oggi · Lista · Piano · Dispensa**. Oggi è la prima voce e la pagina
+  d'ingresso: l'app si apre lì (`start_url` `/oggi`). Piatti esce dalla barra il 25/09: è una
   pagina piena, aperta da una tessera del Pannello impostazioni e dagli stati vuoti di Lista e
   Piano. `SETTIMANA` non esiste più: la sezione si chiama **Piano** perché è la pianificazione
   dei pasti, e la settimana è il periodo, che lo dice la pillola sotto il titolo.
 - **Icone 26 px, piene**; spente `#9A9AA6`, accesa `--ink`. Il segno sta in uno `.segno` ad
-  **altezza fissa 26**, così le icone e il Marchio hanno la stessa linea di base e i tre nomi
-  sono allineati fra loro.
+  **altezza fissa 26**, così le icone e il Marchio hanno la stessa linea di base e i quattro
+  nomi sono allineati fra loro.
+- **L'icona di Oggi è il piatto visto dall'alto** (03/10): su griglia 24, un cerchio pieno di
+  raggio 9 nel colore della voce e, dentro, un cerchio bianco di raggio 4,1 a opacità 0,92. Il
+  bianco è `#fff` letterale, come nelle altre icone piene della barra (`var()` negli attributi di
+  presentazione di un SVG non è affidabile). Non è usata altrove.
 - **Etichette** mono **8,5 / 0,12em**, spente `--off` a 500, accesa `--ink` a 700, rese
-  maiuscole da `text-transform`.
-- **Stato ridotto:** scorrendo giù la barra diventa larga **244** e alta **66**, voci **76 ×
-  54**; le etichette vanno a `max-height: 0; opacity: 0` ma **restano cliccabili**. Si animano
-  `width` e `height`, 200 ms, `cubic-bezier(.2,.8,.25,1)`; `--fine` passa da 128 a 110.
+  maiuscole da `text-transform`. `DISPENSA` è la più lunga e deve stare negli 80 px della voce:
+  circa 49 px di testo [stima della spec di Oggi, **NON misurata** nel browser: vedi il registro
+  `docs/2026-10-03-oggi-decisioni-esecuzione.md`].
+- **Stato ridotto:** scorrendo giù la barra diventa larga **274** e alta **66**, voci **64 ×
+  54** (4 × 64 + 3 × 2 + 2 × 6); le etichette vanno a `max-height: 0; opacity: 0` ma **restano
+  cliccabili**. Si animano `width` e `height`, 200 ms, `cubic-bezier(.2,.8,.25,1)`; `--fine`
+  passa da 128 a 110.
 - **L'icona della Lista è il Marchio**, non un'icona di lista: deciso esplicitamente.
 - **Nessuna voce attiva** su Piatti, Importa e nell'editor dell'ingrediente. Col Pannello
   impostazioni aperto la barra è **coperta**: la navigazione è sospesa finché il pannello è
@@ -1015,6 +1061,181 @@ Nessun toast, nessuna snackbar, nessun banner colorato: lo stato si legge dove s
 - **Caricamento** — una sola riga mono `CARICO…` in `--sec`, al posto del contenuto, sotto la
   testata che è già disegnata. Nessuno spinner, nessuno scheletro.
 
+### Poster del pasto
+**Nuovo il 03/10 (Oggi).** La prima cosa che l'app mostra: il prossimo pasto a casa, in una
+tessera scura. Spec `docs/superpowers/specs/2026-10-03-oggi-design.md` §B. File:
+`src/app/(app)/oggi/Poster.tsx` (`Poster`, `PosterVuoto`).
+
+- **Quale pasto.** Il primo di oggi, in ordine di posizione, che sia a casa, con un piatto e con
+  la fascia non ancora finita; se oggi non ce n'è più, il primo di domani. I pasti fuori casa o
+  senza piatto non fanno un poster: restano nelle caselle. Un pasto dai Pronti è un pasto con un
+  piatto. La fascia viene dal nome del pasto (spec §B.2: `Pranzo` 12:00–15:00, `Cena`
+  18:00–21:30…), senza impostazioni.
+- **Anatomia.** Tessera piena in `--ink`, due colonne del bento, raggio **18**, padding
+  `13 16 16`, `--ombra-pannello`, `overflow: hidden`; `<section aria-label="Prossimo pasto">`.
+  Dall'alto:
+  1. **Riga alta**: etichetta mono 10/700/0,14em in `--poster-testo-2`, `{GIORNO} · {PASTO}`
+     (`SABATO · CENA`; `DOMANI · COLAZIONE` se è domani); a destra le caselle (sotto).
+  2. **Nome del piatto**: `h2`, 32/800/−0,045em (il Titolo di dettaglio, §3) con `lh 1,04`,
+     bianco, margine alto 26, largo al massimo l'84%: lascia posto all'icona.
+  3. **Sottotitolo**: mono 8,5/0,06em, `lh 1,5`, `--poster-testo-3`, largo al massimo l'80%;
+     le voci che valgono, separate da ` · `: `Per {n}` se le persone sono più di una,
+     `Cucina {n} in più` se ci sono porzioni da preparare, `Da una porzione pronta`. Nessuna
+     voce, nessuna riga. Il poster non dice «hai tutto in casa»: dopo una spesa chiusa il
+     residuo è già al netto del piano, quindi sarebbe vero per costruzione.
+  4. **Azioni**: `CAMBIA` (link a Scegli) e `COM'È ANDATA` (apre il Foglio azioni del pasto; non
+     c'è se la settimana del pasto è in bozza), gap 8, margine alto 14.
+  5. **`RIMETTI QUELLO DEL PIANO`** su una riga sua, 8 sotto le azioni, solo dopo uno scambio
+     fatto da qui (sezione seguente).
+  6. **La banda delle alternative**, solo quando c'è (sezione seguente).
+  7. **Icona ingrediente** dell'ingrediente principale del piatto: 96, tono `hero`, in basso a
+     destra e tagliata dal bordo come nelle tessere (§6; l'eccezione è in §12). **Con la banda
+     delle alternative il poster non ha un'icona sua**: starebbe sotto le carte, ed è come il
+     poster con banda del mockup B1 approvato.
+- **Le caselle della giornata.** In alto a destra, una per ogni pasto della casa, del giorno che
+  il poster mostra: **11 × 11**, **raggio 3**, gap 4, `aria-hidden` (l'informazione è nel testo
+  del poster). Il raggio 3 non è fra i cinque di §5 né fra le tre eccezioni: si dichiara qui,
+  nell'anatomia (è vicino a `lato × 0,28` = 3,08, la formula dei raggi del Marchio).
+
+  | Stato | Casella |
+  |---|---|
+  | Il pasto del poster | piena, `--superficie` |
+  | Fascia finita | piena, `--poster-casella` |
+  | Futuro, a casa | solo bordo 2 px `--poster-casella` |
+  | Fuori casa, saltato, sostituito | bordo 2 px **tratteggiato** `--poster-casella` |
+  | Senza piatto | come futuro, o come fascia finita se la fascia è finita: non ha un aspetto suo |
+
+  Precedenza, dall'alto: il pasto del poster, fuori/saltato/sostituito, fascia finita, futuro.
+  Per domani nessuna casella è «finita».
+- **Pillole d'azione sul fondo scuro** (`.pillola-poster`). Disegno **38**, area di tap **44**,
+  raggio 999, mono 11/700/**0,09em** maiuscolo, padding `0 14`, fondo `--poster-tasto`, bordo
+  1 px `--poster-bordo`, testo `--superficie`. L'area di tap è un `::before` con `inset: -4px 0`:
+  il bordo da 1 px riduce il padding box a 36, e 36 + 4 + 4 = 44 [calcolato dal CSS, non
+  misurato nel browser]. Spenta (una scrittura sullo slot è in volo): `disabled` nativo, testo
+  `--poster-casella` e bordo `--poster-filo`, mai opacità. Tracking e padding non sono quelli
+  delle Pillole d'azione: eccezione dichiarata in §2.5.
+- **Poster senza pasto** (`PosterVuoto`). Stesso guscio, senza caselle né icona: l'etichetta
+  mono (`DOMANI` o `OGGI`), il testo 21/800/−0,035em in bianco a 20 sotto, e la pillola
+  `APRI IL PIANO` (link a `/piano`) a 14 sotto il testo. Due casi: `Il piano di domani non c'è
+  ancora.` (oggi non ha più pasti e la settimana di domani, che la domenica Oggi apre da sé, non
+  si è potuta aprire; precisato in esecuzione, 03/10) e `Nessun pasto in programma.` (né oggi
+  né domani c'è un pasto a casa con un piatto, repertorio vuoto compreso). Stesso nome
+  accessibile, `Prossimo pasto`.
+
+### Carta alternativa e carosello nel poster
+**Nuovi il 03/10 (Oggi).** «Oppure, con quello che hai»: fino a due piatti del repertorio che si
+possono fare con la dispensa, dentro il poster. Spec §C. File:
+`src/app/(app)/oggi/Alternative.tsx`, con `.carosello-oggi` e `.tasto-scambia` in `globals.css`.
+
+- **Quando c'è.** Solo con la dispensa aggiornata (sezione Tessere di Oggi), per il pasto di oggi
+  che non viene dai Pronti e **non ha porzioni da preparare** (lo scambio le azzererebbe,
+  cancellando il lotto dei Pronti dello slot, e `RIMETTI QUELLO DEL PIANO` non lo ridarebbe:
+  precisato in esecuzione, 03/10), con almeno un candidato fattibile e non dopo uno scambio fatto
+  da qui. Candidati: piatti del repertorio, attivi, dello stesso tipo di pasto, non già in programma
+  da oggi a fine settimana; mai piatti generati. Fattibile = tutto in casa, o manca un solo
+  ingrediente. Ordine: prima i «tutto in casa», poi i «manca una cosa»; dentro il gruppo prima chi
+  usa un ingrediente che scade entro due giorni, poi per nome. Al massimo **2**.
+- **Banda.** Sotto le azioni: margine alto 16, filo 1 px `--poster-filo`, padding alto 14, gap 10.
+  In testa l'etichetta mono 10/700/0,14em in `--poster-testo-3` (**66%**: la spec diceva 60%, e
+  fra gli alfa del poster non c'è un 60%; sei punti su un'etichetta mono non giustificano un
+  decimo token), `OPPURE, CON QUELLO CHE HAI`; poi il carosello; poi i puntini.
+- **Carta.** Bianca (`--superficie`), larga **252**, alta almeno **150**, raggio **18**, padding
+  `13 14 14`, gap 8, `overflow: hidden`. Dall'alto: la pillola di stato; il nome 18/800/−0,035em
+  in `--ink`, largo al massimo il 76% (con l'icona, alone bianco di 2 px); `SCAMBIA` in fondo;
+  l'icona ingrediente **96, tono `area`**, tagliata in basso a destra. Il 18 del nome non è fra i
+  nove livelli di §3: si dichiara qui.
+- **Pillola di stato.** Raggio 999, padding `4 8`, mono 9/700/0,07em maiuscolo: `TUTTO IN CASA`
+  (`--ink` su `--tinta-neutra`) o `MANCA: {NOME}` (`--avviso` su `--tinta-avviso`). Una sola. Il
+  significato sta nel testo, non solo nel colore (§11). Il mono 9 è fra le taglie intermedie di §3,
+  ma per altri componenti (nome del pasto sulla riga pasto, sottoriga della Riga piatto): su questa
+  pillola è un uso nuovo, e si dichiara qui.
+- **`SCAMBIA`.** Pillola `--ink`, testo `--superficie`, alta **36**, raggio 999, mono
+  10,5/700/0,09em, padding `0 13 0 11`, gap 7, icona delle due frecce 15 (tratto 2,1). Area di tap
+  **44**: `::before` con `inset: -4px 0` (36 + 4 + 4, senza bordo). `aria-label="Scambia con
+  {piatto}"`. Spenta mentre una scrittura è in volo: `disabled`, fondo `--tinta-neutra`, testo
+  `--ter` (§2.5: 0,06 e non 0,10).
+- **Carosello.** Orizzontale e **visibile**: `overflow-x: auto`, `scroll-snap-type: x mandatory`,
+  ogni carta `scroll-snap-align: start`, gap 8, barra di scorrimento non disegnata,
+  `overscroll-behavior-x: contain`. Con due proposte la lista esce a destra dal padding del
+  poster (margine destro −16, padding destro 16): **la seconda carta spunta dal bordo**, ed è per
+  questo che non è uno swipe nascosto (§12). Con **una** proposta la carta prende tutta la
+  larghezza, senza margine −16 e senza puntini. Accesso: `role="list"` esplicito (con
+  `list-style: none` Safari toglie la semantica di lista), ogni carta un `listitem`.
+- **Puntini.** Sotto il carosello, solo con due proposte: centrati, gap 5, alti 6; l'attivo è
+  largo 16 e `--superficie`, l'altro largo 6 in `--poster-casella`. `aria-hidden`: sono
+  decorativi, il carosello è già una lista. L'attivo è `round(scrollLeft / 260)`, con 260 =
+  252 + 8. **Limite noto:** oltre circa 442 px di larghezza dello schermo il secondo puntino non
+  si accende mai, perché lo scorrimento massimo scende sotto mezzo passo [calcolato dal CSS,
+  con il poster largo come lo schermo meno 28, non misurato nel browser].
+- **L'annullo sta dentro il poster** (§12: niente toast, niente snackbar). Dopo `SCAMBIA`,
+  finché il poster mostra quello slot, sotto le azioni compare `RIMETTI QUELLO DEL PIANO`
+  (pillola del poster, riga sua): rimette il piatto e le scelte che lo slot aveva prima del primo
+  scambio fatto da Oggi. «Quello del piano» è tenuto in `sessionStorage` in una voce sola (lo
+  `slotId` e il piatto e le scelte di prima), non una per slot; si cancella quando si rimette,
+  quando il poster passa a un altro slot e quando il piatto in programma è già quello annotato.
+  Con lo scambio fatto la banda sparisce: per cambiare ancora c'è `CAMBIA`.
+- **Errore di scrittura** (scambio, annullo, foglio azioni): l'errore di §8 Messaggi, `role="alert"`,
+  **subito sotto il poster**, sul fondo chiaro: `--errore` sull'inchiostro fa 3,5:1 [calcolato
+  ora], sotto 4,5. Il poster resta com'era.
+
+### Tessere di Oggi
+**Nuove il 03/10 (Oggi).** Sotto il poster, la griglia: due colonne, gap 8, margini laterali 14,
+`--ombra-pannello` su ogni tessera. Ordine: Scade presto, Da scongelare, Pronti, Poi; ogni blocco
+sparisce quando è vuoto. File: `src/app/(app)/oggi/TesseraOggi.tsx` (`TesseraPiena`,
+`TesseraBianca`, `TesseraDispensaFerma`). La piena e la bianca sono link interi, raggio **18**,
+padding `13 14 14`, `overflow: hidden` per tenere dentro l'icona tagliata. Quattro forme:
+
+1. **Piena d'area** (`TesseraPiena`). Fondo nel colore dell'area, alta almeno **140**. In cima la
+   pillola bianca (raggio 999, padding `5 10`, mono 10,5/700/0,07em, `--ink`); sotto, a 10, il
+   nome 25/800/−0,04em, largo al massimo l'82%, con alone di 3 px nel colore d'area (come la
+   protagonista della Lista); poi il sottotitolo mono 8,5/0,06em, largo al massimo l'80%, in
+   **`--ink-2`** (§2.5); l'icona 96, tono `hero`. Due usi:
+   - **Scade presto**: gli ingredienti con scadenza entro oggi + 2 (`avvisiScadenza`, la stessa
+     funzione del Piano e della Dispensa), al massimo 2, i più vicini. Pillola `SCADE OGGI`,
+     `SCADE DOMANI`, `SCADE LUNEDÌ`; sottotitolo il primo pasto che lo usa in tempo (`Pranzo di
+     domani`) o `Nessun pasto lo usa`. Tocco: `/dispensa?ingrediente={id}`, il foglio del
+     dettaglio.
+   - **Pronti**: una tessera per **piatto** (non per lotto) con porzioni libere, al massimo 2,
+     prima il lotto vivo più vecchio. Colore dell'area dell'ingrediente principale del piatto;
+     senza, la forma diventa bianca (fondo `--superficie`, bordo 1 px `--bordo`, sottotitolo
+     `--testo-2`). Pillola `{n} PRONTI` / `1 PRONTO`; sottotitolo `In congelatore` se tutti i
+     lotti vivi lo sono, altrimenti `In frigo`. Tocco: `/dispensa?lotto={id}`, il lotto vivo più
+     vecchio.
+2. **Bianca** (`TesseraBianca`). Fondo `--superficie`, bordo 1 px `--bordo`, alta almeno **104**;
+   nome 17/700/−0,032em, largo al massimo l'86%; icona **60, tono `area`**. Due usi:
+   - **Da scongelare**: al massimo 2 in tutto, da un lotto dei Pronti in congelatore legato a un
+     pasto dai Pronti di domani, o da un ingrediente segnato in congelatore che un pasto a casa
+     di domani usa. Pillola `SCONGELA` (come sopra, `--freddo` su `--tinta-freddo`, §2.5),
+     sottotitolo `Per {pasto} di domani`. Tocco: il dettaglio in Dispensa, dell'ingrediente o
+     del lotto.
+   - **Poi** e **Domani**: il pasto dopo quello del poster (a casa, con un piatto), o il primo di
+     domani. Al posto della pillola l'etichetta mono 9,5/700/0,14em, `POI · {PASTO}` o
+     `DOMANI · {PASTO}`, in **`--testo-2`** e non `--sec`: porta un'informazione, e `--sec` è
+     solo decorazione (6,2:1 contro 3,4:1 su bianco [calcolato ora]). Tocco: il Piano. Il 9,5
+     non è fra le taglie intermedie di §3: si dichiara qui.
+3. **Tratteggiata informativa** (`TesseraDispensaFerma`). A due colonne, senza fondo, bordo 2 px
+   tratteggiato `--bordo-tratteggio` (§5), raggio 18, padding `14 16`, gap 10. Il testo 14/1,45 in
+   `--testo-2`, con la prima parte in `--ink` e in grassetto: **`La dispensa è ferma al {d
+   mese}`**`, l'ultima spesa chiusa nell'app. Chiudi la prossima, e qui compaiono le proposte
+   con quello che hai e le cose che scadono.` Senza nessuna spesa chiusa: `Chiudi la prima spesa
+   nell'app, e qui compaiono le proposte con quello che hai e le cose che scadono.` Sotto,
+   `APRI LA LISTA`: la Pillola d'azione di §8, con i suoi valori (disegno 38 su `--ink`, tap 44).
+   Non chiede un'azione: dice perché mancano proposte e scadenze. Sta prima di «Poi».
+4. **Dispari in coda, a due colonne.** Se le tessere sono in numero dispari l'ultima prende due
+   colonne (`grid-column: span 2`) e la sua altezza minima scende a **64**; del resto decide il
+   contenuto (una tessera piena con pillola, nome e sottotitolo resta sopra i 64). Vale per la
+   piena e per la bianca.
+
+**La dispensa aggiornata** decide cosa si vede. Aggiornata = l'ultima spesa chiusa nell'app è di
+9 giorni fa al massimo (le modifiche a mano in Dispensa non contano: aggiornano un ingrediente,
+non la dispensa). Con la dispensa non aggiornata la home non mostra nessun numero che venga dalla
+dispensa: spariscono la banda delle alternative e le tessere Scade, Scongela e Pronti, e compare
+la tessera tratteggiata; «Poi» resta, più `DOMANI · {PASTO}` del primo pasto di domani se è
+diverso dal poster e da «Poi». Se la dispensa o l'ultima chiusura **non si leggono** (errore di
+rete: le due letture sono tollerate), la home non mostra niente che ne derivi e **nemmeno la
+tessera tratteggiata**, il cui testo («Chiudi la prima spesa…») sarebbe falso (precisato in
+esecuzione, 03/10).
+
 ---
 
 ## 9. Pattern
@@ -1127,6 +1348,21 @@ miniature di «Rivedi i fogli presi» mostrano il contenuto del dispositivo, non
 Altrove le foto restano fuori.
 
 **Le icone ingrediente sono un'eccezione dichiarata** (26/09, due toni dal 03/10): sono icone del sistema (§6), non illustrazioni. Un solo pieno nel colore d'area e un'ombra a tratteggio dentro la sagoma; niente ombre portate, prospettiva o scene, e nessun uso fuori dalle tessere ingrediente. Le illustrazioni restano fuori.
+
+**Le due eccezioni di Oggi** (03/10, spec di Oggi §G.2):
+- **Le icone ingrediente fuori dalle tessere ingrediente.** Sul poster del pasto, sulla carta
+  alternativa e sulla tessera dei Pronti, come icona dell'**ingrediente principale** di un piatto:
+  la riga con la quantità più grande in g o ml fra quelle che hanno un'icona (a pari quantità la
+  prima; senza righe in g o ml, la prima con un'icona; senza icone, niente icona; classi `stima` e
+  righe «quanto basta» non concorrono). Stessa grammatica di §6 (due toni, tagliata in basso a
+  destra), nessun uso diverso. La stessa icona (60, tono `area`) sta anche sulla tessera di un lotto
+  da scongelare, e lì la prevede la spec §D.2 (§G.2 non la elencava fra queste eccezioni). **Come
+  costruito**, sta anche sulle tessere `Poi` e `Domani`, che la spec non nomina e che vengono dal
+  piano [da confermare con Andrea]. Le tessere Scade presto e Da
+  scongelare di un ingrediente portano l'icona di quell'ingrediente, che è già il suo uso.
+- **Il carosello nel poster non è uno swipe nascosto.** La seconda carta si vede, spunta dal
+  bordo (§8 Carta alternativa e carosello nel poster): lo scorrimento è un gesto che il disegno
+  rende visibile, non uno swipe che si scopre per caso.
 
 ---
 
@@ -1398,3 +1634,79 @@ pillola della grammatura.
 | # | Tema | Decisione | Dove |
 |---|---|---|---|
 | 30 | Icone ingrediente | Due toni con ombra incisa (pilota «Mix B · ombra leggera»): sagoma piena nel colore d'area a 0,72, contorno 0,9, fino a cinque gruppi di dettagli a 0,5, tratteggio 0,34 ogni 1,2; 60 e 96 px; Dispensa in casa con pieno bianco (stato `tinta`). Foto scontornate valutate e scartate | §2.3, §6, §12 |
+
+### Decisioni del 03/10/2026 (Oggi)
+
+Spec `docs/superpowers/specs/2026-10-03-oggi-design.md`, dal brainstorming con i mockup
+(C2b «Bento», B1 «Carte chiare»). Le undici decisioni sono di Andrea, prese il 03/10 prima del
+codice; poi le due correzioni ai mockup e le scelte dell'esecuzione che cambiano il disegno. Il
+registro completo, con ruling, misure e prove dal telefono, è in
+`docs/2026-10-03-oggi-decisioni-esecuzione.md`.
+
+1. **Home operativa, niente statistiche.** Né calorie (escluse da §1), né aderenza al piano: il
+   modello registra «mangiato salvo eccezione», e in produzione 233 pasti passati hanno 0 saltati
+   e 3 spunte in tutto [fonte: spec di Oggi, misurato il 03/10], quindi un'aderenza uscirebbe
+   ~100% per costruzione.
+2. **Tab nuova «Oggi», prima voce della barra**, e l'app parte da lì: Oggi · Lista · Piano ·
+   Dispensa, 338 / 274 (§8 Tab bar).
+3. **Il prossimo pasto si ricava dall'ora, con fasce stimate dal nome del pasto**, senza
+   impostazioni né migrazione (§8 Poster del pasto).
+4. **Dal prossimo pasto:** cambiare piatto (Scegli), segnare com'è andata (Foglio azioni del
+   pasto) e proposte spontanee «con quello che hai», utili soprattutto a chi non ha caricato una
+   dieta.
+5. **Fattibile = tutto in casa, poi «manca solo una cosa»**; al massimo due proposte (§8 Carta
+   alternativa e carosello nel poster).
+6. **In home, della dispensa:** cosa scade presto, cosa scongelare, i Pronti. Ogni blocco sparisce
+   quando è vuoto (§8 Tessere di Oggi).
+7. **Forma: C2b «Bento»** con le alternative **B1 «Carte chiare»** in un carosello dentro il
+   poster.
+8. **Regola C2-vero:** con la dispensa non aggiornata la home nasconde tutto ciò che ne deriva e
+   si riempie col piano, più una tessera tratteggiata che spiega perché.
+9. **Aggiornata = ultima spesa chiusa nell'app entro 9 giorni.** Le modifiche a mano in Dispensa
+   non contano.
+10. **Il poster salta i buchi:** mostra sempre il prossimo pasto a casa con un piatto; i pasti
+    fuori o senza piatto restano solo nelle caselle della giornata.
+11. **Dal mockup al codice, diretto:** niente giro in Claude Design; i pezzi nuovi si scrivono qui
+    durante l'esecuzione.
+
+**Due correzioni rispetto ai mockup:** via la riga «Hai tutto in casa» dal poster (dopo una spesa
+chiusa è vera per costruzione); nessun avviso a tempo dopo `SCAMBIA` (§12 esclude toast e
+snackbar): l'annullo sta dentro il poster, `RIMETTI QUELLO DEL PIANO`.
+
+**Dall'esecuzione (ruling del 03/10, cambiano il disegno):**
+- **L'etichetta della banda è al 66%**, non al 60% della spec: `--poster-testo-3`, senza un
+  decimo token.
+- **Con la banda delle alternative il poster non ha la sua icona**: è il mockup B1 approvato, e
+  l'icona starebbe sotto le carte.
+- **`POI · {PASTO}` e `DOMANI · {PASTO}` in `--testo-2`**, non `--sec`: portano informazione.
+- **Area di tap 44 delle pillole del poster con `inset: -4px 0`**: il bordo da 1 px riduce il
+  padding box a 36, e con −3 usciva 42.
+- **Il sottotitolo delle tessere piene d'area è in `--ink-2`** (4,63–6,46:1, contro 2,95–4,11:1
+  di `--testo-2`).
+- **`RIMETTI QUELLO DEL PIANO` su una riga sua** sotto le azioni, e **`APRI LA LISTA` come Pillola
+  d'azione** (disegno 38, tap 44), non come pillola di stato.
+- **Un pasto senza piatto non ha un aspetto suo nelle caselle**: è «futura» se la fascia non è
+  finita, «passata» se lo è.
+- **Niente banda per un pasto con porzioni da preparare** (review finale): lo scambio le azzera e
+  cancella il lotto dei Pronti dello slot, e `RIMETTI QUELLO DEL PIANO` non lo ridarebbe; per
+  cambiare quel pasto resta `CAMBIA`. Per gli altri il fabbisogno di una proposta è quantità ×
+  persone.
+- **Se la dispensa o l'ultima chiusura non si leggono**, la home non mostra niente che ne derivi e
+  nemmeno la tessera tratteggiata: il suo testo sarebbe falso.
+- **La pagina d'ingresso crea la settimana alla prima apertura**: Oggi, come il Piano, crea la
+  settimana che contiene oggi se manca (`apriSettimanaCorrente`, `src/data/apertura.ts`). Il Piano
+  ha ancora un creatore suo, con una deduplica separata (seguito nel registro).
+- **La domenica Oggi apre anche la settimana di domani** (decisione di Andrea, 03/10, opzione a;
+  precisato in esecuzione, 03/10): quando domani cade in un'altra settimana la legge e, se manca,
+  la crea (`apriSettimanaCorrente(domani)`), così il poster mostra il primo pasto di lunedì invece
+  di un vicolo cieco; se l'apertura fallisce il poster dice ancora `Il piano di domani non c'è
+  ancora.`
+- **Eccezioni dichiarate** (§2.5 e nell'anatomia di §8, non nelle scale di §3 e §5): `SCAMBIA`
+  spento a 0,06 (non 0,10), pillole del poster a 0,09em e padding 14, `SCONGELA` a 4,3:1
+  (eccezione aperta), raggio 3 delle caselle, nome della carta a 18, mono 9 e 9,5.
+- **Scegli aperto da Oggi** ha la pillola `OGGI` (`Torna a oggi`) e torna a Oggi; la Dispensa
+  apre il foglio di una voce da `?ingrediente=` e `?lotto=` e riporta l'indirizzo a `/dispensa`.
+
+Componenti nuovi: Poster del pasto, Carta alternativa e carosello nel poster, Tessere di Oggi.
+Componente cambiato: Tab bar (quattro voci). Eccezioni di §12: le icone ingrediente
+sull'ingrediente principale di un piatto, e il carosello che non è uno swipe nascosto.

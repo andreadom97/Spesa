@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { BLOCCHI, CATALOGO_ICONE, CHIAVI_ICONE, trovaIcona } from '../icone-ingredienti';
+import { BLOCCHI, CATALOGO_ICONE, CHIAVI_ICONE, trovaIcona, VOCI } from '../icone-ingredienti';
 import { normalizza } from '../import/mapping';
 import { INGREDIENTI_BASE } from '../ingredienti-base';
 
@@ -66,6 +66,159 @@ describe('trovaIcona', () => {
     ['Spezie', 'spezie'],
     ['Erbe aromatiche', 'erbe'],
     ['Insalatona mista', 'insalata'],
+    // ondata 1, lotto A (03/10)
+    ['Panna', 'panna'],
+    ['Panna da cucina', 'panna'],
+    ['Panna fresca', 'panna'],
+    ['Panna montata', 'panna'],
+    ['Vaniglia', 'vaniglia'],
+    ['Vanillina', 'vaniglia'],
+    ['Estratto di vaniglia', 'vaniglia'],
+    ['Bacca di vaniglia', 'vaniglia'],
+    ['Lievito di birra', 'lievito'],
+    ['Lievito per dolci', 'lievito'],
+    ['Lievito istantaneo', 'lievito'],
+    ['Bicarbonato', 'lievito'],
+    ['Bicarbonato di sodio', 'lievito'],
+    ['Cremor tartaro', 'lievito'],
+    ['Senape', 'senape'],
+    ['Senape di Digione', 'senape'],
+    ['Capperi', 'capperi'],
+    ['Capperi sotto sale', 'capperi'],
+    // ondata 1, lotto B (03/10)
+    ['Maiale', 'bistecca'],
+    ['Carne di maiale', 'bistecca'],
+    ['Lonza', 'bistecca'],
+    ['Arista di maiale', 'bistecca'],
+    ['Braciola di maiale', 'bistecca'],
+    ['Costine', 'bistecca'],
+    ['Filetto di maiale', 'bistecca'],
+    ['Porchetta', 'bistecca'],
+    ['Agnello', 'agnello'],
+    ["Costolette d'agnello", 'agnello'],
+    ['Abbacchio', 'agnello'],
+    ['Capretto', 'agnello'],
+    ['Cozze', 'molluschi'],
+    ['Vongole veraci', 'molluschi'],
+    ['Calamari', 'molluschi'],
+    ['Polpo', 'molluschi'],
+    ['Polpo di scoglio', 'molluschi'],
+    // «polpa» è una parola ignorata (ha la radice di «polpo»): come in produzione
+    ['Polpa di zucca', 'zucca'],
+    ['Polpa di cocco', 'cocco'],
+    ['Seppie', 'molluschi'],
+    ['Totani', 'molluschi'],
+    ['Moscardini', 'molluschi'],
+    ['Ostriche', 'molluschi'],
+    ['Capesante', 'molluschi'],
+    ['Frutti di mare', 'molluschi'],
+    ['Insalata di mare', 'molluschi'],
+    ['Mais', 'mais'],
+    ['Mais in scatola', 'mais'],
+    ['Granturco', 'mais'],
+    ['Pannocchia', 'mais'],
+    ['Pannocchie', 'mais'],
+    ['Pop corn', 'mais'],
+    ['Popcorn', 'mais'],
+    ['Peperoncino', 'peperoncino'],
+    ['Peperoncini freschi', 'peperoncino'],
+    ['Peperoncino in polvere', 'peperoncino'],
+    ['Jalapeño', 'peperoncino'],
+    // ondata 1, lotto C (03/10)
+    ['Ananas', 'ananas'],
+    ['Ananas sciroppato', 'ananas'],
+    ['Succo di ananas', 'ananas'],
+    ['Cocco', 'cocco'],
+    ['Cocco rapè', 'cocco'],
+    ['Noce di cocco', 'cocco'],
+    ['Latte di cocco', 'cocco'],
+    ['Farina di cocco', 'cocco'],
+    ['Ciliegie', 'ciliegia'],
+    ['Ciliege', 'ciliegia'],
+    ['Amarene sciroppate', 'ciliegia'],
+    ['Marasche', 'ciliegia'],
+    ['Visciole', 'ciliegia'],
+    ['Melone', 'melone'],
+    ['Melone giallo', 'melone'],
+    ['Anguria', 'melone'],
+    ['Cocomero', 'melone'],
+    ['Datteri', 'datteri-fichi'],
+    ['Datteri Medjoul', 'datteri-fichi'],
+    ['Fico', 'datteri-fichi'],
+    ['Fichi', 'datteri-fichi'],
+    ['Fichi secchi', 'datteri-fichi'],
+    ["Fichi d'India", 'datteri-fichi'],
+    // ondata 1, lotto D (03/10)
+    ['Albicocca', 'pesca-albicocca'],
+    ['Albicocche', 'pesca-albicocca'],
+    ['Albicocche secche', 'pesca-albicocca'],
+    ['Nettarine', 'pesca-albicocca'],
+    ['Nettarina', 'pesca-albicocca'],
+    ['Percoche', 'pesca-albicocca'],
+    ['Uvetta', 'uvetta'],
+    ['Uvette', 'uvetta'],
+    ['Uvetta sultanina', 'uvetta'],
+    ['Uva passa', 'uvetta'],
+    ['Uva sultanina', 'uvetta'],
+    ['Carciofi', 'carciofo'],
+    ['Carciofo', 'carciofo'],
+    ['Cuori di carciofo', 'carciofo'],
+    ['Asparagi', 'asparago'],
+    ['Asparagi verdi', 'asparago'],
+    ['Punte di asparagi', 'asparago'],
+    ['Semi di chia', 'semi'],
+    ['Semi di lino', 'semi'],
+    ['Semi di girasole', 'semi'],
+    ['Semi di zucca', 'semi'],
+    ['Semi di sesamo', 'semi'],
+    ['Sesamo', 'semi'],
+    ['Chia', 'semi'],
+    ['Lino', 'semi'],
+    // pulizia del lotto E (03/10): «seme» per i semi generici, «carciofino» per i sott'olio,
+    // la preposizione «agli» non si legge come aglio
+    ['Semi', 'semi'],
+    ['Semi misti', 'semi'],
+    ["Carciofini sott'olio", 'carciofo'],
+    ['Risotto agli asparagi', 'asparago'],
+    ['Aglio', 'aglio'],
+    ['Aglio in polvere', 'aglio'],
+    ["Spicchio d'aglio", 'aglio'],
+    // ondata 1, lotto E (03/10)
+    ['Vino', 'vino'],
+    ['Vino bianco', 'vino'],
+    ['Vino rosso', 'vino'],
+    ['Vino bianco secco', 'vino'],
+    ['Spumante', 'vino'],
+    ['Prosecco', 'vino'],
+    ['Liquore', 'liquore'],
+    ["Liquore all'amaretto", 'liquore'],
+    ['Rum', 'liquore'],
+    ['Marsala', 'liquore'],
+    ['Brandy', 'liquore'],
+    ['Cognac', 'liquore'],
+    ['Limoncello', 'liquore'],
+    ['Grappa', 'liquore'],
+    ['Tè', 'te'],
+    ['Te verde', 'te'],
+    ['Tè nero', 'te'],
+    // era un blocco (pesca): ora vince «tè» in prima posizione, ed è l'icona giusta
+    ['Tè alla pesca', 'te'],
+    ['Tisana', 'te'],
+    ['Camomilla', 'te'],
+    ['Infuso di zenzero', 'te'],
+    ['Cereali', 'cereali'],
+    ['Cereali integrali', 'cereali'],
+    ['Fiocchi di cereali', 'cereali'],
+    ['Corn flakes', 'cereali'],
+    ['Cornflakes', 'cereali'],
+    ['Fiocchi di mais', 'cereali'],
+    ['Muesli', 'cereali'],
+    ['Granola', 'cereali'],
+    ['Piadina', 'piadina'],
+    ['Piadina integrale', 'piadina'],
+    ['Piadine', 'piadina'],
+    ['Tortilla', 'piadina'],
+    ['Wrap', 'piadina'],
   ])('%s → %s', (nome, chiave) => {
     expect(trovaIcona(nome)).toBe(chiave);
   });
@@ -90,6 +243,71 @@ describe('trovaIcona', () => {
     ['Noci', 'noce'],
     ['Yogurt alla frutta', 'yogurt'],
     ['Marmellata di frutta', 'marmellata'],
+    // non regressione del lotto A (03/10)
+    ['Yogurt alla vaniglia', 'yogurt'],
+    ['Zucchero vanigliato', 'zucchero'],
+    ['Fragole con panna', 'fragola'],
+    ['Latte e panna', 'latte'],
+    ['Olive e capperi', 'olive'],
+    // omografi (review del lotto A): parole vicine a un sinonimo che non devono accenderlo
+    ['Pane lievitato', 'pane'],
+    // non regressione del lotto B (03/10)
+    ['Amido di mais', 'farina'],
+    ['Farina di mais', 'farina'],
+    ['Salsiccia di maiale', 'salsiccia'],
+    ['Macinato di manzo', 'bistecca'],
+    ['Coste', 'foglie'],
+    ['Polpa di pomodoro', 'pomodoro'],
+    ['Spaghetti alle vongole', 'pasta'],
+    ['Olio al peperoncino', 'olio'],
+    ['Peperoni', 'peperone'],
+    ['Pepe', 'spezie'],
+    // non regressione del lotto C (03/10)
+    ['Acqua di cocco', 'acqua'],
+    ['Olio di cocco', 'olio'],
+    ['Yogurt al cocco', 'yogurt'],
+    ['Prosciutto e melone', 'salumi'],
+    ['Confettura di fichi', 'marmellata'],
+    ['Datterini', 'pomodorini'],
+    ['Pomodorini ciliegini', 'pomodorini'],
+    ['Ciliegini', 'pomodorini'],
+    ['Mele', 'mela'],
+    ['Melanzane', 'melanzana'],
+    ['Marmellata di ciliegie', 'marmellata'],
+    // non regressione del lotto D (03/10)
+    ['Uva', 'uva'],
+    ['Uva bianca', 'uva'],
+    ['Marmellata di albicocche', 'marmellata'],
+    ['Zucca', 'zucca'],
+    ['Olio di semi', 'olio'],
+    ['Olio di semi di girasole', 'olio'],
+    ['Olio di sesamo', 'olio'],
+    ['Farina di semi di lino', 'farina'],
+    ['Yogurt con semi di chia', 'yogurt'],
+    ['Pane ai semi di sesamo', 'pane'],
+    ['Pasta e carciofi', 'pasta'],
+    // pulizia del lotto E (03/10): «agli» ignorata, le posizioni delle altre parole non cambiano
+    ['Pasta agli asparagi', 'pasta'],
+    ['Spaghetti aglio e olio', 'pasta'],
+    // non regressione del lotto E (03/10)
+    ['Aceto di vino', 'ampolla'],
+    ['Aceto di vino rosso', 'ampolla'],
+    ['Pollo al marsala', 'cosciotto'],
+    ['Pane ai cereali', 'pane'],
+    ['Yogurt con cereali', 'yogurt'],
+    ['Latte e cereali', 'latte'],
+    ['Biscotti ai cereali', 'biscotto'],
+    ['Limoni', 'limone'],
+    ['Zenzero', 'spezie'],
+    // gelato/budino: si blocca solo il gusto vaniglia, gli altri come in produzione
+    ['Gelato al cioccolato', 'cioccolato'],
+    ['Gelato alla fragola', 'fragola'],
+    ['Budino al cioccolato', 'cioccolato'],
+    // «per» è ignorata (radice di «pera»); «Pasta per pizza» resta bloccata
+    ['Preparato per brodo', 'minestra'],
+    ['Lievito per dolci', 'lievito'],
+    ['Pera', 'pera'],
+    ['Pere', 'pera'],
   ])('%s → %s (posizione prima della lunghezza)', (nome, chiave) => {
     expect(trovaIcona(nome)).toBe(chiave);
   });
@@ -105,17 +323,57 @@ describe('trovaIcona', () => {
   });
 
   it.each([
-    // esito del gate del 26/09, rivisto il 03/10: i salumi hanno l'icona di famiglia
+    // omografi (review del lotto A): radici diverse da lievito, cappero, panna
+    'Lievitato',
+    'Cappuccino',
+    // radice diversa da capretto, polpo, calamaro, mais
+    'Caprino',
+    'Polpette',
+    'Calamarata',
+    'Filetto',
+    // radice diversa da amarena
+    'Amaretti',
+    // radice diversa da semi (sem): semifredd
+    'Semifreddo',
+    // la pesca resta senza icona: «pesca» è un blocco (radice di pesce) e «pesche» (pesch) non
+    // combina con niente; `pesca-albicocca` prende solo albicocca, nettarina e percoca (lotto D)
+    'Pesche',
+    'Pesche sciroppate',
+    // «agli» è ignorata come parola (preposizione articolata, stessa radice di «aglio»): il
+    // plurale «Agli» da solo resta senza icona, prezzo accettato (lotto E)
+    'Agli',
+    // radici diverse da vino, liquore, piadina e cereali (lotto E); «Amaretto» è anche il
+    // biscotto, non va su `liquore`
+    'Vinaigrette',
+    'Liquirizia',
+    'Amaretto',
+  ])('%s → null (omografo)', (nome) => {
+    expect(trovaIcona(nome)).toBeNull();
+  });
+
+  it.each([
+    // esito del gate del 26/09, rivisto il 03/10: i salumi hanno l'icona di famiglia, il mais
+    // torna con la pannocchia ridisegnata (lotto B, da confermare al foglio)
     'Kiwi',
-    'Mais',
   ])('%s → null (gate 26/09)', (nome) => {
     expect(trovaIcona(nome)).toBeNull();
   });
 
+  it.each([
+    // tolti di proposito dai sinonimi (lotti A e B del 03/10): la besciamella è una salsa,
+    // non la panna; la mostarda italiana è frutta candita, non la senape
+    'Besciamella',
+    'Mostarda',
+  ])('%s → null (tolto dai sinonimi)', (nome) => {
+    expect(trovaIcona(nome)).toBeNull();
+  });
+
   // Esclusi di proposito dal catalogo icone al gate del 26/09 (rivisto il 03/10:
-  // i salumi hanno l'icona di famiglia): restano senza icona per decisione di
-  // Andrea, non per un buco nel catalogo.
-  const ESCLUSI_DI_PROPOSITO = ['Mais'];
+  // i salumi hanno l'icona di famiglia, il mais torna col lotto B): restano senza
+  // icona per decisione di Andrea, non per un buco nel catalogo. Vuota di proposito
+  // dal lotto B: oggi ogni INGREDIENTI_BASE ha un'icona; se un gate ne toglie una,
+  // il nome torna qui.
+  const ESCLUSI_DI_PROPOSITO: string[] = [];
 
   it('copre tutti gli INGREDIENTI_BASE, salvo gli esclusi di proposito', () => {
     const scoperti = INGREDIENTI_BASE.map((i) => i.nome).filter((n) => trovaIcona(n) === null);
@@ -128,7 +386,6 @@ describe('trovaIcona', () => {
     // meglio nessuna icona che una sbagliata.
     'Pesca',
     'Succo di pesca',
-    'Tè alla pesca',
     'Pesche noci',
     'Grano saraceno',
     'Semola di grano duro',
@@ -139,8 +396,49 @@ describe('trovaIcona', () => {
     'Pasta per pizza',
     'Pasta di acciughe',
     'Salame di cioccolato',
+    'Panna cotta',
+    'Panna cotta ai frutti di bosco',
+    'Gelato alla vaniglia',
+    'Budino alla vaniglia',
+    'Polpa',
+    'Gelato',
+    'Preparato per torte',
+    'Mostarda di fichi',
+    'Mostarda di Cremona',
+    // semola: blocco esistente, non prende `semi` (lotto D)
+    'Semola',
   ])('%s → null (blocco)', (nome) => {
     expect(trovaIcona(nome)).toBeNull();
+  });
+
+  it.each([
+    // pareggio di posizione e lunghezza tra un blocco e un sinonimo con la stessa radice
+    // (grano/grana, pesca/pesce): vince la voce che coincide ESATTAMENTE con le parole del
+    // nome in quella posizione; se nessuna coincide, resta il blocco (Pesche/Pesca sotto)
+    ['Grana', 'formaggio'],
+    ['Grana padano', 'formaggio'],
+    ['Grana grattugiato', 'formaggio'],
+    ['Pesce', 'pesce'],
+    ['Filetto di pesce', 'pesce'],
+    ['Grana Padano DOP', 'formaggio'],
+    ['Farina di grano', 'farina'],
+  ])('%s → %s (pareggio esatto)', (nome, chiave) => {
+    expect(trovaIcona(nome)).toBe(chiave);
+  });
+
+  it.each(['Grano', 'Grano saraceno', 'Pesca', 'Pesche'])('%s → null (pareggio esatto, vince il blocco)', (nome) => {
+    expect(trovaIcona(nome)).toBeNull();
+  });
+
+  it.each([
+    // comportamenti accettati, da rivedere con i sinonimi inglesi dell'ondata 2
+    // (lacuna nota: «thè» non è sinonimo di `te` perché «the» è anche l'articolo inglese)
+    ['Thè al limone', 'limone'],
+    ['Tortilla de patatas', 'piadina'],
+    ['Babà al rum', 'liquore'],
+    ['Crema al marsala', 'liquore'],
+  ])('%s → %s (compromesso accettato)', (nome, chiave) => {
+    expect(trovaIcona(nome)).toBe(chiave);
   });
 
   it.each([
@@ -158,8 +456,8 @@ describe('trovaIcona', () => {
 });
 
 describe('CATALOGO_ICONE', () => {
-  it('69 icone (64 del 26/09 + 5 famiglie del 03/10)', () => {
-    expect(CHIAVI_ICONE).toHaveLength(69);
+  it('93 icone (64 del 26/09 + 5 famiglie del 03/10 + 24 dell\'ondata 1)', () => {
+    expect(CHIAVI_ICONE).toHaveLength(93);
   });
 
   it('ogni sinonimo appartiene a una sola chiave', () => {
@@ -182,5 +480,34 @@ describe('CATALOGO_ICONE', () => {
     }
     const doppi = BLOCCHI.filter((b) => sinonimi.has(normalizza(b)));
     expect(doppi).toEqual([]);
+  });
+});
+
+describe('struttura del catalogo', () => {
+  it('ogni sinonimo di ogni chiave trova la propria chiave', () => {
+    const sbagliati: string[] = [];
+    for (const chiave of CHIAVI_ICONE) {
+      for (const s of CATALOGO_ICONE[chiave]) {
+        if (trovaIcona(s) !== chiave) sbagliati.push(`${s} → ${trovaIcona(s)} (attesa ${chiave})`);
+      }
+    }
+    expect(sbagliati).toEqual([]);
+  });
+
+  it('i pareggi di lunghezza con radici una prefisso dell\'altra sono solo quelli noti', () => {
+    const prefisso = (a: string[], b: string[]) => a.length <= b.length && a.every((r, i) => r === b[i]);
+    const coppie = new Set<string>();
+    for (let i = 0; i < VOCI.length; i++) {
+      for (let j = i + 1; j < VOCI.length; j++) {
+        const a = VOCI[i];
+        const b = VOCI[j];
+        if (a.chiave === b.chiave && !a.blocco && !b.blocco) continue;
+        if (a.lunghezza !== b.lunghezza) continue;
+        if (!prefisso(a.radici, b.radici) && !prefisso(b.radici, a.radici)) continue;
+        if (a.parole.join(' ') === b.parole.join(' ')) continue;
+        coppie.add([a.parole.join(' '), b.parole.join(' ')].sort().join(' | '));
+      }
+    }
+    expect([...coppie].sort()).toEqual(['grana | grano', 'pesca | pesce']);
   });
 });

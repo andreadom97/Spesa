@@ -11,8 +11,8 @@ describe('token del guscio comune (spec 20/09 §A)', () => {
     ['--fine-barra-grande', '128px'], ['--fine-barra-piccola', '110px'],
     ['--moto-barra', '200ms'], ['--curva-barra', 'cubic-bezier(.2, .8, .25, 1)'],
     ['--barra-alta', '84px'], ['--barra-bassa', '66px'],
-    ['--barra-larga', '304px'], ['--barra-larga-giu', '244px'],
-    ['--barra-voce-larga', '96px'], ['--barra-voce-larga-giu', '76px'],
+    ['--barra-larga', '338px'], ['--barra-larga-giu', '274px'],
+    ['--barra-voce-larga', '80px'], ['--barra-voce-larga-giu', '64px'],
     ['--z-pannello', '70'], ['--pannello-alto', '76px'],
     ['--coda', '140px'],
   ])('%s vale %s', (nome, valore) => {
@@ -76,7 +76,7 @@ describe('CSS della fase 5 (spec 25/09 §G.1, §B.1, §B.2, §J)', () => {
     expect(regola('.guscio[data-barra="ridotta"] .barra')).toContain('width: var(--barra-larga-giu)');
   });
 
-  it('le voci hanno il tetto di 96 e 76: con tre voci sono esattamente quelle', () => {
+  it('le voci hanno il tetto di 80 e 64: con quattro voci sono esattamente quelle', () => {
     expect(regola('.barra-voce')).toContain('max-width: var(--barra-voce-larga)');
     expect(regola('.guscio[data-barra="ridotta"] .barra-voce')).toContain('max-width: var(--barra-voce-larga-giu)');
   });
