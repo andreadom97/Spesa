@@ -5,7 +5,7 @@ import { MAX_PASTI, MIN_PASTI } from '@/domain/pasti';
 import { CADENZE, GIORNI_CONTROLLO_DEFAULT } from '@/domain/pantry';
 import { client } from './supabase';
 import { idCasa } from './casa';
-import { aSlotDef } from './mappers';
+import { leggiSlotDefsCon } from './import-bozza';
 
 /** Deve coincidere con il default della colonna `moltiplicatore_porzioni`. */
 const MOLTIPLICATORE_DEFAULT = 1;
@@ -123,12 +123,7 @@ export async function salvaImpostazioni(i: Impostazioni): Promise<void> {
 
 /** Ordinati per posizione. Da 3 a 6 righe. */
 export async function leggiSlotDefs(): Promise<MealSlotDef[]> {
-  const { data, error } = await client()
-    .from('meal_slot_def')
-    .select('*')
-    .order('posizione');
-  if (error) throw error;
-  return data.map(aSlotDef);
+  return leggiSlotDefsCon(client());
 }
 
 /**

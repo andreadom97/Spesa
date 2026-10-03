@@ -4,6 +4,7 @@ import type { PiattoDaCreare, RigaTradotta, ScrittureImport } from '@/domain/imp
 import type { Dish, DishIngredient } from '@/domain/types';
 import { client } from './supabase';
 import { idCasa } from './casa';
+import { salvaBozzaCon } from './import-bozza';
 import { salvaPiatto } from './repertorio';
 import { leggiImpostazioni, salvaImpostazioni } from './impostazioni';
 
@@ -37,14 +38,8 @@ export async function leggiBozzaImport(): Promise<BozzaImport | null> {
 }
 
 export async function salvaBozzaImport(b: BozzaImport): Promise<void> {
-  const sb = client();
-  const userId = await idCasa();
-  const { error } = await sb.from('import_draft').upsert({
-    user_id: userId,
-    piano: b.piano,
-    stato_revisione: b.statoRevisione,
-  });
-  if (error) throw error;
+  // L'id della casa (casa.ts), non dell'account: per un membro è il proprietario.
+  await salvaBozzaCon(client(), await idCasa(), b);
 }
 
 export async function cancellaBozzaImport(): Promise<void> {

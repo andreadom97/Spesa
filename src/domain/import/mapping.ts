@@ -1,5 +1,5 @@
 import type { Ingredient, MealSlotDef, UnitaBase } from '@/domain/types';
-import type { PastoEstratto, PianoEstratto, RigaEstratta } from './types';
+import type { PastoEstratto, PianoEstratto, RigaEstratta, StatoRevisione } from './types';
 import { NOME_PASTO_CONDIMENTI, pastoEffettivo, unitaBaseDi } from './types';
 
 export function normalizza(s: string): string {
@@ -147,4 +147,31 @@ export function ingredientiDaAbbinare(
     visti.set(chiave, voce);
   }
   return [...visti.values()].map((v) => ({ ...v, unita: unitaPrevalente(v.unitaViste) }));
+}
+
+/**
+ * La mappatura pasti iniziale: uno slot proposto per ogni `nomeOriginale` distinto del piano
+ * (chiave normalizzata); i `null` di `proponiSlot` (condimenti, nomi ignoti) restano fuori, li
+ * assegna l'utente in Controlla. Spostata qui da page.tsx (spec 8c §E): la usa anche la route.
+ */
+export function mappaturaPastiIniziale(piano: PianoEstratto, slotDefs: MealSlotDef[]): Record<string, string> {
+  const mappa: Record<string, string> = {};
+  const visti = new Set<string>();
+  for (const settimana of piano.settimane) {
+    for (const giorno of settimana.giorni) {
+      for (const pasto of giorno.pasti) {
+        const chiave = normalizza(pasto.nomeOriginale);
+        if (visti.has(chiave)) continue;
+        visti.add(chiave);
+        const slotId = proponiSlot(pasto.nomeOriginale, slotDefs);
+        if (slotId) mappa[chiave] = slotId;
+      }
+    }
+  }
+  return mappa;
+}
+
+/** Lo stato di revisione di una lettura appena arrivata: Controlla, con la mappatura proposta. */
+export function statoRevisioneIniziale(piano: PianoEstratto, slotDefs: MealSlotDef[]): StatoRevisione {
+  return { passo: 'revisione', mappaturaPasti: mappaturaPastiIniziale(piano, slotDefs), pastiConfermati: [], correzioni: {}, ingredientiNuovi: [] };
 }

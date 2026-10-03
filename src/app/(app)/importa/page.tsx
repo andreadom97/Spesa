@@ -8,7 +8,7 @@ import { leggiBozzaImport, salvaBozzaImport, cancellaBozzaImport, type BozzaImpo
 import { leggiSlotDefs } from '@/data/impostazioni';
 import { leggiIngredienti } from '@/data/repertorio';
 import { validaEsito } from '@/domain/import/valida';
-import { proponiSlot, normalizza } from '@/domain/import/mapping';
+import { statoRevisioneIniziale } from '@/domain/import/mapping';
 import { client } from '@/data/supabase';
 import { Testata } from '@/components/Testata';
 import { indirizzoRitorno } from '@/components/pannello/indirizzi';
@@ -50,32 +50,6 @@ const MESSAGGIO_SENZA_SESSIONE = 'Serve l’accesso: riapri l’app ed entra di 
  * cadrebbe sulla pillola e uscirebbe da /importa perdendo i fogli presi.
  */
 const TOCCHI_IGNORATI_DOPO_CHIUSURA_MS = 400;
-
-/**
- * Costruisce la mappatura pasti iniziale da proporre in revisione: uno slot
- * proposto per ogni `nomeOriginale` distinto del piano (chiave normalizzata),
- * i `null` di `proponiSlot` (condimenti, nomi ignoti) restano fuori dalla
- * mappa — li assegna l'utente nel passo di revisione.
- */
-function mappaturaPastiIniziale(
-  piano: BozzaImport['piano'],
-  slotDefs: MealSlotDef[],
-): Record<string, string> {
-  const mappa: Record<string, string> = {};
-  const visti = new Set<string>();
-  for (const settimana of piano.settimane) {
-    for (const giorno of settimana.giorni) {
-      for (const pasto of giorno.pasti) {
-        const chiave = normalizza(pasto.nomeOriginale);
-        if (visti.has(chiave)) continue;
-        visti.add(chiave);
-        const slotId = proponiSlot(pasto.nomeOriginale, slotDefs);
-        if (slotId) mappa[chiave] = slotId;
-      }
-    }
-  }
-  return mappa;
-}
 
 /**
  * Il wizard di importazione: acquisizione delle pagine della dieta (foto o
@@ -296,26 +270,33 @@ export default function Importa() {
       }
       // Rivalidato lato client: la risposta 200 non è mai attendibile solo
       // perché ha lo status giusto — la forma va verificata di nuovo qui.
-      const esito = validaEsito(await res.json());
+      const corpo: unknown = await res.json();
+      const esito = validaEsito(corpo);
       if (esito.tipo === 'rifiuto') {
         setMotivazioneRifiuto(esito.rifiuto.motivazione);
         setVista('rifiuto');
         return;
       }
       const slotDefs = await leggiSlotDefs();
-      const statoRevisione: StatoRevisione = {
-        passo: 'revisione',
-        mappaturaPasti: mappaturaPastiIniziale(esito.piano, slotDefs),
-        pastiConfermati: [],
-        correzioni: {},
-        ingredientiNuovi: [],
-      };
-      const nuovaBozza: BozzaImport = { piano: esito.piano, statoRevisione };
-      await salvaBozzaImport(nuovaBozza);
+      const nuovaBozza: BozzaImport = { piano: esito.piano, statoRevisione: statoRevisioneIniziale(esito.piano, slotDefs) };
+      // La bozza la salva il server (spec 8c §E); il telefono solo se il server non ci è riuscito.
+      if ((corpo as { bozzaSalvata?: unknown }).bozzaSalvata !== true) await salvaBozzaImport(nuovaBozza);
       setBozza(nuovaBozza);
       setVista('bozza');
     } catch (e) {
       console.error('importa: estrazione fallita.', e);
+      // La risposta può essersi persa col telefono in un'altra app (spec 8c §K.1): se il server ha
+      // salvato la bozza, si ritrova come ripresa invece di un errore.
+      try {
+        const salvata = await leggiBozzaImport();
+        if (salvata) {
+          setBozza(salvata);
+          setVista('ripresa');
+          return;
+        }
+      } catch (eRilettura) {
+        console.error('importa: rilettura della bozza fallita.', eRilettura);
+      }
       setMessaggioErrore(MESSAGGIO_ERRORE_GENERICO);
       setVista('errore');
     }

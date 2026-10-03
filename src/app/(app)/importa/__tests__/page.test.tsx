@@ -393,6 +393,34 @@ describe('Importa: l\'invio', () => {
     expect((init.headers as Record<string, string>).Authorization).toBe('Bearer tok');
   });
 
+  it('bozzaSalvata dal server: il telefono non la riscrive, e si apre Controlla (spec 8c §E)', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ ...FIXTURE_MENU_SETTIMANALE, bozzaSalvata: true }) });
+    rendi();
+    await inviaUnaFoto();
+    expect(await screen.findByText('Passo 2 di 4 · Controlla')).toBeInTheDocument();
+    expect(salvaBozzaImport).not.toHaveBeenCalled();
+  });
+
+  it('bozzaSalvata false: il telefono salva come prima', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ ...FIXTURE_MENU_SETTIMANALE, bozzaSalvata: false }) });
+    rendi();
+    await inviaUnaFoto();
+    await waitFor(() => expect(salvaBozzaImport).toHaveBeenCalledTimes(1));
+  });
+
+  it('la risposta si perde ma la bozza è sul server: si apre la ripresa (spec 8c §K.1)', async () => {
+    global.fetch = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+    vi.mocked(leggiBozzaImport).mockResolvedValueOnce(null).mockResolvedValueOnce({
+      piano: PIANO,
+      statoRevisione: { passo: 'revisione', mappaturaPasti: {}, pastiConfermati: [], correzioni: {}, ingredientiNuovi: [] },
+    });
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    rendi();
+    await inviaUnaFoto();
+    expect(await screen.findByRole('heading', { name: 'Hai un import in corso' })).toBeInTheDocument();
+    vi.mocked(console.error).mockRestore();
+  });
+
   it('413 mostra il messaggio della route e non perde le foto', async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: false,

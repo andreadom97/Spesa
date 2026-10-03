@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Ingredient, MealSlotDef } from '@/domain/types';
 import type { RigaEstratta } from '../types';
-import { normalizza, abbina, proponiSlot, ingredientiDaAbbinare, quantoBasta, unitaPrevalente } from '../mapping';
+import { normalizza, abbina, proponiSlot, ingredientiDaAbbinare, quantoBasta, unitaPrevalente, statoRevisioneIniziale } from '../mapping';
 import { proponi } from '../formati-tipici';
 import { PIANO_MENU_SETTIMANALE } from '../fixtures';
 
@@ -165,5 +165,15 @@ describe('quantoBasta (spec 8c §B, correzione S1)', () => {
 
   it('una quantità TRASCRITTA dal foglio vince sempre: resta la quantità', () => {
     expect(quantoBasta(riga('sale q.b.', 2, false))).toBe(false);
+  });
+});
+
+describe('statoRevisioneIniziale (spec 8c §E)', () => {
+  const slot = (id: string, nome: string, posizione: number): MealSlotDef => ({ id, nome, posizione, assenzeAbituali: Array(7).fill(false) });
+
+  it('Controlla, con uno slot proposto per nome di pasto; condimenti e nomi ignoti restano fuori', () => {
+    expect(statoRevisioneIniziale(PIANO_MENU_SETTIMANALE, [slot('s-col', 'Colazione', 0), slot('s-cena', 'Cena', 5)])).toEqual({
+      passo: 'revisione', mappaturaPasti: { colazione: 's-col', cena: 's-cena' }, pastiConfermati: [], correzioni: {}, ingredientiNuovi: [],
+    });
   });
 });
