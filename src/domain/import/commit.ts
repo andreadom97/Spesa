@@ -2,12 +2,26 @@ import type { Dish, Ingredient, UnitaBase } from '@/domain/types';
 import { lunediDi, sommaGiorni } from '@/domain/date';
 import type { IngredienteProposto, PastoEstratto, PianoEstratto, RigaEstratta, StatoRevisione } from './types';
 import { NOME_PASTO_CONDIMENTI, pastoEffettivo } from './types';
-import { abbina, normalizza } from './mapping';
+import { abbina, normalizza, quantoBasta } from './mapping';
+import { cambiUnita, legataAlCommit, type CambioUnita } from './ingredienti';
+import { convertiPezzi } from './formati-tipici';
 
-export type RigaTradotta = { quantita: number; unita: UnitaBase } & (
+/** `quantita` null = «quanto basta» (spec 8c §B). */
+export type RigaTradotta = { quantita: number | null; unita: UnitaBase } & (
   | { ingredientId: string }
   | { nuovoAlimento: string }
 );
+
+/** Un cambio di unità da fare nel database prima dei piatti (spec 8c §A.4), coi due valori per il riepilogo. */
+export interface CambioScritto {
+  ingredientId: string;
+  nome: string;
+  da: 'g' | 'pz';
+  a: 'g' | 'pz';
+  pesoPezzo: number;
+  /** Per cui si moltiplica tutto ciò che è scritto nell'unità di oggi: g per pz (da pz a g) o il suo inverso. */
+  fattore: number;
+}
 
 export interface PiattoDaCreare {
   /** id esistente da riusare (upsert) se un piatto uguale per nome+slot+giorno+settimana è già lì: idempotenza. */
@@ -23,12 +37,52 @@ export interface PiattoDaCreare {
 
 export interface ScrittureImport {
   ingredientiDaCreare: IngredienteProposto[];
+  /** Prima dei piatti: le righe dei piatti nuovi sono già nell'unità nuova. Solo i cambi accettati. */
+  cambiUnita: CambioScritto[];
   piattiDaDisattivare: string[];
   piattiDaCreare: PiattoDaCreare[];
   impostazioni: { settimaneCiclo: number; cicloOrigine: string };
 }
 
 export class BozzaIncompletaError extends Error {}
+
+/** Quello che serve a risolvere le righe: gli ingredienti, le scelte e i cambi di unità decisi. */
+interface Contesto {
+  esistenti: Ingredient[];
+  nuovi: IngredienteProposto[];
+  /** Le chiavi `alimento` dei nuovi davvero usati da una riga (regola 2). */
+  usati: Set<string>;
+  scelti: Readonly<Record<string, string>>;
+  /** Per id: il cambio di unità deciso, che fissa l'unità finale dell'ingrediente. */
+  cambi: Map<string, CambioUnita>;
+}
+
+/** L'unità finale di un ingrediente che hai: quella della dieta se il cambio è accettato, la sua se «Tienile a pezzi». */
+function unitaFinale(e: Ingredient, ctx: Contesto): UnitaBase {
+  const c = ctx.cambi.get(e.id);
+  return c ? (c.tieni ? c.da : c.a) : e.unitaBase;
+}
+
+/**
+ * La riga nell'unità finale dell'ingrediente (spec 8c §A.3): il q.b. la prende com'è e resta senza
+ * numero; fra g e pz si converte col peso del cambio, arrotondato; fra altre unità non si inventa
+ * una densità: bozza incompleta.
+ */
+function nellUnita(
+  dove: { ingredientId: string },
+  riga: RigaEstratta,
+  finale: UnitaBase,
+  cambio: CambioUnita | null,
+): RigaTradotta {
+  if (riga.quantita === null) return { ...dove, quantita: null, unita: finale };
+  const unita = riga.unita as UnitaBase;
+  if (unita === finale) return { ...dove, quantita: riga.quantita, unita };
+  const convertita = cambio?.pesoPezzo ? convertiPezzi(riga.quantita, unita, finale, cambio.pesoPezzo) : null;
+  if (convertita === null) {
+    throw new BozzaIncompletaError(`Unità incompatibile per "${riga.alimento}": la riga usa "${unita}", l'ingrediente "${finale}"`);
+  }
+  return { ...dove, quantita: convertita, unita: finale };
+}
 
 /** La rappresentazione interna di un piatto durante la costruzione, prima di riuso/disattivazione. */
 interface PiattoInterno {
@@ -57,43 +111,41 @@ function confrontaStringhe(a: string, b: string): number {
 }
 
 /**
- * Regola 1: `abbina` su un ingrediente esistente; se fallisce, lookup fra i nuovi
- * dichiarati in revisione (per `alimento` normalizzato). Prima di dichiararlo davvero
- * nuovo, ritenta `abbina` sul `nome` pulito della proposta: un re-run dopo un commit
- * interrotto trova così l'ingrediente già creato (il cui `nome` in database non è più
- * l'`alimento` grezzo) invece di riproporlo duplicato. Un'unità che non torna con la
- * proposta, o una quantità mai risolta in revisione, fermano tutto.
+ * Regola 1: `abbina` su un ingrediente esistente (anche con un'altra unità, il secondo livello);
+ * se fallisce, la proposta fra i nuovi dichiarati in revisione (per `alimento` normalizzato), e
+ * prima di dichiararla davvero nuova la sua legata (`legataAlCommit`: la scelta in «È lo stesso
+ * di…», o il nome, che un re-run dopo un commit interrotto trova già creato). Una riga q.b.
+ * (spec 8c §B) passa senza quantità, anche quella con una quantità stimata dal lettore: la stima,
+ * quantità e unità, si scarta (correzione S1); una quantità mai risolta, i cucchiai non
+ * convertiti o un'unità che non torna fermano tutto.
  */
-function risolviRiga(
-  riga: RigaEstratta,
-  ingredientiEsistenti: Ingredient[],
-  ingredientiNuovi: IngredienteProposto[],
-  usati: Set<string>,
-): RigaTradotta {
-  if (riga.quantita === null) {
+function risolviRiga(rigaLetta: RigaEstratta, ctx: Contesto): RigaTradotta {
+  const qb = quantoBasta(rigaLetta);
+  const riga: RigaEstratta = qb ? { ...rigaLetta, quantita: null, unita: null } : rigaLetta;
+  if (riga.quantita === null && !qb) {
     throw new BozzaIncompletaError(`Quantità non risolta per "${riga.testoOriginale}"`);
   }
   if (riga.unita === 'cucchiaio' || riga.unita === 'cucchiaino') {
     throw new BozzaIncompletaError(`Cucchiai non convertiti per "${riga.testoOriginale}"`);
   }
-  if (riga.unita === null) {
+  if (riga.unita === null && !qb) {
     throw new BozzaIncompletaError(`Unità non indicata per "${riga.testoOriginale}"`);
   }
-  const unita: UnitaBase = riga.unita;
-  const esistente = abbina(riga.alimento, unita, ingredientiEsistenti);
-  if (esistente) return { ingredientId: esistente.id, quantita: riga.quantita, unita };
+  const unita: UnitaBase | null = riga.unita;
+  const esistente = abbina(riga.alimento, unita, ctx.esistenti);
+  if (esistente) return nellUnita({ ingredientId: esistente.id }, riga, unitaFinale(esistente, ctx), ctx.cambi.get(esistente.id) ?? null);
   const chiave = normalizza(riga.alimento);
-  const nuovo = ingredientiNuovi.find((i) => normalizza(i.alimento) === chiave);
+  const nuovo = ctx.nuovi.find((i) => normalizza(i.alimento) === chiave);
   if (!nuovo) throw new BozzaIncompletaError(`Ingrediente non risolto: "${riga.alimento}"`);
-  const giaCreato = abbina(nuovo.nome, unita, ingredientiEsistenti);
-  if (giaCreato) return { ingredientId: giaCreato.id, quantita: riga.quantita, unita };
-  if (unita !== nuovo.unitaBase) {
+  const legata = legataAlCommit(nuovo, ctx.esistenti, ctx.scelti);
+  if (legata) return nellUnita({ ingredientId: legata.id }, riga, unitaFinale(legata, ctx), ctx.cambi.get(legata.id) ?? null);
+  if (unita !== null && unita !== nuovo.unitaBase) {
     throw new BozzaIncompletaError(
       `Unità incompatibile per "${riga.alimento}": la riga usa "${unita}", la proposta "${nuovo.unitaBase}"`,
     );
   }
-  usati.add(chiave);
-  return { nuovoAlimento: nuovo.alimento, quantita: riga.quantita, unita };
+  ctx.usati.add(chiave);
+  return { nuovoAlimento: nuovo.alimento, quantita: riga.quantita, unita: nuovo.unitaBase };
 }
 
 /**
@@ -115,45 +167,36 @@ function fondiRighe(righe: RigaTradotta[]): RigaTradotta[] {
     if (esistente.unita !== r.unita) {
       throw new BozzaIncompletaError(`Unità incompatibili per "${k}": "${esistente.unita}" e "${r.unita}"`);
     }
-    per.set(k, { ...esistente, quantita: esistente.quantita + r.quantita });
+    // Il q.b. non aggiunge niente (spec 8c §B): con un numero vale il numero, due q.b. restano q.b.
+    const quantita = esistente.quantita === null ? r.quantita : r.quantita === null ? esistente.quantita : esistente.quantita + r.quantita;
+    per.set(k, { ...esistente, quantita });
   }
   return [...per.values()];
 }
 
-function traduciPiatto(
-  piatto: PastoEstratto['piatti'][number],
-  slotDefId: string,
-  ingredientiEsistenti: Ingredient[],
-  ingredientiNuovi: IngredienteProposto[],
-  usati: Set<string>,
-): PiattoInterno {
+function traduciPiatto(piatto: PastoEstratto['piatti'][number], slotDefId: string, ctx: Contesto): PiattoInterno {
   return {
     nome: piatto.nome,
     slotDefId,
     descrizione: piatto.descrizione,
-    righe: fondiRighe(piatto.righeFisse.map((r) => risolviRiga(r, ingredientiEsistenti, ingredientiNuovi, usati))),
+    righe: fondiRighe(piatto.righeFisse.map((r) => risolviRiga(r, ctx))),
     componenti: piatto.componenti.map((c) => ({
       nome: c.nome,
       // fondiRighe anche qui: due righe sullo stesso ingrediente nella stessa opzione (es.
       // "olio" fisso + "olio" da condimenti che finiscono nella stessa opzione) violerebbero
       // altrimenti l'indice unico dish_ingredient_opzione_unica a valle.
-      opzioni: c.opzioni.map((op) => fondiRighe(op.map((r) => risolviRiga(r, ingredientiEsistenti, ingredientiNuovi, usati)))),
+      opzioni: c.opzioni.map((op) => fondiRighe(op.map((r) => risolviRiga(r, ctx)))),
     })),
   };
 }
 
 /** Regola 3: tutte le righe (fisse e a scelta) del pasto condimenti, appiattite e risolte, nell'ordine dei piatti. */
-function righeCondimenti(
-  pasto: PastoEstratto,
-  ingredientiEsistenti: Ingredient[],
-  ingredientiNuovi: IngredienteProposto[],
-  usati: Set<string>,
-): RigaTradotta[] {
+function righeCondimenti(pasto: PastoEstratto, ctx: Contesto): RigaTradotta[] {
   const righe: RigaEstratta[] = pasto.piatti.flatMap((p) => [
     ...p.righeFisse,
     ...p.componenti.flatMap((c) => c.opzioni.flat()),
   ]);
-  return righe.map((r) => risolviRiga(r, ingredientiEsistenti, ingredientiNuovi, usati));
+  return righe.map((r) => risolviRiga(r, ctx));
 }
 
 function ordinaRighe(righe: RigaTradotta[]): RigaTradotta[] {
@@ -186,7 +229,17 @@ export function traduciBozza(
   repertorioEsistente: Dish[],
   oggi: string,
 ): ScrittureImport {
-  const usati = new Set<string>();
+  // I cambi di unità (spec 8c §A.3): senza il peso di un pezzo non si sa scrivere niente.
+  const cambi = cambiUnita(piano, stato, ingredientiEsistenti);
+  const senzaPeso = cambi.find((c) => c.pesoPezzo === null);
+  if (senzaPeso) throw new BozzaIncompletaError(`Manca il peso di un pezzo di "${senzaPeso.nome}"`);
+  const ctx: Contesto = {
+    esistenti: ingredientiEsistenti,
+    nuovi: stato.ingredientiNuovi,
+    usati: new Set<string>(),
+    scelti: stato.scelti ?? {},
+    cambi: new Map(cambi.map((c) => [c.ingredientId, c])),
+  };
   const unicaSettimana = piano.settimane.length === 1;
   const emessi: PiattoEmesso[] = [];
 
@@ -214,9 +267,7 @@ export function traduciBozza(
         }
         const slotDefId = stato.mappaturaPasti[norm];
         if (!slotDefId) throw new BozzaIncompletaError(`Nessuna mappatura per il pasto "${effettivo.nomeOriginale}"`);
-        const piatti = effettivo.piatti.map((p) =>
-          traduciPiatto(p, slotDefId, ingredientiEsistenti, stato.ingredientiNuovi, usati),
-        );
+        const piatti = effettivo.piatti.map((p) => traduciPiatto(p, slotDefId, ctx));
         const lista = slotMap.get(slotDefId) ?? [];
         lista.push(...piatti);
         slotMap.set(slotDefId, lista);
@@ -226,9 +277,7 @@ export function traduciBozza(
         // Tutti condividono lo stesso nome normalizzato (il check sopra li ha raggruppati), quindi la stessa mappatura.
         const slotTarget = stato.mappaturaPasti[NOME_PASTO_CONDIMENTI];
         if (!slotTarget) throw new BozzaIncompletaError(`Nessuna mappatura per il pasto "${NOME_PASTO_CONDIMENTI}"`);
-        const righe = fondiRighe(
-          condimentiPasti.flatMap((p) => righeCondimenti(p, ingredientiEsistenti, stato.ingredientiNuovi, usati)),
-        );
+        const righe = fondiRighe(condimentiPasti.flatMap((p) => righeCondimenti(p, ctx)));
         const destinatari = slotMap.get(slotTarget);
         if (destinatari && destinatari.length > 0) {
           for (const d of destinatari) d.righe = fondiRighe([...d.righe, ...righe]);
@@ -340,23 +389,54 @@ export function traduciBozza(
     .map((d) => d.id);
 
   // Regola 2: solo i nuovi effettivamente usati da almeno una riga (chi non abbina a un
-  // esistente ma resta inutilizzato è già escluso: risolviRiga non lo tocca mai) e il cui
-  // nome non abbina già un ingrediente esistente (rete di sicurezza esplicita per il
-  // re-run: se il fallback per nome in risolviRiga avesse un buco, qui si blocca comunque).
-  // L'unità passata deve essere la stessa di risolviRiga (`i.unitaBase`, non null):
-  // un'unità unit-agnostic farebbe matchare un omonimo per inclusione con un'unità
-  // diversa, escludendo dai-da-creare un ingrediente che una riga ha comunque risolto
-  // come nuovoAlimento — l'ingrediente referenziato non verrebbe mai creato.
+  // esistente ma resta inutilizzato è già escluso: risolviRiga non lo tocca mai) e non legati
+  // a un ingrediente esistente da `legataAlCommit` (lo stesso criterio di `risolviRiga`: rete
+  // di sicurezza esplicita per il re-run, se il fallback per nome in risolviRiga avesse un
+  // buco, qui si blocca comunque). Il criterio deve essere lo stesso di risolviRiga: uno
+  // diverso escluderebbe dai-da-creare un ingrediente che una riga ha comunque risolto come
+  // nuovoAlimento — l'ingrediente referenziato non verrebbe mai creato.
   const ingredientiDaCreare = stato.ingredientiNuovi.filter(
-    (i) => usati.has(normalizza(i.alimento)) && !abbina(i.nome, i.unitaBase, ingredientiEsistenti),
+    (i) => ctx.usati.has(normalizza(i.alimento)) && !legataAlCommit(i, ingredientiEsistenti, ctx.scelti),
   );
 
   const cicloOrigine = sommaGiorni(lunediDi(oggi), 7);
 
   return {
     ingredientiDaCreare,
+    cambiUnita: cambi.filter((c) => !c.tieni).map((c) => ({
+      ingredientId: c.ingredientId,
+      nome: c.nome,
+      da: c.da,
+      a: c.a,
+      pesoPezzo: c.pesoPezzo!,
+      fattore: c.a === 'g' ? c.pesoPezzo! : 1 / c.pesoPezzo!,
+    })),
     piattiDaDisattivare,
     piattiDaCreare,
     impostazioni: { settimaneCiclo: piano.settimane.length, cicloOrigine },
+  };
+}
+
+/** Il riassunto del riepilogo (spec 8c §H). */
+export interface RiassuntoScritture {
+  piattiNuovi: number;
+  piattiAggiornati: number;
+  /** I piatti del nutrizionista che escono dal piano: «tolti da Piatti». */
+  piattiTolti: number;
+  ingredientiNuovi: number;
+  cambi: CambioScritto[];
+  /** C'è un piano attuale: piatti del nutrizionista attivi, che l'import aggiorna o toglie. */
+  pianoAttuale: boolean;
+}
+
+export function riassuntoScritture(s: ScrittureImport): RiassuntoScritture {
+  const aggiornati = s.piattiDaCreare.filter((p) => p.riusaDishId !== null).length;
+  return {
+    piattiNuovi: s.piattiDaCreare.length - aggiornati,
+    piattiAggiornati: aggiornati,
+    piattiTolti: s.piattiDaDisattivare.length,
+    ingredientiNuovi: s.ingredientiDaCreare.length,
+    cambi: s.cambiUnita,
+    pianoAttuale: aggiornati + s.piattiDaDisattivare.length > 0,
   };
 }
