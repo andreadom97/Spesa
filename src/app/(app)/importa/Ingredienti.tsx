@@ -12,7 +12,7 @@ import { BloccoGruppo } from '@/components/pannello/pezzi';
 import { RigaImpostazione } from '@/components/pannello/RigaImpostazione';
 import { FoglioDalBasso, TestataFoglio } from '@/components/FoglioDalBasso';
 import { Dock } from '@/components/Dock';
-import { useIndietroFogli } from '@/components/useIndietroFogli';
+import { useLivelliImporta } from './livelli';
 import { SchedaIngrediente, numeroInTesto, type CampoSelettore } from './SchedaIngrediente';
 import { TitoloSezione, plurale } from './sezione';
 
@@ -74,17 +74,22 @@ export function Ingredienti({ piano, stato, ingredientiEsistenti, onStato }: Pro
   // ogni istanza apre solo il suo selettore.
   const [selettore, setSelettore] = useState<{ alimento: string; campo: CampoSelettore; inFoglio: boolean } | null>(null);
 
+  /** Lo stato da salvare uscendo dal passo, avanti o indietro. */
+  function daSalvare(passo: StatoRevisione['passo']): StatoRevisione {
+    return { ...stato, ingredientiNuovi: ingredienti, passo };
+  }
+
   useEffect(() => {
     onStato({ ...stato, ingredientiNuovi: ingredienti });
     // Una volta sola, all'ingresso nel passo: come Formati prima di lui.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Un solo indietro per la schermata: prima il selettore, poi la scheda nel foglio.
-  useIndietroFogli((schedaAperta ? 1 : 0) + (selettore ? 1 : 0), () => {
+  // Un solo indietro per la bozza (spec 8c §F): prima il selettore, poi la scheda, poi Controlla.
+  useLivelliImporta((schedaAperta ? 1 : 0) + (selettore ? 1 : 0), () => {
     if (selettore) setSelettore(null);
     else setSchedaAperta(null);
-  });
+  }, () => onStato(daSalvare('revisione')));
 
   function aggiorna(alimento: string, cambio: Partial<IngredienteProposto>) {
     setIngredienti((prima) => prima.map((p) => (p.alimento === alimento ? { ...p, ...cambio } : p)));
@@ -196,7 +201,7 @@ export function Ingredienti({ piano, stato, ingredientiEsistenti, onStato }: Pro
       </div>
 
       <Dock>
-        <button type="button" className="dock-primario" disabled={bloccato} onClick={() => onStato({ ...stato, ingredientiNuovi: ingredienti, passo: 'riepilogo' })}>
+        <button type="button" className="dock-primario" disabled={bloccato} onClick={() => onStato(daSalvare('riepilogo'))}>
           VAI AL RIEPILOGO
         </button>
       </Dock>

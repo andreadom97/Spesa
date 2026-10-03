@@ -24,6 +24,7 @@ import { Acquisizione } from './Acquisizione';
 import { Controlla } from './Controlla';
 import { Ingredienti } from './Ingredienti';
 import { tornaA } from '@/components/tornaA';
+import { LivelliImporta, useEsciImporta } from './livelli';
 
 type Vista =
   | 'caricamento'
@@ -62,6 +63,7 @@ const TOCCHI_IGNORATI_DOPO_CHIUSURA_MS = 400;
  * esplicita, mai in silenzio.
  */
 export default function Importa() {
+  const router = useRouter();
   const [vista, setVista] = useState<Vista>('caricamento');
   const [bozza, setBozza] = useState<BozzaImport | null>(null);
   // Servono alla revisione (etichette e opzioni dello slot per pasto) e al passo
@@ -349,14 +351,16 @@ export default function Importa() {
 
   if (vista === 'bozza' && bozza) {
     return (
-      <Cornice passo={PILLOLA_PASSO[bozza.statoRevisione.passo]}>
-        <ContenutoBozza
-          bozza={bozza}
-          slotDefs={slotDefs}
-          ingredientiEsistenti={ingredientiEsistenti}
-          onStatoRevisione={aggiornaStatoRevisione}
-        />
-      </Cornice>
+      <LivelliImporta passo={bozza.statoRevisione.passo} onEsci={() => tornaA(router, indirizzoRitorno())}>
+        <Cornice passo={PILLOLA_PASSO[bozza.statoRevisione.passo]}>
+          <ContenutoBozza
+            bozza={bozza}
+            slotDefs={slotDefs}
+            ingredientiEsistenti={ingredientiEsistenti}
+            onStatoRevisione={aggiornaStatoRevisione}
+          />
+        </Cornice>
+      </LivelliImporta>
     );
   }
 
@@ -490,15 +494,17 @@ const PILLOLA_PASSO = {
 
 /** Colonna a tutta altezza con la testata fissa in cima. Titolo «Importa» (spec 8b §C, §3: una
  *  parola) e, nei quattro passi, la pillola del passo. La pillola IMPOSTAZIONI riapre il pannello
- *  sopra la pagina da cui si era partiti (spec fase 5 §G.3, §A.5). */
+ *  sopra la pagina da cui si era partiti (spec fase 5 §G.3, §A.5). Dentro la bozza la pillola
+ *  esce con `esci()`: consuma prima le voci dei passi (spec 8c §F). */
 function Cornice({ children, passo }: { children?: ReactNode; passo?: string }) {
   const router = useRouter();
+  const esci = useEsciImporta();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       <Testata
         titolo="Importa"
         settimana={passo}
-        indietro={{ etichetta: 'IMPOSTAZIONI', ariaLabel: 'Torna alle impostazioni', onTorna: () => tornaA(router, indirizzoRitorno()) }}
+        indietro={{ etichetta: 'IMPOSTAZIONI', ariaLabel: 'Torna alle impostazioni', onTorna: () => (esci ? esci() : tornaA(router, indirizzoRitorno())) }}
       />
       {children}
     </div>

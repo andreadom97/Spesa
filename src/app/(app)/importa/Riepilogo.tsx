@@ -9,7 +9,7 @@ import { traduciBozza, BozzaIncompletaError, type ScrittureImport } from '@/doma
 import { Dock, ErroreSopraDock } from '@/components/Dock';
 import { FoglioDalBasso } from '@/components/FoglioDalBasso';
 import { DialogoConferma } from '@/components/DialogoConferma';
-import { useIndietroFogli } from '@/components/useIndietroFogli';
+import { useLivelliImporta } from './livelli';
 import { StatoImporta } from './StatoImporta';
 
 // Il testo di oggi, esatto (era in page.tsx).
@@ -64,8 +64,14 @@ export function Riepilogo({
   // di prima salterebbe quella rivalutazione e duplicherebbe ingredienti e piatti.
   const [tentativo, setTentativo] = useState(0);
 
-  // L'indietro di sistema chiude il dialogo invece di lasciare Importa.
-  const { chiudiTuttoPoi } = useIndietroFogli(confermaSostituzione ? 1 : 0, () => setConfermaSostituzione(false));
+  // Un solo indietro per la bozza (spec 8c §F): il dialogo, poi Ingredienti. Mentre le scritture
+  // sono in corso l'indietro del passo non fa niente (correzione D1): tornare a Ingredienti
+  // riscriverebbe import_draft dopo cancellaBozzaImport, e la bozza ricomparirebbe.
+  const { chiudiTuttoPoi } = useLivelliImporta(
+    confermaSostituzione ? 1 : 0,
+    () => setConfermaSostituzione(false),
+    () => { if (!eseguendo) onStato({ ...stato, passo: 'formati' }); },
+  );
 
   useEffect(() => {
     let vivo = true;

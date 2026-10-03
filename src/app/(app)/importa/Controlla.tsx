@@ -15,7 +15,7 @@ import { SelettoreFoglio } from '@/components/SelettoreFoglio';
 import { FoglioDalBasso } from '@/components/FoglioDalBasso';
 import { DialogoConferma } from '@/components/DialogoConferma';
 import { Dock } from '@/components/Dock';
-import { useIndietroFogli } from '@/components/useIndietroFogli';
+import { useLivelliImporta } from './livelli';
 import { AVVISO_SENZA_PESO, AVVISO_SENZA_QUANTITA, AVVISO_UNITA_DIVERSE, FoglioGiorno, nomeGiorno } from './FoglioGiorno';
 import { TitoloSezione, capitalizza, nomePasto, plurale } from './sezione';
 
@@ -27,11 +27,12 @@ interface Props {
   onStato: (s: StatoRevisione) => void;
 }
 
-/** Il livello aperto sopra la pagina: uno alla volta, un solo `useIndietroFogli` (spec 8b §D). */
+/** Il livello aperto sopra la pagina: uno alla volta, dichiarato con `useLivelliImporta` (spec 8b §D, 8c §F). */
 type Livello =
   | { tipo: 'selettore'; chiave: string }
   | { tipo: 'giorno'; settimana: number; giorno: number }
   | { tipo: 'togli'; chiave: string }
+  | { tipo: 'esci' }
   | null;
 
 /**
@@ -57,7 +58,8 @@ function testiTogli(alimento: string, anteprima: AnteprimaTogli): { titolo: stri
  * accettato di default; si tocca solo quello che l'AI non sa — i pasti senza abbinamento e le
  * righe senza quantità — e il resto è riassunto per giorno e si apre col tocco. Ogni risposta
  * è un `onStato` (mai a ogni tasto: innesca `salvaBozzaImport`); il foglio del giorno tiene le
- * sue modifiche e le fa risalire alla chiusura.
+ * sue modifiche e le fa risalire alla chiusura. L'indietro di Android senza livelli aperti apre
+ * «Esci dall'import?» (spec 8c §F): ESCI torna alla pagina di provenienza, RESTA chiude.
  */
 export function Controlla({ piano, stato, slotDefs, ingredientiEsistenti = [], onStato }: Props) {
   const [livello, setLivello] = useState<Livello>(null);
@@ -99,7 +101,8 @@ export function Controlla({ piano, stato, slotDefs, ingredientiEsistenti = [], o
     if (livello?.tipo === 'giorno') chiudiGiorno();
     else setLivello(null);
   }
-  useIndietroFogli(livello ? 1 : 0, chiudiLivello);
+  // Un solo indietro per la bozza (spec 8c §F): i livelli di Controlla, e senza livelli il dialogo di uscita.
+  const { esci } = useLivelliImporta(livello ? 1 : 0, chiudiLivello, () => setLivello({ tipo: 'esci' }));
 
   const voci = vociPasti(piano, stato, slotDefs);
   const gruppi = gruppiRighe(piano, stato, ingredientiEsistenti);
@@ -279,6 +282,30 @@ export function Controlla({ piano, stato, slotDefs, ingredientiEsistenti = [], o
             erroreTesto=""
             onConferma={async () => {
               onStato(togli.stato);
+              setLivello(null);
+            }}
+            onAnnulla={() => setLivello(null)}
+          />
+        </FoglioDalBasso>
+      )}
+
+      {livello?.tipo === 'esci' && (
+        <FoglioDalBasso
+          etichetta="Esci dall'import?"
+          ruolo="alertdialog"
+          altezza="contenuto"
+          chiudiDalVelo={false}
+          onChiudi={() => setLivello(null)}
+        >
+          <DialogoConferma
+            titolo="Esci dall'import?"
+            testo="Lo ritrovi com'è: riprendi quando vuoi."
+            azione="ESCI"
+            annulla="RESTA"
+            tono="primario"
+            erroreTesto=""
+            onConferma={async () => {
+              esci();
               setLivello(null);
             }}
             onAnnulla={() => setLivello(null)}
