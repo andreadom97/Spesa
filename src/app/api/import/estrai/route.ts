@@ -11,6 +11,7 @@ import {
 } from '@/server/import-ai';
 import { dividiPdf, PdfIllegibileError, TroppePagineError } from '@/server/pdf-pagine';
 import { RispostaSenzaJsonError } from '@/server/anthropic';
+import Anthropic from '@anthropic-ai/sdk';
 import { limiteImport30ggConfigurato, contaImportRecenti, registraImport } from '@/data/import-uso';
 
 // Un piano intero è un output lungo: il default Vercel troncherebbe la chiamata.
@@ -153,6 +154,9 @@ export async function POST(request: Request): Promise<Response> {
       // Un import non registrato non passa: il tetto dev'essere sempre vero.
       if (err instanceof RispostaSenzaJsonError) {
         console.error('import/estrai: estrazione fallita.', err.name, `stop=${err.stopReason}`);
+      } else if (err instanceof Anthropic.APIError) {
+        // Il messaggio dell'API dice la causa (es. credito finito, 03/10): non contiene la dieta.
+        console.error('import/estrai: estrazione fallita.', `status=${err.status}`, err.message);
       } else {
         console.error('import/estrai: estrazione fallita.', err instanceof Error ? err.name : 'errore');
       }

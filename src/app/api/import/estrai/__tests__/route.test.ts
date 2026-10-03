@@ -33,6 +33,7 @@ import { PianoNonValidoError } from '@/domain/import/valida';
 import { PdfIllegibileError, TroppePagineError } from '@/server/pdf-pagine';
 import { MODELLO_DEFAULT_IMPORT } from '@/server/import-ai';
 import { RispostaSenzaJsonError } from '@/server/anthropic';
+import Anthropic from '@anthropic-ai/sdk';
 
 const USO = { chiamate: 1, inputTokens: 10, outputTokens: 5, cacheLetti: 0, cacheScritti: 0, durataMs: 1 };
 const conUso = (grezzo: unknown) => ({ grezzo, uso: USO });
@@ -187,6 +188,17 @@ describe('POST /api/import/estrai', () => {
     const res = await POST(richiesta());
     expect(res.status).toBe(502);
     expect(log).toHaveBeenCalledWith('import/estrai: estrazione fallita.', 'RispostaSenzaJsonError', 'stop=max_tokens');
+    log.mockRestore();
+  });
+
+  it('con chiave: errore dell\'API (es. credito finito) → 502, e il log dice stato e messaggio', async () => {
+    process.env.ANTHROPIC_API_KEY = 'k';
+    const corpo = { type: 'error', error: { type: 'invalid_request_error', message: 'Your credit balance is too low' } };
+    estraiPianoAPagineMock.mockRejectedValue(new Anthropic.BadRequestError(400, corpo, 'Your credit balance is too low', new Headers()));
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const res = await POST(richiesta());
+    expect(res.status).toBe(502);
+    expect(log).toHaveBeenCalledWith('import/estrai: estrazione fallita.', 'status=400', expect.stringContaining('credit balance is too low'));
     log.mockRestore();
   });
 

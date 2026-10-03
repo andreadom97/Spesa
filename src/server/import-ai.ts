@@ -5,7 +5,12 @@ import type { PianoEstratto } from '@/domain/import/types';
 import { PianoNonValidoError, validaPianoParziale } from '@/domain/import/valida';
 import { clientAnthropic, estraiJson, RispostaSenzaJsonError } from './anthropic';
 
-export const MODELLO_DEFAULT_IMPORT = 'claude-sonnet-5';
+/**
+ * Sonnet 5.5 dal 03/10, scelto da Andrea; costa quanto Sonnet 5. Sul suo PDF di 10 pagine
+ * il piano è uscito valido in 5 chiamate e 104 s (misurato in locale). La variabile
+ * IMPORT_AI_MODEL su Vercel vince ancora sul default.
+ */
+export const MODELLO_DEFAULT_IMPORT = 'claude-sonnet-5-5';
 const CONCORRENZA_DEFAULT_IMPORT = 4;
 
 /** Il modello è configurazione, non codice: cambiarlo è un edit su Vercel. */

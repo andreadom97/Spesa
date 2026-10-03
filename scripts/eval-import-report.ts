@@ -45,6 +45,7 @@ export interface CasoEval {
  */
 export const PREZZI_EUR_PER_MILIONE: Record<string, { input: number; output: number; cacheLettura: number; cacheScrittura: number }> = {
   'claude-sonnet-5': { input: 2, output: 10, cacheLettura: 0.2, cacheScrittura: 2.5 },
+  'claude-sonnet-5-5': { input: 2, output: 10, cacheLettura: 0.2, cacheScrittura: 2.5 },
   'claude-opus-5': { input: 5, output: 25, cacheLettura: 0.5, cacheScrittura: 6.25 },
   'claude-haiku-4-5': { input: 1, output: 5, cacheLettura: 0.1, cacheScrittura: 1.25 },
 };
