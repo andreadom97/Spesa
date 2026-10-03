@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { BLOCCHI, CATALOGO_ICONE, CHIAVI_ICONE, trovaIcona } from '../icone-ingredienti';
+import { BLOCCHI, CATALOGO_ICONE, CHIAVI_ICONE, trovaIcona, VOCI } from '../icone-ingredienti';
 import { normalizza } from '../import/mapping';
 import { INGREDIENTI_BASE } from '../ingredienti-base';
 
@@ -103,9 +103,9 @@ describe('trovaIcona', () => {
     ['Calamari', 'molluschi'],
     ['Polpo', 'molluschi'],
     ['Polpo di scoglio', 'molluschi'],
-    // prezzo accettato del blocco «polpa di»: «Polpa» da sola ha la radice di «polpo»
-    // e prende i molluschi (bloccarla toglierebbe l'icona anche a «Polpo»)
-    ['Polpa', 'molluschi'],
+    // «polpa» è una parola ignorata (ha la radice di «polpo»): come in produzione
+    ['Polpa di zucca', 'zucca'],
+    ['Polpa di cocco', 'cocco'],
     ['Seppie', 'molluschi'],
     ['Totani', 'molluschi'],
     ['Moscardini', 'molluschi'],
@@ -297,9 +297,17 @@ describe('trovaIcona', () => {
     ['Yogurt con cereali', 'yogurt'],
     ['Latte e cereali', 'latte'],
     ['Biscotti ai cereali', 'biscotto'],
-    ['Mais', 'mais'],
     ['Limoni', 'limone'],
     ['Zenzero', 'spezie'],
+    // gelato/budino: si blocca solo il gusto vaniglia, gli altri come in produzione
+    ['Gelato al cioccolato', 'cioccolato'],
+    ['Gelato alla fragola', 'fragola'],
+    ['Budino al cioccolato', 'cioccolato'],
+    // «per» è ignorata (radice di «pera»); «Pasta per pizza» resta bloccata
+    ['Preparato per brodo', 'minestra'],
+    ['Lievito per dolci', 'lievito'],
+    ['Pera', 'pera'],
+    ['Pere', 'pera'],
   ])('%s → %s (posizione prima della lunghezza)', (nome, chiave) => {
     expect(trovaIcona(nome)).toBe(chiave);
   });
@@ -392,8 +400,9 @@ describe('trovaIcona', () => {
     'Panna cotta ai frutti di bosco',
     'Gelato alla vaniglia',
     'Budino alla vaniglia',
-    'Polpa di zucca',
-    'Polpa di granchio',
+    'Polpa',
+    'Gelato',
+    'Preparato per torte',
     'Mostarda di fichi',
     'Mostarda di Cremona',
     // semola: blocco esistente, non prende `semi` (lotto D)
@@ -410,7 +419,8 @@ describe('trovaIcona', () => {
     ['Grana padano', 'formaggio'],
     ['Grana grattugiato', 'formaggio'],
     ['Pesce', 'pesce'],
-    ['Pesce spada', 'pesce'],
+    ['Filetto di pesce', 'pesce'],
+    ['Grana Padano DOP', 'formaggio'],
     ['Farina di grano', 'farina'],
   ])('%s → %s (pareggio esatto)', (nome, chiave) => {
     expect(trovaIcona(nome)).toBe(chiave);
@@ -470,5 +480,34 @@ describe('CATALOGO_ICONE', () => {
     }
     const doppi = BLOCCHI.filter((b) => sinonimi.has(normalizza(b)));
     expect(doppi).toEqual([]);
+  });
+});
+
+describe('struttura del catalogo', () => {
+  it('ogni sinonimo di ogni chiave trova la propria chiave', () => {
+    const sbagliati: string[] = [];
+    for (const chiave of CHIAVI_ICONE) {
+      for (const s of CATALOGO_ICONE[chiave]) {
+        if (trovaIcona(s) !== chiave) sbagliati.push(`${s} → ${trovaIcona(s)} (attesa ${chiave})`);
+      }
+    }
+    expect(sbagliati).toEqual([]);
+  });
+
+  it('i pareggi di lunghezza con radici una prefisso dell\'altra sono solo quelli noti', () => {
+    const prefisso = (a: string[], b: string[]) => a.length <= b.length && a.every((r, i) => r === b[i]);
+    const coppie = new Set<string>();
+    for (let i = 0; i < VOCI.length; i++) {
+      for (let j = i + 1; j < VOCI.length; j++) {
+        const a = VOCI[i];
+        const b = VOCI[j];
+        if (a.chiave === b.chiave && !a.blocco && !b.blocco) continue;
+        if (a.lunghezza !== b.lunghezza) continue;
+        if (!prefisso(a.radici, b.radici) && !prefisso(b.radici, a.radici)) continue;
+        if (a.parole.join(' ') === b.parole.join(' ')) continue;
+        coppie.add([a.parole.join(' '), b.parole.join(' ')].sort().join(' | '));
+      }
+    }
+    expect([...coppie].sort()).toEqual(['grana | grano', 'pesca | pesce']);
   });
 });

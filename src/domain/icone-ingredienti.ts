@@ -173,17 +173,11 @@ export const CHIAVI_ICONE = Object.keys(CATALOGO_ICONE) as ChiaveIcona[];
  *   l'icona di `salumi` (03/10).
  * - `panna cotta`: un dolce pronto, non la panna da comprare — senza il blocco
  *   prenderebbe l'icona di `panna` (03/10).
- * - `gelato`, `budino`: dolci pronti — senza il blocco "Gelato alla vaniglia" e
- *   "Budino alla vaniglia" prenderebbero l'icona della bacca di vaniglia (03/10).
+ * - `gelato alla vaniglia`, `budino alla vaniglia`: dolci pronti — senza il blocco
+ *   prenderebbero l'icona del baccello di vaniglia (03/10). Gli altri gusti
+ *   ("Gelato al cioccolato", "Gelato alla fragola") restano come in produzione.
  *   Non si blocca «crema»: bloccherebbe anche "Crema di zucca" o "Crema di
  *   ceci", che oggi prendono l'icona giusta.
- * - `polpa di`: stessa radice di `polpo` (polp) — senza il blocco "Polpa di
- *   zucca" o "Polpa di granchio" prenderebbero l'icona dei molluschi. "Polpa di
- *   pomodoro" resta su `pomodoro` (sinonimo più lungo alla stessa posizione).
- *   Non si blocca «polpa» da sola: a parità di lunghezza il blocco vincerebbe
- *   anche su «Polpo». Prezzo accettato: «Polpa» da sola prende i molluschi.
- *   «Polpo di scoglio» è un sinonimo di `molluschi` più lungo del blocco, quindi
- *   vince lui (03/10).
  * - `mostarda`: frutta candita alla senape, non la senape né la frutta —
  *   senza il blocco "Mostarda di fichi" prenderebbe l'icona di `datteri-fichi`
  *   (03/10). "Mostarda" da sola resta senza icona come prima.
@@ -200,9 +194,8 @@ export const BLOCCHI: readonly string[] = [
   'pasta di acciughe',
   'salame di cioccolato',
   'panna cotta',
-  'gelato',
-  'budino',
-  'polpa di',
+  'gelato alla vaniglia',
+  'budino alla vaniglia',
   'mostarda',
 ];
 
@@ -219,13 +212,16 @@ function radice(parola: string): string {
 }
 
 /**
- * Parole che non combinano con nessun sinonimo: la preposizione articolata «agli» ha la
- * radice di «aglio» (agl), e "Risotto agli asparagi" prendeva l'icona dell'aglio. Diventano
- * una radice vuota, che nessuna voce contiene (radici() scarta le parti vuote dei
- * sinonimi), così le posizioni delle altre parole restano quelle del nome. Prezzo: il
- * plurale «Agli» da solo resta senza icona (lotto E, 03/10).
+ * Parole che non combinano con nessun sinonimo, perché la loro radice coincide con quella di
+ * un ingrediente: «agli» (agl, come «aglio»: "Risotto agli asparagi" prendeva l'aglio),
+ * «per» (per, come «pera»: "Preparato per torte" prendeva la pera) e «polpa» (polp, come
+ * «polpo»: "Polpa di zucca" prendeva i molluschi). `radici()` produce '' per queste parole
+ * (è `parole()` a scartare le parti vuote della punteggiatura, non `radici()`): nessuna voce
+ * contiene '', e le posizioni delle altre parole restano quelle del nome. Lo stesso vale
+ * per i sinonimi: «polpa di pomodoro» diventa '' + 'di' + 'pomodor' sia nel nome sia nella
+ * voce e continua a combinare. Prezzo: «Agli» e «Polpa» da soli restano senza icona (03/10).
  */
-const IGNORATE = new Set(['agli']);
+const IGNORATE = new Set(['agli', 'per', 'polpa']);
 
 /**
  * Spezza sulla punteggiatura oltre che sugli spazi (dopo `normalizza`), così
@@ -243,9 +239,9 @@ function radici(s: string): string[] {
   return parole(s).map((p) => (IGNORATE.has(p) ? '' : radice(p)));
 }
 
-interface Voce { chiave: ChiaveIcona | null; parole: string[]; radici: string[]; lunghezza: number; blocco: boolean }
+export interface Voce { chiave: ChiaveIcona | null; parole: string[]; radici: string[]; lunghezza: number; blocco: boolean }
 
-const VOCI: Voce[] = [
+export const VOCI: Voce[] = [
   ...CHIAVI_ICONE.flatMap((chiave) =>
     CATALOGO_ICONE[chiave].map((s) => ({ chiave, parole: parole(s), radici: radici(s), lunghezza: normalizza(s).length, blocco: false })),
   ),
@@ -270,8 +266,8 @@ function posizione(nome: string[], cerca: string[]): number {
  * due coincide (es. «Pesche»), vince il blocco.
  */
 export function trovaIcona(nome: string): ChiaveIcona | null {
-  const n = radici(nome);
   const p = parole(nome);
+  const n = p.map((w) => (IGNORATE.has(w) ? '' : radice(w)));
   const esatta = (v: Voce, pos: number) => v.parole.every((w, j) => p[pos + j] === w);
   let migliore: { chiave: ChiaveIcona | null; lunghezza: number; pos: number; blocco: boolean; esatta: boolean } | null = null;
   for (const v of VOCI) {
