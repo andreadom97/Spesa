@@ -101,6 +101,26 @@ describe('banana e banane nella stessa dieta: una proposta sola (fix round 1, I2
     expect(calcolaProposte(p, stato, [])[0]).toMatchObject({ alimento: 'banana', unitaBase: 'pz' });
   });
 
+  it('due fratelli con unità non compatibili (ml e g) restano due proposte, ognuna nella sua unità (8c-bis, review finale M1)', () => {
+    const p = pianoBanane(
+      { alimento: 'frullato di banana', quantita: 200, unita: 'ml', quantitaInferita: false, testoOriginale: '200 ml frullato di banana' },
+      riga('frullati di banana', 100, 'g', '100 g frullati di banana'),
+    );
+    const proposte = calcolaProposte(p, stato, []);
+    expect(proposte.map((x) => [x.alimento, x.unitaBase])).toEqual([['frullato di banana', 'ml'], ['frullati di banana', 'g']]);
+    // Niente «Unità incompatibile» al commit: ogni riga cade sulla sua proposta.
+    const s = traduciBozza(p, { ...stato, passo: 'riepilogo', ingredientiNuovi: proposte }, [], [], '2026-10-03');
+    expect(s.piattiDaCreare[0].righe).toEqual([
+      { nuovoAlimento: 'frullato di banana', quantita: 200, unita: 'ml' },
+      { nuovoAlimento: 'frullati di banana', quantita: 100, unita: 'g' },
+    ]);
+  });
+
+  it('g e pz si uniscono ancora: 100 g di banana e 1 banane sono una proposta sola', () => {
+    const p = pianoBanane(riga('banana', 100, 'g', '100 g banana'), riga('banane', 1, 'pz', '1 banana'));
+    expect(calcolaProposte(p, stato, [])).toHaveLength(1);
+  });
+
   it('destinazioni: il fratello va sulla stessa proposta', () => {
     const proposte = calcolaProposte(piano, stato, []);
     const destini = destinazioni(piano, { ...stato, ingredientiNuovi: proposte }, []);

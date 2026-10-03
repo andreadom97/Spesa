@@ -43,6 +43,16 @@ export function calcolaProposte(
 type VoceDaAbbinare = ReturnType<typeof ingredientiDaAbbinare>[number];
 
 /**
+ * Due insiemi di unità trascritte stanno nello stesso ingrediente se ogni coppia è la stessa unità
+ * o è fra g e pz (che si convertono col peso di un pezzo); ml con g o pz no, servirebbe una densità
+ * (review finale 8c-bis, M1: «frullato di banana» 200 ml e «frullati di banana» 100 g). Se uno dei
+ * due non ha trascritte, non c'è niente in contrasto e si uniscono come prima.
+ */
+function unitaCompatibili(a: UnitaBase[], b: UnitaBase[]): boolean {
+  return a.every((x) => b.every((y) => x === y || (gOpz(x) && gOpz(y))));
+}
+
+/**
  * Gli alimenti del piano senza un ingrediente che hai, uniti per `stessoNome` (fix round 1 dell'8c-bis,
  * I2): «1 banana» e «2 banane» sono un alimento solo, una proposta sola e un ingrediente solo al commit.
  * Il capo è il primo del gruppo nell'ordine del piano; l'unità è quella che prevale fra le righe di
@@ -57,7 +67,7 @@ function fratelliSenzaAbbinamento(
   const capoDi = new Map<string, string>();
   for (const voce of voci) {
     if (abbina(voce.alimento, voce.unita, esistenti)) continue;
-    const gruppo = gruppi.find((g) => stessoNome(g.capo.alimento, voce.alimento));
+    const gruppo = gruppi.find((g) => stessoNome(g.capo.alimento, voce.alimento) && unitaCompatibili(g.trascritte, voce.unitaTrascritte));
     if (gruppo) {
       gruppo.trascritte.push(...voce.unitaTrascritte);
       gruppo.viste.push(...voce.unitaViste);
