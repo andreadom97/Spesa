@@ -1,6 +1,7 @@
 {
   "name": "Dispesa",
   "short_name": "Dispesa",
+  "id": "/lista",
   "start_url": "/oggi",
   "display": "standalone",
   "background_color": "#EDECEA",

@@ -376,4 +376,60 @@ describe('Oggi (spec 2026-10-03)', () => {
     expect(screen.queryByRole('button', { name: 'Rimetti quello del piano' })).toBeNull();
     expect(window.sessionStorage.getItem('spesa:oggi-piano-prima')).toBeNull();
   });
+
+  // ── Review finale ─────────────────────────────────────────────────────────────────────────
+
+  it('uno slot con porzioni da preparare: niente banda, perché lo scambio cancellerebbe il meal prep (I1)', async () => {
+    vi.mocked(leggiUltimaChiusura).mockResolvedValue('2026-10-01');
+    // Controprova: stessa giornata senza porzioni da preparare, la banda c'è.
+    const { unmount } = render(<Oggi />);
+    expect(await screen.findByText('Oppure, con quello che hai')).toBeInTheDocument();
+    unmount();
+
+    const conPorzioni = settimana('confermata');
+    conPorzioni.slots = conPorzioni.slots.map((s) => (s.id === 's-cen' ? { ...s, porzioniPreparate: 1 } : s));
+    vi.mocked(apriSettimanaCorrente).mockResolvedValue(conPorzioni);
+    render(<Oggi />);
+    expect(await screen.findByRole('heading', { name: 'Polpette di ceci' })).toBeInTheDocument();
+    expect(screen.queryByText('Oppure, con quello che hai')).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Scambia con/ })).toBeNull();
+    // Il cambio deliberato resta: CAMBIA porta a Scegli.
+    expect(screen.getByRole('link', { name: 'Cambia' })).toHaveAttribute('href', `/piano/${OGGI}/cen/scegli?da=oggi`);
+  });
+
+  it('l\'ultima chiusura che non si legge: niente tessera tratteggiata (il suo testo sarebbe falso), niente banda (M1)', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(leggiUltimaChiusura).mockRejectedValue(new Error('rete'));
+    render(<Oggi />);
+    expect(await screen.findByRole('heading', { name: 'Polpette di ceci' })).toBeInTheDocument();
+    expect(screen.queryByText(/Chiudi la prima spesa/)).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Apri la lista' })).toBeNull();
+    expect(screen.queryByText('Oppure, con quello che hai')).toBeNull();
+    // Il resto della giornata regge: la tessera «Poi» c'è.
+    expect(screen.getByText('Due quadretti di fondente')).toBeInTheDocument();
+    expect(log).toHaveBeenCalled();
+  });
+
+  it('la dispensa che non si legge con una chiusura recente: niente banda calcolata su una dispensa vuota (M1)', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(leggiUltimaChiusura).mockResolvedValue('2026-10-01');
+    // Con la dispensa letta male (vuota) le patate al forno «mancherebbero» la patata: una proposta falsa.
+    const patate = piatto('d-patate', 'Patate al forno', 'cen', [[PATATA, 200]]);
+    vi.mocked(leggiRepertorio).mockResolvedValue([POLPETTE, FRITTATA, FONDENTE, PASTA, patate]);
+    vi.mocked(leggiDispensa).mockRejectedValue(new Error('rete'));
+    render(<Oggi />);
+    expect(await screen.findByRole('heading', { name: 'Polpette di ceci' })).toBeInTheDocument();
+    expect(screen.queryByText('Oppure, con quello che hai')).toBeNull();
+    expect(screen.queryByText(/Chiudi la prima spesa/)).toBeNull();
+    expect(log).toHaveBeenCalled();
+  });
+
+  it('la settimana e le altre letture partono insieme: una settimana lenta non ritarda le altre (M5)', async () => {
+    vi.mocked(apriSettimanaCorrente).mockReturnValue(new Promise(() => {}));
+    render(<Oggi />);
+    await screen.findByText('CARICO…');
+    for (const lettura of [leggiSlotDefs, leggiRepertorio, leggiIngredienti, leggiImpostazioni, leggiPronti, leggiDispensa, leggiUltimaChiusura]) {
+      expect(lettura).toHaveBeenCalled();
+    }
+  });
 });

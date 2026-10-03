@@ -36,7 +36,7 @@ export function TesseraPiena(p: {
       <span style={{ ...STILE_PILLOLA, background: 'var(--superficie)', color: 'var(--ink)' }}>{p.pillola}</span>
       {/* L'alone ha il colore del fondo, come la protagonista della Lista: qui il fondo è il colore d'area pieno,
           non la sua tinta al 26% (quella, `tintaOpacaArea`, è il fondo della tessera di dispensa). */}
-      <span style={{ position: 'relative', zIndex: 1, marginTop: 10, maxWidth: '82%', fontSize: 25, fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.08, textShadow: p.icona ? alone(p.area ? coloreArea(p.area) : '#FFFFFF', 3) : undefined }}>
+      <span style={{ position: 'relative', zIndex: 1, marginTop: 10, maxWidth: '82%', fontSize: 25, fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.08, overflowWrap: 'anywhere', textShadow: p.icona ? alone(p.area ? coloreArea(p.area) : '#FFFFFF', 3) : undefined }}>
         {p.nome}
       </span>
       {/* --ink-2 e non --testo-2 sul colore d'area: 4,6:1 o più su tutte e sei le aree, contro 4,1:1 al massimo [calcolato]. */}
@@ -60,7 +60,7 @@ export function TesseraBianca(p: {
           {p.etichetta}
         </span>
       )}
-      <span style={{ position: 'relative', zIndex: 1, marginTop: 8, maxWidth: '86%', fontSize: 17, fontWeight: 700, letterSpacing: '-0.032em', lineHeight: 1.12, textShadow: p.icona ? alone('#FFFFFF', 2) : undefined }}>
+      <span style={{ position: 'relative', zIndex: 1, marginTop: 8, maxWidth: '86%', fontSize: 17, fontWeight: 700, letterSpacing: '-0.032em', lineHeight: 1.12, overflowWrap: 'anywhere', textShadow: p.icona ? alone('#FFFFFF', 2) : undefined }}>
         {p.nome}
       </span>
       {p.sottotitolo && <span style={{ ...STILE_SOTTO, color: 'var(--testo-2)' }}>{p.sottotitolo}</span>}

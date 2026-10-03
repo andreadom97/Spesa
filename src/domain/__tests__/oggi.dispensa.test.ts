@@ -112,12 +112,14 @@ describe('alternative (spec §C)', () => {
     expect(nomi(alternative(base({ pantry, dishes, statoSettimana: 'confermata' })))).toEqual([['d-uova', 'uovo']]);
     expect(nomi(alternative(base({ pantry, dishes, statoSettimana: 'chiusa' })))).toEqual([['d-uova', 'tutto']]);
   });
-  it('le persone e le porzioni da preparare moltiplicano il fabbisogno', () => {
+  it('le persone moltiplicano il fabbisogno; le porzioni da preparare dello slot no (precisato in esecuzione, 03/10)', () => {
     const pantry = [p(PATATA, 300), p(UOVO, 4), p(CIPOLLA, 100)];
     const dishes = [POLPETTE, FRITTATA];
     expect(nomi(alternative(base({ pantry, dishes, persone: 2 })))).toEqual([['d-frittata', 'patata']]);
+    // Lo scambio non eredita le porzioni da preparare (aggiornaSlot le azzera col cambio di piatto), e la
+    // pagina non propone niente su uno slot che ne ha: se si arrivasse qui, il fabbisogno è quello di una cena.
     const slot = { ...SLOT_CENA, porzioniPreparate: 1 };
-    expect(nomi(alternative(base({ pantry, dishes, slot, slotsSettimana: [slot] })))).toEqual([['d-frittata', 'patata']]);
+    expect(nomi(alternative(base({ pantry, dishes, slot, slotsSettimana: [slot] })))).toEqual([['d-frittata', 'tutto']]);
   });
   it('fuori: piatto spento, altro tipo di pasto, il piatto di stasera, già in programma da oggi in poi', () => {
     const spento = { ...FRITTATA, id: 'd-spento', nome: 'Spento', attivo: false };

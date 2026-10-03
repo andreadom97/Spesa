@@ -49,7 +49,7 @@ export function Alternative({ voci, inVolo, onScambia }: {
               }}>
                 {v.stato.tipo === 'tutto' ? 'Tutto in casa' : `Manca: ${v.stato.ingrediente.nome}`}
               </span>
-              <span style={{ position: 'relative', zIndex: 1, maxWidth: '76%', fontSize: 18, fontWeight: 800, letterSpacing: '-0.035em', lineHeight: 1.12, color: 'var(--ink)', textShadow: v.icona ? alone('#FFFFFF', 2) : undefined }}>
+              <span style={{ position: 'relative', zIndex: 1, maxWidth: '76%', fontSize: 18, fontWeight: 800, letterSpacing: '-0.035em', lineHeight: 1.12, overflowWrap: 'anywhere', color: 'var(--ink)', textShadow: v.icona ? alone('#FFFFFF', 2) : undefined }}>
                 {v.nome}
               </span>
               <button

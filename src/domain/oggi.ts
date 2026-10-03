@@ -217,7 +217,7 @@ export type StatoAlternativa = { tipo: 'tutto' } | { tipo: 'manca'; ingrediente:
 export interface Alternativa { dish: Dish; stato: StatoAlternativa }
 
 export interface AlternativeInput {
-  /** Il pasto del poster, di oggi, a casa, non dai Pronti. */
+  /** Il pasto del poster, di oggi, a casa, non dai Pronti e senza porzioni da preparare (chi chiama lo garantisce). */
   slot: MealSlot;
   statoSettimana: 'bozza' | 'confermata' | 'chiusa';
   /** Gli slot della settimana: servono a escludere i piatti già in programma. */
@@ -268,9 +268,9 @@ export function alternative(i: AlternativeInput): Alternativa[] {
       .filter((s) => s.data >= i.oggi && s.stato === 'casa' && s.dishId !== null)
       .map((s) => s.dishId as string),
   );
-  // Scambiando, il piatto nuovo prende anche le porzioni da preparare dello slot.
-  const fattore = fattoreConsumo({ stato: 'casa', daPronti: false, porzioniPreparate: i.slot.porzioniPreparate });
-
+  // Il fabbisogno è quantità × persone, senza le porzioni da preparare dello slot: lo scambio non le
+  // eredita (aggiornaSlot le azzera col cambio di piatto), e la pagina non propone niente su uno slot
+  // che ne ha. Per `liberato` vale invece il consumo vero dello slot, porzioni comprese.
   const trovate: (Alternativa & { usaScadenza: boolean })[] = [];
   for (const dish of i.dishes) {
     if (!dish.attivo || dish.slotDefId !== i.slot.slotDefId) continue;
@@ -284,7 +284,7 @@ export function alternative(i: AlternativeInput): Alternativa[] {
         if (!ingrediente) { leggibile = false; break; }
         if (ingrediente.classeResiduo === 'stima') continue;
         if (riga.quantita === null) { quantoBasta.add(ingrediente.id); continue; }
-        const q = convertiInUnitaBase(riga.quantita, riga.unita, ingrediente.unitaBase) * i.persone * fattore;
+        const q = convertiInUnitaBase(riga.quantita, riga.unita, ingrediente.unitaBase) * i.persone;
         fabbisogno.set(ingrediente.id, (fabbisogno.get(ingrediente.id) ?? 0) + q);
       }
     } catch {

@@ -44,6 +44,11 @@ interface Letti {
   lotti: LottoPronto[];
   pantry: PantryState[];
   ultimaChiusura: string | null;
+  /**
+   * Le due letture della dispensa (le righe e l'ultima chiusura) sono riuscite. Se no, `pantry` e
+   * `ultimaChiusura` sono i ripieghi (vuota, null) e la home non mostra niente che ne derivi.
+   */
+  dispensaLetta: boolean;
 }
 
 interface Dati extends Letti {
@@ -59,23 +64,38 @@ function tollera<T>(ripiego: T, cosa: string) {
   };
 }
 
+/**
+ * Le righe della dispensa e l'ultima chiusura stanno o cadono insieme: con una sola delle due la
+ * home non sa se la dispensa è aggiornata, e un ripiego (dispensa vuota, nessuna chiusura) farebbe
+ * proporre alternative false o dire «Chiudi la prima spesa» a chi l'ha già chiusa.
+ */
+function leggiDispensaTollerata(): Promise<Pick<Letti, 'pantry' | 'ultimaChiusura' | 'dispensaLetta'>> {
+  return Promise.all([leggiDispensa(), leggiUltimaChiusura()]).then(
+    ([pantry, ultimaChiusura]) => ({ pantry, ultimaChiusura, dispensaLetta: true }),
+    (errore: unknown) => {
+      console.error("oggi: lettura della dispensa o dell'ultima chiusura fallita.", errore);
+      return { pantry: [], ultimaChiusura: null, dispensaLetta: false };
+    },
+  );
+}
+
 async function caricaDati(): Promise<Letti> {
   const { data: oggi, minuti } = oggiLocale(new Date());
-  const settimana = await apriSettimanaCorrente(oggi);
-  const domani = sommaGiorni(oggi, 1);
-  const settimanaDomani = lunediDi(domani) === settimana.dataInizio ? settimana : await leggiSettimana(lunediDi(domani));
-  const [defs, dishes, ingredients, impostazioni, lotti, pantry, ultimaChiusura] = await Promise.all([
+  // La settimana parte insieme alle letture che non ne dipendono: un giro di rete in meno all'apertura.
+  const [settimana, defs, dishes, ingredients, impostazioni, lotti, dispensa] = await Promise.all([
+    apriSettimanaCorrente(oggi),
     leggiSlotDefs(),
     leggiRepertorio(),
     leggiIngredienti(),
     leggiImpostazioni(),
     leggiPronti().catch(tollera<LottoPronto[]>([], 'dei Pronti')),
-    leggiDispensa().catch(tollera<PantryState[]>([], 'della dispensa')),
-    leggiUltimaChiusura().catch(tollera<string | null>(null, "dell'ultima chiusura")),
+    leggiDispensaTollerata(),
   ]);
+  const domani = sommaGiorni(oggi, 1);
+  const settimanaDomani = lunediDi(domani) === settimana.dataInizio ? settimana : await leggiSettimana(lunediDi(domani));
   return {
     oggi, minuti, settimana, settimanaDomani, defs, dishes, ingredients,
-    persone: impostazioni.moltiplicatorePorzioni, lotti, pantry, ultimaChiusura,
+    persone: impostazioni.moltiplicatorePorzioni, lotti, ...dispensa,
   };
 }
 
@@ -202,14 +222,15 @@ export default function Oggi() {
     );
   }
 
-  const { oggi, minuti, settimana, settimanaDomani, defs, dishes, ingredients, persone, lotti, pantry, ultimaChiusura, pianoPrima } = dati;
+  const { oggi, minuti, settimana, settimanaDomani, defs, dishes, ingredients, persone, lotti, pantry, ultimaChiusura, dispensaLetta, pianoPrima } = dati;
   const { slotsOggi, slotsDomani, prossimo } = giornata(dati);
   // Domani può cadere nella settimana dopo (la domenica): daFare e gli avvisi guardano le due.
   const tuttiGliSlot = settimanaDomani && settimanaDomani !== settimana ? [...settimana.slots, ...settimanaDomani.slots] : settimana.slots;
   const dishPerId = new Map(dishes.map((d) => [d.id, d]));
   const defPerId = new Map(defs.map((d) => [d.id, d]));
   const nomeDef = (id: string) => defPerId.get(id)?.nome ?? '';
-  const aggiornata = dispensaAggiornata(ultimaChiusura, oggi);
+  // Una dispensa che non si è letta non è «aggiornata» né «ferma»: niente di derivato, e niente tessera tratteggiata.
+  const aggiornata = dispensaLetta && dispensaAggiornata(ultimaChiusura, oggi);
   const avvisi = aggiornata ? avvisiScadenza({ slots: tuttiGliSlot, dishes, ingredients, pantry, oggi }) : [];
 
   /** L'icona dell'ingrediente principale di un piatto (spec §C.4), con le scelte dello slot se ci sono. */
@@ -279,9 +300,10 @@ export default function Oggi() {
     const { slot, giorno } = scelto;
     const dish = slot.dishId ? dishPerId.get(slot.dishId) : undefined;
     const settimanaDelPasto = giorno === 'oggi' ? settimana : (settimanaDomani ?? settimana);
-    // Spec §C.1: la banda c'è con la dispensa aggiornata, per un pasto di oggi non dai Pronti, e non
-    // dopo uno scambio fatto da qui (§C.6: per altro c'è CAMBIA).
-    const voci = aggiornata && giorno === 'oggi' && !slot.daPronti && !pianoPrima && dish
+    // Spec §C.1: la banda c'è con la dispensa aggiornata, per un pasto di oggi non dai Pronti e senza
+    // porzioni da preparare (lo scambio le azzererebbe, cancellando il lotto, e RIMETTI non lo ridarebbe),
+    // e non dopo uno scambio fatto da qui (§C.6: per altro c'è CAMBIA).
+    const voci = aggiornata && giorno === 'oggi' && !slot.daPronti && slot.porzioniPreparate === 0 && !pianoPrima && dish
       ? alternative({
         slot, statoSettimana: settimana.stato, slotsSettimana: settimana.slots, dishes, ingredients, pantry,
         persone, oggi, inScadenza: inScadenzaEntro(avvisi, oggi),
@@ -417,7 +439,7 @@ export default function Oggi() {
               <MessaggioErrore ruolo="alert">{errore}</MessaggioErrore>
             </div>
           )}
-          {!aggiornata && <TesseraDispensaFerma ultimaChiusura={ultimaChiusura} />}
+          {dispensaLetta && !aggiornata && <TesseraDispensaFerma ultimaChiusura={ultimaChiusura} />}
           {griglia}
         </div>
       </div>

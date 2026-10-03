@@ -41,7 +41,7 @@ export function Poster(p: {
           {p.caselle.map((c) => <span key={c.slotDefId} data-stato={c.stato} style={stileCasella(c.stato)} />)}
         </span>
       </div>
-      <h2 style={{ ...SOPRA, margin: '26px 0 0', maxWidth: '84%', fontSize: 32, fontWeight: 800, letterSpacing: '-0.045em', lineHeight: 1.04, color: 'var(--superficie)' }}>
+      <h2 style={{ ...SOPRA, margin: '26px 0 0', maxWidth: '84%', fontSize: 32, fontWeight: 800, letterSpacing: '-0.045em', lineHeight: 1.04, overflowWrap: 'anywhere', color: 'var(--superficie)' }}>
         {p.nomePiatto}
       </h2>
       {p.sottotitolo && (

@@ -55,6 +55,10 @@ describe('Poster (spec §B.4)', () => {
     rerender(<Poster {...base} />);
     expect(screen.queryByRole('button', { name: 'Rimetti quello del piano' })).toBeNull();
   });
+  it('il titolo con una parola lunga va a capo invece di uscire dal poster (M6)', () => {
+    render(<Poster {...base} nomePiatto="Pappardelle-al-ragù-di-cinghiale-toscano" />);
+    expect(screen.getByRole('heading').style.overflowWrap).toBe('anywhere');
+  });
   it('senza sottotitolo non c\'è la riga', () => {
     render(<Poster {...base} sottotitolo={null} />);
     expect(screen.queryByText('Per 2')).toBeNull();
@@ -159,6 +163,15 @@ describe('Tessere (spec §D)', () => {
     const icona = container.querySelector('svg[data-icona]')!;
     expect(icona).toHaveAttribute('data-tono', 'area');
     expect(icona).toHaveAttribute('width', '60');
+  });
+  it('un nome con una parola lunga va a capo invece di uscire dalla tessera (M6)', () => {
+    const lunga = 'Pappardelle-al-ragù-di-cinghiale-toscano';
+    const { rerender } = render(<TesseraPiena area="latticini" pillola="Scade lunedì" nome={lunga} sottotitolo="Pranzo di domani" icona={null} href="/x" />);
+    expect(screen.getByText(lunga).style.overflowWrap).toBe('anywhere');
+    rerender(<TesseraBianca pillola={null} etichetta="Poi · Cena" nome={lunga} sottotitolo={null} icona={null} href="/piano" />);
+    expect(screen.getByText(lunga).style.overflowWrap).toBe('anywhere');
+    rerender(<Alternative voci={[{ dishId: 'd-p', nome: lunga, stato: { tipo: 'tutto' as const }, icona: null }]} inVolo={false} onScambia={vi.fn()} />);
+    expect(screen.getByText(lunga).style.overflowWrap).toBe('anywhere');
   });
   it('dispensa ferma: i due testi e APRI LA LISTA', () => {
     const { rerender } = render(<TesseraDispensaFerma ultimaChiusura="2026-08-28" />);
