@@ -127,7 +127,9 @@ function bloccantiIngredienti(piano: PianoEstratto, stato: StatoRevisione, esist
     cambi,
     pesi,
     cambiVeri: cambi.filter((c) => c.da !== c.a).length,
-    cambiSenzaPeso: cambi.filter((c) => c.pesoPezzo === null).length,
+    // Solo i cambi veri, come `cambiVeri`: con l'unità che resta (da === a) il peso non serve, e
+    // contarli farebbe «senza peso M» più grande di «cambi di unità N».
+    cambiSenzaPeso: cambi.filter((c) => c.da !== c.a && c.pesoPezzo === null).length,
     pesiSenzaPeso: pesi.filter((p) => p.pesoPezzo === null).length,
   };
 }
