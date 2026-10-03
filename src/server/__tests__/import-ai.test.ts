@@ -164,6 +164,22 @@ describe('estraiPiano (v1, una chiamata)', () => {
     expect(args.system).toContain('"2 cucchiaini di miele"');
   });
 
+  it('il prompt chiede sempre una quantità stimata quando il foglio non la scrive, tranne i «quanto basta» (Task 12c)', async () => {
+    finto.stato.risposte.push({ corpo: RIFIUTO });
+    await estraiPiano(FOTO, 'claude-sonnet-5');
+    const sistema: string = finto.stato.chiamate[0].system;
+    expect(sistema).toContain('proponi SEMPRE una quantità tipica ragionevole');
+    expect(sistema).toContain('con quantitaInferita true: non lasciare mai quantita null per un alimento concreto');
+    expect(sistema).toContain('"Verdure di stagione" senza grammi → quantita 200, unita "g", quantitaInferita true');
+    expect(sistema).toContain('"Sale q.b." → null, null, false');
+    for (const qb of ['"q.b."', '"qb"', '"quanto basta"', '"a piacere"', '"a volontà"']) expect(sistema).toContain(qb);
+    // la vecchia scelta libera fra null e proposta non c'è più
+    expect(sistema).not.toContain('o quantita null e unita null, oppure una proposta');
+    // restano la prova di provenienza (anche per i numeri in lettere) e le unità a cucchiai
+    expect(sistema).toContain('Prova di provenienza (vale solo per le quantità trascritte)');
+    expect(sistema).toContain('"mezzo cucchiaio" è quantita 0.5 con quantitaInferita false');
+  });
+
   it('un PDF diventa un blocco document', async () => {
     finto.stato.risposte.push({ corpo: RIFIUTO });
     await estraiPiano([{ tipo: 'pdf', mime: 'application/pdf', base64: 'QUJD' }], 'claude-sonnet-5');
