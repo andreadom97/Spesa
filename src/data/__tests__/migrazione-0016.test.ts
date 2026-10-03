@@ -41,9 +41,21 @@ describe('migrazione 0016', () => {
     expect(sql).toContain("if attuale not in ('g', 'pz') then");
   });
 
-  it('rifiuta unità e fattore nulli o non numerici (null e NaN non superano il confronto)', () => {
+  it('rifiuta unità e fattore nulli, non numerici, infiniti o enormi (null e NaN non superano il confronto)', () => {
     expect(sql).toContain('p_unita is null or p_unita not in');
-    expect(sql).toContain("if p_fattore is null or p_fattore = 'NaN'::numeric or p_fattore <= 0 then");
+    // 'Infinity'::numeric (Postgres ≥ 14) supera `<= 0`: il tetto di 100 kg a pezzo lo ferma su ogni
+    // versione senza citare il letterale (review finale, I1).
+    expect(sql).toContain("if p_fattore is null or p_fattore = 'NaN'::numeric or p_fattore <= 0 or p_fattore > 100000 then");
+  });
+
+  it('un ingrediente «intero» che passa a grammi diventa «porzionabile» nella stessa update', () => {
+    // «intero» vuol dire formato 1 a pezzi: lasciato in g conterebbe una confezione per grammo
+    // (review finale, C1). Da g a pz la classe resta: porzionabile e stima in pz sono ammessi.
+    const updateIngrediente = sql.slice(sql.indexOf('update ingredient'), sql.indexOf('update dish_ingredient'));
+    expect(updateIngrediente).toMatch(
+      /classe_residuo = case\s+when p_unita = 'g' and classe_residuo = 'intero' then 'porzionabile'\s+else classe_residuo\s+end/,
+    );
+    expect(updateIngrediente).toContain('where id = p_ingrediente and user_id = casa;');
   });
 
   it('le righe q.b. restano null e i kg valgono 1000 g prima del fattore', () => {

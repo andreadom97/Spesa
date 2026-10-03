@@ -45,7 +45,9 @@ begin
   if p_unita is null or p_unita not in ('g', 'pz') then
     raise exception 'unità non ammessa: %', p_unita;
   end if;
-  if p_fattore is null or p_fattore = 'NaN'::numeric or p_fattore <= 0 then
+  -- 'Infinity'::numeric (Postgres ≥ 14) supera `<= 0`: il tetto di 100 kg a pezzo lo ferma su
+  -- ogni versione senza citare il letterale.
+  if p_fattore is null or p_fattore = 'NaN'::numeric or p_fattore <= 0 or p_fattore > 100000 then
     raise exception 'fattore non valido: %', p_fattore;
   end if;
 
@@ -64,11 +66,18 @@ begin
     raise exception 'da % a % servirebbe una densità', attuale, p_unita;
   end if;
 
+  -- «intero» vuol dire formato 1 a pezzi: in grammi conterebbe una confezione per grammo. Passando
+  -- a g diventa «porzionabile» (la confezione resta un pezzo, col suo peso). Da g a pz la classe
+  -- resta: porzionabile e stima in pz sono ammessi.
   update ingredient
      set unita_base = p_unita,
          formato_confezione = case
            when p_unita = 'pz' then greatest(0.25, round(formato_confezione * p_fattore * 4) / 4)
            else greatest(1, round(formato_confezione * p_fattore))
+         end,
+         classe_residuo = case
+           when p_unita = 'g' and classe_residuo = 'intero' then 'porzionabile'
+           else classe_residuo
          end
    where id = p_ingrediente and user_id = casa;
 
@@ -113,4 +122,4 @@ revoke execute on function public.cambia_unita_ingrediente(uuid, text, numeric) 
 grant execute on function public.cambia_unita_ingrediente(uuid, text, numeric) to authenticated;
 
 comment on function public.cambia_unita_ingrediente(uuid, text, numeric) is
-  'Passa un ingrediente della casa fra g e pz moltiplicando per p_fattore tutto ciò che è scritto nella sua unità (piatti, confezione, dispensa, storni, acquisti, liste aperte), in una transazione. Fermo se è già nell''unità nuova.';
+  'Passa un ingrediente della casa fra g e pz moltiplicando per p_fattore tutto ciò che è scritto nella sua unità (piatti, confezione, dispensa, storni, acquisti, liste aperte), in una transazione; un ingrediente «intero» passato a g diventa «porzionabile». Fermo se è già nell''unità nuova.';
