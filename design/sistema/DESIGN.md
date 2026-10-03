@@ -813,7 +813,9 @@ quantità.» e il passo è bloccato; col peso della tabella la Nota «È un peso
 serve.». Dentro la Scheda di una proposta legata a un ingrediente nell'altra unità compare senza
 testa. Quando l'unità resta (righe della dieta nell'altra unità da convertire, o una proposta nuova
 con righe in g e in pz) non c'è niente da accettare: niente «passa a» né «Tienile…», solo il campo
-del peso. File: `src/app/(app)/importa/SchedaCambio.tsx`.
+del peso e, col peso noto, la Nota «Le righe della dieta passano a grammi: 2 pz, quindi 400 g.»
+(l'unità che resta, coi due valori di una riga; senza una riga da mostrare finisce col punto). La
+stessa Nota c'è con «Tienile…» su SÌ. File: `src/app/(app)/importa/SchedaCambio.tsx`.
 
 ### Matrice dei pasti
 **Nuova il 19/09, riorientata il 20/09, ridisegnata il 25/09.** È la sotto-schermata `Pasti a

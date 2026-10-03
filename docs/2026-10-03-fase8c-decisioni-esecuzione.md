@@ -55,7 +55,8 @@ Uno per riga, dal piano. Il piano non dichiara il costo di questi ruling, tranne
 - **Task 3.** La voce «Q.B.» compare sotto la pillola col campo a fuoco, 44 di tocco; il tocco non
   toglie il fuoco al campo; una riga q.b. mostra «Q.B.», toccata torna il campo vuoto.
 - **Task 4.** Le tabelle sono medie da fonti comuni (merceologiche, LARN/SINU), segnate come tali;
-  chiavi per parole intere, singolare e plurale; olive e sale non sono in `PORZIONE_TIPICA`.
+  chiavi per parole intere, singolare e plurale; il sale e un altro alimento che si dosa a occhio
+  non sono in `PORZIONE_TIPICA`.
 - **Task 5.** Il lettore scrive il numero dei cucchiai, mai la conversione; se il foglio scrive
   anche g o ml, valgono quelli.
 - **Task 5.** Nell'eval una riga a cucchiai passa il cancello anti-fabbricazione se il suo numero
@@ -152,10 +153,12 @@ Dal ledger, raggruppati per task, ciascuno col costo se sbagliato.
 - **Task 8.** Accettato il ripiego per inclusione su un ingrediente g/pz già raggiunto da un altro
   alimento dello stesso piano, che scatta solo al ritentativo. Costo se sbagliato: un alimento
   senza proposta che al ritentativo finisce su un ingrediente simile.
-- **Task 8 (parcheggiati).** Tre limiti noti accettati come rari: «pasta fresca all'uovo» con due
-  candidati per inclusione; N1, la bozza vecchia ripresa al riepilogo che attraversa unità diverse
-  per inclusione; O1, l'import interrotto fra due RPC («zucchine trombetta» sulle Zucchine). Costo:
-  la stessa classe del ripiego per inclusione; per O1 i dati restano coerenti.
+- **Task 8 (parcheggiati).** Tre limiti noti accettati come rari: un alimento il cui nome include
+  quelli di due ingredienti che hai, con lo stesso inizio di nome e in unità diverse (due candidati
+  per inclusione); N1, la bozza vecchia ripresa al riepilogo che attraversa unità diverse per
+  inclusione; O1, l'import interrotto fra due RPC (una varietà di un ingrediente che hai finisce su
+  quell'ingrediente per inclusione). Costo: la stessa classe del ripiego per inclusione; per O1 i
+  dati restano coerenti.
 - **Task 9.** Si corregge ogni asserzione sul client con l'identità (`toBe`), e il log della bozza
   aggiunge `code`. Costo: nessuno.
 - **Task 11.** Accettati `sezioniIniziali` con cambi e pesi facoltativi; `pesiProposte` via
@@ -185,13 +188,26 @@ Dal ledger, raggruppati per task, ciascuno col costo se sbagliato.
   trasparenza minore in revisione.
 - **Task 12d (Minor 1).** L'unione per pagina unisce solo le voci settimana; giorni doppi nella
   stessa settimana restano un errore (in `giorni_tipo` sono scenari diversi). Costo: nessuno.
+- **Review finale (C1).** La 0016 portava un ingrediente «intero» da pz a g lasciandolo «intero»:
+  «intero» vuol dire formato 1 a pezzi, e in grammi lista, planner e risparmio avrebbero contato
+  una confezione per grammo (sonda del revisore: 600 g di fabbisogno → 600 confezioni [misurato]).
+  Nella stessa update dell'ingrediente, passando a g la classe «intero» diventa «porzionabile»; da g
+  a pz la classe resta. Corretto nella 0016 prima di applicarla. Costo: nessuno.
+- **Review finale (I1).** La guardia di `p_fattore` rifiuta anche un fattore oltre 100000 (100 kg a
+  pezzo): ferma `'Infinity'::numeric` su ogni versione di Postgres. Costo: nessuno.
+- **Review finale (I3).** «Intero» solo con l'unità pz: le voci in g della tabella dei formati
+  (yogurt, mozzarella, tonno, legumi) nascono «porzionabile» (2 delle 11 proposte della lettura di
+  Andrea nascevano «intero» in g [misurato dal revisore]); la Scheda dell'ingrediente offre
+  «Intero» solo a pezzi e mostra «Porzionabile» per un «intero» in g di una bozza vecchia; come rete
+  `traduciBozza` scrive «porzionabile» un nuovo «intero» in g o ml. Una regola sola,
+  `classeCoerente` in `formati-tipici.ts`. Costo: nessuno.
 
 ## Le correzioni del controllo preliminare
 
 I ruling P1–P9, D1–D14 e S1 del piano (`857abc8`), una riga ciascuno, col costo del ledger.
 
 - **P1.** La voce `peso` di `TESTO_AVVISO` entra con il Task 6, nel suo commit. Costo: nessuno.
-- **P2.** Il test di `nomiDoppi` «Olive» g contro pz cambia per la spec §A.2. Costo se sbagliato:
+- **P2.** Il test di `nomiDoppi` con un nome in g contro lo stesso in pz cambia per la spec §A.2. Costo se sbagliato:
   un test da ripristinare.
 - **P3.** Il caso `pari` usa `pianoConOlive([['cena'], ['cena']])`. Costo: nessuno.
 - **P4.** Il test di Controlla «I2 … con le pillole» si riscrive con le attese nuove. Costo: nessuno.
@@ -261,6 +277,9 @@ giri di correzione dal ledger.
 - **Task 13** (questo: lo script di misura con le funzioni dell'app, `4ac3428`; i documenti e il
   registro). Nessun file in `src/` toccato. Alla fine: `npm test` 2644 passati e 1 saltato su 163
   file, `tsc` e `lint` verdi [misurato].
+- **Ondata finale** (dopo la review finale, opus): C1 e I1 nella 0016, I3 nelle proposte, nella
+  Scheda e in `traduciBozza`, l'Important e i minor della review del Task 13 nei documenti e nello
+  script di misura; poi `main` fuso nel ramo (I4). Un giro solo.
 
 ## I task aggiunti: 12b, 12c, 12d
 
@@ -279,10 +298,12 @@ giri di correzione dal ledger.
 
 Ognuno col motivo. Un test caduto per un altro motivo sarebbe stato una regressione.
 
-- **`nomiDoppi`, Task 6 (P2)** (`ingredienti.test.ts`): «Olive» g contro un esistente in pz non è
-  più doppia (spec §A.2, cambio di unità fra g e pz: `size 0`); il doppio resta fra ml e pz.
-- **`legataA`, Task 6** (`ingredienti.test.ts`, non previsto dal piano): «olive verdi» g contro
-  «Olive Verdi» pz ora è legata (`toBe(verdi)`), fra ml e pz resta `null`. Stesso motivo della P2.
+- **`nomiDoppi`, Task 6 (P2)** (`ingredienti.test.ts`): un nome in g contro un esistente con lo
+  stesso nome in pz non è più doppio (spec §A.2, cambio di unità fra g e pz: `size 0`); il doppio
+  resta fra ml e pz.
+- **`legataA`, Task 6** (`ingredienti.test.ts`, non previsto dal piano): un alimento in g contro un
+  esistente in pz con lo stesso nome a maiuscole diverse ora è legato (`toBe(...)`), fra ml e pz
+  resta `null`. Stesso motivo della P2.
 - **Task 7, Step 5, regola (a)** (correzione S1): le righe «olio q.b.» e «sale q.b.» ora sono q.b. e
   non fanno più un dubbio né un gruppo «inferita». In `dubbi.test.ts` (`pianoConOlio`,
   `pianoConDueSale`, «una quantità proposta dall'AI è un gruppo «inferita»», `pianoConSale` usato
@@ -325,8 +346,9 @@ Ognuno col motivo. Un test caduto per un altro motivo sarebbe stato una regressi
 - Gli altri input, copiati da produzione in sola lettura: `ingredienti.json`, 92 ingredienti di
   Andrea com'erano prima dell'import del 03/10, esclusi i 5 creati quel giorno; `slot.json`, 6
   pasti [misurato]. Nessun repertorio.
-- Visto copiando i dati: l'import del 03/10 ha creato «Mela» (g) accanto a «Mele» (pz) e «Fiocchi
-  d'avena» accanto a «Fiocchi di avena» [misurato]: è la prova del difetto dei KO 10/12.
+- Visto copiando i dati: l'import del 03/10 ha creato «Mela» (g) accanto a «Mele» (pz), e un
+  ingrediente accanto a uno quasi uguale che differisce per una preposizione [misurato]: è la prova
+  del difetto dei KO 10/12.
 
 ### La misura di partenza (codice `18770a3`, comportamento dell'8b) [misurato]
 
@@ -358,7 +380,10 @@ Ognuno col motivo. Un test caduto per un altro motivo sarebbe stato una regressi
   117 richieste, 4,0 s.
 - Lettura col lettore 8c (`bozza-8c.json`, 248 righe, 14 giorni): Controlla 2 su 125 (17 con
   proposta); Ingredienti 2 bloccanti (2 cambi di unità, 1 senza peso); scritture 11 ingredienti, 30
-  piatti, 2 cambi → 127 richieste, 4,7 s.
+  piatti, 2 cambi → 127 richieste, 4,7 s. Lo script contava fra i «senza peso» anche i cambi con
+  l'unità che resta (`da` uguale ad `a`): nell'ondata finale conta solo i cambi veri, come «cambi di
+  unità»; la misura con lo script corretto è **NON ESEGUITA**, quindi «1 senza peso» può includere
+  un cambio non vero.
 - Prima della 8c: 122 su 124; 133 richieste, 16,2 s.
 
 | | Prima (8b, `bozza.json`) | 8c, lettura vecchia (`bozza.json`) | 8c, lettura nuova (`bozza-8c.json`) |
@@ -368,6 +393,13 @@ Ognuno col motivo. Un test caduto per un altro motivo sarebbe stato una regressi
 | Richieste di scrittura [misurato] | 133 | 117 | 127 |
 | Durata [ipotesi 120 ms/richiesta] | 16,2 s | 4,0 s | 4,7 s |
 
+**Avvertenza sui denominatori.** Le colonne non sono confrontabili riga per riga: prima della 8c
+le domande di Controlla erano un gruppo per riga (124), dal Task 12b sono un gruppo per alimento
+(52 e 125 contano gruppi diversi). E la lettura nuova da 248 righe è il caso migliore delle letture
+col lettore 8c, che sullo stesso PDF vanno da 112 a 248 righe [misurato, sotto «Le letture del PDF
+di Andrea»]: con una lettura più corta i numeri della terza colonna sarebbero diversi [ipotesi, non
+misurata].
+
 ### L'eval del lettore (Task 5, Step 6, controller; dieta 6, 6 foto, `claude-sonnet-5-5`) [misurato]
 
 - Prima (`main`): giro 1 abbinati 74/82, esatte 92/172, fabbricate 0, 0,61 €; giro 2 abbinati
@@ -375,8 +407,9 @@ Ognuno col motivo. Un test caduto per un altro motivo sarebbe stato una regressi
 - Dopo (ramo 8c): giro 1 abbinati 70/82, esatte 86/161, righe a cucchiai 1, fabbricate 0, 0,60 €;
   giri 2 e 3 FALLITI in circa 7 s con `PianoNonValidoError` «indice.pagine: vuoto».
 - Sonda sull'indice (solo la chiamata dell'indice, dieta 6): prompt nuovo 2/3 poi 10/10 riuscite;
-  prompt vecchio 3/3 poi 8/10. L'indice vuoto è preesistente e intermittente (circa 1 su 6), non una
-  regressione del Task 5. La differenza 74 → 70 su un giro solo non è conclusiva [ipotesi: rumore].
+  prompt vecchio 3/3 poi 8/10. L'indice vuoto è preesistente e intermittente (circa 1 su 6
+  [misurato, somma di sonde e giri]), non una regressione del Task 5. La differenza 74 → 70 su un
+  giro solo non è conclusiva [ipotesi: rumore].
   Le 8 occorrenze di «cucchia» nel ground truth della dieta 6 → 1 riga letta come cucchiai.
 - Manifest assente: misurato solo questo caso.
 - Costo totale di eval e sonde circa 2,5 € [stima dai costi stampati, più le chiamate dell'indice
@@ -447,16 +480,17 @@ Ognuno col motivo. Un test caduto per un altro motivo sarebbe stato una regressi
 8. **Il lettore perde pagine in silenzio**: la pagina 2 del PDF di Andrea entra nell'indice in modo
    instabile, e le righe lette vanno da 112 a 248 sullo stesso PDF [misurato]. Vale anche in
    produzione [ipotesi forte]. **8e, PRIORITÀ**, segnalato ad Andrea.
-9. **L'indice vuoto intermittente** («indice.pagine: vuoto», circa 1 su 6 sulla dieta 6) è
-   preesistente: 8e (ritentare l'indice vuoto).
+9. **L'indice vuoto intermittente** («indice.pagine: vuoto», circa 1 su 6 sulla dieta 6
+   [misurato, somma di sonde e giri]) è preesistente: 8e (ritentare l'indice vuoto).
 10. **Le settimane doppie**: «settimane[1].numero duplicato» e «fuori da 1..4» sono errori del
     lettore. Il 12d unisce le settimane doppie di una pagina e riallinea i numeri all'indice (4/4
     dopo, 1/4 prima [misurato]); il riallineo è silenzioso (nessuna nota in `noteEstrazione`); più
     settimane su una pagina con numeri sbagliati restano un errore. Il resto è 8e.
-11. Dal Task 8, parcheggiati: «pasta fresca all'uovo» con «Pasta» e «Pasta fresca» e la dieta che
-    cambia l'unità del più corto (instabile al ritentativo); N1, una bozza vecchia ripresa al
-    riepilogo può agganciarsi per inclusione attraverso unità diverse; O1, un import interrotto fra
-    due RPC può mandare «zucchine trombetta» sulle Zucchine (dati coerenti).
+11. Dal Task 8, parcheggiati: un alimento il cui nome include quelli di due ingredienti che hai,
+    con lo stesso inizio di nome e in unità diverse, e la dieta che cambia l'unità del più corto
+    (instabile al ritentativo); N1, una bozza vecchia ripresa al riepilogo può agganciarsi per
+    inclusione attraverso unità diverse; O1, un import interrotto fra due RPC può mandare una
+    varietà di un ingrediente che hai su quell'ingrediente, per inclusione (dati coerenti).
 12. Fuori fase: 8d (Controlla e Ingredienti a step), 8e (affidabilità della lettura).
 
 **Correzione sulle due «Zucchine».** La spec mette fuori fase la fusione di due «Zucchine» in
@@ -467,11 +501,11 @@ non sono doppioni, e la fusione non serve [misurato].
 
 Dal ledger, non corretti in questa fase:
 
-- **Prima di applicare la 0016 (controller):** `'Infinity'::numeric` supera la guardia di
-  `p_fattore` (riga 48 della 0016 controlla null, NaN e ≤ 0): una riga da aggiungere prima
-  dell'applicazione. Una lettura di conteggio delle righe di piatti in un'unità che non è quella
-  dell'ingrediente (M3 del Task 1): con zero righe il rischio è solo teorico. La prova della
-  funzione in una transazione con rollback, raccomandata dal revisore, serve l'ok di Andrea.
+- **Prima di applicare la 0016 (controller):** la guardia su `'Infinity'::numeric` è aggiunta
+  nell'ondata finale (I1). Restano una lettura di conteggio delle righe di piatti in un'unità che
+  non è quella dell'ingrediente (M3 del Task 1: con zero righe il rischio è solo teorico) e la prova
+  della funzione in una transazione con rollback (I2), con l'ok di Andrea: sotto, «Prima del
+  merge».
 - **Task 0:** `return` prima dell'unico `expect` nel ramo `BozzaIncompletaError`; il messaggio «non
   è un JSON valido» anche per un percorso illeggibile. (Il pasto d'ufficio su slot vuoti è guardato
   dal Task 13.)
@@ -510,24 +544,40 @@ Dal ledger, non corretti in questa fase:
   zittire i passi; «Piano salvato» può ricomparire più tardi (primo caricamento del Piano fallito,
   uscita durante le scritture); un nome lungo senza `minWidth: 0` accanto a un valore `nowrap`;
   test mancanti; «I piatti: 0 di 0.».
-- **Task 12b:** con «solo in testa» frittata di zucchine, vellutata di zucca e frutti da soli non
-  hanno più proposta (prima 200 e 150 g); le esclusioni dei lavorati non valgono per le voci di
-  tabella (succo di frutta 150 g, passata di verdure 200 g); 1 pz anche con un pz da un'altra
-  riga, senza test.
-- **Task 12c:** «mezzo cucchiaio» col flag false come eccezione esplicita; «Tè a volontà» fra
-  bevanda libera e stima.
+- **Task 12b:** con «solo in testa» alcuni piatti che nominano la verdura dopo la testa e la parola
+  «frutti» da sola non hanno più proposta (prima 200 e 150 g); le esclusioni dei lavorati non
+  valgono per le voci di tabella (un succo o una passata che contengono la parola di una voce
+  prendono la porzione della voce, 150 o 200 g); 1 pz anche con un pz da un'altra riga, senza test.
+- **Task 12c:** «mezzo cucchiaio» col flag false come eccezione esplicita; una bevanda «a volontà»
+  fra bevanda libera e stima.
 - **Task 12d:** il riallineo silenzioso; tre test mancanti.
 
 ## Prima del merge (controller)
 
-1. La 0016, con la guardia su `Infinity` e dopo la lettura di conteggio di M3, applicata in
-   produzione con l'ok di Andrea, e le tre letture di verifica qui sopra. Senza, il merge non si
-   fa: Vercel pubblica `main` da solo.
-2. La sonda nel browser vero sulla cronologia: indietro di passo, e il dialogo di uscita che rimette
+1. La 0016, con la guardia su `Infinity` e la classe «intero» che passa a «porzionabile» in g
+   (I1 e C1, già nel file), dopo la lettura di conteggio di M3, applicata in produzione con l'ok di
+   Andrea, e le tre letture di verifica qui sopra. Senza, il merge non si fa: Vercel pubblica `main`
+   da solo.
+2. **La correzione dei dati da proporre ad Andrea, insieme all'applicazione della 0016.** In
+   produzione ci sono 2 ingredienti «intero» con unità g, entrambi nella casa di Andrea (creati
+   dall'import del 03/10 [ipotesi]) [misurato dal controller, lettura in produzione]: in lista
+   contano una confezione per grammo. Con il suo ok, portarli a «porzionabile» (un `update` di
+   `classe_residuo` su quei due id, unità e formato invariati), poi rileggere
+   `select count(*) from ingredient where classe_residuo = 'intero' and unita_base <> 'pz'` → 0.
+3. **La prova della funzione in produzione, in transazione con rollback (I2)**, con l'ok di Andrea,
+   dopo l'applicazione e le tre letture: `begin;`, `set local role authenticated;`,
+   `set local "request.jwt.claims"` con l'id di Andrea, `select cambia_unita_ingrediente(...)` su
+   un suo ingrediente pz/«intero» verso g col peso della tabella; poi la lettura di `ingredient`
+   (unità, formato, **classe** = «porzionabile»), il conteggio delle righe di `dish_ingredient` in g
+   e di `pantry_state`; `rollback;`. La funzione non è mai stata eseguita: gli errori di plpgsql
+   (tipi, nomi di colonna, `for update` sotto RLS) uscirebbero solo all'import di Andrea.
+   **NON ESEGUITA.**
+4. La sonda nel browser vero sulla cronologia: indietro di passo, e il dialogo di uscita che rimette
    due voci dopo il popstate (Task 10).
-3. `npm test`, `npx tsc --noEmit`, `npm run lint` verdi sul ramo.
-4. Il conflitto con la PR #23 (icone a due toni, già su `main`): anche lei aggiunge una sezione del
-   03/10 in coda a DESIGN.md §13. Si risolve al merge tenendo tutte e due le sezioni.
+5. `npm test`, `npx tsc --noEmit`, `npm run lint` verdi sul ramo fuso con `main`.
+6. Il conflitto con la PR #23 (icone a due toni, già su `main`): anche lei aggiunge una sezione del
+   03/10 in coda a DESIGN.md §13. Risolto fondendo `main` nel ramo nell'ondata finale, con tutte e
+   due le sezioni.
 
 ## Le prove dal telefono da fare
 
@@ -545,7 +595,8 @@ Su Chrome Android con l'indietro di sistema, dopo il merge e con la 0016 applica
 3. **Completezza della lettura.** Confronta Controlla con il PDF: settimane, giorni e pasti di ogni
    giorno. Annota quali giorni o pagine mancano (la pagina 2 è instabile): è la misura dell'8e.
 4. **K.2.** Le zucchine: nessun avviso di doppione; la Scheda dice «Zucchine passa a grammi…» coi
-   due valori; dopo il salvataggio la lista e i tuoi piatti sono in grammi.
+   due valori; dopo il salvataggio la lista e i tuoi piatti sono in grammi, e in lista le
+   confezioni delle zucchine sono pezzi, non grammi (C1 della review finale).
 5. **K.3.** Sale, pepe, spezie: nessuna domanda; in lista solo se in dispensa non ci sono.
 6. **K.4.** Una riga a cucchiai: «1 cucchiaio, quindi 15 ml».
 7. **K.5** (ruling del Task 10). In Controlla apri TOGLI, conferma, indietro: resti in Importa e
