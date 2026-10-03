@@ -193,15 +193,21 @@ export function ingredientePrincipale(
   const perId = new Map(ingredients.map((x) => [x.id, x]));
   let piuGrande: { ingrediente: Ingredient; icona: ChiaveIcona; q: number } | null = null;
   let primo: { ingrediente: Ingredient; icona: ChiaveIcona } | null = null;
-  for (const riga of righeEffettive(dish, scelte)) {
-    const ingrediente = perId.get(riga.ingredientId);
-    if (!ingrediente || ingrediente.classeResiduo === 'stima' || riga.quantita === null) continue;
-    const icona = trovaIcona(ingrediente.nome);
-    if (!icona) continue;
-    primo ??= { ingrediente, icona };
-    if (ingrediente.unitaBase === 'pz') continue;
-    const q = convertiInUnitaBase(riga.quantita, riga.unita, ingrediente.unitaBase);
-    if (!piuGrande || q > piuGrande.q) piuGrande = { ingrediente, icona, q };
+  try {
+    for (const riga of righeEffettive(dish, scelte)) {
+      const ingrediente = perId.get(riga.ingredientId);
+      if (!ingrediente || ingrediente.classeResiduo === 'stima' || riga.quantita === null) continue;
+      const icona = trovaIcona(ingrediente.nome);
+      if (!icona) continue;
+      primo ??= { ingrediente, icona };
+      if (ingrediente.unitaBase === 'pz') continue;
+      const q = convertiInUnitaBase(riga.quantita, riga.unita, ingrediente.unitaBase);
+      if (!piuGrande || q > piuGrande.q) piuGrande = { ingrediente, icona, q };
+    }
+  } catch {
+    // L'icona è decorativa: un piatto che non si legge (unità incompatibile, opzione rimossa)
+    // resta senza, e la home non si rompe.
+    return null;
   }
   return piuGrande ? { ingrediente: piuGrande.ingrediente, icona: piuGrande.icona } : primo;
 }
@@ -236,9 +242,15 @@ export function alternative(i: AlternativeInput): Alternativa[] {
   const perId = new Map(i.ingredients.map((x) => [x.id, x]));
   const dispensaPerId = new Map(i.pantry.map((x) => [x.ingredientId, x]));
   const attuale = i.dishes.find((d) => d.id === i.slot.dishId) ?? null;
-  const liberato = i.statoSettimana === 'chiusa'
-    ? consumoSlot({ slot: i.slot, dish: attuale, ingredients: i.ingredients, moltiplicatorePorzioni: i.persone })
-    : new Map<string, number>();
+  let liberato = new Map<string, number>();
+  if (i.statoSettimana === 'chiusa') {
+    try {
+      liberato = consumoSlot({ slot: i.slot, dish: attuale, ingredients: i.ingredients, moltiplicatorePorzioni: i.persone });
+    } catch {
+      // Il piatto di stasera non si legge: non si libera niente. Meno proposte, mai un falso
+      // «tutto in casa».
+    }
+  }
   const disponibile = (ing: Ingredient): number => {
     const riga = dispensaPerId.get(ing.id);
     const residuo = riga

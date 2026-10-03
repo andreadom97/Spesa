@@ -83,6 +83,17 @@ describe('ingredientePrincipale (spec §C.4)', () => {
   it('nessuna icona: null', () => {
     expect(ingredientePrincipale(piatto('d', 'x', [[SENZA_ICONA, 100, 'g']]), TUTTI)).toBeNull();
   });
+  it('un piatto illeggibile non lancia: niente icona', () => {
+    // Patata è in g: una riga in ml non si converte (UnitaIncompatibileError). Vale anche se
+    // la riga buona viene prima: l'icona è decorativa, non se ne tira fuori una a metà.
+    const unitaSbagliata = piatto('d', 'x', [[PATATA, 200, 'g'], [CIPOLLA, 50, 'ml']]);
+    expect(ingredientePrincipale(unitaSbagliata, TUTTI)).toBeNull();
+    // La scelta registrata punta a un'opzione che nel piatto non c'è più (OpzioneMancanteError).
+    const conComponente = piatto('d', 'x', [[PATATA, 200, 'g']], {
+      componenti: [{ id: 'c1', nome: 'pane', opzioni: [{ id: 'o1', righe: [{ ingredientId: 'pane', quantita: 70, unita: 'g' }] }] }],
+    });
+    expect(ingredientePrincipale(conComponente, TUTTI, { c1: { opzioneId: 'o-rimossa', fonte: 'manuale' } })).toBeNull();
+  });
 });
 
 describe('alternative (spec §C)', () => {
@@ -131,5 +142,26 @@ describe('alternative (spec §C)', () => {
       inScadenza: new Set(['pomodoro']),
     }));
     expect(nomi(r)).toEqual([['d-insalata', 'tutto'], ['d-frittata', 'tutto']]);
+  });
+  it('un candidato illeggibile si salta, gli altri restano', () => {
+    // Ceci è in g: la riga in ml non si converte. Il secondo punta a un ingrediente che non c'è.
+    const unitaSbagliata = piatto('d-rotto', 'Rotto', [[CECI, 100, 'ml']]);
+    const FANTASMA = ing('fantasma', 'Fantasma', 'g', 'dispensa');
+    const orfano = piatto('d-orfano', 'Orfano', [[FANTASMA, 100, 'g']]);
+    const r = alternative(base({ dishes: [POLPETTE, unitaSbagliata, orfano, FRITTATA] }));
+    expect(nomi(r)).toEqual([['d-frittata', 'tutto']]);
+  });
+  it('a settimana chiusa, se il piatto di stasera non si legge, non libera niente e le altre proposte restano', () => {
+    const pantry = [p(PATATA, 500), p(UOVO, 1), p(CIPOLLA, 100), p(POMODORO, 300), p(PANE, 100)];
+    // Controprova: con un piatto di stasera leggibile lo scambio libera l'uovo e le due sono «tutto».
+    expect(nomi(alternative(base({ pantry, dishes: [POLPETTE, FRITTATA, UOVA_POM], statoSettimana: 'chiusa' }))))
+      .toEqual([['d-frittata', 'tutto'], ['d-uova', 'tutto']]);
+    // Illeggibile (ceci in ml): nessun lancio, niente liberato, quindi manca l'uovo, mai un falso «tutto».
+    const rotto = piatto('d-rotto', 'Rotto', [[CECI, 100, 'ml'], [UOVO, 1, 'pz']]);
+    const slot = { ...SLOT_CENA, dishId: 'd-rotto' };
+    const r = alternative(base({
+      pantry, dishes: [rotto, FRITTATA, UOVA_POM], slot, slotsSettimana: [slot], statoSettimana: 'chiusa',
+    }));
+    expect(nomi(r)).toEqual([['d-frittata', 'uovo'], ['d-uova', 'uovo']]);
   });
 });
