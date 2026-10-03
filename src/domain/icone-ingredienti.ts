@@ -161,6 +161,9 @@ export const CHIAVI_ICONE = Object.keys(CATALOGO_ICONE) as ChiaveIcona[];
  *   anche su «Polpo». Prezzo accettato: «Polpa» da sola prende i molluschi.
  *   «Polpo di scoglio» è un sinonimo di `molluschi` più lungo del blocco, quindi
  *   vince lui (03/10).
+ * - `mostarda`: frutta candita alla senape, non la senape né la frutta —
+ *   senza il blocco "Mostarda di fichi" prenderebbe l'icona di `datteri-fichi`
+ *   (03/10). "Mostarda" da sola resta senza icona come prima.
  */
 export const BLOCCHI: readonly string[] = [
   'pesca',
@@ -177,6 +180,7 @@ export const BLOCCHI: readonly string[] = [
   'gelato',
   'budino',
   'polpa di',
+  'mostarda',
 ];
 
 /**

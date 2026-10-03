@@ -202,6 +202,7 @@ describe('trovaIcona', () => {
     ['Ciliegini', 'pomodorini'],
     ['Mele', 'mela'],
     ['Melanzane', 'melanzana'],
+    ['Marmellata di ciliegie', 'marmellata'],
   ])('%s → %s (posizione prima della lunghezza)', (nome, chiave) => {
     expect(trovaIcona(nome)).toBe(chiave);
   });
@@ -283,6 +284,8 @@ describe('trovaIcona', () => {
     'Budino alla vaniglia',
     'Polpa di zucca',
     'Polpa di granchio',
+    'Mostarda di fichi',
+    'Mostarda di Cremona',
   ])('%s → null (blocco)', (nome) => {
     expect(trovaIcona(nome)).toBeNull();
   });
