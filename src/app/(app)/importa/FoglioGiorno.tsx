@@ -96,7 +96,8 @@ export function FoglioGiorno({ piano, stato, slotDefs, settimana, giorno, onCamb
                 nome={capitalizza(r.riga.alimento)}
                 etichetta={r.riga.alimento}
                 nota={`Sul foglio: «${r.riga.testoOriginale}»${r.riga.quantitaInferita ? ' · quantità proposta da me' : ''}`}
-                quantita={r.riga.quantita}
+                // Il numero dei cucchiai non è una quantità in g/ml/pz: il campo parte vuoto.
+                quantita={unitaBaseDi(r.riga.unita) === null ? null : r.riga.quantita}
                 unita={unitaBaseDi(r.riga.unita) ?? nota}
                 scegliUnita={pillole}
                 dubbio={irrisolta}

@@ -103,6 +103,23 @@ describe('Controlla', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
+  it('il foglio del giorno: una riga a cucchiai non precompila il numero dei cucchiai come quantità (spec 8c §C)', () => {
+    const piano: PianoEstratto = {
+      archetipo: 'menu_settimanale', fonte: 'test', noteEstrazione: [],
+      settimane: [{ numero: 1, giorni: [{ giorno: 0, titolo: null, pasti: [{ nomeOriginale: 'pranzo', piatti: [{ nome: 'Insalata', descrizione: null, componenti: [], righeFisse: [
+        { alimento: 'olio', quantita: 1, unita: 'cucchiaio', quantitaInferita: false, testoOriginale: '1 cucchiaio di olio' },
+      ] }] }] }] }],
+    };
+    const onStato = rendi({ ...STATO, mappaturaPasti: { pranzo: 's-pranzo' } }, piano);
+    fireEvent.click(screen.getByRole('button', { name: 'Apri Lunedì' }));
+    const foglio = screen.getByRole('dialog', { name: 'Lunedì' });
+    // Il campo è vuoto (non «1»): un tocco su «ml» non salva «1 cucchiaio» come 1 ml.
+    expect(within(foglio).getByRole('textbox', { name: 'Quantità di olio' })).toHaveValue('');
+    expect(within(foglio).getByText('Sul foglio: «1 cucchiaio di olio»')).toBeInTheDocument();
+    fireEvent.click(within(foglio).getByRole('button', { name: 'Chiudi Lunedì' }));
+    expect(onStato).not.toHaveBeenCalled();
+  });
+
   it('il foglio del giorno: un pasto già vuoto non compare, uno svuotato ora dice «Pasto tolto»', () => {
     rendi({ ...STATO, correzioni: { '1-0-2': { nomeOriginale: 'condimenti', piatti: [] } } });
     fireEvent.click(screen.getByRole('button', { name: 'Apri Lunedì, settimana 1' }));

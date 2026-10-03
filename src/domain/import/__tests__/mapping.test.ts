@@ -82,4 +82,16 @@ describe('ingredientiDaAbbinare', () => {
     const voci = ingredientiDaAbbinare(PIANO_MENU_SETTIMANALE, { '1-0-0': correzione });
     expect(voci.map((v) => v.alimento)).toContain('muesli');
   });
+  it('i cucchiai valgono come senza unità: non fissano il tipo dell\'ingrediente (spec 8c §C)', () => {
+    const piano = structuredClone(PIANO_MENU_SETTIMANALE);
+    const pasto = piano.settimane[0].giorni[0].pasti[0];
+    pasto.piatti[0].righeFisse = [
+      { alimento: 'miele', quantita: 1, unita: 'cucchiaio', quantitaInferita: false, testoOriginale: '1 cucchiaio di miele' },
+    ];
+    pasto.piatti[0].componenti = [];
+    expect(ingredientiDaAbbinare(piano, {}).find((v) => v.alimento === 'miele')?.unita).toBeNull();
+    // Se un'altra riga dello stesso alimento ha l'unità, vince quella.
+    pasto.piatti[0].righeFisse.push({ alimento: 'miele', quantita: 10, unita: 'g', quantitaInferita: false, testoOriginale: 'miele 10g' });
+    expect(ingredientiDaAbbinare(piano, {}).find((v) => v.alimento === 'miele')?.unita).toBe('g');
+  });
 });
