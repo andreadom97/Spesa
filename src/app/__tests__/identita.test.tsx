@@ -8,7 +8,7 @@ describe('identità', () => {
     expect(String(metadata.description)).not.toMatch(/create next app/i);
   });
 
-  it('la root reindirizza a /lista', () => {
+  it('la root reindirizza a /oggi', () => {
     // redirect() di next/navigation lancia un errore con digest NEXT_REDIRECT;<tipo>;<url>;...
     let digest = '';
     try {
@@ -17,6 +17,6 @@ describe('identità', () => {
       digest = (err as { digest?: string }).digest ?? '';
     }
     expect(digest).toContain('NEXT_REDIRECT');
-    expect(digest).toContain('/lista');
+    expect(digest).toContain('/oggi');
   });
 });

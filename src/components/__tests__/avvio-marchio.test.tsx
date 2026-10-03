@@ -2,7 +2,7 @@ import '@testing-library/jest-dom/vitest';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, act } from '@testing-library/react';
 
-const percorso = vi.hoisted(() => ({ valore: '/lista' }));
+const percorso = vi.hoisted(() => ({ valore: '/oggi' }));
 vi.mock('next/navigation', () => ({ usePathname: () => percorso.valore }));
 
 import { AvvioMarchio, LivelloAvvio, calcolaVolo, devePartire, CHIAVE_AVVIO, RITARDI_POP } from '../AvvioMarchio';
@@ -47,7 +47,7 @@ beforeEach(() => {
   riduci = false;
   stubMatchMedia();
   sessionStorage.clear();
-  percorso.valore = '/lista';
+  percorso.valore = '/oggi';
   vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
     if (this.hasAttribute('data-avvio-marchio')) return rettangolo(RETT_GRANDE);
     if (this.parentElement?.hasAttribute('data-marchio-barra')) return rettangolo(RETT_BARRA);
@@ -69,36 +69,36 @@ describe('calcolaVolo', () => {
   });
 });
 
-describe('devePartire (spec §J: solo su /lista, una volta per sessione, mai con reduce)', () => {
-  it('la prima volta su /lista sì, e segna la sessione', () => {
-    expect(devePartire('/lista')).toBe(true);
+describe('devePartire (spec §J + Oggi §A.3: solo su /oggi, una volta per sessione, mai con reduce)', () => {
+  it('la prima volta su /oggi sì, e segna la sessione', () => {
+    expect(devePartire('/oggi')).toBe(true);
     expect(sessionStorage.getItem(CHIAVE_AVVIO)).not.toBeNull();
-    expect(devePartire('/lista')).toBe(false);
+    expect(devePartire('/oggi')).toBe(false);
   });
 
-  it.each(['/piano', '/dispensa', '/lista/fatta', '/piatti', null])('su %s no', (p) => {
+  it.each(['/lista', '/piano', '/dispensa', '/lista/fatta', '/piatti', null])('su %s no', (p) => {
     expect(devePartire(p)).toBe(false);
     expect(sessionStorage.getItem(CHIAVE_AVVIO)).toBeNull();
   });
 
   it('con prefers-reduced-motion: reduce no', () => {
     riduci = true;
-    expect(devePartire('/lista')).toBe(false);
+    expect(devePartire('/oggi')).toBe(false);
   });
 
   it('senza matchMedia no: non si sa se il moto è permesso', () => {
     vi.stubGlobal('matchMedia', undefined);
-    expect(devePartire('/lista')).toBe(false);
+    expect(devePartire('/oggi')).toBe(false);
   });
 
   it('se sessionStorage lancia no: non si potrebbe garantire «una volta sola»', () => {
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('negato'); });
-    expect(devePartire('/lista')).toBe(false);
+    expect(devePartire('/oggi')).toBe(false);
   });
 });
 
 describe('AvvioMarchio', () => {
-  it('su /lista monta il livello: fixed, sopra tutto, senza tocchi, nascosto allo screen reader', () => {
+  it('su /oggi monta il livello: fixed, sopra tutto, senza tocchi, nascosto allo screen reader', () => {
     render(<AvvioMarchio />);
     const l = livello()!;
     expect(l).not.toBeNull();
@@ -138,7 +138,7 @@ describe('AvvioMarchio', () => {
     const a = render(<AvvioMarchio />);
     expect(livello()).toBeNull();
     a.unmount();
-    percorso.valore = '/lista';
+    percorso.valore = '/oggi';
     riduci = true;
     render(<AvvioMarchio />);
     expect(livello()).toBeNull();

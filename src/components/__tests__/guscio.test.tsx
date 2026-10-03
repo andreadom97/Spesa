@@ -156,8 +156,8 @@ describe('Guscio', () => {
     expect(slot).not.toHaveAttribute('inert');
   });
 
-  it('monta l\'avvio del Marchio su /lista, una volta per sessione (spec fase 5 §J)', () => {
-    percorso.valore = '/lista';
+  it('monta l\'avvio del Marchio su /oggi, una volta per sessione (spec fase 5 §J + Oggi §A.3)', () => {
+    percorso.valore = '/oggi';
     sessionStorage.clear();
     vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
     try {

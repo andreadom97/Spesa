@@ -190,7 +190,7 @@ describe('Importa: la scelta', () => {
     // Passata la finestra, lo stesso click non è più annullato ed esce.
     passaUnAttimo();
     expect(fireEvent.click(pillola)).toBe(true);
-    expect(replace).toHaveBeenCalledWith('/lista?impostazioni=cima');
+    expect(replace).toHaveBeenCalledWith('/oggi?impostazioni=cima');
   });
 
   it('la pillola IMPOSTAZIONI riapre il pannello sopra la pagina d\'origine (spec fase 5 §G.3)', async () => {

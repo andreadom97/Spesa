@@ -277,6 +277,8 @@ function monta() {
 describe('Scegli il piatto', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Un test con `?da=oggi` che fallisce prima di ripulire l'URL non deve sporcare gli altri.
+    window.history.replaceState(null, '', '/');
     paramsMock = { data: DATA, slotDefId: 'sd-3' };
     // Nessuna lista salvata: i test di questo blocco sono nati prima del
     // conflitto di residuo e non devono cambiare per la lettura in più.
@@ -438,6 +440,32 @@ describe('Scegli il piatto', () => {
     expect(aggiornaSlot).not.toHaveBeenCalled();
     expect(screen.queryByText('ANNULLA')).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Torna al Piano' })).not.toBeInTheDocument();
+  });
+
+  it('aperto con ?da=oggi: la pillola dice OGGI e la conferma torna a /oggi (spec Oggi §B.6)', async () => {
+    window.history.replaceState(null, '', `/piano/${DATA}/sd-3/scegli?da=oggi`);
+    mockCarico();
+    vi.mocked(aggiornaSlot).mockResolvedValue(undefined);
+    monta();
+    await screen.findByText('Pollo e riso');
+    expect(screen.getByRole('button', { name: 'Torna a oggi' })).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Merluzzo e piselli'));
+    fireEvent.click(screen.getByText('SOSTITUISCI'));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/oggi'));
+    window.history.replaceState(null, '', '/');
+  });
+
+  it('aperto con ?da=oggi: la pillola OGGI porta a /oggi senza scrivere, e «Torna al piano» non c\'è', async () => {
+    window.history.replaceState(null, '', `/piano/${DATA}/sd-3/scegli?da=oggi`);
+    mockCarico();
+    monta();
+    await screen.findByText('Pollo e riso');
+    expect(screen.queryByRole('button', { name: 'Torna al piano' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Torna a oggi' }));
+    expect(replace).toHaveBeenCalledWith('/oggi');
+    expect(aggiornaSlot).not.toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
+    window.history.replaceState(null, '', '/');
   });
 
   it('un piatto con componente a due opzioni mostra la riga del componente col nome dell\'opzione di default', async () => {

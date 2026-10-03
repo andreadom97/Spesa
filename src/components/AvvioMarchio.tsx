@@ -37,14 +37,14 @@ export function calcolaVolo(da: Rett, a: Rett): Volo {
 }
 
 /**
- * Parte solo su `/lista` (lo start_url della PWA), una volta per sessione di
+ * Parte solo su `/oggi` (lo start_url della PWA), una volta per sessione di
  * navigazione, e mai con `prefers-reduced-motion: reduce`. Senza `matchMedia`
  * non si sa se il moto è permesso, e senza `sessionStorage` non si può
  * promettere «una volta sola»: in entrambi i casi non parte. È un ornamento, e
  * nel dubbio si salta. Se parte, lo segna subito.
  */
 export function devePartire(pathname: string | null): boolean {
-  if (pathname !== '/lista') return false;
+  if (pathname !== '/oggi') return false;
   if (typeof window.matchMedia !== 'function') return false;
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
   try {

@@ -1,5 +1,7 @@
-const CACHE = 'dispesa-v1';
-const GUSCIO = ['/lista', '/piano', '/piatti', '/manifest.json'];
+// v2: Oggi è la pagina d'ingresso (spec Oggi §A.3). L'`activate` cancella da sé
+// la cache vecchia, quindi il guscio nuovo sostituisce il v1 senza altri passi.
+const CACHE = 'dispesa-v2';
+const GUSCIO = ['/oggi', '/lista', '/piano', '/piatti', '/manifest.json'];
 
 // Ultima rete di sicurezza: se offline e nemmeno '/lista' è in cache (mai
 // visitata prima), una risposta che risolve `undefined` sarebbe trattata

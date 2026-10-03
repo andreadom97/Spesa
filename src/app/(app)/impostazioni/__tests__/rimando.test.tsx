@@ -14,9 +14,9 @@ describe('le vecchie route delle Impostazioni fanno da rimando al pannello (spec
   beforeEach(() => replace.mockClear());
 
   it.each([
-    ['/impostazioni', '/lista?impostazioni=cima', Impostazioni],
-    ['/impostazioni/ingredienti', '/lista?impostazioni=ingredienti', Ingredienti],
-    ['/impostazioni/reparti', '/lista?impostazioni=aree', Reparti],
+    ['/impostazioni', '/oggi?impostazioni=cima', Impostazioni],
+    ['/impostazioni/ingredienti', '/oggi?impostazioni=ingredienti', Ingredienti],
+    ['/impostazioni/reparti', '/oggi?impostazioni=aree', Reparti],
   ])('%s manda a %s', (_percorso, verso, Pagina) => {
     const { container } = render(<Pagina />);
     expect(replace).toHaveBeenCalledTimes(1);
