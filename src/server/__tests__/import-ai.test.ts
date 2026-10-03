@@ -172,7 +172,19 @@ describe('estraiPiano (v1, una chiamata)', () => {
     expect(sistema).toContain('con quantitaInferita true: non lasciare mai quantita null per un alimento concreto');
     expect(sistema).toContain('"Verdure di stagione" senza grammi → quantita 200, unita "g", quantitaInferita true');
     expect(sistema).toContain('"Sale q.b." → null, null, false');
-    for (const qb of ['"q.b."', '"qb"', '"quanto basta"', '"a piacere"', '"a volontà"']) expect(sistema).toContain(qb);
+    for (const qb of ['"q.b."', '"qb"', '"quanto basta"', '"a piacere"']) expect(sistema).toContain(qb);
+    // «a volontà» non è un quanto basta: si stima (esempio nel prompt), e non sta nella lista delle eccezioni
+    expect(sistema).not.toContain('"a piacere", "a volontà"');
+    expect(sistema).toContain('"A volontà" NON è un "quanto basta"');
+    expect(sistema).toContain('"Verdure a volontà" → una porzione stimata (quantita 200, unita "g", quantitaInferita true)');
+    // nessuna frase del prompt contraddice la regola: né «quantita null» per ogni alimento senza quantità, né «MAI inventare … quantità»
+    expect(sistema).not.toContain('Anche l\'alimento senza quantità è comunque una RIGA (quantita null).');
+    expect(sistema).toContain('con la quantità proposta (quantitaInferita true) o quantita null solo se è un "quanto basta"');
+    expect(sistema).not.toContain('MAI inventare alimenti, pasti, giorni o quantità');
+    expect(sistema).toContain('una stima si fa solo con quantitaInferita true (mai con false)');
+    // provenienza netta: numero non leggibile nel testo → flag sempre true
+    expect(sistema).toContain('il flag è SEMPRE true');
+    expect(sistema).toContain('Mai un numero non leggibile con quantitaInferita false');
     // la vecchia scelta libera fra null e proposta non c'è più
     expect(sistema).not.toContain('o quantita null e unita null, oppure una proposta');
     // restano la prova di provenienza (anche per i numeri in lettere) e le unità a cucchiai
