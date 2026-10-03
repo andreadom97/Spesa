@@ -40,8 +40,34 @@ export const CATALOGO_ICONE = {
   // `fragola` (sinonimo più lungo alla stessa posizione), «Minestrone» su `minestra`.
   frutta: ['frutta', 'macedonia'],
   verdura: ['verdura', 'ortaggio'],
+  // ondata 1 (03/10). Il mais era stato tolto al gate del 26/09 perché non si capiva: torna
+  // con la pannocchia disegnata da capo, decide Andrea al foglio. «Amido/Farina di mais»
+  // restano su `farina` (prima posizione).
+  mais: ['mais', 'granturco', 'pannocchia', 'pop corn', 'popcorn'],
+  // ondata 1 (03/10): esce da `spezie`, ha una forma sua. «Peperoncino fresco» e «in polvere»
+  // non servono: «peperoncino» è già in prima posizione e porta alla stessa chiave.
+  peperoncino: ['peperoncino', 'jalapeno'],
+  // ondata 1 (03/10), frutta. «Latte/Farina/Noce di cocco» vengono qui e non su `latte`,
+  // `farina`, `noce`: più lunghi alla stessa posizione. «Cocco rapé» lo prende già «cocco».
+  ananas: ['ananas'],
+  cocco: ['cocco', 'noce di cocco', 'latte di cocco', 'farina di cocco'],
+  // «Ciliege» e «marasche» a parte: `radice` non unisce -gie/-ge né -ca/-che.
+  ciliegia: ['ciliegia', 'ciliege', 'amarena', 'marasca', 'marasche', 'visciola'],
+  melone: ['melone', 'anguria', 'cocomero'],
+  // «Fichi» a parte: la radice di «fico» (fic) non è quella di «fichi» (fich). «Fico secco» e
+  // «Fico d'India» li prende già «fico». «Datterini» restano su `pomodorini` (radice diversa).
+  'datteri-fichi': ['dattero', 'fico', 'fichi'],
+  // ondata 1 (03/10), frutta e verdura. «Albicocche» e «percoche» a parte: `radice` non unisce
+  // -ca/-che. Niente «pesca»: ha la radice di «pesce» ed è un blocco, quindi «Pesca» resta senza icona.
+  'pesca-albicocca': ['albicocca', 'albicocche', 'nettarina', 'percoca', 'percoche'],
+  // «Uva passa» e «Uva sultanina» qui e non su `uva`: più lunghi alla stessa posizione.
+  uvetta: ['uvetta', 'uva passa', 'uva sultanina'],
+  // «Carciofini» a parte: la radice (carciofin) non è quella di «carciofo» (carciof).
+  carciofo: ['carciofo', 'carciofino'],
+  asparago: ['asparago'],
   // carne e pesce
-  bistecca: ['manzo', 'macinato', 'vitello', 'carne', 'bistecca', 'hamburger'],
+  // maiale confluito in bistecca (Andrea, 03/10): nessun disegno del maiale si leggeva
+  bistecca: ['manzo', 'macinato', 'vitello', 'carne', 'bistecca', 'hamburger', 'maiale', 'lonza', 'arista', 'braciola di maiale', 'costine', 'filetto di maiale', 'porchetta'],
   cosciotto: ['pollo', 'tacchino'],
   salsiccia: ['salsiccia', 'wurstel'],
   pesce: ['pesce', 'salmone', 'merluzzo', 'branzino', 'spigola', 'orata', 'tonno', 'sgombro', 'platessa', 'nasello', 'pesce spada'],
@@ -50,6 +76,13 @@ export const CATALOGO_ICONE = {
   // famiglia (03/10, supera il gate del 26/09 che li lasciava senza icona): nel foglio sta
   // con i latticini, come al banco gastronomia.
   salumi: ['salume', 'salame', 'prosciutto', 'bresaola', 'speck', 'mortadella', 'affettato'],
+  // ondata 1 (03/10). Niente «filetto» da solo su `bistecca`: è anche di pesce.
+  agnello: ['agnello', 'carne di agnello', 'abbacchio', 'capretto'],
+  // ondata 1 (03/10). I crostacei restano su `gambero`. «Ostriche» e «capesante» a parte:
+  // `radice` non unisce -ca/-che né capa-/cape-. «Frutti di mare» qui, non su `frutta`
+  // (stessa radice frutt), «Insalata di mare» non su `insalata`; «Polpa di» è un blocco (radice di
+  // «polpo»): «Polpo di scoglio» gli passa davanti perché è più lungo alla stessa posizione.
+  molluschi: ['cozza', 'vongola', 'calamaro', 'polpo', 'polpo di scoglio', 'seppia', 'totano', 'moscardino', 'ostrica', 'ostriche', 'capasanta', 'capesante', 'frutti di mare', 'insalata di mare'],
   // latticini e uova
   uovo: ['uovo'],
   latte: ['latte'],
@@ -57,6 +90,9 @@ export const CATALOGO_ICONE = {
   formaggio: ['formaggio', 'parmigiano', 'grana', 'pecorino', 'feta', 'emmental', 'provola', 'scamorza', 'mozzarella', 'burrata', 'stracciatella', 'fiordilatte'],
   'formaggio-fresco': ['ricotta', 'philadelphia', 'formaggio spalmabile', 'stracchino', 'fiocchi di latte', 'tofu'],
   burro: ['burro'],
+  // ondata 1 (03/10). «Panna cotta» è un dolce: è nei BLOCCHI, non qui. Niente
+  // «besciamella»: è una salsa (latte, burro, farina), non la panna da comprare.
+  panna: ['panna', 'panna da cucina', 'panna fresca', 'panna montata'],
   // cereali e forno
   pasta: ['pasta', 'spaghetti', 'penne', 'fusilli', 'rigatoni', 'linguine', 'tagliatelle', 'gnocchi'],
   riso: ['riso'],
@@ -67,11 +103,15 @@ export const CATALOGO_ICONE = {
   biscotto: ['biscotto', 'cracker', 'crackers', 'galletta'],
   farina: ['farina', 'amido di mais', 'maizena', 'pangrattato'],
   cornetto: ['cornetto', 'brioche', 'croissant'],
+  // ondata 1 (03/10). «Fiocchi di mais» qui e non su `mais` (più lungo alla stessa posizione);
+  // «Fiocchi d'avena» resta su `avena`, «Pane ai cereali» su `pane` (prima posizione).
+  cereali: ['cereali', 'corn flakes', 'cornflakes', 'fiocchi di mais', 'muesli', 'granola'],
+  piadina: ['piadina', 'tortilla', 'wrap'],
   // dispensa
   olio: ['olio'],
   ampolla: ['aceto', 'salsa di soia'],
   sale: ['sale'],
-  spezie: ['pepe', 'cannella', 'cumino', 'curry', 'paprika', 'origano', 'curcuma', 'noce moscata', 'zenzero', 'peperoncino', 'spezia'],
+  spezie: ['pepe', 'cannella', 'cumino', 'curry', 'paprika', 'origano', 'curcuma', 'noce moscata', 'zenzero', 'spezia'],
   zucchero: ['zucchero'],
   miele: ['miele'],
   marmellata: ['marmellata', 'confettura'],
@@ -86,9 +126,26 @@ export const CATALOGO_ICONE = {
   'frutta-guscio': ['frutta a guscio', 'frutta secca', 'nocciola', 'pistacchio', 'anacardo', 'noci miste'],
   olive: ['oliva'],
   cioccolato: ['cioccolato', 'cacao'],
+  // ondata 1 (03/10). Niente «aroma»: nelle diete «aroma»/«aromatizzazione» non sono ingredienti.
+  vaniglia: ['vaniglia', 'vanillina', 'estratto di vaniglia', 'bacca di vaniglia'],
+  lievito: ['lievito', 'lievito di birra', 'lievito per dolci', 'bicarbonato', 'cremor tartaro'],
+  // Niente «mostarda»: in Italia è frutta candita alla senape, non la senape.
+  senape: ['senape'],
+  capperi: ['cappero'],
+  // ondata 1 (03/10). «Seme» copre «Semi» e «Semi misti»; «Olio di semi» resta su `olio` (prima
+  // posizione). «Semi di zucca» qui e non su `zucca` (prima posizione). «Semola» resta un
+  // blocco e «Semifreddo» non si accende: le radici (semol, semifredd) non sono quella di «semi» (sem).
+  semi: ['seme', 'semi di chia', 'semi di lino', 'semi di girasole', 'semi di zucca', 'semi di sesamo', 'sesamo', 'chia', 'lino'],
   // pronti e bevande
   minestra: ['minestrone', 'minestra', 'brodo', 'zuppa', 'vellutata'],
   acqua: ['acqua'],
+  // ondata 1 (03/10). «Aceto di vino» resta su `ampolla` (prima posizione).
+  vino: ['vino', 'spumante', 'prosecco'],
+  // Niente «amaretto»: è anche il biscotto. «Pollo al marsala» resta su `cosciotto`.
+  liquore: ['liquore', 'rum', 'marsala', 'brandy', 'cognac', 'limoncello', 'grappa'],
+  // «Tè» diventa «te» con `normalizza`: radice di due lettere, combina solo con la parola intera.
+  // «Tè alla pesca» ora prende `te` (prima posizione) invece di null per il blocco «pesca».
+  te: ['te', 'tisana', 'camomilla', 'infuso'],
 } as const satisfies Record<string, readonly string[]>;
 
 export type ChiaveIcona = keyof typeof CATALOGO_ICONE;
@@ -113,6 +170,16 @@ export const CHIAVI_ICONE = Object.keys(CATALOGO_ICONE) as ChiaveIcona[];
  *   prendere l'icona di `pasta`.
  * - `salame di cioccolato`: un dolce, non un salume — senza il blocco prenderebbe
  *   l'icona di `salumi` (03/10).
+ * - `panna cotta`: un dolce pronto, non la panna da comprare — senza il blocco
+ *   prenderebbe l'icona di `panna` (03/10).
+ * - `gelato alla vaniglia`, `budino alla vaniglia`: dolci pronti — senza il blocco
+ *   prenderebbero l'icona del baccello di vaniglia (03/10). Gli altri gusti
+ *   ("Gelato al cioccolato", "Gelato alla fragola") restano come in produzione.
+ *   Non si blocca «crema»: bloccherebbe anche "Crema di zucca" o "Crema di
+ *   ceci", che oggi prendono l'icona giusta.
+ * - `mostarda`: frutta candita alla senape, non la senape né la frutta —
+ *   senza il blocco "Mostarda di fichi" prenderebbe l'icona di `datteri-fichi`
+ *   (03/10). "Mostarda" da sola resta senza icona come prima.
  */
 export const BLOCCHI: readonly string[] = [
   'pesca',
@@ -125,6 +192,10 @@ export const BLOCCHI: readonly string[] = [
   'pasta per pizza',
   'pasta di acciughe',
   'salame di cioccolato',
+  'panna cotta',
+  'gelato alla vaniglia',
+  'budino alla vaniglia',
+  'mostarda',
 ];
 
 /**
@@ -140,24 +211,40 @@ function radice(parola: string): string {
 }
 
 /**
+ * Parole che non combinano con nessun sinonimo, perché la loro radice coincide con quella di
+ * un ingrediente: «agli» (agl, come «aglio»: "Risotto agli asparagi" prendeva l'aglio),
+ * «per» (per, come «pera»: "Preparato per torte" prendeva la pera) e «polpa» (polp, come
+ * «polpo»: "Polpa di zucca" prendeva i molluschi). `radici()` produce '' per queste parole
+ * (è `parole()` a scartare le parti vuote della punteggiatura, non `radici()`): nessuna voce
+ * contiene '', e le posizioni delle altre parole restano quelle del nome. Lo stesso vale
+ * per i sinonimi: «polpa di pomodoro» diventa '' + 'di' + 'pomodor' sia nel nome sia nella
+ * voce e continua a combinare. Prezzo: «Agli» e «Polpa» da soli restano senza icona (03/10).
+ */
+const IGNORATE = new Set(['agli', 'per', 'polpa']);
+
+/**
  * Spezza sulla punteggiatura oltre che sugli spazi (dopo `normalizza`), così
  * l'apostrofo in "Fiocchi d'avena" o "Burro d'arachidi" separa "d" da
  * "avena"/"arachidi" invece di incollarli in una sola parola che non
  * combina con nessuna radice del catalogo. Le parti vuote (punteggiatura a
  * inizio/fine o doppia) sono scartate.
  */
-function radici(s: string): string[] {
+function parole(s: string): string[] {
   const n = normalizza(s);
-  return n === '' ? [] : n.split(/[^a-z0-9]+/).filter((p) => p !== '').map(radice);
+  return n === '' ? [] : n.split(/[^a-z0-9]+/).filter((p) => p !== '');
 }
 
-interface Voce { chiave: ChiaveIcona | null; radici: string[]; lunghezza: number; blocco: boolean }
+function radici(s: string): string[] {
+  return parole(s).map((p) => (IGNORATE.has(p) ? '' : radice(p)));
+}
 
-const VOCI: Voce[] = [
+export interface Voce { chiave: ChiaveIcona | null; parole: string[]; radici: string[]; lunghezza: number; blocco: boolean }
+
+export const VOCI: Voce[] = [
   ...CHIAVI_ICONE.flatMap((chiave) =>
-    CATALOGO_ICONE[chiave].map((s) => ({ chiave, radici: radici(s), lunghezza: normalizza(s).length, blocco: false })),
+    CATALOGO_ICONE[chiave].map((s) => ({ chiave, parole: parole(s), radici: radici(s), lunghezza: normalizza(s).length, blocco: false })),
   ),
-  ...BLOCCHI.map((s) => ({ chiave: null, radici: radici(s), lunghezza: normalizza(s).length, blocco: true })),
+  ...BLOCCHI.map((s) => ({ chiave: null, parole: parole(s), radici: radici(s), lunghezza: normalizza(s).length, blocco: true })),
 ];
 
 function posizione(nome: string[], cerca: string[]): number {
@@ -171,24 +258,29 @@ function posizione(nome: string[], cerca: string[]): number {
  * La chiave d'icona per un nome libero, o null se fuori catalogo (o se
  * l'espressione vincente è un blocco). Vince il sinonimo che compare prima
  * nel nome ("prima parola significativa"); a parità di posizione, il più
- * lungo; a parità di posizione e lunghezza, un blocco vince su un sinonimo
- * (pesca/pesce, grano/grana condividono la radice ed è il blocco a
- * risolvere l'ambiguità).
+ * lungo. A parità di posizione e lunghezza (pesca/pesce, grano/grana
+ * condividono la radice): vince la voce le cui parole, normalizzate e prima di
+ * `radice`, coincidono esattamente con quelle del nome in quella posizione
+ * («Grana» → formaggio, «Pesce» → pesce, «Grano» → il blocco); se nessuna delle
+ * due coincide (es. «Pesche»), vince il blocco.
  */
 export function trovaIcona(nome: string): ChiaveIcona | null {
-  const n = radici(nome);
-  let migliore: { chiave: ChiaveIcona | null; lunghezza: number; pos: number; blocco: boolean } | null = null;
+  const p = parole(nome);
+  const n = p.map((w) => (IGNORATE.has(w) ? '' : radice(w)));
+  const esatta = (v: Voce, pos: number) => v.parole.every((w, j) => p[pos + j] === w);
+  let migliore: { chiave: ChiaveIcona | null; lunghezza: number; pos: number; blocco: boolean; esatta: boolean } | null = null;
   for (const v of VOCI) {
     const pos = posizione(n, v.radici);
     if (pos < 0) continue;
-    if (
+    const ex = esatta(v, pos);
+    const vince =
       !migliore ||
       pos < migliore.pos ||
       (pos === migliore.pos &&
-        (v.lunghezza > migliore.lunghezza || (v.lunghezza === migliore.lunghezza && v.blocco && !migliore.blocco)))
-    ) {
-      migliore = { chiave: v.chiave, lunghezza: v.lunghezza, pos, blocco: v.blocco };
-    }
+        (v.lunghezza > migliore.lunghezza ||
+          (v.lunghezza === migliore.lunghezza &&
+            (ex !== migliore.esatta ? ex : v.blocco && !migliore.blocco))));
+    if (vince) migliore = { chiave: v.chiave, lunghezza: v.lunghezza, pos, blocco: v.blocco, esatta: ex };
   }
   return migliore?.chiave ?? null;
 }
