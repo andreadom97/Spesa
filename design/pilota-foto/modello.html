@@ -1,0 +1,212 @@
+<title>Pilota foto ingredienti</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: scenari in righe, quattro varianti affiancate come quattro telefoni; a larghezza telefono si impilano.
+   Token del design system di Dispesa (globals.css): l'app non ha dark mode di proposito (DESIGN.md §12), quindi un solo tema, esplicito. */
+:root {
+  --ink: #14163A; --testo-2: #5C5F7A; --mut: #8A8A96; --off: #9A9AA6;
+  --superficie: #FFFFFF; --bordo: rgba(20,22,58,0.07); --bordo-tratteggio: rgba(20,22,58,0.20);
+  --sfondo: linear-gradient(180deg, #EDECEA 0%, #F2F1EF 34%, #F8F8F7 70%, #FCFCFB 100%);
+  --fondo-pagina: #F2F1EF;
+  --ombra-pannello: 0 1px 2px rgba(20,22,58,.05), 0 6px 16px rgba(20,22,58,.06);
+  --avviso: #9A5C00;
+  --font-testo: 'Plus Jakarta Sans', 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  color-scheme: light;
+}
+body { background: var(--fondo-pagina); background-image: var(--sfondo); color: var(--ink); font-family: var(--font-testo); }
+.pagina { max-width: 1480px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 64px; display: flex; flex-direction: column; gap: 40px; }
+.testa { display: flex; flex-direction: column; gap: 10px; max-width: 70ch; }
+.eti { font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--testo-2); }
+h1 { font-size: 30px; font-weight: 800; letter-spacing: -.035em; line-height: 1.1; margin: 0; text-wrap: balance; }
+h2 { font-size: 21px; font-weight: 800; letter-spacing: -.03em; margin: 0; text-wrap: balance; }
+p { margin: 0; font-size: 14px; line-height: 1.55; color: var(--testo-2); }
+p strong { color: var(--ink); }
+.scenario { display: flex; flex-direction: column; gap: 14px; }
+.scenario > p { max-width: 75ch; }
+.varianti { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start; }
+.variante { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.variante h3 { margin: 0; font-size: 14px; font-weight: 800; letter-spacing: -.01em; display: flex; gap: 8px; align-items: baseline; }
+.variante h3 .eti { font-size: 9.5px; }
+.variante .nota { font-size: 12.5px; line-height: 1.45; min-height: 3.2em; }
+.pannello { background: var(--superficie); border-radius: 22px; border: 1px solid var(--bordo); box-shadow: var(--ombra-pannello); padding: 14px 12px 12px; display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+.pannello-testa { display: flex; align-items: center; gap: 8px; }
+.quadratino { width: 10px; height: 10px; border-radius: 4px; flex: none; }
+.pannello-testa span:last-child { font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: .16em; }
+.griglia { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.tessera { position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: flex-start; min-height: 104px; box-sizing: border-box; padding: 12px 14px 13px; border-radius: 14px; text-align: left; }
+.tessera.hero { grid-column: span 2; padding: 13px 16px 14px; border-radius: 18px; }
+.pill { position: relative; font-family: var(--font-mono); font-weight: 700; font-size: 10.5px; letter-spacing: .07em; border-radius: 999px; padding: 5px 10px; text-transform: uppercase; }
+.nome { position: relative; margin-top: 10px; font-size: 17px; font-weight: 700; letter-spacing: -.032em; line-height: 1.1; overflow-wrap: anywhere; }
+.hero .nome { font-size: 25px; }
+.dispensa .nome { margin-top: auto; padding-top: 12px; }
+.barrato { text-decoration: line-through; text-decoration-thickness: 1.6px; }
+.ico { position: absolute; pointer-events: none; }
+.disco { position: absolute; border-radius: 999px; display: grid; place-items: center; pointer-events: none; }
+.disco img { display: block; }
+.criteri { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.criterio { background: var(--superficie); border: 1px solid var(--bordo); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+.criterio b { font-size: 14px; letter-spacing: -.01em; }
+.limiti { border: 2px dashed var(--bordo-tratteggio); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+.limiti ul { margin: 0; padding-left: 18px; font-size: 13.5px; line-height: 1.55; color: var(--testo-2); }
+.foto-set { display: flex; flex-wrap: wrap; gap: 10px; }
+.foto-set figure { margin: 0; background: var(--superficie); border: 1px solid var(--bordo); border-radius: 14px; padding: 8px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.foto-set img { width: 100px; height: 100px; }
+.foto-set figcaption { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .08em; color: var(--testo-2); text-transform: uppercase; }
+@media (max-width: 420px) { h1 { font-size: 25px; } }
+</style>
+
+<main class="pagina">
+  <header class="testa">
+    <span class="eti">Dispesa · pilota · 03/10/2026</span>
+    <h1>Foto scontornate al posto delle icone: come stanno sulle tessere vere</h1>
+    <p><strong>Obiettivo:</strong> decidere se le foto reggono sulle tessere di Lista e Dispensa prima di produrne 80–90. Gli stessi nomi, gli stessi colori e le stesse misure del codice in produzione (Tessera.tsx, TesseraDispensa.tsx), in quattro varianti affiancate. <strong>Oggi</strong> è l'icona di tratto in produzione. <strong>C</strong> mette la foto dove sta l'icona, senza cambiare altro. <strong>A</strong> la sposta fuori da sotto il nome. <strong>B</strong> la mette su un disco nella tinta del reparto.</p>
+  </header>
+
+  <section class="scenario">
+    <span class="eti">Il set generato · 5 di 12</span>
+    <div class="foto-set" id="set"></div>
+    <p>Generate con Canva con la stessa scheda di stile (tre quarti a 30°, luce da sinistra, niente ombra, fondo bianco), scontornate con Canva e normalizzate con uno script: stesso ingombro, centrate, WebP da 5 a 8 KB. Le altre 7 chiavi (uovo, latte, formaggio, pasta, pane, legumi, piselli) non sono state generate: i crediti di Canva sono finiti dopo 5 immagini.</p>
+  </section>
+
+  <section class="scenario" id="s-macelleria"></section>
+  <section class="scenario" id="s-ortofrutta"></section>
+  <section class="scenario" id="s-dispensa"></section>
+
+  <section class="scenario">
+    <h2>Come decidere</h2>
+    <div class="criteri">
+      <div class="criterio"><b>Il nome si legge al primo colpo</b><p>Su tutte le tessere, anche quelle grandi e quelle prese.</p></div>
+      <div class="criterio"><b>L'ingrediente si riconosce a 52 px</b><p>Senza leggere il nome, a braccio teso, in corsia.</p></div>
+      <div class="criterio"><b>Il reparto si capisce ancora</b><p>La foto non porta il colore del reparto: lo dicono abbastanza il filo e la pillola?</p></div>
+      <div class="criterio"><b>La presa non sembra avariata</b><p>Le tessere spente usano la foto in scala di grigi a metà opacità.</p></div>
+      <div class="criterio"><b>Foto e tratto convivono</b><p>Zucchine e Insalata non hanno una foto e ricadono sull'icona di tratto, come succederebbe a ogni nome nuovo.</p></div>
+      <div class="criterio"><b>Il nome corrisponde alla foto</b><p>Merluzzo e salmone mostrano un'orata, il macinato una bistecca, il petto un cosciotto.</p></div>
+    </div>
+    <div class="limiti">
+      <span class="eti">Limiti di questo pilota</span>
+      <ul>
+        <li>5 chiavi su 12: mancano le famiglie più difficili (formaggio, legumi) e i prodotti in confezione (latte).</li>
+        <li>Un candidato per chiave invece di quattro: nessuna scelta fatta, è il primo risultato.</li>
+        <li>Foto a 200 px: bastano per la tessera a 2× (104 px) ma sono al limite per la tessera grande (168 px a 2×). In produzione servirebbe una sorgente più grande.</li>
+        <li>Esposizione non normalizzata: la luminosità media va da 112 (pomodoro) a 197 (cosciotto), misurata sullo script.</li>
+        <li>Pagina statica che riproduce le misure del codice; non è il componente React montato nell'app.</li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<script>
+const FOTO = __FOTO__;
+const TRACCIATI = __TRACCIATI__;
+const AREE = {
+  macelleria: { nome: 'MACELLERIA E PESCHERIA', colore: '#F29B9B', tono: '#D88384', tinta: '#FCE5E5' },
+  ortofrutta: { nome: 'ORTOFRUTTA', colore: '#A8D96A', tono: '#7AA838', tinta: '#E8F5D8' },
+};
+const VARIANTI = [
+  { id: 'oggi', titolo: 'Oggi', eti: 'tratto, in produzione', nota: 'Icona di tratto nel tono del reparto, tagliata dal bordo, sotto il nome con l\'alone.' },
+  { id: 'C', titolo: 'C', eti: 'foto al posto dell\'icona', nota: 'Stessa posizione, stesso taglio, stesso alone. Nessuna modifica al layout.' },
+  { id: 'A', titolo: 'A', eti: 'foto a lato', nota: 'Foto intera in basso a destra, il nome si ferma prima. Il nome lungo va a capo prima.' },
+  { id: 'B', titolo: 'B', eti: 'foto su disco', nota: 'Foto su un disco nella tinta del reparto (bianco sulla tessera grande): il colore del reparto torna.' },
+];
+
+function rgba(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16}, ${(n >> 8) & 255}, ${n & 255}, ${a})`; }
+function alone(c, px) { const k = +(px * .707).toFixed(2); return [[px,0],[-px,0],[0,px],[0,-px],[k,k],[-k,k],[k,-k],[-k,-k]].map(([x,y]) => `${x}px ${y}px 0 ${c}`).concat(`0 0 ${px+1}px ${c}`).join(','); }
+
+function svgTratto(chiave, colore, opacita, taglia, taglio) {
+  const t = TRACCIATI[chiave];
+  return `<svg class="ico" aria-hidden="true" width="${taglia}" height="${taglia}" viewBox="0 0 24 24" fill="none" stroke="${colore}" stroke-linecap="round" stroke-linejoin="round" style="right:${taglio}px;bottom:${taglio}px;opacity:${opacita}"><path d="${t.d}" ${t.rot ? `transform="${t.rot}"` : ''} stroke-width="2"/><path d="${t.dd}" ${t.rot ? `transform="${t.rot}"` : ''} stroke-width="1.25"/></svg>`;
+}
+
+/* Decide cosa disegnare e quanto spazio riservare a destra del nome. */
+function visuale(v, t, area, ctx) {
+  const hero = !!t.hero, spento = ctx.spento;
+  const taglia = hero ? 84 : 52, taglio = hero ? -17 : -10;
+  const foto = FOTO[t.chiave];
+  const filtro = spento ? 'filter:grayscale(1);opacity:.5;' : '';
+  // ripiego: senza foto si mostra il tratto, in ogni variante
+  if (v === 'oggi' || !foto) {
+    const colore = spento ? '#9A9AA6' : hero ? '#FFFFFF' : area.tono;
+    const op = spento ? .5 : hero ? .42 : 1;
+    return { html: svgTratto(t.chiave, colore, op, taglia, taglio), riserva: 0, alone: !spento };
+  }
+  if (v === 'C') return { html: `<img class="ico" alt="" src="${foto}" width="${taglia}" height="${taglia}" style="right:${taglio}px;bottom:${taglio}px;${filtro}">`, riserva: 0, alone: !spento };
+  if (v === 'A') {
+    const s = hero ? 88 : 56;
+    return { html: `<img class="ico" alt="" src="${foto}" width="${s}" height="${s}" style="right:6px;bottom:6px;${filtro}">`, riserva: s + 2, alone: false };
+  }
+  // B
+  const d = hero ? 92 : 60, s = hero ? 74 : 46;
+  const fondoDisco = spento ? 'rgba(20,22,58,0.05)' : hero ? '#FFFFFF' : ctx.discoSu === 'tinta' ? '#FFFFFF' : area.tinta;
+  return { html: `<span class="disco" style="width:${d}px;height:${d}px;right:8px;bottom:8px;background:${fondoDisco}"><img alt="" src="${foto}" width="${s}" height="${s}" style="${filtro}"></span>`, riserva: d + 6, alone: false };
+}
+
+function tesseraLista(v, t, area) {
+  const spento = !!t.preso, hero = !!t.hero && !spento;
+  let bg, bordo, nomeC, pillBg, pillTx, qtyC;
+  if (spento) { bg = 'rgba(20,22,58,0.035)'; bordo = '1px solid transparent'; nomeC = 'rgba(20,22,58,0.34)'; pillBg = 'rgba(20,22,58,0.06)'; pillTx = 'rgba(20,22,58,0.34)'; qtyC = 'rgba(20,22,58,0.24)'; }
+  else if (hero) { bg = area.colore; bordo = `1px solid ${rgba(area.colore, .9)}`; nomeC = '#14163A'; pillBg = '#FFFFFF'; pillTx = '#14163A'; qtyC = rgba('#14163A', .55); }
+  else { bg = 'none'; bordo = `1px solid ${rgba(area.colore, .45)}`; nomeC = '#14163A'; pillBg = rgba(area.colore, .32); pillTx = '#14163A'; qtyC = '#8A8A96'; }
+  const vis = visuale(v, { ...t, hero }, area, { spento });
+  const coloreAlone = hero ? area.colore : '#FFFFFF';
+  const ombra = vis.alone ? `text-shadow:${alone(coloreAlone, hero ? 3 : 2)};` : '';
+  return `<div class="tessera${hero ? ' hero' : ''}" style="background:${bg};border:${bordo}">${vis.html}
+    <div style="display:flex;align-items:center;gap:6px;position:relative"><span class="pill" style="background:${pillBg};color:${pillTx}">${t.conf}</span>${t.qty ? `<span style="font-family:var(--font-mono);font-weight:500;font-size:10px;letter-spacing:.04em;color:${qtyC}">${t.qty}</span>` : ''}</div>
+    <div class="nome${spento ? ' barrato' : ''}" style="color:${nomeC};padding-right:${vis.riserva}px;${ombra}">${t.nome}</div></div>`;
+}
+
+function tesseraDispensa(v, t, area) {
+  const inCasa = t.stato === 'casa';
+  const vis = visuale(v, t, area, { spento: !inCasa, discoSu: 'tinta' });
+  const ombra = vis.alone ? `text-shadow:${alone(area.tinta, 2)};` : '';
+  return `<div class="tessera dispensa" style="background:${inCasa ? rgba(area.colore, .26) : 'none'};border:${inCasa ? 'none' : '2px dashed var(--bordo-tratteggio)'}">${vis.html}
+    <span class="pill" style="background:${inCasa ? '#FFFFFF' : 'rgba(20,22,58,0.06)'};color:${inCasa ? '#14163A' : '#5C5F7A'};text-transform:none">${inCasa ? t.qta : 'Finito'}</span>
+    <span class="nome${inCasa ? '' : ' barrato'}" style="color:${inCasa ? '#14163A' : 'rgba(20,22,58,0.34)'};padding-right:${vis.riserva}px;${ombra}">${t.nome}</span></div>`;
+}
+
+function pannelloLista(v, areaId, tessere, presi) {
+  const a = AREE[areaId];
+  return `<div class="pannello"><div class="pannello-testa"><span class="quadratino" style="background:${a.colore}"></span><span>${a.nome}</span><span style="margin-left:auto;font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;color:var(--mut)">${presi}/${tessere.length}</span></div>
+    <div class="griglia">${tessere.map((t) => tesseraLista(v, t, a)).join('')}</div></div>`;
+}
+
+function scenario(id, titolo, testo, pannello) {
+  document.getElementById(id).innerHTML = `<h2>${titolo}</h2><p>${testo}</p><div class="varianti">${VARIANTI.map((v) => `
+    <div class="variante"><h3>${v.titolo} <span class="eti">${v.eti}</span></h3><p class="nota">${v.nota}</p>${pannello(v.id)}</div>`).join('')}</div>`;
+}
+
+const MACELLERIA = [
+  { nome: 'Macinato di manzo', chiave: 'bistecca', conf: '2 conf', qty: '800 g', hero: true },
+  { nome: 'Petto di pollo', chiave: 'cosciotto', conf: '1 conf', qty: '500 g' },
+  { nome: 'Filetto di merluzzo', chiave: 'pesce', conf: '1 conf', qty: '400 g' },
+  { nome: 'Salmone fresco', chiave: 'pesce', conf: '1 conf', qty: '300 g' },
+  { nome: 'Fesa di tacchino', chiave: 'cosciotto', conf: '1 conf', qty: '250 g', preso: true },
+];
+const ORTOFRUTTA = [
+  { nome: 'Pomodori', chiave: 'pomodoro', conf: '6 pz', hero: true },
+  { nome: 'Carote', chiave: 'carota', conf: '1 conf', qty: '500 g' },
+  { nome: 'Zucchine', chiave: 'zucchina', conf: '4 pz' },
+  { nome: 'Insalata', chiave: 'insalata', conf: '1 conf', qty: '250 g' },
+  { nome: 'Finocchi', chiave: 'finocchio', conf: '2 pz', preso: true },
+  { nome: 'Carote', chiave: 'carota', conf: '1 conf', qty: '500 g', preso: true },
+];
+const DISPENSA = [
+  { nome: 'Carote', chiave: 'carota', stato: 'casa', qta: '300 g', area: 'ortofrutta' },
+  { nome: 'Pomodori', chiave: 'pomodoro', stato: 'finita', area: 'ortofrutta' },
+  { nome: 'Petto di pollo', chiave: 'cosciotto', stato: 'casa', qta: '500 g', area: 'macelleria' },
+  { nome: 'Filetto di merluzzo', chiave: 'pesce', stato: 'finita', area: 'macelleria' },
+];
+
+scenario('s-macelleria', 'Lista · Macelleria e pescheria',
+  'Nomi presi dalla produzione. Il caso più duro: la tessera grande ha il fondo pieno del reparto, e due nomi diversi (merluzzo, salmone) cadono sulla stessa foto.',
+  (v) => pannelloLista(v, 'macelleria', MACELLERIA, 1));
+scenario('s-ortofrutta', 'Lista · Ortofrutta',
+  'Zucchine e Insalata non hanno una foto: nelle varianti con foto ricadono sull\'icona di tratto, come ogni nome nuovo finché la sua foto non c\'è.',
+  (v) => pannelloLista(v, 'ortofrutta', ORTOFRUTTA, 2));
+scenario('s-dispensa', 'Dispensa · in casa e finito',
+  'In casa la tessera ha la tinta del reparto al 26%. Finito è tratteggiato e barrato, con la foto spenta.',
+  (v) => `<div class="pannello"><div class="griglia">${DISPENSA.map((t) => tesseraDispensa(v, t, AREE[t.area])).join('')}</div></div>`);
+
+document.getElementById('set').innerHTML = Object.entries(FOTO).map(([k, src]) => `<figure><img alt="${k}" src="${src}"><figcaption>${k}</figcaption></figure>`).join('');
+</script>
