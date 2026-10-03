@@ -119,6 +119,16 @@ describe('pesoPezzo (spec 8c §A.1)', () => {
     expect(pesoPezzo('sedano rapa')).toBe(400);
   });
 
+  it('l\'apostrofo non fa trovare un aroma dentro un altro alimento (8c-bis, review finale M3)', () => {
+    expect(pesoPezzo("spicchio d'aglio")).toBe(5);
+    expect(pesoPezzo("spicchi d'aglio")).toBe(5);
+    expect(pesoPezzo('spicchi d’aglio')).toBe(5); // apostrofo curvo
+    expect(pesoPezzo("pane all'aglio")).toBeNull();
+    expect(pesoPezzo("pasta all'uovo")).toBeNull();
+    expect(pesoPezzo("succo d'arancia")).toBeNull();
+    expect(pesoPezzo('succo d’arancia')).toBeNull();
+  });
+
   it('«pomodorini» non è «pomodori», e un nome ignoto è null', () => {
     expect(pesoPezzo('pomodorini')).toBeNull();
     expect(pesoPezzo('cavolo nero')).toBeNull();

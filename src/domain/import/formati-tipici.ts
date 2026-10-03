@@ -196,6 +196,7 @@ const PESO_PEZZO: { chiave: string; grammi: number }[] = [
   // Gli aromi che si contano a pezzi (8c-bis C, review): valori medi, non misurati. Senza, «1 pz»
   // di aglio in g diventava 100 g. Un pezzo di aglio è uno spicchio, di sedano una costa.
   { chiave: 'aglio', grammi: 5 }, { chiave: 'agli', grammi: 5 },
+  { chiave: "spicchio d'aglio", grammi: 5 }, { chiave: "spicchi d'aglio", grammi: 5 },
   { chiave: 'sedano', grammi: 50 }, { chiave: 'sedani', grammi: 50 },
   { chiave: 'scalogno', grammi: 30 }, { chiave: 'scalogni', grammi: 30 },
   { chiave: 'porro', grammi: 150 }, { chiave: 'porri', grammi: 150 },
@@ -206,10 +207,10 @@ const PESO_PEZZO: { chiave: string; grammi: number }[] = [
 
 /** Grammi di un pezzo per il primo dei nomi che la tabella conosce, o null. */
 export function pesoPezzo(...nomi: string[]): number | null {
-  // Poi con l'apostrofo come spazio: «spicchi d'aglio» contiene la parola «aglio». Solo qui: nelle
-  // altre tabelle «carciofi sott'olio» diventerebbe «olio».
-  const senzaApostrofi = nomi.map((n) => n.replace(/['’]/g, ' '));
-  return (voceTabella(PESO_PEZZO, nomi) ?? voceTabella(PESO_PEZZO, senzaApostrofi))?.grammi ?? null;
+  // L'apostrofo curvo vale come quello dritto, così le chiavi esplicite («spicchi d'aglio») lo
+  // trovano. Niente seconda passata con l'apostrofo come spazio: dava «pane all'aglio» 5 g, «pasta
+  // all'uovo» 60 g, «succo d'arancia» 200 g (review finale 8c-bis, M3).
+  return voceTabella(PESO_PEZZO, nomi.map((n) => n.replace(/’/g, "'")))?.grammi ?? null;
 }
 
 /** Un cucchiaio e un cucchiaino generici, in ml (spec §C). */
