@@ -22,7 +22,7 @@ import { formattaReport, stimaCostoEur, type CasoEval, type PipelineEval, type S
 
 const DIR_DIETE = join(process.cwd(), 'diete');
 const MANIFEST = join(DIR_DIETE, 'eval-manifest.json');
-const MODELLI = (process.env.EVAL_IMPORT_MODELLI ?? 'claude-sonnet-5').split(',').map((m) => m.trim()).filter(Boolean);
+const MODELLI = (process.env.EVAL_IMPORT_MODELLI ?? 'claude-sonnet-5-5').split(',').map((m) => m.trim()).filter(Boolean);
 
 /** Una voce di diete/eval-manifest.json: percorsi relativi a diete/. */
 interface VoceManifest {

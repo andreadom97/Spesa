@@ -194,6 +194,7 @@ describe('estraiPiano (v1, una chiamata)', () => {
   });
 
   it('modelloImportConfigurato: env batte il default', () => {
+    expect(MODELLO_DEFAULT_IMPORT).toBe('claude-sonnet-5-5');
     expect(modelloImportConfigurato()).toBe(MODELLO_DEFAULT_IMPORT);
     process.env.IMPORT_AI_MODEL = 'claude-haiku-4-5';
     expect(modelloImportConfigurato()).toBe('claude-haiku-4-5');

@@ -43,8 +43,8 @@ describe('stimaCostoEur', () => {
   it('modello ignoto → null, mai zero', () => {
     expect(stimaCostoEur('modello-inventato', uso({ inputTokens: 1_000_000 }))).toBeNull();
   });
-  it('il listino ha i tre modelli previsti', () => {
-    expect(Object.keys(PREZZI_EUR_PER_MILIONE).sort()).toEqual(['claude-haiku-4-5', 'claude-opus-5', 'claude-sonnet-5']);
+  it('il listino ha i quattro modelli previsti', () => {
+    expect(Object.keys(PREZZI_EUR_PER_MILIONE).sort()).toEqual(['claude-haiku-4-5', 'claude-opus-5', 'claude-sonnet-5', 'claude-sonnet-5-5']);
   });
 });
 
