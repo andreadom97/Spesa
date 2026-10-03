@@ -109,4 +109,10 @@ describe('tracciati · forma a due toni (spec 03/10)', () => {
     expect(chiusa('M0 0h2v2Z')).toBe(true);
     expect(chiusa('M0 0h2v2ZM4 4h1')).toBe(false);
   });
+
+  it('le sei del pilota del 03/10 hanno la sagoma e i gruppi', () => {
+    const sei = ['pomodoro', 'carota', 'pesce', 'formaggio', 'pane', 'latte'] as const;
+    expect(sei.filter((k) => !TRACCIATI[k]?.sil || typeof TRACCIATI[k]?.dd === 'string')).toEqual([]);
+    expect(sei.map((k) => gruppiDettaglio(TRACCIATI[k]!).length)).toEqual([4, 5, 5, 4, 4, 5]);
+  });
 });
