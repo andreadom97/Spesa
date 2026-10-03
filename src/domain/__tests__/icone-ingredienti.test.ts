@@ -183,6 +183,42 @@ describe('trovaIcona', () => {
     ['Aglio', 'aglio'],
     ['Aglio in polvere', 'aglio'],
     ["Spicchio d'aglio", 'aglio'],
+    // ondata 1, lotto E (03/10)
+    ['Vino', 'vino'],
+    ['Vino bianco', 'vino'],
+    ['Vino rosso', 'vino'],
+    ['Vino bianco secco', 'vino'],
+    ['Spumante', 'vino'],
+    ['Prosecco', 'vino'],
+    ['Liquore', 'liquore'],
+    ["Liquore all'amaretto", 'liquore'],
+    ['Rum', 'liquore'],
+    ['Marsala', 'liquore'],
+    ['Brandy', 'liquore'],
+    ['Cognac', 'liquore'],
+    ['Limoncello', 'liquore'],
+    ['Grappa', 'liquore'],
+    ['Tè', 'te'],
+    ['Te verde', 'te'],
+    ['Tè nero', 'te'],
+    // era un blocco (pesca): ora vince «tè» in prima posizione, ed è l'icona giusta
+    ['Tè alla pesca', 'te'],
+    ['Tisana', 'te'],
+    ['Camomilla', 'te'],
+    ['Infuso di zenzero', 'te'],
+    ['Cereali', 'cereali'],
+    ['Cereali integrali', 'cereali'],
+    ['Fiocchi di cereali', 'cereali'],
+    ['Corn flakes', 'cereali'],
+    ['Cornflakes', 'cereali'],
+    ['Fiocchi di mais', 'cereali'],
+    ['Muesli', 'cereali'],
+    ['Granola', 'cereali'],
+    ['Piadina', 'piadina'],
+    ['Piadina integrale', 'piadina'],
+    ['Piadine', 'piadina'],
+    ['Tortilla', 'piadina'],
+    ['Wrap', 'piadina'],
   ])('%s → %s', (nome, chiave) => {
     expect(trovaIcona(nome)).toBe(chiave);
   });
@@ -253,6 +289,17 @@ describe('trovaIcona', () => {
     // pulizia del lotto E (03/10): «agli» ignorata, le posizioni delle altre parole non cambiano
     ['Pasta agli asparagi', 'pasta'],
     ['Spaghetti aglio e olio', 'pasta'],
+    // non regressione del lotto E (03/10)
+    ['Aceto di vino', 'ampolla'],
+    ['Aceto di vino rosso', 'ampolla'],
+    ['Pollo al marsala', 'cosciotto'],
+    ['Pane ai cereali', 'pane'],
+    ['Yogurt con cereali', 'yogurt'],
+    ['Latte e cereali', 'latte'],
+    ['Biscotti ai cereali', 'biscotto'],
+    ['Mais', 'mais'],
+    ['Limoni', 'limone'],
+    ['Zenzero', 'spezie'],
   ])('%s → %s (posizione prima della lunghezza)', (nome, chiave) => {
     expect(trovaIcona(nome)).toBe(chiave);
   });
@@ -287,6 +334,11 @@ describe('trovaIcona', () => {
     // «agli» è ignorata come parola (preposizione articolata, stessa radice di «aglio»): il
     // plurale «Agli» da solo resta senza icona, prezzo accettato (lotto E)
     'Agli',
+    // radici diverse da vino, liquore, piadina e cereali (lotto E); «Amaretto» è anche il
+    // biscotto, non va su `liquore`
+    'Vinaigrette',
+    'Liquirizia',
+    'Amaretto',
   ])('%s → null (omografo)', (nome) => {
     expect(trovaIcona(nome)).toBeNull();
   });
@@ -326,7 +378,6 @@ describe('trovaIcona', () => {
     // meglio nessuna icona che una sbagliata.
     'Pesca',
     'Succo di pesca',
-    'Tè alla pesca',
     'Pesche noci',
     'Grano saraceno',
     'Semola di grano duro',
@@ -366,8 +417,8 @@ describe('trovaIcona', () => {
 });
 
 describe('CATALOGO_ICONE', () => {
-  it('89 icone (64 del 26/09 + 5 famiglie del 03/10 + lotti A, B, C e D dell\'ondata 1)', () => {
-    expect(CHIAVI_ICONE).toHaveLength(89);
+  it('94 icone (64 del 26/09 + 5 famiglie del 03/10 + 25 dell\'ondata 1)', () => {
+    expect(CHIAVI_ICONE).toHaveLength(94);
   });
 
   it('ogni sinonimo appartiene a una sola chiave', () => {

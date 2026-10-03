@@ -104,6 +104,10 @@ export const CATALOGO_ICONE = {
   biscotto: ['biscotto', 'cracker', 'crackers', 'galletta'],
   farina: ['farina', 'amido di mais', 'maizena', 'pangrattato'],
   cornetto: ['cornetto', 'brioche', 'croissant'],
+  // ondata 1 (03/10). «Fiocchi di mais» qui e non su `mais` (più lungo alla stessa posizione);
+  // «Fiocchi d'avena» resta su `avena`, «Pane ai cereali» su `pane` (prima posizione).
+  cereali: ['cereali', 'corn flakes', 'cornflakes', 'fiocchi di mais', 'muesli', 'granola'],
+  piadina: ['piadina', 'tortilla', 'wrap'],
   // dispensa
   olio: ['olio'],
   ampolla: ['aceto', 'salsa di soia'],
@@ -136,6 +140,13 @@ export const CATALOGO_ICONE = {
   // pronti e bevande
   minestra: ['minestrone', 'minestra', 'brodo', 'zuppa', 'vellutata'],
   acqua: ['acqua'],
+  // ondata 1 (03/10). «Aceto di vino» resta su `ampolla` (prima posizione).
+  vino: ['vino', 'spumante', 'prosecco'],
+  // Niente «amaretto»: è anche il biscotto. «Pollo al marsala» resta su `cosciotto`.
+  liquore: ['liquore', 'rum', 'marsala', 'brandy', 'cognac', 'limoncello', 'grappa'],
+  // «Tè» diventa «te» con `normalizza`: radice di due lettere, combina solo con la parola intera.
+  // «Tè alla pesca» ora prende `te` (prima posizione) invece di null per il blocco «pesca».
+  te: ['te', 'tisana', 'camomilla', 'infuso'],
 } as const satisfies Record<string, readonly string[]>;
 
 export type ChiaveIcona = keyof typeof CATALOGO_ICONE;
