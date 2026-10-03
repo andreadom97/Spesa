@@ -39,7 +39,7 @@ const finto = vi.hoisted(() => {
     b.upsert = (p: unknown) => { righe = (Array.isArray(p) ? p : [p]) as Record<string, unknown>[]; return b; };
     b.then = (ok: (v: unknown) => unknown, ko?: (e: unknown) => unknown) => (async () => {
       await richiesta();
-      const conId = righe.map((r) => ({ id: crypto.randomUUID(), ...r }));
+      const conId = righe.map((r) => ({ ...r, id: r.id ?? crypto.randomUUID() }));
       if (singola) return { data: conId[0] ?? null, error: null };
       return { data: conSelect ? conId : null, error: null };
     })().then(ok, ko);
@@ -77,7 +77,12 @@ import { eseguiScritture } from '@/data/importa';
 function leggiJson(variabile: string): unknown {
   const percorso = process.env[variabile];
   if (!percorso || !existsSync(percorso)) return null;
-  return JSON.parse(readFileSync(percorso, 'utf-8'));
+  try {
+    return JSON.parse(readFileSync(percorso, 'utf-8'));
+  } catch {
+    // Messaggio fisso: l'errore di JSON.parse cita uno spezzone del testo (dati personali).
+    throw new Error(`${variabile}: il file non è un JSON valido (il contenuto non viene stampato)`);
+  }
 }
 
 /** Senza i pasti della casa: un pasto per nome della dieta, condimenti esclusi (dichiarato nel log). */
