@@ -1117,8 +1117,8 @@ tessera scura. Spec `docs/superpowers/specs/2026-10-03-oggi-design.md` §B. File
 - **Poster senza pasto** (`PosterVuoto`). Stesso guscio, senza caselle né icona: l'etichetta
   mono (`DOMANI` o `OGGI`), il testo 21/800/−0,035em in bianco a 20 sotto, e la pillola
   `APRI IL PIANO` (link a `/piano`) a 14 sotto il testo. Due casi: `Il piano di domani non c'è
-  ancora.` (oggi non ha più pasti e domani cade in una settimana che il Piano non ha ancora
-  creato) e `Nessun pasto in programma.` (né oggi né domani c'è un pasto a casa con un piatto,
+  ancora.` (oggi non ha più pasti e la settimana di domani, che la domenica Oggi apre da sé, non si
+  è potuta aprire; precisato in esecuzione, 03/10) e `Nessun pasto in programma.` (né oggi né domani c'è un pasto a casa con un piatto,
   repertorio vuoto compreso). Stesso nome accessibile, `Prossimo pasto`.
 
 ### Carta alternativa e carosello nel poster
@@ -1695,6 +1695,11 @@ snackbar): l'annullo sta dentro il poster, `RIMETTI QUELLO DEL PIANO`.
 - **La pagina d'ingresso crea la settimana alla prima apertura**: Oggi, come il Piano, crea la
   settimana che contiene oggi se manca (`apriSettimanaCorrente`, `src/data/apertura.ts`). Il Piano
   ha ancora un creatore suo, con una deduplica separata (seguito nel registro).
+- **La domenica Oggi apre anche la settimana di domani** (decisione di Andrea, 03/10, opzione a;
+  precisato in esecuzione, 03/10): quando domani cade in un'altra settimana la legge e, se manca,
+  la crea (`apriSettimanaCorrente(domani)`), così il poster mostra il primo pasto di lunedì invece
+  di un vicolo cieco; se l'apertura fallisce il poster dice ancora `Il piano di domani non c'è
+  ancora.`
 - **Eccezioni dichiarate** (§2.5 e nell'anatomia di §8, non nelle scale di §3 e §5): `SCAMBIA`
   spento a 0,06 (non 0,10), pillole del poster a 0,09em e padding 14, `SCONGELA` a 4,3:1
   (eccezione aperta), raggio 3 delle caselle, nome della carta a 18, mono 9 e 9,5.

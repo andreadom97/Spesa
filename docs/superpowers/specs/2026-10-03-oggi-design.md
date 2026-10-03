@@ -134,9 +134,16 @@ parte, fuori da questa spec.
 
 Il poster mostra **il primo pasto, in ordine di posizione, che sia a casa, con un piatto, e la cui
 fascia non è ancora finita** (decisione 10). Se oggi non ce n'è più, mostra il primo pasto a casa
-con un piatto di **domani**. Domani può cadere nella settimana dopo, che il Piano crea solo quando
-lo apri (`creaSettimana`): se quella settimana non esiste ancora, il poster dice
-`Il piano di domani non c'è ancora.` con il tasto `APRI IL PIANO`.
+con un piatto di **domani**. Domani può cadere nella settimana dopo (la domenica). **La domenica
+Oggi apre anche la settimana di domani** (precisato in esecuzione, 03/10, decisione di Andrea,
+opzione a): `apriSettimanaCorrente(domani)` la legge e, se manca, la crea come fa il Piano
+(`creaSettimana`, una creazione sola anche con due aperture insieme). Parte con le altre letture,
+perché si sa dalla data se serve, e solo quando `lunediDi(domani) !== lunediDi(oggi)`. La lettura è
+**tollerata**: se l'apertura fallisce (rete, «Configura prima i tuoi pasti», doppione non risolto)
+la home regge coi dati di oggi, e il poster dice `Il piano di domani non c'è ancora.` con il tasto
+`APRI IL PIANO`. Prima di questa decisione il poster diceva quel testo la domenica sera, a pasti di
+oggi finiti, e il Piano, aperto da lì, non creava la settimana: un vicolo cieco [fonte: review
+finale, I3; non provato in produzione].
 
 Un pasto **dai Pronti** (`daPronti`) è un pasto con un piatto: il poster lo mostra.
 
@@ -442,6 +449,14 @@ Lettura nuova in `src/data/dispensa.ts`: `leggiUltimaChiusura(): Promise<string 
   la data locale come argomento, sta in un file suo, e due aperture insieme, Strict Mode o due
   schede, fanno una creazione sola), usato da Oggi; il Piano resta com'è (lo tocca la 8c) e passa
   all'helper in un secondo momento.
+- **La domenica, la settimana di domani** (precisato in esecuzione, 03/10, decisione di Andrea,
+  opzione a): quando domani cade in un'altra settimana Oggi la apre con lo stesso helper,
+  `apriSettimanaCorrente(domani)` (§B.1), e se manca la crea. È una lettura **tollerata**: se
+  fallisce (rete, «Configura prima i tuoi pasti», doppione non risolto) non diventa un errore di
+  caricamento, `console.error` come le altre letture tollerate, e il poster dice
+  `Il piano di domani non c'è ancora.` con `APRI IL PIANO`. Il lunedì il Piano legge la settimana
+  corrente e la crea solo se manca, quindi la trova già creata [letto in `piano/page.tsx`, non
+  provato in produzione].
 - **Nessun pasto a casa con un piatto, oggi né domani:** il poster resta un poster scuro senza
   piatto, con `Nessun pasto in programma.` e il tasto `APRI IL PIANO` (come «domani senza piano»). Copre anche
   il repertorio vuoto di un utente nuovo: il Piano, aperto da qui, ha il suo stato vuoto con
@@ -502,7 +517,8 @@ esecuzione, 03/10: lo schizzo della spec e le firme del piano differivano):
   spec era `fasciaDi`)
 - `prossimoPasto({ slotsOggi, slotsDomani, defs, minuti }): Prossimo` (§B.1), con `Prossimo` =
   `{ tipo: 'pasto', slot, giorno: 'oggi' | 'domani' } | { tipo: 'domaniNonCreato' } | { tipo:
-  'nessuno' }`; `slotsDomani` null = la settimana di domani non esiste ancora. La stessa per
+  'nessuno' }`; `slotsDomani` null = la settimana di domani non si è potuta aprire (precisato in
+  esecuzione, 03/10: la domenica Oggi la apre e la crea, §B.1; null resta per l'apertura fallita). La stessa per
   «Poi»: `pastoDopo({ dopo, slotsOggi, slotsDomani, defs }): PastoScelto | null`, con
   `PastoScelto` = `{ slot, giorno }`
 - `caselleGiornata({ slots, defs, minuti, slotPosterId })` (§B.3), con `minuti` null quando il
@@ -531,7 +547,7 @@ Tutti nuovi, tranne dove scritto.
 | Poster, etichetta | `{GIORNO} · {PASTO}`, `DOMANI · {PASTO}` |
 | Poster, sottotitolo | `Per {n}` · `Cucina {n} in più` · `Da una porzione pronta` |
 | Poster, azioni | `CAMBIA` · `COM'È ANDATA` · `RIMETTI QUELLO DEL PIANO` |
-| Poster, domani senza piano | `Il piano di domani non c'è ancora.` · `APRI IL PIANO` |
+| Poster, domani senza piano | `Il piano di domani non c'è ancora.` · `APRI IL PIANO` (precisato in esecuzione, 03/10: per quando l'apertura della settimana di domani fallisce, §B.1) |
 | Poster senza pasto, etichetta | `DOMANI` (domani non pianificato) · `OGGI` (`Nessun pasto in programma.`) |
 | Poster, nome accessibile della sezione | `Prossimo pasto` |
 | Errore di un'azione del foglio | `Non siamo riusciti a salvare il cambiamento. Riprova.` (esistente, quello del Piano) |
@@ -569,7 +585,7 @@ Tutti nuovi, tranne dove scritto.
 
 1. **Test di dominio** (`oggi.test.ts`): fasce coi sette nomi reali e con un nome sconosciuto; il
    prossimo pasto a 08:00, 10:45 (spuntino senza piatto → salta), 12:30 con pranzo fuori (salta),
-   18:10, 22:00 (dopocena), 23:59 (domani); domani in una settimana non creata; le caselle nei
+   18:10, 22:00 (dopocena), 23:59 (domani); domani in una settimana non aperta (null); le caselle nei
    cinque stati; `dispensaAggiornata` a 0, 9, 10 giorni e senza chiusure; `alternative` con:
    tutto in casa, manca uno, mancano due (escluso), q.b. con residuo 0 (scoperto) e > 0
    (coperto), classe stima, piatto già in programma (escluso), settimana chiusa contro

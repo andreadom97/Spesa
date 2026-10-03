@@ -13,10 +13,11 @@ aspetta l'ok di Andrea. Nessuna migrazione.
 **Cosa resta, in ordine:**
 1. Le prove nel browser (checklist in «La verifica nel browser: NON ESEGUITA»), da fare con
    Andrea, solo in lettura.
-2. Sette domande di prodotto e di disegno per Andrea («Le domande aperte»). Nessuna blocca il
-   merge; la prima (il flag `congelato`) cambia cosa vede chi ha qualcosa in congelatore, e la
-   settima (la domenica, quando la settimana dopo non esiste) decide se il poster di domenica
-   sera ha una via d'uscita.
+2. Sei domande di prodotto e di disegno per Andrea («Le domande aperte»). Nessuna blocca il
+   merge; la prima (il flag `congelato`) cambia cosa vede chi ha qualcosa in congelatore. La
+   settima (la domenica, quando la settimana dopo non esiste) è decisa da Andrea il 03/10,
+   opzione a: la domenica Oggi apre anche la settimana di domani (ruling 11; precisato in
+   esecuzione, 03/10).
 3. Le prove dal telefono (spec §J.4), dopo il merge.
 
 Questo file sostituisce il registro che l'esecuzione subagent-driven tiene in `.superpowers/`
@@ -150,7 +151,9 @@ Review: spec ✅, qualità Approved; le due deviazioni accettate dal revisore.
 - **Deviazione accettata:** un test in più, «piatto illeggibile non fa lanciare `daFare`».
 - **Risolto dal controller:** `daFare` vede domani anche quando cade nella settimana dopo, perché
   il Task 7 passa `tuttiGliSlot` = settimana + settimana di domani. Coperto da un test della
-  pagina (domenica sera, tessera «Scongela» da un'altra settimana).
+  pagina (domenica sera, tessera «Scongela» da un'altra settimana). Precisato in esecuzione,
+  03/10: da quando la domenica Oggi apre la settimana di domani (ruling 11) quello stato si
+  raggiunge in produzione, e il test gira sul mock di `apriSettimanaCorrente`.
 
 ### Task 4: i testi della home (`924f5ff`)
 
@@ -328,7 +331,8 @@ documenti in questo commit.
    *Se sbagliato:* un `id` in più nel manifest, innocuo.
 3. **I3: la domenica la settimana dopo non esiste. Non si corregge in questo ramo.** È un bivio di
    prodotto, e va ad Andrea (domanda 7). *Se sbagliato:* la domenica sera senza dopocena il poster
-   resta un vicolo cieco fino alla sua scelta.
+   resta un vicolo cieco fino alla sua scelta. **Poi deciso da Andrea il 03/10, opzione a** (precisato
+   in esecuzione, 03/10): ruling 11.
 4. **M1: se non si leggono la dispensa o l'ultima chiusura, la home non mostra niente che ne derivi
    e nemmeno la tessera tratteggiata.** Le due letture sono tollerate (la home regge senza), ma il
    ripiego (dispensa vuota, nessuna chiusura) faceva dire «Chiudi la prima spesa» a chi l'ha già
@@ -338,9 +342,10 @@ documenti in questo commit.
    in `page.tsx`, e il rischio del testo falso torna.
 5. **M5: `apriSettimanaCorrente` parte insieme alle letture che non ne dipendono** (definizioni
    dei pasti, repertorio, ingredienti, impostazioni, Pronti, dispensa, ultima chiusura); la
-   settimana di domani si legge dopo, solo se cade in un'altra settimana. Le letture tollerate
-   restano tolleranti; la gestione delle gare (`ultimaLettura`, `letturaAttesa`) non cambia.
-   *Se sbagliato:* un giro di rete in più all'apertura (la sequenza di prima).
+   settimana di domani si legge dopo, solo se cade in un'altra settimana (precisato in esecuzione,
+   03/10: dal ruling 11 parte nello stesso giro, e si apre invece di leggersi). Le letture
+   tollerate restano tolleranti; la gestione delle gare (`ultimaLettura`, `letturaAttesa`) non
+   cambia. *Se sbagliato:* un giro di rete in più all'apertura (la sequenza di prima).
 6. **M6: `overflowWrap: 'anywhere'` sul nome a 25 della tessera piena**, come in
    `TesseraDispensa.tsx`, e sugli altri nomi grandi (nome della tessera bianca, della carta
    alternativa, titolo del poster): una parola lunga va a capo invece di uscire dalla tessera.
@@ -361,6 +366,31 @@ documenti in questo commit.
     lotto da scongelare, «per slot», la prima persona, «rivisto»), **più i minor che contano,
     riportati qui prima che il ledger sparisca** (sezione «I limiti noti»). *Se sbagliato:* frasi
     imprecise restano nei documenti.
+11. **I3 deciso da Andrea il 03/10, opzione a: la domenica Oggi apre anche la settimana di domani**
+    (seguito alla review finale; precisato in esecuzione, 03/10). Quando domani cade in un'altra
+    settimana (`lunediDi(domani) !== lunediDi(oggi)`, cioè la domenica) `caricaDati` chiama
+    `apriSettimanaCorrente(domani)` (`src/data/apertura.ts`): la legge e, se manca, la crea come il
+    Piano (`creaSettimana` col planner, una creazione sola grazie alla mappa `inVolo`). Parte nello
+    stesso `Promise.all` delle altre letture, perché si sa dalla data se serve. È **tollerata**
+    (`tollera`): se fallisce (rete, «Configura prima i tuoi pasti», doppione non risolto) la home
+    regge coi dati di oggi, `settimanaDomani` vale `null`, c'è un `console.error`, e il poster ricade
+    su «Il piano di domani non c'è ancora.» con `APRI IL PIANO`; non è un errore di caricamento e non
+    lascia rejection non gestite. Non toccati: `src/data/settimana.ts`, `src/data/apertura.ts`,
+    `piano/page.tsx`; nessuna migrazione. Test: i tre casi «domenica» di `page.test.tsx`
+    riscritti sul mock di `apriSettimanaCorrente` per argomento (il primo, «il piano non c'è»,
+    diventa «l'apertura di domani fallisce»), più la domenica con la settimana di domani che parte
+    insieme alle altre letture, la domenica con entrambe le aperture che falliscono, e mercoledì e
+    sabato con una chiamata sola; scritti prima, visti cadere (5 su 60 nella cartella di Oggi), poi
+    verdi (60 su 60) [misurato il 03/10]. *Se sbagliato:* (1) la bozza di lunedì
+    nasce la domenica sera, con il repertorio e la dispensa di quel momento: se cambiano prima del
+    lunedì la settimana esiste già e non si rigenera (l'unique su `data_inizio` impedisce un secondo
+    `creaSettimana`) [letto in `creaSettimana`, non provato]; (2) i creatori della settimana sono
+    ora due anche per la settimana di domani (il Piano ha il suo, con la deduplica separata, M2):
+    il lunedì il Piano legge la settimana corrente e la crea solo se manca, quindi la trova già
+    creata [letto in `piano/page.tsx`, non provato in produzione]; (3) un'apertura che fallisce
+    ogni domenica (per esempio nessun pasto configurato) lascia il testo di prima, senza danno ma
+    senza via d'uscita. Per tornare indietro basta rimettere `leggiSettimana(lunediDi(domani))`
+    nella pagina: una riga e i test di domenica.
 
 Due ruling di prima, che mancavano del costo se sbagliati, ora ce l'hanno nel loro posto: l'icona
 su `Poi` e `Domani` e le misure fuori scala in «Task 10», la verifica nel browser in «La verifica
@@ -379,7 +409,7 @@ riverificato test per test in questo task].
 | 1, 2, 3, 4, 5, 6 | quelli del piano | nessuno | nessuna contraddizione con la spec; più test aggiunti (Task 1: accenti e «senza piatto»; Task 2: tre; Task 3: due; Task 6: otto più un'asserzione sul colore dell'etichetta di Poi) |
 | 7 | «SCAMBIA fallito» | `vi.spyOn(console, 'error')` e `expect(log).toHaveBeenCalled()`; in più, il poster resta com'era | la pagina fa un `console.error` voluto; la spec §C.6 dice che il poster resta com'era |
 | 7 | «errore di caricamento» | lo stesso spy e la stessa attesa | stesso `console.error` voluto |
-| 7 | `beforeEach` / `afterEach` | default `leggiSettimana` → `null`; `vi.restoreAllMocks()`; due import in più | la pagina chiama `leggiSettimana` solo quando domani cade nella settimana dopo; gli spy vanno ripristinati |
+| 7 | `beforeEach` / `afterEach` | default `leggiSettimana` → `null`; `vi.restoreAllMocks()`; due import in più | la pagina chiamava `leggiSettimana` solo quando domani cade nella settimana dopo; gli spy vanno ripristinati. Precisato in esecuzione, 03/10: dal ruling 11 la pagina non la chiama più, e il mock resta per asserire che non venga chiamata |
 | 7 | `componenti.test.tsx`, RIMETTI in volo | controlla anche `COM'È ANDATA` spento e riacceso | la correzione delle scritture concorrenti |
 | 8 | `tabbar.test.tsx`, il primo | quattro voci nell'ordine Oggi, Lista, Piano, Dispensa con gli href; più un test su `/oggi` attiva | il piano aveva tre voci |
 | 8 | `token.test.ts` | i valori scritti a mano (338, 274, 80, 64) e un commento | fuori dal brief: il file ha le misure della barra |
@@ -388,6 +418,7 @@ riverificato test per test in questo task].
 | 9 | cinque file fuori brief | il percorso atteso passa da `/lista` a `/oggi` | conseguenza diretta di §A.3; non cambiano altro |
 | Review finale | `oggi.dispensa.test.ts`, «le persone e le porzioni da preparare moltiplicano il fabbisogno» | diventa «le persone moltiplicano il fabbisogno; le porzioni da preparare dello slot no»: con `porzioniPreparate: 1` e patate 300 la Frittata (200 g) è «tutto», non «manca la patata» | lo scambio non eredita le porzioni da preparare (`aggiornaSlot` le azzera): l'asserzione `× (1 + N)` poggiava su una premessa falsa |
 | Review finale | `page.test.tsx` (quattro nuovi), `componenti.test.tsx` (due), `manifest.test.ts` (nuovo, due test) | slot con porzioni da preparare: niente banda, con controprova; ultima chiusura non letta: niente tessera tratteggiata e niente banda; dispensa non letta con chiusura recente: niente banda su una dispensa vuota; le sette letture partono con una settimana lenta; `overflowWrap` sui nomi grandi; `id` e `start_url` del manifest | un test per ognuna delle correzioni di codice; scritti prima, visti cadere, poi verdi |
+| Domenica (ruling 11) | `page.test.tsx`: i tre casi «domenica» | riscritti sul mock di `apriSettimanaCorrente` per argomento (`apriPerData`) invece di `leggiSettimana`; il primo («il piano non c'è») diventa «l'apertura di domani fallisce», con `console.error` asserito e le tessere di oggi; quattro test nuovi (domani parte insieme alle altre letture; entrambe le aperture falliscono; mercoledì e sabato con una chiamata sola) | la pagina apre la settimana di domani invece di leggerla; il vecchio primo caso descriveva uno stato che ora è il ripiego di un errore. Un'asserzione tolta: `leggiSettimana` chiamata con lunedì. Scritti prima, visti cadere (5), poi verdi |
 
 Prove che i test nuovi mordono, dal report del Task 7 [fonte: mutazioni temporanee, poi
 ripristinate]: icona sempre passata al poster → cade il test della banda; `larga` mai passata →
@@ -400,6 +431,7 @@ bozza; `tuttiGliSlot = settimana.slots` → cade il test «Scongela» di domenic
 |---|---|---|
 | Suite di base, prima dei task | 163 file passati + 1 saltato; 2680 test passati + 1 saltato; 41 s | [misurato dal controller, nel worktree] |
 | Suite intera sul ramo | 173 file passati + 1 saltato (174); 2811 test passati + 1 saltato (2812); 38,2 s | [misurato il 03/10 dopo la review finale, a `fb04045`, con i documenti non ancora committati]. Prima, a `0d4d3a1`: 172 file + 1 saltato, 2803 test + 1 saltato, 33,9 s [misurato allora] |
+| Suite intera dopo il seguito della domenica | 173 file passati + 1 saltato (174); 2815 test passati + 1 saltato (2816); 52,45 s | [misurato il 03/10 a `4898775`, con i documenti non ancora committati]. Cartella di Oggi: 3 file, 60 test, tutti verdi. `npx tsc --noEmit` exit 0 e `npx eslint "src/app/(app)/oggi/"` exit 0 [misurato allora]; `npx eslint .` e `npx next build` **NON ESEGUITI** dopo il seguito |
 | Crescita rispetto alla base | +10 file (i nove file di test nuovi del piano, più `manifest.test.ts`), +131 test | [calcolato: 173 − 163, 2811 − 2680] |
 | `npx tsc --noEmit` | exit 0, nessun output | [misurato il 03/10 dopo la review finale] |
 | `npx eslint .` | exit 0, nessun output | [misurato il 03/10 dopo la review finale] |
@@ -457,10 +489,11 @@ Emersi dall'esecuzione:
 - **La Dispensa apre il foglio da `?ingrediente=` e `?lotto=` una volta per montaggio**, e quello
   di un lotto anche se non è più «vivo» (Task 9): oggi si entra sempre da un'altra pagina, e il
   lotto del link è il vivo più vecchio.
-- **Il caricamento fa un giro solo, più uno quando serve** (review finale, M5; prima erano tre in
-  sequenza): la settimana corrente e le sette letture partono insieme, e la settimana di domani
-  si legge dopo, solo se domani cade in un'altra settimana. `page.tsx` è di 480 righe [misurato,
-  `wc -l`, a `fb04045`] con quattro responsabilità (caricamento, scritture, poster, griglia): un
+- **Il caricamento fa un giro solo** (review finale, M5; prima erano tre in sequenza): la
+  settimana corrente e le sette letture partono insieme, e con loro la settimana di domani quando
+  cade in un'altra settimana (la domenica: si apre, e se manca si crea; precisato in esecuzione,
+  03/10, ruling 11; prima si leggeva dopo, in un secondo giro). `page.tsx` è di 480 righe
+  [misurato, `wc -l`, a `fb04045`; prima del seguito della domenica] con quattro responsabilità (caricamento, scritture, poster, griglia): un
   hook `useGiornata` e una funzione pura per la griglia lo alleggerirebbero.
 - **Rischi di deriva nel dominio** (Task 2 e 5): `alternative` ricalcola a mano l'aritmetica di
   `consumoSlot` (`oggi.ts` contro `storno.ts`), e le `catch` di `oggi.ts` non discriminano (un
@@ -506,6 +539,9 @@ Emersi dall'esecuzione:
 
 ## Le domande aperte per Andrea
 
+Sei aperte (dalla 1 alla 6). La 7 è decisa da Andrea il 03/10 (opzione a) e resta in fondo per
+memoria.
+
 1. **Il flag `congelato` dopo un riacquisto.** Azzerarlo quando una chiusura ricompra
    l'ingrediente, o lasciarlo com'è? Oggi la tessera `SCONGELA` segue il flag e può comparire per
    un ingrediente comprato fresco dopo essere stato congelato (spec §D.2).
@@ -521,14 +557,17 @@ Emersi dall'esecuzione:
 6. **Il fix della data locale** (13 punti UTC, quattro test [fonte: memoria del progetto, audit
    del 03/10]) può ripartire ora che la 8c è su `main` [fonte: `git log`, PR #25]; `oggiLocale`
    va riallineata al suo helper quando arriva.
-7. **La domenica la settimana dopo non esiste** (review finale, I3). Piano e Oggi creano solo la
-   settimana che contiene oggi. La domenica sera, a pasti di oggi finiti, il poster dice «Il piano
-   di domani non c'è ancora.», `APRI IL PIANO` porta a un Piano che la settimana di lunedì non la
-   crea, e la tessera `Scongela` per il lunedì non compare mai [fonte: review finale; non provato
-   in produzione]. Due strade: **(a)** Oggi apre anche la settimana di domani quando cade in
-   un'altra settimana: una creazione, con il planner qualche ora prima del lunedì; **(b)** solo
-   testo, senza il tasto. Finché non si decide, il codice sulle due settimane (`settimanaDomani`,
-   `tuttiGliSlot`) e i suoi test coprono uno stato che in produzione non si raggiunge.
+7. **La domenica la settimana dopo non esiste** (review finale, I3) — **decisa da Andrea il
+   03/10: opzione a** (precisato in esecuzione, 03/10; non è più aperta, resta qui per memoria).
+   Piano e Oggi creavano solo la settimana che contiene oggi: la domenica sera, a pasti di oggi
+   finiti, il poster diceva «Il piano di domani non c'è ancora.», `APRI IL PIANO` portava a un
+   Piano che la settimana di lunedì non la crea, e la tessera `Scongela` per il lunedì non
+   compariva mai [fonte: review finale; non provato in produzione]. Le due strade erano **(a)**
+   Oggi apre anche la settimana di domani quando cade in un'altra settimana: una creazione, con il
+   planner qualche ora prima del lunedì; **(b)** solo testo, senza il tasto. Andrea ha scelto la
+   (a): eseguita nel ruling 11. Il testo «Il piano di domani non c'è ancora.» resta per quando
+   l'apertura fallisce, e il codice sulle due settimane (`settimanaDomani`, `tuttiGliSlot`) copre
+   ora uno stato che in produzione si raggiunge ogni domenica.
 
 ## La verifica nel browser: NON ESEGUITA
 
@@ -593,6 +632,9 @@ si vedono solo dopo una spesa chiusa nell'app [calcolato dalla regola §E].
       foglio e l'indirizzo non ha più il parametro.
 - [ ] **Con la dispensa non aggiornata (il suo caso al 03/10) la tessera tratteggiata dice «28
       agosto»** («La dispensa è ferma al 28 agosto»).
+- [ ] **La domenica sera** (precisato in esecuzione, 03/10, ruling 11): domenica sera dopo cena il
+      poster mostra la colazione del lunedì; il Piano, aperto lunedì, trova la settimana già
+      creata.
 - [ ] Dopo una spesa chiusa compaiono le proposte e le scadenze.
 - [ ] `SCAMBIA` cambia il piatto e la dispensa si corregge da sola (storno); `RIMETTI QUELLO DEL
       PIANO` rimette piatto e scelte.
@@ -607,5 +649,5 @@ si vedono solo dopo una spesa chiusa nell'app [calcolato dalla regola §E].
 
 Merge e deploy **solo con l'ok di Andrea**: il merge su `main` va in produzione da solo (Vercel).
 Nessuna migrazione, quindi nessun ordine da rispettare con il database. Il service worker passa a
-`dispesa-v2`. Restano da fare, in quest'ordine: le prove nel browser sopra, le sette domande, il
-merge, le prove dal telefono.
+`dispesa-v2`. Restano da fare, in quest'ordine: le prove nel browser sopra, le sei domande
+aperte, il merge, le prove dal telefono.
