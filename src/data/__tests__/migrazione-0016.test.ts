@@ -37,7 +37,18 @@ describe('migrazione 0016', () => {
 
   it('un secondo giro non converte due volte, e fra ml e altro non converte mai', () => {
     expect(sql).toMatch(/if attuale = p_unita then\s+return;/);
-    expect(sql).toContain("if p_unita not in ('g', 'pz') then");
+    expect(sql).toContain("if p_unita is null or p_unita not in ('g', 'pz') then");
     expect(sql).toContain("if attuale not in ('g', 'pz') then");
+  });
+
+  it('rifiuta unità e fattore nulli o non numerici (null e NaN non superano il confronto)', () => {
+    expect(sql).toContain('p_unita is null or p_unita not in');
+    expect(sql).toContain("if p_fattore is null or p_fattore = 'NaN'::numeric or p_fattore <= 0 then");
+  });
+
+  it('le righe q.b. restano null e i kg valgono 1000 g prima del fattore', () => {
+    // greatest() ignora i null: senza questa guardia ogni q.b. diventerebbe 0,25 pz o 1 g.
+    expect(sql).toContain('when quantita is null then null');
+    expect(sql).toContain("(case when unita = 'kg' then 1000 else 1 end)");
   });
 });

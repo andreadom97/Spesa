@@ -42,10 +42,10 @@ begin
   if casa is null then
     raise exception 'non autenticato';
   end if;
-  if p_unita not in ('g', 'pz') then
+  if p_unita is null or p_unita not in ('g', 'pz') then
     raise exception 'unità non ammessa: %', p_unita;
   end if;
-  if p_fattore is null or p_fattore <= 0 then
+  if p_fattore is null or p_fattore = 'NaN'::numeric or p_fattore <= 0 then
     raise exception 'fattore non valido: %', p_fattore;
   end if;
 
