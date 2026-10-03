@@ -33,7 +33,9 @@ export async function salvaBozzaDalServer(sb: SupabaseClient, piano: PianoEstrat
     await salvaBozzaCon(sb, String(casa), { piano, statoRevisione: statoRevisioneIniziale(piano, slotDefs) });
     return true;
   } catch (e) {
-    console.error('import/estrai: bozza non salvata dal server.', e instanceof Error ? e.name : 'errore');
+    // Nome e `code` dell'errore (es. 42501 = RLS), mai `details`: per alcune violazioni contiene la riga.
+    const code = (e as { code?: unknown } | null)?.code;
+    console.error('import/estrai: bozza non salvata dal server.', e instanceof Error ? e.name : 'errore', typeof code === 'string' ? `code=${code}` : '');
     return false;
   }
 }

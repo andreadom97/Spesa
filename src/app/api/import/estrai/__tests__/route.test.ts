@@ -234,8 +234,11 @@ describe('POST /api/import/estrai', () => {
       expect(rpcMock).toHaveBeenCalledTimes(1);
       expect(rpcMock).toHaveBeenCalledWith('casa_id');
       expect(rpcMock.mock.invocationCallOrder[0]).toBeLessThan(registraImportMock.mock.invocationCallOrder[0]!);
-      expect(registraImportMock).toHaveBeenCalledWith(clientUtente(), 'casa-1', 2, MODELLO_DEFAULT_IMPORT);
-      expect(contaImportRecentiMock).toHaveBeenCalledWith(clientUtente(), 'casa-1', expect.any(Date));
+      // Identità, non struttura: nel mock tutti i client sono uguali per forma.
+      expect(registraImportMock).toHaveBeenCalledWith(expect.anything(), 'casa-1', 2, MODELLO_DEFAULT_IMPORT);
+      expect(registraImportMock.mock.calls[0]![0]).toBe(clientUtente());
+      expect(contaImportRecentiMock).toHaveBeenCalledWith(expect.anything(), 'casa-1', expect.any(Date));
+      expect(contaImportRecentiMock.mock.calls[0]![0]).toBe(clientUtente());
     });
 
     it('casa_id con errore → 500 generico, senza registrare, contare né estrarre', async () => {
@@ -266,9 +269,11 @@ describe('POST /api/import/estrai', () => {
       const sbUtente = clientUtente();
       expect(sbUtente).toBeDefined();
       expect(registraImportMock).toHaveBeenCalledTimes(1);
-      expect(registraImportMock).toHaveBeenCalledWith(sbUtente, 'casa-1', 5, MODELLO_DEFAULT_IMPORT);
+      expect(registraImportMock).toHaveBeenCalledWith(expect.anything(), 'casa-1', 5, MODELLO_DEFAULT_IMPORT);
+      expect(registraImportMock.mock.calls[0]![0]).toBe(sbUtente);
       expect(contaImportRecentiMock).toHaveBeenCalledTimes(1);
-      expect(contaImportRecentiMock).toHaveBeenCalledWith(sbUtente, 'casa-1', expect.any(Date));
+      expect(contaImportRecentiMock).toHaveBeenCalledWith(expect.anything(), 'casa-1', expect.any(Date));
+      expect(contaImportRecentiMock.mock.calls[0]![0]).toBe(sbUtente);
 
       expect(estraiPianoAPagineMock).toHaveBeenCalledTimes(1);
       const [files, modello, opzioni] = estraiPianoAPagineMock.mock.calls[0]!;
@@ -318,7 +323,8 @@ describe('POST /api/import/estrai', () => {
       dividiPdfMock.mockResolvedValue(['p1', 'p2', 'p3']);
       const res = await POST(richiesta({ documento: true }));
       expect(res.status).toBe(200);
-      expect(registraImportMock).toHaveBeenCalledWith(clientUtente(), 'casa-1', 0, MODELLO_DEFAULT_IMPORT);
+      expect(registraImportMock).toHaveBeenCalledWith(expect.anything(), 'casa-1', 0, MODELLO_DEFAULT_IMPORT);
+      expect(registraImportMock.mock.calls[0]![0]).toBe(clientUtente());
       expect(dividiPdfMock).toHaveBeenCalledTimes(1);
       const [byte, maxPagine] = dividiPdfMock.mock.calls[0]!;
       expect(byte).toBeInstanceOf(Uint8Array);
@@ -357,7 +363,8 @@ describe('POST /api/import/estrai', () => {
       contaImportRecentiMock.mockResolvedValue({ conteggio: 4, piuVecchio: new Date('2026-08-13T10:00:00Z') });
       const res = await POST(richiesta({ documento: true }));
       expect(res.status).toBe(429);
-      expect(registraImportMock).toHaveBeenCalledWith(clientUtente(), 'casa-1', 0, MODELLO_DEFAULT_IMPORT);
+      expect(registraImportMock).toHaveBeenCalledWith(expect.anything(), 'casa-1', 0, MODELLO_DEFAULT_IMPORT);
+      expect(registraImportMock.mock.calls[0]![0]).toBe(clientUtente());
       expect(dividiPdfMock).not.toHaveBeenCalled();
       expect(estraiPianoAPagineMock).not.toHaveBeenCalled();
     });
@@ -419,7 +426,8 @@ describe('POST /api/import/estrai', () => {
       const res = await POST(richiesta({ nImmagini: 2 }));
       expect(res.status).toBe(200);
       expect(await res.json()).toEqual({ ...FIXTURE_MENU_SETTIMANALE, bozzaSalvata: true });
-      expect(salvaBozzaDalServerMock).toHaveBeenCalledWith(clientUtente(), PIANO);
+      expect(salvaBozzaDalServerMock).toHaveBeenCalledWith(expect.anything(), PIANO);
+      expect(salvaBozzaDalServerMock.mock.calls[0]![0]).toBe(clientUtente());
       expect(salvaBozzaDalServerMock.mock.invocationCallOrder[0]).toBeGreaterThan(estraiPianoAPagineMock.mock.invocationCallOrder[0]!);
     });
 
@@ -433,7 +441,8 @@ describe('POST /api/import/estrai', () => {
     it('col tetto spento la bozza si salva lo stesso', async () => {
       process.env.IMPORT_LIMITE_30GG = '0';
       expect((await POST(richiesta({ nImmagini: 2 }))).status).toBe(200);
-      expect(salvaBozzaDalServerMock).toHaveBeenCalledWith(clientUtente(), PIANO);
+      expect(salvaBozzaDalServerMock).toHaveBeenCalledWith(expect.anything(), PIANO);
+      expect(salvaBozzaDalServerMock.mock.calls[0]![0]).toBe(clientUtente());
       expect(registraImportMock).not.toHaveBeenCalled();
     });
 
