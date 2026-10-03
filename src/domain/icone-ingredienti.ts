@@ -62,7 +62,8 @@ export const CATALOGO_ICONE = {
   'pesca-albicocca': ['albicocca', 'albicocche', 'nettarina', 'percoca', 'percoche'],
   // «Uva passa» e «Uva sultanina» qui e non su `uva`: più lunghi alla stessa posizione.
   uvetta: ['uvetta', 'uva passa', 'uva sultanina'],
-  carciofo: ['carciofo'],
+  // «Carciofini» a parte: la radice (carciofin) non è quella di «carciofo» (carciof).
+  carciofo: ['carciofo', 'carciofino'],
   asparago: ['asparago'],
   // carne e pesce
   bistecca: ['manzo', 'macinato', 'vitello', 'carne', 'bistecca', 'hamburger'],
@@ -128,9 +129,10 @@ export const CATALOGO_ICONE = {
   // Niente «mostarda»: in Italia è frutta candita alla senape, non la senape.
   senape: ['senape'],
   capperi: ['cappero'],
-  // ondata 1 (03/10). «Semi di zucca» qui e non su `zucca` (prima posizione). «Semola» resta un
+  // ondata 1 (03/10). «Seme» copre «Semi» e «Semi misti»; «Olio di semi» resta su `olio` (prima
+  // posizione). «Semi di zucca» qui e non su `zucca` (prima posizione). «Semola» resta un
   // blocco e «Semifreddo» non si accende: le radici (semol, semifredd) non sono quella di «semi» (sem).
-  semi: ['semi di chia', 'semi di lino', 'semi di girasole', 'semi di zucca', 'semi di sesamo', 'sesamo', 'chia', 'lino'],
+  semi: ['seme', 'semi di chia', 'semi di lino', 'semi di girasole', 'semi di zucca', 'semi di sesamo', 'sesamo', 'chia', 'lino'],
   // pronti e bevande
   minestra: ['minestrone', 'minestra', 'brodo', 'zuppa', 'vellutata'],
   acqua: ['acqua'],
@@ -214,8 +216,17 @@ function radice(parola: string): string {
  */
 function radici(s: string): string[] {
   const n = normalizza(s);
-  return n === '' ? [] : n.split(/[^a-z0-9]+/).filter((p) => p !== '').map(radice);
+  return n === '' ? [] : n.split(/[^a-z0-9]+/).filter((p) => p !== '').map((p) => (IGNORATE.has(p) ? '' : radice(p)));
 }
+
+/**
+ * Parole che non combinano con nessun sinonimo: la preposizione articolata «agli» ha la
+ * radice di «aglio» (agl), e "Risotto agli asparagi" prendeva l'icona dell'aglio. Diventano
+ * una radice vuota, che nessuna voce contiene (radici() scarta le parti vuote dei
+ * sinonimi), così le posizioni delle altre parole restano quelle del nome. Prezzo: il
+ * plurale «Agli» da solo resta senza icona (lotto E, 03/10).
+ */
+const IGNORATE = new Set(['agli']);
 
 interface Voce { chiave: ChiaveIcona | null; radici: string[]; lunghezza: number; blocco: boolean }
 

@@ -174,6 +174,15 @@ describe('trovaIcona', () => {
     ['Sesamo', 'semi'],
     ['Chia', 'semi'],
     ['Lino', 'semi'],
+    // pulizia del lotto E (03/10): «seme» per i semi generici, «carciofino» per i sott'olio,
+    // la preposizione «agli» non si legge come aglio
+    ['Semi', 'semi'],
+    ['Semi misti', 'semi'],
+    ["Carciofini sott'olio", 'carciofo'],
+    ['Risotto agli asparagi', 'asparago'],
+    ['Aglio', 'aglio'],
+    ['Aglio in polvere', 'aglio'],
+    ["Spicchio d'aglio", 'aglio'],
   ])('%s → %s', (nome, chiave) => {
     expect(trovaIcona(nome)).toBe(chiave);
   });
@@ -241,6 +250,9 @@ describe('trovaIcona', () => {
     ['Yogurt con semi di chia', 'yogurt'],
     ['Pane ai semi di sesamo', 'pane'],
     ['Pasta e carciofi', 'pasta'],
+    // pulizia del lotto E (03/10): «agli» ignorata, le posizioni delle altre parole non cambiano
+    ['Pasta agli asparagi', 'pasta'],
+    ['Spaghetti aglio e olio', 'pasta'],
   ])('%s → %s (posizione prima della lunghezza)', (nome, chiave) => {
     expect(trovaIcona(nome)).toBe(chiave);
   });
@@ -272,6 +284,9 @@ describe('trovaIcona', () => {
     // combina con niente; `pesca-albicocca` prende solo albicocca, nettarina e percoca (lotto D)
     'Pesche',
     'Pesche sciroppate',
+    // «agli» è ignorata come parola (preposizione articolata, stessa radice di «aglio»): il
+    // plurale «Agli» da solo resta senza icona, prezzo accettato (lotto E)
+    'Agli',
   ])('%s → null (omografo)', (nome) => {
     expect(trovaIcona(nome)).toBeNull();
   });
