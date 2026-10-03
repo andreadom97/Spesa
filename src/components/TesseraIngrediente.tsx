@@ -100,6 +100,7 @@ export function TesseraIngrediente({
   const [testoQuantita, setTestoQuantita] = useState(quantita === null ? '' : String(quantita));
   const idQuantita = useId();
   const campoRef = useRef<HTMLInputElement>(null);
+  const voceRef = useRef<HTMLButtonElement>(null);
   // La riga q.b. mostra «Q.B.» finché non la si tocca per scrivere un numero (spec 8c §B).
   const [scrivendo, setScrivendo] = useState(false);
   // Il campo a fuoco: solo allora sotto la pillola c'è la voce «Q.B.».
@@ -232,7 +233,7 @@ export function TesseraIngrediente({
           type="button"
           onClick={scriviNumero}
           aria-label={`Grammatura di ${nome}: quanto basta`}
-          style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', minHeight: ALTEZZA_TAP_QUANTITA, padding: 0, background: 'transparent' }}
+          style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', minHeight: ALTEZZA_TAP_QUANTITA, padding: 0, background: 'transparent', outlineOffset: -2 }}
         >
           <span style={stilePillola}>Q.B.</span>
         </button>
@@ -257,7 +258,9 @@ export function TesseraIngrediente({
               value={testoQuantita}
               onChange={(e) => cambiaTesto(e.target.value)}
               onFocus={() => setAFuoco(true)}
-              onBlur={() => {
+              onBlur={(e) => {
+                // Il fuoco passa alla voce «Q.B.» (Tab, screen reader): la voce resta, raggiungibile da tastiera.
+                if (e.relatedTarget !== null && e.relatedTarget === voceRef.current) return;
                 setAFuoco(false);
                 // Uscito dal campo senza un numero: la riga resta q.b.
                 if (quantita === null) setScrivendo(false);
@@ -284,11 +287,18 @@ export function TesseraIngrediente({
       {aFuoco && !quantoBasta && (
         // La voce «Q.B.» della pillola (spec 8c §B): il tocco non toglie il fuoco al campo prima del click.
         <button
+          ref={voceRef}
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={scegliQuantoBasta}
+          onBlur={(e) => {
+            // Il fuoco torna al campo: la voce resta. Altrove: esce, come uscirebbe dal campo.
+            if (e.relatedTarget !== null && e.relatedTarget === campoRef.current) return;
+            setAFuoco(false);
+            if (quantita === null) setScrivendo(false);
+          }}
           aria-label={`${nome}: quanto basta`}
-          style={{ position: 'relative', display: 'flex', alignItems: 'center', minHeight: ALTEZZA_TAP_QUANTITA, padding: 0, background: 'transparent' }}
+          style={{ position: 'relative', display: 'flex', alignItems: 'center', minHeight: ALTEZZA_TAP_QUANTITA, padding: 0, background: 'transparent', outlineOffset: -2 }}
         >
           <span
             style={{
