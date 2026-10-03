@@ -320,8 +320,8 @@ Ognuno col motivo. Un test caduto per un altro motivo sarebbe stato una regressi
 
 - Estrazione del PDF di Andrea con `claude-sonnet-5-5` il 03/10: 4 chiamate, 18956 token in uscita,
   119601 token di cache scritti, 55 s [misurato]. Salvata in `diete/misura-8c/bozza.json`, fuori
-  da git. **Costo in euro: non registrato nel ledger**; il ruling P9 lo stimava «qualche decina di
-  centesimi» [ipotesi]. Il controller lo completa dalla console Anthropic.
+  da git. Il costo di questa chiamata da sola non è stampato: è dentro la stima delle letture del
+  PDF (sotto, «I costi»).
 - Gli altri input, copiati da produzione in sola lettura: `ingredienti.json`, 92 ingredienti di
   Andrea com'erano prima dell'import del 03/10, esclusi i 5 creati quel giorno; `slot.json`, 6
   pasti [misurato]. Nessun repertorio.
@@ -351,9 +351,22 @@ Ognuno col motivo. Un test caduto per un altro motivo sarebbe stato una regressi
   Ingredienti anche sullo stato completato). Lo script corretto è stato provato su una bozza finta
   di sei righe, non sui dati di Andrea.
 
-### Misura dopo
+### Misura dopo (controller, HEAD `d4296f3`, script corretto) [misurato; durata = ipotesi 120 ms/richiesta]
 
-DA RIEMPIRE DAL CONTROLLER.
+- Stessa lettura del «prima» (`bozza.json`, prompt di `main`): Controlla 27 dubbi che bloccano su 52
+  gruppi (23 con proposta); Ingredienti 0 bloccanti; scritture 5 ingredienti, 28 piatti, 0 cambi →
+  117 richieste, 4,0 s.
+- Lettura col lettore 8c (`bozza-8c.json`, 248 righe, 14 giorni): Controlla 2 su 125 (17 con
+  proposta); Ingredienti 2 bloccanti (2 cambi di unità, 1 senza peso); scritture 11 ingredienti, 30
+  piatti, 2 cambi → 127 richieste, 4,7 s.
+- Prima della 8c: 122 su 124; 133 richieste, 16,2 s.
+
+| | Prima (8b, `bozza.json`) | 8c, lettura vecchia (`bozza.json`) | 8c, lettura nuova (`bozza-8c.json`) |
+|---|---|---|---|
+| Domande che bloccano in Controlla [misurato] | 122 su 124 | 27 su 52 | 2 su 125 |
+| Bloccanti in Ingredienti [misurato] | 0 su 5 | 0 | 2 |
+| Richieste di scrittura [misurato] | 133 | 117 | 127 |
+| Durata [ipotesi 120 ms/richiesta] | 16,2 s | 4,0 s | 4,7 s |
 
 ### L'eval del lettore (Task 5, Step 6, controller; dieta 6, 6 foto, `claude-sonnet-5-5`) [misurato]
 
@@ -380,9 +393,8 @@ DA RIEMPIRE DAL CONTROLLER.
 ### Le letture del PDF di Andrea dopo la lettura di partenza
 
 - Prompt `8261e5b` (12c, prima della correzione): 165 righe, 0 senza quantità, 143 inferite, 22
-  trascritte [misurato]. Il ledger, per la lettura di partenza, riporta due conteggi che non
-  coincidono: «117 senza quantità; trascritte da ~48 a 22» e «13 trascritte, 3 inferite, 148 null».
-  Da riconciliare sul file prima di citarli.
+  trascritte [misurato]. La lettura di partenza, riconciliata: 164 righe, 148 con quantità null, di
+  cui 117 dubbi irrisolti (le altre q.b. o non dubbi); 13 trascritte, 3 inferite [misurato].
 - Prompt definitivo `ab2e467`: giro 1 FALLITO «settimane[1].numero duplicato: 1»; giro 2 FALLITO
   «settimane[1].numero fuori da 1..4»; giro 3 riuscito (5 chiamate, 248 righe, 14 senza quantità,
   142 inferite); giro 4 FALLITO «duplicato: 1». Totale 1/4; col prompt di prima 4/4 [misurato,
@@ -397,8 +409,15 @@ DA RIEMPIRE DAL CONTROLLER.
   pagine in silenzio [ipotesi forte].
 - La lettura completa per la misura finale (`26412a7`): 5 chiamate, 248 righe, 2 settimane, 14
   giorni, 15 senza quantità, 142 inferite [misurato] → `diete/misura-8c/bozza-8c.json`.
-- Costo di queste letture: **non registrato nel ledger**; il ruling del 12d stimava circa 2 € per
-  le quattro letture di verifica [ipotesi].
+
+### I costi
+
+- Eval della dieta 6: 0,61 + 0,31 + 0,60 + 0,61 + 0,55 + 0,32 € [misurato dai log] ≈ 3,0 €.
+- Letture del PDF di Andrea, 11 (2 riuscite col modello vecchio prima della 8c, 9 col ramo, di cui
+  3 fallite in pochi secondi), più le sonde dell'indice (circa 30 chiamate piccole): stima 4–6 €
+  [ipotesi]. Le letture fatte con la sonda non stampano il costo. Comprende l'estrazione per la
+  misura di partenza.
+- Il credito si è esaurito il 03/10 ed è stato ricaricato da Andrea.
 
 ### La migrazione 0016 (Task 1, Step 5)
 
@@ -507,8 +526,8 @@ Dal ledger, non corretti in questa fase:
 2. La sonda nel browser vero sulla cronologia: indietro di passo, e il dialogo di uscita che rimette
    due voci dopo il popstate (Task 10).
 3. `npm test`, `npx tsc --noEmit`, `npm run lint` verdi sul ramo.
-4. `main` è andato avanti (PR #23, icone a due toni): la sezione del 03/10 sulle icone è in coda a
-   DESIGN.md §13 come questa della fase 8c. Al merge si tengono tutte e due.
+4. Il conflitto con la PR #23 (icone a due toni, già su `main`): anche lei aggiunge una sezione del
+   03/10 in coda a DESIGN.md §13. Si risolve al merge tenendo tutte e due le sezioni.
 
 ## Le prove dal telefono da fare
 
