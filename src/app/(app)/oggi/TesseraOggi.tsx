@@ -55,7 +55,8 @@ export function TesseraBianca(p: {
     <Link href={p.href} style={{ ...sopra(p.larga), minHeight: p.larga ? 64 : 104, background: 'var(--superficie)', border: '1px solid var(--bordo)' }}>
       {p.pillola && <span style={{ ...STILE_PILLOLA, background: 'var(--tinta-freddo)', color: 'var(--freddo)' }}>{p.pillola.testo}</span>}
       {p.etichetta && (
-        <span style={{ position: 'relative', zIndex: 1, fontFamily: 'var(--font-mono)', fontSize: 9.5, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--sec)' }}>
+        // --testo-2 e non --sec: l'etichetta («Poi · Cena») porta informazione, e --sec è solo decorazione (3,4:1 su bianco, DESIGN.md §2.1).
+        <span style={{ position: 'relative', zIndex: 1, fontFamily: 'var(--font-mono)', fontSize: 9.5, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--testo-2)' }}>
           {p.etichetta}
         </span>
       )}

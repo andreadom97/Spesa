@@ -424,7 +424,8 @@
   color: var(--superficie); font-family: var(--font-mono); font-size: 11px; font-weight: 700;
   letter-spacing: 0.09em; text-transform: uppercase; text-decoration: none; cursor: pointer;
 }
-.pillola-poster::before { content: ''; position: absolute; inset: -3px 0; }
+/* Il ::before si posiziona sul padding box: 38 meno i 2 px del bordo = 36, più 4 sopra e 4 sotto = 44. */
+.pillola-poster::before { content: ''; position: absolute; inset: -4px 0; }
 /* Stato spento (DESIGN.md §8 Tasti): `disabled` nativo e colori più bassi, non un'opacità. */
 .pillola-poster:disabled { color: var(--poster-casella); border-color: var(--poster-filo); cursor: default; }
 

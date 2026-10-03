@@ -149,6 +149,8 @@ describe('Tessere (spec §D)', () => {
       <TesseraBianca pillola={null} etichetta="Poi · Cena" nome="Farro con zucca" sottotitolo={null} icona={{ chiave: 'pane', area: 'cereali' }} href="/piano" larga />,
     );
     expect(screen.getByText('Poi · Cena')).toBeInTheDocument();
+    // L'etichetta porta informazione: --testo-2 (6,2:1 su bianco), non --sec (3,4:1, solo decorazione).
+    expect(screen.getByText('Poi · Cena').getAttribute('style')).toContain('color: var(--testo-2)');
     expect(screen.queryByText('Scongela')).toBeNull();
     const icona = container.querySelector('svg[data-icona]')!;
     expect(icona).toHaveAttribute('data-tono', 'area');
