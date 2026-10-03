@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import type { MealSlotDef } from '@/domain/types';
 import type { PastoEstratto, PianoEstratto, StatoRevisione } from '@/domain/import/types';
-import { chiavePasto, pastoEffettivo } from '@/domain/import/types';
+import { chiavePasto, pastoEffettivo, unitaBaseDi } from '@/domain/import/types';
 import { normalizza } from '@/domain/import/mapping';
 import {
   cambiaRiga, chiaveGruppo, etichettaGiorno, righeDelPasto, rigaIrrisolta, togliRiga, unitaDelGruppo, unitaNota,
@@ -97,7 +97,7 @@ export function FoglioGiorno({ piano, stato, slotDefs, settimana, giorno, onCamb
                 etichetta={r.riga.alimento}
                 nota={`Sul foglio: «${r.riga.testoOriginale}»${r.riga.quantitaInferita ? ' · quantità proposta da me' : ''}`}
                 quantita={r.riga.quantita}
-                unita={r.riga.unita ?? nota}
+                unita={unitaBaseDi(r.riga.unita) ?? nota}
                 scegliUnita={pillole}
                 dubbio={irrisolta}
                 avviso={irrisolta ? (pillole ? AVVISO_SENZA_PESO : AVVISO_SENZA_QUANTITA) : undefined}

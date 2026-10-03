@@ -430,3 +430,14 @@ describe('giornata_unica e griglia_alternative: un solo giorno vale ogni giorno'
     expect(scritture.piattiDaCreare[0]).toMatchObject({ nome: 'Riso e pollo', settimanaCiclo: null, giornoCiclo: null });
   });
 });
+
+describe('traduciBozza — una riga a cucchiai non convertita (spec 8c §C)', () => {
+  it('ferma tutto: i cucchiai si convertono in Controlla', () => {
+    const piano = structuredClone(PIANO_GIORNATA_UNICA);
+    piano.settimane[0].giorni[0].pasti[0].piatti[0].righeFisse = [
+      { alimento: 'olio extravergine di oliva', quantita: 1, unita: 'cucchiaio', quantitaInferita: false, testoOriginale: '1 cucchiaio di olio' },
+    ];
+    const stato: StatoRevisione = { passo: 'riepilogo', mappaturaPasti: { pranzo: 's-1' }, pastiConfermati: [], correzioni: {}, ingredientiNuovi: [] };
+    expect(() => traduciBozza(piano, stato, [], [], '2026-10-05')).toThrow('Cucchiai non convertiti per "1 cucchiaio di olio"');
+  });
+});

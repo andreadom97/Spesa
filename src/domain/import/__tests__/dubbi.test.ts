@@ -483,3 +483,15 @@ describe('differenziale: la Revisione di prima contro i dubbi', () => {
     expect(scritture(nuove)).toEqual(scritture(vecchie));
   });
 });
+
+describe('una riga a cucchiai è un dubbio (spec 8c §C)', () => {
+  it('irrisolta finché non si converte, e l\'unità a cucchiai non fissa l\'unità di nessuno', () => {
+    const piano = structuredClone(PIANO_GIORNATA_UNICA);
+    piano.settimane[0].giorni[0].pasti[0].piatti[0].righeFisse = [
+      { alimento: 'miele', quantita: 1, unita: 'cucchiaio', quantitaInferita: false, testoOriginale: '1 cucchiaio di miele' },
+    ];
+    const stato = { ...STATO, mappaturaPasti: { pranzo: 's-pranzo' } };
+    expect(gruppiRighe(piano, stato)).toEqual([expect.objectContaining({ chiave: 'miele|1 cucchiaio di miele', stato: 'aperto', unita: null, unitaFissa: null })]);
+    expect(unitaNota(piano, stato, 'miele')).toBeNull();
+  });
+});

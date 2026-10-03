@@ -7,7 +7,8 @@ export class PianoNonValidoError extends Error {
   }
 }
 
-const UNITA = new Set(['g', 'ml', 'pz']);
+/** Le unità che il lettore può scrivere: le tre di base e i cucchiai (spec 8c §C). */
+const UNITA = new Set(['g', 'ml', 'pz', 'cucchiaio', 'cucchiaino']);
 
 function ogg(v: unknown, percorso: string): Record<string, unknown> {
   if (typeof v !== 'object' || v === null || Array.isArray(v)) throw new PianoNonValidoError(percorso, 'non è un oggetto');

@@ -1,6 +1,6 @@
 import type { MealSlotDef, UnitaBase } from '@/domain/types';
 import type { PastoEstratto, PianoEstratto, RigaEstratta, StatoRevisione } from './types';
-import { chiavePasto, pastoEffettivo } from './types';
+import { chiavePasto, pastoEffettivo, unitaBaseDi } from './types';
 import { normalizza, proponiSlot } from './mapping';
 
 /**
@@ -20,9 +20,9 @@ export function chiaveGruppo(riga: RigaEstratta): string {
   return `${normalizza(riga.alimento)}|${riga.testoOriginale}`;
 }
 
-/** Quantità o unità mancante: le due vanno insieme (valida.ts), ma basta una per bloccare. */
+/** Quantità o unità mancante, o i cucchiai ancora da convertire (spec 8c §C): basta una per bloccare. */
 export function rigaIrrisolta(riga: RigaEstratta): boolean {
-  return riga.quantita === null || riga.unita === null;
+  return riga.quantita === null || riga.unita === null || riga.unita === 'cucchiaio' || riga.unita === 'cucchiaino';
 }
 
 /** Dove sta una riga nel suo pasto. `componente` e `opzione` sono null per una riga fissa. */
@@ -270,7 +270,8 @@ export function unitaNota(piano: PianoEstratto, stato: StatoRevisione, alimento:
       const chiave = chiaveGruppo(riga);
       if (escludi !== undefined && chiave === escludi) continue;
       if (irrisolti.has(chiave)) continue;
-      if (riga.unita !== null) return riga.unita;
+      const unita = unitaBaseDi(riga.unita);
+      if (unita !== null) return unita;
     }
   }
   return null;
@@ -291,7 +292,7 @@ export function unitaDelGruppo(
     for (const { riga, posizione } of righeDelPasto(p.effettivo)) {
       if (chiaveGruppo(riga) !== chiave || rigaIrrisolta(riga)) continue;
       if (p.chiave === escludi.pasto && stessaPosizione(posizione, escludi.posizione)) continue;
-      return riga.unita;
+      return unitaBaseDi(riga.unita);
     }
   }
   return null;
@@ -316,7 +317,7 @@ export function gruppiRighe(piano: PianoEstratto, stato: StatoRevisione): Gruppo
     const statoGruppo: StatoGruppo = righe.length === 0 ? 'tolto' : risolte.length < righe.length || diverse ? 'aperto' : 'fatto';
     // L'unità comune si calcola a parte dalla quantità (I1): con quantità diverse nei giorni la
     // riga resta scrivibile, perché il numero nuovo ha comunque la sua unità.
-    const unitaComune = risolte.length > 0 && !diverse ? risolte[0].unita : null;
+    const unitaComune = risolte.length > 0 && !diverse ? unitaBaseDi(risolte[0].unita) : null;
     const prima = righe[0];
     const quantitaComune = unitaComune !== null && risolte.length === righe.length
       && righe.every((x) => x.quantita === prima.quantita) ? prima.quantita : null;

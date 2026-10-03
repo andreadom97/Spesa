@@ -327,3 +327,23 @@ describe('validaStatoRevisione — prezzo per confezione degli ingredienti nuovi
     expect(() => validaStatoRevisione(stato('riso' as unknown as Record<string, unknown>))).toThrow(PianoNonValidoError);
   });
 });
+
+describe('validaEsito — i cucchiai (spec 8c §C)', () => {
+  const conRiga = (riga: Record<string, unknown>) => ({
+    tipo: 'piano',
+    piano: {
+      archetipo: 'giornata_unica', fonte: 'test', noteEstrazione: [],
+      settimane: [{ numero: 1, giorni: [{ giorno: 0, titolo: null, pasti: [{ nomeOriginale: 'pranzo', piatti: [{ nome: 'Insalata', descrizione: null, componenti: [], righeFisse: [riga] }] }] }] }],
+    },
+  });
+
+  it('cucchiaio e cucchiaino sono unità ammesse', () => {
+    const esito = validaEsito(conRiga({ alimento: 'olio', quantita: 1, unita: 'cucchiaio', quantitaInferita: false, testoOriginale: '1 cucchiaio di olio' }));
+    expect(esito.tipo === 'piano' && esito.piano.settimane[0].giorni[0].pasti[0].piatti[0].righeFisse[0].unita).toBe('cucchiaio');
+    expect(() => validaEsito(conRiga({ alimento: 'miele', quantita: 2, unita: 'cucchiaino', quantitaInferita: false, testoOriginale: '2 cucchiaini di miele' }))).not.toThrow();
+  });
+
+  it('una tazza no', () => {
+    expect(() => validaEsito(conRiga({ alimento: 'latte', quantita: 1, unita: 'tazza', quantitaInferita: false, testoOriginale: '1 tazza di latte' }))).toThrow(PianoNonValidoError);
+  });
+});

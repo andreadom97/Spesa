@@ -1,6 +1,6 @@
 import type { Ingredient, MealSlotDef, UnitaBase } from '@/domain/types';
 import type { PastoEstratto, PianoEstratto, RigaEstratta } from './types';
-import { NOME_PASTO_CONDIMENTI, pastoEffettivo } from './types';
+import { NOME_PASTO_CONDIMENTI, pastoEffettivo, unitaBaseDi } from './types';
 
 export function normalizza(s: string): string {
   return s
@@ -84,10 +84,12 @@ export function ingredientiDaAbbinare(
         for (const riga of tutteLeRighe(pasto)) {
           const chiave = normalizza(riga.alimento);
           const esistente = visti.get(chiave);
+          // I cucchiai non sono un'unità dell'ingrediente: valgono come «senza unità».
+          const unita = unitaBaseDi(riga.unita);
           // Un'unità nota vince su null: la prima riga con grammatura fissa il tipo.
-          if (!esistente || (esistente.unita === null && riga.unita !== null)) {
+          if (!esistente || (esistente.unita === null && unita !== null)) {
             // `grezzo` resta quello della prima riga: accenti e maiuscole per il nome proposto.
-            visti.set(chiave, { alimento: chiave, grezzo: esistente?.grezzo ?? riga.alimento, unita: riga.unita });
+            visti.set(chiave, { alimento: chiave, grezzo: esistente?.grezzo ?? riga.alimento, unita });
           }
         }
       });

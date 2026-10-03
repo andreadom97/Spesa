@@ -73,23 +73,27 @@ function risolviRiga(
   if (riga.quantita === null) {
     throw new BozzaIncompletaError(`Quantità non risolta per "${riga.testoOriginale}"`);
   }
+  if (riga.unita === 'cucchiaio' || riga.unita === 'cucchiaino') {
+    throw new BozzaIncompletaError(`Cucchiai non convertiti per "${riga.testoOriginale}"`);
+  }
   if (riga.unita === null) {
     throw new BozzaIncompletaError(`Unità non indicata per "${riga.testoOriginale}"`);
   }
-  const esistente = abbina(riga.alimento, riga.unita, ingredientiEsistenti);
-  if (esistente) return { ingredientId: esistente.id, quantita: riga.quantita, unita: riga.unita };
+  const unita: UnitaBase = riga.unita;
+  const esistente = abbina(riga.alimento, unita, ingredientiEsistenti);
+  if (esistente) return { ingredientId: esistente.id, quantita: riga.quantita, unita };
   const chiave = normalizza(riga.alimento);
   const nuovo = ingredientiNuovi.find((i) => normalizza(i.alimento) === chiave);
   if (!nuovo) throw new BozzaIncompletaError(`Ingrediente non risolto: "${riga.alimento}"`);
-  const giaCreato = abbina(nuovo.nome, riga.unita, ingredientiEsistenti);
-  if (giaCreato) return { ingredientId: giaCreato.id, quantita: riga.quantita, unita: riga.unita };
-  if (riga.unita !== nuovo.unitaBase) {
+  const giaCreato = abbina(nuovo.nome, unita, ingredientiEsistenti);
+  if (giaCreato) return { ingredientId: giaCreato.id, quantita: riga.quantita, unita };
+  if (unita !== nuovo.unitaBase) {
     throw new BozzaIncompletaError(
-      `Unità incompatibile per "${riga.alimento}": la riga usa "${riga.unita}", la proposta "${nuovo.unitaBase}"`,
+      `Unità incompatibile per "${riga.alimento}": la riga usa "${unita}", la proposta "${nuovo.unitaBase}"`,
     );
   }
   usati.add(chiave);
-  return { nuovoAlimento: nuovo.alimento, quantita: riga.quantita, unita: riga.unita };
+  return { nuovoAlimento: nuovo.alimento, quantita: riga.quantita, unita };
 }
 
 /**

@@ -17,7 +17,8 @@ export interface RigaEstratta {
   alimento: string;
   /** null = quantità non in grammi/ml/pz ("q.b.", "1 scatoletta piccola"): la risolve l'utente in revisione. */
   quantita: number | null;
-  unita: UnitaBase | null;
+  /** Le tre di base, o i cucchiai che l'import converte in Controlla (spec 8c §C). null insieme a `quantita` null. */
+  unita: UnitaRiga | null;
   /** true = quantità proposta dal modello per una riga senza grammatura scritta ("q.b."): in revisione va evidenziata e confermata. */
   quantitaInferita: boolean;
   /** Il testo letto dal foglio, mai riscritto: è la garanzia anti-fabbricazione mostrata in revisione. */

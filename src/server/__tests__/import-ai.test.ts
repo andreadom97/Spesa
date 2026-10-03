@@ -153,6 +153,17 @@ describe('estraiPiano (v1, una chiamata)', () => {
     expect(contenuto[contenuto.length - 1].type).toBe('text');
   });
 
+  it('lo schema e il prompt ammettono cucchiaio e cucchiaino, con un esempio (spec 8c §C)', async () => {
+    finto.stato.risposte.push({ corpo: RIFIUTO });
+    await estraiPiano(FOTO, 'claude-sonnet-5');
+    const args = finto.stato.chiamate[0];
+    const riga = args.output_config.format.schema.anyOf[0].properties.piano.properties.settimane.items
+      .properties.giorni.items.properties.pasti.items.properties.piatti.items.properties.righeFisse.items;
+    expect(riga.properties.unita.anyOf[0].enum).toEqual(['g', 'ml', 'pz', 'cucchiaio', 'cucchiaino']);
+    expect(args.system).toContain('"unita":"g"|"ml"|"pz"|"cucchiaio"|"cucchiaino"|null');
+    expect(args.system).toContain('"2 cucchiaini di miele"');
+  });
+
   it('un PDF diventa un blocco document', async () => {
     finto.stato.risposte.push({ corpo: RIFIUTO });
     await estraiPiano([{ tipo: 'pdf', mime: 'application/pdf', base64: 'QUJD' }], 'claude-sonnet-5');
