@@ -366,7 +366,7 @@ async function chiamaModello(client: Anthropic, parametri: ParametriStream): Pro
       .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === 'text')
       .map((b) => b.text)
       .join('');
-    const grezzo: unknown = JSON.parse(estraiJson(testo));
+    const grezzo: unknown = JSON.parse(estraiJson(testo, risposta.stop_reason ?? null));
     return { grezzo, uso: usoDa(risposta.usage, Date.now() - inizio) };
   };
   try {
@@ -402,9 +402,13 @@ export async function estraiPiano(files: FileEstrazione[], modello: string): Pro
 /**
  * Passaggio A (spec §2.1): tutte le pagine in ingresso, output piccolo. Grezzo: lo
  * valida `validaIndice` a valle (nell'orchestratore), come la v1 con validaEsito.
+ * `max_tokens` 32000 come le pagine: il modello ragiona prima del JSON, e il
+ * ragionamento conta. Con 4000, su un PDF di 10 pagine, 3 giri su 3 finivano i
+ * token prima del JSON; con 16000 passavano usandone fra 5000 e 9700 (misurato il
+ * 03/10). Si pagano i token usati, non il tetto.
  */
 export function estraiIndice(files: FileEstrazione[], modello: string): Promise<EstrazioneConUso> {
-  return chiamaModello(clientAnthropic(), parametriRichiesta(files, modello, 4000, SCHEMA_INDICE, istruzioneIndice(files.length)));
+  return chiamaModello(clientAnthropic(), parametriRichiesta(files, modello, 32000, SCHEMA_INDICE, istruzioneIndice(files.length)));
 }
 
 /**

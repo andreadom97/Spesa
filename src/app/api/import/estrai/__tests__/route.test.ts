@@ -32,6 +32,7 @@ import { FIXTURE_MENU_SETTIMANALE, FIXTURE_RIFIUTO_MACRO } from '@/domain/import
 import { PianoNonValidoError } from '@/domain/import/valida';
 import { PdfIllegibileError, TroppePagineError } from '@/server/pdf-pagine';
 import { MODELLO_DEFAULT_IMPORT } from '@/server/import-ai';
+import { RispostaSenzaJsonError } from '@/server/anthropic';
 
 const USO = { chiamate: 1, inputTokens: 10, outputTokens: 5, cacheLetti: 0, cacheScritti: 0, durataMs: 1 };
 const conUso = (grezzo: unknown) => ({ grezzo, uso: USO });
@@ -177,6 +178,16 @@ describe('POST /api/import/estrai', () => {
     const res = await POST(richiesta());
     expect(res.status).toBe(502);
     expect((await res.json()).errore).toBe('estrazione non riuscita, riprova');
+  });
+
+  it('con chiave: risposta senza JSON → 502, e il log dice perché il modello si è fermato', async () => {
+    process.env.ANTHROPIC_API_KEY = 'k';
+    estraiPianoAPagineMock.mockRejectedValue(new RispostaSenzaJsonError('max_tokens'));
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const res = await POST(richiesta());
+    expect(res.status).toBe(502);
+    expect(log).toHaveBeenCalledWith('import/estrai: estrazione fallita.', 'RispostaSenzaJsonError', 'stop=max_tokens');
+    log.mockRestore();
   });
 
   it('con chiave: PianoNonValidoError dalla pipeline (indice o pagina) → 422', async () => {
