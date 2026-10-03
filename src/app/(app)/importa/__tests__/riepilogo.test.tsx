@@ -158,6 +158,55 @@ describe('Riepilogo (spec fase 8a §C)', () => {
     });
   });
 
+  describe('le stime del lettore portate in un\'altra unità (fix round 1, I1)', () => {
+    const esistente = (id: string, nome: string, unitaBase: Ingredient['unitaBase']): Ingredient => ({
+      id, nome, unitaBase, area: 'ortofrutta', classeResiduo: 'porzionabile', deperibile: true, formatoConfezione: 500, prezzoConfezione: null, ean: null,
+    });
+    const pianoStimato = (alimento: string, quantita: number, unita: 'g' | 'pz', altre = 0): PianoEstratto => {
+      const piano = structuredClone(PIANO_SEMPLICE);
+      const stima = { alimento, quantita, unita, quantitaInferita: true, testoOriginale: alimento };
+      piano.settimane[0].giorni[0].pasti[0].piatti[0].righeFisse = Array.from({ length: 1 + altre }, () => ({ ...stima }));
+      return piano;
+    };
+    const stato = (): StatoRevisione => ({ ...STATO_OK, ingredientiNuovi: [] });
+
+    it('«Sedano: 1 pz, quindi 50 g»: la riga c\'è, coi due valori, e dice che è col peso di un pezzo', async () => {
+      vi.mocked(leggiBozzaImport).mockResolvedValue({ piano: pianoStimato('sedano', 1, 'pz'), statoRevisione: stato() });
+      vi.mocked(leggiIngredienti).mockResolvedValue([esistente('i-sed', 'Sedano', 'g')]);
+      await riprendiBozza();
+
+      const stime = await screen.findByRole('list', { name: 'Le quantità che ho stimato io' });
+      // Il titolo e il testo secondario (8c-bis, review finale M3).
+      expect(screen.getByRole('heading', { name: 'Le quantità che ho stimato io' })).toBeInTheDocument();
+      expect(screen.getByText('Le ho portate nell\'unità che usi tu.')).toBeInTheDocument();
+      const riga = within(stime).getByText('Sedano').closest('li')!;
+      expect(riga).toHaveTextContent('1 pz, quindi 50 g');
+      expect(riga).toHaveTextContent('Con il peso medio di un pezzo');
+      expect(riga).not.toHaveTextContent('Stima rifatta da me');
+    });
+
+    it('senza il peso di un pezzo la stima è rifatta e lo dice; più righe: il conto', async () => {
+      vi.mocked(leggiBozzaImport).mockResolvedValue({ piano: pianoStimato('lattuga', 50, 'g', 2), statoRevisione: stato() });
+      vi.mocked(leggiIngredienti).mockResolvedValue([esistente('i-lat', 'Lattuga', 'pz')]);
+      await riprendiBozza();
+
+      const stime = await screen.findByRole('list', { name: 'Le quantità che ho stimato io' });
+      const riga = within(stime).getByText('Lattuga').closest('li')!;
+      expect(riga).toHaveTextContent('50 g, quindi 1 pz');
+      expect(riga).toHaveTextContent('Stima rifatta da me');
+      expect(riga).not.toHaveTextContent('Con il peso medio di un pezzo');
+      expect(riga).toHaveTextContent('3 righe, qui la prima');
+    });
+
+    it('senza stime portate non c\'è la sezione', async () => {
+      vi.mocked(leggiBozzaImport).mockResolvedValue({ piano: PIANO_SEMPLICE, statoRevisione: STATO_OK });
+      await riprendiBozza();
+      await screen.findByRole('list', { name: 'Il conto dell\'import' });
+      expect(screen.queryByRole('list', { name: /ho stimato io/ })).toBeNull();
+      expect(screen.queryByText('Le ho portate nell\'unità che usi tu.')).toBeNull();
+    });
+  });
+
   it('caricamento fallito: uno stato vuoto, e RIPROVA rilegge', async () => {
     vi.mocked(leggiBozzaImport).mockResolvedValue({ piano: PIANO_SEMPLICE, statoRevisione: STATO_OK });
     // La prima lettura è quella della pagina al mount (Task 11, l'esempio della Scheda del cambio);
@@ -291,7 +340,7 @@ describe('Riepilogo (spec fase 8a §C)', () => {
   });
 
   it('testoDialogo: il sostantivo c\'è sempre, anche senza piatti nuovi (correzione D11)', () => {
-    const r = { piattiNuovi: 0, piattiAggiornati: 12, piattiTolti: 4, ingredientiNuovi: 0, cambi: [], pianoAttuale: true };
+    const r = { piattiNuovi: 0, piattiAggiornati: 12, piattiTolti: 4, ingredientiNuovi: 0, cambi: [], stime: [], pianoAttuale: true };
     expect(testoDialogo(r)).toBe('12 piatti aggiornati, 4 tolti da Piatti. I tuoi piatti restano.');
     expect(testoDialogo({ ...r, piattiNuovi: 3 })).toBe('3 piatti nuovi, 12 aggiornati, 4 tolti da Piatti. I tuoi piatti restano.');
     expect(testoDialogo({ ...r, piattiAggiornati: 0, piattiTolti: 1 })).toBe('1 piatto tolto da Piatti. I tuoi piatti restano.');

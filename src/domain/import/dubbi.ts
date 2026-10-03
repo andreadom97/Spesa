@@ -1,8 +1,8 @@
 import type { Ingredient, MealSlotDef, UnitaBase } from '@/domain/types';
 import type { PastoEstratto, PianoEstratto, RigaEstratta, StatoRevisione } from './types';
 import { chiavePasto, pastoEffettivo, unitaBaseDi } from './types';
-import { normalizza, proponiSlot, quantoBasta } from './mapping';
-import { arrotonda, categoriaDi, convertiCucchiai, convertiPezzi, pesoPezzo, porzioneTipica, proponi, testoConversione } from './formati-tipici';
+import { normalizza, proponiSlot, quantoBasta, stessoNome } from './mapping';
+import { arrotonda, convertiCucchiai, pesoPezzo, porzioneNellUnita, proponi, testoConversione } from './formati-tipici';
 
 /**
  * I dubbi di Controlla (spec 8b §B): cosa l'AI non sa e va chiesto, e le scritture che
@@ -406,7 +406,7 @@ export function unitaDelGruppo(
 
 /** L'unità in cui va la riga: quella di un ingrediente che hai con lo stesso nome, poi quella di un'altra riga del piano. */
 function unitaVerso(piano: PianoEstratto, stato: StatoRevisione, alimento: string, chiave: string, esistenti: Ingredient[]): UnitaBase | null {
-  const esistente = esistenti.find((e) => normalizza(e.nome) === alimento);
+  const esistente = esistenti.find((e) => stessoNome(normalizza(e.nome), alimento));
   return esistente?.unitaBase ?? unitaNota(piano, stato, alimento, chiave);
 }
 
@@ -459,16 +459,10 @@ function propostaPer(
       testo: testoConversione({ quantita: irrisolta.quantita, unita: irrisolta.unita }, { quantita, unita: destinazione }),
     };
   }
-  const porzione = porzioneTipica(alimento);
-  if (!porzione) return null;
-  const { origine } = porzione;
-  if (verso === null || verso === porzione.unita) return { quantita: porzione.quantita, unita: porzione.unita, origine, testo: null };
-  const peso = pesoScritto(stato, alimento, esistenti) ?? pesoPezzo(alimento);
-  const convertita = peso === null ? null : convertiPezzi(porzione.quantita, porzione.unita, verso, peso);
-  if (convertita !== null) return { quantita: convertita, unita: verso, origine, testo: null };
-  // Ruling del Task 12b: verdure e frutta a pezzi, senza il peso di un pezzo, sono 1 pz.
-  if (verso === 'pz' && categoriaDi(alimento) !== null) return { quantita: 1, unita: 'pz', origine, testo: null };
-  return null;
+  // La stessa regola della stima rifatta nell'import (`stimaNellUnita`, correzione 8c-bis C):
+  // porzione tipica, convertita col peso di un pezzo; verdure e frutta a pezzi senza peso sono 1 pz.
+  const porzione = porzioneNellUnita(alimento, verso, pesoScritto(stato, alimento, esistenti) ?? pesoPezzo(alimento));
+  return porzione ? { ...porzione, testo: null } : null;
 }
 
 /**
@@ -478,7 +472,7 @@ function propostaPer(
  * qui si salta, perché è solo una proposta.
  */
 function pesoScritto(stato: StatoRevisione, alimento: string, esistenti: Ingredient[]): number | null {
-  const esistente = esistenti.find((e) => normalizza(e.nome) === alimento);
+  const esistente = esistenti.find((e) => stessoNome(normalizza(e.nome), alimento));
   const scritti = [esistente ? stato.cambiUnita?.[esistente.id]?.pesoPezzo : undefined, stato.cambiUnita?.[alimento]?.pesoPezzo];
   return scritti.find((p): p is number => typeof p === 'number' && Number.isFinite(p) && p > 0) ?? null;
 }
@@ -704,17 +698,21 @@ export function anteprimaTogli(piano: PianoEstratto, stato: StatoRevisione, chia
  * CONFERMA I PASTI: le proposte dei dubbi aperti scritte nelle correzioni come «proposta da me»
  * (`quantitaInferita: true`, spec 8c §D), tutte le chiavi del piano in `pastiConfermati` e il passo
  * dopo, in uno stato solo. La porzione e i cucchiai riempiono le righe ancora irrisolte; l'unità
- * più frequente riscrive tutte le righe del gruppo, tranne quelle q.b., che restano com'erano.
+ * più frequente porta nella sua unità le righe che non ci sono, tranne quelle q.b., che restano
+ * com'erano: anche le righe già in quell'unità restano intatte (review finale 8c-bis, I1).
  */
 export function confermaTutti(piano: PianoEstratto, stato: StatoRevisione, esistenti: Ingredient[] = []): StatoRevisione {
   let nuovo = stato;
   for (const g of gruppiRighe(piano, stato, esistenti)) {
     if (g.stato !== 'aperto' || g.proposta === null) continue;
     const p = g.proposta;
-    nuovo = suOgniRigaDelGruppo(piano, nuovo, g.chiave, (riga) =>
-      !quantoBasta(riga) && (p.origine === 'unitaFrequente' || rigaIrrisolta(riga))
-        ? { ...riga, quantita: p.quantita, unita: p.unita, quantitaInferita: true }
-        : riga);
+    nuovo = suOgniRigaDelGruppo(piano, nuovo, g.chiave, (riga) => {
+      if (quantoBasta(riga) || (p.origine !== 'unitaFrequente' && !rigaIrrisolta(riga))) return riga;
+      // Una riga già nell'unità scelta resta com'è, anche trascritta (correzione 8c-bis, review
+      // finale I1): solo la trascritta vota l'unità finale e solo le righe riscritte sono stime.
+      if (p.origine === 'unitaFrequente' && riga.quantita !== null && unitaBaseDi(riga.unita) === p.unita) return riga;
+      return { ...riga, quantita: p.quantita, unita: p.unita, quantitaInferita: true };
+    });
   }
   return { ...nuovo, pastiConfermati: pastiDelPiano(piano, nuovo).map((x) => x.chiave), passo: 'formati' };
 }

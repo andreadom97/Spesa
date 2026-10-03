@@ -15,6 +15,7 @@ import { SelettoreFoglio } from '@/components/SelettoreFoglio';
 import { FoglioDalBasso } from '@/components/FoglioDalBasso';
 import { DialogoConferma } from '@/components/DialogoConferma';
 import { Dock } from '@/components/Dock';
+import { ordinaPastiPerSlot, posizioniMedieNelGiorno } from '@/domain/import/mapping';
 import { useLivelliImporta } from './livelli';
 import { AVVISO_SENZA_PESO, AVVISO_SENZA_QUANTITA, AVVISO_UNITA_DIVERSE, FoglioGiorno, nomeGiorno } from './FoglioGiorno';
 import { TitoloSezione, capitalizza, nomePasto, plurale } from './sezione';
@@ -102,7 +103,10 @@ export function Controlla({ piano, stato, slotDefs, ingredientiEsistenti = [], o
     else setLivello(null);
   }
   // Un solo indietro per la bozza (spec 8c §F): i livelli di Controlla, e senza livelli il dialogo di uscita.
-  const { esci } = useLivelliImporta(livello ? 1 : 0, chiudiLivello, () => setLivello({ tipo: 'esci' }));
+  // Il dialogo di uscita arriva sempre da un indietro (la pillola della testata esce con `esci()`
+  // senza dialogo): niente voci di cronologia finché è aperto, i push senza tocco fanno uscire
+  // l'app al secondo indietro (correzione 8c-bis, prove dal telefono del 03/10; vedi `LivelliImporta`).
+  const { esci } = useLivelliImporta(livello ? 1 : 0, chiudiLivello, () => setLivello({ tipo: 'esci' }), livello?.tipo === 'esci');
 
   const voci = vociPasti(piano, stato, slotDefs);
   const gruppi = gruppiRighe(piano, stato, ingredientiEsistenti);
@@ -111,7 +115,9 @@ export function Controlla({ piano, stato, slotDefs, ingredientiEsistenti = [], o
   const irrisolti = gruppi.filter((g) => g.tipo === 'irrisolta');
   const inferiti = gruppi.filter((g) => g.tipo !== 'irrisolta');
   const pastiDaSistemare = voci.filter((v) => v.daSistemare);
-  const pastiAbbinati = voci.filter((v) => !v.daSistemare);
+  // «Dove vanno i pasti» nell'ordine della casa (slot, poi posizione nel giorno), non della dieta
+  // (correzione 8c-bis D, prove dal telefono del 03/10).
+  const pastiAbbinati = ordinaPastiPerSlot(voci.filter((v) => !v.daSistemare), slotDefs, posizioniMedieNelGiorno(piano));
   const aperti = pastiDaSistemare.filter((v) => v.slotDefId === null).length
     + irrisolti.filter((g) => g.stato === 'aperto' && g.proposta === null).length;
   const c = conteggi(piano, stato);

@@ -1,7 +1,7 @@
 import type { Dish, Ingredient, UnitaBase } from '@/domain/types';
 import type { IngredienteProposto, PianoEstratto, StatoRevisione } from './types';
 import { SCELTA_NUOVO, pastoEffettivo, unitaBaseDi } from './types';
-import { abbina, ingredientiDaAbbinare, normalizza, righeDelPiano, unitaDellaRiga, unitaPrevalente } from './mapping';
+import { abbina, ingredientiDaAbbinare, normalizza, righeDelPiano, stessoNome, unitaPrevalente, unitaTrascritta } from './mapping';
 import { origineProposta, pesoPezzo, proponi } from './formati-tipici';
 
 /**
@@ -18,7 +18,8 @@ import { origineProposta, pesoPezzo, proponi } from './formati-tipici';
  * con «È lo stesso di…»). Spostata qui da Formati.tsx (fase 8b).
  *
  * Una proposta conservata con un'unità diversa da quella (non nulla) che prevale fra le righe
- * (`unitaPrevalente`: con righe in g e in pz la più frequente) non si conserva: si ripropone da capo. Viene dalle bozze di Formati, che lasciava cambiare l'unità;
+ * (`unitaPrevalente`: con righe in g e in pz la più frequente; votano le righe trascritte, le
+ * stime del lettore solo se non ce n'è nessuna, correzione 8c-bis C) non si conserva: si ripropone da capo. Viene dalle bozze di Formati, che lasciava cambiare l'unità;
  * tenuta così manderebbe il riepilogo in `BozzaIncompletaError` (decisione 7), e nel passo
  * Ingredienti l'unità non si cambia più. Un alimento che `abbina` aggancia a un ingrediente che
  * hai, anche con un'altra unità (il secondo livello, spec 8c §A.2), non è una proposta: è un
@@ -30,13 +31,69 @@ export function calcolaProposte(
   esistenti: Ingredient[],
 ): IngredienteProposto[] {
   const giaProposti = new Map(stato.ingredientiNuovi.map((i) => [i.alimento, i]));
-  return ingredientiDaAbbinare(piano, stato.correzioni)
-    .filter(({ alimento, unita }) => !abbina(alimento, unita, esistenti))
-    .map(({ alimento, grezzo, unita }) => {
-      const conservata = giaProposti.get(alimento);
-      // `proponi` normalizza da sé la chiave; dal grezzo il nome tiene accenti e maiuscole («Caffè»).
-      return conservata && (unita === null || conservata.unitaBase === unita) ? conservata : proponi(grezzo, unita);
-    });
+  const { capi } = fratelliSenzaAbbinamento(ingredientiDaAbbinare(piano, stato.correzioni), esistenti);
+  return capi.map(({ capo, unita, membri }) => {
+    // La proposta già in bozza: del capo, o di un fratello (una bozza vecchia con solo «banane»).
+    const conservata = giaProposti.get(capo.alimento) ?? membri.map((m) => giaProposti.get(m)).find((p) => p !== undefined);
+    // `proponi` normalizza da sé la chiave; dal grezzo il nome tiene accenti e maiuscole («Caffè»).
+    return conservata && (unita === null || conservata.unitaBase === unita) ? conservata : proponi(capo.grezzo, unita);
+  });
+}
+
+type VoceDaAbbinare = ReturnType<typeof ingredientiDaAbbinare>[number];
+
+/**
+ * Due insiemi di unità trascritte stanno nello stesso ingrediente se ogni coppia è la stessa unità
+ * o è fra g e pz (che si convertono col peso di un pezzo); ml con g o pz no, servirebbe una densità
+ * (review finale 8c-bis, M1: «frullato di banana» 200 ml e «frullati di banana» 100 g). Se uno dei
+ * due non ha trascritte, non c'è niente in contrasto e si uniscono come prima.
+ */
+function unitaCompatibili(a: UnitaBase[], b: UnitaBase[]): boolean {
+  return a.every((x) => b.every((y) => x === y || (gOpz(x) && gOpz(y))));
+}
+
+/**
+ * Gli alimenti del piano senza un ingrediente che hai, uniti per `stessoNome` (fix round 1 dell'8c-bis,
+ * I2): «1 banana» e «2 banane» sono un alimento solo, una proposta sola e un ingrediente solo al commit.
+ * Il capo è il primo del gruppo nell'ordine del piano; l'unità è quella che prevale fra le righe di
+ * tutti i fratelli (le trascritte, poi le stime: come `ingredientiDaAbbinare`). Le chiavi salvate nella
+ * bozza non cambiano: la proposta resta quella del capo.
+ */
+function fratelliSenzaAbbinamento(
+  voci: VoceDaAbbinare[],
+  esistenti: Ingredient[],
+): { capi: { capo: VoceDaAbbinare; unita: UnitaBase | null; membri: string[] }[]; capoDi: Map<string, string> } {
+  const gruppi: { capo: VoceDaAbbinare; trascritte: UnitaBase[]; viste: UnitaBase[]; membri: string[] }[] = [];
+  const capoDi = new Map<string, string>();
+  for (const voce of voci) {
+    if (abbina(voce.alimento, voce.unita, esistenti)) continue;
+    const gruppo = gruppi.find((g) => stessoNome(g.capo.alimento, voce.alimento) && unitaCompatibili(g.trascritte, voce.unitaTrascritte));
+    if (gruppo) {
+      gruppo.trascritte.push(...voce.unitaTrascritte);
+      gruppo.viste.push(...voce.unitaViste);
+      gruppo.membri.push(voce.alimento);
+      capoDi.set(voce.alimento, gruppo.capo.alimento);
+    } else {
+      gruppi.push({ capo: voce, trascritte: [...voce.unitaTrascritte], viste: [...voce.unitaViste], membri: [voce.alimento] });
+      capoDi.set(voce.alimento, voce.alimento);
+    }
+  }
+  const capi = gruppi.map((g) => ({
+    capo: g.capo,
+    // Un gruppo di un alimento solo ha già la sua unità: la stessa di prima.
+    unita: g.membri.length === 1 ? g.capo.unita : unitaPrevalente(g.trascritte) ?? unitaPrevalente(g.viste),
+    membri: g.membri,
+  }));
+  return { capi, capoDi };
+}
+
+/**
+ * La proposta di un alimento senza abbinamento fra quelle della bozza: quella del suo capo, poi la
+ * sua, poi quella di un fratello per `stessoNome` (preferendo sempre l'uguaglianza esatta).
+ */
+function propostaDi(proposte: IngredienteProposto[], capo: string, alimento: string): IngredienteProposto | undefined {
+  const per = (a: string) => proposte.find((p) => normalizza(p.alimento) === a);
+  return per(capo) ?? per(alimento) ?? proposte.find((p) => stessoNome(normalizza(p.alimento), alimento));
 }
 
 /**
@@ -111,20 +168,15 @@ export function nomiDoppi(
 ): Set<string> {
   const doppi = new Set<string>();
   const libere = proposte.filter((p) => !legataA(p, esistenti, scelti));
-  const perNome = new Map<string, string[]>();
-  for (const p of libere) {
-    const nome = normalizza(p.nome);
-    if (!nome) continue;
-    perNome.set(nome, [...(perNome.get(nome) ?? []), p.alimento]);
+  // Il nome è lo stesso anche a meno di singolare e plurale (fix round 1 dell'8c-bis, I2): è la rete
+  // di `calcolaProposte`, che già unisce banana e banane.
+  const conNome = libere.map((p) => ({ p, nome: normalizza(p.nome) })).filter(({ nome }) => nome !== '');
+  for (const { p, nome } of conNome) {
+    if (conNome.some((altra) => altra.p !== p && stessoNome(altra.nome, nome))) doppi.add(p.alimento);
   }
-  for (const alimenti of perNome.values()) {
-    if (alimenti.length > 1) for (const a of alimenti) doppi.add(a);
-  }
-  for (const p of libere) {
-    const nome = normalizza(p.nome);
-    if (!nome) continue;
+  for (const { p, nome } of conNome) {
     const nuova = scelti[p.alimento] === SCELTA_NUOVO;
-    if (esistenti.some((e) => normalizza(e.nome) === nome && (nuova || e.unitaBase !== p.unitaBase))) doppi.add(p.alimento);
+    if (esistenti.some((e) => stessoNome(normalizza(e.nome), nome) && (nuova || e.unitaBase !== p.unitaBase))) doppi.add(p.alimento);
   }
   return doppi;
 }
@@ -144,9 +196,12 @@ export interface CambioUnita {
   nome: string;
   /** L'unità di oggi. */
   da: 'g' | 'pz';
-  /** L'unità della dieta, che prevale: la più frequente fra le righe che finiscono qui (`unitaPrevalente`). */
+  /**
+   * L'unità della dieta, che prevale: la più frequente fra le righe TRASCRITTE che finiscono qui
+   * (`unitaPrevalente`). Le stime del lettore non votano (correzione 8c-bis C).
+   */
   a: 'g' | 'pz';
-  /** Gli alimenti della dieta (normalizzati) con almeno una riga nell'unità diversa da `da`, nell'ordine del piano. */
+  /** Gli alimenti della dieta (normalizzati) con almeno una riga trascritta nell'unità diversa da `da`, nell'ordine del piano. */
   alimenti: string[];
   /** Grammi di un pezzo: scritti da te o dalla tabella; null = da chiedere (motivo `peso`). */
   pesoPezzo: number | null;
@@ -194,13 +249,16 @@ export function destinazioni(piano: PianoEstratto, stato: StatoRevisione, esiste
   const scelti = stato.scelti ?? {};
   const destini = new Map<string, Destino>();
   const senza: { alimento: string; unita: UnitaBase | null }[] = [];
-  for (const { alimento, unita } of ingredientiDaAbbinare(piano, stato.correzioni)) {
+  const voci = ingredientiDaAbbinare(piano, stato.correzioni);
+  const { capoDi } = fratelliSenzaAbbinamento(voci, esistenti);
+  for (const { alimento, unita } of voci) {
     const esistente = abbina(alimento, unita, esistenti);
     if (esistente) {
       destini.set(alimento, { tipo: 'esistente', ingrediente: esistente });
       continue;
     }
-    const proposta = stato.ingredientiNuovi.find((p) => normalizza(p.alimento) === alimento);
+    // Il fratello di un alimento (banana/banane) va sulla stessa proposta (fix round 1, I2).
+    const proposta = propostaDi(stato.ingredientiNuovi, capoDi.get(alimento) ?? alimento, alimento);
     if (proposta) {
       const legata = legataAlCommit(proposta, esistenti, scelti);
       destini.set(alimento, legata ? { tipo: 'esistente', ingrediente: legata } : { tipo: 'proposta', proposta });
@@ -227,9 +285,15 @@ function pesoScritto(scritti: (number | null | undefined)[]): { scritto: number 
 /**
  * I cambi di unità del piano (spec 8c §A.2, §A.3, ruling 8c Task 8), uno per ingrediente che hai
  * in g o pz raggiunto da righe nell'altra unità. L'unità della dieta (`a`) è la più frequente fra
- * le righe che vi finiscono (a pari merito la prima nell'ordine del piano), MAI ricavata
- * dall'unità di oggi: così, al ritentativo dopo la RPC, l'ingrediente è già nell'unità finale e
- * non nasce un cambio inverso.
+ * le righe TRASCRITTE che vi finiscono (a pari merito la prima nell'ordine del piano), MAI
+ * ricavata dall'unità di oggi: così, al ritentativo dopo la RPC, l'ingrediente è già nell'unità
+ * finale e non nasce un cambio inverso.
+ *
+ * Le quantità stimate dal lettore (`quantitaInferita`) non votano e non fanno nascere né un cambio
+ * né la domanda del peso (correzione 8c-bis C, prove dal telefono del 03/10): con sole stime
+ * l'ingrediente resta com'è, e `traduciBozza` porta le stime nella sua unità, col peso di un pezzo
+ * se c'è, altrimenti rifacendole (`stimaNellUnita`). Una riga trascritta in un'altra unità, invece,
+ * c'è sempre: cambio o conversione, e il peso.
  *
  * La decisione salvata in `stato.cambiUnita[id]` vince («tieni» e il peso). Il peso altrimenti è
  * quello scritto per uno degli alimenti (`stato.cambiUnita[alimento]`, quello di una proposta
@@ -250,7 +314,9 @@ export function cambiUnita(piano: PianoEstratto, stato: StatoRevisione, esistent
     const voce = perId.get(ingrediente.id) ?? { ingrediente: ingrediente as Ingredient & { unitaBase: 'g' | 'pz' }, voti: [], tutti: [], diversi: [] };
     perId.set(ingrediente.id, voce);
     if (!voce.tutti.includes(alimento)) voce.tutti.push(alimento);
-    const unita = unitaDellaRiga(riga);
+    // Votano solo le righe con la quantità trascritta: una stima del lettore non decide l'unità
+    // (correzione 8c-bis C). Senza righe trascritte l'ingrediente non ha voti e resta com'è.
+    const unita = unitaTrascritta(riga);
     if (!gOpz(unita)) continue;
     voce.voti.push(unita);
     if (unita !== ingrediente.unitaBase && !voce.diversi.includes(alimento)) voce.diversi.push(alimento);
@@ -277,19 +343,33 @@ export function cambiUnita(piano: PianoEstratto, stato: StatoRevisione, esistent
 }
 
 /**
+ * Il peso di un pezzo per convertire una stima del lettore in un'altra unità (correzione 8c-bis C):
+ * il primo scritto da te (per l'ingrediente che hai, poi per l'alimento) che sia un numero finito e
+ * positivo, poi la tabella (nome dell'ingrediente o della proposta, poi l'alimento); null se non
+ * c'è. A differenza di `cambiUnita`, un peso scritto non valido si salta e non blocca: qui non si
+ * chiede niente, la stima si rifà (`stimaNellUnita`).
+ */
+export function pesoPerStima(stato: StatoRevisione, ingredientId: string | null, nome: string, alimento: string): number | null {
+  const scritti = [ingredientId === null ? undefined : stato.cambiUnita?.[ingredientId]?.pesoPezzo, stato.cambiUnita?.[alimento]?.pesoPezzo];
+  return scritti.find((p): p is number => typeof p === 'number' && Number.isFinite(p) && p > 0) ?? pesoPezzo(nome, alimento);
+}
+
+/**
  * Le proposte nuove con righe sia in g sia in pz (ruling 8c, Task 8): le righe nell'unità diversa
  * da quella della proposta si convertono col peso di un pezzo. Il peso: quello scritto in
  * `stato.cambiUnita[alimento]`, poi la tabella (nome della proposta, poi l'alimento); senza,
- * motivo `peso`.
+ * motivo `peso`. Solo per le righe trascritte: le stime del lettore non lo chiedono (8c-bis C).
  */
 export function pesiProposte(piano: PianoEstratto, stato: StatoRevisione, esistenti: Ingredient[]): PesoProposta[] {
   const destini = destinazioni(piano, stato, esistenti);
   const pesi: PesoProposta[] = [];
-  for (const { alimento, unitaViste } of ingredientiDaAbbinare(piano, stato.correzioni)) {
+  for (const { alimento, unitaTrascritte } of ingredientiDaAbbinare(piano, stato.correzioni)) {
     const destino = destini.get(alimento);
     if (destino?.tipo !== 'proposta') continue;
     const p = destino.proposta;
-    if (!gOpz(p.unitaBase) || !unitaViste.some((u) => gOpz(u) && u !== p.unitaBase)) continue;
+    // Il peso serve solo per le righe trascritte in un'altra unità: una stima del lettore si
+    // converte in silenzio o si rifà (correzione 8c-bis C), non si chiede.
+    if (!gOpz(p.unitaBase) || !unitaTrascritte.some((u) => gOpz(u) && u !== p.unitaBase)) continue;
     const tabella = pesoPezzo(p.nome, alimento);
     const { scritto, valido } = pesoScritto([stato.cambiUnita?.[p.alimento]?.pesoPezzo]);
     pesi.push({
@@ -409,7 +489,8 @@ export function esempioRiga(piano: PianoEstratto, stato: StatoRevisione, aliment
         for (const p of pasto.piatti) {
           for (const r of [...p.righeFisse, ...p.componenti.flatMap((c) => c.opzioni.flat())]) {
             const unita = unitaBaseDi(r.unita);
-            if (cercati.has(normalizza(r.alimento)) && r.quantita !== null && unita !== null) return { quantita: r.quantita, unita };
+            // Una stima del lettore non è «sulla dieta»: l'esempio è sempre una riga scritta (8c-bis C).
+            if (cercati.has(normalizza(r.alimento)) && r.quantita !== null && unita !== null && !r.quantitaInferita) return { quantita: r.quantita, unita };
           }
         }
       }

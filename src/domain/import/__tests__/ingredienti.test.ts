@@ -4,9 +4,10 @@ import type { IngredienteProposto, PastoEstratto, PianoEstratto, RigaEstratta, S
 import { SCELTA_NUOVO } from '../types';
 import { PIANO_GIORNATA_UNICA, PIANO_MENU_SETTIMANALE } from '../fixtures';
 import { proponi } from '../formati-tipici';
+import { traduciBozza } from '../commit';
 import {
-  calcolaProposte, cambiDiretti, cambiUnita, diRipiego, esempioPiatto, esempioRiga, legataA, legataAlCommit, motiviBlocco, nomeProposto,
-  nomiDoppi, passoBloccato, sceltiIniziali, sezioniIniziali, valoreRipiego,
+  calcolaProposte, cambiDiretti, cambiUnita, destinazioni, diRipiego, esempioPiatto, esempioRiga, legataA, legataAlCommit, motiviBlocco, nomeProposto,
+  nomiDoppi, passoBloccato, pesiProposte, sceltiIniziali, sezioniIniziali, valoreRipiego,
 } from '../ingredienti';
 import { motiviBlocco8b, passoBloccato8b } from './ingredienti-8b';
 import { nomeAreaFrase } from '@/domain/aree';
@@ -77,6 +78,88 @@ describe('calcolaProposte', () => {
     expect(proposte.find((p) => p.alimento === 'caffe')).toMatchObject({ nome: 'Caffè' });
     expect(proposte.find((p) => p.alimento === 'te verde')).toMatchObject({ nome: 'Tè verde' });
     expect(proposte.find((p) => p.alimento === 'pure di patate')).toMatchObject({ nome: 'Purè di patate', area: 'ortofrutta' });
+  });
+});
+
+describe('banana e banane nella stessa dieta: una proposta sola (fix round 1, I2)', () => {
+  const riga = (alimento: string, quantita: number, unita: 'g' | 'pz', testo: string): RigaEstratta => ({ alimento, quantita, unita, quantitaInferita: false, testoOriginale: testo });
+  const pianoBanane = (...righe: RigaEstratta[]): PianoEstratto => ({
+    archetipo: 'giornata_unica', fonte: 'test', noteEstrazione: [],
+    settimane: [{ numero: 1, giorni: [{ giorno: 0, titolo: null, pasti: [{ nomeOriginale: 'colazione', piatti: [{ nome: 'Frutta', descrizione: null, componenti: [], righeFisse: righe }] }] }] }],
+  });
+  const piano = pianoBanane(riga('banana', 1, 'pz', '1 banana'), riga('banane', 2, 'pz', '2 banane'));
+  const stato: StatoRevisione = { ...STATO, mappaturaPasti: { colazione: 's-col' } };
+
+  it('calcolaProposte: una proposta, col nome e l\'alimento della prima nel piano', () => {
+    const proposte = calcolaProposte(piano, stato, []);
+    expect(proposte).toHaveLength(1);
+    expect(proposte[0]).toMatchObject({ alimento: 'banana', nome: 'Banana', unitaBase: 'pz' });
+  });
+
+  it('l\'unità segue il voto di tutte le righe dei fratelli', () => {
+    const p = pianoBanane(riga('banana', 100, 'g', '100 g banana'), riga('banane', 1, 'pz', '1 banana'), riga('banane', 2, 'pz', '2 banane'));
+    expect(calcolaProposte(p, stato, [])[0]).toMatchObject({ alimento: 'banana', unitaBase: 'pz' });
+  });
+
+  it('due fratelli con unità non compatibili (ml e g) restano due proposte, ognuna nella sua unità (8c-bis, review finale M1)', () => {
+    const p = pianoBanane(
+      { alimento: 'frullato di banana', quantita: 200, unita: 'ml', quantitaInferita: false, testoOriginale: '200 ml frullato di banana' },
+      riga('frullati di banana', 100, 'g', '100 g frullati di banana'),
+    );
+    const proposte = calcolaProposte(p, stato, []);
+    expect(proposte.map((x) => [x.alimento, x.unitaBase])).toEqual([['frullato di banana', 'ml'], ['frullati di banana', 'g']]);
+    // Niente «Unità incompatibile» al commit: ogni riga cade sulla sua proposta.
+    const s = traduciBozza(p, { ...stato, passo: 'riepilogo', ingredientiNuovi: proposte }, [], [], '2026-10-03');
+    expect(s.piattiDaCreare[0].righe).toEqual([
+      { nuovoAlimento: 'frullato di banana', quantita: 200, unita: 'ml' },
+      { nuovoAlimento: 'frullati di banana', quantita: 100, unita: 'g' },
+    ]);
+  });
+
+  it('g e pz si uniscono ancora: 100 g di banana e 1 banane sono una proposta sola', () => {
+    const p = pianoBanane(riga('banana', 100, 'g', '100 g banana'), riga('banane', 1, 'pz', '1 banana'));
+    expect(calcolaProposte(p, stato, [])).toHaveLength(1);
+  });
+
+  it('destinazioni: il fratello va sulla stessa proposta', () => {
+    const proposte = calcolaProposte(piano, stato, []);
+    const destini = destinazioni(piano, { ...stato, ingredientiNuovi: proposte }, []);
+    expect(destini.get('banana')).toEqual({ tipo: 'proposta', proposta: proposte[0] });
+    expect(destini.get('banane')).toEqual({ tipo: 'proposta', proposta: proposte[0] });
+  });
+
+  it('al commit nasce un ingrediente solo, con tutte le righe', () => {
+    const proposte = calcolaProposte(piano, stato, []);
+    const s = traduciBozza(piano, { ...stato, passo: 'riepilogo', ingredientiNuovi: proposte }, [], [], '2026-10-03');
+    expect(s.ingredientiDaCreare.map((i) => i.alimento)).toEqual(['banana']);
+    // Le due righe cadono sullo stesso ingrediente nello stesso piatto: si fondono (1 + 2).
+    expect(s.piattiDaCreare[0].righe).toEqual([{ nuovoAlimento: 'banana', quantita: 3, unita: 'pz' }]);
+  });
+
+  it('una bozza vecchia con due proposte separate: un ingrediente solo (la seconda non si crea)', () => {
+    const vecchia = [proponi('banana', 'pz'), proponi('banane', 'pz')];
+    const s = traduciBozza(piano, { ...stato, passo: 'riepilogo', ingredientiNuovi: vecchia }, [], [], '2026-10-03');
+    expect(s.ingredientiDaCreare).toHaveLength(1);
+    expect(s.ingredientiDaCreare[0].alimento).toBe('banana');
+    expect(s.piattiDaCreare[0].righe.every((r) => 'nuovoAlimento' in r && r.nuovoAlimento === 'banana')).toBe(true);
+  });
+
+  it('una bozza vecchia con la sola proposta «banane»: i due alimenti vanno su di lei', () => {
+    const s = traduciBozza(piano, { ...stato, passo: 'riepilogo', ingredientiNuovi: [proponi('banane', 'pz')] }, [], [], '2026-10-03');
+    expect(s.ingredientiDaCreare.map((i) => i.alimento)).toEqual(['banane']);
+    expect(s.piattiDaCreare[0].righe.every((r) => 'nuovoAlimento' in r && r.nuovoAlimento === 'banane')).toBe(true);
+  });
+
+  it('se la casa ha già Banane, tutte e due le righe vanno su di lei e non ci sono proposte', () => {
+    const banane = ing('i-banane', 'Banane', 'pz');
+    expect(calcolaProposte(piano, stato, [banane])).toEqual([]);
+  });
+
+  it('nomiDoppi, come rete: due proposte che differiscono per il plurale sono doppie; anche contro un esistente', () => {
+    const due = [proposta('banana', 'Banana', 'pz'), proposta('banane', 'Banane', 'pz')];
+    expect([...nomiDoppi(due, [])].sort()).toEqual(['banana', 'banane']);
+    // Contro un esistente con un'altra unità che non si converte (ml): non è legata, e il nome è lo stesso.
+    expect([...nomiDoppi([proposta('banana', 'Banana', 'ml')], [ing('i-b', 'Banane', 'g')])]).toEqual(['banana']);
   });
 });
 
@@ -227,6 +310,14 @@ function pianoCon(...righe: [string, number | null, 'g' | 'ml' | 'pz' | null][])
   }));
   return piano;
 }
+/** Come `pianoCon`, con il flag: `true` = quantità proposta dal lettore (`quantitaInferita`). */
+function pianoConStime(...righe: [string, number, 'g' | 'ml' | 'pz', boolean][]): PianoEstratto {
+  const piano = structuredClone(PIANO_GIORNATA_UNICA);
+  piano.settimane[0].giorni[0].pasti[0].piatti[0].righeFisse = righe.map(([alimento, quantita, unita, quantitaInferita]): RigaEstratta => ({
+    alimento, quantita, unita, quantitaInferita, testoOriginale: quantitaInferita ? alimento : `${alimento} ${quantita}${unita}`,
+  }));
+  return piano;
+}
 const STATO_PRANZO: StatoRevisione = { ...STATO, mappaturaPasti: { pranzo: 's-1' } };
 
 describe('cambiUnita (spec 8c §A.2, §A.3)', () => {
@@ -284,6 +375,62 @@ describe('cambiUnita (spec 8c §A.2, §A.3)', () => {
 
   it('righe tutte nell\'unità di oggi: nessuna voce', () => {
     expect(cambiUnita(pianoCon(['zucchine', 1, 'pz'], ['zucchine', 2, 'pz']), STATO_PRANZO, [ZUCCHINE])).toEqual([]);
+  });
+
+  describe('una quantità stimata dal lettore non decide l\'unità (correzione 8c-bis C, prove dal telefono del 03/10)', () => {
+    const SEDANO = ing('i-sed', 'Sedano', 'g');
+
+    it('«Sedano» in g e la dieta che dice solo «sedano», stimato 1 pz: nessun cambio, nessuna domanda sul peso', () => {
+      const piano = pianoConStime(['sedano', 1, 'pz', true]);
+      expect(calcolaProposte(piano, STATO_PRANZO, [SEDANO])).toEqual([]);
+      const cambi = cambiUnita(piano, STATO_PRANZO, [SEDANO]);
+      expect(cambi).toEqual([]);
+      expect(passoBloccato([], [SEDANO], {}, cambi, pesiProposte(piano, STATO_PRANZO, [SEDANO]))).toBe(false);
+    });
+
+    it('le zucchine scritte in g sul foglio passano a grammi, come prima, anche con una stima in pz', () => {
+      const piano = pianoConStime(['zucchine', 150, 'g', false], ['zucchine', 1, 'pz', true]);
+      expect(cambiUnita(piano, STATO_PRANZO, [ZUCCHINE])).toEqual([{
+        ingredientId: 'i-zucc', nome: 'Zucchine', da: 'pz', a: 'g', alimenti: ['zucchine'], pesoPezzo: 200, pesoDaTabella: true, tieni: false,
+      }]);
+    });
+
+    it('righe trascritte nell\'unità di oggi e una stima in un\'altra: nessun cambio e nessun peso da chiedere', () => {
+      const piano = pianoConStime(['zucchine', 1, 'pz', false], ['zucchine', 2, 'pz', false], ['zucchine', 150, 'g', true]);
+      expect(cambiUnita(piano, STATO_PRANZO, [ZUCCHINE])).toEqual([]);
+      // Anche senza il peso in tabella: la stima si rifà, non si chiede.
+      const cavolo = ing('i-cav', 'Cavolo nero', 'g');
+      const senzaPeso = pianoConStime(['cavolo nero', 200, 'g', false], ['cavolo nero', 1, 'pz', true]);
+      expect(cambiUnita(senzaPeso, STATO_PRANZO, [cavolo])).toEqual([]);
+      expect(passoBloccato([], [cavolo], {}, cambiUnita(senzaPeso, STATO_PRANZO, [cavolo]))).toBe(false);
+    });
+
+    it('una riga trascritta nell\'altra unità chiede ancora il peso, anche se c\'è una stima', () => {
+      const cavolo = ing('i-cav', 'Cavolo nero', 'g');
+      const piano = pianoConStime(['cavolo nero', 200, 'g', false], ['cavolo nero', 1, 'pz', false], ['cavolo nero', 1, 'pz', true]);
+      expect(cambiUnita(piano, STATO_PRANZO, [cavolo])).toEqual([expect.objectContaining({ da: 'g', a: 'g', pesoPezzo: null })]);
+    });
+
+    it('una proposta nuova con sole stime in g e pz: prevale la più frequente, e il peso non si chiede', () => {
+      const piano = pianoConStime(['cavolo nero', 200, 'g', true], ['cavolo nero', 1, 'pz', true], ['cavolo nero', 150, 'g', true]);
+      const proposte = calcolaProposte(piano, STATO_PRANZO, []);
+      expect(proposte.map((p) => p.unitaBase)).toEqual(['g']);
+      const st = { ...STATO_PRANZO, ingredientiNuovi: proposte };
+      expect(pesiProposte(piano, st, [])).toEqual([]);
+      expect(passoBloccato(proposte, [], {}, cambiUnita(piano, st, []), pesiProposte(piano, st, []))).toBe(false);
+    });
+
+    it('una proposta con righe scritte in g e una stima in pz: l\'unità è quella scritta, nessun peso', () => {
+      const piano = pianoConStime(['cavolo nero', 1, 'pz', true], ['cavolo nero', 2, 'pz', true], ['cavolo nero', 200, 'g', false]);
+      const proposte = calcolaProposte(piano, STATO_PRANZO, []);
+      expect(proposte.map((p) => p.unitaBase)).toEqual(['g']);
+      expect(pesiProposte(piano, { ...STATO_PRANZO, ingredientiNuovi: proposte }, [])).toEqual([]);
+    });
+
+    it('esempioRiga non porta una stima del lettore come se fosse scritta sul foglio', () => {
+      expect(esempioRiga(pianoConStime(['zucchine', 1, 'pz', true], ['zucchine', 150, 'g', false]), STATO_PRANZO, ['zucchine'])).toEqual({ quantita: 150, unita: 'g' });
+      expect(esempioRiga(pianoConStime(['zucchine', 1, 'pz', true]), STATO_PRANZO, ['zucchine'])).toBeNull();
+    });
   });
 });
 

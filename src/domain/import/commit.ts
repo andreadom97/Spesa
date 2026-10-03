@@ -4,9 +4,9 @@ import type { IngredienteProposto, PastoEstratto, PianoEstratto, RigaEstratta, S
 import { NOME_PASTO_CONDIMENTI, pastoEffettivo } from './types';
 import { normalizza, quantoBasta } from './mapping';
 import {
-  cambiUnita, destinazioni, legataAlCommit, pesiProposte, type CambioUnita, type Destino, type PesoProposta,
+  cambiUnita, destinazioni, legataAlCommit, pesiProposte, pesoPerStima, type CambioUnita, type Destino, type PesoProposta,
 } from './ingredienti';
-import { classeCoerente, convertiPezzi } from './formati-tipici';
+import { classeCoerente, convertiPezzi, stimaNellUnita } from './formati-tipici';
 
 /** `quantita` null = «quanto basta» (spec 8c §B). */
 export type RigaTradotta = { quantita: number | null; unita: UnitaBase } & (
@@ -37,8 +37,25 @@ export interface PiattoDaCreare {
   componenti: { nome: string; opzioni: RigaTradotta[][] }[];
 }
 
+type Quantita = { quantita: number; unita: UnitaBase };
+
+/**
+ * Una stima del lettore (`quantitaInferita`) portata nell'unità dell'ingrediente (fix round 1, I1):
+ * per ingrediente, la prima riga e quante sono. `rifatta` = senza il peso di un pezzo, la stima è
+ * stata rifatta da capo (`stimaNellUnita`), non convertita.
+ */
+export interface StimaPortata {
+  nome: string;
+  da: Quantita;
+  a: Quantita;
+  rifatta: boolean;
+  righe: number;
+}
+
 export interface ScrittureImport {
   ingredientiDaCreare: IngredienteProposto[];
+  /** Le stime del lettore scritte in un'altra unità, per il Riepilogo: una voce per ingrediente. */
+  stimePortate: StimaPortata[];
   /** Prima dei piatti: le righe dei piatti nuovi sono già nell'unità nuova. Solo i cambi accettati. */
   cambiUnita: CambioScritto[];
   piattiDaDisattivare: string[];
@@ -58,6 +75,17 @@ interface Contesto {
   cambi: Map<string, CambioUnita>;
   /** Per `alimento` della proposta: il peso delle proposte con righe in g e in pz. */
   pesi: Map<string, PesoProposta>;
+  /** Lo stato di revisione: i pesi scritti da te servono anche a convertire le stime del lettore. */
+  stato: StatoRevisione;
+  /** Per chiave (id o alimento nuovo): le stime portate in un'altra unità (`StimaPortata`). */
+  stime: Map<string, StimaPortata>;
+}
+
+/** Registra una stima portata in un'altra unità: la prima riga di quell'ingrediente, e il conto. */
+function registraStima(ctx: Contesto, chiave: string, nome: string, da: Quantita, a: Quantita, rifatta: boolean): void {
+  const gia = ctx.stime.get(chiave);
+  if (gia) gia.righe += 1;
+  else ctx.stime.set(chiave, { nome, da, a, rifatta, righe: 1 });
 }
 
 /** L'unità finale di un ingrediente che hai: quella della dieta se il cambio è accettato, la sua se «Tienile a pezzi». */
@@ -71,6 +99,11 @@ function unitaFinale(e: Ingredient, ctx: Contesto): UnitaBase {
  * prende com'è e resta senza numero; fra g e pz si converte col peso di un pezzo, arrotondato;
  * fra altre unità non si inventa una densità: bozza incompleta. `di` dice chi ha l'unità finale,
  * per il messaggio: «l'ingrediente» o «la proposta».
+ *
+ * Una quantità stimata dal lettore (`quantitaInferita`) in un'altra unità non ferma mai niente
+ * (correzione 8c-bis C): si converte col peso se c'è, altrimenti la stima si rifà nell'unità
+ * finale (`stimaNellUnita`) e resta una stima. Le righe trascritte non cambiano. Ogni stima
+ * portata in un'altra unità si segnala a `portata`, per il Riepilogo (fix round 1, I1).
  */
 function nellUnita<D extends { ingredientId: string } | { nuovoAlimento: string }>(
   dove: D,
@@ -78,14 +111,21 @@ function nellUnita<D extends { ingredientId: string } | { nuovoAlimento: string 
   finale: UnitaBase,
   peso: number | null,
   di: string,
+  portata: (da: Quantita, a: Quantita, rifatta: boolean) => void,
 ): RigaTradotta {
   if (riga.quantita === null) return { ...dove, quantita: null, unita: finale };
   const unita = riga.unita as UnitaBase;
   if (unita === finale) return { ...dove, quantita: riga.quantita, unita };
   const convertita = peso ? convertiPezzi(riga.quantita, unita, finale, peso) : null;
   if (convertita === null) {
+    if (riga.quantitaInferita) {
+      const rifatta = stimaNellUnita(riga.alimento, finale, peso);
+      portata({ quantita: riga.quantita, unita }, { quantita: rifatta, unita: finale }, true);
+      return { ...dove, quantita: rifatta, unita: finale };
+    }
     throw new BozzaIncompletaError(`Unità incompatibile per "${riga.alimento}": la riga usa "${unita}", ${di} "${finale}"`);
   }
+  if (riga.quantitaInferita) portata({ quantita: riga.quantita, unita }, { quantita: convertita, unita: finale }, false);
   return { ...dove, quantita: convertita, unita: finale };
 }
 
@@ -142,11 +182,18 @@ function risolviRiga(rigaLetta: RigaEstratta, ctx: Contesto): RigaTradotta {
   if (!destino) throw new BozzaIncompletaError(`Ingrediente non risolto: "${riga.alimento}"`);
   if (destino.tipo === 'esistente') {
     const e = destino.ingrediente;
-    return nellUnita({ ingredientId: e.id }, riga, unitaFinale(e, ctx), ctx.cambi.get(e.id)?.pesoPezzo ?? null, "l'ingrediente");
+    const peso = ctx.cambi.get(e.id)?.pesoPezzo ?? (riga.quantitaInferita ? pesoPerStima(ctx.stato, e.id, e.nome, chiave) : null);
+    return nellUnita({ ingredientId: e.id }, riga, unitaFinale(e, ctx), peso, "l'ingrediente", (da, a, rifatta) => registraStima(ctx, e.id, e.nome, da, a, rifatta));
   }
   const nuovo = destino.proposta;
-  const tradotta = nellUnita({ nuovoAlimento: nuovo.alimento }, riga, nuovo.unitaBase, ctx.pesi.get(nuovo.alimento)?.pesoPezzo ?? null, 'la proposta');
-  ctx.usati.add(chiave);
+  const peso = ctx.pesi.get(nuovo.alimento)?.pesoPezzo ?? (riga.quantitaInferita ? pesoPerStima(ctx.stato, null, nuovo.nome, chiave) : null);
+  const tradotta = nellUnita(
+    { nuovoAlimento: nuovo.alimento }, riga, nuovo.unitaBase, peso, 'la proposta',
+    (da, a, rifatta) => registraStima(ctx, `nuovo:${nuovo.alimento}`, nuovo.nome, da, a, rifatta),
+  );
+  // La chiave della proposta, non della riga: il fratello di un alimento (banane per banana) usa
+  // la proposta del capo (fix round 1 dell'8c-bis, I2).
+  ctx.usati.add(normalizza(nuovo.alimento));
   return tradotta;
 }
 
@@ -243,6 +290,8 @@ export function traduciBozza(
     usati: new Set<string>(),
     cambi: new Map(cambi.map((c) => [c.ingredientId, c])),
     pesi: new Map(pesi.map((p) => [p.alimento, p])),
+    stato,
+    stime: new Map<string, StimaPortata>(),
   };
   const unicaSettimana = piano.settimane.length === 1;
   const emessi: PiattoEmesso[] = [];
@@ -412,6 +461,7 @@ export function traduciBozza(
 
   return {
     ingredientiDaCreare,
+    stimePortate: [...ctx.stime.values()],
     // Solo i cambi veri e accettati: con «tieni», o con l'unità che resta (`da === a`), la RPC non parte.
     cambiUnita: cambi.filter((c) => !c.tieni && c.da !== c.a).map((c) => ({
       ingredientId: c.ingredientId,
@@ -435,6 +485,8 @@ export interface RiassuntoScritture {
   piattiTolti: number;
   ingredientiNuovi: number;
   cambi: CambioScritto[];
+  /** Le stime del lettore portate in un'altra unità: una voce per ingrediente (fix round 1, I1). */
+  stime: StimaPortata[];
   /** C'è un piano attuale: piatti del nutrizionista attivi, che l'import aggiorna o toglie. */
   pianoAttuale: boolean;
 }
@@ -447,6 +499,7 @@ export function riassuntoScritture(s: ScrittureImport): RiassuntoScritture {
     piattiTolti: s.piattiDaDisattivare.length,
     ingredientiNuovi: s.ingredientiDaCreare.length,
     cambi: s.cambiUnita,
+    stime: s.stimePortate,
     pianoAttuale: aggiornati + s.piattiDaDisattivare.length > 0,
   };
 }

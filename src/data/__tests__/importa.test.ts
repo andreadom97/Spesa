@@ -54,6 +54,7 @@ const PIATTO: PiattoDaCreare = {
 
 const SCRITTURE: ScrittureImport = {
   ingredientiDaCreare: [{ alimento: 'pasta di semola', nome: 'Pasta', unitaBase: 'g', area: 'cereali', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 500, prezzoConfezione: 1.2 }],
+  stimePortate: [],
   cambiUnita: [],
   piattiDaDisattivare: ['d-old'],
   piattiDaCreare: [PIATTO],

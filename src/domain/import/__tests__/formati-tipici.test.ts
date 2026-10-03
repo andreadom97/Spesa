@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  proponi, origineProposta, arrotonda, classeCoerente, convertiCucchiai, convertiPezzi, numeroInParole,
-  categoriaDi, pesoPezzo, porzioneTipica, quantitaInTesto, testoCambio, testoConversione,
+  eSpezia, proponi, origineProposta, arrotonda, classeCoerente, convertiCucchiai, convertiPezzi, numeroInParole,
+  categoriaDi, pesoPezzo, porzioneTipica, quantitaInTesto, stimaNellUnita, testoCambio, testoConversione,
 } from '../formati-tipici';
 import { unitaBaseDi } from '../types';
 
@@ -103,6 +103,32 @@ describe('pesoPezzo (spec 8c §A.1)', () => {
     expect(pesoPezzo('Uovo')).toBe(60);
   });
 
+  it('gli aromi a pezzi: aglio, sedano, scalogno, porro, cipollotto, anche al plurale e dopo «di» o «d\'» (8c-bis C, review)', () => {
+    expect(pesoPezzo('aglio')).toBe(5);
+    expect(pesoPezzo("spicchi d'aglio")).toBe(5);
+    expect(pesoPezzo('spicchio di aglio')).toBe(5);
+    expect(pesoPezzo('Sedano')).toBe(50);
+    expect(pesoPezzo('coste di sedano')).toBe(50);
+    expect(pesoPezzo('scalogno')).toBe(30);
+    expect(pesoPezzo('scalogni')).toBe(30);
+    expect(pesoPezzo('porro')).toBe(150);
+    expect(pesoPezzo('porri')).toBe(150);
+    expect(pesoPezzo('cipollotto')).toBe(20);
+    expect(pesoPezzo('cipollotti')).toBe(20);
+    // «sedano rapa» è un altro ortaggio: non eredita il peso di una costa.
+    expect(pesoPezzo('sedano rapa')).toBe(400);
+  });
+
+  it('l\'apostrofo non fa trovare un aroma dentro un altro alimento (8c-bis, review finale M3)', () => {
+    expect(pesoPezzo("spicchio d'aglio")).toBe(5);
+    expect(pesoPezzo("spicchi d'aglio")).toBe(5);
+    expect(pesoPezzo('spicchi d’aglio')).toBe(5); // apostrofo curvo
+    expect(pesoPezzo("pane all'aglio")).toBeNull();
+    expect(pesoPezzo("pasta all'uovo")).toBeNull();
+    expect(pesoPezzo("succo d'arancia")).toBeNull();
+    expect(pesoPezzo('succo d’arancia')).toBeNull();
+  });
+
   it('«pomodorini» non è «pomodori», e un nome ignoto è null', () => {
     expect(pesoPezzo('pomodorini')).toBeNull();
     expect(pesoPezzo('cavolo nero')).toBeNull();
@@ -144,6 +170,26 @@ describe('convertiCucchiai (spec 8c §C)', () => {
   it('in g senza voce: 15 g o 5 g, da controllare; a pezzi non si converte', () => {
     expect(convertiCucchiai(1, 'cucchiaio', 'semi di chia', 'g')).toEqual({ quantita: 15, daTabella: false });
     expect(convertiCucchiai(1, 'cucchiaio', 'olive', 'pz')).toBeNull();
+  });
+});
+
+describe('stimaNellUnita (correzione 8c-bis C: la stima rifatta nell\'unità finale)', () => {
+  it('la porzione tipica nell\'unità, convertita col peso di un pezzo se serve', () => {
+    expect(stimaNellUnita('sedano', 'g', null)).toBe(200);
+    expect(stimaNellUnita('zucchine', 'pz', 200)).toBe(1);
+    expect(stimaNellUnita('pasta', 'pz', 80)).toBe(1);
+  });
+
+  it('verdure e frutta a pezzi senza peso: 1 pz', () => {
+    expect(stimaNellUnita('cavolo nero', 'pz', null)).toBe(1);
+  });
+
+  it('senza porzione che torni: 1 pz, 100 g, 100 ml', () => {
+    expect(stimaNellUnita('olive taggiasche', 'pz', null)).toBe(1);
+    expect(stimaNellUnita('olive taggiasche', 'g', null)).toBe(100);
+    expect(stimaNellUnita('olive taggiasche', 'ml', null)).toBe(100);
+    // La porzione del latte è in ml: in g, senza peso di un pezzo, non si converte.
+    expect(stimaNellUnita('latte', 'g', null)).toBe(100);
   });
 });
 
@@ -245,5 +291,30 @@ describe('i due valori (spec 8c, «Come si mostra una conversione»)', () => {
     expect(unitaBaseDi('g')).toBe('g');
     expect(unitaBaseDi('cucchiaio')).toBeNull();
     expect(unitaBaseDi(null)).toBeNull();
+  });
+});
+
+describe('eSpezia (correzione 8c-bis A, prove dal telefono del 03/10)', () => {
+  it('spezie, erbe, sale e pepe: la parola in testa, anche con un attributo dopo', () => {
+    for (const nome of ['Sale', 'sale fino', 'Sale iodato', 'Pepe nero', 'Cannella in polvere', 'Noce moscata', 'Basilico', 'Origano', 'Peperoncino', 'Erbe aromatiche', 'Zenzero in polvere', 'Chiodi di garofano', 'Semi di finocchio']) {
+      expect(eSpezia(nome), nome).toBe(true);
+    }
+  });
+
+  it('per parole intere: «salmone», «salsa», «salame», «peperoni» non sono spezie', () => {
+    for (const nome of ['Salmone', 'Salsa di pomodoro', 'Salame', 'Peperoni', 'Peperone', 'Pepino']) {
+      expect(eSpezia(nome), nome).toBe(false);
+    }
+  });
+
+  it('solo in testa: «pesto» e «pane alle erbe» no', () => {
+    expect(eSpezia('Pesto alla genovese')).toBe(false);
+    expect(eSpezia('Pane alle erbe')).toBe(false);
+    expect(eSpezia('Yogurt alla vaniglia')).toBe(false);
+  });
+
+  it('lo zenzero fresco si compra a grammi: non è una spezia', () => {
+    expect(eSpezia('Zenzero')).toBe(false);
+    expect(eSpezia('Zenzero fresco')).toBe(false);
   });
 });

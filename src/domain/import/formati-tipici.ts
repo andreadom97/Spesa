@@ -73,6 +73,28 @@ const VOCI: VoceFormato[] = [
   { chiave: 'crackers', nome: 'Crackers', unitaBase: 'g', area: 'dispensa', classeResiduo: 'porzionabile', deperibile: false, formatoConfezione: 250 },
 ];
 
+/**
+ * Spezie, erbe, sale e pepe (correzione 8c-bis A, prove dal telefono del 03/10): si usano «quanto
+ * basta», senza grammatura. Chiavi già normalizzate. Lo zenzero fresco si compra a grammi, quindi
+ * c'è solo «zenzero in polvere».
+ */
+const SPEZIE = [
+  'sale', 'pepe', 'cannella', 'origano', 'basilico', 'prezzemolo', 'rosmarino', 'timo', 'salvia', 'alloro',
+  'maggiorana', 'menta', 'aneto', 'erba cipollina', 'curcuma', 'paprika', 'peperoncino', 'noce moscata',
+  'zenzero in polvere', 'curry', 'cumino', 'coriandolo', 'chiodi di garofano', 'vaniglia', 'zafferano',
+  'semi di finocchio', 'spezie', 'erbe aromatiche', 'aromi',
+];
+
+/**
+ * Vero se l'alimento è una spezia o un'erba: la chiave sta SOLO in testa al nome e per parole intere
+ * («sale fino», «pepe nero», «cannella in polvere» sì; «salmone», «salsa di pomodoro», «peperoni»,
+ * «pesto alla genovese», «pane alle erbe» no), come `categoriaDi`.
+ */
+export function eSpezia(alimento: string): boolean {
+  const norm = normalizza(alimento).replace(/['’]/g, ' ').replace(/\s+/g, ' ');
+  return SPEZIE.some((chiave) => norm === chiave || norm.startsWith(`${chiave} `));
+}
+
 /** Vero se `chiave` compare in `norm` come sequenza di parole intere: «melanzane» non contiene la parola «mela». */
 function contieneParole(norm: string, chiave: string): boolean {
   return ` ${norm} `.includes(` ${chiave} `);
@@ -171,11 +193,24 @@ const PESO_PEZZO: { chiave: string; grammi: number }[] = [
   { chiave: 'melanzana', grammi: 300 }, { chiave: 'melanzane', grammi: 300 },
   { chiave: 'finocchio', grammi: 250 }, { chiave: 'finocchi', grammi: 250 },
   { chiave: 'avocado', grammi: 200 },
+  // Gli aromi che si contano a pezzi (8c-bis C, review): valori medi, non misurati. Senza, «1 pz»
+  // di aglio in g diventava 100 g. Un pezzo di aglio è uno spicchio, di sedano una costa.
+  { chiave: 'aglio', grammi: 5 }, { chiave: 'agli', grammi: 5 },
+  { chiave: "spicchio d'aglio", grammi: 5 }, { chiave: "spicchi d'aglio", grammi: 5 },
+  { chiave: 'sedano', grammi: 50 }, { chiave: 'sedani', grammi: 50 },
+  { chiave: 'scalogno', grammi: 30 }, { chiave: 'scalogni', grammi: 30 },
+  { chiave: 'porro', grammi: 150 }, { chiave: 'porri', grammi: 150 },
+  { chiave: 'cipollotto', grammi: 20 }, { chiave: 'cipollotti', grammi: 20 },
+  // Il sedano rapa è una radice, non una costa: vince la chiave più lunga.
+  { chiave: 'sedano rapa', grammi: 400 },
 ];
 
 /** Grammi di un pezzo per il primo dei nomi che la tabella conosce, o null. */
 export function pesoPezzo(...nomi: string[]): number | null {
-  return voceTabella(PESO_PEZZO, nomi)?.grammi ?? null;
+  // L'apostrofo curvo vale come quello dritto, così le chiavi esplicite («spicchi d'aglio») lo
+  // trovano. Niente seconda passata con l'apostrofo come spazio: dava «pane all'aglio» 5 g, «pasta
+  // all'uovo» 60 g, «succo d'arancia» 200 g (review finale 8c-bis, M3).
+  return voceTabella(PESO_PEZZO, nomi.map((n) => n.replace(/’/g, "'")))?.grammi ?? null;
 }
 
 /** Un cucchiaio e un cucchiaino generici, in ml (spec §C). */
@@ -320,6 +355,38 @@ export function porzioneTipica(alimento: string): { quantita: number; unita: Uni
   if (voce) return { quantita: voce.quantita, unita: voce.unita, origine: 'porzione' };
   const categoria = categoriaDi(alimento);
   return categoria ? { quantita: PORZIONE_CATEGORIA[categoria], unita: 'g', origine: 'categoria' } : null;
+}
+
+/**
+ * La porzione tipica di un alimento portata nell'unità `verso` (null = la sua): nell'unità della
+ * porzione com'è, altrimenti convertita col peso di un pezzo se c'è; verdure e frutta a pezzi senza
+ * peso sono 1 pz (ruling del Task 12b); altrimenti null. È la regola di una riga senza quantità
+ * (`propostaPer` in dubbi.ts) e della stima rifatta (`stimaNellUnita`): una fonte sola.
+ */
+export function porzioneNellUnita(
+  alimento: string,
+  verso: UnitaBase | null,
+  peso: number | null,
+): { quantita: number; unita: UnitaBase; origine: 'porzione' | 'categoria' } | null {
+  const porzione = porzioneTipica(alimento);
+  if (!porzione) return null;
+  const { origine } = porzione;
+  if (verso === null || verso === porzione.unita) return { quantita: porzione.quantita, unita: porzione.unita, origine };
+  const convertita = peso === null ? null : convertiPezzi(porzione.quantita, porzione.unita, verso, peso);
+  if (convertita !== null) return { quantita: convertita, unita: verso, origine };
+  if (verso === 'pz' && categoriaDi(alimento) !== null) return { quantita: 1, unita: 'pz', origine };
+  return null;
+}
+
+/**
+ * La stima di una riga che il lettore ha proposto (`quantitaInferita`) in un'unità diversa da
+ * quella finale dell'ingrediente, quando non si può convertire (manca il peso di un pezzo):
+ * rifatta nell'unità finale con la stessa proposta di una riga senza quantità (`porzioneNellUnita`).
+ * Se nemmeno quella dà un valore: 1 pz, 100 g, 100 ml (correzione 8c-bis C, prove dal telefono del
+ * 03/10). Resta una stima: chi la chiama non la presenta come scritta sul foglio.
+ */
+export function stimaNellUnita(alimento: string, unita: UnitaBase, peso: number | null): number {
+  return porzioneNellUnita(alimento, unita, peso)?.quantita ?? (unita === 'pz' ? 1 : 100);
 }
 
 /** Spec §A.3: pz al quarto, g all'intero, mai sotto il minimo (il database vuole > 0); ml al decimo. */

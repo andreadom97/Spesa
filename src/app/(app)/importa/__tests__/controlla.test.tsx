@@ -4,6 +4,7 @@ import { render, screen, fireEvent, within, act } from '@testing-library/react';
 import type { MealSlotDef } from '@/domain/types';
 import type { PastoEstratto, PianoEstratto, StatoRevisione } from '@/domain/import/types';
 import { PIANO_MENU_SETTIMANALE } from '@/domain/import/fixtures';
+import { statoRevisioneIniziale } from '@/domain/import/mapping';
 import { SlotDockProvider } from '@/components/dock-slot';
 import { Controlla } from '../Controlla';
 
@@ -87,6 +88,31 @@ describe('Controlla', () => {
     expect(screen.getByRole('heading', { name: 'Settimana 1 5' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Settimana 2 1' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Apri Martedì, settimana 1' })).toHaveTextContent('Porridge · Merluzzo o Tonno in insalata');
+  });
+
+  it('dove vanno i pasti: nell\'ordine degli slot della casa, non della dieta (correzione 8c-bis D)', () => {
+    const pasto = (nomeOriginale: string): PastoEstratto => ({
+      nomeOriginale,
+      piatti: [{ nome: 'Piatto', descrizione: null, componenti: [], righeFisse: [{ alimento: 'riso', quantita: 80, unita: 'g', quantitaInferita: false, testoOriginale: '80 g riso' }] }],
+    });
+    // Nella dieta: colazione, spuntino 17:30, dopo cena, pranzo, cena.
+    const piano: PianoEstratto = {
+      archetipo: 'giornata_unica', fonte: 'test', noteEstrazione: [],
+      settimane: [{ numero: 1, giorni: [{ giorno: 0, titolo: null, pasti: ['Colazione', 'Spuntino 17:30', 'Dopo cena', 'Pranzo', 'Cena'].map(pasto) }] }],
+    };
+    const casa = [
+      slot('s-col', 'Colazione', 0), slot('s-mat', 'Spuntino mattina', 1), slot('s-pranzo', 'Pranzo', 2),
+      slot('s-pom', 'Spuntino pomeriggio', 3), slot('s-cena', 'Cena', 4), slot('s-dopo', 'Dopocena', 5),
+    ];
+    const stato = statoRevisioneIniziale(piano, casa);
+    render(<SlotDockProvider slot={slotDock}><Controlla piano={piano} stato={stato} slotDefs={casa} onStato={vi.fn()} /></SlotDockProvider>);
+    const sezione = screen.getByRole('heading', { name: 'Dove vanno i pasti 5' }).closest('section') as HTMLElement;
+    const abbinati = within(sezione).getAllByRole('button').map((b) => b.textContent ?? '');
+    const ordine = ['Colazione', 'Pranzo', 'Spuntino 17:30', 'Cena', 'Dopo cena'];
+    expect(abbinati.map((t) => ordine.findIndex((n) => t.includes(n)))).toEqual([0, 1, 2, 3, 4]);
+    // E gli slot proposti sono quelli giusti: non «Spuntino mattina», non «Cena» per il dopo cena.
+    expect(within(sezione).getByRole('button', { name: /Spuntino 17:30/ })).toHaveTextContent('Spuntino pomeriggio');
+    expect(within(sezione).getByRole('button', { name: /Dopo cena/ })).toHaveTextContent('Dopocena');
   });
 
   it('il foglio del giorno: la modifica risale una volta sola, alla chiusura', () => {
@@ -257,8 +283,8 @@ describe('Controlla', () => {
     const lunedi = structuredClone(piano.settimane[0].giorni[0].pasti[0]);
     lunedi.piatti[0].righeFisse[0] = { ...lunedi.piatti[0].righeFisse[0], quantita: 3, quantitaInferita: false };
     const onStato = rendi({ ...STATO, mappaturaPasti: { cena: 's-cena' }, correzioni: { '1-0-0': lunedi } }, piano);
-    expect(screen.getByText('Sul foglio: «sale fino» · quantità proposta da me · valori diversi nei giorni')).toBeInTheDocument();
-    const campo = screen.getByRole('textbox', { name: 'Quantità di sale' });
+    expect(screen.getByText('Sul foglio: «zucchero fino» · quantità proposta da me · valori diversi nei giorni')).toBeInTheDocument();
+    const campo = screen.getByRole('textbox', { name: 'Quantità di zucchero' });
     expect(campo).toHaveValue('');
     fireEvent.change(campo, { target: { value: '4' } });
     fireEvent.blur(campo);
@@ -523,7 +549,7 @@ function conOlive(piano: PianoEstratto, giorno: number, indice: number, quantita
   return pasto;
 }
 
-/** Una settimana di `giorni` giorni: ogni giorno una cena con la Zuppa e «sale fino», 2 g proposti dall'AI. */
+/** Una settimana di `giorni` giorni: ogni giorno una cena con la Zuppa e «zucchero fino», 2 g proposti dall'AI. */
 function pianoConSale(giorni = 2): PianoEstratto {
   return {
     archetipo: 'menu_settimanale', fonte: 'test', noteEstrazione: [],
@@ -532,7 +558,7 @@ function pianoConSale(giorni = 2): PianoEstratto {
       giorni: Array.from({ length: giorni }, (_, g) => ({
         giorno: g,
         titolo: null,
-        pasti: [{ nomeOriginale: 'cena', piatti: [{ nome: 'Zuppa', descrizione: null, componenti: [], righeFisse: [{ alimento: 'sale', quantita: 2, unita: 'g' as const, quantitaInferita: true, testoOriginale: 'sale fino' }] }] }],
+        pasti: [{ nomeOriginale: 'cena', piatti: [{ nome: 'Zuppa', descrizione: null, componenti: [], righeFisse: [{ alimento: 'zucchero', quantita: 2, unita: 'g' as const, quantitaInferita: true, testoOriginale: 'zucchero fino' }] }] }],
       })),
     }],
   };

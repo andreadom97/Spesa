@@ -605,14 +605,44 @@ describe('Importa: l\'indietro per passi (spec 8c §F)', () => {
     expect(replace).not.toHaveBeenCalled();
   });
 
-  it('ESCI torna alla pagina di provenienza, dopo aver consumato le voci', async () => {
+  // Correzione 8c-bis (prove dal telefono del 03/10): su Chrome Android i `pushState` fatti dentro
+  // la reazione a un `popstate`, senza un tocco dell'utente, marcano le voci «da saltare» e l'indietro
+  // successivo esce dall'app. Col dialogo aperto da un indietro la profondità chiesta è 0: i push
+  // partono solo al tocco su RESTA.
+  it("l'indietro che apre «Esci dall'import?» non spinge voci; RESTA ne spinge una sola, e l'indietro dopo riapre il dialogo", async () => {
+    await riprendi(STATO_REVISIONE);
+    await screen.findByText('Passo 2 di 4 · Controlla');
+    expect(window.history.pushState).toHaveBeenCalledTimes(1); // la voce del passo
+    indietro();
+    const dialogo = await screen.findByRole('alertdialog', { name: "Esci dall'import?" });
+    expect(window.history.pushState).toHaveBeenCalledTimes(1);
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'RESTA' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(window.history.pushState).toHaveBeenCalledTimes(2); // la voce del passo che torna
+    expect(window.history.go).not.toHaveBeenCalled();
+    indietro();
+    expect(await screen.findByRole('alertdialog', { name: "Esci dall'import?" })).toBeInTheDocument();
+    expect(window.history.pushState).toHaveBeenCalledTimes(2);
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it('ESCI torna alla pagina di provenienza: col dialogo aperto non ci sono voci da consumare', async () => {
     await riprendi(STATO_REVISIONE);
     await screen.findByText('Passo 2 di 4 · Controlla');
     indietro();
     fireEvent.click(within(await screen.findByRole('alertdialog', { name: "Esci dall'import?" })).getByRole('button', { name: 'ESCI' }));
     await waitFor(() => expect(replace).toHaveBeenCalled());
-    expect(window.history.go).toHaveBeenCalled();
+    expect(window.history.pushState).toHaveBeenCalledTimes(1);
+    expect(window.history.go).not.toHaveBeenCalled();
     expect(push).not.toHaveBeenCalled();
+  });
+
+  it('la pillola della testata, senza dialogo, consuma la voce del passo e poi esce', async () => {
+    await riprendi(STATO_REVISIONE);
+    await screen.findByText('Passo 2 di 4 · Controlla');
+    fireEvent.click(screen.getByRole('button', { name: 'Torna alle impostazioni' }));
+    await waitFor(() => expect(replace).toHaveBeenCalled());
+    expect(window.history.go).toHaveBeenCalledWith(-1);
   });
 
   it('da Ingredienti l\'indietro torna a Controlla e salva lo stato', async () => {
