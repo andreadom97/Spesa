@@ -219,18 +219,6 @@ function radice(parola: string): string {
 }
 
 /**
- * Spezza sulla punteggiatura oltre che sugli spazi (dopo `normalizza`), così
- * l'apostrofo in "Fiocchi d'avena" o "Burro d'arachidi" separa "d" da
- * "avena"/"arachidi" invece di incollarli in una sola parola che non
- * combina con nessuna radice del catalogo. Le parti vuote (punteggiatura a
- * inizio/fine o doppia) sono scartate.
- */
-function radici(s: string): string[] {
-  const n = normalizza(s);
-  return n === '' ? [] : n.split(/[^a-z0-9]+/).filter((p) => p !== '').map((p) => (IGNORATE.has(p) ? '' : radice(p)));
-}
-
-/**
  * Parole che non combinano con nessun sinonimo: la preposizione articolata «agli» ha la
  * radice di «aglio» (agl), e "Risotto agli asparagi" prendeva l'icona dell'aglio. Diventano
  * una radice vuota, che nessuna voce contiene (radici() scarta le parti vuote dei
@@ -239,13 +227,29 @@ function radici(s: string): string[] {
  */
 const IGNORATE = new Set(['agli']);
 
-interface Voce { chiave: ChiaveIcona | null; radici: string[]; lunghezza: number; blocco: boolean }
+/**
+ * Spezza sulla punteggiatura oltre che sugli spazi (dopo `normalizza`), così
+ * l'apostrofo in "Fiocchi d'avena" o "Burro d'arachidi" separa "d" da
+ * "avena"/"arachidi" invece di incollarli in una sola parola che non
+ * combina con nessuna radice del catalogo. Le parti vuote (punteggiatura a
+ * inizio/fine o doppia) sono scartate.
+ */
+function parole(s: string): string[] {
+  const n = normalizza(s);
+  return n === '' ? [] : n.split(/[^a-z0-9]+/).filter((p) => p !== '');
+}
+
+function radici(s: string): string[] {
+  return parole(s).map((p) => (IGNORATE.has(p) ? '' : radice(p)));
+}
+
+interface Voce { chiave: ChiaveIcona | null; parole: string[]; radici: string[]; lunghezza: number; blocco: boolean }
 
 const VOCI: Voce[] = [
   ...CHIAVI_ICONE.flatMap((chiave) =>
-    CATALOGO_ICONE[chiave].map((s) => ({ chiave, radici: radici(s), lunghezza: normalizza(s).length, blocco: false })),
+    CATALOGO_ICONE[chiave].map((s) => ({ chiave, parole: parole(s), radici: radici(s), lunghezza: normalizza(s).length, blocco: false })),
   ),
-  ...BLOCCHI.map((s) => ({ chiave: null, radici: radici(s), lunghezza: normalizza(s).length, blocco: true })),
+  ...BLOCCHI.map((s) => ({ chiave: null, parole: parole(s), radici: radici(s), lunghezza: normalizza(s).length, blocco: true })),
 ];
 
 function posizione(nome: string[], cerca: string[]): number {
@@ -259,24 +263,29 @@ function posizione(nome: string[], cerca: string[]): number {
  * La chiave d'icona per un nome libero, o null se fuori catalogo (o se
  * l'espressione vincente è un blocco). Vince il sinonimo che compare prima
  * nel nome ("prima parola significativa"); a parità di posizione, il più
- * lungo; a parità di posizione e lunghezza, un blocco vince su un sinonimo
- * (pesca/pesce, grano/grana condividono la radice ed è il blocco a
- * risolvere l'ambiguità).
+ * lungo. A parità di posizione e lunghezza (pesca/pesce, grano/grana
+ * condividono la radice): vince la voce le cui parole, normalizzate e prima di
+ * `radice`, coincidono esattamente con quelle del nome in quella posizione
+ * («Grana» → formaggio, «Pesce» → pesce, «Grano» → il blocco); se nessuna delle
+ * due coincide (es. «Pesche»), vince il blocco.
  */
 export function trovaIcona(nome: string): ChiaveIcona | null {
   const n = radici(nome);
-  let migliore: { chiave: ChiaveIcona | null; lunghezza: number; pos: number; blocco: boolean } | null = null;
+  const p = parole(nome);
+  const esatta = (v: Voce, pos: number) => v.parole.every((w, j) => p[pos + j] === w);
+  let migliore: { chiave: ChiaveIcona | null; lunghezza: number; pos: number; blocco: boolean; esatta: boolean } | null = null;
   for (const v of VOCI) {
     const pos = posizione(n, v.radici);
     if (pos < 0) continue;
-    if (
+    const ex = esatta(v, pos);
+    const vince =
       !migliore ||
       pos < migliore.pos ||
       (pos === migliore.pos &&
-        (v.lunghezza > migliore.lunghezza || (v.lunghezza === migliore.lunghezza && v.blocco && !migliore.blocco)))
-    ) {
-      migliore = { chiave: v.chiave, lunghezza: v.lunghezza, pos, blocco: v.blocco };
-    }
+        (v.lunghezza > migliore.lunghezza ||
+          (v.lunghezza === migliore.lunghezza &&
+            (ex !== migliore.esatta ? ex : v.blocco && !migliore.blocco))));
+    if (vince) migliore = { chiave: v.chiave, lunghezza: v.lunghezza, pos, blocco: v.blocco, esatta: ex };
   }
   return migliore?.chiave ?? null;
 }

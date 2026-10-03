@@ -403,6 +403,35 @@ describe('trovaIcona', () => {
   });
 
   it.each([
+    // pareggio di posizione e lunghezza tra un blocco e un sinonimo con la stessa radice
+    // (grano/grana, pesca/pesce): vince la voce che coincide ESATTAMENTE con le parole del
+    // nome in quella posizione; se nessuna coincide, resta il blocco (Pesche/Pesca sotto)
+    ['Grana', 'formaggio'],
+    ['Grana padano', 'formaggio'],
+    ['Grana grattugiato', 'formaggio'],
+    ['Pesce', 'pesce'],
+    ['Pesce spada', 'pesce'],
+    ['Farina di grano', 'farina'],
+  ])('%s → %s (pareggio esatto)', (nome, chiave) => {
+    expect(trovaIcona(nome)).toBe(chiave);
+  });
+
+  it.each(['Grano', 'Grano saraceno', 'Pesca', 'Pesche'])('%s → null (pareggio esatto, vince il blocco)', (nome) => {
+    expect(trovaIcona(nome)).toBeNull();
+  });
+
+  it.each([
+    // comportamenti accettati, da rivedere con i sinonimi inglesi dell'ondata 2
+    // (lacuna nota: «thè» non è sinonimo di `te` perché «the» è anche l'articolo inglese)
+    ['Thè al limone', 'limone'],
+    ['Tortilla de patatas', 'piadina'],
+    ['Babà al rum', 'liquore'],
+    ['Crema al marsala', 'liquore'],
+  ])('%s → %s (compromesso accettato)', (nome, chiave) => {
+    expect(trovaIcona(nome)).toBe(chiave);
+  });
+
+  it.each([
     // punteggiatura: radici() spezza su /[^a-z0-9]+/ dopo normalizza, scarta
     // le parti vuote ("d'avena" → "d", "avena"). NB: "Burro d'arachidi" (dal
     // brief) NON è testato qui — vedi NEEDS_CONTEXT nel report finale: con la
