@@ -2,7 +2,7 @@ import '@testing-library/jest-dom/vitest';
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
 import { IconaIngrediente, alone } from '../IconaIngrediente';
-import { TRACCIATI } from '../tracciati-ingredienti';
+import { TRACCIATI, gruppiDettaglio } from '../tracciati-ingredienti';
 import { CHIAVI_ICONE } from '@/domain/icone-ingredienti';
 
 const PILOTA = ['bistecca', 'cosciotto', 'pesce', 'carota', 'pomodoro', 'uovo', 'latte', 'formaggio', 'pasta', 'pane', 'legumi', 'piselli'] as const;
@@ -78,5 +78,35 @@ describe('alone', () => {
     );
     expect(alone('#F5CE5B', 3)).toContain('2.12px 2.12px 0 #F5CE5B');
     expect(alone('#F5CE5B', 3).endsWith('0 0 4px #F5CE5B')).toBe(true);
+  });
+});
+
+describe('tracciati · forma a due toni (spec 03/10)', () => {
+  /** Ogni sottopercorso (da una M alla successiva) finisce in Z. */
+  const chiusa = (sil: string) =>
+    sil.split(/(?=[Mm])/).map((s) => s.trim()).filter(Boolean).every((s) => /[Zz]$/.test(s));
+
+  it('gruppiDettaglio: una stringa sola è un gruppo, una lista resta com\'è', () => {
+    expect(gruppiDettaglio({ d: 'M0 0', dd: 'M1 1' })).toEqual(['M1 1']);
+    expect(gruppiDettaglio({ d: 'M0 0', dd: ['M1 1', 'M2 2'] })).toEqual(['M1 1', 'M2 2']);
+  });
+
+  it('ogni sagoma presente ha i sottopercorsi chiusi', () => {
+    expect(CHIAVI_ICONE.filter((k) => {
+      const sil = TRACCIATI[k]?.sil;
+      return sil !== undefined && !chiusa(sil);
+    })).toEqual([]);
+  });
+
+  it('dettagli: da uno a cinque gruppi, nessuno vuoto', () => {
+    expect(CHIAVI_ICONE.filter((k) => {
+      const g = gruppiDettaglio(TRACCIATI[k]!);
+      return g.length < 1 || g.length > 5 || g.some((x) => x.trim() === '');
+    })).toEqual([]);
+  });
+
+  it('il controllo delle sagome scarta un sottopercorso aperto', () => {
+    expect(chiusa('M0 0h2v2Z')).toBe(true);
+    expect(chiusa('M0 0h2v2ZM4 4h1')).toBe(false);
   });
 });

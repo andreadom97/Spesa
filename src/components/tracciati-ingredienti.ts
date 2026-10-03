@@ -1,7 +1,16 @@
 import type { ChiaveIcona } from '@/domain/icone-ingredienti';
 
-/** `d` è la sagoma (tratto 2), `dd` i segni interni (tratto 1,25); `rot` ruota entrambi. */
-export interface Tracciato { d: string; dd: string; rot?: string }
+/**
+ * `sil` è la sagoma chiusa (pieno e maschera dell'ombra), `d` il contorno, `dd` i dettagli in
+ * gruppi, al massimo cinque (spec 2026-10-03 §3); `rot` ruota sagoma, contorno e dettagli.
+ * Finché il catalogo non è tutto ridisegnato, `sil` è facoltativa e `dd` può essere ancora la
+ * stringa unica del 26/09: `gruppiDettaglio` la tratta come un gruppo solo.
+ */
+export interface Tracciato { sil?: string; d: string; dd: string | readonly string[]; rot?: string }
+
+export function gruppiDettaglio(t: Tracciato): readonly string[] {
+  return typeof t.dd === 'string' ? [t.dd] : t.dd;
+}
 
 /** Un cerchio come path: serve dove la sagoma e i fori stanno nello stesso `d`. */
 const circ = (x: number, y: number, r: number) => `M${x - r} ${y}a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0`;

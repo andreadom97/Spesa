@@ -1,7 +1,7 @@
 import type { AreaId } from '@/domain/types';
 import type { ChiaveIcona } from '@/domain/icone-ingredienti';
 import { tonoMedioArea } from '@/domain/aree';
-import { TRACCIATI } from './tracciati-ingredienti';
+import { TRACCIATI, gruppiDettaglio } from './tracciati-ingredienti';
 
 export type TonoIcona = 'area' | 'hero' | 'spento';
 
@@ -33,7 +33,7 @@ export function IconaIngrediente({ chiave, area, tono, taglia }: {
       style={{ position: 'absolute', right: taglio, bottom: taglio, opacity: opacita, pointerEvents: 'none' }}
     >
       <path d={t.d} transform={t.rot} strokeWidth={2} />
-      <path d={t.dd} transform={t.rot} strokeWidth={1.25} />
+      <path d={gruppiDettaglio(t).join('')} transform={t.rot} strokeWidth={1.25} />
     </svg>
   );
 }
