@@ -148,6 +148,32 @@ describe('trovaIcona', () => {
     ['Fichi', 'datteri-fichi'],
     ['Fichi secchi', 'datteri-fichi'],
     ["Fichi d'India", 'datteri-fichi'],
+    // ondata 1, lotto D (03/10)
+    ['Albicocca', 'pesca-albicocca'],
+    ['Albicocche', 'pesca-albicocca'],
+    ['Albicocche secche', 'pesca-albicocca'],
+    ['Nettarine', 'pesca-albicocca'],
+    ['Nettarina', 'pesca-albicocca'],
+    ['Percoche', 'pesca-albicocca'],
+    ['Uvetta', 'uvetta'],
+    ['Uvette', 'uvetta'],
+    ['Uvetta sultanina', 'uvetta'],
+    ['Uva passa', 'uvetta'],
+    ['Uva sultanina', 'uvetta'],
+    ['Carciofi', 'carciofo'],
+    ['Carciofo', 'carciofo'],
+    ['Cuori di carciofo', 'carciofo'],
+    ['Asparagi', 'asparago'],
+    ['Asparagi verdi', 'asparago'],
+    ['Punte di asparagi', 'asparago'],
+    ['Semi di chia', 'semi'],
+    ['Semi di lino', 'semi'],
+    ['Semi di girasole', 'semi'],
+    ['Semi di zucca', 'semi'],
+    ['Semi di sesamo', 'semi'],
+    ['Sesamo', 'semi'],
+    ['Chia', 'semi'],
+    ['Lino', 'semi'],
   ])('%s → %s', (nome, chiave) => {
     expect(trovaIcona(nome)).toBe(chiave);
   });
@@ -203,6 +229,18 @@ describe('trovaIcona', () => {
     ['Mele', 'mela'],
     ['Melanzane', 'melanzana'],
     ['Marmellata di ciliegie', 'marmellata'],
+    // non regressione del lotto D (03/10)
+    ['Uva', 'uva'],
+    ['Uva bianca', 'uva'],
+    ['Marmellata di albicocche', 'marmellata'],
+    ['Zucca', 'zucca'],
+    ['Olio di semi', 'olio'],
+    ['Olio di semi di girasole', 'olio'],
+    ['Olio di sesamo', 'olio'],
+    ['Farina di semi di lino', 'farina'],
+    ['Yogurt con semi di chia', 'yogurt'],
+    ['Pane ai semi di sesamo', 'pane'],
+    ['Pasta e carciofi', 'pasta'],
   ])('%s → %s (posizione prima della lunghezza)', (nome, chiave) => {
     expect(trovaIcona(nome)).toBe(chiave);
   });
@@ -228,6 +266,12 @@ describe('trovaIcona', () => {
     'Filetto',
     // radice diversa da amarena
     'Amaretti',
+    // radice diversa da semi (sem): semifredd
+    'Semifreddo',
+    // la pesca resta senza icona: «pesca» è un blocco (radice di pesce) e «pesche» (pesch) non
+    // combina con niente; `pesca-albicocca` prende solo albicocca, nettarina e percoca (lotto D)
+    'Pesche',
+    'Pesche sciroppate',
   ])('%s → null (omografo)', (nome) => {
     expect(trovaIcona(nome)).toBeNull();
   });
@@ -286,6 +330,8 @@ describe('trovaIcona', () => {
     'Polpa di granchio',
     'Mostarda di fichi',
     'Mostarda di Cremona',
+    // semola: blocco esistente, non prende `semi` (lotto D)
+    'Semola',
   ])('%s → null (blocco)', (nome) => {
     expect(trovaIcona(nome)).toBeNull();
   });
@@ -305,8 +351,8 @@ describe('trovaIcona', () => {
 });
 
 describe('CATALOGO_ICONE', () => {
-  it('84 icone (64 del 26/09 + 5 famiglie del 03/10 + lotti A, B e C dell\'ondata 1)', () => {
-    expect(CHIAVI_ICONE).toHaveLength(84);
+  it('89 icone (64 del 26/09 + 5 famiglie del 03/10 + lotti A, B, C e D dell\'ondata 1)', () => {
+    expect(CHIAVI_ICONE).toHaveLength(89);
   });
 
   it('ogni sinonimo appartiene a una sola chiave', () => {

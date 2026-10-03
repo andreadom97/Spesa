@@ -57,6 +57,13 @@ export const CATALOGO_ICONE = {
   // «Fichi» a parte: la radice di «fico» (fic) non è quella di «fichi» (fich). «Fico secco» e
   // «Fico d'India» li prende già «fico». «Datterini» restano su `pomodorini` (radice diversa).
   'datteri-fichi': ['dattero', 'fico', 'fichi'],
+  // ondata 1 (03/10), frutta e verdura. «Albicocche» e «percoche» a parte: `radice` non unisce
+  // -ca/-che. Niente «pesca»: ha la radice di «pesce» ed è un blocco, quindi «Pesca» resta senza icona.
+  'pesca-albicocca': ['albicocca', 'albicocche', 'nettarina', 'percoca', 'percoche'],
+  // «Uva passa» e «Uva sultanina» qui e non su `uva`: più lunghi alla stessa posizione.
+  uvetta: ['uvetta', 'uva passa', 'uva sultanina'],
+  carciofo: ['carciofo'],
+  asparago: ['asparago'],
   // carne e pesce
   bistecca: ['manzo', 'macinato', 'vitello', 'carne', 'bistecca', 'hamburger'],
   cosciotto: ['pollo', 'tacchino'],
@@ -121,6 +128,9 @@ export const CATALOGO_ICONE = {
   // Niente «mostarda»: in Italia è frutta candita alla senape, non la senape.
   senape: ['senape'],
   capperi: ['cappero'],
+  // ondata 1 (03/10). «Semi di zucca» qui e non su `zucca` (prima posizione). «Semola» resta un
+  // blocco e «Semifreddo» non si accende: le radici (semol, semifredd) non sono quella di «semi» (sem).
+  semi: ['semi di chia', 'semi di lino', 'semi di girasole', 'semi di zucca', 'semi di sesamo', 'sesamo', 'chia', 'lino'],
   // pronti e bevande
   minestra: ['minestrone', 'minestra', 'brodo', 'zuppa', 'vellutata'],
   acqua: ['acqua'],
