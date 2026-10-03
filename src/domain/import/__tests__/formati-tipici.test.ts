@@ -103,6 +103,22 @@ describe('pesoPezzo (spec 8c §A.1)', () => {
     expect(pesoPezzo('Uovo')).toBe(60);
   });
 
+  it('gli aromi a pezzi: aglio, sedano, scalogno, porro, cipollotto, anche al plurale e dopo «di» o «d\'» (8c-bis C, review)', () => {
+    expect(pesoPezzo('aglio')).toBe(5);
+    expect(pesoPezzo("spicchi d'aglio")).toBe(5);
+    expect(pesoPezzo('spicchio di aglio')).toBe(5);
+    expect(pesoPezzo('Sedano')).toBe(50);
+    expect(pesoPezzo('coste di sedano')).toBe(50);
+    expect(pesoPezzo('scalogno')).toBe(30);
+    expect(pesoPezzo('scalogni')).toBe(30);
+    expect(pesoPezzo('porro')).toBe(150);
+    expect(pesoPezzo('porri')).toBe(150);
+    expect(pesoPezzo('cipollotto')).toBe(20);
+    expect(pesoPezzo('cipollotti')).toBe(20);
+    // «sedano rapa» è un altro ortaggio: non eredita il peso di una costa.
+    expect(pesoPezzo('sedano rapa')).toBe(400);
+  });
+
   it('«pomodorini» non è «pomodori», e un nome ignoto è null', () => {
     expect(pesoPezzo('pomodorini')).toBeNull();
     expect(pesoPezzo('cavolo nero')).toBeNull();

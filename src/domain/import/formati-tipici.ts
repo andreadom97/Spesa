@@ -193,11 +193,23 @@ const PESO_PEZZO: { chiave: string; grammi: number }[] = [
   { chiave: 'melanzana', grammi: 300 }, { chiave: 'melanzane', grammi: 300 },
   { chiave: 'finocchio', grammi: 250 }, { chiave: 'finocchi', grammi: 250 },
   { chiave: 'avocado', grammi: 200 },
+  // Gli aromi che si contano a pezzi (8c-bis C, review): valori medi, non misurati. Senza, «1 pz»
+  // di aglio in g diventava 100 g. Un pezzo di aglio è uno spicchio, di sedano una costa.
+  { chiave: 'aglio', grammi: 5 }, { chiave: 'agli', grammi: 5 },
+  { chiave: 'sedano', grammi: 50 }, { chiave: 'sedani', grammi: 50 },
+  { chiave: 'scalogno', grammi: 30 }, { chiave: 'scalogni', grammi: 30 },
+  { chiave: 'porro', grammi: 150 }, { chiave: 'porri', grammi: 150 },
+  { chiave: 'cipollotto', grammi: 20 }, { chiave: 'cipollotti', grammi: 20 },
+  // Il sedano rapa è una radice, non una costa: vince la chiave più lunga.
+  { chiave: 'sedano rapa', grammi: 400 },
 ];
 
 /** Grammi di un pezzo per il primo dei nomi che la tabella conosce, o null. */
 export function pesoPezzo(...nomi: string[]): number | null {
-  return voceTabella(PESO_PEZZO, nomi)?.grammi ?? null;
+  // Poi con l'apostrofo come spazio: «spicchi d'aglio» contiene la parola «aglio». Solo qui: nelle
+  // altre tabelle «carciofi sott'olio» diventerebbe «olio».
+  const senzaApostrofi = nomi.map((n) => n.replace(/['’]/g, ' '));
+  return (voceTabella(PESO_PEZZO, nomi) ?? voceTabella(PESO_PEZZO, senzaApostrofi))?.grammi ?? null;
 }
 
 /** Un cucchiaio e un cucchiaino generici, in ml (spec §C). */

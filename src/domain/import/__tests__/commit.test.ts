@@ -554,7 +554,7 @@ describe('traduciBozza — fase 8c', () => {
 
   it('riassuntoScritture: nuovi, aggiornati, tolti, ingredienti, cambi, e se c\'è un piano attuale (spec 8c §H)', () => {
     const base = traduciBozza(pianoCon([riga('zucchine', 150, 'g')]), stato(), [ZUCCHINE], [], OGGI);
-    expect(riassuntoScritture(base)).toEqual({ piattiNuovi: 1, piattiAggiornati: 0, piattiTolti: 0, ingredientiNuovi: 0, cambi: base.cambiUnita, pianoAttuale: false });
+    expect(riassuntoScritture(base)).toEqual({ piattiNuovi: 1, piattiAggiornati: 0, piattiTolti: 0, ingredientiNuovi: 0, cambi: base.cambiUnita, stime: [], pianoAttuale: false });
     const conVecchi: ScrittureImport = { ...base, piattiDaDisattivare: ['d-1', 'd-2'], piattiDaCreare: [{ ...base.piattiDaCreare[0], riusaDishId: 'd-0' }] };
     expect(riassuntoScritture(conVecchi)).toMatchObject({ piattiNuovi: 0, piattiAggiornati: 1, piattiTolti: 2, pianoAttuale: true });
   });
@@ -687,8 +687,42 @@ describe('traduciBozza — fase 8c', () => {
       const s = traduciBozza(piano, stato(), [sedano], [], OGGI);
       expect(s.cambiUnita).toEqual([]);
       expect(s.ingredientiDaCreare).toEqual([]);
-      // La porzione tipica delle verdure in g (200), non 1 pz × un peso inventato.
-      expect(righe(s)).toEqual([{ ingredientId: 'i-sed', quantita: 200, unita: 'g' }]);
+      // 1 pz di sedano è una costa: 50 g dalla tabella dei pesi medi (non una domanda, non 200 g).
+      expect(righe(s)).toEqual([{ ingredientId: 'i-sed', quantita: 50, unita: 'g' }]);
+    });
+
+    describe('le stime portate in un\'altra unità si vedono nel Riepilogo (fix round 1, I1)', () => {
+      it('sedano in g e 1 pz stimato: «1 pz, quindi 50 g», col peso di un pezzo', () => {
+        const s = traduciBozza(pianoCon([stima('sedano', 1, 'pz')]), stato(), [ingrediente('i-sed', 'Sedano', 'g')], [], OGGI);
+        expect(s.stimePortate).toEqual([{ nome: 'Sedano', da: { quantita: 1, unita: 'pz' }, a: { quantita: 50, unita: 'g' }, rifatta: false, righe: 1 }]);
+        expect(riassuntoScritture(s).stime).toEqual(s.stimePortate);
+      });
+
+      it('aglio in g e 1 pz stimato: 5 g (uno spicchio), non 100', () => {
+        const s = traduciBozza(pianoCon([stima('aglio', 1, 'pz')]), stato(), [ingrediente('i-agl', 'Aglio', 'g')], [], OGGI);
+        expect(righe(s)).toEqual([{ ingredientId: 'i-agl', quantita: 5, unita: 'g' }]);
+        expect(s.stimePortate).toEqual([{ nome: 'Aglio', da: { quantita: 1, unita: 'pz' }, a: { quantita: 5, unita: 'g' }, rifatta: false, righe: 1 }]);
+      });
+
+      it('lattuga a pezzi e 50 g stimati, senza il peso di un pezzo: rifatta (1 pz), e lo dice', () => {
+        const s = traduciBozza(pianoCon([stima('lattuga', 50, 'g')]), stato(), [ingrediente('i-lat', 'Lattuga', 'pz')], [], OGGI);
+        expect(righe(s)).toEqual([{ ingredientId: 'i-lat', quantita: 1, unita: 'pz' }]);
+        expect(s.stimePortate).toEqual([{ nome: 'Lattuga', da: { quantita: 50, unita: 'g' }, a: { quantita: 1, unita: 'pz' }, rifatta: true, righe: 1 }]);
+      });
+
+      it('una voce per ingrediente: la prima riga e quante sono; le righe scritte e le stime nell\'unità giusta non contano', () => {
+        const piano = pianoCon([stima('sedano', 1, 'pz'), stima('sedano', 2, 'pz'), stima('sedano', 80, 'g'), riga('sedano', 100, 'g')]);
+        const s = traduciBozza(piano, stato(), [ingrediente('i-sed', 'Sedano', 'g')], [], OGGI);
+        expect(s.stimePortate).toEqual([{ nome: 'Sedano', da: { quantita: 1, unita: 'pz' }, a: { quantita: 50, unita: 'g' }, rifatta: false, righe: 2 }]);
+        expect(riassuntoScritture(traduciBozza(pianoCon([riga('sedano', 100, 'g'), stima('sedano', 80, 'g')]), stato(), [ingrediente('i-sed', 'Sedano', 'g')], [], OGGI)).stime).toEqual([]);
+      });
+
+      it('una proposta nuova porta il suo nome; il q.b. e le righe scritte non producono voci', () => {
+        const piano = pianoCon([stima('cavolo nero', 200, 'g'), stima('cavolo nero', 1, 'pz'), riga('sale', null, null, 'sale q.b.')]);
+        const proposte = calcolaProposte(piano, stato(), []);
+        const s = traduciBozza(piano, stato({ ingredientiNuovi: proposte }), [], [], OGGI);
+        expect(s.stimePortate).toEqual([{ nome: 'Cavolo nero', da: { quantita: 1, unita: 'pz' }, a: { quantita: 200, unita: 'g' }, rifatta: true, righe: 1 }]);
+      });
     });
 
     it('le zucchine scritte in g sul foglio passano a grammi anche con una stima in pz; la stima si converte col peso', () => {

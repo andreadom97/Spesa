@@ -6,9 +6,9 @@ import type { PianoEstratto, StatoRevisione } from '@/domain/import/types';
 import { eseguiScritture, type AvanzamentoScritture } from '@/data/importa';
 import { leggiIngredienti, leggiRepertorio } from '@/data/repertorio';
 import {
-  traduciBozza, BozzaIncompletaError, riassuntoScritture, type RiassuntoScritture, type ScrittureImport,
+  traduciBozza, BozzaIncompletaError, riassuntoScritture, type RiassuntoScritture, type ScrittureImport, type StimaPortata,
 } from '@/domain/import/commit';
-import { UNITA_IN_PAROLE, numeroInParole } from '@/domain/import/formati-tipici';
+import { UNITA_IN_PAROLE, numeroInParole, testoConversione } from '@/domain/import/formati-tipici';
 import { Dock, ErroreSopraDock } from '@/components/Dock';
 import { FoglioDalBasso } from '@/components/FoglioDalBasso';
 import { DialogoConferma } from '@/components/DialogoConferma';
@@ -45,6 +45,15 @@ export function testoDialogo(r: RiassuntoScritture): string {
   if (r.piattiAggiornati > 0) parti.push(conNome(r.piattiAggiornati, 'aggiornato', 'aggiornati'));
   if (r.piattiTolti > 0) parti.push(`${conNome(r.piattiTolti, 'tolto', 'tolti')} da Piatti`);
   return `${parti.join(', ')}. I tuoi piatti restano.`;
+}
+
+/**
+ * La nota sotto una stima portata in un'altra unità: come è stata portata, e se le righe sono più
+ * d'una, che qui c'è la prima (fix round 1, I1).
+ */
+function notaStima(s: StimaPortata): string {
+  const come = s.rifatta ? 'Stimato da me, senza il peso di un pezzo' : 'Col peso di un pezzo';
+  return s.righe > 1 ? `${come} · ${s.righe} righe, qui la prima` : come;
 }
 
 /** I passi dell'attesa (spec 8c §H): ingredienti, piatti, fine. */
@@ -219,6 +228,39 @@ export function Riepilogo({
               </li>
             ))}
           </ul>
+          {/* Le stime del lettore scritte in un'altra unità: la quantità che si salva non è quella vista in Controlla (fix round 1, I1). */}
+          {r.stime.length > 0 && (
+            <>
+              <h3 style={{ margin: '20px 6px 8px', fontSize: 14, fontWeight: 700, lineHeight: 1.4, color: 'var(--testo-2)' }}>
+                {'Quantità proposte da me, nell\'unità dell\'ingrediente'}
+              </h3>
+              <ul
+                aria-label="Le quantità proposte da me, portate nell'unità dell'ingrediente"
+                style={{
+                  listStyle: 'none', margin: 0, padding: '0 16px', borderRadius: 18, background: 'var(--superficie)',
+                  border: '1px solid var(--bordo)', boxShadow: 'var(--ombra-pannello)',
+                }}
+              >
+                {r.stime.map((s, i) => (
+                  <li
+                    key={`${s.nome}-${i}`}
+                    style={{
+                      minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                      padding: '10px 0', borderTop: i === 0 ? 'none' : '1px solid var(--bordo)',
+                    }}
+                  >
+                    <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                      <span style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.4, color: 'var(--ink)' }}>{s.nome}</span>
+                      <span style={{ fontSize: 12, lineHeight: 1.4, color: 'var(--testo-2)' }}>{notaStima(s)}</span>
+                    </span>
+                    <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>
+                      {testoConversione(s.da, s.a)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </div>
       )}
 
