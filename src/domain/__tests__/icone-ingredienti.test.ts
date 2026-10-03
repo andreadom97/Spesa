@@ -71,7 +71,6 @@ describe('trovaIcona', () => {
     ['Panna da cucina', 'panna'],
     ['Panna fresca', 'panna'],
     ['Panna montata', 'panna'],
-    ['Besciamella', 'panna'],
     ['Vaniglia', 'vaniglia'],
     ['Vanillina', 'vaniglia'],
     ['Estratto di vaniglia', 'vaniglia'],
@@ -84,7 +83,6 @@ describe('trovaIcona', () => {
     ['Cremor tartaro', 'lievito'],
     ['Senape', 'senape'],
     ['Senape di Digione', 'senape'],
-    ['Mostarda', 'senape'],
     ['Capperi', 'capperi'],
     ['Capperi sotto sale', 'capperi'],
   ])('%s → %s', (nome, chiave) => {
@@ -117,6 +115,8 @@ describe('trovaIcona', () => {
     ['Fragole con panna', 'fragola'],
     ['Latte e panna', 'latte'],
     ['Olive e capperi', 'olive'],
+    // omografi (review del lotto A): parole vicine a un sinonimo che non devono accenderlo
+    ['Pane lievitato', 'pane'],
   ])('%s → %s (posizione prima della lunghezza)', (nome, chiave) => {
     expect(trovaIcona(nome)).toBe(chiave);
   });
@@ -129,6 +129,15 @@ describe('trovaIcona', () => {
   it('fuori catalogo: null', () => {
     expect(trovaIcona('Quark')).toBeNull();
     expect(trovaIcona('')).toBeNull();
+  });
+
+  it.each([
+    // omografi (review del lotto A): radici diverse da lievito, cappero, panna
+    'Lievitato',
+    'Cappuccino',
+    'Pannocchia',
+  ])('%s → null (omografo)', (nome) => {
+    expect(trovaIcona(nome)).toBeNull();
   });
 
   it.each([
@@ -168,6 +177,8 @@ describe('trovaIcona', () => {
     'Salame di cioccolato',
     'Panna cotta',
     'Panna cotta ai frutti di bosco',
+    'Gelato alla vaniglia',
+    'Budino alla vaniglia',
   ])('%s → null (blocco)', (nome) => {
     expect(trovaIcona(nome)).toBeNull();
   });

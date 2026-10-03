@@ -57,8 +57,9 @@ export const CATALOGO_ICONE = {
   formaggio: ['formaggio', 'parmigiano', 'grana', 'pecorino', 'feta', 'emmental', 'provola', 'scamorza', 'mozzarella', 'burrata', 'stracciatella', 'fiordilatte'],
   'formaggio-fresco': ['ricotta', 'philadelphia', 'formaggio spalmabile', 'stracchino', 'fiocchi di latte', 'tofu'],
   burro: ['burro'],
-  // ondata 1 (03/10). «Panna cotta» è un dolce: è nei BLOCCHI, non qui.
-  panna: ['panna', 'panna da cucina', 'panna fresca', 'panna montata', 'besciamella'],
+  // ondata 1 (03/10). «Panna cotta» è un dolce: è nei BLOCCHI, non qui. Niente
+  // «besciamella»: è una salsa (latte, burro, farina), non la panna da comprare.
+  panna: ['panna', 'panna da cucina', 'panna fresca', 'panna montata'],
   // cereali e forno
   pasta: ['pasta', 'spaghetti', 'penne', 'fusilli', 'rigatoni', 'linguine', 'tagliatelle', 'gnocchi'],
   riso: ['riso'],
@@ -91,7 +92,8 @@ export const CATALOGO_ICONE = {
   // ondata 1 (03/10). Niente «aroma»: nelle diete «aroma»/«aromatizzazione» non sono ingredienti.
   vaniglia: ['vaniglia', 'vanillina', 'estratto di vaniglia', 'bacca di vaniglia'],
   lievito: ['lievito', 'lievito di birra', 'lievito per dolci', 'bicarbonato', 'cremor tartaro'],
-  senape: ['senape', 'mostarda'],
+  // Niente «mostarda»: in Italia è frutta candita alla senape, non la senape.
+  senape: ['senape'],
   capperi: ['cappero'],
   // pronti e bevande
   minestra: ['minestrone', 'minestra', 'brodo', 'zuppa', 'vellutata'],
@@ -122,6 +124,10 @@ export const CHIAVI_ICONE = Object.keys(CATALOGO_ICONE) as ChiaveIcona[];
  *   l'icona di `salumi` (03/10).
  * - `panna cotta`: un dolce pronto, non la panna da comprare — senza il blocco
  *   prenderebbe l'icona di `panna` (03/10).
+ * - `gelato`, `budino`: dolci pronti — senza il blocco "Gelato alla vaniglia" e
+ *   "Budino alla vaniglia" prenderebbero l'icona della bacca di vaniglia (03/10).
+ *   Non si blocca «crema»: bloccherebbe anche "Crema di zucca" o "Crema di
+ *   ceci", che oggi prendono l'icona giusta.
  */
 export const BLOCCHI: readonly string[] = [
   'pesca',
@@ -135,6 +141,8 @@ export const BLOCCHI: readonly string[] = [
   'pasta di acciughe',
   'salame di cioccolato',
   'panna cotta',
+  'gelato',
+  'budino',
 ];
 
 /**
