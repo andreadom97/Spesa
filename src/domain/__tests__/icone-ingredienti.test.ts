@@ -124,6 +124,30 @@ describe('trovaIcona', () => {
     ['Peperoncini freschi', 'peperoncino'],
     ['Peperoncino in polvere', 'peperoncino'],
     ['Jalapeño', 'peperoncino'],
+    // ondata 1, lotto C (03/10)
+    ['Ananas', 'ananas'],
+    ['Ananas sciroppato', 'ananas'],
+    ['Succo di ananas', 'ananas'],
+    ['Cocco', 'cocco'],
+    ['Cocco rapè', 'cocco'],
+    ['Noce di cocco', 'cocco'],
+    ['Latte di cocco', 'cocco'],
+    ['Farina di cocco', 'cocco'],
+    ['Ciliegie', 'ciliegia'],
+    ['Ciliege', 'ciliegia'],
+    ['Amarene sciroppate', 'ciliegia'],
+    ['Marasche', 'ciliegia'],
+    ['Visciole', 'ciliegia'],
+    ['Melone', 'melone'],
+    ['Melone giallo', 'melone'],
+    ['Anguria', 'melone'],
+    ['Cocomero', 'melone'],
+    ['Datteri', 'datteri-fichi'],
+    ['Datteri Medjoul', 'datteri-fichi'],
+    ['Fico', 'datteri-fichi'],
+    ['Fichi', 'datteri-fichi'],
+    ['Fichi secchi', 'datteri-fichi'],
+    ["Fichi d'India", 'datteri-fichi'],
   ])('%s → %s', (nome, chiave) => {
     expect(trovaIcona(nome)).toBe(chiave);
   });
@@ -167,6 +191,17 @@ describe('trovaIcona', () => {
     ['Olio al peperoncino', 'olio'],
     ['Peperoni', 'peperone'],
     ['Pepe', 'spezie'],
+    // non regressione del lotto C (03/10)
+    ['Acqua di cocco', 'acqua'],
+    ['Olio di cocco', 'olio'],
+    ['Yogurt al cocco', 'yogurt'],
+    ['Prosciutto e melone', 'salumi'],
+    ['Confettura di fichi', 'marmellata'],
+    ['Datterini', 'pomodorini'],
+    ['Pomodorini ciliegini', 'pomodorini'],
+    ['Ciliegini', 'pomodorini'],
+    ['Mele', 'mela'],
+    ['Melanzane', 'melanzana'],
   ])('%s → %s (posizione prima della lunghezza)', (nome, chiave) => {
     expect(trovaIcona(nome)).toBe(chiave);
   });
@@ -190,6 +225,8 @@ describe('trovaIcona', () => {
     'Polpette',
     'Calamarata',
     'Filetto',
+    // radice diversa da amarena
+    'Amaretti',
   ])('%s → null (omografo)', (nome) => {
     expect(trovaIcona(nome)).toBeNull();
   });
@@ -265,8 +302,8 @@ describe('trovaIcona', () => {
 });
 
 describe('CATALOGO_ICONE', () => {
-  it('79 icone (64 del 26/09 + 5 famiglie del 03/10 + lotti A e B dell\'ondata 1)', () => {
-    expect(CHIAVI_ICONE).toHaveLength(79);
+  it('84 icone (64 del 26/09 + 5 famiglie del 03/10 + lotti A, B e C dell\'ondata 1)', () => {
+    expect(CHIAVI_ICONE).toHaveLength(84);
   });
 
   it('ogni sinonimo appartiene a una sola chiave', () => {

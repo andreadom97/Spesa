@@ -47,6 +47,16 @@ export const CATALOGO_ICONE = {
   // ondata 1 (03/10): esce da `spezie`, ha una forma sua. «Peperoncino fresco» e «in polvere»
   // non servono: «peperoncino» è già in prima posizione e porta alla stessa chiave.
   peperoncino: ['peperoncino', 'jalapeno'],
+  // ondata 1 (03/10), frutta. «Latte/Farina/Noce di cocco» vengono qui e non su `latte`,
+  // `farina`, `noce`: più lunghi alla stessa posizione. «Cocco rapé» lo prende già «cocco».
+  ananas: ['ananas'],
+  cocco: ['cocco', 'noce di cocco', 'latte di cocco', 'farina di cocco'],
+  // «Ciliege» e «marasche» a parte: `radice` non unisce -gie/-ge né -ca/-che.
+  ciliegia: ['ciliegia', 'ciliege', 'amarena', 'marasca', 'marasche', 'visciola'],
+  melone: ['melone', 'anguria', 'cocomero'],
+  // «Fichi» a parte: la radice di «fico» (fic) non è quella di «fichi» (fich). «Fico secco» e
+  // «Fico d'India» li prende già «fico». «Datterini» restano su `pomodorini` (radice diversa).
+  'datteri-fichi': ['dattero', 'fico', 'fichi'],
   // carne e pesce
   bistecca: ['manzo', 'macinato', 'vitello', 'carne', 'bistecca', 'hamburger'],
   cosciotto: ['pollo', 'tacchino'],
