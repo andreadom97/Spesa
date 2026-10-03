@@ -1242,12 +1242,6 @@ nome di `Esci` (§2.2); il piede fisso col primario nel pannello (§8 Pannello i
 |---|---|---|---|
 | 29 | Icone ingrediente | 64 icone di tratto, tono medio d'area, alone sul nome | §2.3, §6, §12 — sostituita dalla 30 |
 
-### Decisioni del 03/10/2026 (icone a due toni)
-
-| # | Tema | Decisione | Dove |
-|---|---|---|---|
-| 30 | Icone ingrediente | Due toni con ombra incisa (pilota «Mix B · ombra leggera»): sagoma piena nel colore d'area a 0,72, contorno 0,9, fino a cinque gruppi di dettagli a 0,5, tratteggio 0,34 ogni 1,2; 60 e 96 px; Dispensa in casa con pieno bianco (stato `tinta`). Foto scontornate valutate e scartate | §2.3, §6, §12 |
-
 ### Decisioni del 26/09/2026 (fase 7: Scegli e l'editor del Piatto)
 
 1. **Scegli resta una schermata sua** e prende da Piatti la ricerca e la Riga piatto, con lo stato
@@ -1341,3 +1335,9 @@ accettato di default, si tocca solo quello che l'AI non sa.
     finale; un foglio vuoto non serve a niente (ruling, review finale).
 
 Componenti nuovi: Riga dell'alimento, Selettore a foglio (con la voce scelta piena del Foglio).
+
+### Decisioni del 03/10/2026 (icone a due toni)
+
+| # | Tema | Decisione | Dove |
+|---|---|---|---|
+| 30 | Icone ingrediente | Due toni con ombra incisa (pilota «Mix B · ombra leggera»): sagoma piena nel colore d'area a 0,72, contorno 0,9, fino a cinque gruppi di dettagli a 0,5, tratteggio 0,34 ogni 1,2; 60 e 96 px; Dispensa in casa con pieno bianco (stato `tinta`). Foto scontornate valutate e scartate | §2.3, §6, §12 |

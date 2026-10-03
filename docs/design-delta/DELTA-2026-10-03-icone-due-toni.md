@@ -16,4 +16,9 @@ Aperto: protagonista gialla mai vista nel pilota; tratteggio sugli schermi a den
 
 ## Forme cambiate rispetto al 26/09
 
-pasta (la tavoletta rigata diventa una penna di tre quarti con le bocche tagliate in diagonale), legumi (il fagiolo singolo diventa due fagioli affiancati), carota (foglie a fuso invece che a tratti), yogurt (il coperchio aperto diventa una linguetta chiusa). Approvate da Andrea sul foglio delle 64 (03/10): https://claude.ai/artifact/Y9w7DXV1wK3eNuggjgdWzc
+- **pasta**: la tavoletta rigata diventa una penna di tre quarti con le bocche tagliate in diagonale
+- **legumi**: il fagiolo singolo diventa due fagioli affiancati
+- **carota**: foglie a fuso invece che a tratti
+- **yogurt**: il coperchio aperto diventa una linguetta chiusa
+
+Approvate da Andrea sul foglio delle 64 (03/10): https://claude.ai/artifact/Y9w7DXV1wK3eNuggjgdWzc
