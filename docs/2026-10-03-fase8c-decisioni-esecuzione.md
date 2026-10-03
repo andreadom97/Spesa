@@ -196,7 +196,7 @@ Dal ledger, raggruppati per task, ciascuno col costo se sbagliato.
 - **Review finale (I1).** La guardia di `p_fattore` rifiuta anche un fattore oltre 100000 (100 kg a
   pezzo): ferma `'Infinity'::numeric` su ogni versione di Postgres. Costo: nessuno.
 - **Review finale (I3).** «Intero» solo con l'unità pz: le voci in g della tabella dei formati
-  (yogurt, mozzarella, tonno, legumi) nascono «porzionabile» (2 delle 11 proposte della lettura di
+  nascono «porzionabile» (2 delle 11 proposte della lettura di
   Andrea nascevano «intero» in g [misurato dal revisore]); la Scheda dell'ingrediente offre
   «Intero» solo a pezzi e mostra «Porzionabile» per un «intero» in g di una bozza vecchia; come rete
   `traduciBozza` scrive «porzionabile» un nuovo «intero» in g o ml. Una regola sola,
@@ -382,8 +382,9 @@ Ognuno col motivo. Un test caduto per un altro motivo sarebbe stato una regressi
   proposta); Ingredienti 2 bloccanti (2 cambi di unità, 1 senza peso); scritture 11 ingredienti, 30
   piatti, 2 cambi → 127 richieste, 4,7 s. Lo script contava fra i «senza peso» anche i cambi con
   l'unità che resta (`da` uguale ad `a`): nell'ondata finale conta solo i cambi veri, come «cambi di
-  unità»; la misura con lo script corretto è **NON ESEGUITA**, quindi «1 senza peso» può includere
-  un cambio non vero.
+  unità». Rimisurata con lo script corretto (HEAD `59466f0`) [misurato]: Controlla 2 su 125,
+  Ingredienti 2 bloccanti, 2 cambi di unità di cui 1 senza peso, 127 richieste. I numeri non
+  cambiano: il cambio senza peso era un cambio vero.
 - Prima della 8c: 122 su 124; 133 richieste, 16,2 s.
 
 | | Prima (8b, `bozza.json`) | 8c, lettura vecchia (`bozza.json`) | 8c, lettura nuova (`bozza-8c.json`) |
@@ -571,7 +572,26 @@ Dal ledger, non corretti in questa fase:
    (unità, formato, **classe** = «porzionabile»), il conteggio delle righe di `dish_ingredient` in g
    e di `pantry_state`; `rollback;`. La funzione non è mai stata eseguita: gli errori di plpgsql
    (tipi, nomi di colonna, `for update` sotto RLS) uscirebbero solo all'import di Andrea.
-   **NON ESEGUITA.**
+
+### Esiti dei gate in produzione (controller, 03/10, con l'ok di Andrea) [misurato]
+
+- **Gate 1, la 0016.** Prima: check `quantita > 0`, colonna `NOT NULL`, funzione assente (il nome
+  del check coincideva). Applicata dal file di `ceff795`. Dopo: check
+  `quantita IS NULL OR quantita > 0`, colonna nullable, `cambia_unita_ingrediente` security
+  invoker, `execute` ad `authenticated` sì e ad `anon` no.
+- **Gate 2, i dati.** I 2 ingredienti «intero» in g della casa di Andrea passati a «porzionabile»
+  (unità e formato invariati); dopo, 0 ingredienti «intero» con unità diversa da pz.
+- **Gate 3, la funzione.** Eseguita in un blocco `do` chiuso da un'eccezione voluta, quindi in
+  rollback garantito, col ruolo `authenticated` e il jwt di Andrea (`casa_id()` = la sua casa),
+  su un suo ingrediente pz/«intero» verso g con fattore 200: unità g, formato 1 → 200, classe
+  «porzionabile»; 14 righe di piatti da 1 pz → 200 g ciascuna; residuo in dispensa 0 → 0; 3 voci in
+  liste aperte da 2 pz → 400 g (fabbisogno 400, residuo 0). Un secondo giro sullo stesso
+  ingrediente, già in g, non converte due volte; un fattore 0 è rifiutato («fattore non valido»).
+  La lettura dopo il rollback ritrova tutto com'era (pz, «intero», formato 1, righe in pz, liste
+  2 pz).
+- Il gate 4 (la sonda della cronologia) e il gate 6 (il merge di `main`) sono passati prima, nella
+  review finale; il gate 5 (test, tsc, lint) è sul ramo fuso: 2660 verdi, tsc e lint puliti
+  [dal report dell'agente; la CI della PR li rifà].
 4. La sonda nel browser vero sulla cronologia: indietro di passo, e il dialogo di uscita che rimette
    due voci dopo il popstate (Task 10).
 5. `npm test`, `npx tsc --noEmit`, `npm run lint` verdi sul ramo fuso con `main`.
