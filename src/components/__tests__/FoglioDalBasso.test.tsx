@@ -76,6 +76,21 @@ describe('FoglioDalBasso', () => {
     expect(screen.getByTestId('velo-foglio').style.zIndex).toBe('80');
   });
 
+  it('velo e foglio stanno in document.body, non nel contenitore dove il componente è montato (8c-bis F)', () => {
+    // Uno scroller con mask-image ritaglia i `fixed` discendenti: il foglio deve uscirne col portale.
+    const { container } = render(
+      <div className="scroll-app" data-testid="scroller">
+        <FoglioDalBasso etichetta="Selettore" onChiudi={vi.fn()}><p>Contenuto</p></FoglioDalBasso>
+      </div>,
+    );
+    const velo = screen.getByTestId('velo-foglio');
+    const foglio = screen.getByRole('dialog', { name: 'Selettore' });
+    expect(velo.parentElement).toBe(document.body);
+    expect(velo).toContainElement(foglio);
+    expect(container.contains(velo)).toBe(false);
+    expect(screen.getByTestId('scroller')).toBeEmptyDOMElement();
+  });
+
   it('un foglio «contenuto» non va oltre la cima del foglio alto (spec 8c §G)', () => {
     render(<FoglioDalBasso etichetta="Corto" onChiudi={() => {}} altezza="contenuto"><p>x</p></FoglioDalBasso>);
     expect(screen.getByRole('dialog', { name: 'Corto' }).style.maxHeight).toBe('calc(100% - 88px)');

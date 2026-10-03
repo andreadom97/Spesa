@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useSyncExternalStore, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 interface Props {
   /** Il nome del dialogo: dice il contesto (DESIGN.md §8 Foglio dal basso). */
@@ -21,11 +22,25 @@ interface Props {
 
 const Z_LIVELLO = { 1: 50, 2: 60, 3: 80 } as const;
 
+// Lato client `document` c'è già al primo render; lato server (e nel primo render
+// dell'idratazione) no: lo snapshot del server dice «non ancora», e il foglio si
+// monta appena il browser ha il suo `body`. Nessuno store da ascoltare.
+const nessunAbbonamento = () => () => {};
+const ciSonoNelBrowser = () => true;
+const nonSonoNelBrowser = () => false;
+
 /**
  * Velo e foglio ancorato in basso (DESIGN.md §8), con `position: fixed` e uno
  * z sopra la tab bar (20) e sopra lo slot del Dock (19): a foglio aperto
  * niente sotto resta toccabile. È la forma di `FoglioAzioniPasto`, fatta
  * componente perché la Dispensa ne apre quattro.
+ *
+ * Si monta con un portale su `document.body`, non dove è scritto nella pagina
+ * (correzione 8c-bis F, prove dal telefono del 03/10): lo scroller delle pagine
+ * (`.scroll-app`) ha `mask-image` e `overflow: auto`, e la maschera ritaglia
+ * anche i `fixed` discendenti al box dello scroller. Il foglio dentro lo
+ * scroller restava tagliato, con testata, tasto in basso, Dock e tab bar sopra
+ * il velo e toccabili. Fuori dallo scroller il velo copre tutto.
  *
  * Il fuoco va al foglio all'apertura, così lo screen reader ci entra e Tab
  * parte da dentro.
@@ -34,11 +49,14 @@ export function FoglioDalBasso({
   etichetta, onChiudi, altezza = 'alto', ruolo = 'dialog', chiudiDalVelo = true, livello = 1, children,
 }: Props) {
   const foglioRef = useRef<HTMLDivElement>(null);
+  const nelBrowser = useSyncExternalStore(nessunAbbonamento, ciSonoNelBrowser, nonSonoNelBrowser);
+  // Il foglio esiste solo dopo `nelBrowser`: il fuoco va dato quando il nodo c'è.
   useEffect(() => {
-    foglioRef.current?.focus();
-  }, []);
+    if (nelBrowser) foglioRef.current?.focus();
+  }, [nelBrowser]);
 
-  return (
+  if (!nelBrowser) return null;
+  return createPortal(
     <div
       data-testid="velo-foglio"
       onClick={chiudiDalVelo ? onChiudi : undefined}
@@ -63,7 +81,8 @@ export function FoglioDalBasso({
       >
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
