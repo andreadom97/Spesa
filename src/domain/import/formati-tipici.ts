@@ -213,6 +213,7 @@ const PORZIONE_TIPICA: { chiave: string; quantita: number; unita: UnitaBase }[] 
   { chiave: 'verdura', quantita: 200, unita: 'g' },
   { chiave: 'verdure', quantita: 200, unita: 'g' },
   { chiave: 'insalata', quantita: 80, unita: 'g' },
+  { chiave: 'insalate', quantita: 80, unita: 'g' },
   { chiave: 'frutta', quantita: 150, unita: 'g' },
   { chiave: 'frutta secca', quantita: 30, unita: 'g' },
   { chiave: 'latte', quantita: 125, unita: 'ml' },
@@ -236,48 +237,68 @@ export type CategoriaPorzione = 'verdure' | 'frutta';
 
 /**
  * Il ripiego per categoria delle porzioni tipiche (Task 12b): le parole di verdure e ortaggi e
- * quelle della frutta, singolari e plurali, per parole intere come le altre tabelle.
+ * quelle della frutta, ognuna al singolare e al plurale (fix M3). Valgono solo in testa
+ * all'alimento (fix M2, `categoriaDi`).
  */
 const CATEGORIE: { chiave: string; categoria: CategoriaPorzione }[] = [
   ...[
     'zucchina', 'zucchine', 'melanzana', 'melanzane', 'peperone', 'peperoni', 'pomodoro', 'pomodori',
-    'pomodorino', 'pomodorini', 'carota', 'carote', 'finocchio', 'finocchi', 'sedano', 'cetriolo', 'cetrioli',
-    'cavolo', 'cavoli', 'cavolfiore', 'cavolfiori', 'cavolo nero', 'cavolo cappuccio', 'verza', 'verze',
-    'broccolo', 'broccoli', 'cime di rapa', 'friarielli', 'spinaci', 'bietola', 'bietole', 'biete', 'catalogna',
-    'cicoria', 'puntarelle', 'scarola', 'indivia', 'lattuga', 'insalata', 'rucola', 'radicchio', 'valeriana',
-    'songino', 'crescione', 'carciofo', 'carciofi', 'asparago', 'asparagi', 'fagiolini', 'piselli freschi',
-    'porro', 'porri', 'cipolla', 'cipolle', 'cipollotto', 'cipollotti', 'scalogno', 'zucca', 'fungo', 'funghi',
-    'champignon', 'ravanello', 'ravanelli', 'rapa', 'rape', 'barbabietola', 'barbabietole',
-    'cavoletti di bruxelles', 'fiori di zucca', 'germogli', 'ortaggio', 'ortaggi', 'verdura', 'verdure',
-    'contorno di verdure',
+    'pomodorino', 'pomodorini', 'datterino', 'datterini', 'ciliegino', 'ciliegini', 'carota', 'carote',
+    'finocchio', 'finocchi', 'sedano', 'sedani', 'sedano rapa', 'cetriolo', 'cetrioli', 'cavolo', 'cavoli',
+    'cavolfiore', 'cavolfiori', 'cavolo nero', 'cavolo cappuccio', 'verza', 'verze', 'broccolo', 'broccoli',
+    'cima di rapa', 'cime di rapa', 'friariello', 'friarielli', 'spinacio', 'spinaci', 'spinacino', 'spinacini',
+    'bietola', 'bietole', 'bieta', 'biete', 'catalogna', 'catalogne', 'cicoria', 'cicorie', 'puntarella',
+    'puntarelle', 'scarola', 'scarole', 'indivia', 'indivie', 'lattuga', 'lattughe', 'lattughino', 'lattughini',
+    'insalata', 'insalate', 'rucola', 'rucole', 'radicchio', 'radicchi', 'valeriana', 'valeriane', 'songino',
+    'crescione', 'carciofo', 'carciofi', 'cardo', 'cardi', 'asparago', 'asparagi', 'fagiolino', 'fagiolini',
+    'piselli freschi', 'porro', 'porri', 'cipolla', 'cipolle', 'cipollina', 'cipolline', 'cipollotto',
+    'cipollotti', 'scalogno', 'scalogni', 'zucca', 'zucche', 'fungo', 'funghi', 'champignon', 'ravanello',
+    'ravanelli', 'rapa', 'rape', 'barbabietola', 'barbabietole', 'cavoletto di bruxelles', 'cavoletti di bruxelles',
+    'fiore di zucca', 'fiori di zucca', 'germoglio', 'germogli', 'topinambur', 'ortaggio', 'ortaggi',
+    'verdura', 'verdure', 'contorno di verdura', 'contorno di verdure',
   ].map((chiave) => ({ chiave, categoria: 'verdure' as const })),
   ...[
+    // Non «frutti» da solo: «frutti di mare» non è frutta (fix M2).
     'mela', 'mele', 'pera', 'pere', 'arancia', 'arance', 'mandarino', 'mandarini', 'clementina', 'clementine',
-    'pompelmo', 'pompelmi', 'banana', 'banane', 'kiwi', 'pesca', 'pesche', 'albicocca', 'albicocche',
-    'susina', 'susine', 'prugna', 'prugne', 'ciliegia', 'ciliegie', 'fragola', 'fragole', 'frutti di bosco',
-    'mirtilli', 'lamponi', 'ribes', 'uva', 'melone', 'meloni', 'anguria', 'angurie', 'ananas', 'mango',
-    'papaya', 'caco', 'cachi', 'fico', 'fichi', 'melagrana', 'nespole', 'macedonia', 'frutta', 'frutta fresca',
-    'frutto', 'frutti',
+    'pompelmo', 'pompelmi', 'banana', 'banane', 'kiwi', 'pesca', 'pesche', 'nettarina', 'nettarine',
+    'albicocca', 'albicocche', 'susina', 'susine', 'prugna', 'prugne', 'ciliegia', 'ciliegie', 'fragola',
+    'fragole', 'frutti di bosco', 'frutti rossi', 'mirtillo', 'mirtilli', 'lampone', 'lamponi', 'mora', 'more',
+    'ribes', 'uva', 'melone', 'meloni', 'anguria', 'angurie', 'ananas', 'mango', 'manghi', 'papaya', 'papaye',
+    'caco', 'cachi', 'fico', 'fichi', 'melagrana', 'melagrane', 'melograno', 'melograni', 'nespola', 'nespole',
+    'macedonia', 'macedonie', 'frutta', 'frutta fresca', 'frutto',
   ].map((chiave) => ({ chiave, categoria: 'frutta' as const })),
 ];
 
-/** Le forme lavorate: «succo di mela» o «pomodori secchi» non sono una porzione di frutta o di verdura. */
+/**
+ * Le forme lavorate dopo la testa: «pomodori secchi», «uva passa», «carciofi sott'olio» non sono una
+ * porzione di frutta o di verdura. Si confrontano senza apostrofi («sott'olio» = «sottolio»).
+ */
 const LAVORATI = [
   'succo', 'succhi', 'spremuta', 'estratto', 'centrifugato', 'marmellata', 'confettura', 'composta', 'passata',
   'polpa', 'concentrato', 'salsa', 'sugo', 'secco', 'secca', 'secchi', 'secche', 'essiccato', 'essiccata',
   'essiccati', 'essiccate', 'disidratato', 'disidratata', 'disidratati', 'disidratate', 'sciroppato',
   'sciroppata', 'sciroppati', 'sciroppate', 'candito', 'candita', 'canditi', 'candite', 'torta', 'crostata',
-  'polvere', 'farina', 'sottolio', 'sottaceto', 'sottaceti',
+  'polvere', 'farina', 'sottolio', 'sottaceto', 'sottaceti', 'passa', 'pelati', 'pelato', 'aceto',
 ];
 
 /** Porzioni medie per categoria (LARN/SINU): verdure e ortaggi 200 g, frutta 150 g. */
 const PORZIONE_CATEGORIA: Record<CategoriaPorzione, number> = { verdure: 200, frutta: 150 };
 
-/** Verdure, frutta, o null (anche per le forme lavorate). */
+/**
+ * Verdure, frutta, o null. La parola della categoria vale solo in testa all'alimento (fix M2): la
+ * prima parola, o le prime per le chiavi composte («cavolo nero», «frutti di bosco»); vince la più
+ * lunga. Così «aceto di mele», «pesto di rucola» o «gelato alla fragola» restano fuori. Fuori anche
+ * le forme lavorate (`LAVORATI`), ovunque compaiano.
+ */
 export function categoriaDi(alimento: string): CategoriaPorzione | null {
-  const norm = normalizza(alimento);
-  if (LAVORATI.some((parola) => contieneParole(norm, parola))) return null;
-  return voceTabella(CATEGORIE, [alimento])?.categoria ?? null;
+  // L'apostrofo tolto («sott'olio» = «sottolio») e come spazio («all'aceto» = «all aceto»).
+  const norm = normalizza(alimento).replace(/['’]/g, ' ').replace(/\s+/g, ' ');
+  const unito = normalizza(alimento).replace(/['’]/g, '');
+  if (LAVORATI.some((parola) => contieneParole(norm, parola) || contieneParole(unito, parola))) return null;
+  const voce = CATEGORIE
+    .filter((v) => norm === v.chiave || norm.startsWith(`${v.chiave} `))
+    .sort((a, b) => b.chiave.length - a.chiave.length)[0];
+  return voce?.categoria ?? null;
 }
 
 /**

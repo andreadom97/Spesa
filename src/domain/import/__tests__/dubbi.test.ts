@@ -862,6 +862,30 @@ describe('Task 12b: le domande senza quantità si raggruppano per alimento', () 
     expect(gruppi[0].unitaFissa).toBe('g');
   });
 
+  it('fix M1: la risposta per alimento non scrive su una riga con la quantità inferita di un testo misto', () => {
+    // Il caso della review: lo stesso testo ha una riga senza quantità e una coi 150 g stimati dal lettore.
+    const p = pianoAPranzi([
+      [vapore],
+      [{ ...grigliate, quantita: 150, unita: 'g', quantitaInferita: true }],
+      [grigliate],
+    ]);
+    const risposto = rispondiGruppo(p, STATO_PRANZO, 'zucchine|zucchine al vapore', 250, 'g');
+    expect(rigaDel(p, risposto, 0)).toMatchObject({ quantita: 250, unita: 'g' });
+    expect(rigaDel(p, risposto, 1)).toEqual({ ...grigliate, quantita: 150, unita: 'g', quantitaInferita: true });
+    expect(rigaDel(p, risposto, 2)).toEqual(grigliate);
+    expect(risposto).toEqual(prima12b.rispondiGruppo(p, STATO_PRANZO, 'zucchine|zucchine al vapore', 250, 'g'));
+    // Il testo misto resta il suo gruppo, come prima: la sua risposta vale come prima.
+    expect(gruppiRighe(p, STATO_PRANZO).map((g) => g.chiave)).toEqual(['zucchine|zucchine al vapore', 'zucchine|zucchine grigliate']);
+    expect(rispondiGruppo(p, STATO_PRANZO, 'zucchine|zucchine grigliate', 250, 'g'))
+      .toEqual(prima12b.rispondiGruppo(p, STATO_PRANZO, 'zucchine|zucchine grigliate', 250, 'g'));
+  });
+
+  it('fix M1: dopo una risposta, una seconda risposta corregge di nuovo tutte le righe del gruppo', () => {
+    const p = piano();
+    const due = rispondiGruppo(p, rispondiGruppo(p, STATO_PRANZO, 'zucchine|zucchine grigliate', 250, 'g'), chiaveGruppo(trifolate), 180, 'g');
+    for (const g of [0, 1, 2, 3]) expect(rigaDel(p, due, g)).toMatchObject({ quantita: 180, unita: 'g', quantitaInferita: false });
+  });
+
   it('il q.b. resta fuori e non riceve proposte', () => {
     const p = pianoAPranzi([[senza('sale q.b.', 'sale')], [senza('un pizzico di sale', 'sale')], [senza('sale fino', 'sale')]]);
     const gruppi = gruppiRighe(p, STATO_PRANZO);
@@ -959,5 +983,9 @@ describe('differenziale Task 12b: dubbi.ts contro dubbi-8c-prima', () => {
     let prima = STATO_PRANZO;
     for (const testo of ['zucchine grigliate', 'zucchine al vapore', 'zucchine trifolate']) prima = prima12b.rispondiGruppo(piano, prima, `zucchine|${testo}`, 200, 'g');
     expect(rispondiGruppo(piano, STATO_PRANZO, 'zucchine|zucchine grigliate', 200, 'g')).toEqual(prima);
+    // Togliere da una chiave che non è la prima del gruppo = le tre rimozioni di prima.
+    let tolto = STATO_PRANZO;
+    for (const testo of ['zucchine grigliate', 'zucchine al vapore', 'zucchine trifolate']) tolto = prima12b.togliGruppo(piano, tolto, `zucchine|${testo}`);
+    expect(togliGruppo(piano, STATO_PRANZO, 'zucchine|zucchine trifolate')).toEqual(tolto);
   });
 });

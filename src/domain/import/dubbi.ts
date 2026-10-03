@@ -18,8 +18,9 @@ const GIORNI_LUNGHI = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerd�
 
 /**
  * La chiave di una riga: stesso alimento e stesso testo sul foglio, un dubbio solo qualunque sia
- * il numero di pasti (decisione 5). È anche la chiave del suo gruppo, tranne per le righe senza
- * quantità (Task 12b): quelle di uno stesso alimento fanno un gruppo solo, qualunque sia il testo,
+ * il numero di pasti (decisione 5). È anche la chiave del suo gruppo, tranne per i testi le cui
+ * righe sono tutte senza quantità (Task 12b, `chiaviUnite`): quelli di uno stesso alimento fanno un
+ * gruppo solo,
  * e la chiave del gruppo è quella della prima (`gruppoDiRiga`). Ogni scrittura per chiave accetta
  * anche la chiave di riga di un altro testo dello stesso gruppo.
  */
@@ -35,9 +36,12 @@ function senzaQuantita(riga: RigaEstratta): boolean {
 /**
  * Le chiavi di riga che si uniscono nel gruppo del loro alimento (Task 12b), con la chiave del
  * gruppo: quella della prima chiave senza quantità dello stesso alimento, nell'ordine del piano.
- * Si legge sulle righe originali, o sulle effettive solo se una chiave non ne ha (come in
- * `gruppiRighe`): così il gruppo non cambia quando si risponde o si toglie. Le chiavi che non ci
- * sono restano la chiave del proprio gruppo.
+ * Si uniscono solo le chiavi le cui righe sono TUTTE senza quantità (fix M1): una chiave mista,
+ * con una riga senza quantità e una con la quantità trascritta o inferita, resta il suo gruppo come
+ * prima, così la risposta per alimento non scrive mai su una riga con una quantità, un q.b. o i
+ * cucchiai. Si legge sulle righe originali, o sulle effettive solo se una chiave non ne ha (come in
+ * `gruppiRighe`): così il gruppo non cambia quando si risponde o si toglie, e una seconda risposta
+ * corregge di nuovo tutte le sue righe. Le chiavi che non ci sono restano la chiave del proprio gruppo.
  */
 function chiaviUnite(pasti: PastoDelPiano[]): Map<string, string> {
   const perChiave = new Map<string, { originali: RigaEstratta[]; effettive: RigaEstratta[] }>();
@@ -56,7 +60,7 @@ function chiaviUnite(pasti: PastoDelPiano[]): Map<string, string> {
   const primaPerAlimento = new Map<string, string>();
   for (const [chiave, v] of perChiave) {
     const lette = v.originali.length > 0 ? v.originali : v.effettive;
-    if (!lette.some(senzaQuantita)) continue;
+    if (lette.length === 0 || !lette.every(senzaQuantita)) continue;
     const alimento = normalizza(lette[0].alimento);
     const prima = primaPerAlimento.get(alimento) ?? chiave;
     primaPerAlimento.set(alimento, prima);
@@ -468,9 +472,10 @@ function propostaPer(
 }
 
 /**
- * Il peso di un pezzo scritto da te agli Ingredienti (`stato.cambiUnita`), per l'ingrediente che hai
- * con lo stesso nome o per l'alimento, se è un numero finito e positivo; altrimenti null. Come agli
- * Ingredienti, vince sulla tabella dei pesi medi.
+ * Il primo peso di un pezzo scritto da te agli Ingredienti (`stato.cambiUnita`) che è un numero
+ * finito e positivo, per l'ingrediente che hai con lo stesso nome o per l'alimento; altrimenti null.
+ * Vince sulla tabella dei pesi medi. A differenza degli Ingredienti, un peso non valido non blocca:
+ * qui si salta, perché è solo una proposta.
  */
 function pesoScritto(stato: StatoRevisione, alimento: string, esistenti: Ingredient[]): number | null {
   const esistente = esistenti.find((e) => normalizza(e.nome) === alimento);

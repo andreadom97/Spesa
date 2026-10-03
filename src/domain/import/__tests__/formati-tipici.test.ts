@@ -161,6 +161,33 @@ describe('Task 12b: il ripiego per categoria nelle porzioni tipiche', () => {
     }
   });
 
+  it('fix M2: la parola della categoria vale solo in testa all\'alimento, e le forme lavorate restano fuori', () => {
+    for (const falso of [
+      'aceto di mele', 'frutti di mare', 'pesto di rucola', 'crema di carciofi', 'uva passa', 'gelato alla fragola',
+      'pizza ai funghi', "carciofi sott'olio", 'carciofi sott’olio', "cipolline sott'aceto", "cipolline all'aceto", 'pomodori pelati',
+    ]) {
+      expect(porzioneTipica(falso), falso).toBeNull();
+      expect(categoriaDi(falso), falso).toBeNull();
+    }
+    for (const buono of ['zucchine', 'finocchi', 'cavolo nero', 'frutti di bosco', 'frutti rossi', 'fragole fresche', 'broccoli al vapore']) {
+      expect(porzioneTipica(buono), buono).toMatchObject({ origine: 'categoria' });
+    }
+  });
+
+  it('fix M3: singolari e plurali di ogni voce', () => {
+    for (const verdura of [
+      'radicchi', 'lattughe', 'zucche', 'sedani', 'indivie', 'scarole', 'cicorie', 'fagiolino', 'cipolline', 'cipollina',
+      'datterini', 'datterino', 'bieta', 'puntarella', 'scalogni', 'cima di rapa', 'fiore di zucca', 'cavoletto di bruxelles', 'germoglio',
+    ]) {
+      expect(categoriaDi(verdura), verdura).toBe('verdure');
+    }
+    for (const frutto of ['mirtillo', 'lampone', 'nespola', 'melagrane', 'melograno', 'manghi', 'nettarine', 'mora']) {
+      expect(categoriaDi(frutto), frutto).toBe('frutta');
+    }
+    // Il plurale di una voce della tabella resta la voce della tabella, non il ripiego.
+    expect(porzioneTipica('insalate miste')).toEqual({ quantita: 80, unita: 'g', origine: 'porzione' });
+  });
+
   it('categoriaDi: verdure, frutta, o niente', () => {
     expect(categoriaDi('Zucchine')).toBe('verdure');
     expect(categoriaDi('insalata mista')).toBe('verdure');
