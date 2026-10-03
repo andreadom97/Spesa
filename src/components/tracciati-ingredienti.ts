@@ -231,11 +231,23 @@ export const TRACCIATI: Partial<Record<ChiaveIcona, Tracciato>> = {
       circ(8, 16.3, 1.5) + circ(14.6, 16.1, 1.8) + circ(12.6, 10.6, 1.2) + circ(17.2, 18.2, 0.6) + circ(9.6, 12.2, 0.6),
     ],
   },
+  // la penna di tre quarti: la tavoletta rigata del 26/09, col pieno e l'ombra, sembrava una persiana
+  // la penna di tre quarti: la tavoletta rigata del 26/09, col pieno e l'ombra, sembrava una persiana
+  // la penna di tre quarti: la tavoletta rigata del 26/09, col pieno e l'ombra, sembrava una persiana
+  // la penna di tre quarti: la tavoletta rigata del 26/09, col pieno e l'ombra, sembrava una persiana
+  // la penna di tre quarti: la tavoletta rigata del 26/09, col pieno e l'ombra, sembrava una persiana
+  // la penna di tre quarti: la tavoletta rigata del 26/09, col pieno e l'ombra, sembrava una persiana
+  // la penna di tre quarti: la tavoletta rigata del 26/09, col pieno e l'ombra, sembrava una persiana
+  // la penna di tre quarti: la tavoletta rigata del 26/09, col pieno e l'ombra, sembrava una persiana
   pasta: {
     rot: 'rotate(-28 12 12)',
-    sil: 'M6 8H21L17.4 15H2.4Z',
-    d: 'M6 8H21L17.4 15H2.4Z',
-    dd: ['M6.6 9.8H18.8M5.6 11.5H17.9M4.7 13.2H17', 'M14.2 8 10.6 15M15.8 8 12.2 15'],
+    sil: 'M10.97 8.8H21.97A5.58 1.4 -35 0 1 12.83 15.2H1.83A5.58 1.4 -35 0 1 10.97 8.8Z',
+    d: 'M10.97 8.8A5.58 1.4 -35 1 0 1.83 15.2A5.58 1.4 -35 1 0 10.97 8.8ZM10.97 8.8H21.97A5.58 1.4 -35 0 1 12.83 15.2H1.83',
+    dd: [
+      'M9.68 9.71A4 .7 -35 1 0 3.12 14.29A4 .7 -35 1 0 9.68 9.71Z',
+      'M21.97 8.8A5.58 .7 -35 0 0 12.83 15.2',
+      'M14.77 8.8A5.58 1.4 -35 0 1 5.63 15.2M18.37 8.8A5.58 1.4 -35 0 1 9.23 15.2',
+    ],
   },
   pane: {
     sil: 'M3 19.2V12.4C1.6 11.6 2 7.4 5.6 7.4H17.6C21.2 7.4 22.2 11.2 20.6 12.4V19.2Z',
