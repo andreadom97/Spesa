@@ -2,8 +2,10 @@ import type { Dish, Ingredient, UnitaBase } from '@/domain/types';
 import { lunediDi, sommaGiorni } from '@/domain/date';
 import type { IngredienteProposto, PastoEstratto, PianoEstratto, RigaEstratta, StatoRevisione } from './types';
 import { NOME_PASTO_CONDIMENTI, pastoEffettivo } from './types';
-import { abbina, normalizza, quantoBasta } from './mapping';
-import { cambiUnita, legataAlCommit, type CambioUnita } from './ingredienti';
+import { normalizza, quantoBasta } from './mapping';
+import {
+  cambiUnita, destinazioni, legataAlCommit, pesiProposte, type CambioUnita, type Destino, type PesoProposta,
+} from './ingredienti';
 import { convertiPezzi } from './formati-tipici';
 
 /** `quantita` null = «quanto basta» (spec 8c §B). */
@@ -46,15 +48,16 @@ export interface ScrittureImport {
 
 export class BozzaIncompletaError extends Error {}
 
-/** Quello che serve a risolvere le righe: gli ingredienti, le scelte e i cambi di unità decisi. */
+/** Quello che serve a risolvere le righe: il destino di ogni alimento, i cambi di unità e i pesi decisi. */
 interface Contesto {
-  esistenti: Ingredient[];
-  nuovi: IngredienteProposto[];
+  /** Per alimento normalizzato: l'ingrediente che hai o la proposta nuova (`destinazioni`). */
+  destini: Map<string, Destino>;
   /** Le chiavi `alimento` dei nuovi davvero usati da una riga (regola 2). */
   usati: Set<string>;
-  scelti: Readonly<Record<string, string>>;
-  /** Per id: il cambio di unità deciso, che fissa l'unità finale dell'ingrediente. */
+  /** Per id: il cambio di unità (o la sola conversione), che fissa l'unità finale dell'ingrediente e il peso. */
   cambi: Map<string, CambioUnita>;
+  /** Per `alimento` della proposta: il peso delle proposte con righe in g e in pz. */
+  pesi: Map<string, PesoProposta>;
 }
 
 /** L'unità finale di un ingrediente che hai: quella della dieta se il cambio è accettato, la sua se «Tienile a pezzi». */
@@ -64,22 +67,24 @@ function unitaFinale(e: Ingredient, ctx: Contesto): UnitaBase {
 }
 
 /**
- * La riga nell'unità finale dell'ingrediente (spec 8c §A.3): il q.b. la prende com'è e resta senza
- * numero; fra g e pz si converte col peso del cambio, arrotondato; fra altre unità non si inventa
- * una densità: bozza incompleta.
+ * La riga nell'unità finale del suo ingrediente (spec 8c §A.3, ruling 8c Task 8): il q.b. la
+ * prende com'è e resta senza numero; fra g e pz si converte col peso di un pezzo, arrotondato;
+ * fra altre unità non si inventa una densità: bozza incompleta. `di` dice chi ha l'unità finale,
+ * per il messaggio: «l'ingrediente» o «la proposta».
  */
-function nellUnita(
-  dove: { ingredientId: string },
+function nellUnita<D extends { ingredientId: string } | { nuovoAlimento: string }>(
+  dove: D,
   riga: RigaEstratta,
   finale: UnitaBase,
-  cambio: CambioUnita | null,
+  peso: number | null,
+  di: string,
 ): RigaTradotta {
   if (riga.quantita === null) return { ...dove, quantita: null, unita: finale };
   const unita = riga.unita as UnitaBase;
   if (unita === finale) return { ...dove, quantita: riga.quantita, unita };
-  const convertita = cambio?.pesoPezzo ? convertiPezzi(riga.quantita, unita, finale, cambio.pesoPezzo) : null;
+  const convertita = peso ? convertiPezzi(riga.quantita, unita, finale, peso) : null;
   if (convertita === null) {
-    throw new BozzaIncompletaError(`Unità incompatibile per "${riga.alimento}": la riga usa "${unita}", l'ingrediente "${finale}"`);
+    throw new BozzaIncompletaError(`Unità incompatibile per "${riga.alimento}": la riga usa "${unita}", ${di} "${finale}"`);
   }
   return { ...dove, quantita: convertita, unita: finale };
 }
@@ -111,12 +116,13 @@ function confrontaStringhe(a: string, b: string): number {
 }
 
 /**
- * Regola 1: `abbina` su un ingrediente esistente (anche con un'altra unità, il secondo livello);
- * se fallisce, la proposta fra i nuovi dichiarati in revisione (per `alimento` normalizzato), e
- * prima di dichiararla davvero nuova la sua legata (`legataAlCommit`: la scelta in «È lo stesso
- * di…», o il nome, che un re-run dopo un commit interrotto trova già creato). Una riga q.b.
- * (spec 8c §B) passa senza quantità, anche quella con una quantità stimata dal lettore: la stima,
- * quantità e unità, si scarta (correzione S1); una quantità mai risolta, i cucchiai non
+ * Regola 1: la riga va dove va il suo alimento (`destinazioni`, uno per alimento): un ingrediente
+ * che hai, trovato da `abbina` (anche con un'altra unità, il secondo livello), dalla legata della
+ * sua proposta (`legataAlCommit`: la scelta in «È lo stesso di…», o il nome, che un re-run dopo
+ * un commit interrotto trova già creato) o per inclusione fra quelli già raggiunti (il ritentativo
+ * dopo la RPC); altrimenti la proposta nuova. Sempre nell'unità finale (`nellUnita`). Una riga
+ * q.b. (spec 8c §B) passa senza quantità, anche quella con una quantità stimata dal lettore: la
+ * stima, quantità e unità, si scarta (correzione S1); una quantità mai risolta, i cucchiai non
  * convertiti o un'unità che non torna fermano tutto.
  */
 function risolviRiga(rigaLetta: RigaEstratta, ctx: Contesto): RigaTradotta {
@@ -131,21 +137,17 @@ function risolviRiga(rigaLetta: RigaEstratta, ctx: Contesto): RigaTradotta {
   if (riga.unita === null && !qb) {
     throw new BozzaIncompletaError(`Unità non indicata per "${riga.testoOriginale}"`);
   }
-  const unita: UnitaBase | null = riga.unita;
-  const esistente = abbina(riga.alimento, unita, ctx.esistenti);
-  if (esistente) return nellUnita({ ingredientId: esistente.id }, riga, unitaFinale(esistente, ctx), ctx.cambi.get(esistente.id) ?? null);
   const chiave = normalizza(riga.alimento);
-  const nuovo = ctx.nuovi.find((i) => normalizza(i.alimento) === chiave);
-  if (!nuovo) throw new BozzaIncompletaError(`Ingrediente non risolto: "${riga.alimento}"`);
-  const legata = legataAlCommit(nuovo, ctx.esistenti, ctx.scelti);
-  if (legata) return nellUnita({ ingredientId: legata.id }, riga, unitaFinale(legata, ctx), ctx.cambi.get(legata.id) ?? null);
-  if (unita !== null && unita !== nuovo.unitaBase) {
-    throw new BozzaIncompletaError(
-      `Unità incompatibile per "${riga.alimento}": la riga usa "${unita}", la proposta "${nuovo.unitaBase}"`,
-    );
+  const destino = ctx.destini.get(chiave);
+  if (!destino) throw new BozzaIncompletaError(`Ingrediente non risolto: "${riga.alimento}"`);
+  if (destino.tipo === 'esistente') {
+    const e = destino.ingrediente;
+    return nellUnita({ ingredientId: e.id }, riga, unitaFinale(e, ctx), ctx.cambi.get(e.id)?.pesoPezzo ?? null, "l'ingrediente");
   }
+  const nuovo = destino.proposta;
+  const tradotta = nellUnita({ nuovoAlimento: nuovo.alimento }, riga, nuovo.unitaBase, ctx.pesi.get(nuovo.alimento)?.pesoPezzo ?? null, 'la proposta');
   ctx.usati.add(chiave);
-  return { nuovoAlimento: nuovo.alimento, quantita: riga.quantita, unita: nuovo.unitaBase };
+  return tradotta;
 }
 
 /**
@@ -229,16 +231,18 @@ export function traduciBozza(
   repertorioEsistente: Dish[],
   oggi: string,
 ): ScrittureImport {
-  // I cambi di unità (spec 8c §A.3): senza il peso di un pezzo non si sa scrivere niente.
+  // I cambi di unità e le righe da convertire fra g e pz (spec 8c §A.3, ruling 8c Task 8): senza
+  // il peso di un pezzo non si sa scrivere niente.
   const cambi = cambiUnita(piano, stato, ingredientiEsistenti);
-  const senzaPeso = cambi.find((c) => c.pesoPezzo === null);
+  const pesi = pesiProposte(piano, stato, ingredientiEsistenti);
+  const senzaPeso = [...cambi, ...pesi].find((c) => c.pesoPezzo === null);
   if (senzaPeso) throw new BozzaIncompletaError(`Manca il peso di un pezzo di "${senzaPeso.nome}"`);
+  const scelti = stato.scelti ?? {};
   const ctx: Contesto = {
-    esistenti: ingredientiEsistenti,
-    nuovi: stato.ingredientiNuovi,
+    destini: destinazioni(piano, stato, ingredientiEsistenti),
     usati: new Set<string>(),
-    scelti: stato.scelti ?? {},
     cambi: new Map(cambi.map((c) => [c.ingredientId, c])),
+    pesi: new Map(pesi.map((p) => [p.alimento, p])),
   };
   const unicaSettimana = piano.settimane.length === 1;
   const emessi: PiattoEmesso[] = [];
@@ -396,14 +400,15 @@ export function traduciBozza(
   // diverso escluderebbe dai-da-creare un ingrediente che una riga ha comunque risolto come
   // nuovoAlimento — l'ingrediente referenziato non verrebbe mai creato.
   const ingredientiDaCreare = stato.ingredientiNuovi.filter(
-    (i) => ctx.usati.has(normalizza(i.alimento)) && !legataAlCommit(i, ingredientiEsistenti, ctx.scelti),
+    (i) => ctx.usati.has(normalizza(i.alimento)) && !legataAlCommit(i, ingredientiEsistenti, scelti),
   );
 
   const cicloOrigine = sommaGiorni(lunediDi(oggi), 7);
 
   return {
     ingredientiDaCreare,
-    cambiUnita: cambi.filter((c) => !c.tieni).map((c) => ({
+    // Solo i cambi veri e accettati: con «tieni», o con l'unità che resta (`da === a`), la RPC non parte.
+    cambiUnita: cambi.filter((c) => !c.tieni && c.da !== c.a).map((c) => ({
       ingredientId: c.ingredientId,
       nome: c.nome,
       da: c.da,

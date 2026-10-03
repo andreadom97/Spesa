@@ -94,6 +94,13 @@ export type AvanzamentoScritture =
 const PIATTI_IN_PARALLELO = 4;
 
 /**
+ * Quanti id per update di disattivazione: vanno nella query string (`id=in.(…)`), circa 37
+ * caratteri l'uno, quindi circa 3,7 KB per blocco. [ipotesi] Sotto il limite d'URL davanti a
+ * PostgREST, che non è noto (ruling 8c, Task 8).
+ */
+const DISATTIVAZIONI_PER_RICHIESTA = 100;
+
+/**
  * L'esecutore del commit di un'importazione: applica le scritture prodotte da `traduciBozza`, a
  * blocchi dove si può (spec 8c §H). Ordine obbligato: ingredienti → dispensa → cambi di unità →
  * disattivazioni → piatti → impostazioni → cancella bozza. Un ingrediente creato in più o un
@@ -102,7 +109,7 @@ const PIATTI_IN_PARALLELO = 4;
  * righe dei piatti nuovi sono già nell'unità nuova.
  *
  * Gli ingredienti in un insert solo, con gli id scelti qui; la dispensa a zero in un upsert solo;
- * le disattivazioni in un update solo; i cambi una RPC per ingrediente, ognuna una transazione
+ * le disattivazioni in un update ogni `DISATTIVAZIONI_PER_RICHIESTA` id; i cambi una RPC per ingrediente, ognuna una transazione
  * (migrazione 0016); i piatti uno per uno, `PIATTI_IN_PARALLELO` alla volta. Un piatto che
  * fallisce ferma la coda: nessuno parte dopo, quelli in volo finiscono, poi l'errore sale.
  */
@@ -152,9 +159,10 @@ export async function eseguiScritture(
     if (error) throw error;
   }
 
-  if (s.piattiDaDisattivare.length > 0) {
-    // Soft delete, come eliminaPiatto, in una richiesta sola.
-    const { error } = await sb.from('dish').update({ attivo: false }).in('id', s.piattiDaDisattivare).eq('user_id', userId);
+  // Soft delete, come eliminaPiatto, a blocchi: gli id vanno nella query string dell'update.
+  for (let i = 0; i < s.piattiDaDisattivare.length; i += DISATTIVAZIONI_PER_RICHIESTA) {
+    const blocco = s.piattiDaDisattivare.slice(i, i + DISATTIVAZIONI_PER_RICHIESTA);
+    const { error } = await sb.from('dish').update({ attivo: false }).in('id', blocco).eq('user_id', userId);
     if (error) throw error;
   }
 
@@ -163,8 +171,12 @@ export async function eseguiScritture(
   onAvanzamento?.({ passo: 'piatti', fatti, totale });
   const coda = [...s.piattiDaCreare];
   const errori: unknown[] = [];
+  // Ogni lavoratore prende il prossimo piatto finché la coda non è vuota; dopo il primo errore
+  // nessuno ne prende un altro (quelli già in volo finiscono).
   async function lavora() {
-    for (let piatto = coda.shift(); piatto && errori.length === 0; piatto = coda.shift()) {
+    while (errori.length === 0) {
+      const piatto = coda.shift();
+      if (!piatto) return;
       try {
         await salvaPiatto(risolviPiatto(piatto, idPerAlimento));
       } catch (e) {

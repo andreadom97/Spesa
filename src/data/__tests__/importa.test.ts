@@ -99,11 +99,35 @@ describe('eseguiScritture', () => {
     expect((chiamate.find((c) => c.tabella === 'ingredient')!.payload as Record<string, unknown>[])[0]).toMatchObject({ prezzo_confezione: null });
   });
 
-  it('le disattivazioni in una richiesta sola, filtrate per casa', async () => {
+  it('le disattivazioni a blocchi di 100 id, ognuno filtrato per casa', async () => {
     const { chiamate } = fintoSupabase();
-    await eseguiScritture({ ...SCRITTURE, piattiDaDisattivare: ['d-1', 'd-2'] });
+    const ids = Array.from({ length: 250 }, (_, i) => `d-${i}`);
+    await eseguiScritture({ ...SCRITTURE, piattiDaDisattivare: ids });
     const disattivazioni = chiamate.filter((c) => c.tabella === 'dish');
-    expect(disattivazioni).toEqual([{ tabella: 'dish', op: 'update', payload: { attivo: false }, filtri: [['in', 'id', ['d-1', 'd-2']], ['eq', 'user_id', 'u1']] }]);
+    expect(disattivazioni).toEqual([
+      { tabella: 'dish', op: 'update', payload: { attivo: false }, filtri: [['in', 'id', ids.slice(0, 100)], ['eq', 'user_id', 'u1']] },
+      { tabella: 'dish', op: 'update', payload: { attivo: false }, filtri: [['in', 'id', ids.slice(100, 200)], ['eq', 'user_id', 'u1']] },
+      { tabella: 'dish', op: 'update', payload: { attivo: false }, filtri: [['in', 'id', ids.slice(200)], ['eq', 'user_id', 'u1']] },
+    ]);
+  });
+
+  it('nessun piatto da togliere: nessuna richiesta su dish', async () => {
+    const { chiamate } = fintoSupabase();
+    await eseguiScritture({ ...SCRITTURE, piattiDaDisattivare: [] });
+    expect(chiamate.filter((c) => c.tabella === 'dish')).toEqual([]);
+  });
+
+  it('una riga q.b. arriva a salvaPiatto senza quantità, nella sua unità', async () => {
+    fintoSupabase();
+    await eseguiScritture({
+      ...SCRITTURE,
+      piattiDaCreare: [{ ...PIATTO, righe: [{ ingredientId: 'i-sale', quantita: null, unita: 'g' }, { nuovoAlimento: 'pasta di semola', quantita: null, unita: 'g' }], componenti: [] }],
+    });
+    const piatto = vi.mocked(salvaPiatto).mock.calls[0][0];
+    expect(piatto.ingredienti).toEqual([
+      { ingredientId: 'i-sale', quantita: null, unita: 'g' },
+      { ingredientId: expect.any(String), quantita: null, unita: 'g' },
+    ]);
   });
 
   it('l\'ordine: ingredienti, dispensa, cambi di unità, disattivazioni, piatti, impostazioni, bozza', async () => {

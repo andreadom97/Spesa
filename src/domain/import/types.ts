@@ -120,7 +120,10 @@ export interface StatoRevisione {
    * Assente nelle bozze di prima dell'8c: Ingredienti lo ricostruisce dai nomi (`sceltiIniziali`).
    */
   scelti?: Record<string, string>;
-  /** Le decisioni sui cambi di unità, per id dell'ingrediente. Assente = proposta accettata col peso della tabella. */
+  /**
+   * Le decisioni sui cambi di unità, per id dell'ingrediente. Assente = proposta accettata col peso della tabella.
+   * Per una proposta nuova con righe in g e in pz (che non ha un id) la chiave è il suo `alimento`, e conta solo il peso.
+   */
   cambiUnita?: Record<string, DecisioneCambio>;
 }
 

@@ -270,6 +270,21 @@ describe('cambiUnita (spec 8c §A.2, §A.3)', () => {
   it('fra ml e altro non c\'è cambio', () => {
     expect(cambiUnita(pianoCon(['latte', 200, 'ml']), STATO_PRANZO, [ing('i-l', 'Latte', 'g')])).toEqual([]);
   });
+
+  it('righe miste: l\'unità della dieta è la più frequente, e se è quella di oggi resta solo il peso (`da === a`, ruling 8c T8)', () => {
+    const misto = pianoCon(['zucchine', 1, 'pz'], ['zucchine', 150, 'g'], ['zucchine', 2, 'pz']);
+    expect(cambiUnita(misto, STATO_PRANZO, [ZUCCHINE])).toEqual([{
+      ingredientId: 'i-zucc', nome: 'Zucchine', da: 'pz', a: 'pz', alimenti: ['zucchine'], pesoPezzo: 200, pesoDaTabella: true, tieni: false,
+    }]);
+    // La stessa dieta con le zucchine in g: la dieta le porta a pezzi, a prescindere dall'unità di oggi.
+    expect(cambiUnita(misto, STATO_PRANZO, [ing('i-zucc', 'Zucchine', 'g')])[0]).toMatchObject({ da: 'g', a: 'pz' });
+    // Una decisione «tieni» non vale dove l'unità non cambia.
+    expect(cambiUnita(misto, { ...STATO_PRANZO, cambiUnita: { 'i-zucc': { tieni: true, pesoPezzo: null } } }, [ZUCCHINE])[0].tieni).toBe(false);
+  });
+
+  it('righe tutte nell\'unità di oggi: nessuna voce', () => {
+    expect(cambiUnita(pianoCon(['zucchine', 1, 'pz'], ['zucchine', 2, 'pz']), STATO_PRANZO, [ZUCCHINE])).toEqual([]);
+  });
 });
 
 describe('la scelta esplicita «nuovo» (spec 8c §G)', () => {

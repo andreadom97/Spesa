@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Ingredient, MealSlotDef } from '@/domain/types';
 import type { RigaEstratta } from '../types';
-import { normalizza, abbina, proponiSlot, ingredientiDaAbbinare, quantoBasta } from '../mapping';
+import { normalizza, abbina, proponiSlot, ingredientiDaAbbinare, quantoBasta, unitaPrevalente } from '../mapping';
 import { proponi } from '../formati-tipici';
 import { PIANO_MENU_SETTIMANALE } from '../fixtures';
 
@@ -94,6 +94,22 @@ describe('ingredientiDaAbbinare', () => {
     // Se un'altra riga dello stesso alimento ha l'unità, vince quella.
     pasto.piatti[0].righeFisse.push({ alimento: 'miele', quantita: 10, unita: 'g', quantitaInferita: false, testoOriginale: 'miele 10g' });
     expect(ingredientiDaAbbinare(piano, {}).find((v) => v.alimento === 'miele')?.unita).toBe('g');
+  });
+  it('le unità di tutte le righe, e fra g e pz prevale la più frequente, a pari merito la prima (ruling 8c, Task 8)', () => {
+    const piano = structuredClone(PIANO_MENU_SETTIMANALE);
+    const pasto = piano.settimane[0].giorni[0].pasti[0];
+    const riga = (quantita: number | null, unita: 'g' | 'pz' | 'ml' | null, testo: string) => ({ alimento: 'zucchine', quantita, unita, quantitaInferita: false, testoOriginale: testo });
+    pasto.piatti[0].componenti = [];
+    pasto.piatti[0].righeFisse = [riga(150, 'g', 'zucchine 150 g'), riga(1, 'pz', 'zucchine 1 pz'), riga(null, null, 'zucchine q.b.')];
+    expect(ingredientiDaAbbinare(piano, {}).find((v) => v.alimento === 'zucchine')).toMatchObject({ unita: 'g', unitaViste: ['g', 'pz'] });
+    pasto.piatti[0].righeFisse.push(riga(2, 'pz', 'zucchine 2 pz'));
+    expect(ingredientiDaAbbinare(piano, {}).find((v) => v.alimento === 'zucchine')?.unita).toBe('pz');
+  });
+  it('unitaPrevalente: con ml vince la prima, come prima dell\'8c', () => {
+    expect(unitaPrevalente([])).toBeNull();
+    expect(unitaPrevalente(['g', 'ml', 'ml'])).toBe('g');
+    expect(unitaPrevalente(['pz', 'g'])).toBe('pz');
+    expect(unitaPrevalente(['pz', 'g', 'g'])).toBe('g');
   });
 });
 
