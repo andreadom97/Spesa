@@ -103,7 +103,10 @@ export function Controlla({ piano, stato, slotDefs, ingredientiEsistenti = [], o
     else setLivello(null);
   }
   // Un solo indietro per la bozza (spec 8c §F): i livelli di Controlla, e senza livelli il dialogo di uscita.
-  const { esci } = useLivelliImporta(livello ? 1 : 0, chiudiLivello, () => setLivello({ tipo: 'esci' }));
+  // Il dialogo di uscita arriva sempre da un indietro (la pillola della testata esce con `esci()`
+  // senza dialogo): niente voci di cronologia finché è aperto, i push senza tocco fanno uscire
+  // l'app al secondo indietro (correzione 8c-bis, prove dal telefono del 03/10; vedi `LivelliImporta`).
+  const { esci } = useLivelliImporta(livello ? 1 : 0, chiudiLivello, () => setLivello({ tipo: 'esci' }), livello?.tipo === 'esci');
 
   const voci = vociPasti(piano, stato, slotDefs);
   const gruppi = gruppiRighe(piano, stato, ingredientiEsistenti);
