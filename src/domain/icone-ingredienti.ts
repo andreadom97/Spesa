@@ -44,8 +44,9 @@ export const CATALOGO_ICONE = {
   // con la pannocchia disegnata da capo, decide Andrea al foglio. «Amido/Farina di mais»
   // restano su `farina` (prima posizione).
   mais: ['mais', 'granturco', 'pannocchia', 'pop corn', 'popcorn'],
-  // ondata 1 (03/10): esce da `spezie`, ha una forma sua. Anche quello in polvere.
-  peperoncino: ['peperoncino', 'peperoncino fresco', 'peperoncino in polvere', 'jalapeno'],
+  // ondata 1 (03/10): esce da `spezie`, ha una forma sua. «Peperoncino fresco» e «in polvere»
+  // non servono: «peperoncino» è già in prima posizione e porta alla stessa chiave.
+  peperoncino: ['peperoncino', 'jalapeno'],
   // carne e pesce
   bistecca: ['manzo', 'macinato', 'vitello', 'carne', 'bistecca', 'hamburger'],
   cosciotto: ['pollo', 'tacchino'],
@@ -62,8 +63,9 @@ export const CATALOGO_ICONE = {
   agnello: ['agnello', 'carne di agnello', 'abbacchio', 'capretto'],
   // ondata 1 (03/10). I crostacei restano su `gambero`. «Ostriche» e «capesante» a parte:
   // `radice` non unisce -ca/-che né capa-/cape-. «Frutti di mare» qui, non su `frutta`
-  // (stessa radice frutt), «Insalata di mare» non su `insalata`; «Polpa di» è un blocco (radice di «polpo»).
-  molluschi: ['cozza', 'vongola', 'calamaro', 'polpo', 'seppia', 'totano', 'moscardino', 'ostrica', 'ostriche', 'capasanta', 'capesante', 'frutti di mare', 'insalata di mare'],
+  // (stessa radice frutt), «Insalata di mare» non su `insalata`; «Polpa di» è un blocco (radice di
+  // «polpo»): «Polpo di scoglio» gli passa davanti perché è più lungo alla stessa posizione.
+  molluschi: ['cozza', 'vongola', 'calamaro', 'polpo', 'polpo di scoglio', 'seppia', 'totano', 'moscardino', 'ostrica', 'ostriche', 'capasanta', 'capesante', 'frutti di mare', 'insalata di mare'],
   // latticini e uova
   uovo: ['uovo'],
   latte: ['latte'],
@@ -146,8 +148,9 @@ export const CHIAVI_ICONE = Object.keys(CATALOGO_ICONE) as ChiaveIcona[];
  *   zucca" o "Polpa di granchio" prenderebbero l'icona dei molluschi. "Polpa di
  *   pomodoro" resta su `pomodoro` (sinonimo più lungo alla stessa posizione).
  *   Non si blocca «polpa» da sola: a parità di lunghezza il blocco vincerebbe
- *   anche su «Polpo». Prezzo: «Polpa» da sola prende i molluschi e «Polpo di
- *   scoglio» resta senza icona (03/10).
+ *   anche su «Polpo». Prezzo accettato: «Polpa» da sola prende i molluschi.
+ *   «Polpo di scoglio» è un sinonimo di `molluschi` più lungo del blocco, quindi
+ *   vince lui (03/10).
  */
 export const BLOCCHI: readonly string[] = [
   'pesca',

@@ -102,6 +102,10 @@ describe('trovaIcona', () => {
     ['Vongole veraci', 'molluschi'],
     ['Calamari', 'molluschi'],
     ['Polpo', 'molluschi'],
+    ['Polpo di scoglio', 'molluschi'],
+    // prezzo accettato del blocco «polpa di»: «Polpa» da sola ha la radice di «polpo»
+    // e prende i molluschi (bloccarla toglierebbe l'icona anche a «Polpo»)
+    ['Polpa', 'molluschi'],
     ['Seppie', 'molluschi'],
     ['Totani', 'molluschi'],
     ['Moscardini', 'molluschi'],
@@ -112,6 +116,7 @@ describe('trovaIcona', () => {
     ['Mais', 'mais'],
     ['Mais in scatola', 'mais'],
     ['Granturco', 'mais'],
+    ['Pannocchia', 'mais'],
     ['Pannocchie', 'mais'],
     ['Pop corn', 'mais'],
     ['Popcorn', 'mais'],
@@ -152,7 +157,6 @@ describe('trovaIcona', () => {
     // omografi (review del lotto A): parole vicine a un sinonimo che non devono accenderlo
     ['Pane lievitato', 'pane'],
     // non regressione del lotto B (03/10)
-    ['Pannocchia', 'mais'],
     ['Amido di mais', 'farina'],
     ['Farina di mais', 'farina'],
     ['Salsiccia di maiale', 'salsiccia'],
@@ -198,9 +202,20 @@ describe('trovaIcona', () => {
     expect(trovaIcona(nome)).toBeNull();
   });
 
+  it.each([
+    // tolti di proposito dai sinonimi (lotti A e B del 03/10): la besciamella è una salsa,
+    // non la panna; la mostarda italiana è frutta candita, non la senape
+    'Besciamella',
+    'Mostarda',
+  ])('%s → null (tolto dai sinonimi)', (nome) => {
+    expect(trovaIcona(nome)).toBeNull();
+  });
+
   // Esclusi di proposito dal catalogo icone al gate del 26/09 (rivisto il 03/10:
   // i salumi hanno l'icona di famiglia, il mais torna col lotto B): restano senza
-  // icona per decisione di Andrea, non per un buco nel catalogo.
+  // icona per decisione di Andrea, non per un buco nel catalogo. Vuota di proposito
+  // dal lotto B: oggi ogni INGREDIENTI_BASE ha un'icona; se un gate ne toglie una,
+  // il nome torna qui.
   const ESCLUSI_DI_PROPOSITO: string[] = [];
 
   it('copre tutti gli INGREDIENTI_BASE, salvo gli esclusi di proposito', () => {
