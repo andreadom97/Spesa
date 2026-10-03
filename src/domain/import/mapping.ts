@@ -50,11 +50,12 @@ export function abbina(alimento: string, unita: UnitaBase | null, ingredienti: I
   const inclusi = compatibili
     .filter((i) => {
       const n = normalizza(i.nome);
-      if (n.includes(norm) || norm.includes(n)) return true;
-      // Il plurale tollera solo in testa e mai fra una spezia e una non spezia («noci» non è «Noce
-      // moscata», «mela» non è «Aceto di mele»): un abbinamento sbagliato silenzioso è peggio di un
-      // doppione (spec 8c §A.2, fix round 1 dell'8c-bis).
+      // Mai fra una spezia e una non spezia, né per inclusione semplice né per plurale («noci» non è
+      // «Noce moscata», «mela» non è «Aceto di mele», «pepe» non è «Peperoni»): un abbinamento
+      // sbagliato silenzioso è peggio di un doppione (spec 8c §A.2, fix round 1 e review finale
+      // dell'8c-bis). Il nome identico, già visto sopra, non passa di qui.
       if (eSpezia(n) !== eSpezia(norm)) return false;
+      if (n.includes(norm) || norm.includes(n)) return true;
       return inTestaAlNome(n, norm) || inTestaAlNome(norm, n);
     })
     .sort((a, b) => a.nome.length - b.nome.length);

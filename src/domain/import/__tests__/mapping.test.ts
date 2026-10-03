@@ -314,6 +314,24 @@ describe('abbina: singolare e plurale (correzione 8c-bis B)', () => {
   });
 });
 
+describe('abbina: la guardia spezia / non spezia vale anche sull\'inclusione semplice (8c-bis, review finale I2)', () => {
+  it('«Pepe» (q.b., senza unità) non finisce su «Peperoni»', () => {
+    expect(abbina('Pepe', null, [ing('Peperoni', 'pz')])).toBeNull();
+    expect(abbina('Pepe', 'g', [ing('Peperoni')])).toBeNull();
+  });
+
+  it('due spezie si abbinano ancora per inclusione: «Pepe nero» trova «Pepe»', () => {
+    const pepe = ing('Pepe');
+    expect(abbina('Pepe nero', null, [pepe])).toBe(pepe);
+    expect(abbina('Pepe', null, [ing('Pepe nero')])?.nome).toBe('Pepe nero');
+  });
+
+  it('il nome identico vince comunque, anche se la guardia non c\'entra', () => {
+    const pepe = ing('Pepe');
+    expect(abbina('Pepe', null, [ing('Peperoni', 'pz'), pepe])).toBe(pepe);
+  });
+});
+
 describe('proponiSlot: dopocena, spuntino per orario e per posizione (correzione 8c-bis D)', () => {
   const slot = (id: string, nome: string, posizione: number): MealSlotDef => ({ id, nome, posizione, assenzeAbituali: Array(7).fill(false) });
   const casa = [
