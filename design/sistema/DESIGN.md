@@ -91,7 +91,7 @@ Fisse, non personalizzabili. L'utente personalizza solo l'ordine di apparizione 
 | 5 | Dispensa e conserve | `--area-dispensa` | `#F2A465` | 8,5:1 |
 | 6 | Surgelati | `--area-surgelati` | `#B9AEF5` | 8,7:1 |
 
-Il colore d'area si usa in **sei modi**, e nessun altro:
+Il colore d'area si usa in **sette modi**, e nessun altro:
 
 1. bordo della tessera accesa (al 45%) o fondo pieno sulla protagonista della Lista;
 2. quadratino 10 px accanto all'etichetta di sezione, e pallini 8 px sulla Riga piatto;
@@ -101,8 +101,9 @@ Il colore d'area si usa in **sei modi**, e nessun altro:
    **solo** lì.
 6. **luce sul testo** mentre l'AI prepara le modifiche (§7) — uso aggiunto il 25/09: `#B9AEF5`
    (surgelati) e `#9CC7F2` (latticini) passano sulle lettere. Lì non dicono un'area: sono luce.
+7. **pieno dell'icona ingrediente** a 0,72 sulle tessere accese della Lista e sull'ingrediente del piatto (§6) — uso aggiunto il 03/10.
 
-Il **tono medio dell'area** — uso aggiunto il 26/09 per le icone ingrediente (§6): stessa tinta
+Il **tono medio dell'area** — uso aggiunto il 26/09 per le icone ingrediente (§6); dal 03/10 è il colore di contorno, dettagli e ombra: stessa tinta
 OKLCH del colore d'area, luminosità portata a 2,8:1 su bianco.
 
 | Area | Token | Hex |
@@ -114,7 +115,7 @@ OKLCH del colore d'area, luminosità portata a 2,8:1 su bianco.
 | Dispensa e conserve | `--tono-dispensa` | `#D48949` |
 | Surgelati | `--tono-surgelati` | `#9D91D6` |
 
-Nessun altro uso dei colori d'area fuori da questi sei più il tono medio.
+Nessun altro uso dei colori d'area fuori da questi sette più il tono medio.
 
 Mai come colore di testo. Mai come fondo di un tasto, con l'unica deroga della protagonista
 della Lista e della Tessera di dispensa, che sono tessere-interruttore e non tasti.
@@ -332,17 +333,7 @@ mezzo ai nomi, il tratto si perdeva. Dal 25/09 la barra ha tre voci: le icone pi
 e Dispensa, accanto al Marchio della Lista. La regola "solo tratto" vale ancora
 fuori dalla tab bar.
 
-**Icone ingrediente (eccezione dichiarata, 26/09).** Sulle tessere ingrediente (Lista, Dispensa,
-ingrediente del piatto) un'icona di tratto fa riconoscere l'ingrediente. Griglia 24, due
-spessori: `2` per la sagoma, `1.25` per i segni interni; estremità e giunti arrotondati, al
-massimo tre segni interni (linee, archi, fori). **52 px** sulla tessera, **84 px** sulla
-protagonista, in basso a destra, tagliata dal bordo per il **20%**, sotto il nome e fuori dal
-layout (`position: absolute`, `aria-hidden`). Colore: tono medio dell'area (§2.3), bianco a 0,42
-sulla protagonista, `--off` a 0,5 su spuntata, finita e mai comprato. Il nome passa sopra con un
-alone di 2 px (3 px sulla protagonista) nel colore opaco del fondo della tessera; **sulle
-tessere barrate (spuntata, finita) niente alone**, perché contornava di bianco la barra
-(26/09, Andrea): lì il nome torna a `rgba(20,22,58,0.34)`. Sono le sole
-icone sopra i 26 px; non si estendono ad altri componenti.
+**Icone ingrediente (eccezione dichiarata, 26/09; due toni dal 03/10).** Sulle tessere ingrediente (Lista, Dispensa, ingrediente del piatto) un'icona fa riconoscere l'ingrediente. Griglia 24, tre strati: la **sagoma piena** (colore d'area a 0,72; bianco a 0,7 sulla protagonista e sulla Dispensa in casa; `rgba(20,22,58,0.06)` spenta); il **contorno** a tratto `0.9` e fino a **cinque gruppi di dettagli** a tratto `0.5`, nel tono medio d'area (§2.3); l'**ombra a tratteggio**, righe a 45° di `0.34` ogni `1.2`, nella falce fra la sagoma e la sagoma spostata di (−2, −2,2). La luce viene da in alto a sinistra anche sulle icone ruotate. Estremità e giunti arrotondati, fori fino a raggio 0,3. **60 px** sulla tessera, **96 px** sulla protagonista, in basso a destra, tagliata dal bordo di **11** e **18** px, sotto il nome e fuori dal layout (`position: absolute`, `aria-hidden`). Spenta (spuntata, finita, mai comprato): tratti `--off` a 0,55. Il nome passa sopra con un alone di 2 px (3 px sulla protagonista) nel colore opaco del fondo della tessera; **sulle tessere barrate (spuntata, finita) niente alone**, perché contornava di bianco la barra (26/09, Andrea): lì il nome torna a `rgba(20,22,58,0.34)`. Sono le sole icone sopra i 26 px e le sole con un pieno fuori dalla tab bar; non si estendono ad altri componenti.
 
 **Mai emoji**, in nessun punto dell'interfaccia. Nessuna illustrazione, nessuna foto, nessun
 avatar: le icone ingrediente sono icone, non illustrazioni — l'iniziale del Menù utente è testo,
@@ -1105,9 +1096,7 @@ lettere e in movimento (§7).
 miniature di «Rivedi i fogli presi» mostrano il contenuto del dispositivo, non un'illustrazione.
 Altrove le foto restano fuori.
 
-**Le icone ingrediente sono un'eccezione dichiarata** (26/09): sono icone di tratto del sistema
-(§6), non illustrazioni. Niente pieni, ombre, prospettiva o scene, e nessun uso fuori dalle
-tessere ingrediente. Le illustrazioni restano fuori.
+**Le icone ingrediente sono un'eccezione dichiarata** (26/09, due toni dal 03/10): sono icone del sistema (§6), non illustrazioni. Un solo pieno nel colore d'area e un'ombra a tratteggio dentro la sagoma; niente ombre portate, prospettiva o scene, e nessun uso fuori dalle tessere ingrediente. Le illustrazioni restano fuori.
 
 ---
 
@@ -1251,7 +1240,7 @@ nome di `Esci` (§2.2); il piede fisso col primario nel pannello (§8 Pannello i
 
 | # | Tema | Decisione | Dove |
 |---|---|---|---|
-| 29 | Icone ingrediente | 64 icone di tratto, tono medio d'area, alone sul nome | §2.3, §6, §12 |
+| 29 | Icone ingrediente | 64 icone di tratto, tono medio d'area, alone sul nome | §2.3, §6, §12 — sostituita dalla 30 |
 
 ### Decisioni del 26/09/2026 (fase 7: Scegli e l'editor del Piatto)
 
@@ -1346,3 +1335,9 @@ accettato di default, si tocca solo quello che l'AI non sa.
     finale; un foglio vuoto non serve a niente (ruling, review finale).
 
 Componenti nuovi: Riga dell'alimento, Selettore a foglio (con la voce scelta piena del Foglio).
+
+### Decisioni del 03/10/2026 (icone a due toni)
+
+| # | Tema | Decisione | Dove |
+|---|---|---|---|
+| 30 | Icone ingrediente | Due toni con ombra incisa (pilota «Mix B · ombra leggera»): sagoma piena nel colore d'area a 0,72, contorno 0,9, fino a cinque gruppi di dettagli a 0,5, tratteggio 0,34 ogni 1,2; 60 e 96 px; Dispensa in casa con pieno bianco (stato `tinta`). Foto scontornate valutate e scartate | §2.3, §6, §12 |
