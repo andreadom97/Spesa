@@ -12,12 +12,19 @@ function Pubblica({ aree }: { aree: 'ortofrutta'[] }) { useAreeMancanti(aree); r
 const monta = (extra?: React.ReactNode) => render(<MarchioProvider>{extra}<TabBar /></MarchioProvider>);
 
 describe('TabBar (spec §C)', () => {
-  it('ha tre voci nell\'ordine Lista, Piano, Dispensa con gli href giusti: Piatti non c\'è più (spec fase 5 §G.1)', () => {
+  it('ha quattro voci nell\'ordine Oggi, Lista, Piano, Dispensa con gli href giusti (spec Oggi §A.2)', () => {
     monta();
     const voci = screen.getAllByRole('link');
-    expect(voci.map((v) => v.textContent)).toEqual(['Lista', 'Piano', 'Dispensa']);
-    expect(voci.map((v) => v.getAttribute('href'))).toEqual(['/lista', '/piano', '/dispensa']);
+    expect(voci.map((v) => v.textContent)).toEqual(['Oggi', 'Lista', 'Piano', 'Dispensa']);
+    expect(voci.map((v) => v.getAttribute('href'))).toEqual(['/oggi', '/lista', '/piano', '/dispensa']);
     expect(screen.queryByRole('link', { name: 'Piatti' })).toBeNull();
+  });
+
+  it('su /oggi è attiva Oggi', () => {
+    percorso.valore = '/oggi';
+    monta();
+    expect(screen.getByRole('link', { name: 'Oggi' })).toHaveAttribute('aria-current', 'page');
+    percorso.valore = '/lista';
   });
 
   it.each(['/piatti', '/piatti/d-1', '/importa', '/piatti/nuovo/ingredienti/i-1'])(

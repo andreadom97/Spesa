@@ -31,15 +31,15 @@
   --sfondo-schermata: linear-gradient(180deg, #EDECEA 0%, #F2F1EF 34%, #F8F8F7 70%, #FCFCFB 100%);
 
   /* La tab bar flottante (versione B) e il suo movimento. */
-  --barra-larga: 304px;
-  --barra-larga-giu: 244px;
+  --barra-larga: 338px;          /* 4 × 80 + 3 × 2 + 2 × 6 (spec Oggi §A.2) */
+  --barra-larga-giu: 274px;      /* 4 × 64 + 3 × 2 + 2 × 6 */
   --barra-fondo: 22px;
   --barra-alta: 84px;
   --barra-bassa: 66px;
   --barra-voce: 72px;
   --barra-voce-giu: 54px;
-  --barra-voce-larga: 96px;
-  --barra-voce-larga-giu: 76px;
+  --barra-voce-larga: 80px;
+  --barra-voce-larga-giu: 64px;
   --barra-padding: 6px;
   --barra-gap: 2px;
   --barra-icona: 26px;
@@ -290,10 +290,9 @@
   .anim-barra-etichetta { transition: max-height var(--moto-barra) var(--curva-barra), opacity 150ms linear; }
 }
 
-/* ---------- tab bar versione B (spec 20/09 §C) ---------- */
+/* ---------- tab bar versione B (spec 20/09 §C, rivista il 03/10 per quattro voci) ---------- */
 /* Dal 25/09 (spec fase 5 §G.1) la pillola è centrata e ha una larghezza sua. Le voci restano
-   flex con un tetto: con tre voci sono esattamente 96 e 76, e la barra a quattro voci resta in
-   piedi finché TabBar.tsx non passa a tre (voci da 71,5 e 56,5). */
+   flex con un tetto: dal 03/10 con quattro voci sono esattamente 80 e 64 (spec Oggi §A.2). */
 .barra { position: absolute; left: 0; right: 0; margin: 0 auto; width: var(--barra-larga); bottom: var(--barra-fondo); height: var(--barra-alta); border-radius: 999px; display: flex; align-items: center; gap: var(--barra-gap); padding: var(--barra-padding); background: var(--superficie); box-shadow: var(--ombra-nav); z-index: 20; }
 .barra-voce { flex: 1 1 0; min-width: 0; max-width: var(--barra-voce-larga); height: var(--barra-voce); border-radius: 999px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; overflow: hidden; text-decoration: none; }
 .barra-voce.attiva { background: var(--barra-attiva); }

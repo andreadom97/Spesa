@@ -123,18 +123,18 @@
   --maschera-meta: 74px;              /* dove la maschera di scorrimento passa al 55% */
   --maschera-zero: 30px;              /* dove la maschera di scorrimento si annulla */
 
-  /* ---------- Ridisegno 19-20/09, rivista il 25/09: tab bar flottante, tre voci ---------- */
-  --barra-larga: 304px;               /* larghezza della pillola a barra grande, centrata: 3 voci da 96 + 2 gap da 2 + 2 × 6 di padding */
-  --barra-larga-giu: 244px;           /* larghezza a barra ridotta: 3 × 76 + 2 × 2 + 2 × 6. Si anima width, non più left/right */
+  /* ---------- Ridisegno 19-20/09, rivista il 25/09 e il 03/10: tab bar flottante, quattro voci ---------- */
+  --barra-larga: 338px;               /* larghezza della pillola a barra grande, centrata: 4 voci da 80 + 3 gap da 2 + 2 × 6 di padding */
+  --barra-larga-giu: 274px;           /* larghezza a barra ridotta: 4 × 64 + 3 × 2 + 2 × 6. Si anima width, non più left/right */
   --barra-fondo: 22px;                /* distacco della pillola dal fondo dello schermo */
   --barra-alta: 84px;                 /* altezza della pillola a riposo */
   --barra-bassa: 66px;                /* altezza della pillola ridotta */
   --barra-voce: 72px;                 /* altezza della voce a riposo (bersaglio reale) */
   --barra-voce-giu: 54px;             /* altezza della voce a barra ridotta */
-  --barra-voce-larga: 96px;           /* larghezza della voce a barra grande (bersaglio 96 × 72) */
-  --barra-voce-larga-giu: 76px;       /* larghezza della voce a barra ridotta (76 × 54) */
+  --barra-voce-larga: 80px;           /* larghezza della voce a barra grande (bersaglio 80 × 72) */
+  --barra-voce-larga-giu: 64px;       /* larghezza della voce a barra ridotta (64 × 54) */
   --barra-padding: 6px;               /* padding interno della pillola */
-  --barra-gap: 2px;                   /* gap tra le tre voci */
+  --barra-gap: 2px;                   /* gap tra le quattro voci */
   --barra-icona: 26px;                /* taglia delle icone di navigazione, piene */
   --barra-segno: 26px;                /* altezza fissa del contenitore del segno: allinea icone e marchio */
   --barra-attiva: rgba(20, 22, 58, 0.07);  /* fondo della voce attiva, e del menù utente */
