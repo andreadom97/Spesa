@@ -1,10 +1,11 @@
-import type { Dish, Ingredient, MealSlot, MealSlotDef, PantryState, Scelta } from './types';
-import { giorniTra } from './date';
+import type { Dish, Ingredient, LottoPronto, MealSlot, MealSlotDef, PantryState, Scelta } from './types';
+import type { AvvisoScadenza } from './scadenza';
+import { giorniTra, sommaGiorni } from './date';
 import { residuoUtilizzabile } from './pantry';
 import { righeEffettive } from './opzioni';
 import { consumoSlot } from './storno';
 import { convertiInUnitaBase } from './unita';
-import { fattoreConsumo } from './pronti';
+import { fattoreConsumo, porzioniUtilizzabili } from './pronti';
 import { trovaIcona, type ChiaveIcona } from './icone-ingredienti';
 
 /**
@@ -315,4 +316,120 @@ export function alternative(i: AlternativeInput): Alternativa[] {
     || Number(b.usaScadenza) - Number(a.usaScadenza)
     || a.dish.nome.localeCompare(b.dish.nome, 'it'));
   return trovate.slice(0, MAX_ALTERNATIVE).map(({ dish, stato }) => ({ dish, stato }));
+}
+
+export const GIORNI_SCADE_PRESTO = 2;
+export const MAX_PER_GRUPPO = 2;
+
+/** Gli ingredienti degli avvisi che scadono entro oggi + 2 (spec §D.1, §C.5). */
+export function inScadenzaEntro(avvisi: AvvisoScadenza[], oggi: string): Set<string> {
+  return new Set(avvisi.filter((a) => giorniTra(oggi, a.scadenza) <= GIORNI_SCADE_PRESTO).map((a) => a.ingredientId));
+}
+
+export interface ScadePresto { ingrediente: Ingredient; scadenza: string; uso: { data: string; slotDefId: string } | null }
+export type DaScongelare =
+  | { tipo: 'ingrediente'; ingrediente: Ingredient; slotDefId: string }
+  | { tipo: 'lotto'; lotto: LottoPronto; dish: Dish; slotDefId: string };
+export interface ProntiPiatto { dish: Dish; libere: number; congelato: boolean; lottoDaAprire: LottoPronto }
+export interface DaFare { scade: ScadePresto[]; scongela: DaScongelare[]; pronti: ProntiPiatto[] }
+
+/** Gli ingredienti che le righe effettive di uno slot usano; vuoto se il piatto non si legge. */
+function ingredientiDelloSlot(slot: MealSlot, dishPerId: Map<string, Dish>): Set<string> {
+  const dish = slot.dishId ? dishPerId.get(slot.dishId) : undefined;
+  if (!dish) return new Set();
+  try {
+    return new Set(righeEffettive(dish, slot.scelte).map((r) => r.ingredientId));
+  } catch {
+    // Come per l'icona e le alternative: un piatto che non si legge non rompe la home.
+    return new Set();
+  }
+}
+
+function ordinaPerDataEPosizione(slots: MealSlot[], defs: MealSlotDef[]): MealSlot[] {
+  const pos = new Map(defs.map((d) => [d.id, d.posizione]));
+  return [...slots].sort((a, b) => a.data.localeCompare(b.data) || (pos.get(a.slotDefId) ?? 0) - (pos.get(b.slotDefId) ?? 0));
+}
+
+/**
+ * Le tessere della griglia che vengono dalla dispensa (spec §D.1–§D.3). Chi chiama le mostra
+ * solo con la dispensa aggiornata.
+ */
+export function daFare(i: {
+  avvisi: AvvisoScadenza[]; slots: MealSlot[]; defs: MealSlotDef[]; dishes: Dish[];
+  ingredients: Ingredient[]; pantry: PantryState[]; lotti: LottoPronto[]; oggi: string; minuti: number;
+}): DaFare {
+  const dishPerId = new Map(i.dishes.map((d) => [d.id, d]));
+  const ingPerId = new Map(i.ingredients.map((x) => [x.id, x]));
+  const fasce = fasceDi(i.defs);
+  const domani = sommaGiorni(i.oggi, 1);
+  const ordinati = ordinaPerDataEPosizione(i.slots, i.defs);
+
+  // §D.1 — un uso «in tempo» è un pasto che consuma, da adesso alla scadenza compresa.
+  const ancoraDaMangiare = (s: MealSlot) =>
+    s.data > i.oggi || (s.data === i.oggi && (fasce.get(s.slotDefId)?.fine ?? 0) > i.minuti);
+  const scade: ScadePresto[] = i.avvisi
+    .filter((a) => giorniTra(i.oggi, a.scadenza) <= GIORNI_SCADE_PRESTO && ingPerId.has(a.ingredientId))
+    .sort((a, b) => a.scadenza.localeCompare(b.scadenza) || a.nome.localeCompare(b.nome, 'it'))
+    .slice(0, MAX_PER_GRUPPO)
+    .map((a) => {
+      const pasto = ordinati.find((s) =>
+        s.data <= a.scadenza && ancoraDaMangiare(s) && fattoreConsumo(s) > 0
+        && ingredientiDelloSlot(s, dishPerId).has(a.ingredientId));
+      return {
+        ingrediente: ingPerId.get(a.ingredientId) as Ingredient,
+        scadenza: a.scadenza,
+        uso: pasto ? { data: pasto.data, slotDefId: pasto.slotDefId } : null,
+      };
+    });
+
+  // §D.2 — domani: i lotti congelati dei pasti dai Pronti, poi gli ingredienti in congelatore.
+  const slotsDomani = ordinati.filter((s) => s.data === domani && s.stato === 'casa' && s.dishId !== null);
+  const scongela: DaScongelare[] = [];
+  const lottiVisti = new Set<string>();
+  for (const s of slotsDomani) {
+    if (!s.daPronti) continue;
+    const dish = dishPerId.get(s.dishId as string);
+    const lottoCongelato = i.lotti
+      .filter((l) => l.dishId === s.dishId && l.congelato && porzioniUtilizzabili(l, i.oggi) > 0)
+      .sort((a, b) => a.preparataIl.localeCompare(b.preparataIl))[0];
+    // Due pasti di domani dallo stesso piatto pescano dallo stesso lotto: una tessera sola.
+    if (!dish || !lottoCongelato || lottiVisti.has(lottoCongelato.id)) continue;
+    lottiVisti.add(lottoCongelato.id);
+    scongela.push({ tipo: 'lotto', lotto: lottoCongelato, dish, slotDefId: s.slotDefId });
+  }
+  const giaVisti = new Set<string>();
+  for (const s of slotsDomani) {
+    if (s.daPronti) continue;
+    for (const id of ingredientiDelloSlot(s, dishPerId)) {
+      const riga = i.pantry.find((p) => p.ingredientId === id);
+      const ingrediente = ingPerId.get(id);
+      if (!riga?.congelato || !ingrediente || giaVisti.has(id)) continue;
+      giaVisti.add(id);
+      scongela.push({ tipo: 'ingrediente', ingrediente, slotDefId: s.slotDefId });
+    }
+  }
+
+  // §D.3 — per piatto: utilizzabili meno gli impegni dei pasti dai Pronti da oggi in poi.
+  const impegni = new Map<string, number>();
+  for (const s of i.slots) {
+    if (!s.daPronti || s.dishId === null || s.data < i.oggi) continue;
+    impegni.set(s.dishId, (impegni.get(s.dishId) ?? 0) + 1);
+  }
+  const viviPerPiatto = new Map<string, LottoPronto[]>();
+  for (const l of i.lotti) {
+    if (porzioniUtilizzabili(l, i.oggi) <= 0) continue;
+    viviPerPiatto.set(l.dishId, [...(viviPerPiatto.get(l.dishId) ?? []), l]);
+  }
+  const pronti: ProntiPiatto[] = [];
+  for (const [dishId, vivi] of viviPerPiatto) {
+    const dish = dishPerId.get(dishId);
+    if (!dish) continue;
+    const libere = vivi.reduce((n, l) => n + porzioniUtilizzabili(l, i.oggi), 0) - (impegni.get(dishId) ?? 0);
+    if (libere <= 0) continue;
+    const ordinatiPerEta = [...vivi].sort((a, b) => a.preparataIl.localeCompare(b.preparataIl));
+    pronti.push({ dish, libere, congelato: vivi.every((l) => l.congelato), lottoDaAprire: ordinatiPerEta[0] });
+  }
+  pronti.sort((a, b) => a.lottoDaAprire.preparataIl.localeCompare(b.lottoDaAprire.preparataIl));
+
+  return { scade, scongela: scongela.slice(0, MAX_PER_GRUPPO), pronti: pronti.slice(0, MAX_PER_GRUPPO) };
 }
