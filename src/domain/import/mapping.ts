@@ -50,7 +50,12 @@ export function abbina(alimento: string, unita: UnitaBase | null, ingredienti: I
   const inclusi = compatibili
     .filter((i) => {
       const n = normalizza(i.nome);
-      return n.includes(norm) || norm.includes(n) || contieneParole(n, norm) || contieneParole(norm, n);
+      if (n.includes(norm) || norm.includes(n)) return true;
+      // Il plurale tollera solo in testa e mai fra una spezia e una non spezia («noci» non è «Noce
+      // moscata», «mela» non è «Aceto di mele»): un abbinamento sbagliato silenzioso è peggio di un
+      // doppione (spec 8c §A.2, fix round 1 dell'8c-bis).
+      if (eSpezia(n) !== eSpezia(norm)) return false;
+      return inTestaAlNome(n, norm) || inTestaAlNome(norm, n);
     })
     .sort((a, b) => a.nome.length - b.nome.length);
   if (inclusi[0]) return inclusi[0];
@@ -91,14 +96,11 @@ export function stessoNome(a: string, b: string): boolean {
   return pa.length === pb.length && pa.every((p, i) => stessaParola(p, pb[i]));
 }
 
-/** `corto` compare dentro `lungo` come sequenza contigua di parole intere, singolare o plurale. */
-function contieneParole(lungo: string, corto: string): boolean {
+/** Le prime parole di `lungo` sono `corto`, parola per parola, al singolare o al plurale. */
+function inTestaAlNome(lungo: string, corto: string): boolean {
   const pl = lungo.split(' ');
   const pc = corto.split(' ');
-  for (let i = 0; i + pc.length <= pl.length; i++) {
-    if (pc.every((p, j) => stessaParola(pl[i + j], p))) return true;
-  }
-  return false;
+  return pc.length <= pl.length && pc.every((p, j) => stessaParola(pl[j], p));
 }
 
 const SINONIMI_SLOT: Record<string, string[]> = {
@@ -124,8 +126,9 @@ export function proponiSlot(
   if (norm === NOME_PASTO_CONDIMENTI) return null;
   // «Dopo cena» e «Dopocena» sono lo stesso nome: il nome compatto uguale vince sopra ogni punteggio
   // (correzione 8c-bis D, prove dal telefono del 03/10).
-  const compatto = norm.replace(/ /g, '');
-  const identico = slotDefs.find((def) => normalizza(def.nome).replace(/ /g, '') === compatto);
+  // Il nome compatto tiene solo lettere e cifre: «Dopo-cena» e «Dopo_cena» sono «Dopocena».
+  const compatto = norm.replace(/[^a-z0-9]/g, '');
+  const identico = compatto === '' ? undefined : slotDefs.find((def) => normalizza(def.nome).replace(/[^a-z0-9]/g, '') === compatto);
   if (identico) return identico.id;
   const parole = new Set(norm.split(' '));
   const candidati: { id: string; nome: string; punteggio: number }[] = [];

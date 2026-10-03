@@ -4,8 +4,9 @@ import type { IngredienteProposto, PastoEstratto, PianoEstratto, RigaEstratta, S
 import { SCELTA_NUOVO } from '../types';
 import { PIANO_GIORNATA_UNICA, PIANO_MENU_SETTIMANALE } from '../fixtures';
 import { proponi } from '../formati-tipici';
+import { traduciBozza } from '../commit';
 import {
-  calcolaProposte, cambiDiretti, cambiUnita, diRipiego, esempioPiatto, esempioRiga, legataA, legataAlCommit, motiviBlocco, nomeProposto,
+  calcolaProposte, cambiDiretti, cambiUnita, destinazioni, diRipiego, esempioPiatto, esempioRiga, legataA, legataAlCommit, motiviBlocco, nomeProposto,
   nomiDoppi, passoBloccato, pesiProposte, sceltiIniziali, sezioniIniziali, valoreRipiego,
 } from '../ingredienti';
 import { motiviBlocco8b, passoBloccato8b } from './ingredienti-8b';
@@ -77,6 +78,68 @@ describe('calcolaProposte', () => {
     expect(proposte.find((p) => p.alimento === 'caffe')).toMatchObject({ nome: 'Caffè' });
     expect(proposte.find((p) => p.alimento === 'te verde')).toMatchObject({ nome: 'Tè verde' });
     expect(proposte.find((p) => p.alimento === 'pure di patate')).toMatchObject({ nome: 'Purè di patate', area: 'ortofrutta' });
+  });
+});
+
+describe('banana e banane nella stessa dieta: una proposta sola (fix round 1, I2)', () => {
+  const riga = (alimento: string, quantita: number, unita: 'g' | 'pz', testo: string): RigaEstratta => ({ alimento, quantita, unita, quantitaInferita: false, testoOriginale: testo });
+  const pianoBanane = (...righe: RigaEstratta[]): PianoEstratto => ({
+    archetipo: 'giornata_unica', fonte: 'test', noteEstrazione: [],
+    settimane: [{ numero: 1, giorni: [{ giorno: 0, titolo: null, pasti: [{ nomeOriginale: 'colazione', piatti: [{ nome: 'Frutta', descrizione: null, componenti: [], righeFisse: righe }] }] }] }],
+  });
+  const piano = pianoBanane(riga('banana', 1, 'pz', '1 banana'), riga('banane', 2, 'pz', '2 banane'));
+  const stato: StatoRevisione = { ...STATO, mappaturaPasti: { colazione: 's-col' } };
+
+  it('calcolaProposte: una proposta, col nome e l\'alimento della prima nel piano', () => {
+    const proposte = calcolaProposte(piano, stato, []);
+    expect(proposte).toHaveLength(1);
+    expect(proposte[0]).toMatchObject({ alimento: 'banana', nome: 'Banana', unitaBase: 'pz' });
+  });
+
+  it('l\'unità segue il voto di tutte le righe dei fratelli', () => {
+    const p = pianoBanane(riga('banana', 100, 'g', '100 g banana'), riga('banane', 1, 'pz', '1 banana'), riga('banane', 2, 'pz', '2 banane'));
+    expect(calcolaProposte(p, stato, [])[0]).toMatchObject({ alimento: 'banana', unitaBase: 'pz' });
+  });
+
+  it('destinazioni: il fratello va sulla stessa proposta', () => {
+    const proposte = calcolaProposte(piano, stato, []);
+    const destini = destinazioni(piano, { ...stato, ingredientiNuovi: proposte }, []);
+    expect(destini.get('banana')).toEqual({ tipo: 'proposta', proposta: proposte[0] });
+    expect(destini.get('banane')).toEqual({ tipo: 'proposta', proposta: proposte[0] });
+  });
+
+  it('al commit nasce un ingrediente solo, con tutte le righe', () => {
+    const proposte = calcolaProposte(piano, stato, []);
+    const s = traduciBozza(piano, { ...stato, passo: 'riepilogo', ingredientiNuovi: proposte }, [], [], '2026-10-03');
+    expect(s.ingredientiDaCreare.map((i) => i.alimento)).toEqual(['banana']);
+    // Le due righe cadono sullo stesso ingrediente nello stesso piatto: si fondono (1 + 2).
+    expect(s.piattiDaCreare[0].righe).toEqual([{ nuovoAlimento: 'banana', quantita: 3, unita: 'pz' }]);
+  });
+
+  it('una bozza vecchia con due proposte separate: un ingrediente solo (la seconda non si crea)', () => {
+    const vecchia = [proponi('banana', 'pz'), proponi('banane', 'pz')];
+    const s = traduciBozza(piano, { ...stato, passo: 'riepilogo', ingredientiNuovi: vecchia }, [], [], '2026-10-03');
+    expect(s.ingredientiDaCreare).toHaveLength(1);
+    expect(s.ingredientiDaCreare[0].alimento).toBe('banana');
+    expect(s.piattiDaCreare[0].righe.every((r) => 'nuovoAlimento' in r && r.nuovoAlimento === 'banana')).toBe(true);
+  });
+
+  it('una bozza vecchia con la sola proposta «banane»: i due alimenti vanno su di lei', () => {
+    const s = traduciBozza(piano, { ...stato, passo: 'riepilogo', ingredientiNuovi: [proponi('banane', 'pz')] }, [], [], '2026-10-03');
+    expect(s.ingredientiDaCreare.map((i) => i.alimento)).toEqual(['banane']);
+    expect(s.piattiDaCreare[0].righe.every((r) => 'nuovoAlimento' in r && r.nuovoAlimento === 'banane')).toBe(true);
+  });
+
+  it('se la casa ha già Banane, tutte e due le righe vanno su di lei e non ci sono proposte', () => {
+    const banane = ing('i-banane', 'Banane', 'pz');
+    expect(calcolaProposte(piano, stato, [banane])).toEqual([]);
+  });
+
+  it('nomiDoppi, come rete: due proposte che differiscono per il plurale sono doppie; anche contro un esistente', () => {
+    const due = [proposta('banana', 'Banana', 'pz'), proposta('banane', 'Banane', 'pz')];
+    expect([...nomiDoppi(due, [])].sort()).toEqual(['banana', 'banane']);
+    // Contro un esistente con un'altra unità che non si converte (ml): non è legata, e il nome è lo stesso.
+    expect([...nomiDoppi([proposta('banana', 'Banana', 'ml')], [ing('i-b', 'Banane', 'g')])]).toEqual(['banana']);
   });
 });
 

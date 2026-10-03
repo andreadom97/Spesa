@@ -284,6 +284,24 @@ describe('abbina: singolare e plurale (correzione 8c-bis B)', () => {
     expect(abbina('funghi champignon', 'g', [ing('Fungo')])?.nome).toBe('Fungo');
   });
 
+  it('l\'inclusione coi plurali vale solo in testa al nome: niente abbinamenti sbagliati silenziosi (fix round 1, I1)', () => {
+    expect(abbina('noci', 'g', [ing('Noce moscata')])).toBeNull(); // spezia contro non spezia
+    expect(abbina('olive', null, [ing('Olio extravergine di oliva', 'ml')])).toBeNull();
+    expect(abbina('pomodori', 'g', [ing('Concentrato di pomodoro')])).toBeNull();
+    expect(abbina('mela', 'g', [ing('Aceto di mele', 'ml')])).toBeNull();
+    expect(abbina('mela', null, [ing('Aceto di mele', 'ml')])).toBeNull();
+    expect(abbina('limoni', 'g', [ing('Succo di limone')])).toBeNull();
+    // Il nome lungo della dieta contro il corto della casa: stessa regola, in testa.
+    expect(abbina('concentrato di pomodoro', 'g', [ing('Pomodori')])).toBeNull();
+  });
+
+  it('in testa vale: zucchina trova «Zucchine trombetta», «Funghi champignon» trova Fungo', () => {
+    const trombetta = ing('Zucchine trombetta');
+    expect(abbina('zucchina', 'g', [trombetta])).toBe(trombetta);
+    const fungo = ing('Fungo');
+    expect(abbina('funghi champignon', 'g', [fungo])).toBe(fungo);
+  });
+
   it('pesca non trova Pesce, pasta non trova Pasto', () => {
     expect(abbina('pesca', 'g', [ing('Pesce')])).toBeNull();
     expect(abbina('pesca', 'g', [ing('Pesce spada')])).toBeNull();
@@ -307,6 +325,13 @@ describe('proponiSlot: dopocena, spuntino per orario e per posizione (correzione
     expect(proponiSlot('Dopo cena', casa)).toBe('dopocena');
     expect(proponiSlot('dopo_cena', casa)).toBe('dopocena');
     expect(proponiSlot('Cena', casa)).toBe('cena');
+  });
+
+  it('«Dopo-cena» e «Dopo cena.» trovano «Dopocena»: conta solo il nome senza punteggiatura (fix round 1)', () => {
+    expect(proponiSlot('Dopo-cena', casa)).toBe('dopocena');
+    expect(proponiSlot('Dopo cena.', casa)).toBe('dopocena');
+    const defs = [slot('cena', 'Cena', 4), slot('dopo', 'Dopo-cena', 5)];
+    expect(proponiSlot('Dopocena', defs)).toBe('dopo');
   });
 
   it('il caso inverso: uno slot «Dopo cena» e un pasto «Dopocena»', () => {

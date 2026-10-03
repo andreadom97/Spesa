@@ -1,7 +1,7 @@
 import type { Dish, Ingredient, UnitaBase } from '@/domain/types';
 import type { IngredienteProposto, PianoEstratto, StatoRevisione } from './types';
 import { SCELTA_NUOVO, pastoEffettivo, unitaBaseDi } from './types';
-import { abbina, ingredientiDaAbbinare, normalizza, righeDelPiano, unitaPrevalente, unitaTrascritta } from './mapping';
+import { abbina, ingredientiDaAbbinare, normalizza, righeDelPiano, stessoNome, unitaPrevalente, unitaTrascritta } from './mapping';
 import { origineProposta, pesoPezzo, proponi } from './formati-tipici';
 
 /**
@@ -31,13 +31,59 @@ export function calcolaProposte(
   esistenti: Ingredient[],
 ): IngredienteProposto[] {
   const giaProposti = new Map(stato.ingredientiNuovi.map((i) => [i.alimento, i]));
-  return ingredientiDaAbbinare(piano, stato.correzioni)
-    .filter(({ alimento, unita }) => !abbina(alimento, unita, esistenti))
-    .map(({ alimento, grezzo, unita }) => {
-      const conservata = giaProposti.get(alimento);
-      // `proponi` normalizza da sé la chiave; dal grezzo il nome tiene accenti e maiuscole («Caffè»).
-      return conservata && (unita === null || conservata.unitaBase === unita) ? conservata : proponi(grezzo, unita);
-    });
+  const { capi } = fratelliSenzaAbbinamento(ingredientiDaAbbinare(piano, stato.correzioni), esistenti);
+  return capi.map(({ capo, unita, membri }) => {
+    // La proposta già in bozza: del capo, o di un fratello (una bozza vecchia con solo «banane»).
+    const conservata = giaProposti.get(capo.alimento) ?? membri.map((m) => giaProposti.get(m)).find((p) => p !== undefined);
+    // `proponi` normalizza da sé la chiave; dal grezzo il nome tiene accenti e maiuscole («Caffè»).
+    return conservata && (unita === null || conservata.unitaBase === unita) ? conservata : proponi(capo.grezzo, unita);
+  });
+}
+
+type VoceDaAbbinare = ReturnType<typeof ingredientiDaAbbinare>[number];
+
+/**
+ * Gli alimenti del piano senza un ingrediente che hai, uniti per `stessoNome` (fix round 1 dell'8c-bis,
+ * I2): «1 banana» e «2 banane» sono un alimento solo, una proposta sola e un ingrediente solo al commit.
+ * Il capo è il primo del gruppo nell'ordine del piano; l'unità è quella che prevale fra le righe di
+ * tutti i fratelli (le trascritte, poi le stime: come `ingredientiDaAbbinare`). Le chiavi salvate nella
+ * bozza non cambiano: la proposta resta quella del capo.
+ */
+function fratelliSenzaAbbinamento(
+  voci: VoceDaAbbinare[],
+  esistenti: Ingredient[],
+): { capi: { capo: VoceDaAbbinare; unita: UnitaBase | null; membri: string[] }[]; capoDi: Map<string, string> } {
+  const gruppi: { capo: VoceDaAbbinare; trascritte: UnitaBase[]; viste: UnitaBase[]; membri: string[] }[] = [];
+  const capoDi = new Map<string, string>();
+  for (const voce of voci) {
+    if (abbina(voce.alimento, voce.unita, esistenti)) continue;
+    const gruppo = gruppi.find((g) => stessoNome(g.capo.alimento, voce.alimento));
+    if (gruppo) {
+      gruppo.trascritte.push(...voce.unitaTrascritte);
+      gruppo.viste.push(...voce.unitaViste);
+      gruppo.membri.push(voce.alimento);
+      capoDi.set(voce.alimento, gruppo.capo.alimento);
+    } else {
+      gruppi.push({ capo: voce, trascritte: [...voce.unitaTrascritte], viste: [...voce.unitaViste], membri: [voce.alimento] });
+      capoDi.set(voce.alimento, voce.alimento);
+    }
+  }
+  const capi = gruppi.map((g) => ({
+    capo: g.capo,
+    // Un gruppo di un alimento solo ha già la sua unità: la stessa di prima.
+    unita: g.membri.length === 1 ? g.capo.unita : unitaPrevalente(g.trascritte) ?? unitaPrevalente(g.viste),
+    membri: g.membri,
+  }));
+  return { capi, capoDi };
+}
+
+/**
+ * La proposta di un alimento senza abbinamento fra quelle della bozza: quella del suo capo, poi la
+ * sua, poi quella di un fratello per `stessoNome` (preferendo sempre l'uguaglianza esatta).
+ */
+function propostaDi(proposte: IngredienteProposto[], capo: string, alimento: string): IngredienteProposto | undefined {
+  const per = (a: string) => proposte.find((p) => normalizza(p.alimento) === a);
+  return per(capo) ?? per(alimento) ?? proposte.find((p) => stessoNome(normalizza(p.alimento), alimento));
 }
 
 /**
@@ -112,20 +158,15 @@ export function nomiDoppi(
 ): Set<string> {
   const doppi = new Set<string>();
   const libere = proposte.filter((p) => !legataA(p, esistenti, scelti));
-  const perNome = new Map<string, string[]>();
-  for (const p of libere) {
-    const nome = normalizza(p.nome);
-    if (!nome) continue;
-    perNome.set(nome, [...(perNome.get(nome) ?? []), p.alimento]);
+  // Il nome è lo stesso anche a meno di singolare e plurale (fix round 1 dell'8c-bis, I2): è la rete
+  // di `calcolaProposte`, che già unisce banana e banane.
+  const conNome = libere.map((p) => ({ p, nome: normalizza(p.nome) })).filter(({ nome }) => nome !== '');
+  for (const { p, nome } of conNome) {
+    if (conNome.some((altra) => altra.p !== p && stessoNome(altra.nome, nome))) doppi.add(p.alimento);
   }
-  for (const alimenti of perNome.values()) {
-    if (alimenti.length > 1) for (const a of alimenti) doppi.add(a);
-  }
-  for (const p of libere) {
-    const nome = normalizza(p.nome);
-    if (!nome) continue;
+  for (const { p, nome } of conNome) {
     const nuova = scelti[p.alimento] === SCELTA_NUOVO;
-    if (esistenti.some((e) => normalizza(e.nome) === nome && (nuova || e.unitaBase !== p.unitaBase))) doppi.add(p.alimento);
+    if (esistenti.some((e) => stessoNome(normalizza(e.nome), nome) && (nuova || e.unitaBase !== p.unitaBase))) doppi.add(p.alimento);
   }
   return doppi;
 }
@@ -198,13 +239,16 @@ export function destinazioni(piano: PianoEstratto, stato: StatoRevisione, esiste
   const scelti = stato.scelti ?? {};
   const destini = new Map<string, Destino>();
   const senza: { alimento: string; unita: UnitaBase | null }[] = [];
-  for (const { alimento, unita } of ingredientiDaAbbinare(piano, stato.correzioni)) {
+  const voci = ingredientiDaAbbinare(piano, stato.correzioni);
+  const { capoDi } = fratelliSenzaAbbinamento(voci, esistenti);
+  for (const { alimento, unita } of voci) {
     const esistente = abbina(alimento, unita, esistenti);
     if (esistente) {
       destini.set(alimento, { tipo: 'esistente', ingrediente: esistente });
       continue;
     }
-    const proposta = stato.ingredientiNuovi.find((p) => normalizza(p.alimento) === alimento);
+    // Il fratello di un alimento (banana/banane) va sulla stessa proposta (fix round 1, I2).
+    const proposta = propostaDi(stato.ingredientiNuovi, capoDi.get(alimento) ?? alimento, alimento);
     if (proposta) {
       const legata = legataAlCommit(proposta, esistenti, scelti);
       destini.set(alimento, legata ? { tipo: 'esistente', ingrediente: legata } : { tipo: 'proposta', proposta });

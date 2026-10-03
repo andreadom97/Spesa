@@ -155,7 +155,9 @@ function risolviRiga(rigaLetta: RigaEstratta, ctx: Contesto): RigaTradotta {
   const nuovo = destino.proposta;
   const peso = ctx.pesi.get(nuovo.alimento)?.pesoPezzo ?? (riga.quantitaInferita ? pesoPerStima(ctx.stato, null, nuovo.nome, chiave) : null);
   const tradotta = nellUnita({ nuovoAlimento: nuovo.alimento }, riga, nuovo.unitaBase, peso, 'la proposta');
-  ctx.usati.add(chiave);
+  // La chiave della proposta, non della riga: il fratello di un alimento (banane per banana) usa
+  // la proposta del capo (fix round 1 dell'8c-bis, I2).
+  ctx.usati.add(normalizza(nuovo.alimento));
   return tradotta;
 }
 
