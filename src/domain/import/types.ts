@@ -1,5 +1,15 @@
 import type { AreaId, ClasseResiduo, UnitaBase } from '@/domain/types';
 
+/** I cucchiai che il lettore può scrivere su una riga (spec 8c §C): l'import li converte. */
+export type UnitaCucchiaio = 'cucchiaio' | 'cucchiaino';
+/** Le unità di una riga letta: le tre di base più i cucchiai. `UnitaBase` resta quella degli ingredienti. */
+export type UnitaRiga = UnitaBase | UnitaCucchiaio;
+
+/** L'unità di base di una riga, o null se è a cucchiai o assente. */
+export function unitaBaseDi(u: UnitaRiga | null): UnitaBase | null {
+  return u === 'g' || u === 'ml' || u === 'pz' ? u : null;
+}
+
 /** 'solo_macro' non produce mai un piano: è l'archetipo del rifiuto onesto. */
 export type ArchetipoImportabile = 'menu_settimanale' | 'giornata_unica' | 'griglia_alternative' | 'giorni_tipo';
 
