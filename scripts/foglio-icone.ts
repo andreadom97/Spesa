@@ -15,7 +15,7 @@ import { IconaIngrediente, type TonoIcona } from '../src/components/IconaIngredi
 /** Il reparto tipico di ogni chiave, come nei commenti del catalogo: serve solo a colorare il foglio. */
 const REPARTO: Record<AreaId, readonly ChiaveIcona[]> = {
   ortofrutta: ['banana', 'mela', 'pera', 'arancia', 'limone', 'avocado', 'zucchina', 'melanzana', 'peperone', 'broccolo', 'finocchio', 'sedano', 'pomodoro', 'pomodorini', 'insalata', 'foglie', 'carota', 'patata', 'cipolla', 'aglio', 'fungo', 'zucca', 'fagiolini', 'uva', 'fragola', 'cetriolo', 'erbe', 'frutta', 'verdura', 'peperoncino', 'ananas', 'cocco', 'ciliegia', 'melone', 'datteri-fichi', 'pesca-albicocca', 'carciofo', 'asparago'],
-  macelleria: ['bistecca', 'cosciotto', 'salsiccia', 'pesce', 'gambero', 'pancetta', 'maiale', 'agnello', 'molluschi'],
+  macelleria: ['bistecca', 'cosciotto', 'salsiccia', 'pesce', 'gambero', 'pancetta', 'agnello', 'molluschi'],
   latticini: ['uovo', 'latte', 'yogurt', 'formaggio', 'formaggio-fresco', 'burro', 'panna', 'salumi'],
   cereali: ['pasta', 'riso', 'chicchi', 'avena', 'pane', 'pancarre', 'biscotto', 'farina', 'cornetto', 'cereali', 'piadina'],
   dispensa: ['olio', 'ampolla', 'sale', 'spezie', 'zucchero', 'miele', 'marmellata', 'caffe', 'legumi', 'piselli', 'noce', 'mandorla', 'arachide', 'frutta-guscio', 'olive', 'cioccolato', 'vaniglia', 'lievito', 'senape', 'capperi', 'semi', 'uvetta', 'mais', 'minestra', 'acqua', 'vino', 'liquore', 'te'],

@@ -145,7 +145,7 @@ Richieste da Andrea il 03/10 per coprire i nomi generici delle diete importate. 
 
 ## Ondata 1 (03/10)
 
-25 chiavi nuove (da 69 a **94**), costruite in cinque lotti (A-E). I sinonimi sono quelli del catalogo in `src/domain/icone-ingredienti.ts`.
+24 chiavi nuove (da 69 a **93**, dopo il gate del 03/10), costruite in cinque lotti (A-E). I sinonimi sono quelli del catalogo in `src/domain/icone-ingredienti.ts`.
 
 | Chiave | Sinonimi |
 |---|---|
@@ -160,7 +160,7 @@ Richieste da Andrea il 03/10 per coprire i nomi generici delle diete importate. 
 | `uvetta` | uvetta, uva passa, uva sultanina |
 | `carciofo` | carciofo, carciofino |
 | `asparago` | asparago |
-| `maiale` | maiale, carne di maiale, lonza, arista, braciola di maiale, costine, filetto di maiale, porchetta |
+| ~~`maiale`~~ | confluito in `bistecca` (gate 03/10): maiale, lonza, arista, braciola di maiale, costine, filetto di maiale, porchetta |
 | `agnello` | agnello, carne di agnello, abbacchio, capretto |
 | `molluschi` | cozza, vongola, calamaro, polpo, polpo di scoglio, seppia, totano, moscardino, ostrica, ostriche, capasanta, capesante, frutti di mare, insalata di mare |
 | `panna` | panna, panna da cucina, panna fresca, panna montata |
@@ -182,3 +182,5 @@ Richieste da Andrea il 03/10 per coprire i nomi generici delle diete importate. 
 | Pareggi esatti | a parità di posizione e lunghezza vince la voce che coincide esattamente con le parole del nome (prima di `radice`); se nessuna coincide, vince il blocco. «Grana» → formaggio, «Grano» → null, «Pesce» → pesce, «Pesche» → null |
 
 Mais torna con un disegno nuovo (tolto al gate del 26/09), da confermare al gate.
+
+**Ritocchi del gate (03/10).** `panna` ridisegnata come cartone corto di panna da cucina; `agnello` come carré di tre costole; `maiale` confluito in `bistecca` (nessun disegno del maiale si leggeva), con i suoi sinonimi.

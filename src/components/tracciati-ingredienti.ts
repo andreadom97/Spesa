@@ -416,18 +416,6 @@ export const TRACCIATI: Partial<Record<ChiaveIcona, Tracciato>> = {
       'M17.6 9.4c.9.6 1.4 1.6 1.4 2.6',
     ],
   },
-  // ondata 1 (03/10, secondo giro): la braciola a «D», osso lungo il lato dritto con la testa tonda che esce dalla carne e lo sperone a T,
-  // fascia di grasso spessa lungo il lato tondo. Scartate: la braciola a rene (sembrava un fagiolo), la mezzaluna con l'osso a filo (un elmetto), la «D» in piedi (una presina)
-  maiale: {
-    rot: 'rotate(-30 12 12)',
-    sil: 'M6.5 7.5H18.4C21.4 7.5 22.4 10 22.4 12.8 22.4 16.6 19.6 19.2 15.4 19.2 11.6 19.2 9.2 16.6 7.6 13.6 6.8 12.2 6.5 11 6.5 7.5ZM6.23 7.5H15.6A1.1 1.1 0 0 1 15.6 9.7H14.6V11.5A0.9 0.9 0 0 1 12.8 11.5V9.7H6.23A1.8 1.8 0 1 1 6.23 7.5Z',
-    d: 'M15.6 7.5H18.4C21.4 7.5 22.4 10 22.4 12.8 22.4 16.6 19.6 19.2 15.4 19.2 11.6 19.2 9.2 16.6 7.6 13.6 6.8 12.2 6.5 11 6.5 9.7M6.23 7.5H15.6A1.1 1.1 0 0 1 15.6 9.7H14.6V11.5A0.9 0.9 0 0 1 12.8 11.5V9.7H6.23A1.8 1.8 0 1 1 6.23 7.5Z',
-    dd: [
-      'M18.2 9.5C19.8 9.6 20.4 11.2 20.4 12.8 20.4 15.4 18.4 17.2 15.4 17.2 12.6 17.2 10.8 15.2 9.4 12.8 8.8 11.8 8.5 10.8 8.5 9.7',
-      'M4.5 8.6A0.3 0.3 0 1 0 5.1 8.6A0.3 0.3 0 1 0 4.5 8.6',
-    ],
-  },
-  // ondata 1 (03/10, secondo giro): il carré, tre costolette con l'osso spolpato e la testa tonda che escono parallele dal blocco di carne,
   // grasso in cima e le divisioni fra le costole. Scartate: la costoletta singola (un cucchiaio), le ossa dritte a pettine (una forchetta)
   agnello: {
     rot: 'rotate(8 12 12)',

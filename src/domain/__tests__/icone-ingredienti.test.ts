@@ -86,14 +86,14 @@ describe('trovaIcona', () => {
     ['Capperi', 'capperi'],
     ['Capperi sotto sale', 'capperi'],
     // ondata 1, lotto B (03/10)
-    ['Maiale', 'maiale'],
-    ['Carne di maiale', 'maiale'],
-    ['Lonza', 'maiale'],
-    ['Arista di maiale', 'maiale'],
-    ['Braciola di maiale', 'maiale'],
-    ['Costine', 'maiale'],
-    ['Filetto di maiale', 'maiale'],
-    ['Porchetta', 'maiale'],
+    ['Maiale', 'bistecca'],
+    ['Carne di maiale', 'bistecca'],
+    ['Lonza', 'bistecca'],
+    ['Arista di maiale', 'bistecca'],
+    ['Braciola di maiale', 'bistecca'],
+    ['Costine', 'bistecca'],
+    ['Filetto di maiale', 'bistecca'],
+    ['Porchetta', 'bistecca'],
     ['Agnello', 'agnello'],
     ["Costolette d'agnello", 'agnello'],
     ['Abbacchio', 'agnello'],
@@ -456,8 +456,8 @@ describe('trovaIcona', () => {
 });
 
 describe('CATALOGO_ICONE', () => {
-  it('94 icone (64 del 26/09 + 5 famiglie del 03/10 + 25 dell\'ondata 1)', () => {
-    expect(CHIAVI_ICONE).toHaveLength(94);
+  it('93 icone (64 del 26/09 + 5 famiglie del 03/10 + 24 dell\'ondata 1)', () => {
+    expect(CHIAVI_ICONE).toHaveLength(93);
   });
 
   it('ogni sinonimo appartiene a una sola chiave', () => {

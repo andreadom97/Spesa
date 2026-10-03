@@ -66,7 +66,8 @@ export const CATALOGO_ICONE = {
   carciofo: ['carciofo', 'carciofino'],
   asparago: ['asparago'],
   // carne e pesce
-  bistecca: ['manzo', 'macinato', 'vitello', 'carne', 'bistecca', 'hamburger'],
+  // maiale confluito in bistecca (Andrea, 03/10): nessun disegno del maiale si leggeva
+  bistecca: ['manzo', 'macinato', 'vitello', 'carne', 'bistecca', 'hamburger', 'maiale', 'lonza', 'arista', 'braciola di maiale', 'costine', 'filetto di maiale', 'porchetta'],
   cosciotto: ['pollo', 'tacchino'],
   salsiccia: ['salsiccia', 'wurstel'],
   pesce: ['pesce', 'salmone', 'merluzzo', 'branzino', 'spigola', 'orata', 'tonno', 'sgombro', 'platessa', 'nasello', 'pesce spada'],
@@ -75,9 +76,7 @@ export const CATALOGO_ICONE = {
   // famiglia (03/10, supera il gate del 26/09 che li lasciava senza icona): nel foglio sta
   // con i latticini, come al banco gastronomia.
   salumi: ['salume', 'salame', 'prosciutto', 'bresaola', 'speck', 'mortadella', 'affettato'],
-  // ondata 1 (03/10). Niente «filetto» da solo: è anche di manzo o di pesce. «Carne di
-  // maiale» qui e non su `bistecca` (più lungo alla stessa posizione di «carne»).
-  maiale: ['maiale', 'carne di maiale', 'lonza', 'arista', 'braciola di maiale', 'costine', 'filetto di maiale', 'porchetta'],
+  // ondata 1 (03/10). Niente «filetto» da solo su `bistecca`: è anche di pesce.
   agnello: ['agnello', 'carne di agnello', 'abbacchio', 'capretto'],
   // ondata 1 (03/10). I crostacei restano su `gambero`. «Ostriche» e «capesante» a parte:
   // `radice` non unisce -ca/-che né capa-/cape-. «Frutti di mare» qui, non su `frutta`
