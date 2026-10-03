@@ -59,6 +59,11 @@ describe('fasceDi (spec §B.2)', () => {
   it('un nome sconosciuto senza vicini copre il giorno', () => {
     expect(fasceDi([def('x', 'Pasto', 0)]).get('x')).toEqual({ inizio: 0, fine: min(24) });
   });
+  it('nomi con accenti e maiuscole si normalizzano correttamente', () => {
+    const f = fasceDi([def('d', 'DOPO CÈNA', 0), def('c', 'Colazióne', 1)]);
+    expect(f.get('d')).toEqual({ inizio: min(21, 30), fine: min(24) });
+    expect(f.get('c')).toEqual({ inizio: 0, fine: min(10, 30) });
+  });
 });
 
 describe('prossimoPasto (spec §B.1)', () => {
@@ -130,5 +135,15 @@ describe('caselleGiornata (spec §B.3)', () => {
   it('un pasto senza slot nel giorno è futuro', () => {
     const c = caselleGiornata({ slots: [], defs: [def('a', 'Cena', 0)], minuti: min(8), slotPosterId: 'x' });
     expect(c).toEqual([{ slotDefId: 'a', stato: 'futura' }]);
+  });
+  it('un pasto a casa senza piatto prima che la fascia finisca è futuro', () => {
+    const oggi = giornata(OGGI, { col: { dishId: null } });
+    const c = caselleGiornata({ slots: oggi, defs: SEI, minuti: min(8), slotPosterId: '' });
+    expect(c.find((x) => x.slotDefId === 'col')?.stato).toBe('futura');
+  });
+  it('un pasto a casa senza piatto dopo che la fascia finisce è passato', () => {
+    const oggi = giornata(OGGI, { col: { dishId: null } });
+    const c = caselleGiornata({ slots: oggi, defs: SEI, minuti: min(11), slotPosterId: '' });
+    expect(c.find((x) => x.slotDefId === 'col')?.stato).toBe('passata');
   });
 });

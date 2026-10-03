@@ -32,7 +32,7 @@ type TipoNoto = keyof typeof FASCE;
 
 /** Minuscolo, senza accenti e senza spazi: «Dopo cena» e «Dopocena» si leggono uguali. */
 function normalizza(nome: string): string {
-  return nome.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, '');
+  return nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '');
 }
 
 /** Il tipo dal nome; `dopocena` prima di `cena`, che è contenuto nell'altro. */
