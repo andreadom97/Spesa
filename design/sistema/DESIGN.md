@@ -1117,9 +1117,10 @@ tessera scura. Spec `docs/superpowers/specs/2026-10-03-oggi-design.md` §B. File
 - **Poster senza pasto** (`PosterVuoto`). Stesso guscio, senza caselle né icona: l'etichetta
   mono (`DOMANI` o `OGGI`), il testo 21/800/−0,035em in bianco a 20 sotto, e la pillola
   `APRI IL PIANO` (link a `/piano`) a 14 sotto il testo. Due casi: `Il piano di domani non c'è
-  ancora.` (oggi non ha più pasti e la settimana di domani, che la domenica Oggi apre da sé, non si
-  è potuta aprire; precisato in esecuzione, 03/10) e `Nessun pasto in programma.` (né oggi né domani c'è un pasto a casa con un piatto,
-  repertorio vuoto compreso). Stesso nome accessibile, `Prossimo pasto`.
+  ancora.` (oggi non ha più pasti e la settimana di domani, che la domenica Oggi apre da sé, non
+  si è potuta aprire; precisato in esecuzione, 03/10) e `Nessun pasto in programma.` (né oggi
+  né domani c'è un pasto a casa con un piatto, repertorio vuoto compreso). Stesso nome
+  accessibile, `Prossimo pasto`.
 
 ### Carta alternativa e carosello nel poster
 **Nuovi il 03/10 (Oggi).** «Oppure, con quello che hai»: fino a due piatti del repertorio che si

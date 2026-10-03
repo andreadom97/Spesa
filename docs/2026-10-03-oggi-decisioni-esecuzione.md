@@ -152,8 +152,8 @@ Review: spec ✅, qualità Approved; le due deviazioni accettate dal revisore.
 - **Risolto dal controller:** `daFare` vede domani anche quando cade nella settimana dopo, perché
   il Task 7 passa `tuttiGliSlot` = settimana + settimana di domani. Coperto da un test della
   pagina (domenica sera, tessera «Scongela» da un'altra settimana). Precisato in esecuzione,
-  03/10: da quando la domenica Oggi apre la settimana di domani (ruling 11) quello stato si
-  raggiunge in produzione, e il test gira sul mock di `apriSettimanaCorrente`.
+  03/10: quando la domenica Oggi apre con successo la settimana di domani (ruling 11) quello stato si
+  raggiunge in produzione [calcolato dal codice, non provato in produzione], e il test gira sul mock di `apriSettimanaCorrente`.
 
 ### Task 4: i testi della home (`924f5ff`)
 
@@ -381,8 +381,8 @@ documenti in questo commit.
     diventa «l'apertura di domani fallisce»), più la domenica con la settimana di domani che parte
     insieme alle altre letture, la domenica con entrambe le aperture che falliscono, e mercoledì e
     sabato con una chiamata sola; scritti prima, visti cadere (5 su 60 nella cartella di Oggi), poi
-    verdi (60 su 60) [misurato il 03/10]. *Se sbagliato:* (1) la bozza di lunedì
-    nasce la domenica sera, con il repertorio e la dispensa di quel momento: se cambiano prima del
+    verdi (60 su 60) [misurato il 03/10]. *Se sbagliato:* (1) al primo caricamento di Oggi della domenica, a qualunque ora,
+    nasce la bozza di lunedì con il repertorio e la dispensa di quel momento: se cambiano prima del
     lunedì la settimana esiste già e non si rigenera (l'unique su `data_inizio` impedisce un secondo
     `creaSettimana`) [letto in `creaSettimana`, non provato]; (2) i creatori della settimana sono
     ora due anche per la settimana di domani (il Piano ha il suo, con la deduplica separata, M2):
@@ -432,7 +432,7 @@ bozza; `tuttiGliSlot = settimana.slots` → cade il test «Scongela» di domenic
 | Suite di base, prima dei task | 163 file passati + 1 saltato; 2680 test passati + 1 saltato; 41 s | [misurato dal controller, nel worktree] |
 | Suite intera sul ramo | 173 file passati + 1 saltato (174); 2811 test passati + 1 saltato (2812); 38,2 s | [misurato il 03/10 dopo la review finale, a `fb04045`, con i documenti non ancora committati]. Prima, a `0d4d3a1`: 172 file + 1 saltato, 2803 test + 1 saltato, 33,9 s [misurato allora] |
 | Suite intera dopo il seguito della domenica | 173 file passati + 1 saltato (174); 2815 test passati + 1 saltato (2816); 52,45 s | [misurato il 03/10 a `4898775`, con i documenti non ancora committati]. Cartella di Oggi: 3 file, 60 test, tutti verdi. `npx tsc --noEmit` exit 0 e `npx eslint "src/app/(app)/oggi/"` exit 0 [misurato allora]; `npx eslint .` e `npx next build` **NON ESEGUITI** dopo il seguito |
-| Crescita rispetto alla base | +10 file (i nove file di test nuovi del piano, più `manifest.test.ts`), +131 test | [calcolato: 173 − 163, 2811 − 2680] |
+| Crescita rispetto alla base | +10 file (i nove file di test nuovi del piano, più `manifest.test.ts`), +135 test | [calcolato: 2815 − 2680] |
 | `npx tsc --noEmit` | exit 0, nessun output | [misurato il 03/10 dopo la review finale] |
 | `npx eslint .` | exit 0, nessun output | [misurato il 03/10 dopo la review finale] |
 | `npm run design:token` | 11 test su 11 | [misurato il 03/10 dopo la review finale, prima dei documenti] |
@@ -563,11 +563,10 @@ memoria.
    finiti, il poster diceva «Il piano di domani non c'è ancora.», `APRI IL PIANO` portava a un
    Piano che la settimana di lunedì non la crea, e la tessera `Scongela` per il lunedì non
    compariva mai [fonte: review finale; non provato in produzione]. Le due strade erano **(a)**
-   Oggi apre anche la settimana di domani quando cade in un'altra settimana: una creazione, con il
-   planner qualche ora prima del lunedì; **(b)** solo testo, senza il tasto. Andrea ha scelto la
+   al primo caricamento di Oggi della domenica, a qualunque ora, Oggi apre la settimana di domani quando cade in un'altra settimana: una creazione; **(b)** solo testo, senza il tasto. Andrea ha scelto la
    (a): eseguita nel ruling 11. Il testo «Il piano di domani non c'è ancora.» resta per quando
    l'apertura fallisce, e il codice sulle due settimane (`settimanaDomani`, `tuttiGliSlot`) copre
-   ora uno stato che in produzione si raggiunge ogni domenica.
+   uno stato che in produzione si raggiunge quando l'apertura della domenica ha successo [calcolato dal codice, non provato in produzione].
 
 ## La verifica nel browser: NON ESEGUITA
 

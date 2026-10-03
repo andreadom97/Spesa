@@ -323,13 +323,13 @@ describe('Oggi (spec 2026-10-03)', () => {
     expect(apriSettimanaCorrente).toHaveBeenCalledWith(LUNEDI);
   });
 
-  it('domenica, falliscono sia la settimana di oggi sia quella di domani: l\'errore di caricamento, e la seconda non resta una rejection non gestita', async () => {
+  it('domenica, falliscono sia la settimana di oggi sia quella di domani: l\'errore di caricamento; l\'apertura di domani è tollerata e loggata', async () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.setSystemTime(DOMENICA);
     vi.mocked(apriSettimanaCorrente).mockRejectedValue(new Error('rete'));
     render(<Oggi />);
     expect(await screen.findByText('Non riusciamo a caricare la giornata.')).toBeInTheDocument();
-    // Lascia girare la coda dei microtask: una rejection non gestita farebbe fallire la corsa di vitest.
+    // L'apertura di domani fallisce e viene loggata via console.error: l'asserzione su log è ciò che fa fallire il test se il log manca.
     await act(async () => { await new Promise((fine) => setTimeout(fine, 0)); });
     expect(log).toHaveBeenCalledWith(expect.stringContaining('settimana di domani'), expect.anything());
   });

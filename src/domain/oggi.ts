@@ -118,7 +118,7 @@ function ordinaSlot(slots: MealSlot[], defs: MealSlotDef[]): MealSlot[] {
 /**
  * Il pasto del poster (spec §B.1): il primo di oggi, in ordine di posizione, a casa, con un
  * piatto e con la fascia non ancora finita; se oggi non ce n'è più, il primo di domani.
- * `slotsDomani` null = la settimana di domani non esiste ancora.
+ * `slotsDomani` null = la settimana di domani non si è potuta aprire.
  */
 export function prossimoPasto(i: {
   slotsOggi: MealSlot[]; slotsDomani: MealSlot[] | null; defs: MealSlotDef[]; minuti: number;
