@@ -57,6 +57,8 @@ export const CATALOGO_ICONE = {
   formaggio: ['formaggio', 'parmigiano', 'grana', 'pecorino', 'feta', 'emmental', 'provola', 'scamorza', 'mozzarella', 'burrata', 'stracciatella', 'fiordilatte'],
   'formaggio-fresco': ['ricotta', 'philadelphia', 'formaggio spalmabile', 'stracchino', 'fiocchi di latte', 'tofu'],
   burro: ['burro'],
+  // ondata 1 (03/10). «Panna cotta» è un dolce: è nei BLOCCHI, non qui.
+  panna: ['panna', 'panna da cucina', 'panna fresca', 'panna montata', 'besciamella'],
   // cereali e forno
   pasta: ['pasta', 'spaghetti', 'penne', 'fusilli', 'rigatoni', 'linguine', 'tagliatelle', 'gnocchi'],
   riso: ['riso'],
@@ -86,6 +88,11 @@ export const CATALOGO_ICONE = {
   'frutta-guscio': ['frutta a guscio', 'frutta secca', 'nocciola', 'pistacchio', 'anacardo', 'noci miste'],
   olive: ['oliva'],
   cioccolato: ['cioccolato', 'cacao'],
+  // ondata 1 (03/10). Niente «aroma»: nelle diete «aroma»/«aromatizzazione» non sono ingredienti.
+  vaniglia: ['vaniglia', 'vanillina', 'estratto di vaniglia', 'bacca di vaniglia'],
+  lievito: ['lievito', 'lievito di birra', 'lievito per dolci', 'bicarbonato', 'cremor tartaro'],
+  senape: ['senape', 'mostarda'],
+  capperi: ['cappero'],
   // pronti e bevande
   minestra: ['minestrone', 'minestra', 'brodo', 'zuppa', 'vellutata'],
   acqua: ['acqua'],
@@ -113,6 +120,8 @@ export const CHIAVI_ICONE = Object.keys(CATALOGO_ICONE) as ChiaveIcona[];
  *   prendere l'icona di `pasta`.
  * - `salame di cioccolato`: un dolce, non un salume — senza il blocco prenderebbe
  *   l'icona di `salumi` (03/10).
+ * - `panna cotta`: un dolce pronto, non la panna da comprare — senza il blocco
+ *   prenderebbe l'icona di `panna` (03/10).
  */
 export const BLOCCHI: readonly string[] = [
   'pesca',
@@ -125,6 +134,7 @@ export const BLOCCHI: readonly string[] = [
   'pasta per pizza',
   'pasta di acciughe',
   'salame di cioccolato',
+  'panna cotta',
 ];
 
 /**

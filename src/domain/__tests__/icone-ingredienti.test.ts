@@ -66,6 +66,27 @@ describe('trovaIcona', () => {
     ['Spezie', 'spezie'],
     ['Erbe aromatiche', 'erbe'],
     ['Insalatona mista', 'insalata'],
+    // ondata 1, lotto A (03/10)
+    ['Panna', 'panna'],
+    ['Panna da cucina', 'panna'],
+    ['Panna fresca', 'panna'],
+    ['Panna montata', 'panna'],
+    ['Besciamella', 'panna'],
+    ['Vaniglia', 'vaniglia'],
+    ['Vanillina', 'vaniglia'],
+    ['Estratto di vaniglia', 'vaniglia'],
+    ['Bacca di vaniglia', 'vaniglia'],
+    ['Lievito di birra', 'lievito'],
+    ['Lievito per dolci', 'lievito'],
+    ['Lievito istantaneo', 'lievito'],
+    ['Bicarbonato', 'lievito'],
+    ['Bicarbonato di sodio', 'lievito'],
+    ['Cremor tartaro', 'lievito'],
+    ['Senape', 'senape'],
+    ['Senape di Digione', 'senape'],
+    ['Mostarda', 'senape'],
+    ['Capperi', 'capperi'],
+    ['Capperi sotto sale', 'capperi'],
   ])('%s → %s', (nome, chiave) => {
     expect(trovaIcona(nome)).toBe(chiave);
   });
@@ -90,6 +111,12 @@ describe('trovaIcona', () => {
     ['Noci', 'noce'],
     ['Yogurt alla frutta', 'yogurt'],
     ['Marmellata di frutta', 'marmellata'],
+    // non regressione del lotto A (03/10)
+    ['Yogurt alla vaniglia', 'yogurt'],
+    ['Zucchero vanigliato', 'zucchero'],
+    ['Fragole con panna', 'fragola'],
+    ['Latte e panna', 'latte'],
+    ['Olive e capperi', 'olive'],
   ])('%s → %s (posizione prima della lunghezza)', (nome, chiave) => {
     expect(trovaIcona(nome)).toBe(chiave);
   });
@@ -139,6 +166,8 @@ describe('trovaIcona', () => {
     'Pasta per pizza',
     'Pasta di acciughe',
     'Salame di cioccolato',
+    'Panna cotta',
+    'Panna cotta ai frutti di bosco',
   ])('%s → null (blocco)', (nome) => {
     expect(trovaIcona(nome)).toBeNull();
   });
@@ -158,8 +187,8 @@ describe('trovaIcona', () => {
 });
 
 describe('CATALOGO_ICONE', () => {
-  it('69 icone (64 del 26/09 + 5 famiglie del 03/10)', () => {
-    expect(CHIAVI_ICONE).toHaveLength(69);
+  it('74 icone (64 del 26/09 + 5 famiglie del 03/10 + lotto A dell\'ondata 1)', () => {
+    expect(CHIAVI_ICONE).toHaveLength(74);
   });
 
   it('ogni sinonimo appartiene a una sola chiave', () => {

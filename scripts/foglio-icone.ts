@@ -16,9 +16,9 @@ import { IconaIngrediente, type TonoIcona } from '../src/components/IconaIngredi
 const REPARTO: Record<AreaId, readonly ChiaveIcona[]> = {
   ortofrutta: ['banana', 'mela', 'pera', 'arancia', 'limone', 'avocado', 'zucchina', 'melanzana', 'peperone', 'broccolo', 'finocchio', 'sedano', 'pomodoro', 'pomodorini', 'insalata', 'foglie', 'carota', 'patata', 'cipolla', 'aglio', 'fungo', 'zucca', 'fagiolini', 'uva', 'fragola', 'cetriolo', 'erbe', 'frutta', 'verdura'],
   macelleria: ['bistecca', 'cosciotto', 'salsiccia', 'pesce', 'gambero', 'pancetta'],
-  latticini: ['uovo', 'latte', 'yogurt', 'formaggio', 'formaggio-fresco', 'burro', 'salumi'],
+  latticini: ['uovo', 'latte', 'yogurt', 'formaggio', 'formaggio-fresco', 'burro', 'panna', 'salumi'],
   cereali: ['pasta', 'riso', 'chicchi', 'avena', 'pane', 'pancarre', 'biscotto', 'farina', 'cornetto'],
-  dispensa: ['olio', 'ampolla', 'sale', 'spezie', 'zucchero', 'miele', 'marmellata', 'caffe', 'legumi', 'piselli', 'noce', 'mandorla', 'arachide', 'frutta-guscio', 'olive', 'cioccolato', 'minestra', 'acqua'],
+  dispensa: ['olio', 'ampolla', 'sale', 'spezie', 'zucchero', 'miele', 'marmellata', 'caffe', 'legumi', 'piselli', 'noce', 'mandorla', 'arachide', 'frutta-guscio', 'olive', 'cioccolato', 'vaniglia', 'lievito', 'senape', 'capperi', 'minestra', 'acqua'],
   surgelati: [],
 };
 const areaDi = (k: ChiaveIcona) => (Object.keys(REPARTO) as AreaId[]).find((a) => REPARTO[a].includes(k))!;
