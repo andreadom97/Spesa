@@ -108,6 +108,23 @@ describe('ingredientiDaAbbinare', () => {
     pasto.piatti[0].righeFisse.push(riga(2, 'pz', 'zucchine 2 pz'));
     expect(ingredientiDaAbbinare(piano, {}).find((v) => v.alimento === 'zucchine')?.unita).toBe('pz');
   });
+  it('l\'unità si vota con le sole righe trascritte; senza, prevale fra le inferite (correzione 8c-bis C)', () => {
+    const piano = structuredClone(PIANO_MENU_SETTIMANALE);
+    const pasto = piano.settimane[0].giorni[0].pasti[0];
+    const riga = (quantita: number, unita: 'g' | 'pz', quantitaInferita: boolean) => ({ alimento: 'sedano', quantita, unita, quantitaInferita, testoOriginale: 'sedano' });
+    pasto.piatti[0].componenti = [];
+    // Due stime in pz e una scritta in g: conta quella scritta, le stime restano fra le unità viste.
+    pasto.piatti[0].righeFisse = [riga(1, 'pz', true), riga(1, 'pz', true), riga(80, 'g', false)];
+    expect(ingredientiDaAbbinare(piano, {}).find((v) => v.alimento === 'sedano'))
+      .toMatchObject({ unita: 'g', unitaViste: ['pz', 'pz', 'g'], unitaTrascritte: ['g'] });
+    // Solo stime: prevale la più frequente fra le stime, come prima.
+    pasto.piatti[0].righeFisse = [riga(1, 'pz', true), riga(100, 'g', true), riga(2, 'pz', true)];
+    expect(ingredientiDaAbbinare(piano, {}).find((v) => v.alimento === 'sedano'))
+      .toMatchObject({ unita: 'pz', unitaTrascritte: [] });
+  });
+  it('un alimento con sole stime in pz trova l\'ingrediente che hai in g con lo stesso nome (correzione 8c-bis C)', () => {
+    expect(abbina('sedano', 'pz', [ing('Sedano', 'g')])?.nome).toBe('Sedano');
+  });
   it('unitaPrevalente: con ml vince la prima, come prima dell\'8c', () => {
     expect(unitaPrevalente([])).toBeNull();
     expect(unitaPrevalente(['g', 'ml', 'ml'])).toBe('g');

@@ -344,6 +344,38 @@ export function porzioneTipica(alimento: string): { quantita: number; unita: Uni
   return categoria ? { quantita: PORZIONE_CATEGORIA[categoria], unita: 'g', origine: 'categoria' } : null;
 }
 
+/**
+ * La porzione tipica di un alimento portata nell'unità `verso` (null = la sua): nell'unità della
+ * porzione com'è, altrimenti convertita col peso di un pezzo se c'è; verdure e frutta a pezzi senza
+ * peso sono 1 pz (ruling del Task 12b); altrimenti null. È la regola di una riga senza quantità
+ * (`propostaPer` in dubbi.ts) e della stima rifatta (`stimaNellUnita`): una fonte sola.
+ */
+export function porzioneNellUnita(
+  alimento: string,
+  verso: UnitaBase | null,
+  peso: number | null,
+): { quantita: number; unita: UnitaBase; origine: 'porzione' | 'categoria' } | null {
+  const porzione = porzioneTipica(alimento);
+  if (!porzione) return null;
+  const { origine } = porzione;
+  if (verso === null || verso === porzione.unita) return { quantita: porzione.quantita, unita: porzione.unita, origine };
+  const convertita = peso === null ? null : convertiPezzi(porzione.quantita, porzione.unita, verso, peso);
+  if (convertita !== null) return { quantita: convertita, unita: verso, origine };
+  if (verso === 'pz' && categoriaDi(alimento) !== null) return { quantita: 1, unita: 'pz', origine };
+  return null;
+}
+
+/**
+ * La stima di una riga che il lettore ha proposto (`quantitaInferita`) in un'unità diversa da
+ * quella finale dell'ingrediente, quando non si può convertire (manca il peso di un pezzo):
+ * rifatta nell'unità finale con la stessa proposta di una riga senza quantità (`porzioneNellUnita`).
+ * Se nemmeno quella dà un valore: 1 pz, 100 g, 100 ml (correzione 8c-bis C, prove dal telefono del
+ * 03/10). Resta una stima: chi la chiama non la presenta come scritta sul foglio.
+ */
+export function stimaNellUnita(alimento: string, unita: UnitaBase, peso: number | null): number {
+  return porzioneNellUnita(alimento, unita, peso)?.quantita ?? (unita === 'pz' ? 1 : 100);
+}
+
 /** Spec §A.3: pz al quarto, g all'intero, mai sotto il minimo (il database vuole > 0); ml al decimo. */
 export function arrotonda(quantita: number, unita: UnitaBase): number {
   if (unita === 'pz') return Math.max(0.25, Math.round(quantita * 4) / 4);

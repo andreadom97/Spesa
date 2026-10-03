@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   eSpezia, proponi, origineProposta, arrotonda, classeCoerente, convertiCucchiai, convertiPezzi, numeroInParole,
-  categoriaDi, pesoPezzo, porzioneTipica, quantitaInTesto, testoCambio, testoConversione,
+  categoriaDi, pesoPezzo, porzioneTipica, quantitaInTesto, stimaNellUnita, testoCambio, testoConversione,
 } from '../formati-tipici';
 import { unitaBaseDi } from '../types';
 
@@ -144,6 +144,26 @@ describe('convertiCucchiai (spec 8c §C)', () => {
   it('in g senza voce: 15 g o 5 g, da controllare; a pezzi non si converte', () => {
     expect(convertiCucchiai(1, 'cucchiaio', 'semi di chia', 'g')).toEqual({ quantita: 15, daTabella: false });
     expect(convertiCucchiai(1, 'cucchiaio', 'olive', 'pz')).toBeNull();
+  });
+});
+
+describe('stimaNellUnita (correzione 8c-bis C: la stima rifatta nell\'unità finale)', () => {
+  it('la porzione tipica nell\'unità, convertita col peso di un pezzo se serve', () => {
+    expect(stimaNellUnita('sedano', 'g', null)).toBe(200);
+    expect(stimaNellUnita('zucchine', 'pz', 200)).toBe(1);
+    expect(stimaNellUnita('pasta', 'pz', 80)).toBe(1);
+  });
+
+  it('verdure e frutta a pezzi senza peso: 1 pz', () => {
+    expect(stimaNellUnita('cavolo nero', 'pz', null)).toBe(1);
+  });
+
+  it('senza porzione che torni: 1 pz, 100 g, 100 ml', () => {
+    expect(stimaNellUnita('olive taggiasche', 'pz', null)).toBe(1);
+    expect(stimaNellUnita('olive taggiasche', 'g', null)).toBe(100);
+    expect(stimaNellUnita('olive taggiasche', 'ml', null)).toBe(100);
+    // La porzione del latte è in ml: in g, senza peso di un pezzo, non si converte.
+    expect(stimaNellUnita('latte', 'g', null)).toBe(100);
   });
 });
 

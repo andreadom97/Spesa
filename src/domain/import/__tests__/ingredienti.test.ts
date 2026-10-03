@@ -6,7 +6,7 @@ import { PIANO_GIORNATA_UNICA, PIANO_MENU_SETTIMANALE } from '../fixtures';
 import { proponi } from '../formati-tipici';
 import {
   calcolaProposte, cambiDiretti, cambiUnita, diRipiego, esempioPiatto, esempioRiga, legataA, legataAlCommit, motiviBlocco, nomeProposto,
-  nomiDoppi, passoBloccato, sceltiIniziali, sezioniIniziali, valoreRipiego,
+  nomiDoppi, passoBloccato, pesiProposte, sceltiIniziali, sezioniIniziali, valoreRipiego,
 } from '../ingredienti';
 import { motiviBlocco8b, passoBloccato8b } from './ingredienti-8b';
 import { nomeAreaFrase } from '@/domain/aree';
@@ -227,6 +227,14 @@ function pianoCon(...righe: [string, number | null, 'g' | 'ml' | 'pz' | null][])
   }));
   return piano;
 }
+/** Come `pianoCon`, con il flag: `true` = quantità proposta dal lettore (`quantitaInferita`). */
+function pianoConStime(...righe: [string, number, 'g' | 'ml' | 'pz', boolean][]): PianoEstratto {
+  const piano = structuredClone(PIANO_GIORNATA_UNICA);
+  piano.settimane[0].giorni[0].pasti[0].piatti[0].righeFisse = righe.map(([alimento, quantita, unita, quantitaInferita]): RigaEstratta => ({
+    alimento, quantita, unita, quantitaInferita, testoOriginale: quantitaInferita ? alimento : `${alimento} ${quantita}${unita}`,
+  }));
+  return piano;
+}
 const STATO_PRANZO: StatoRevisione = { ...STATO, mappaturaPasti: { pranzo: 's-1' } };
 
 describe('cambiUnita (spec 8c §A.2, §A.3)', () => {
@@ -284,6 +292,62 @@ describe('cambiUnita (spec 8c §A.2, §A.3)', () => {
 
   it('righe tutte nell\'unità di oggi: nessuna voce', () => {
     expect(cambiUnita(pianoCon(['zucchine', 1, 'pz'], ['zucchine', 2, 'pz']), STATO_PRANZO, [ZUCCHINE])).toEqual([]);
+  });
+
+  describe('una quantità stimata dal lettore non decide l\'unità (correzione 8c-bis C, prove dal telefono del 03/10)', () => {
+    const SEDANO = ing('i-sed', 'Sedano', 'g');
+
+    it('«Sedano» in g e la dieta che dice solo «sedano», stimato 1 pz: nessun cambio, nessuna domanda sul peso', () => {
+      const piano = pianoConStime(['sedano', 1, 'pz', true]);
+      expect(calcolaProposte(piano, STATO_PRANZO, [SEDANO])).toEqual([]);
+      const cambi = cambiUnita(piano, STATO_PRANZO, [SEDANO]);
+      expect(cambi).toEqual([]);
+      expect(passoBloccato([], [SEDANO], {}, cambi, pesiProposte(piano, STATO_PRANZO, [SEDANO]))).toBe(false);
+    });
+
+    it('le zucchine scritte in g sul foglio passano a grammi, come prima, anche con una stima in pz', () => {
+      const piano = pianoConStime(['zucchine', 150, 'g', false], ['zucchine', 1, 'pz', true]);
+      expect(cambiUnita(piano, STATO_PRANZO, [ZUCCHINE])).toEqual([{
+        ingredientId: 'i-zucc', nome: 'Zucchine', da: 'pz', a: 'g', alimenti: ['zucchine'], pesoPezzo: 200, pesoDaTabella: true, tieni: false,
+      }]);
+    });
+
+    it('righe trascritte nell\'unità di oggi e una stima in un\'altra: nessun cambio e nessun peso da chiedere', () => {
+      const piano = pianoConStime(['zucchine', 1, 'pz', false], ['zucchine', 2, 'pz', false], ['zucchine', 150, 'g', true]);
+      expect(cambiUnita(piano, STATO_PRANZO, [ZUCCHINE])).toEqual([]);
+      // Anche senza il peso in tabella: la stima si rifà, non si chiede.
+      const cavolo = ing('i-cav', 'Cavolo nero', 'g');
+      const senzaPeso = pianoConStime(['cavolo nero', 200, 'g', false], ['cavolo nero', 1, 'pz', true]);
+      expect(cambiUnita(senzaPeso, STATO_PRANZO, [cavolo])).toEqual([]);
+      expect(passoBloccato([], [cavolo], {}, cambiUnita(senzaPeso, STATO_PRANZO, [cavolo]))).toBe(false);
+    });
+
+    it('una riga trascritta nell\'altra unità chiede ancora il peso, anche se c\'è una stima', () => {
+      const cavolo = ing('i-cav', 'Cavolo nero', 'g');
+      const piano = pianoConStime(['cavolo nero', 200, 'g', false], ['cavolo nero', 1, 'pz', false], ['cavolo nero', 1, 'pz', true]);
+      expect(cambiUnita(piano, STATO_PRANZO, [cavolo])).toEqual([expect.objectContaining({ da: 'g', a: 'g', pesoPezzo: null })]);
+    });
+
+    it('una proposta nuova con sole stime in g e pz: prevale la più frequente, e il peso non si chiede', () => {
+      const piano = pianoConStime(['cavolo nero', 200, 'g', true], ['cavolo nero', 1, 'pz', true], ['cavolo nero', 150, 'g', true]);
+      const proposte = calcolaProposte(piano, STATO_PRANZO, []);
+      expect(proposte.map((p) => p.unitaBase)).toEqual(['g']);
+      const st = { ...STATO_PRANZO, ingredientiNuovi: proposte };
+      expect(pesiProposte(piano, st, [])).toEqual([]);
+      expect(passoBloccato(proposte, [], {}, cambiUnita(piano, st, []), pesiProposte(piano, st, []))).toBe(false);
+    });
+
+    it('una proposta con righe scritte in g e una stima in pz: l\'unità è quella scritta, nessun peso', () => {
+      const piano = pianoConStime(['cavolo nero', 1, 'pz', true], ['cavolo nero', 2, 'pz', true], ['cavolo nero', 200, 'g', false]);
+      const proposte = calcolaProposte(piano, STATO_PRANZO, []);
+      expect(proposte.map((p) => p.unitaBase)).toEqual(['g']);
+      expect(pesiProposte(piano, { ...STATO_PRANZO, ingredientiNuovi: proposte }, [])).toEqual([]);
+    });
+
+    it('esempioRiga non porta una stima del lettore come se fosse scritta sul foglio', () => {
+      expect(esempioRiga(pianoConStime(['zucchine', 1, 'pz', true], ['zucchine', 150, 'g', false]), STATO_PRANZO, ['zucchine'])).toEqual({ quantita: 150, unita: 'g' });
+      expect(esempioRiga(pianoConStime(['zucchine', 1, 'pz', true]), STATO_PRANZO, ['zucchine'])).toBeNull();
+    });
   });
 });
 

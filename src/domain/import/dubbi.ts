@@ -2,7 +2,7 @@ import type { Ingredient, MealSlotDef, UnitaBase } from '@/domain/types';
 import type { PastoEstratto, PianoEstratto, RigaEstratta, StatoRevisione } from './types';
 import { chiavePasto, pastoEffettivo, unitaBaseDi } from './types';
 import { normalizza, proponiSlot, quantoBasta, stessoNome } from './mapping';
-import { arrotonda, categoriaDi, convertiCucchiai, convertiPezzi, pesoPezzo, porzioneTipica, proponi, testoConversione } from './formati-tipici';
+import { arrotonda, convertiCucchiai, pesoPezzo, porzioneNellUnita, proponi, testoConversione } from './formati-tipici';
 
 /**
  * I dubbi di Controlla (spec 8b §B): cosa l'AI non sa e va chiesto, e le scritture che
@@ -459,16 +459,10 @@ function propostaPer(
       testo: testoConversione({ quantita: irrisolta.quantita, unita: irrisolta.unita }, { quantita, unita: destinazione }),
     };
   }
-  const porzione = porzioneTipica(alimento);
-  if (!porzione) return null;
-  const { origine } = porzione;
-  if (verso === null || verso === porzione.unita) return { quantita: porzione.quantita, unita: porzione.unita, origine, testo: null };
-  const peso = pesoScritto(stato, alimento, esistenti) ?? pesoPezzo(alimento);
-  const convertita = peso === null ? null : convertiPezzi(porzione.quantita, porzione.unita, verso, peso);
-  if (convertita !== null) return { quantita: convertita, unita: verso, origine, testo: null };
-  // Ruling del Task 12b: verdure e frutta a pezzi, senza il peso di un pezzo, sono 1 pz.
-  if (verso === 'pz' && categoriaDi(alimento) !== null) return { quantita: 1, unita: 'pz', origine, testo: null };
-  return null;
+  // La stessa regola della stima rifatta nell'import (`stimaNellUnita`, correzione 8c-bis C):
+  // porzione tipica, convertita col peso di un pezzo; verdure e frutta a pezzi senza peso sono 1 pz.
+  const porzione = porzioneNellUnita(alimento, verso, pesoScritto(stato, alimento, esistenti) ?? pesoPezzo(alimento));
+  return porzione ? { ...porzione, testo: null } : null;
 }
 
 /**

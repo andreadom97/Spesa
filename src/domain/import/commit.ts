@@ -4,9 +4,9 @@ import type { IngredienteProposto, PastoEstratto, PianoEstratto, RigaEstratta, S
 import { NOME_PASTO_CONDIMENTI, pastoEffettivo } from './types';
 import { normalizza, quantoBasta } from './mapping';
 import {
-  cambiUnita, destinazioni, legataAlCommit, pesiProposte, type CambioUnita, type Destino, type PesoProposta,
+  cambiUnita, destinazioni, legataAlCommit, pesiProposte, pesoPerStima, type CambioUnita, type Destino, type PesoProposta,
 } from './ingredienti';
-import { classeCoerente, convertiPezzi } from './formati-tipici';
+import { classeCoerente, convertiPezzi, stimaNellUnita } from './formati-tipici';
 
 /** `quantita` null = «quanto basta» (spec 8c §B). */
 export type RigaTradotta = { quantita: number | null; unita: UnitaBase } & (
@@ -58,6 +58,8 @@ interface Contesto {
   cambi: Map<string, CambioUnita>;
   /** Per `alimento` della proposta: il peso delle proposte con righe in g e in pz. */
   pesi: Map<string, PesoProposta>;
+  /** Lo stato di revisione: i pesi scritti da te servono anche a convertire le stime del lettore. */
+  stato: StatoRevisione;
 }
 
 /** L'unità finale di un ingrediente che hai: quella della dieta se il cambio è accettato, la sua se «Tienile a pezzi». */
@@ -71,6 +73,10 @@ function unitaFinale(e: Ingredient, ctx: Contesto): UnitaBase {
  * prende com'è e resta senza numero; fra g e pz si converte col peso di un pezzo, arrotondato;
  * fra altre unità non si inventa una densità: bozza incompleta. `di` dice chi ha l'unità finale,
  * per il messaggio: «l'ingrediente» o «la proposta».
+ *
+ * Una quantità stimata dal lettore (`quantitaInferita`) in un'altra unità non ferma mai niente
+ * (correzione 8c-bis C): si converte col peso se c'è, altrimenti la stima si rifà nell'unità
+ * finale (`stimaNellUnita`) e resta una stima. Le righe trascritte non cambiano.
  */
 function nellUnita<D extends { ingredientId: string } | { nuovoAlimento: string }>(
   dove: D,
@@ -84,6 +90,7 @@ function nellUnita<D extends { ingredientId: string } | { nuovoAlimento: string 
   if (unita === finale) return { ...dove, quantita: riga.quantita, unita };
   const convertita = peso ? convertiPezzi(riga.quantita, unita, finale, peso) : null;
   if (convertita === null) {
+    if (riga.quantitaInferita) return { ...dove, quantita: stimaNellUnita(riga.alimento, finale, peso), unita: finale };
     throw new BozzaIncompletaError(`Unità incompatibile per "${riga.alimento}": la riga usa "${unita}", ${di} "${finale}"`);
   }
   return { ...dove, quantita: convertita, unita: finale };
@@ -142,10 +149,12 @@ function risolviRiga(rigaLetta: RigaEstratta, ctx: Contesto): RigaTradotta {
   if (!destino) throw new BozzaIncompletaError(`Ingrediente non risolto: "${riga.alimento}"`);
   if (destino.tipo === 'esistente') {
     const e = destino.ingrediente;
-    return nellUnita({ ingredientId: e.id }, riga, unitaFinale(e, ctx), ctx.cambi.get(e.id)?.pesoPezzo ?? null, "l'ingrediente");
+    const peso = ctx.cambi.get(e.id)?.pesoPezzo ?? (riga.quantitaInferita ? pesoPerStima(ctx.stato, e.id, e.nome, chiave) : null);
+    return nellUnita({ ingredientId: e.id }, riga, unitaFinale(e, ctx), peso, "l'ingrediente");
   }
   const nuovo = destino.proposta;
-  const tradotta = nellUnita({ nuovoAlimento: nuovo.alimento }, riga, nuovo.unitaBase, ctx.pesi.get(nuovo.alimento)?.pesoPezzo ?? null, 'la proposta');
+  const peso = ctx.pesi.get(nuovo.alimento)?.pesoPezzo ?? (riga.quantitaInferita ? pesoPerStima(ctx.stato, null, nuovo.nome, chiave) : null);
+  const tradotta = nellUnita({ nuovoAlimento: nuovo.alimento }, riga, nuovo.unitaBase, peso, 'la proposta');
   ctx.usati.add(chiave);
   return tradotta;
 }
@@ -243,6 +252,7 @@ export function traduciBozza(
     usati: new Set<string>(),
     cambi: new Map(cambi.map((c) => [c.ingredientId, c])),
     pesi: new Map(pesi.map((p) => [p.alimento, p])),
+    stato,
   };
   const unicaSettimana = piano.settimane.length === 1;
   const emessi: PiattoEmesso[] = [];

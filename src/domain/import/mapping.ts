@@ -298,26 +298,40 @@ export function unitaPrevalente(unita: UnitaBase[]): UnitaBase | null {
 }
 
 /**
+ * L'unità che una riga con la quantità trascritta dal foglio dice dell'ingrediente: come
+ * `unitaDellaRiga`, ma una quantità proposta dal lettore (`quantitaInferita`) non dice niente
+ * (correzione 8c-bis C, prove dal telefono del 03/10: «Sedano» in g, il lettore stima «1 pz»).
+ * È l'unica che vota l'unità finale di un ingrediente.
+ */
+export function unitaTrascritta(riga: RigaEstratta): UnitaBase | null {
+  return riga.quantitaInferita ? null : unitaDellaRiga(riga);
+}
+
+/**
  * L'unione deduplicata (per alimento normalizzato) di tutte le righe del piano, correzioni
  * applicate. `alimento` è la chiave normalizzata; `grezzo` è l'alimento com'è scritto nella
  * prima riga che lo porta, con accenti e maiuscole, per il nome da proporre. `unitaViste` sono le
- * unità di tutte le sue righe che ne hanno una, nell'ordine del piano; `unita` è quella che
- * prevale (`unitaPrevalente`): con le righe tutte in un'unità, la stessa di sempre.
+ * unità di tutte le sue righe che ne hanno una, nell'ordine del piano, stime del lettore comprese;
+ * `unitaTrascritte` solo quelle delle righe con la quantità trascritta (`unitaTrascritta`).
+ * `unita` è quella che prevale (`unitaPrevalente`) fra le trascritte: con le righe tutte in
+ * un'unità, la stessa di sempre. Se non ce n'è nessuna, prevale fra le stime (correzione 8c-bis C).
  */
 export function ingredientiDaAbbinare(
   piano: PianoEstratto,
   correzioni: Record<string, PastoEstratto>,
-): { alimento: string; grezzo: string; unita: UnitaBase | null; unitaViste: UnitaBase[] }[] {
-  const visti = new Map<string, { alimento: string; grezzo: string; unitaViste: UnitaBase[] }>();
+): { alimento: string; grezzo: string; unita: UnitaBase | null; unitaViste: UnitaBase[]; unitaTrascritte: UnitaBase[] }[] {
+  const visti = new Map<string, { alimento: string; grezzo: string; unitaViste: UnitaBase[]; unitaTrascritte: UnitaBase[] }>();
   for (const riga of righeDelPiano(piano, correzioni)) {
     const chiave = normalizza(riga.alimento);
     // `grezzo` resta quello della prima riga: accenti e maiuscole per il nome proposto.
-    const voce = visti.get(chiave) ?? { alimento: chiave, grezzo: riga.alimento, unitaViste: [] };
+    const voce = visti.get(chiave) ?? { alimento: chiave, grezzo: riga.alimento, unitaViste: [], unitaTrascritte: [] };
     const unita = unitaDellaRiga(riga);
     if (unita !== null) voce.unitaViste.push(unita);
+    const trascritta = unitaTrascritta(riga);
+    if (trascritta !== null) voce.unitaTrascritte.push(trascritta);
     visti.set(chiave, voce);
   }
-  return [...visti.values()].map((v) => ({ ...v, unita: unitaPrevalente(v.unitaViste) }));
+  return [...visti.values()].map((v) => ({ ...v, unita: unitaPrevalente(v.unitaTrascritte) ?? unitaPrevalente(v.unitaViste) }));
 }
 
 /**
